@@ -56,7 +56,23 @@ inline std::array<Config, 3> checked_configs(int reference_mhz)
 
 inline bool valid_reference(int mhz) { return mhz == 25 || mhz == 50 || mhz == 100; }
 
-inline std::optional<Config> select_hz(int64_t hz, int reference_mhz = 50)
+struct DutyCounts { int high, low; bool odd; };
+inline std::optional<DutyCounts> duty_counts(int c, int duty)
+{
+    if (c < 2 || c > 512 || duty <= 0 || duty >= 100) return std::nullopt;
+    int high = (c + 1) / 2, low = c / 2;
+    bool odd = (c & 1) != 0;
+    if (duty != 50) {
+        if ((c * duty) % 100) return std::nullopt;
+        high = c * duty / 100;
+        low = c - high;
+        odd = false;
+    }
+    if (high < 1 || low < 1 || high > 255 || low > 255) return std::nullopt;
+    return DutyCounts{high, low, odd};
+}
+
+inline std::optional<Config> select_hz(int64_t hz, int reference_mhz = 50, int duty = 50)
 {
     if (!valid_reference(reference_mhz) || hz < 1000000 || hz > 100000000)
         return std::nullopt;
@@ -69,7 +85,7 @@ inline std::optional<Config> select_hz(int64_t hz, int reference_mhz = 50)
         if (numerator % denominator != 0)
             continue;
         config.c = numerator / denominator;
-        if (config.c >= 2 && config.c <= 512)
+        if (duty_counts(config.c, duty))
             return config;
     }
     return std::nullopt;
@@ -80,7 +96,7 @@ struct DualConfig
     int c1;
 };
 
-inline std::optional<DualConfig> select_dual_hz(int64_t hz0, int64_t hz1, int reference_mhz = 50)
+inline std::optional<DualConfig> select_dual_hz(int64_t hz0, int64_t hz1, int reference_mhz = 50, int duty0 = 50, int duty1 = 50)
 {
     if (!valid_reference(reference_mhz) || hz0 < 1000000 || hz0 > 100000000 || hz1 < 1000000 || hz1 > 100000000)
         return std::nullopt;
@@ -92,7 +108,7 @@ inline std::optional<DualConfig> select_dual_hz(int64_t hz0, int64_t hz1, int re
             continue;
         config.c = numerator / denominator0;
         int c1 = numerator / denominator1;
-        if (config.c >= 2 && config.c <= 512 && c1 >= 2 && c1 <= 512)
+        if (duty_counts(config.c, duty0) && duty_counts(c1, duty1))
             return DualConfig{config, c1};
     }
     return std::nullopt;

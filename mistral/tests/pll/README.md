@@ -14,7 +14,9 @@ six FPLL sites. The currently accepted configuration is:
   an appropriate external physical clock source.
 - Output: one clock from 1 to 100 MHz, expressed as decimal MHz with
   at most one-Hz precision and an exact C divisor
-  from the checked 300/320 MHz reported VCO configurations; zero phase, 50% duty.
+  from the checked 300/320 MHz reported VCO configurations; zero phase.
+  Integer duty percentages are supported when exactly representable by the
+  selected C high/low counters (see below).
 - Direct mode with integer feedback. Prefer M=12/N=2 (reported 300 MHz);
   otherwise M=32/N=5 (reported 320 MHz). Only C6 drives the output.
 - Active-high fabric-driven `rst`, or `rst` tied low; optional `locked` status output.
@@ -483,3 +485,44 @@ cycles, returning zero under reset and 1006–1007 / 2013–2014 counts after
 relock with lock asserted and no sampled loss. Single fractional and integer
 dual baseline RBF hashes remain unchanged. This is exact-artifact functional
 diagnostic evidence, not a measurement of calculated ppm error or jitter.
+
+
+## Integer duty cycle
+
+`duty_cycle0` and `duty_cycle1` accept integer percentages from 1 through 99
+when the selected C divisor represents that percentage exactly. For non-50%
+outputs, high = C × duty / 100 must be integral, and high and low must each
+fit the 1–255 counter range. The selector considers frequency and duty together
+for both outputs. For example, 50/25 MHz at 25% duty uses the checked 400 MHz
+configuration with C8/C16; the frequency-compatible 300 MHz configuration
+cannot represent those duties. Existing 50% odd-divider correction is retained.
+Fractional-N profiles still require 50% duty; phase shifts remain unsupported.
+
+Quartus 17.0.2 references for 25 MHz at 25% and 75% use M12/N2/C12,
+with C high/low counts 3/9 and 9/3 respectively. The host regression compares
+all non-default selected-FPLL settings against those references. No Mistral
+geometry or analog configuration changes are required.
+
+The packer propagates high/low clock constraints and rejects contradictory
+waveforms even when their periods match. A Yosys-generated inverter and second
+clock buffer feeding only PLL-clocked FF clock pins are folded into the FFs'
+hardware clock inversion. Timing then retains one clock domain with both edges.
+The shared timing engine uses the high or low interval for opposite-edge slack
+and Fmax, including clock skew. Critical-path JSON now includes `max_delay`
+in nanoseconds, exposing the allowed interval for regression checks.
+
+Run both pulse-width regressions with `duty.py --duty 25` and `--duty 75`,
+using the same required tool/output arguments as `check.py`. Each checks both
+edge directions (10/30 ns budgets), duty-scaled Fmax, compressed RBF output,
+and invalid parameter/waveform rejection. `dual.py --mhz0 50 --mhz1 25
+--duty0 25 --duty1 25 --skip-negative` exercises joint divisor selection.
+`duty_config.cpp` supplies standalone selector boundary checks:
+
+```sh
+g++ -std=c++17 -Wall -Wextra -pedantic -I mistral \
+  mistral/tests/pll/duty_config.cpp -o /tmp/pll-duty-config
+/tmp/pll-duty-config
+```
+
+These duty-cycle checks are host-only; no pulse-width hardware acceptance is
+claimed from the earlier frequency measurements.

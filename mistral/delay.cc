@@ -95,7 +95,9 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
     TimingClockingInfo timing{};
     if (cell->type == id_MISTRAL_FF) {
         timing.clock_port = id_CLK;
-        timing.edge = RISING_EDGE;
+        auto clock_pin = cell->pin_data.find(id_CLK);
+        timing.edge = clock_pin != cell->pin_data.end() && clock_pin->second.state == PIN_INV ?
+                FALLING_EDGE : RISING_EDGE;
         // ACLR is considered synchronous for timing purposes.
         if (port.in(id_DATAIN, id_ACLR, id_ENA, id_SCLR, id_SLOAD, id_SDATA)) {
             timing.setup = DelayPair{-196, -196};

@@ -492,6 +492,54 @@ struct MistralPacker
         }
     }
 
+    void fold_inverted_pll_clock_buffers()
+    {
+        std::vector<IdString> remove;
+        for (auto &entry : ctx->cells) {
+            CellInfo *buf = entry.second.get();
+            if (buf->type != id_MISTRAL_CLKBUF) continue;
+            NetInfo *in = buf->getPort(id_A), *out = buf->getPort(id_Q);
+            if (!in || !out || !in->driver.cell || in->driver.cell->type != id_MISTRAL_NOT) continue;
+            NetInfo *source = in->driver.cell->getPort(id_A);
+            if (!source || !source->driver.cell || source->driver.cell->type != id_MISTRAL_CLKBUF) continue;
+            NetInfo *pll_out = source->driver.cell->getPort(id_A);
+            if (!pll_out || !pll_out->driver.cell || pll_out->driver.cell->type != id_altera_pll) continue;
+            std::vector<PortRef> users;
+            bool foldable = true;
+            for (auto user : out->users) {
+                if (user.cell->type != id_MISTRAL_FF || user.port != id_CLK) foldable = false;
+                users.push_back(user);
+            }
+            if (!foldable || users.empty()) continue;
+            if (buf->bel != BelId() || buf->attrs.count(ctx->id("BEL")) ||
+                buf->attrs.count(id_LOC) || buf->attrs.count(ctx->id("NEXTPNR_BEL")))
+                log_error("PLL inverted clock buffer '%s': placement constraint prevents folding.\n", ctx->nameOf(buf));
+            auto differs = [](const DelayPair &a, const DelayPair &b) {
+                return a.minDelay() != b.minDelay() || a.maxDelay() != b.maxDelay();
+            };
+            // An explicitly constrained inverse clock must describe the swapped waveform.
+            for (NetInfo *net : {in, out}) {
+                if (!net->clkconstr) continue;
+                NPNR_ASSERT(source->clkconstr);
+                if (differs(net->clkconstr->period, source->clkconstr->period) ||
+                    differs(net->clkconstr->high, source->clkconstr->low) ||
+                    differs(net->clkconstr->low, source->clkconstr->high))
+                    log_error("PLL inverted clock '%s': conflicting clock constraint.\n", ctx->nameOf(net));
+            }
+            // Expose the inverter directly to FF clock pins; pack_constants folds
+            // it into their hardware clock inversion and retains the original domain.
+            for (auto user : users) {
+                user.cell->disconnectPort(id_CLK);
+                user.cell->connectPort(id_CLK, in);
+            }
+            buf->disconnectPort(id_A);
+            buf->disconnectPort(id_Q);
+            ctx->nets.erase(out->name);
+            remove.push_back(buf->name);
+        }
+        for (IdString name : remove) ctx->cells.erase(name);
+    }
+
     void setup_plls()
     {
         for (auto &entry : ctx->cells) {
@@ -507,6 +555,12 @@ struct MistralPacker
             if (!mistral_pll::valid_reference(reference_mhz))
                 log_error("PLL '%s': reference frequency must be 25, 50 or 100 MHz.\n", ctx->nameOf(ci));
             bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
+            int duty0 = int_or_default(ci->params, ctx->id("duty_cycle0"), 50);
+            int duty1 = int_or_default(ci->params, ctx->id("duty_cycle1"), 50);
+            if (duty0 <= 0 || duty0 >= 100 || (clocks == 2 && (duty1 <= 0 || duty1 >= 100)))
+                log_error("PLL '%s': duty cycle must be an integer percent from 1 to 99.\n", ctx->nameOf(ci));
+            if (fractional && (duty0 != 50 || (clocks == 2 && duty1 != 50)))
+                log_error("PLL '%s': fractional-N profiles require 50 percent duty cycle.\n", ctx->nameOf(ci));
             // Frequency selection uses only checked feedback/analog tuples.
             // Other unsupported modes and parameters still fail closed.
             dict<IdString, Property> profile = {
@@ -515,11 +569,11 @@ struct MistralPacker
                 {ctx->id("fractional_vco_multiplier"), Property(fractional ? "true" : "false")},
                 {ctx->id("phase_shift0"), Property("0 ps")},
                 {ctx->id("number_of_clocks"), Property(clocks)},
-                {ctx->id("duty_cycle0"), Property(50)},
+                {ctx->id("duty_cycle0"), Property(duty0)},
             };
             if (clocks == 2) {
                 profile[ctx->id("phase_shift1")] = Property("0 ps");
-                profile[ctx->id("duty_cycle1")] = Property(50);
+                profile[ctx->id("duty_cycle1")] = Property(duty1);
             }
             if (ctx->args.device != "5CSEBA6U23I7")
                 log_error("PLL '%s': initial PLL profile supports only 5CSEBA6U23I7.\n", ctx->nameOf(ci));
@@ -538,7 +592,7 @@ struct MistralPacker
             const auto &frequency = ci->params.at(ctx->id("output_clock_frequency0"));
             int64_t output_hz = frequency.is_string ? mistral_pll::parse_output_hz(frequency.as_string()) : 0;
             auto config = fractional ? mistral_pll::select_fractional(output_hz, reference_mhz) :
-                                       mistral_pll::select_hz(output_hz, reference_mhz);
+                                       mistral_pll::select_hz(output_hz, reference_mhz, duty0);
             if (fractional && clocks == 1 && !config)
                 log_error("PLL '%s': fractional-N profile requires 50 MHz reference and 11.2896 or 12.288 MHz output.\n", ctx->nameOf(ci));
             int64_t output1_hz = 0;
@@ -549,11 +603,11 @@ struct MistralPacker
                     log_error("PLL '%s': explicit output_clock_frequency1 is required.\n", ctx->nameOf(ci));
                 output1_hz = mistral_pll::parse_output_hz(freq1->second.as_string());
                 auto dual = fractional ? mistral_pll::select_fractional_dual(output_hz, output1_hz, reference_mhz) :
-                                         mistral_pll::select_dual_hz(output_hz, output1_hz, reference_mhz);
+                                         mistral_pll::select_dual_hz(output_hz, output1_hz, reference_mhz, duty0, duty1);
                 if (fractional && !dual)
                     log_error("PLL '%s': fractional-N dual profile requires 50 MHz reference and 12.288/24.576 MHz outputs.\n", ctx->nameOf(ci));
                 if (!dual)
-                    log_error("PLL '%s': unsupported dual PLL frequencies; require exact decimal MHz from 1 to 100 with exact dividers from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
+                    log_error("PLL '%s': unsupported dual PLL frequencies/duties; require exact decimal MHz from 1 to 100 with exact dividers from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
                 config = dual->feedback;
                 c1 = dual->c1;
                 if (!ci->getPort(ctx->id("outclk[0]")) || ci->ports.count(id_outclk))
@@ -561,7 +615,7 @@ struct MistralPacker
                 ci->renamePort(ctx->id("outclk[0]"), id_outclk);
             }
             if (!config)
-                log_error("PLL '%s': unsupported PLL output frequency; require exact decimal MHz from 1 to 100 "
+                log_error("PLL '%s': unsupported PLL output frequency/duty; require exact decimal MHz from 1 to 100 "
                           "and an exact integer C divider from a checked 300/320 MHz tuple.\n", ctx->nameOf(ci));
             for (auto &port : ci->ports)
                 if (!port.first.in(id_refclk, id_outclk, id_locked, id_rst) &&
@@ -607,15 +661,20 @@ struct MistralPacker
                     log_error("PLL '%s': outclk[1] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
                 buf1 = (*out1->users.begin()).cell;
             }
-            auto set_clock = [&](NetInfo *net, int period) {
+            auto set_clock = [&](NetInfo *net, int period, int duty = 50) {
+                int high = int(int64_t(period) * duty / 100);
+                int low = duty == 50 ? high : period - high;
                 if (!net)
                     log_error("PLL '%s': disconnected clock.\n", ctx->nameOf(ci));
                 if (net->clkconstr && (net->clkconstr->period.minDelay() != period ||
-                                      net->clkconstr->period.maxDelay() != period))
+                                      net->clkconstr->period.maxDelay() != period ||
+                                      net->clkconstr->high.minDelay() != high || net->clkconstr->high.maxDelay() != high ||
+                                      net->clkconstr->low.minDelay() != low || net->clkconstr->low.maxDelay() != low))
                     log_error("PLL '%s': conflicting clock constraint on '%s'.\n", ctx->nameOf(ci), ctx->nameOf(net));
                 net->clkconstr.reset(new ClockConstraint());
                 net->clkconstr->period = DelayPair(period);
-                net->clkconstr->high = net->clkconstr->low = DelayPair(period / 2);
+                net->clkconstr->high = DelayPair(high);
+                net->clkconstr->low = DelayPair(low);
             };
             // Check the input pin's SDC constraint as well as the buffered net.
             set_clock(ref->driver.cell->getPort(id_PAD), ctx->getDelayFromNS(1000.0 / reference_mhz));
@@ -623,8 +682,8 @@ struct MistralPacker
             if (buffered_ref)
                 set_clock(buffered_ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
             double generated_hz = mistral_pll::achieved_hz(*config, reference_mhz);
-            set_clock(out, ctx->getDelayFromNS(1.0e9 / generated_hz));
-            set_clock(buf->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / generated_hz));
+            set_clock(out, ctx->getDelayFromNS(1.0e9 / generated_hz), duty0);
+            set_clock(buf->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / generated_hz), duty0);
             if (fractional)
                 log_info("PLL '%s': fractional-N requested %.6f Hz, achieved %.9f Hz, error %.9g ppm.\n",
                          ctx->nameOf(ci), double(output_hz), generated_hz,
@@ -633,8 +692,8 @@ struct MistralPacker
                 auto second_config = *config;
                 second_config.c = c1;
                 double generated1_hz = mistral_pll::achieved_hz(second_config, reference_mhz);
-                set_clock(out1, ctx->getDelayFromNS(1.0e9 / generated1_hz));
-                set_clock(buf1->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / generated1_hz));
+                set_clock(out1, ctx->getDelayFromNS(1.0e9 / generated1_hz), duty1);
+                set_clock(buf1->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / generated1_hz), duty1);
                 if (fractional)
                     log_info("PLL '%s': fractional-N second requested %.6f Hz, achieved %.9f Hz, error %.9g ppm.\n",
                              ctx->nameOf(ci), double(output1_hz), generated1_hz,
@@ -672,6 +731,7 @@ struct MistralPacker
         init_constant_nets();
         pack_io();
         setup_plls();
+        fold_inverted_pll_clock_buffers();
         pack_constants();
         constrain_carries();
         constrain_lutram();

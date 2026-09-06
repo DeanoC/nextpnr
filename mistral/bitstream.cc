@@ -167,8 +167,10 @@ struct MistralBitgen
         auto pip = ref->wires.at(ctx->getBelPinWire(ci->bel, id_refclk)).pip;
         raw(CycloneV::CLKIN_0_SRC, ctx->pll_ref_select.at(pip));
         int reference_mhz = mistral_pll::parse_mhz(ci->params.at(ctx->id("reference_clock_frequency")).as_string());
+        int duty0 = int_or_default(ci->params, ctx->id("duty_cycle0"), 50);
+        int duty1 = int_or_default(ci->params, ctx->id("duty_cycle1"), 50);
         auto config = mistral_pll::select_hz(mistral_pll::parse_output_hz(
-                ci->params.at(ctx->id("output_clock_frequency0")).as_string()), reference_mhz);
+                ci->params.at(ctx->id("output_clock_frequency0")).as_string()), reference_mhz, duty0);
         bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
         if (fractional && int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 1) {
             config = mistral_pll::select_fractional(mistral_pll::parse_output_hz(
@@ -179,17 +181,19 @@ struct MistralBitgen
             auto hz0 = mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency0")).as_string());
             auto hz1 = mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency1")).as_string());
             auto dual = fractional ? mistral_pll::select_fractional_dual(hz0, hz1, reference_mhz) :
-                                     mistral_pll::select_dual_hz(hz0, hz1, reference_mhz);
+                                     mistral_pll::select_dual_hz(hz0, hz1, reference_mhz, duty0, duty1);
             NPNR_ASSERT(dual);
             config = dual->feedback;
             c1 = dual->c1;
         }
         NPNR_ASSERT(config);
         if (c1) {
-            raw(CycloneV::DPRIO0_CNT_HI_DIV, (c1 + 1) / 2, 7);
-            raw(CycloneV::DPRIO0_CNT_LO_DIV, c1 / 2, 7);
+            auto counts = mistral_pll::duty_counts(c1, duty1);
+            NPNR_ASSERT(counts);
+            raw(CycloneV::DPRIO0_CNT_HI_DIV, counts->high, 7);
+            raw(CycloneV::DPRIO0_CNT_LO_DIV, counts->low, 7);
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
-                                      7, (c1 & 1) != 0));
+                                      7, counts->odd));
             raw(CycloneV::CNT_IN_SRC, 0, 7);
             flag(CycloneV::C7_COUT_EN, true);
         }
@@ -202,10 +206,12 @@ struct MistralBitgen
             raw(CycloneV::DSM_OUT_SEL, 1);
         }
         // N has no duty-cycle correction, including the checked odd N=5.
-        raw(CycloneV::DPRIO0_CNT_HI_DIV, (config->c + 1) / 2, 6);
-        raw(CycloneV::DPRIO0_CNT_LO_DIV, config->c / 2, 6);
+        auto counts = mistral_pll::duty_counts(config->c, duty0);
+        NPNR_ASSERT(counts);
+        raw(CycloneV::DPRIO0_CNT_HI_DIV, counts->high, 6);
+        raw(CycloneV::DPRIO0_CNT_LO_DIV, counts->low, 6);
         NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
-                                  6, (config->c & 1) != 0));
+                                  6, counts->odd));
         raw(CycloneV::M_CNT_LO_PRESET_SETTING, config->m_low_preset);
         raw(CycloneV::M_CNT_PH_MUX_PRESET_SETTING, config->m_phase_preset);
         raw(CycloneV::CNT_IN_SRC, 0, 6);

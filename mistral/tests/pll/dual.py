@@ -24,6 +24,8 @@ def main():
     parser.add_argument("--reference-mhz", type=int, default=50)
     parser.add_argument("--mhz0", type=decimal_mhz, default=Fraction(25))
     parser.add_argument("--mhz1", type=decimal_mhz, default=Fraction(40))
+    parser.add_argument("--duty0", type=int, default=50)
+    parser.add_argument("--duty1", type=int, default=50)
     parser.add_argument("--skip-negative", action="store_true")
     args = parser.parse_args()
     def frequency_parameter(value):
@@ -46,6 +48,8 @@ def main():
     params["reference_clock_frequency"] = f"{args.reference_mhz}.0 MHz"
     params["output_clock_frequency0"] = frequency_parameter(args.mhz0)
     params["output_clock_frequency1"] = frequency_parameter(args.mhz1)
+    params["duty_cycle0"] = format(args.duty0, "032b")
+    params["duty_cycle1"] = format(args.duty1, "032b")
     (out / "synth.json").write_text(json.dumps(design))
     assert sum(c["type"] == "altera_pll" for c in design["modules"]["top"]["cells"].values()) == 1
     sdc = out / "clocks.sdc"
@@ -72,7 +76,9 @@ def main():
     bt = (out / "top.bt").read_text()
     assert len(re.findall(r"^s FPLL.*:FPLL_ENABLE 1$", bt, re.M)) == 1
     settings = dict(re.findall(r"^s FPLL\.000\.014:(\S+) (\S+)$", bt, re.M))
-    vco = next(v for v in (300, 320, 400) if v % args.mhz0 == 0 and v % args.mhz1 == 0)
+    vco = next(v for v in (300, 320, 400)
+               if all(v % hz == 0 and (duty == 50 or (v / hz * duty) % 100 == 0)
+                      for hz, duty in ((args.mhz0, args.duty0), (args.mhz1, args.duty1))))
     m, n, bw, cp, preset, phase = {
         25: {300: (24, 2, 6, 1, 1, 0), 320: (64, 5, 3, 2, 7, 3), 400: (32, 2, 6, 1, 1, 0)},
         100: {300: (6, 2, 8, 1, 1, 0), 320: (32, 10, 6, 1, 1, 0), 400: (8, 2, 7, 1, 1, 0)},
@@ -81,15 +87,17 @@ def main():
     ratios = (vco / args.mhz0, vco / args.mhz1)
     assert all(c.denominator == 1 and 2 <= c <= 512 for c in ratios), ratios
     c0, c1 = (c.numerator for c in ratios)
+    high0 = (c0 + 1) // 2 if args.duty0 == 50 else c0 * args.duty0 // 100
+    high1 = (c1 + 1) // 2 if args.duty1 == 50 else c1 * args.duty1 // 100
     for name, value in {"M_CNT_HI_DIV_SETTING": (m + 1) // 2, "M_CNT_LO_DIV_SETTING": m // 2,
                         "N_CNT_HI_DIV_SETTING": (n + 1) // 2, "N_CNT_LO_DIV_SETTING": n // 2,
-                        "DPRIO0_CNT_HI_DIV.6": (c0 + 1) // 2, "DPRIO0_CNT_LO_DIV.6": c0 // 2,
-                        "DPRIO0_CNT_HI_DIV.7": (c1 + 1) // 2, "DPRIO0_CNT_LO_DIV.7": c1 // 2,
+                        "DPRIO0_CNT_HI_DIV.6": high0, "DPRIO0_CNT_LO_DIV.6": c0 - high0,
+                        "DPRIO0_CNT_HI_DIV.7": high1, "DPRIO0_CNT_LO_DIV.7": c1 - high1,
                         "M_CNT_LO_PRESET_SETTING": preset}.items():
         assert int(settings.get(name, "01"), 16) == value, (name, settings)
     for name, value in {"M_CNT_PH_MUX_PRESET_SETTING": phase, "N_CNT_ODD_DIV_DUTY_EN": 0,
-                        "DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN.6": c0 % 2,
-                        "DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN.7": c1 % 2,
+                        "DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN.6": c0 % 2 if args.duty0 == 50 else 0,
+                        "DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN.7": c1 % 2 if args.duty1 == 50 else 0,
                         "BWCTRL": bw, "CP_CURRENT": cp}.items():
         default = "2" if name == "CP_CURRENT" else "0"
         assert int(settings.get(name, default)) == value, (name, settings)
