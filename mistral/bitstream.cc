@@ -181,6 +181,8 @@ struct MistralBitgen
         if (c1) {
             raw(CycloneV::DPRIO0_CNT_HI_DIV, (c1 + 1) / 2, 7);
             raw(CycloneV::DPRIO0_CNT_LO_DIV, c1 / 2, 7);
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
+                                      7, (c1 & 1) != 0));
             raw(CycloneV::CNT_IN_SRC, 0, 7);
             flag(CycloneV::C7_COUT_EN, true);
         }
