@@ -56,7 +56,7 @@ def main():
     assert "s FPLL.000.073:PL_AUX_BG_POWERDOWN 1" in bt
     assert "PLL_FEEDBACK_ENABLE" not in bt
     assert "o OPT_B ffffff40.2dffffff" in bt
-    for name, parameter, value in (("frequency", "output_clock_frequency0", "30.0 MHz"),
+    for name, parameter, value in (("frequency", "output_clock_frequency0", "7.0 MHz"),
                                    ("mode", "operation_mode", "normal"),
                                    ("fractional", "fractional_vco_multiplier", "true"),
                                    ("phase", "phase_shift0", "100 ps"),
@@ -67,7 +67,7 @@ def main():
         path = out / f"invalid-{name}.json"
         path.write_text(json.dumps(invalid))
         log = run(command + ["--json", str(path)], out / f"invalid-{name}.log", success=False)
-        assert "unsupported parameter" in log, log
+        assert ("unsupported PLL output frequency" if name == "frequency" else "unsupported parameter") in log, log
     for name in ("reset", "fanout", "port"):
         invalid = copy.deepcopy(design)
         pll = invalid["modules"]["top"]["cells"]["pll"]

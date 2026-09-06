@@ -1,6 +1,6 @@
-# First Cyclone V PLL profile
+# Cyclone V single-output integer PLL
 
-This is a bounded starting point for PLL support. The HPS diagnostic has
+This is bounded support for single-output integer PLL configurations. The HPS diagnostic has
 measured the expected output/reference frequency ratio and asserted lock on
 hardware. It is not general-purpose PLL support or system-image acceptance.
 
@@ -9,12 +9,19 @@ One physical FPLL is reserved per cell. On `5CSEBA6U23I7`, Mistral enumerates
 six FPLL sites. The currently accepted configuration is:
 
 - Reference: 50.0 MHz from dedicated board clock pin V11.
-- Output: one 25.0 MHz clock, zero requested phase shift, 50% duty cycle.
-- Direct mode with integer feedback, M=12, N=2, VCO=300 MHz, C6=12.
+- Output: one whole-MHz clock from 1 to 100 MHz with an exact C divisor
+  from the checked 300/320 MHz reported VCO configurations; zero phase, 50% duty.
+- Direct mode with integer feedback. Prefer M=12/N=2 (reported 300 MHz);
+  otherwise M=32/N=5 (reported 320 MHz). Only C6 drives the output.
 - Active-high fabric-driven `rst`, or `rst` tied low; optional `locked` status output.
 - One existing MISTRAL clock buffer on the output; no other unbuffered sinks.
 
-Parameters are deliberately restricted to the canonical values in `top.v`.
+Output frequencies use strings such as `"20 MHz"` or `"20.0 MHz"`. The reference
+remains exactly `"50.0 MHz"`; other parameters keep the values in `top.v`.
+Supported whole-MHz outputs are 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 25,
+30, 32, 40, 50, 60, 64, 75, 80, and 100. This is a bounded selector over two
+checked feedback/analog configurations, not an arbitrary M/N analog solver.
+Nonintegral, out-of-range, or inexact requests (for example 7 MHz) fail.
 Unsupported device, pin, frequency, phase, duty cycle, clock count,
 reconfiguration ports, or output topology fail explicitly. Missing frequency
 and mode parameters also fail. Reset must be tied low or driven; a permanently asserted or undriven reset fails.
@@ -37,7 +44,8 @@ wires represent the dedicated clock taps; bit generation programs their PRAM
 selectors separately from the ordinary CRAM routing graph. The GPIO fabric
 DATAIN wire serves as the logical source for its dedicated COMBOUT tap.
 
-The FPLL writer programs M and C high/low divisors to 6, with N=2 from the
+For the 25 MHz baseline, the FPLL writer programs M and C high/low divisors
+to 6, with N=2 from the
 Mistral default high/low values of 1. `FBCLK_MUX_2=1` selects direct feedback.
 VCO and C6 enables, bandwidth, charge pump, lock filters and reset inversion
 match the Quartus 17.0.2 reference. In addition, the unused auxiliary bandgap
@@ -48,12 +56,13 @@ that single field produced lock and the expected frequency ratio. This
 setting is part of this specific device/reference profile, not a rule for
 arbitrary PLL configurations. No analog parameter solver is implemented.
 
-The packer constrains both sides of the output buffer to 25 MHz and checks
+The packer constrains both sides of the output buffer to the selected frequency and checks
 conflicting clock periods, including the 50 MHz input pin constraint. Downstream
 synchronous paths receive the ordinary backend timing analysis. The dedicated
 reference tap has no Mistral analog timing model: its arc uses the backend
-estimate. PLL jitter, phase alignment to the input, lock-acquisition time,
-and reset/relock behavior have not been characterized. Direct mode does not compensate
+estimate. PLL jitter, phase alignment to the input, and lock-acquisition time
+have not been characterized. Functional reset/relock checks are described below.
+Direct mode does not compensate
 clock-network delay; see the [Altera PLL guide](https://cdrdv2-public.intel.com/666336/altera_pll-683359-666336.pdf).
 
 ## Reproduce
@@ -189,3 +198,62 @@ passed all ten hardware cycles (0 while reset, 2048 after relock). Its reported
 Fmax was 214.684 MHz against the 50 MHz reference constraint and 331.126 MHz
 against the 25 MHz output constraint. The fixed-profile RBF hash and DSP
 regressions remained unchanged.
+
+
+## Configurable frequency validation
+
+`mistral/pll.h` selects the first exact C divisor from the two configurations.
+The packer and bitstream writer use the same selection, without accepting user
+parameters that override internal divider or analog settings. Clock periods
+are represented at nextpnr's picosecond resolution, so rates such as 30 MHz
+have a small report-rounding difference; tests allow only that quantization.
+
+| Reported VCO MHz | M/N | BW / CP | M low / phase preset |
+| --- | --- | --- | --- |
+| 300 | 12/2 | 7 / 1 | 1 / 0 |
+| 320 | 32/5 | 6 / 2 | 4 / 2 |
+
+Quartus 17.0.2 oracles for 20/100 MHz confirm C=15/3 with odd-C 50% duty
+correction. The 40/80 MHz oracles confirm the second configuration with C=8/4
+and unchanged feedback presets. Odd N=5 does not enable N duty correction.
+Mistral already provides all required fields; no table changes are needed.
+The existing 25 MHz configuration remains the preferred first choice.
+
+The rates above are **Quartus-reported rates after the VCO post-divider**, not
+physical oscillator frequencies. The [Cyclone V PLL specifications](https://docs.altera.com/r/docs/683801/current/cyclone-v-device-datasheet/pll-specifications)
+explain this distinction. Both configurations keep the checked `VCO_DIV=0`,
+lock filters, auxiliary bandgap, reset polarity, and dedicated clock route.
+
+Run the standalone selector regression:
+
+```sh
+c++ -std=c++17 -I mistral mistral/tests/pll/frequency_config.cpp -o /tmp/pll-config-test
+/tmp/pll-config-test
+```
+
+`frequency.py` accepts the same tool/output arguments as `reset.py` plus
+`--mhz N`. It generates a diagnostic source from `reset.v`, identifies it with
+GPI signature `0xD713`, and checks the routed reset, both clocks, actual counter
+fields and analog settings. `frequency_meter_sim.cpp` drives the production
+meter at 20/40/100 MHz with `WINDOW_BITS=12`, including stops and restarts.
+
+After loading the corresponding frequency RBF under a kit lease, run
+`sh frequency_probe.sh 20` (or `40` / `100`) on the designated target. Each run
+checks ten held-reset zero counts and ten recovered counts around
+`frequency_MHz * 4096 / 50`, allowing one edge at the window endpoints.
+This establishes frequency ratio and functional reset/relock, not analog
+jitter, phase accuracy, duty-cycle tolerance, or a specified lock time.
+
+
+On 2026-09-06 the 20, 40 and 100 MHz OSS artifacts each passed ten hardware
+reset/relock cycles. Held reset always measured zero; released outputs measured
+1638–1639, 3276–3277 and 8192 respectively, with lock asserted and no sampled
+lock loss during measurement. Reported Fmax was 216.732 MHz for the 50 MHz
+reference domain and 326.584 MHz for the output domain in all three designs.
+Each compressed RBF is 1,955,948 bytes.
+
+| Output MHz | Hardware-tested RBF SHA-256 |
+| --- | --- |
+| 20 | `771f5eb504896c411e3e61fcea64c465d90a4149c362a7b605c32b14d87c1d42` |
+| 40 | `0f63eefc0f8424f46af1e0c3776aff2a72af0b8bb2b653a798585fd2710700af` |
+| 100 | `009bc5914818c400455c061e90725e9fd7f0af80404fcdd8f08e892ee9e52b47` |
