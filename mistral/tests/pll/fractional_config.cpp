@@ -3,6 +3,12 @@
 #include <cmath>
 int main() {
     using namespace mistral_pll;
+    auto dual = select_fractional_dual(12288000, 24576000, 50);
+    assert(dual && dual->feedback.c == 34 && dual->c1 == 17);
+    assert(dual->feedback.fraction == 0x5b18548b);
+    assert(!select_fractional_dual(24576000, 12288000, 50));
+    assert(!select_fractional_dual(12288000, 24576000, 25));
+    assert(!select_fractional_dual(12288000, 24576001, 50));
     auto audio441 = select_fractional(11289600, 50);
     assert(audio441 && audio441->m == 8 && audio441->n == 1 && audio441->c == 36);
     assert(audio441->fraction == 0x20e6293f && audio441->fractional);

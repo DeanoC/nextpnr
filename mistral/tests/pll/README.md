@@ -386,7 +386,7 @@ historical kit evidence remains specific to its recorded artifacts.
 
 Set `fractional_vco_multiplier="true"` to request the separate, bounded
 50 MHz reference to a checked 11.2896 or 12.288 MHz single-output profile. Other fractional-N
-reference/output combinations and multiple outputs are rejected. The existing
+combinations are rejected except the checked dual-output pair below. The existing
 V11 route, direct mode, zero phase, 50% duty and reset rules still apply.
 The default `"false"` mode retains exact integer-divider behavior.
 
@@ -450,3 +450,36 @@ operation and sampled lock; it does not measure the calculated sub-ppm error
 or jitter. The integer and 12.288 MHz baseline artifact hashes are unchanged.
 
 Current `kit.py stop` completed development reboot recovery and left the kit free.
+
+### Dual fractional-N audio clocks
+
+With `fractional_vco_multiplier="true"` and `number_of_clocks=2`, the checked
+pair is output0=12.288 MHz and output1=24.576 MHz, from the 50 MHz reference.
+Swapped outputs and other pairs remain unsupported. Both outputs share M8,
+N1 bypass and K=`0x5b18548b`, with C6=34 and C7=17. This is a separately
+checked Quartus17.0.2 configuration: the single 12.288 MHz fractional word
+cannot be reused. C6 has even counts 17/17; C7 uses 9/8 and odd-duty correction.
+Analog settings remain BW7/CP2 and the existing presets/filters.
+
+Calculated outputs are 12,288,000.000134 Hz and 24,576,000.000268 Hz, both
+about +0.000010905 ppm from their requests. Both generated clock constraints
+use calculated frequency at backend timing resolution, and both errors are
+reported. Independent per-output divider selection is not permitted.
+
+`fractional_dual.py` checks the complete oracle FPLL configuration, three clock
+constraints, reset routing and unsupported combinations. Its D717 fixture
+has independent meters; GPO3 selects each meter's result and status.
+Run `fractional_dual_probe.sh 12.288` and `fractional_dual_probe.sh 24.576`
+under a kit lease. Expected running counts are 1006–1007 and 2013–2014,
+respectively, with endpoint tolerance. These checks establish functional
+operation, not precision or jitter characterization.
+
+On 2026-09-06 the dual fractional diagnostic RBF had SHA-256
+`1967c21bfb9778f2a0105ab5a7cbb2168b772acb5c8a3a2ec6631eb5d48190aa`.
+It used one PLL, three clock buffers and one HPS GP, without DSP/RAM.
+Reference/output Fmax values were 188.359/225.276/371.471 MHz against
+50/12.288/24.576 MHz constraints. Each output passed ten hardware reset/relock
+cycles, returning zero under reset and 1006–1007 / 2013–2014 counts after
+relock with lock asserted and no sampled loss. Single fractional and integer
+dual baseline RBF hashes remain unchanged. This is exact-artifact functional
+diagnostic evidence, not a measurement of calculated ppm error or jitter.

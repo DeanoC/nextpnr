@@ -170,16 +170,16 @@ struct MistralBitgen
         auto config = mistral_pll::select_hz(mistral_pll::parse_output_hz(
                 ci->params.at(ctx->id("output_clock_frequency0")).as_string()), reference_mhz);
         bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
-        if (fractional) {
-            NPNR_ASSERT(int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 1);
+        if (fractional && int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 1) {
             config = mistral_pll::select_fractional(mistral_pll::parse_output_hz(
                     ci->params.at(ctx->id("output_clock_frequency0")).as_string()), reference_mhz);
         }
         int c1 = 0;
         if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 2) {
-            auto dual = mistral_pll::select_dual_hz(mistral_pll::parse_output_hz(
-                    ci->params.at(ctx->id("output_clock_frequency0")).as_string()),
-                    mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency1")).as_string()), reference_mhz);
+            auto hz0 = mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency0")).as_string());
+            auto hz1 = mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency1")).as_string());
+            auto dual = fractional ? mistral_pll::select_fractional_dual(hz0, hz1, reference_mhz) :
+                                     mistral_pll::select_dual_hz(hz0, hz1, reference_mhz);
             NPNR_ASSERT(dual);
             config = dual->feedback;
             c1 = dual->c1;

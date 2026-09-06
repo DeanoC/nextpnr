@@ -113,6 +113,11 @@ inline std::optional<Config> select_fractional(int64_t hz, int reference_mhz)
     if (hz == 11289600) return Config{8, 1, 36, 7, 2, 1, 0, true, 0x20e6293f};
     return std::nullopt;
 }
+inline std::optional<DualConfig> select_fractional_dual(int64_t hz0, int64_t hz1, int reference_mhz)
+{
+    if (reference_mhz != 50 || hz0 != 12288000 || hz1 != 24576000) return std::nullopt;
+    return DualConfig{Config{8, 1, 34, 7, 2, 1, 0, true, 0x5b18548b}, 17};
+}
 inline double achieved_hz(const Config &config, int reference_mhz)
 {
     double multiplier = config.m + (config.fractional ? config.fraction / 4294967296.0 : 0.0);
