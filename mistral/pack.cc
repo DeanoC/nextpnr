@@ -639,22 +639,23 @@ struct MistralPacker
                     log_error("PLL '%s': dual profile requires outclk[0] and outclk[1].\n", ctx->nameOf(ci));
                 ci->renamePort(ctx->id("outclk[0]"), id_outclk);
             }
+            std::array<int64_t, 4> output_hzs{output_hz, output1_hz, 0, 0};
             if (clocks >= 3) {
-                auto freq2 = ci->params.find(ctx->id("output_clock_frequency2"));
-                if (freq2 == ci->params.end() || !freq2->second.is_string)
-                    log_error("PLL '%s': explicit output_clock_frequency2 is required.\n", ctx->nameOf(ci));
-                if (fractional || reference_mhz != 50 || output_hz != 25000000 || output1_hz != 50000000 ||
-                    mistral_pll::parse_output_hz(freq2->second.as_string()) != 100000000 || duty0 != 50 || duty1 != 50)
-                    log_error("PLL '%s': %s profile requires integer 25/50/100 MHz on the first three outputs, "
-                              "50 MHz reference and 50 percent duty.\n",
-                              ctx->nameOf(ci), clocks == 4 ? "quad" : "triple");
-            }
-            if (clocks == 4) {
-                auto freq3 = ci->params.find(ctx->id("output_clock_frequency3"));
-                if (freq3 == ci->params.end() || !freq3->second.is_string)
-                    log_error("PLL '%s': explicit output_clock_frequency3 is required.\n", ctx->nameOf(ci));
-                if (mistral_pll::parse_output_hz(freq3->second.as_string()) != 75000000)
-                    log_error("PLL '%s': quad profile requires 75 MHz on output3.\n", ctx->nameOf(ci));
+                for (int i = 2; i < clocks; ++i) {
+                    auto freq = ci->params.find(ctx->idf("output_clock_frequency%d", i));
+                    if (freq == ci->params.end() || !freq->second.is_string)
+                        log_error("PLL '%s': explicit output_clock_frequency%d is required.\n", ctx->nameOf(ci), i);
+                    output_hzs[i] = mistral_pll::parse_output_hz(freq->second.as_string());
+                }
+                if (fractional || reference_mhz != 50 || duty0 != 50 || duty1 != 50)
+                    log_error("PLL '%s': multi-output profile requires integer feedback, 50 MHz reference and 50 percent duty.\n",
+                              ctx->nameOf(ci));
+                auto multi = mistral_pll::select_multi_hz(output_hzs, clocks, reference_mhz);
+                if (!multi)
+                    log_error("PLL '%s': unsupported multi-output frequencies; require exact 1 to 100 MHz dividers "
+                              "from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
+                config = multi->feedback;
+                c1 = multi->counters[1];
             }
             if (!config)
                 log_error("PLL '%s': unsupported PLL output frequency/duty; require exact decimal MHz from 1 to 100 "
@@ -772,12 +773,12 @@ struct MistralPacker
                              (generated1_hz / output1_hz - 1.0) * 1.0e6);
             }
             if (buf2) {
-                set_clock(out2, ctx->getDelayFromNS(10));
-                set_clock(buf2->getPort(id_Q), ctx->getDelayFromNS(10));
+                set_clock(out2, ctx->getDelayFromNS(1.0e9 / output_hzs[2]));
+                set_clock(buf2->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output_hzs[2]));
             }
             if (buf3) {
-                set_clock(out3, ctx->getDelayFromNS(1000.0 / 75));
-                set_clock(buf3->getPort(id_Q), ctx->getDelayFromNS(1000.0 / 75));
+                set_clock(out3, ctx->getDelayFromNS(1.0e9 / output_hzs[3]));
+                set_clock(buf3->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output_hzs[3]));
             }
             BelId chosen;
             WireId pad = ctx->getBelPinWire(ref->driver.cell->bel, ref->driver.port);

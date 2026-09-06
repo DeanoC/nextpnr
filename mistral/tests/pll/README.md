@@ -626,8 +626,8 @@ remain unchanged.
 
 `triple.v` checks the bounded integer 25/50/100 MHz profile on `5CSEBA6U23I7`,
 with a 50 MHz reference on V11, direct mode, zero phase and 50% duty on all
-three outputs. Other triple frequencies, references, phases, duties and
-fractional feedback are rejected. Existing reset/lock and buffered-output
+three outputs. Other references, phases, duties and fractional feedback are
+rejected; compatible frequencies are covered by the selector below. Existing reset/lock and buffered-output
 rules apply; the four-output profile below is separately checked.
 
 The profile uses M12/N2 and the checked 300 MHz configuration. Output0 uses
@@ -668,8 +668,8 @@ This work is host-only and does not update downstream toolchain pins.
 
 `quad.v` extends the fixed triple profile with a 75 MHz fourth output:
 25/50/100/75 MHz, 50 MHz V11 reference, direct integer mode, zero phase and
-50% duty on all outputs, on `5CSEBA6U23I7`. Other four-output combinations
-and five or more outputs are rejected. Reset/lock and output-buffer rules
+50% duty on all outputs, on `5CSEBA6U23I7`. Compatible frequency combinations
+are covered below; five or more outputs are rejected. Reset/lock and output-buffer rules
 remain the same.
 
 M12/N2 and all analog settings remain unchanged. The fourth output uses C8=4
@@ -697,3 +697,38 @@ contradictory fourth-clock SDC are rejected by the regression.
 Validation is host-only. Unequal-frequency cross-clock timing relationships,
 input-reference phase alignment and analog hardware acceptance are outside
 this profile. Downstream locks and parent pins are unchanged.
+
+
+## Compatible three- and four-output frequencies
+
+The multi-output selector accepts exact decimal frequencies from 1 to 100 MHz
+when every output has an exact, representable divider from one checked
+300/320/400 MHz configuration. Requests retain the 50 MHz V11 reference,
+integer feedback, zero phase and 50% duty restrictions. This adds no new
+analog tuples and no Mistral geometry or clock-buffer routes.
+
+All outputs participate in selection, in the existing preference order
+300, 320, 400 MHz. For example, 25/50 MHz alone prefers 300 MHz, but adding
+80 MHz requires 400 MHz; 25/50/100/80 similarly selects 400 MHz because of
+the fourth output. 75/80 MHz has no common checked tuple and is rejected,
+even though each frequency is individually supported. Packing and bitstream
+generation call the same selector and update every counter together.
+
+```sh
+python3 mistral/tests/pll/multi.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-multi
+```
+
+The runner checks 12.5/25/50, 25/50/80, 40/80/16/32 and 25/50/100/80 MHz
+against bundled Quartus references under `fixtures/multi/`, including all
+emitted FPLL settings, output constraints and dedicated buffer selections.
+The decimal case exercises a non-whole-MHz frequency. Other cases exercise
+the third or fourth output forcing a different common configuration.
+Every output also gets nondivisor, inexact and out-of-range rejection checks.
+The original `triple.py` and `quad.py` fixtures remain regression baselines;
+optional `--frequencies` and `--oracle-fixture` arguments select another
+checked reference.
+
+Validation is host-only. The existing limitations on unequal-frequency
+cross-clock timing and analog acceptance still apply; downstream pin updates
+remain separate integration work.

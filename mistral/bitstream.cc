@@ -195,6 +195,17 @@ struct MistralBitgen
             config = dual->feedback;
             c1 = dual->c1;
         }
+        int clocks = int_or_default(ci->params, ctx->id("number_of_clocks"), 1);
+        std::optional<mistral_pll::MultiConfig> multi;
+        if (clocks >= 3) {
+            std::array<int64_t, 4> hz{};
+            for (int i = 0; i < clocks; ++i)
+                hz[i] = mistral_pll::parse_output_hz(ci->params.at(ctx->idf("output_clock_frequency%d", i)).as_string());
+            multi = mistral_pll::select_multi_hz(hz, clocks, reference_mhz);
+            NPNR_ASSERT(multi);
+            config = multi->feedback;
+            c1 = multi->counters[1];
+        }
         NPNR_ASSERT(config);
         if (c1) {
             auto counts = mistral_pll::duty_counts(c1, duty1);
@@ -210,21 +221,16 @@ struct MistralBitgen
             raw(CycloneV::CNT_IN_SRC, 0, 7);
             flag(CycloneV::C7_COUT_EN, true);
         }
-        if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) >= 3) {
-            // Checked 25/50/100 MHz profile: C5 divides the 300 MHz VCO by three.
-            raw(CycloneV::DPRIO0_CNT_HI_DIV, 2, 5);
-            raw(CycloneV::DPRIO0_CNT_LO_DIV, 1, 5);
-            NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN, 5, true));
-            raw(CycloneV::CNT_IN_SRC, 0, 5);
-            flag(CycloneV::C5_COUT_EN, true);
-        }
-        if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 4) {
-            // Checked fourth output: C8 divides the 300 MHz VCO by four.
-            raw(CycloneV::DPRIO0_CNT_HI_DIV, 2, 8);
-            raw(CycloneV::DPRIO0_CNT_LO_DIV, 2, 8);
-            NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN, 8, false));
-            raw(CycloneV::CNT_IN_SRC, 0, 8);
-            flag(CycloneV::C8_COUT_EN, true);
+        for (int i = 2; i < clocks; ++i) {
+            int counter = i == 2 ? 5 : 8;
+            auto counts = mistral_pll::duty_counts(multi->counters[i], 50);
+            NPNR_ASSERT(counts);
+            raw(CycloneV::DPRIO0_CNT_HI_DIV, counts->high, counter);
+            raw(CycloneV::DPRIO0_CNT_LO_DIV, counts->low, counter);
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
+                                      counter, counts->odd));
+            raw(CycloneV::CNT_IN_SRC, 0, counter);
+            flag(i == 2 ? CycloneV::C5_COUT_EN : CycloneV::C8_COUT_EN, true);
         }
         raw(CycloneV::M_CNT_HI_DIV_SETTING, (config->m + 1) / 2);
         raw(CycloneV::M_CNT_LO_DIV_SETTING, config->m / 2);
