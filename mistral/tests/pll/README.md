@@ -620,3 +620,45 @@ after alternating GPO[0]. Evidence: `out/dev/pll-invert/final-probe.log` in
 the FES workspace. The 25%/75% and phase host suites pass with the corrected
 library; the existing rising-edge single, dual and fractional RBF hashes
 remain unchanged.
+
+
+## Three outputs from one PLL
+
+`triple.v` checks the bounded integer 25/50/100 MHz profile on `5CSEBA6U23I7`,
+with a 50 MHz reference on V11, direct mode, zero phase and 50% duty on all
+three outputs. Other triple frequencies, references, phases, duties and
+fractional feedback are rejected. Existing reset/lock and buffered-output
+rules apply; four or more outputs remain unsupported.
+
+The profile uses M12/N2 and the checked 300 MHz configuration. Output0 uses
+C6=12, output1 C7=6 and output2 C5=3, including the odd-divider duty correction
+on C5. Mistral already describes the dedicated C5 connection to
+`CMUXHG.000.035:PLLIN.15`. The new third-output buffer reserves horizontal
+subblock 1 with input selection 23; C6/C7 retain subblocks 2/3. Subblock 1
+has no fabric-input pip and only accepts the third PLL output. All three
+buffers are checked for availability and bound together with the PLL.
+No Mistral table changes are required.
+
+The three generated clocks receive 25, 50 and 100 MHz timing constraints.
+This extension does not add timing relationships between unequal-frequency
+outputs; designs must handle crossings appropriately. It does not establish
+phase alignment to the input reference or analog hardware acceptance.
+
+Run with the same tool arguments as the other runners:
+
+```sh
+python3 mistral/tests/pll/triple.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-triple
+```
+
+The runner checks utilization, all three Fmax constraints, dedicated clock
+buffer placements and mux settings, and invalid parameters/topologies/SDC.
+It verifies hashes and decompiles the [bundled Quartus reference](fixtures/triple/README.md)
+to compare every emitted FPLL setting, including auxiliary powerdown.
+Quartus is needed only to regenerate that reference. Its clock-buffer lane
+choices differ from the OSS placement; the documented Mistral connectivity
+and explicit mux checks validate the OSS lanes.
+
+Adding clock BELs can change placement and RBF hashes for existing profiles;
+functional configuration and timing regressions remain the acceptance checks.
+This work is host-only and does not update downstream toolchain pins.
