@@ -61,13 +61,13 @@ def main():
                                    ("fractional", "fractional_vco_multiplier", "true"),
                                    ("phase", "phase_shift0", "100 ps"),
                                    ("duty", "duty_cycle0", format(40, "032b")),
-                                   ("count", "number_of_clocks", format(2, "032b"))):
+                                   ("count", "number_of_clocks", format(3, "032b"))):
         invalid = copy.deepcopy(design)
         invalid["modules"]["top"]["cells"]["pll"]["parameters"][parameter] = value
         path = out / f"invalid-{name}.json"
         path.write_text(json.dumps(invalid))
         log = run(command + ["--json", str(path)], out / f"invalid-{name}.log", success=False)
-        assert ("unsupported PLL output frequency" if name == "frequency" else "unsupported parameter") in log, log
+        assert ("unsupported PLL output frequency" if name == "frequency" else "number_of_clocks must" if name == "count" else "unsupported parameter") in log, log
     for name in ("reset", "fanout", "port"):
         invalid = copy.deepcopy(design)
         pll = invalid["modules"]["top"]["cells"]["pll"]

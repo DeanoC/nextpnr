@@ -168,7 +168,22 @@ struct MistralBitgen
         raw(CycloneV::CLKIN_0_SRC, ctx->pll_ref_select.at(pip));
         auto config = mistral_pll::select(mistral_pll::parse_mhz(
                 ci->params.at(ctx->id("output_clock_frequency0")).as_string()));
+        int c1 = 0;
+        if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 2) {
+            auto dual = mistral_pll::select_dual(mistral_pll::parse_mhz(
+                    ci->params.at(ctx->id("output_clock_frequency0")).as_string()),
+                    mistral_pll::parse_mhz(ci->params.at(ctx->id("output_clock_frequency1")).as_string()));
+            NPNR_ASSERT(dual);
+            config = dual->feedback;
+            c1 = dual->c1;
+        }
         NPNR_ASSERT(config);
+        if (c1) {
+            raw(CycloneV::DPRIO0_CNT_HI_DIV, (c1 + 1) / 2, 7);
+            raw(CycloneV::DPRIO0_CNT_LO_DIV, c1 / 2, 7);
+            raw(CycloneV::CNT_IN_SRC, 0, 7);
+            flag(CycloneV::C7_COUT_EN, true);
+        }
         raw(CycloneV::M_CNT_HI_DIV_SETTING, (config->m + 1) / 2);
         raw(CycloneV::M_CNT_LO_DIV_SETTING, config->m / 2);
         raw(CycloneV::N_CNT_HI_DIV_SETTING, (config->n + 1) / 2);

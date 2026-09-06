@@ -41,5 +41,18 @@ inline std::optional<Config> select(int mhz)
     }
     return std::nullopt;
 }
+struct DualConfig
+{
+    Config feedback;
+    int c1;
+};
+
+inline std::optional<DualConfig> select_dual(int mhz0, int mhz1)
+{
+    // Bounded to the Quartus-checked simultaneous 25/40 MHz profile.
+    if (mhz0 != 25 || mhz1 != 40)
+        return std::nullopt;
+    return DualConfig{Config{16, 2, 16, 7, 1, 1, 0}, 10};
+}
 } // namespace mistral_pll
 #endif
