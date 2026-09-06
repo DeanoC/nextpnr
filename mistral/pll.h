@@ -15,6 +15,8 @@ struct Config
 {
     int m, n, c;
     int bandwidth, charge_pump, m_low_preset, m_phase_preset;
+    bool fractional = false;
+    uint32_t fraction = 1;
 };
 
 inline int parse_mhz(const std::string &text)
@@ -103,6 +105,16 @@ inline std::optional<Config> select(int mhz, int reference_mhz = 50)
 inline std::optional<DualConfig> select_dual(int mhz0, int mhz1, int reference_mhz = 50)
 {
     return select_dual_hz(int64_t(mhz0) * 1000000, int64_t(mhz1) * 1000000, reference_mhz);
+}
+inline std::optional<Config> select_fractional(int64_t hz, int reference_mhz)
+{
+    if (reference_mhz != 50 || hz != 12288000) return std::nullopt;
+    return Config{8, 1, 33, 7, 2, 1, 0, true, 472790000};
+}
+inline double achieved_hz(const Config &config, int reference_mhz)
+{
+    double multiplier = config.m + (config.fractional ? config.fraction / 4294967296.0 : 0.0);
+    return reference_mhz * 1.0e6 * multiplier / (config.n * config.c);
 }
 } // namespace mistral_pll
 #endif

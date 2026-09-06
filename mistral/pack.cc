@@ -506,12 +506,15 @@ struct MistralPacker
                     mistral_pll::parse_mhz(reference->second.as_string()) : 0;
             if (!mistral_pll::valid_reference(reference_mhz))
                 log_error("PLL '%s': reference frequency must be 25, 50 or 100 MHz.\n", ctx->nameOf(ci));
+            bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
+            if (fractional && clocks != 1)
+                log_error("PLL '%s': fractional-N profile requires one output.\n", ctx->nameOf(ci));
             // Frequency selection uses only checked feedback/analog tuples.
             // Other unsupported modes and parameters still fail closed.
             dict<IdString, Property> profile = {
                 {ctx->id("reference_clock_frequency"), reference->second},
                 {ctx->id("operation_mode"), Property("direct")},
-                {ctx->id("fractional_vco_multiplier"), Property("false")},
+                {ctx->id("fractional_vco_multiplier"), Property(fractional ? "true" : "false")},
                 {ctx->id("phase_shift0"), Property("0 ps")},
                 {ctx->id("number_of_clocks"), Property(clocks)},
                 {ctx->id("duty_cycle0"), Property(50)},
@@ -528,7 +531,7 @@ struct MistralPacker
                     continue;
                 auto expected = profile.find(param.first);
                 if (expected == profile.end() || param.second != expected->second)
-                    log_error("PLL '%s': unsupported parameter '%s'; only checked references and integer direct profiles are supported.\n",
+                    log_error("PLL '%s': unsupported parameter '%s'; only checked direct profiles are supported.\n",
                               ctx->nameOf(ci), ctx->nameOf(param.first));
             }
             for (auto required : {"reference_clock_frequency", "output_clock_frequency0", "operation_mode"})
@@ -536,7 +539,10 @@ struct MistralPacker
                     log_error("PLL '%s': explicit parameter '%s' is required.\n", ctx->nameOf(ci), required);
             const auto &frequency = ci->params.at(ctx->id("output_clock_frequency0"));
             int64_t output_hz = frequency.is_string ? mistral_pll::parse_output_hz(frequency.as_string()) : 0;
-            auto config = mistral_pll::select_hz(output_hz, reference_mhz);
+            auto config = fractional ? mistral_pll::select_fractional(output_hz, reference_mhz) :
+                                       mistral_pll::select_hz(output_hz, reference_mhz);
+            if (fractional && !config)
+                log_error("PLL '%s': fractional-N profile requires 50 MHz reference and 12.288 MHz output.\n", ctx->nameOf(ci));
             int64_t output1_hz = 0;
             if (clocks == 2) {
                 auto freq1 = ci->params.find(ctx->id("output_clock_frequency1"));
@@ -613,8 +619,13 @@ struct MistralPacker
             set_clock(ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
             if (buffered_ref)
                 set_clock(buffered_ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
-            set_clock(out, ctx->getDelayFromNS(1.0e9 / output_hz));
-            set_clock(buf->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output_hz));
+            double generated_hz = mistral_pll::achieved_hz(*config, reference_mhz);
+            set_clock(out, ctx->getDelayFromNS(1.0e9 / generated_hz));
+            set_clock(buf->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / generated_hz));
+            if (fractional)
+                log_info("PLL '%s': fractional-N requested %.6f Hz, achieved %.9f Hz, error %.9g ppm.\n",
+                         ctx->nameOf(ci), double(output_hz), generated_hz,
+                         (generated_hz / output_hz - 1.0) * 1.0e6);
             if (buf1) {
                 set_clock(out1, ctx->getDelayFromNS(1.0e9 / output1_hz));
                 set_clock(buf1->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output1_hz));
