@@ -67,7 +67,10 @@ def main():
         path = out / f"invalid-{name}.json"
         path.write_text(json.dumps(invalid))
         log = run(command + ["--json", str(path)], out / f"invalid-{name}.log", success=False)
-        assert ("unsupported PLL output frequency" if name == "frequency" else "number_of_clocks must" if name == "count" else "unsupported parameter") in log, log
+        expected = {"frequency": "unsupported PLL output frequency",
+                    "count": "number_of_clocks must",
+                    "fractional": "fractional-N profile requires"}.get(name, "unsupported parameter")
+        assert expected in log, log
     for name in ("reset", "fanout", "port"):
         invalid = copy.deepcopy(design)
         pll = invalid["modules"]["top"]["cells"]["pll"]

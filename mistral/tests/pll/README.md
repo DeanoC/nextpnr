@@ -381,3 +381,46 @@ checks parsing, exact divisibility, rejection and whole-MHz compatibility.
 `dual.py --mhz0 12.5 --mhz1 40` validates fractional outputs with an independent
 rational-arithmetic oracle. New decimal-output validation is host-only;
 historical kit evidence remains specific to its recorded artifacts.
+
+## Checked fractional-N profile
+
+Set `fractional_vco_multiplier="true"` to request the separate, bounded
+50 MHz reference to 12.288 MHz single-output profile. Other fractional-N
+reference/output combinations and multiple outputs are rejected. The existing
+V11 route, direct mode, zero phase, 50% duty and reset rules still apply.
+The default `"false"` mode retains exact integer-divider behavior.
+
+Quartus17.0.2 selects M8, N1 (bypass), C6=33 and fractional word
+K=472790000 (`0x1c2e33f0`) at 32-bit precision. The writer enables
+DSM_OUT_SEL1, sets N high/low counts0, M high/low4, C6 high17/low16 with
+odd-duty correction, BW7 and CP2. M presets1/0, lock filters0x19/2 and the
+auxiliary bandgap powerdown remain as checked in the oracle. Mistral already
+exposes all these fields; no table changes are needed.
+
+Using `50e6 * (8 + K/2^32) /33`, the calculated output is
+12,288,000.000019869 Hz, approximately +0.000001617 ppm from the request.
+The packer reports requested/achieved/error and constrains the calculated
+frequency at backend timing resolution. This is a specific checked approximation,
+not a generic permitted-error solver. It does not silently relax the exactness
+of integer mode. For comparison, Quartus with fractional mode disabled chooses
+12,288,135.593 Hz for the same request, about +11.035 ppm.
+
+`fractional.py` builds the diagnostic fixture and checks routing, timing,
+emitted settings and unsupported requests. Its optional oracle comparison
+checks all emitted FPLL settings. `fractional_config.cpp` checks the bounded
+selector and achieved-frequency calculation. `fractional_probe.sh` runs under
+a kit lease and checks signature D715, output counts and ten reset/relock cycles.
+The reference-window meter expects 1006–1007 counts when running, with endpoint
+tolerance; it cannot resolve the tiny calculated quantization error or measure
+jitter. Programming and lifecycle remain the responsibility of `kit.py`.
+
+On 2026-09-06 the compressed diagnostic RBF had SHA-256
+`55b099c8f0230e7938c6444d11a767b675ef5b93d89e35194c1612a752bea891`.
+It used one PLL, two clock buffers and one HPS GP, with no DSP/RAM.
+Reference/output Fmax values were 195.274/340.716 MHz. The output constraint
+reports 12.28803158 MHz due to picosecond timing quantization; this does not
+change the programmed fractional word or its calculated frequency.
+The exact artifact passed ten kit reset/relock cycles, returning zero while
+reset and 1006–1007 counts after relock, with lock asserted and no sampled
+lock loss. This is functional diagnostic acceptance, not measured frequency
+precision, jitter characterization or native-image acceptance.

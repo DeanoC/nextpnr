@@ -169,6 +169,12 @@ struct MistralBitgen
         int reference_mhz = mistral_pll::parse_mhz(ci->params.at(ctx->id("reference_clock_frequency")).as_string());
         auto config = mistral_pll::select_hz(mistral_pll::parse_output_hz(
                 ci->params.at(ctx->id("output_clock_frequency0")).as_string()), reference_mhz);
+        bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
+        if (fractional) {
+            NPNR_ASSERT(int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 1);
+            config = mistral_pll::select_fractional(mistral_pll::parse_output_hz(
+                    ci->params.at(ctx->id("output_clock_frequency0")).as_string()), reference_mhz);
+        }
         int c1 = 0;
         if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 2) {
             auto dual = mistral_pll::select_dual_hz(mistral_pll::parse_output_hz(
@@ -189,8 +195,12 @@ struct MistralBitgen
         }
         raw(CycloneV::M_CNT_HI_DIV_SETTING, (config->m + 1) / 2);
         raw(CycloneV::M_CNT_LO_DIV_SETTING, config->m / 2);
-        raw(CycloneV::N_CNT_HI_DIV_SETTING, (config->n + 1) / 2);
-        raw(CycloneV::N_CNT_LO_DIV_SETTING, config->n / 2);
+        raw(CycloneV::N_CNT_HI_DIV_SETTING, fractional ? 0 : (config->n + 1) / 2);
+        raw(CycloneV::N_CNT_LO_DIV_SETTING, fractional ? 0 : config->n / 2);
+        if (fractional) {
+            flag(CycloneV::N_CNT_BYPASS_EN, true);
+            raw(CycloneV::DSM_OUT_SEL, 1);
+        }
         // N has no duty-cycle correction, including the checked odd N=5.
         raw(CycloneV::DPRIO0_CNT_HI_DIV, (config->c + 1) / 2, 6);
         raw(CycloneV::DPRIO0_CNT_LO_DIV, config->c / 2, 6);
@@ -204,7 +214,7 @@ struct MistralBitgen
         raw(CycloneV::TCLK_SEL, 0);
         raw(CycloneV::BWCTRL, config->bandwidth);
         raw(CycloneV::CP_CURRENT, config->charge_pump);
-        raw(CycloneV::FRACTIONAL_DIVISION_SETTING, 1);
+        raw(CycloneV::FRACTIONAL_DIVISION_SETTING, config->fraction);
         raw(CycloneV::LOCK_FILTER_CFG_SETTING, 0x19);
         raw(CycloneV::UNLOCK_FILTER_CFG_SETTING, 2);
         flag(CycloneV::CTRL_OVERRIDE_SETTING, false);
