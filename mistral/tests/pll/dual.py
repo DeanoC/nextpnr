@@ -14,6 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("yosys", "nextpnr", "mistral-cv", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
+    parser.add_argument("--reference-mhz", type=int, default=50)
     parser.add_argument("--mhz0", type=int, default=25)
     parser.add_argument("--mhz1", type=int, default=40)
     parser.add_argument("--skip-negative", action="store_true")
@@ -27,13 +28,17 @@ def main():
          f'write_json "{out / "synth.json"}"'], out / "yosys.log")
     design = json.loads((out / "synth.json").read_text())
     params = design["modules"]["top"]["cells"]["pll"]["parameters"]
+    params["reference_clock_frequency"] = f"{args.reference_mhz}.0 MHz"
     params["output_clock_frequency0"] = f"{args.mhz0}.0 MHz"
     params["output_clock_frequency1"] = f"{args.mhz1}.0 MHz"
     (out / "synth.json").write_text(json.dumps(design))
     assert sum(c["type"] == "altera_pll" for c in design["modules"]["top"]["cells"].values()) == 1
+    sdc = out / "clocks.sdc"
+    sdc.write_text(f"create_clock -name FPGA_CLK1_50 -period {1000 / args.reference_mhz:.9f} "
+                   "[get_ports {FPGA_CLK1_50}]\n")
     command = [str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7",
-               "--qsf", str(fixture / "diagnostic.qsf"), "--sdc", str(fixture / "clocks.sdc"),
-               "--freq", "50", "--compress-rbf"]
+               "--qsf", str(fixture / "diagnostic.qsf"), "--sdc", str(sdc),
+               "--freq", str(args.reference_mhz), "--compress-rbf"]
     run(command + ["--json", str(out / "synth.json"), "--rbf", str(out / "top.rbf"),
                    "--report", str(out / "timing.json"), "--write", str(out / "routed.json")], out / "route.log")
     report = json.loads((out / "timing.json").read_text())
@@ -43,7 +48,7 @@ def main():
     assert util["cyclonev_hps_interface_mpu_general_purpose"]["used"] == 1
     for kind in ("MISTRAL_MUL9X9", "MISTRAL_M10K", "MISTRAL_MLAB"):
         assert util.get(kind, {"used": 0})["used"] == 0
-    for name, frequency in (("clocks[0]", args.mhz0), ("clocks[1]", args.mhz1), ("meter.refclk", 50)):
+    for name, frequency in (("clocks[0]", args.mhz0), ("clocks[1]", args.mhz1), ("meter.refclk", args.reference_mhz)):
         clock = report["fmax"][name]
         assert abs(clock["constraint"] - frequency) <= frequency * 0.00005
         assert clock["achieved"] >= frequency
@@ -53,9 +58,11 @@ def main():
     assert len(re.findall(r"^s FPLL.*:FPLL_ENABLE 1$", bt, re.M)) == 1
     settings = dict(re.findall(r"^s FPLL\.000\.014:(\S+) (\S+)$", bt, re.M))
     vco = next(v for v in (300, 320, 400) if v % args.mhz0 == 0 and v % args.mhz1 == 0)
-    m, n, bw, cp, preset, phase = {300: (12, 2, 7, 1, 1, 0),
-                                  320: (32, 5, 6, 2, 4, 2),
-                                  400: (16, 2, 7, 1, 1, 0)}[vco]
+    m, n, bw, cp, preset, phase = {
+        25: {300: (24, 2, 6, 1, 1, 0), 320: (64, 5, 3, 2, 7, 3), 400: (32, 2, 6, 1, 1, 0)},
+        100: {300: (6, 2, 8, 1, 1, 0), 320: (32, 10, 6, 1, 1, 0), 400: (8, 2, 7, 1, 1, 0)},
+        50: {300: (12, 2, 7, 1, 1, 0), 320: (32, 5, 6, 2, 4, 2), 400: (16, 2, 7, 1, 1, 0)},
+    }[args.reference_mhz][vco]
     c0, c1 = vco // args.mhz0, vco // args.mhz1
     for name, value in {"M_CNT_HI_DIV_SETTING": (m + 1) // 2, "M_CNT_LO_DIV_SETTING": m // 2,
                         "N_CNT_HI_DIV_SETTING": (n + 1) // 2, "N_CNT_LO_DIV_SETTING": n // 2,
@@ -83,6 +90,8 @@ def main():
     assert "i FPLL.000.014:NRESET0 1" not in bt
     assert any(line.startswith("r ") and "FPLL.000.014:NRESET0" in line for line in bt.splitlines())
     for name, parameter, value, expected in (
+        ("unsupported-reference", "reference_clock_frequency", "26.0 MHz",
+         "reference frequency must be 25, 50 or 100 MHz"),
         ("missing-frequency1", "output_clock_frequency1", None, "explicit output_clock_frequency1 is required"),
         ("three-outputs", "number_of_clocks", format(3, "032b"), "number_of_clocks must be 1 or 2"),
         ("unsupported-pair", "output_clock_frequency1", "7.0 MHz", "unsupported dual PLL frequencies"),
@@ -103,6 +112,16 @@ def main():
         path.write_text(json.dumps(invalid))
         log = run(command + ["--json", str(path)], out / f"invalid-{name}.log", success=False)
         assert expected in log, log
+    if not args.skip_negative:
+        conflicting_sdc = out / "conflicting-clocks.sdc"
+        conflicting_sdc.write_text(
+            f"create_clock -name FPGA_CLK1_50 -period {2000 / args.reference_mhz:.9f} "
+            "[get_ports {FPGA_CLK1_50}]\n")
+        conflicting_command = command.copy()
+        conflicting_command[conflicting_command.index("--sdc") + 1] = str(conflicting_sdc)
+        log = run(conflicting_command + ["--json", str(out / "synth.json")],
+                  out / "invalid-reference-constraint.log", success=False)
+        assert "conflicting clock constraint" in log, log
     print("PASS: dual PLL host checks", report["fmax"])
     print("RBF sha256", hashlib.sha256((out / "top.rbf").read_bytes()).hexdigest())
 

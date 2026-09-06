@@ -501,10 +501,15 @@ struct MistralPacker
             int clocks = int_or_default(ci->params, ctx->id("number_of_clocks"), 1);
             if (clocks != 1 && clocks != 2)
                 log_error("PLL '%s': number_of_clocks must be 1 or 2.\n", ctx->nameOf(ci));
+            auto reference = ci->params.find(ctx->id("reference_clock_frequency"));
+            int reference_mhz = reference != ci->params.end() && reference->second.is_string ?
+                    mistral_pll::parse_mhz(reference->second.as_string()) : 0;
+            if (!mistral_pll::valid_reference(reference_mhz))
+                log_error("PLL '%s': reference frequency must be 25, 50 or 100 MHz.\n", ctx->nameOf(ci));
             // Frequency selection uses only checked feedback/analog tuples.
             // Other unsupported modes and parameters still fail closed.
             dict<IdString, Property> profile = {
-                {ctx->id("reference_clock_frequency"), Property("50.0 MHz")},
+                {ctx->id("reference_clock_frequency"), reference->second},
                 {ctx->id("operation_mode"), Property("direct")},
                 {ctx->id("fractional_vco_multiplier"), Property("false")},
                 {ctx->id("phase_shift0"), Property("0 ps")},
@@ -523,7 +528,7 @@ struct MistralPacker
                     continue;
                 auto expected = profile.find(param.first);
                 if (expected == profile.end() || param.second != expected->second)
-                    log_error("PLL '%s': unsupported parameter '%s'; only the 50.0 MHz reference, checked integer direct profiles are supported.\n",
+                    log_error("PLL '%s': unsupported parameter '%s'; only checked references and integer direct profiles are supported.\n",
                               ctx->nameOf(ci), ctx->nameOf(param.first));
             }
             for (auto required : {"reference_clock_frequency", "output_clock_frequency0", "operation_mode"})
@@ -531,14 +536,14 @@ struct MistralPacker
                     log_error("PLL '%s': explicit parameter '%s' is required.\n", ctx->nameOf(ci), required);
             const auto &frequency = ci->params.at(ctx->id("output_clock_frequency0"));
             int output_mhz = frequency.is_string ? mistral_pll::parse_mhz(frequency.as_string()) : 0;
-            auto config = mistral_pll::select(output_mhz);
+            auto config = mistral_pll::select(output_mhz, reference_mhz);
             int output1_mhz = 0;
             if (clocks == 2) {
                 auto freq1 = ci->params.find(ctx->id("output_clock_frequency1"));
                 if (freq1 == ci->params.end() || !freq1->second.is_string)
                     log_error("PLL '%s': explicit output_clock_frequency1 is required.\n", ctx->nameOf(ci));
                 output1_mhz = mistral_pll::parse_mhz(freq1->second.as_string());
-                auto dual = mistral_pll::select_dual(output_mhz, output1_mhz);
+                auto dual = mistral_pll::select_dual(output_mhz, output1_mhz, reference_mhz);
                 if (!dual)
                     log_error("PLL '%s': unsupported dual PLL frequencies; require whole MHz from 1 to 100 with exact dividers from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
                 config = dual->feedback;
@@ -604,10 +609,10 @@ struct MistralPacker
                 net->clkconstr->high = net->clkconstr->low = DelayPair(period / 2);
             };
             // Check the input pin's SDC constraint as well as the buffered net.
-            set_clock(ref->driver.cell->getPort(id_PAD), ctx->getDelayFromNS(20));
-            set_clock(ref, ctx->getDelayFromNS(20));
+            set_clock(ref->driver.cell->getPort(id_PAD), ctx->getDelayFromNS(1000.0 / reference_mhz));
+            set_clock(ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
             if (buffered_ref)
-                set_clock(buffered_ref, ctx->getDelayFromNS(20));
+                set_clock(buffered_ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
             set_clock(out, ctx->getDelayFromNS(1000.0 / output_mhz));
             set_clock(buf->getPort(id_Q), ctx->getDelayFromNS(1000.0 / output_mhz));
             if (buf1) {
@@ -635,9 +640,9 @@ struct MistralPacker
                 log_error("PLL '%s': no available dedicated PLL/clock-buffer pair.\n", ctx->nameOf(ci));
             if (buf1)
                 log_info("PLL '%s': second output %d MHz, C7=%d.\n", ctx->nameOf(ci),
-                         output1_mhz, 50 * config->m / (config->n * output1_mhz));
-            log_info("PLL '%s': 50 MHz -> %d MHz, direct, M=%d N=%d C6=%d, bel %s\n",
-                     ctx->nameOf(ci), output_mhz, config->m, config->n, config->c, ctx->nameOfBel(chosen));
+                         output1_mhz, reference_mhz * config->m / (config->n * output1_mhz));
+            log_info("PLL '%s': %d MHz -> %d MHz, direct, M=%d N=%d C6=%d, bel %s\n",
+                     ctx->nameOf(ci), reference_mhz, output_mhz, config->m, config->n, config->c, ctx->nameOfBel(chosen));
         }
     }
 
