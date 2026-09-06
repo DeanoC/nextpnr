@@ -28,6 +28,9 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
             return TMG_CLOCK_INPUT;
         if (port == id_outclk)
             return TMG_GEN_CLOCK;
+        // Asynchronous control endpoint; no PLL recovery/removal model.
+        if (port == id_rst)
+            return TMG_ENDPOINT;
         if (port == id_locked)
             return TMG_STARTPOINT;
     }

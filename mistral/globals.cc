@@ -56,6 +56,7 @@ void Arch::create_plls()
         WireId out = add_wire(x, y, id("FPLL_C6"));
         add_bel_pin(bel, id_refclk, PORT_IN, ref);
         add_bel_pin(bel, id_outclk, PORT_OUT, out);
+        add_bel_pin(bel, id_rst, PORT_IN, get_port(CycloneV::FPLL, x, y, -1, CycloneV::NRESET0));
         add_bel_pin(bel, id_locked, PORT_OUT, get_port(CycloneV::FPLL, x, y, -1, CycloneV::LOCK0));
         for (auto link : links) {
             auto src = link.first, dst = link.second;

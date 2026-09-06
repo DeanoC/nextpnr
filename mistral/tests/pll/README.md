@@ -11,13 +11,13 @@ six FPLL sites. The currently accepted configuration is:
 - Reference: 50.0 MHz from dedicated board clock pin V11.
 - Output: one 25.0 MHz clock, zero requested phase shift, 50% duty cycle.
 - Direct mode with integer feedback, M=12, N=2, VCO=300 MHz, C6=12.
-- `rst` tied low; optional `locked` status output.
+- Active-high fabric-driven `rst`, or `rst` tied low; optional `locked` status output.
 - One existing MISTRAL clock buffer on the output; no other unbuffered sinks.
 
 Parameters are deliberately restricted to the canonical values in `top.v`.
-Unsupported device, pin, frequency, phase, duty cycle, clock count, reset,
+Unsupported device, pin, frequency, phase, duty cycle, clock count,
 reconfiguration ports, or output topology fail explicitly. Missing frequency
-and mode parameters also fail. This profile has no runtime reset/relock support.
+and mode parameters also fail. Reset must be tied low or driven; a permanently asserted or undriven reset fails.
 
 ## Implementation
 
@@ -160,3 +160,32 @@ raw load/save of its RBF, and Mistral decompile/recompile of its settings all
 passed. They distinguish the auxiliary-bandgap omission from serialization
 and other unmodeled configuration. The corrected nextpnr diagnostic emitted
 SHA-256 `2d5be08a315dd7e5e9f620954e588e40340dbcfff7c735da707c3f68b8eb0bcb`.
+
+
+## Fabric reset and relock
+
+`rst` maps to Mistral's existing FPLL `NRESET0` fabric endpoint. Quartus17's
+active-high routed reset uses the default inverter bit (0), whereas the
+unconnected folded-low profile needs bit1. No other FPLL PRAM fields or Mistral
+tables change. The input is an asynchronous timing endpoint: synchronous Fmax
+does not characterize reset pulse width, recovery/removal, or analog lock time.
+
+`reset.py` builds `reset.v` with the same meter and verifies the actual routed
+reset, inverter bit, resources and both clock constraints. `--invert` also
+exercises a fabric inverter driving reset. Its HPS signature is
+`0xD712`. GPO bit2 requests reset; two reference-clock registers drive the PLL,
+and GPI bit11 echoes that reset. Other status and measurement bits match the
+fixed diagnostic. The reference clock remains running throughout reset.
+
+Run `reset_probe.sh` on the leased target after loading the reset RBF. It tests
+ten assert/release cycles: reset echo1, lock0, count0 while held; then reset
+echo0, lock1 and 2048 ±1 after release, without sampled lock loss during the
+measurement. It is a functional diagnostic, not a lock-time specification.
+The probe neither loads an RBF nor manages the kit lifecycle.
+
+On 2026-09-06 the reset diagnostic RBF SHA-256
+`5e48f9643c85a94bafeaaec2076c002710b15a8eb2b811dd42f6809da34880a4`
+passed all ten hardware cycles (0 while reset, 2048 after relock). Its reported
+Fmax was 214.684 MHz against the 50 MHz reference constraint and 331.126 MHz
+against the 25 MHz output constraint. The fixed-profile RBF hash and DSP
+regressions remained unchanged.

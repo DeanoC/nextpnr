@@ -522,10 +522,14 @@ struct MistralPacker
             for (auto &port : ci->ports)
                 if (!port.first.in(id_refclk, id_outclk, id_locked, id_rst))
                     log_error("PLL '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
-            if (get_pin_needed_muxval(ci, id_rst) != PIN_0)
-                log_error("PLL '%s': initial profile requires rst tied to zero.\n", ctx->nameOf(ci));
-            ci->disconnectPort(id_rst);
-            ci->ports.erase(id_rst);
+            auto reset_state = get_pin_needed_muxval(ci, id_rst);
+            if (reset_state == PIN_0) {
+                // Keep the established fixed-profile bitstream for inactive reset.
+                ci->disconnectPort(id_rst);
+                ci->ports.erase(id_rst);
+            } else if (reset_state == PIN_1 || !ci->getPort(id_rst) || !ci->getPort(id_rst)->driver.cell) {
+                log_error("PLL '%s': rst must be tied low or driven by a signal.\n", ctx->nameOf(ci));
+            }
 
             NetInfo *ref = ci->getPort(id_refclk), *out = ci->getPort(id_outclk);
             NetInfo *buffered_ref = nullptr;
