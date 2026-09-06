@@ -535,24 +535,24 @@ struct MistralPacker
                 if (!ci->params.count(ctx->id(required)))
                     log_error("PLL '%s': explicit parameter '%s' is required.\n", ctx->nameOf(ci), required);
             const auto &frequency = ci->params.at(ctx->id("output_clock_frequency0"));
-            int output_mhz = frequency.is_string ? mistral_pll::parse_mhz(frequency.as_string()) : 0;
-            auto config = mistral_pll::select(output_mhz, reference_mhz);
-            int output1_mhz = 0;
+            int64_t output_hz = frequency.is_string ? mistral_pll::parse_output_hz(frequency.as_string()) : 0;
+            auto config = mistral_pll::select_hz(output_hz, reference_mhz);
+            int64_t output1_hz = 0;
             if (clocks == 2) {
                 auto freq1 = ci->params.find(ctx->id("output_clock_frequency1"));
                 if (freq1 == ci->params.end() || !freq1->second.is_string)
                     log_error("PLL '%s': explicit output_clock_frequency1 is required.\n", ctx->nameOf(ci));
-                output1_mhz = mistral_pll::parse_mhz(freq1->second.as_string());
-                auto dual = mistral_pll::select_dual(output_mhz, output1_mhz, reference_mhz);
+                output1_hz = mistral_pll::parse_output_hz(freq1->second.as_string());
+                auto dual = mistral_pll::select_dual_hz(output_hz, output1_hz, reference_mhz);
                 if (!dual)
-                    log_error("PLL '%s': unsupported dual PLL frequencies; require whole MHz from 1 to 100 with exact dividers from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
+                    log_error("PLL '%s': unsupported dual PLL frequencies; require exact decimal MHz from 1 to 100 with exact dividers from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
                 config = dual->feedback;
                 if (!ci->getPort(ctx->id("outclk[0]")) || ci->ports.count(id_outclk))
                     log_error("PLL '%s': dual profile requires outclk[0] and outclk[1].\n", ctx->nameOf(ci));
                 ci->renamePort(ctx->id("outclk[0]"), id_outclk);
             }
             if (!config)
-                log_error("PLL '%s': unsupported PLL output frequency; require whole MHz from 1 to 100 "
+                log_error("PLL '%s': unsupported PLL output frequency; require exact decimal MHz from 1 to 100 "
                           "and an exact integer C divider from a checked 300/320 MHz tuple.\n", ctx->nameOf(ci));
             for (auto &port : ci->ports)
                 if (!port.first.in(id_refclk, id_outclk, id_locked, id_rst) &&
@@ -613,11 +613,11 @@ struct MistralPacker
             set_clock(ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
             if (buffered_ref)
                 set_clock(buffered_ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
-            set_clock(out, ctx->getDelayFromNS(1000.0 / output_mhz));
-            set_clock(buf->getPort(id_Q), ctx->getDelayFromNS(1000.0 / output_mhz));
+            set_clock(out, ctx->getDelayFromNS(1.0e9 / output_hz));
+            set_clock(buf->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output_hz));
             if (buf1) {
-                set_clock(out1, ctx->getDelayFromNS(1000.0 / output1_mhz));
-                set_clock(buf1->getPort(id_Q), ctx->getDelayFromNS(1000.0 / output1_mhz));
+                set_clock(out1, ctx->getDelayFromNS(1.0e9 / output1_hz));
+                set_clock(buf1->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output1_hz));
             }
             BelId chosen;
             WireId pad = ctx->getBelPinWire(ref->driver.cell->bel, ref->driver.port);
@@ -639,10 +639,10 @@ struct MistralPacker
             if (chosen == BelId())
                 log_error("PLL '%s': no available dedicated PLL/clock-buffer pair.\n", ctx->nameOf(ci));
             if (buf1)
-                log_info("PLL '%s': second output %d MHz, C7=%d.\n", ctx->nameOf(ci),
-                         output1_mhz, reference_mhz * config->m / (config->n * output1_mhz));
-            log_info("PLL '%s': %d MHz -> %d MHz, direct, M=%d N=%d C6=%d, bel %s\n",
-                     ctx->nameOf(ci), reference_mhz, output_mhz, config->m, config->n, config->c, ctx->nameOfBel(chosen));
+                log_info("PLL '%s': second output %.9g MHz, C7=%d.\n", ctx->nameOf(ci),
+                         output1_hz / 1.0e6, int(int64_t(reference_mhz) * 1000000 * config->m / (config->n * output1_hz)));
+            log_info("PLL '%s': %d MHz -> %.9g MHz, direct, M=%d N=%d C6=%d, bel %s\n",
+                     ctx->nameOf(ci), reference_mhz, output_hz / 1.0e6, config->m, config->n, config->c, ctx->nameOfBel(chosen));
         }
     }
 

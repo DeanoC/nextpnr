@@ -167,13 +167,13 @@ struct MistralBitgen
         auto pip = ref->wires.at(ctx->getBelPinWire(ci->bel, id_refclk)).pip;
         raw(CycloneV::CLKIN_0_SRC, ctx->pll_ref_select.at(pip));
         int reference_mhz = mistral_pll::parse_mhz(ci->params.at(ctx->id("reference_clock_frequency")).as_string());
-        auto config = mistral_pll::select(mistral_pll::parse_mhz(
+        auto config = mistral_pll::select_hz(mistral_pll::parse_output_hz(
                 ci->params.at(ctx->id("output_clock_frequency0")).as_string()), reference_mhz);
         int c1 = 0;
         if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 2) {
-            auto dual = mistral_pll::select_dual(mistral_pll::parse_mhz(
+            auto dual = mistral_pll::select_dual_hz(mistral_pll::parse_output_hz(
                     ci->params.at(ctx->id("output_clock_frequency0")).as_string()),
-                    mistral_pll::parse_mhz(ci->params.at(ctx->id("output_clock_frequency1")).as_string()), reference_mhz);
+                    mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency1")).as_string()), reference_mhz);
             NPNR_ASSERT(dual);
             config = dual->feedback;
             c1 = dual->c1;

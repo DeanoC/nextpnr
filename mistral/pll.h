@@ -2,11 +2,12 @@
 #define MISTRAL_PLL_H
 
 #include <array>
+#include <cstdint>
 #include <optional>
 #include <regex>
 #include <string>
 
-// Checked 25/50/100 MHz references, integer outputs, direct mode. These
+// Checked 25/50/100 MHz references, exact decimal outputs, integer dividers, direct mode. These
 // feedback/analog tuples were checked against Quartus 17.0.2; do not derive
 // additional analog settings from the frequency equation alone.
 namespace mistral_pll {
@@ -26,6 +27,21 @@ inline int parse_mhz(const std::string &text)
     return mhz >= 1 && mhz <= 100 ? mhz : 0;
 }
 
+// Decimal MHz is exact to one Hz. Trailing zeroes do not add precision.
+inline int64_t parse_output_hz(const std::string &text)
+{
+    static const std::regex pattern("^([0-9]{1,3})(\\.([0-9]+))? MHz$");
+    std::smatch match;
+    if (text.size() > 32 || !std::regex_match(text, match, pattern))
+        return 0;
+    std::string fraction = match[3].str();
+    while (!fraction.empty() && fraction.back() == '0') fraction.pop_back();
+    if (fraction.size() > 6) return 0;
+    while (fraction.size() < 6) fraction += '0';
+    int64_t hz = int64_t(std::stoi(match[1].str())) * 1000000 + std::stoi(fraction);
+    return hz >= 1000000 && hz <= 100000000 ? hz : 0;
+}
+
 inline std::array<Config, 3> checked_configs(int reference_mhz)
 {
     // Order: reported 300, 320, 400 MHz. Each complete tuple is oracle-checked.
@@ -38,16 +54,16 @@ inline std::array<Config, 3> checked_configs(int reference_mhz)
 
 inline bool valid_reference(int mhz) { return mhz == 25 || mhz == 50 || mhz == 100; }
 
-inline std::optional<Config> select(int mhz, int reference_mhz = 50)
+inline std::optional<Config> select_hz(int64_t hz, int reference_mhz = 50)
 {
-    if (!valid_reference(reference_mhz) || mhz < 1 || mhz > 100)
+    if (!valid_reference(reference_mhz) || hz < 1000000 || hz > 100000000)
         return std::nullopt;
     // Prefer the established 300 MHz tuple, preserving the 25 MHz bitstream.
     auto configs = checked_configs(reference_mhz);
     for (int i = 0; i < 2; ++i) {
         Config config = configs[i];
-        int numerator = reference_mhz * config.m;
-        int denominator = config.n * mhz;
+        int64_t numerator = int64_t(reference_mhz) * 1000000 * config.m;
+        int64_t denominator = config.n * hz;
         if (numerator % denominator != 0)
             continue;
         config.c = numerator / denominator;
@@ -62,14 +78,14 @@ struct DualConfig
     int c1;
 };
 
-inline std::optional<DualConfig> select_dual(int mhz0, int mhz1, int reference_mhz = 50)
+inline std::optional<DualConfig> select_dual_hz(int64_t hz0, int64_t hz1, int reference_mhz = 50)
 {
-    if (!valid_reference(reference_mhz) || mhz0 < 1 || mhz0 > 100 || mhz1 < 1 || mhz1 > 100)
+    if (!valid_reference(reference_mhz) || hz0 < 1000000 || hz0 > 100000000 || hz1 < 1000000 || hz1 > 100000000)
         return std::nullopt;
     // Both counters must share one checked feedback/analog configuration.
     for (Config config : checked_configs(reference_mhz)) {
-        int numerator = reference_mhz * config.m;
-        int denominator0 = config.n * mhz0, denominator1 = config.n * mhz1;
+        int64_t numerator = int64_t(reference_mhz) * 1000000 * config.m;
+        int64_t denominator0 = config.n * hz0, denominator1 = config.n * hz1;
         if (numerator % denominator0 || numerator % denominator1)
             continue;
         config.c = numerator / denominator0;
@@ -78,6 +94,15 @@ inline std::optional<DualConfig> select_dual(int mhz0, int mhz1, int reference_m
             return DualConfig{config, c1};
     }
     return std::nullopt;
+}
+// Keep whole-MHz callers on the same exact selector.
+inline std::optional<Config> select(int mhz, int reference_mhz = 50)
+{
+    return select_hz(int64_t(mhz) * 1000000, reference_mhz);
+}
+inline std::optional<DualConfig> select_dual(int mhz0, int mhz1, int reference_mhz = 50)
+{
+    return select_dual_hz(int64_t(mhz0) * 1000000, int64_t(mhz1) * 1000000, reference_mhz);
 }
 } // namespace mistral_pll
 #endif

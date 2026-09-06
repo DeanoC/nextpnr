@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Check one PLL driving a compatible integer clock pair; host checks only, never programs hardware."""
+"""Check one PLL driving a compatible exact decimal clock pair; host checks only, never programs hardware."""
 import argparse
 import copy
+from fractions import Fraction
 import hashlib
 import json
 from pathlib import Path
@@ -10,15 +11,29 @@ import re
 from check import run
 
 
+def decimal_mhz(text):
+    if not re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", text) or Fraction(text) <= 0:
+        raise argparse.ArgumentTypeError("expected a positive decimal MHz value")
+    return Fraction(text)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("yosys", "nextpnr", "mistral-cv", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--reference-mhz", type=int, default=50)
-    parser.add_argument("--mhz0", type=int, default=25)
-    parser.add_argument("--mhz1", type=int, default=40)
+    parser.add_argument("--mhz0", type=decimal_mhz, default=Fraction(25))
+    parser.add_argument("--mhz1", type=decimal_mhz, default=Fraction(40))
     parser.add_argument("--skip-negative", action="store_true")
     args = parser.parse_args()
+    def frequency_parameter(value):
+        # Exact fixed-point rendering, including integer legacy spelling.
+        hz = value * 1_000_000
+        assert hz.denominator == 1, "output frequency must be exact to one Hz"
+        whole, fraction = divmod(hz.numerator, 1_000_000)
+        suffix = f"{fraction:06d}".rstrip("0") or "0"
+        return f"{whole}.{suffix} MHz"
+
     fixture = Path(__file__).resolve().parent
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -29,8 +44,8 @@ def main():
     design = json.loads((out / "synth.json").read_text())
     params = design["modules"]["top"]["cells"]["pll"]["parameters"]
     params["reference_clock_frequency"] = f"{args.reference_mhz}.0 MHz"
-    params["output_clock_frequency0"] = f"{args.mhz0}.0 MHz"
-    params["output_clock_frequency1"] = f"{args.mhz1}.0 MHz"
+    params["output_clock_frequency0"] = frequency_parameter(args.mhz0)
+    params["output_clock_frequency1"] = frequency_parameter(args.mhz1)
     (out / "synth.json").write_text(json.dumps(design))
     assert sum(c["type"] == "altera_pll" for c in design["modules"]["top"]["cells"].values()) == 1
     sdc = out / "clocks.sdc"
@@ -63,7 +78,9 @@ def main():
         100: {300: (6, 2, 8, 1, 1, 0), 320: (32, 10, 6, 1, 1, 0), 400: (8, 2, 7, 1, 1, 0)},
         50: {300: (12, 2, 7, 1, 1, 0), 320: (32, 5, 6, 2, 4, 2), 400: (16, 2, 7, 1, 1, 0)},
     }[args.reference_mhz][vco]
-    c0, c1 = vco // args.mhz0, vco // args.mhz1
+    ratios = (vco / args.mhz0, vco / args.mhz1)
+    assert all(c.denominator == 1 and 2 <= c <= 512 for c in ratios), ratios
+    c0, c1 = (c.numerator for c in ratios)
     for name, value in {"M_CNT_HI_DIV_SETTING": (m + 1) // 2, "M_CNT_LO_DIV_SETTING": m // 2,
                         "N_CNT_HI_DIV_SETTING": (n + 1) // 2, "N_CNT_LO_DIV_SETTING": n // 2,
                         "DPRIO0_CNT_HI_DIV.6": (c0 + 1) // 2, "DPRIO0_CNT_LO_DIV.6": c0 // 2,
@@ -96,6 +113,9 @@ def main():
         ("three-outputs", "number_of_clocks", format(3, "032b"), "number_of_clocks must be 1 or 2"),
         ("unsupported-pair", "output_clock_frequency1", "7.0 MHz", "unsupported dual PLL frequencies"),
         ("incompatible-pair", "output_clock_frequency1", "32.0 MHz", "unsupported dual PLL frequencies"),
+        ("malformed-decimal", "output_clock_frequency1", "12..5 MHz", "unsupported dual PLL frequencies"),
+        ("excess-precision", "output_clock_frequency1", "12.5000001 MHz", "unsupported dual PLL frequencies"),
+        ("inexact-divider", "output_clock_frequency1", "12.500001 MHz", "unsupported dual PLL frequencies"),
         ("phase1", "phase_shift1", "100 ps", "unsupported parameter"),
     ):
         if args.skip_negative:

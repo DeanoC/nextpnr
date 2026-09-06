@@ -12,19 +12,20 @@ six FPLL sites. The currently accepted configuration is:
 - Reference: 25, 50 or 100 MHz from the dedicated V11 input route.
   The DE10-Nano onboard oscillator supplies 50 MHz; other references require
   an appropriate external physical clock source.
-- Output: one whole-MHz clock from 1 to 100 MHz with an exact C divisor
+- Output: one clock from 1 to 100 MHz, expressed as decimal MHz with
+  at most one-Hz precision and an exact C divisor
   from the checked 300/320 MHz reported VCO configurations; zero phase, 50% duty.
 - Direct mode with integer feedback. Prefer M=12/N=2 (reported 300 MHz);
   otherwise M=32/N=5 (reported 320 MHz). Only C6 drives the output.
 - Active-high fabric-driven `rst`, or `rst` tied low; optional `locked` status output.
 - One existing MISTRAL clock buffer on the output; no other unbuffered sinks.
 
-Output frequencies use strings such as `"20 MHz"` or `"20.0 MHz"`. The reference accepts the same whole-MHz string syntax, restricted to 25,
+Output frequencies use strings such as `"20 MHz"`, `"20.0 MHz"` or `"12.5 MHz"`. The reference accepts the same whole-MHz string syntax, restricted to 25,
 50 or 100 MHz; other parameters keep the values in `top.v`.
-Supported whole-MHz outputs are 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 25,
+The supported whole-MHz subset is 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 25,
 30, 32, 40, 50, 60, 64, 75, 80, and 100. This is a bounded selector over two
 checked feedback/analog configurations, not an arbitrary M/N analog solver.
-Nonintegral, out-of-range, or inexact requests (for example 7 MHz) fail.
+Out-of-range or inexact requests (for example 7 MHz or 12.3 MHz) fail.
 Unsupported device, pin, frequency, phase, duty cycle, clock count,
 reconfiguration ports, or output topology fail explicitly. Missing frequency
 and mode parameters also fail. Reset must be tied low or driven; a permanently asserted or undriven reset fails.
@@ -264,8 +265,8 @@ Each compressed RBF is 1,955,948 bytes.
 
 ## Two simultaneous outputs
 
-The dual-output profile accepts `number_of_clocks=2` and whole-MHz output
-frequencies from 1 to 100. Both must divide exactly from one shared checked
+The dual-output profile accepts `number_of_clocks=2` and exact decimal output
+frequencies from 1 to 100 MHz. Both must divide exactly from one shared checked
 feedback configuration, tried in order: reported 300, 320, then 400 MHz.
 For example, 40/25, 20/100 and 40/64 MHz are supported; 25/32 MHz is rejected
 because no checked configuration divides exactly into both. Equal output
@@ -358,3 +359,25 @@ plus `derive_pll_clocks` in the existing Quartus oracle flow. Generalized
 reference validation is host-only. No new hardware acceptance is claimed;
 the existing kit probes assume a physical 50 MHz reference and must not be
 used unchanged with a different source.
+
+## Decimal-MHz outputs with integer dividers
+
+Output requests are parsed into integer hertz without floating-point rounding.
+Up to six meaningful decimal places in MHz are accepted; trailing zeros do not
+add precision. `12.5 MHz` and `12.500000000 MHz` are equivalent, while
+`12.5000001 MHz` is rejected. Values remain within 1–100 MHz and require an
+exact divider solution. There is no approximate-frequency fallback.
+
+Single-output examples include 12.5 MHz (300 MHz /24) and 6.4 MHz
+(320 MHz /50). Dual-output examples include 12.5/25, 6.4/64 and 12.5/40 MHz.
+Both outputs still share one checked feedback configuration. The reference
+remains restricted to the checked 25/50/100 MHz set. This does not enable
+fractional-N operation or add analog settings, clock pins or PLL modes.
+
+The bitstream selector uses integer arithmetic. Timing constraints use the
+backend's existing picosecond resolution, so their reported decimal frequency
+may differ slightly from the exact programmed frequency. `decimal_config.cpp`
+checks parsing, exact divisibility, rejection and whole-MHz compatibility.
+`dual.py --mhz0 12.5 --mhz1 40` validates fractional outputs with an independent
+rational-arithmetic oracle. New decimal-output validation is host-only;
+historical kit evidence remains specific to its recorded artifacts.
