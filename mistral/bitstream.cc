@@ -37,6 +37,15 @@ struct MistralBitgen
     using block_type_t = CycloneV::block_type_t;
     using port_type_t = CycloneV::port_type_t;
 
+    void set_lab_clock_inversion(block_type_t block, pos_t pos, CycloneV::bmux_type_t mux)
+    {
+#ifndef MISTRAL_CORRECT_LAB_CLOCK_MUXES
+        log_error("Inverted LAB/MLAB clocks require Mistral with corrected CLKx_INV/CLKx_SEL tables. "
+                  "Rebuild nextpnr against the corrected Mistral revision.\n");
+#endif
+        NPNR_ASSERT(cv->bmux_b_set(block, pos, mux, 0, true));
+    }
+
     rnode_t find_rnode(block_type_t bt, pos_t pos, port_type_t port, int bi = -1, int pi = -1) const
     {
         auto pn1 = CycloneV::pnode(bt, pos, port, bi, pi);
@@ -192,6 +201,10 @@ struct MistralBitgen
             NPNR_ASSERT(counts);
             raw(CycloneV::DPRIO0_CNT_HI_DIV, counts->high, 7);
             raw(CycloneV::DPRIO0_CNT_LO_DIV, counts->low, 7);
+            // Quartus 17.0.2: 25 MHz C12 at +10 ns (90 degrees) uses preset four
+            // at the checked quarter-period offset from the default preset of one.
+            if (str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps") == "10000 ps")
+                raw(CycloneV::CNT_PRESET, 4, 7);
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
                                       7, counts->odd));
             raw(CycloneV::CNT_IN_SRC, 0, 7);
@@ -416,7 +429,7 @@ struct MistralBitgen
             int ce_idx = alm_data.clk_ena_idx[i / 2];
             cv->bmux_m_set(block_type, pos, clk_sel[i / 2], alm, clk_choice[ce_idx]);
             if (ff->ffInfo.ctrlset.clk.inverted)
-                cv->bmux_b_set(block_type, pos, clk_inv[ce_idx], 0, true);
+                set_lab_clock_inversion(block_type, pos, clk_inv[ce_idx]);
             if (ff->getPort(id_ENA) != nullptr) { // not using ffInfo.ctrlset, this has a fake net always to
                                                   // ensure different constants don't collide
                 cv->bmux_b_set(block_type, pos, en_en[ce_idx], 0, true);
@@ -454,7 +467,7 @@ struct MistralBitgen
                 int ce_idx = alm_data.clk_ena_idx[1];
                 cv->bmux_m_set(block_type, pos, clk_sel[1], alm, clk_choice[ce_idx]);
                 if (lut->combInfo.wclk.inverted)
-                    cv->bmux_b_set(block_type, pos, clk_inv[ce_idx], 0, true);
+                    set_lab_clock_inversion(block_type, pos, clk_inv[ce_idx]);
                 if (lut->getPort(id_A1EN) != nullptr) {
                     cv->bmux_b_set(block_type, pos, en_en[ce_idx], 0, true);
                     cv->bmux_b_set(block_type, pos, en_ninv[ce_idx], 0, lut->combInfo.we.inverted);

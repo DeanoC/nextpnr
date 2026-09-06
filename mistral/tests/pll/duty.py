@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from check import run
+from clock_bits import check_ff_clock
 from fractional import settings
 
 
@@ -95,7 +96,11 @@ def main():
         assert abs(fmax["achieved"] - expected_fmax) < expected_fmax * 0.0001, (fmax, expected_fmax)
         run([str(args.mistral_cv.resolve()), "decomp", "5CSEBA6U23I7",
              str(case / "top.rbf"), str(case / "top.bt")], case / "decomp.log")
-        assert settings((case / "top.bt").read_text()) == oracle
+        bt = (case / "top.bt").read_text()
+        assert settings(bt) == oracle
+        routed = json.loads((case / "routed.json").read_text())
+        check_ff_clock(bt, routed, "launch", reverse)
+        check_ff_clock(bt, routed, "capture", not reverse)
         print(f"PASS: duty {args.duty}% {start}->{end}, budget {budget} ns", fmax)
         print("RBF sha256", hashlib.sha256((case / "top.rbf").read_bytes()).hexdigest())
 

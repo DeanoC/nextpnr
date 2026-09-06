@@ -526,3 +526,87 @@ g++ -std=c++17 -Wall -Wextra -pedantic -I mistral \
 
 These duty-cycle checks are host-only; no pulse-width hardware acceptance is
 claimed from the earlier frequency measurements.
+
+
+## Static 0°/90° outputs
+
+The checked phase profile uses a 50 MHz reference, two integer 25 MHz outputs,
+50% duty, `phase_shift0("0 ps")` and `phase_shift1("10000 ps")`. Output 1
+lags output 0 by 10 ns (90 degrees). Other shifts, frequency pairs, reference
+frequencies, fractional feedback and non-50% duty combinations are rejected.
+This is a static preset; dynamic phase adjustment is unsupported.
+
+Quartus 17.0.2 selects M12/N2 and C12 for both outputs. The C7 `CNT_PRESET`
+changes from its default 1 to 4 for the quarter-period offset. All other
+selected FPLL settings match the zero-phase pair. The existing Mistral field
+is sufficient; no geometry or analog table changes are needed.
+
+The packer declares a common phase origin for these two equal-period clocks.
+The timing engine checks paths between them with the next capture edge:
+0° rising to 90° rising has a 10 ns setup window; the reverse has 30 ns.
+Opposite-edge paths use the corresponding 30/10 ns windows. Physical clock
+skew remains part of the path delay. Hold checks use the previous capture edge.
+The related paths contribute to the launch clock's reported Fmax and to
+placement/router slack. No phase relation to the input reference is assumed.
+
+Use the PLL-derived constraints for the shifted output: a separate SDC
+`create_clock` cannot express this relationship and is rejected there.
+`phase.py` uses the same tool/output arguments as the other runners and checks
+all four edge combinations, configuration settings, timing and invalid
+profiles. Reproduce the Quartus reference using `phase-oracle.tcl` in an empty
+directory and the `quartus_sh --flow compile top`/Mistral decompile commands
+above. An optional `--oracle-bt` compares the saved reference against the
+embedded expected settings as well as checking every generated RBF.
+
+The device-independent analyser test covers 24 phase/edge/skew combinations
+and 48 hold-boundary checks. Run it without a device database:
+
+```sh
+cmake -S . -B /tmp/nextpnr-phase-tests -DARCH=generic \
+  -DBUILD_TESTS=ON -DBUILD_PYTHON=OFF
+cmake --build /tmp/nextpnr-phase-tests -j4
+ctest --test-dir /tmp/nextpnr-phase-tests --output-on-failure
+```
+
+Validation is host-only. PLL jitter and physical phase accuracy have not been
+measured, and a frequency meter does not establish phase accuracy.
+
+See [the fork branch policy](../../../docs/mistral-fork.md) for integration and
+upstream PR bases.
+
+## Folded clock inversion: required Mistral correction
+
+The ladder's [misteross issue #9](https://github.com/DeanoC/misteross/issues/9)
+found that a folded falling-edge FF stayed at zero on hardware even though
+host timing passed. Mistral's LAB/MLAB tables had interchanged the physical
+`CLKx_INV` and `CLKx_SEL` addresses. Emitting inversion selected an unrouted
+CLKB input; the FF therefore received no toggling clock.
+
+Use Mistral `b28e30a` or a revision containing that correction. The
+`MISTRAL_CORRECT_LAB_CLOCK_MUXES` capability guards FF and MLAB write-clock
+inversion: an older library now produces an explicit error before RBF output.
+The pin correction is required in addition to nextpnr's packing/timing changes.
+Downstream toolchain locks must select the reviewed pair separately.
+
+`duty.py` and `phase.py` now check the selected FF clock mux, inversion,
+ungated enable and physical CLKIN.0 route using the corrected Mistral decoder.
+These checks reject the original bad RBF. Mistral's separate fixed-placement
+Quartus oracle tests verify the physical table addresses by whole-RBF equality
+for all three clock channels in LAB and MLAB, avoiding a compiler/decompiler
+pair that agrees on incorrect field labels.
+
+On the designated kit, the original minimal 25% fixture remained at
+`0xD7180002` while GPO[0] alternated. Changing only the misidentified clock
+bits produced `0xD7180002`/`0xD7180003` as capture followed the input. This
+isolates the clock-field defect; functional capture is separate from analog
+pulse-width or phase-accuracy acceptance.
+
+The freshly rebuilt tool pair produced the same corrected bytes and passed
+20 input changes with lock asserted on 2026-09-06. Artifact:
+`/home/deano/fes/out/dev/pll-invert/duty-25/rise-fall/top.rbf`, SHA256
+`7f8ff8b607a1a28ebee4301360e2d23ef937834d3f904f7ef83fbd5838f69b79`.
+The probe checked signature `0xD718`, lock at GPI[1] and capture at GPI[0]
+after alternating GPO[0]. Evidence: `out/dev/pll-invert/final-probe.log` in
+the FES workspace. The 25%/75% and phase host suites pass with the corrected
+library; the existing rising-edge single, dual and fractional RBF hashes
+remain unchanged.

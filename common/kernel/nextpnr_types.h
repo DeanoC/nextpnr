@@ -374,6 +374,11 @@ struct ClockConstraint
     DelayPair high;
     DelayPair low;
     DelayPair period;
+    // Optional backend-declared family of equal-period, phase-related clocks.
+    // A nonempty group identifies one common phase origin, not an input clock
+    // timing arc. phase_shift is the rising-edge offset in architecture units.
+    IdString phase_group;
+    delay_t phase_shift = 0;
 };
 
 struct ClockFmax
