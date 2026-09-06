@@ -23,6 +23,13 @@ NEXTPNR_NAMESPACE_BEGIN
 TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, int &clockInfoCount) const
 {
     clockInfoCount = 0;
+    if (cell->type == id_MISTRAL_MUL9X9) {
+        const auto &name = port.str(this);
+        if (name.find("A[") == 0 || name.find("B[") == 0)
+            return TMG_COMB_INPUT;
+        if (name.find("Y[") == 0)
+            return TMG_COMB_OUTPUT;
+    }
     if (cell->type.in(id_MISTRAL_NOT, id_MISTRAL_BUF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
                       id_MISTRAL_ALUT5, id_MISTRAL_ALUT6)) {
         if (port.in(id_A, id_B, id_C, id_D, id_E, id_F))
@@ -129,6 +136,17 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
 
 bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort, DelayQuad &delay) const
 {
+    if (cell->type == id_MISTRAL_MUL9X9 && toPort.str(this).find("Y[") == 0) {
+        // Cyclone V arcs from Yosys techlibs/intel_alm/common/dsp_sim.v.
+        if (fromPort.str(this).find("A[") == 0) {
+            delay = DelayQuad{2818};
+            return true;
+        }
+        if (fromPort.str(this).find("B[") == 0) {
+            delay = DelayQuad{3051};
+            return true;
+        }
+    }
     // Based on 1.1V 100C timing corner of sx120f, using delays from LUT input to DFF input.
 
     // I have many regrets about naming my cell ports how I did...

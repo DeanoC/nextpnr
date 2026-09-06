@@ -85,6 +85,33 @@ struct MistralBitgen
         }
     }
 
+    void write_dsp_cell(CellInfo *ci, int x, int y)
+    {
+        auto pos = CycloneV::xy2pos(x, y);
+        NPNR_ASSERT(cv->bmux_m_set(CycloneV::DSP, pos, CycloneV::MODE, 0, CycloneV::M9X9));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AX_SIGNED, 0,
+                                  bool_or_default(ci->params, id_A_SIGNED, true)));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AY_SIGNED, 0,
+                                  bool_or_default(ci->params, id_B_SIGNED, true)));
+        // The primitive is combinational. Mistral defaults bypass input and
+        // output registers and disable preaddition, accumulation and cascade.
+        // Unrouted DSP inputs are 1; invert unused inputs to keep them at 0.
+        for (int group = 0; group < 12; ++group) {
+            unsigned inv = 0x1ff;
+            if (group == 0 || group == 2) {
+                for (int bit = 0; bit < 9; ++bit) {
+                    IdString port = ctx->idf("%c[%d]", group == 0 ? 'A' : 'B', bit);
+                    auto state = ci->get_pin_state(port);
+                    bool invert = state == PIN_0 || state == PIN_INV ||
+                                  (state == PIN_SIG && ci->getPort(port) == nullptr);
+                    if (!invert)
+                        inv &= ~(1u << bit);
+                }
+            }
+            NPNR_ASSERT(cv->bmux_r_set(CycloneV::DSP, pos, CycloneV::DATA_INV, group, inv));
+        }
+    }
+
     void write_io_cell(CellInfo *ci, int x, int y, int bi)
     {
         bool is_output = (ci->type == id_MISTRAL_OB || (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
@@ -188,6 +215,8 @@ struct MistralBitgen
                 write_clkbuf_cell(ci, loc.x, loc.y, bi);
             else if (ci->type == id_MISTRAL_M10K)
                 write_m10k_cell(ci, loc.x, loc.y, bi);
+            else if (ci->type == id_MISTRAL_MUL9X9)
+                write_dsp_cell(ci, loc.x, loc.y);
         }
     }
 

@@ -8,6 +8,7 @@ set(SOURCES
     bitstream.cc
     constids.inc
     delay.cc
+    dsp.cc
     globals.cc
     io.cc
     lab.cc

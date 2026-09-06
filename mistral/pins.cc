@@ -24,6 +24,9 @@
 NEXTPNR_NAMESPACE_BEGIN
 
 const dict<IdString, Arch::CellPinsData> Arch::cell_pins_db = {
+        // DSP inputs float high and have individual inversion bits, allowing
+        // constants and inverters to be folded by the existing packer.
+        {id_MISTRAL_MUL9X9, {{{}, PINSTYLE_COMB}}},
         // For combinational cells, inversion and tieing can be implemented by manipulating the LUT function
         {id_MISTRAL_ALUT2, {{{}, PINSTYLE_COMB}}},
         {id_MISTRAL_ALUT3, {{{}, PINSTYLE_COMB}}},
