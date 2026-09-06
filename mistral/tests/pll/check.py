@@ -73,7 +73,7 @@ def main():
         pll = invalid["modules"]["top"]["cells"]["pll"]
         if name == "reset":
             pll["connections"]["rst"] = ["1"]
-            expected = "rst tied to zero"
+            expected = "rst must be tied low or driven by a signal"
         elif name == "fanout":
             # A second sink on the unbuffered PLL clock is unsupported.
             ff = next(c for c in invalid["modules"]["top"]["cells"].values() if c["type"] == "MISTRAL_FF")

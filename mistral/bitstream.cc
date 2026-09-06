@@ -188,7 +188,10 @@ struct MistralBitgen
                          CycloneV::VCO_PH4_EN, CycloneV::VCO_PH5_EN, CycloneV::VCO_PH6_EN, CycloneV::VCO_PH7_EN})
             flag(mux, true);
         flag(CycloneV::FPLL_ENABLE, true);
-        NPNR_ASSERT(cv->inv_set(find_rnode(CycloneV::FPLL, pos, CycloneV::NRESET0), true));
+        // Quartus uses the default (non-inverted) routing bit for active-high
+        // fabric rst. Only the unconnected, folded-low case needs inversion.
+        NPNR_ASSERT(cv->inv_set(find_rnode(CycloneV::FPLL, pos, CycloneV::NRESET0),
+                               ci->getPort(id_rst) == nullptr));
         // The fixed 5CSEBA6U23I7/V11 profile also requires the unused
         // auxiliary bandgap at (0,73) powered down. This is outside the
         // selected FPLL's PRAM: omitting it gives no lock and no output on
