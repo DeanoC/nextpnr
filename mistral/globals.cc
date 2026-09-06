@@ -27,11 +27,10 @@ NEXTPNR_NAMESPACE_BEGIN
 
 void Arch::create_clkbuf(int x, int y)
 {
-    for (int z = 0; z < 4; z++) {
-        if (z != 2 && z != 3)
-            continue; // Other fabric clock paths remain unverified.
+    for (int z : {2, 3, 1}) {
         // Subblock 2 accepts fabric routing; subblock 3 is reserved for
         // the dedicated second PLL output and has no fabric input pip.
+        // Subblock 1 likewise serves only the third PLL output.
         BelId bel = add_bel(x, y, idf("CLKBUF[%d]", z), id_MISTRAL_CLKENA);
         WireId input = add_wire(x, y, idf("CLKBUF%d_INPUT", z));
         if (z == 2)
@@ -47,7 +46,7 @@ bool Arch::is_clkbuf_cell(IdString cell_type) const { return cell_type.in(id_MIS
 
 void Arch::create_plls()
 {
-    // The supported profiles use C6 and optionally C7. Import physical FPLL sites
+    // The supported profiles use C6 and optionally C7/C5. Import physical FPLL sites
     // and their dedicated edges from Mistral, rather than fabric substitutes.
     const auto links = cyclonev->get_all_p2p();
     for (auto pos : cyclonev->fpll_get_pos()) {
@@ -56,9 +55,11 @@ void Arch::create_plls()
         WireId ref = add_wire(x, y, id("FPLL_REFCLK"));
         WireId out = add_wire(x, y, id("FPLL_C6"));
         WireId out1 = add_wire(x, y, id("FPLL_C7"));
+        WireId out2 = add_wire(x, y, id("FPLL_C5"));
         add_bel_pin(bel, id_refclk, PORT_IN, ref);
         add_bel_pin(bel, id_outclk, PORT_OUT, out);
         add_bel_pin(bel, id("outclk[1]"), PORT_OUT, out1);
+        add_bel_pin(bel, id("outclk[2]"), PORT_OUT, out2);
         add_bel_pin(bel, id_rst, PORT_IN, get_port(CycloneV::FPLL, x, y, -1, CycloneV::NRESET0));
         add_bel_pin(bel, id_locked, PORT_OUT, get_port(CycloneV::FPLL, x, y, -1, CycloneV::LOCK0));
         for (auto link : links) {
@@ -71,7 +72,7 @@ void Arch::create_plls()
                 pll_ref_select[add_pip(pad, ref)] = 4;
             }
             if (CycloneV::pn2bt(src) != CycloneV::FPLL || CycloneV::pn2p(src) != pos ||
-                CycloneV::pn2pt(src) != CycloneV::PLLCOUT || (CycloneV::pn2pi(src) != 6 && CycloneV::pn2pi(src) != 7) ||
+                CycloneV::pn2pt(src) != CycloneV::PLLCOUT || (CycloneV::pn2pi(src) < 5 || CycloneV::pn2pi(src) > 7) ||
                 CycloneV::pn2bt(dst) != CycloneV::CMUXHG || CycloneV::pn2pt(dst) != CycloneV::PLLIN)
                 continue;
             for (BelId clock : getBelsByTile(CycloneV::pn2x(dst), CycloneV::pn2y(dst))) {
@@ -79,14 +80,16 @@ void Arch::create_plls()
                     continue;
                 int counter = CycloneV::pn2pi(src);
                 int z = bel_data(clock).block_index;
-                if ((counter == 6 && z != 2) || (counter == 7 && z != 3))
+                if ((counter == 6 && z != 2) || (counter == 7 && z != 3) || (counter == 5 && z != 1))
                     continue;
-                pll_clock_select[add_pip(counter == 6 ? out : out1, getBelPinWire(clock, id_A))] =
+                pll_clock_select[add_pip(counter == 6 ? out : (counter == 7 ? out1 : out2), getBelPinWire(clock, id_A))] =
                         8 + CycloneV::pn2pi(dst);
                 if (counter == 6)
                     pll_clock_bels[bel] = clock;
-                else
+                else if (counter == 7)
                     pll_second_clock_bels[bel] = clock;
+                else
+                    pll_third_clock_bels[bel] = clock;
             }
         }
     }

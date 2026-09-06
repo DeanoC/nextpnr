@@ -551,8 +551,8 @@ struct MistralPacker
             if (ci->type != id_altera_pll)
                 continue;
             int clocks = int_or_default(ci->params, ctx->id("number_of_clocks"), 1);
-            if (clocks != 1 && clocks != 2)
-                log_error("PLL '%s': number_of_clocks must be 1 or 2.\n", ctx->nameOf(ci));
+            if (clocks < 1 || clocks > 3)
+                log_error("PLL '%s': number_of_clocks must be 1, 2 or 3.\n", ctx->nameOf(ci));
             auto reference = ci->params.find(ctx->id("reference_clock_frequency"));
             int reference_mhz = reference != ci->params.end() && reference->second.is_string ?
                     mistral_pll::parse_mhz(reference->second.as_string()) : 0;
@@ -581,15 +581,20 @@ struct MistralPacker
                 {ctx->id("number_of_clocks"), Property(clocks)},
                 {ctx->id("duty_cycle0"), Property(duty0)},
             };
-            if (clocks == 2) {
+            if (clocks >= 2) {
                 profile[ctx->id("phase_shift1")] = Property(phase1);
                 profile[ctx->id("duty_cycle1")] = Property(duty1);
+            }
+            if (clocks == 3) {
+                profile[ctx->id("phase_shift2")] = Property("0 ps");
+                profile[ctx->id("duty_cycle2")] = Property(50);
             }
             if (ctx->args.device != "5CSEBA6U23I7")
                 log_error("PLL '%s': initial PLL profile supports only 5CSEBA6U23I7.\n", ctx->nameOf(ci));
             for (auto &param : ci->params) {
                 if (param.first == ctx->id("output_clock_frequency0") ||
-                    (clocks == 2 && param.first == ctx->id("output_clock_frequency1")))
+                    (clocks >= 2 && param.first == ctx->id("output_clock_frequency1")) ||
+                    (clocks == 3 && param.first == ctx->id("output_clock_frequency2")))
                     continue;
                 auto expected = profile.find(param.first);
                 if (expected == profile.end() || param.second != expected->second)
@@ -607,7 +612,7 @@ struct MistralPacker
                 log_error("PLL '%s': fractional-N profile requires 50 MHz reference and 11.2896 or 12.288 MHz output.\n", ctx->nameOf(ci));
             int64_t output1_hz = 0;
             int c1 = 0;
-            if (clocks == 2) {
+            if (clocks >= 2) {
                 auto freq1 = ci->params.find(ctx->id("output_clock_frequency1"));
                 if (freq1 == ci->params.end() || !freq1->second.is_string)
                     log_error("PLL '%s': explicit output_clock_frequency1 is required.\n", ctx->nameOf(ci));
@@ -629,12 +634,22 @@ struct MistralPacker
                     log_error("PLL '%s': dual profile requires outclk[0] and outclk[1].\n", ctx->nameOf(ci));
                 ci->renamePort(ctx->id("outclk[0]"), id_outclk);
             }
+            if (clocks == 3) {
+                auto freq2 = ci->params.find(ctx->id("output_clock_frequency2"));
+                if (freq2 == ci->params.end() || !freq2->second.is_string)
+                    log_error("PLL '%s': explicit output_clock_frequency2 is required.\n", ctx->nameOf(ci));
+                if (fractional || reference_mhz != 50 || output_hz != 25000000 || output1_hz != 50000000 ||
+                    mistral_pll::parse_output_hz(freq2->second.as_string()) != 100000000 || duty0 != 50 || duty1 != 50)
+                    log_error("PLL '%s': triple profile requires integer 25/50/100 MHz, 50 MHz reference and 50 percent duty.\n",
+                              ctx->nameOf(ci));
+            }
             if (!config)
                 log_error("PLL '%s': unsupported PLL output frequency/duty; require exact decimal MHz from 1 to 100 "
                           "and an exact integer C divider from a checked 300/320 MHz tuple.\n", ctx->nameOf(ci));
             for (auto &port : ci->ports)
                 if (!port.first.in(id_refclk, id_outclk, id_locked, id_rst) &&
-                    !(clocks == 2 && port.first == ctx->id("outclk[1]")))
+                    !(clocks >= 2 && port.first == ctx->id("outclk[1]")) &&
+                    !(clocks == 3 && port.first == ctx->id("outclk[2]")))
                     log_error("PLL '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
             auto reset_state = get_pin_needed_muxval(ci, id_rst);
             if (reset_state == PIN_0) {
@@ -669,7 +684,7 @@ struct MistralPacker
             CellInfo *buf = (*out->users.begin()).cell;
             NetInfo *out1 = ci->getPort(ctx->id("outclk[1]"));
             CellInfo *buf1 = nullptr;
-            if (clocks == 2) {
+            if (clocks >= 2) {
                 if (!out1 || out1->users.entries() != 1 ||
                     !ctx->is_clkbuf_cell((*out1->users.begin()).cell->type) ||
                     (*out1->users.begin()).port != id_A)
@@ -678,6 +693,15 @@ struct MistralPacker
                 if (shifted && (out1->clkconstr || (buf1->getPort(id_Q) && buf1->getPort(id_Q)->clkconstr)))
                     log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
                               ctx->nameOf(ci));
+            }
+            NetInfo *out2 = ci->getPort(ctx->id("outclk[2]"));
+            CellInfo *buf2 = nullptr;
+            if (clocks == 3) {
+                if (!out2 || out2->users.entries() != 1 ||
+                    !ctx->is_clkbuf_cell((*out2->users.begin()).cell->type) ||
+                    (*out2->users.begin()).port != id_A)
+                    log_error("PLL '%s': outclk[2] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
+                buf2 = (*out2->users.begin()).cell;
             }
             auto set_clock = [&](NetInfo *net, int period, int duty = 50) {
                 int high = int(int64_t(period) * duty / 100);
@@ -724,6 +748,10 @@ struct MistralPacker
                              ctx->nameOf(ci), double(output1_hz), generated1_hz,
                              (generated1_hz / output1_hz - 1.0) * 1.0e6);
             }
+            if (buf2) {
+                set_clock(out2, ctx->getDelayFromNS(10));
+                set_clock(buf2->getPort(id_Q), ctx->getDelayFromNS(10));
+            }
             BelId chosen;
             WireId pad = ctx->getBelPinWire(ref->driver.cell->bel, ref->driver.port);
             for (auto &candidate : ctx->pll_clock_bels) {
@@ -734,11 +762,16 @@ struct MistralPacker
                 if (buf1 && (!ctx->pll_second_clock_bels.count(candidate.first) ||
                              !ctx->checkBelAvail(ctx->pll_second_clock_bels.at(candidate.first))))
                     continue;
+                if (buf2 && (!ctx->pll_third_clock_bels.count(candidate.first) ||
+                             !ctx->checkBelAvail(ctx->pll_third_clock_bels.at(candidate.first))))
+                    continue;
                 chosen = candidate.first;
                 ctx->bindBel(chosen, ci, STRENGTH_LOCKED);
                 ctx->bindBel(candidate.second, buf, STRENGTH_LOCKED);
                 if (buf1)
                     ctx->bindBel(ctx->pll_second_clock_bels.at(chosen), buf1, STRENGTH_LOCKED);
+                if (buf2)
+                    ctx->bindBel(ctx->pll_third_clock_bels.at(chosen), buf2, STRENGTH_LOCKED);
                 break;
             }
             if (chosen == BelId())

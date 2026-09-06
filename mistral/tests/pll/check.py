@@ -61,7 +61,7 @@ def main():
                                    ("fractional", "fractional_vco_multiplier", "true"),
                                    ("phase", "phase_shift0", "100 ps"),
                                    ("duty", "duty_cycle0", format(40, "032b")),
-                                   ("count", "number_of_clocks", format(3, "032b"))):
+                                   ("count", "number_of_clocks", format(4, "032b"))):
         invalid = copy.deepcopy(design)
         invalid["modules"]["top"]["cells"]["pll"]["parameters"][parameter] = value
         path = out / f"invalid-{name}.json"

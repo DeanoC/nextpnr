@@ -186,7 +186,7 @@ struct MistralBitgen
                     ci->params.at(ctx->id("output_clock_frequency0")).as_string()), reference_mhz);
         }
         int c1 = 0;
-        if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 2) {
+        if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) >= 2) {
             auto hz0 = mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency0")).as_string());
             auto hz1 = mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency1")).as_string());
             auto dual = fractional ? mistral_pll::select_fractional_dual(hz0, hz1, reference_mhz) :
@@ -209,6 +209,14 @@ struct MistralBitgen
                                       7, counts->odd));
             raw(CycloneV::CNT_IN_SRC, 0, 7);
             flag(CycloneV::C7_COUT_EN, true);
+        }
+        if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 3) {
+            // Checked 25/50/100 MHz profile: C5 divides the 300 MHz VCO by three.
+            raw(CycloneV::DPRIO0_CNT_HI_DIV, 2, 5);
+            raw(CycloneV::DPRIO0_CNT_LO_DIV, 1, 5);
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN, 5, true));
+            raw(CycloneV::CNT_IN_SRC, 0, 5);
+            flag(CycloneV::C5_COUT_EN, true);
         }
         raw(CycloneV::M_CNT_HI_DIV_SETTING, (config->m + 1) / 2);
         raw(CycloneV::M_CNT_LO_DIV_SETTING, config->m / 2);
