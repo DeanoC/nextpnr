@@ -2,17 +2,14 @@
 # Run on the designated target only while holding its kit.py lease.
 # This script neither programs hardware nor manages its lifecycle.
 set -eu
-frequency=${1:-12.288}
-case "$frequency" in
-    12.288) signature=55061; minimum=1005; maximum=1008 ;;
-    11.2896) signature=55062; minimum=923; maximum=926 ;;
-    *) echo 'usage: fractional_probe.sh {12.288|11.2896}' >&2; exit 2 ;;
-esac
-# Count = output MHz * 2^20 / (50 * 256), with endpoint tolerance.
+frequency=${1:-}
+case "$frequency" in 12.288) channel=0 ;; 24.576) channel=1 ;; *) echo "usage: sh fractional_dual_probe.sh {12.288|24.576}" >&2; exit 2 ;; esac
+# Count = output MHz * 2^20 / (50 * 256), with one-count endpoint tolerance.
+if [ "$channel" -eq 0 ]; then minimum=1005; maximum=1008; else minimum=2012; maximum=2015; fi
 read_gpi() { busybox devmem 0xFF706014 32; }
 write_gpo() { busybox devmem 0xFF706010 32 "$1"; }
 check_signature() {
-    if [ "$((($1 >> 16) & 65535))" -ne "$signature" ]; then
+    if [ "$((($1 >> 16) & 65535))" -ne 55063 ]; then
         echo "FAIL: frequency diagnostic signature missing: $1" >&2
         exit 1
     fi
@@ -67,6 +64,9 @@ measure() {
     fi
     echo "PASS: mhz=$frequency trial=$trial reset=$1 count=$count status=$status high=$high"
 }
+previous=$(busybox devmem 0xFF706010 32)
+write_gpo "$(((previous & ~8) | (channel << 3)))"
+sleep 0.02
 initial=$(read_gpi)
 check_signature "$initial"
 for trial in 1 2 3 4 5 6 7 8 9 10; do

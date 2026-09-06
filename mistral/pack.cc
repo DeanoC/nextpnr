@@ -507,8 +507,6 @@ struct MistralPacker
             if (!mistral_pll::valid_reference(reference_mhz))
                 log_error("PLL '%s': reference frequency must be 25, 50 or 100 MHz.\n", ctx->nameOf(ci));
             bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
-            if (fractional && clocks != 1)
-                log_error("PLL '%s': fractional-N profile requires one output.\n", ctx->nameOf(ci));
             // Frequency selection uses only checked feedback/analog tuples.
             // Other unsupported modes and parameters still fail closed.
             dict<IdString, Property> profile = {
@@ -541,18 +539,23 @@ struct MistralPacker
             int64_t output_hz = frequency.is_string ? mistral_pll::parse_output_hz(frequency.as_string()) : 0;
             auto config = fractional ? mistral_pll::select_fractional(output_hz, reference_mhz) :
                                        mistral_pll::select_hz(output_hz, reference_mhz);
-            if (fractional && !config)
-                log_error("PLL '%s': fractional-N profile requires 50 MHz reference and 12.288 MHz output.\n", ctx->nameOf(ci));
+            if (fractional && clocks == 1 && !config)
+                log_error("PLL '%s': fractional-N profile requires 50 MHz reference and 11.2896 or 12.288 MHz output.\n", ctx->nameOf(ci));
             int64_t output1_hz = 0;
+            int c1 = 0;
             if (clocks == 2) {
                 auto freq1 = ci->params.find(ctx->id("output_clock_frequency1"));
                 if (freq1 == ci->params.end() || !freq1->second.is_string)
                     log_error("PLL '%s': explicit output_clock_frequency1 is required.\n", ctx->nameOf(ci));
                 output1_hz = mistral_pll::parse_output_hz(freq1->second.as_string());
-                auto dual = mistral_pll::select_dual_hz(output_hz, output1_hz, reference_mhz);
+                auto dual = fractional ? mistral_pll::select_fractional_dual(output_hz, output1_hz, reference_mhz) :
+                                         mistral_pll::select_dual_hz(output_hz, output1_hz, reference_mhz);
+                if (fractional && !dual)
+                    log_error("PLL '%s': fractional-N dual profile requires 50 MHz reference and 12.288/24.576 MHz outputs.\n", ctx->nameOf(ci));
                 if (!dual)
                     log_error("PLL '%s': unsupported dual PLL frequencies; require exact decimal MHz from 1 to 100 with exact dividers from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
                 config = dual->feedback;
+                c1 = dual->c1;
                 if (!ci->getPort(ctx->id("outclk[0]")) || ci->ports.count(id_outclk))
                     log_error("PLL '%s': dual profile requires outclk[0] and outclk[1].\n", ctx->nameOf(ci));
                 ci->renamePort(ctx->id("outclk[0]"), id_outclk);
@@ -627,8 +630,15 @@ struct MistralPacker
                          ctx->nameOf(ci), double(output_hz), generated_hz,
                          (generated_hz / output_hz - 1.0) * 1.0e6);
             if (buf1) {
-                set_clock(out1, ctx->getDelayFromNS(1.0e9 / output1_hz));
-                set_clock(buf1->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output1_hz));
+                auto second_config = *config;
+                second_config.c = c1;
+                double generated1_hz = mistral_pll::achieved_hz(second_config, reference_mhz);
+                set_clock(out1, ctx->getDelayFromNS(1.0e9 / generated1_hz));
+                set_clock(buf1->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / generated1_hz));
+                if (fractional)
+                    log_info("PLL '%s': fractional-N second requested %.6f Hz, achieved %.9f Hz, error %.9g ppm.\n",
+                             ctx->nameOf(ci), double(output1_hz), generated1_hz,
+                             (generated1_hz / output1_hz - 1.0) * 1.0e6);
             }
             BelId chosen;
             WireId pad = ctx->getBelPinWire(ref->driver.cell->bel, ref->driver.port);
@@ -651,7 +661,7 @@ struct MistralPacker
                 log_error("PLL '%s': no available dedicated PLL/clock-buffer pair.\n", ctx->nameOf(ci));
             if (buf1)
                 log_info("PLL '%s': second output %.9g MHz, C7=%d.\n", ctx->nameOf(ci),
-                         output1_hz / 1.0e6, int(int64_t(reference_mhz) * 1000000 * config->m / (config->n * output1_hz)));
+                         output1_hz / 1.0e6, c1);
             log_info("PLL '%s': %d MHz -> %.9g MHz, direct, M=%d N=%d C6=%d, bel %s\n",
                      ctx->nameOf(ci), reference_mhz, output_hz / 1.0e6, config->m, config->n, config->c, ctx->nameOfBel(chosen));
         }
