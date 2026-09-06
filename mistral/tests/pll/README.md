@@ -9,7 +9,9 @@ The test uses the existing Yosys `altera_pll` blackbox, without a Yosys patch.
 One physical FPLL is reserved per cell. On `5CSEBA6U23I7`, Mistral enumerates
 six FPLL sites. The currently accepted configuration is:
 
-- Reference: 50.0 MHz from dedicated board clock pin V11.
+- Reference: 25, 50 or 100 MHz from the dedicated V11 input route.
+  The DE10-Nano onboard oscillator supplies 50 MHz; other references require
+  an appropriate external physical clock source.
 - Output: one whole-MHz clock from 1 to 100 MHz with an exact C divisor
   from the checked 300/320 MHz reported VCO configurations; zero phase, 50% duty.
 - Direct mode with integer feedback. Prefer M=12/N=2 (reported 300 MHz);
@@ -17,8 +19,8 @@ six FPLL sites. The currently accepted configuration is:
 - Active-high fabric-driven `rst`, or `rst` tied low; optional `locked` status output.
 - One existing MISTRAL clock buffer on the output; no other unbuffered sinks.
 
-Output frequencies use strings such as `"20 MHz"` or `"20.0 MHz"`. The reference
-remains exactly `"50.0 MHz"`; other parameters keep the values in `top.v`.
+Output frequencies use strings such as `"20 MHz"` or `"20.0 MHz"`. The reference accepts the same whole-MHz string syntax, restricted to 25,
+50 or 100 MHz; other parameters keep the values in `top.v`.
 Supported whole-MHz outputs are 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 25,
 30, 32, 40, 50, 60, 64, 75, 80, and 100. This is a bounded selector over two
 checked feedback/analog configurations, not an arbitrary M/N analog solver.
@@ -59,7 +61,7 @@ setting is part of this specific device/reference profile, not a rule for
 arbitrary PLL configurations. No analog parameter solver is implemented.
 
 The packer constrains both sides of the output buffer to the selected frequency and checks
-conflicting clock periods, including the 50 MHz input pin constraint. Downstream
+conflicting clock periods, including the selected input pin constraint. Downstream
 synchronous paths receive the ordinary backend timing analysis. The dedicated
 reference tap has no Mistral analog timing model: its arc uses the backend
 estimate. PLL jitter, phase alignment to the input, and lock-acquisition time
@@ -268,7 +270,7 @@ feedback configuration, tried in order: reported 300, 320, then 400 MHz.
 For example, 40/25, 20/100 and 40/64 MHz are supported; 25/32 MHz is rejected
 because no checked configuration divides exactly into both. Equal output
 frequencies are supported. Both require zero phase and 50% duty; the existing
-50 MHz V11 reference, direct mode and reset rules still apply. Single-output
+V11 reference route, direct mode and reset rules still apply. Single-output
 selection remains restricted to its original 300/320 MHz tuples.
 
 The original 25/40 MHz pair retains the Quartus 17.0.2-checked 400 MHz configuration:
@@ -316,3 +318,43 @@ selection. Routed regression pairs cover 25/40, 40/25, 20/100, 40/64, 80/80
 and 1/1 MHz. These generalized-pair checks are host-only; the hardware record
 above applies to the exact original 25/40 artifact. The existing hardware
 probe only accepts that original pair and must not be used for arbitrary pairs.
+
+## Checked reference frequencies
+
+Reference selection uses a complete table of Quartus 17.0.2-checked tuples.
+It does not scale M/N while assuming unchanged analog settings. Single-output
+selection uses reported 300/320 MHz configurations; dual-output selection may
+also use 400 MHz. Rows below give M/N, bandwidth, charge pump and M low/phase
+presets. Dividers use `reference * M = output * N * C` for both outputs.
+
+| Reference MHz | Reported VCO MHz | M/N | BW | CP | M presets |
+| --- | --- | --- | --- | --- | --- |
+| 25 | 300 | 24/2 | 6 | 1 | 1/0 |
+| 25 | 320 | 64/5 | 3 | 2 | 7/3 |
+| 25 | 400 | 32/2 | 6 | 1 | 1/0 |
+| 50 | 300 | 12/2 | 7 | 1 | 1/0 |
+| 50 | 320 | 32/5 | 6 | 2 | 4/2 |
+| 50 | 400 | 16/2 | 7 | 1 | 1/0 |
+| 100 | 300 | 6/2 | 8 | 1 | 1/0 |
+| 100 | 320 | 32/10 | 6 | 1 | 1/0 |
+| 100 | 400 | 8/2 | 7 | 1 | 1/0 |
+
+The packer checks the input pad, dedicated reference net and buffered fabric
+reference against the selected period, rejecting conflicting SDC constraints.
+Both output periods remain independent. Frequencies outside the checked
+reference set are rejected. No new input pins or PLL modes are enabled.
+
+`reference_config.cpp` exhaustively checks all single and dual integer outputs
+and all three reference rates, including analog table values and invalid
+references. The existing frequency-selector tests continue to check the 50 MHz
+baseline. `dual.py --reference-mhz 25 --mhz0 40 --mhz1 64` exercises a new
+reference with the same host tool arguments as above. It supplies matching SDC
+and checks emitted counters, analog settings and all three timing constraints.
+
+Six Quartus oracle builds cover references 25/100 MHz with output pairs
+25/50, 40/64 and 25/40 MHz, selecting all six new tuples. These use `dual.v`
+with the corresponding reference/output parameters and matching input SDC,
+plus `derive_pll_clocks` in the existing Quartus oracle flow. Generalized
+reference validation is host-only. No new hardware acceptance is claimed;
+the existing kit probes assume a physical 50 MHz reference and must not be
+used unchanged with a different source.

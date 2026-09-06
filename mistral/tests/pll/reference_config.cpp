@@ -1,0 +1,45 @@
+#include "pll.h"
+#include <cassert>
+
+int main()
+{
+    using namespace mistral_pll;
+    for (int ref : {25, 50, 100}) {
+        for (int a = 0; a <= 101; ++a) {
+            auto single = select(a, ref);
+            assert(bool(single) == (a > 0 && a <= 100 && (300 % a == 0 || 320 % a == 0)));
+            if (single) assert(ref * single->m == a * single->n * single->c);
+            for (int b = 0; b <= 101; ++b) {
+                int vco = 0;
+                if (a > 0 && a <= 100 && b > 0 && b <= 100)
+                    for (int candidate : {300, 320, 400})
+                        if (!vco && candidate % a == 0 && candidate % b == 0) vco = candidate;
+                auto pair = select_dual(a, b, ref);
+                assert(bool(pair) == bool(vco));
+                if (pair) {
+                    assert(ref * pair->feedback.m == a * pair->feedback.n * pair->feedback.c);
+                    assert(ref * pair->feedback.m == b * pair->feedback.n * pair->c1);
+                    assert(ref * pair->feedback.m == vco * pair->feedback.n);
+                }
+            }
+        }
+    }
+    const int refs[] = {25, 50, 100};
+    const int outputs[] = {50, 64, 40};
+    const int m[][3] = {{24, 64, 32}, {12, 32, 16}, {6, 32, 8}};
+    const int n[][3] = {{2, 5, 2}, {2, 5, 2}, {2, 10, 2}};
+    const int bw[][3] = {{6, 3, 6}, {7, 6, 7}, {8, 6, 7}};
+    for (int r = 0; r < 3; ++r)
+        for (int v = 0; v < 3; ++v) {
+            auto result = select_dual(v == 1 ? 40 : 25, outputs[v], refs[r]);
+            const auto &c = result->feedback;
+            assert(c.m == m[r][v] && c.n == n[r][v] && c.bandwidth == bw[r][v]);
+            assert(c.charge_pump == ((v == 1 && r != 2) ? 2 : 1));
+            assert(c.m_low_preset == (v == 1 && r == 0 ? 7 : v == 1 && r == 1 ? 4 : 1));
+            assert(c.m_phase_preset == (v == 1 && r == 0 ? 3 : v == 1 && r == 1 ? 2 : 0));
+        }
+    for (int ref : {-1, 0, 24, 26, 49, 51, 99, 101}) {
+        assert(!select(25, ref));
+        assert(!select_dual(25, 40, ref));
+    }
+}
