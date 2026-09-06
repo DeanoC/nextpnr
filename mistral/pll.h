@@ -5,7 +5,7 @@
 #include <regex>
 #include <string>
 
-// Fixed 50 MHz reference, single integer output, direct mode. These two
+// Fixed 50 MHz reference, integer outputs, direct mode. These
 // feedback/analog tuples were checked against Quartus 17.0.2; do not derive
 // additional analog settings from the frequency equation alone.
 namespace mistral_pll {
@@ -49,10 +49,21 @@ struct DualConfig
 
 inline std::optional<DualConfig> select_dual(int mhz0, int mhz1)
 {
-    // Bounded to the Quartus-checked simultaneous 25/40 MHz profile.
-    if (mhz0 != 25 || mhz1 != 40)
+    if (mhz0 < 1 || mhz0 > 100 || mhz1 < 1 || mhz1 > 100)
         return std::nullopt;
-    return DualConfig{Config{16, 2, 16, 7, 1, 1, 0}, 10};
+    // Both counters must share one checked feedback/analog configuration.
+    for (Config config : {Config{12, 2, 0, 7, 1, 1, 0}, Config{32, 5, 0, 6, 2, 4, 2},
+                          Config{16, 2, 0, 7, 1, 1, 0}}) {
+        int numerator = 50 * config.m;
+        int denominator0 = config.n * mhz0, denominator1 = config.n * mhz1;
+        if (numerator % denominator0 || numerator % denominator1)
+            continue;
+        config.c = numerator / denominator0;
+        int c1 = numerator / denominator1;
+        if (config.c >= 2 && config.c <= 512 && c1 >= 2 && c1 <= 512)
+            return DualConfig{config, c1};
+    }
+    return std::nullopt;
 }
 } // namespace mistral_pll
 #endif

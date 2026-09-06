@@ -19,8 +19,14 @@ int main()
     for (int a = 0; a <= 101; ++a)
         for (int b = 0; b <= 101; ++b) {
             auto dual = select_dual(a, b);
-            assert(bool(dual) == (a == 25 && b == 40));
+            int expected_vco = 0;
+            if (a >= 1 && a <= 100 && b >= 1 && b <= 100)
+                for (int vco : {300, 320, 400})
+                    if (!expected_vco && vco % a == 0 && vco % b == 0)
+                        expected_vco = vco;
+            assert(bool(dual) == (expected_vco != 0));
             if (dual) {
+                assert(50 * dual->feedback.m / dual->feedback.n == expected_vco);
                 assert(50 * dual->feedback.m == a * dual->feedback.n * dual->feedback.c);
                 assert(50 * dual->feedback.m == b * dual->feedback.n * dual->c1);
             }

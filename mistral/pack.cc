@@ -540,7 +540,7 @@ struct MistralPacker
                 output1_mhz = mistral_pll::parse_mhz(freq1->second.as_string());
                 auto dual = mistral_pll::select_dual(output_mhz, output1_mhz);
                 if (!dual)
-                    log_error("PLL '%s': unsupported dual PLL frequencies; require 25 MHz and 40 MHz.\n", ctx->nameOf(ci));
+                    log_error("PLL '%s': unsupported dual PLL frequencies; require whole MHz from 1 to 100 with exact dividers from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
                 config = dual->feedback;
                 if (!ci->getPort(ctx->id("outclk[0]")) || ci->ports.count(id_outclk))
                     log_error("PLL '%s': dual profile requires outclk[0] and outclk[1].\n", ctx->nameOf(ci));
@@ -634,7 +634,8 @@ struct MistralPacker
             if (chosen == BelId())
                 log_error("PLL '%s': no available dedicated PLL/clock-buffer pair.\n", ctx->nameOf(ci));
             if (buf1)
-                log_info("PLL '%s': second output 40 MHz, C7=10.\n", ctx->nameOf(ci));
+                log_info("PLL '%s': second output %d MHz, C7=%d.\n", ctx->nameOf(ci),
+                         output1_mhz, 50 * config->m / (config->n * output1_mhz));
             log_info("PLL '%s': 50 MHz -> %d MHz, direct, M=%d N=%d C6=%d, bel %s\n",
                      ctx->nameOf(ci), output_mhz, config->m, config->n, config->c, ctx->nameOfBel(chosen));
         }

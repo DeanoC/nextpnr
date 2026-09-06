@@ -262,20 +262,24 @@ Each compressed RBF is 1,955,948 bytes.
 
 ## Two simultaneous outputs
 
-The dual-output profile accepts `number_of_clocks=2`, output 0 at 25 MHz
-and output 1 at 40 MHz. Both require zero phase and 50% duty; the existing
-50 MHz V11 reference, direct mode and reset rules still apply. Other pairs
-are rejected. Single-output selection remains restricted to its original
-300/320 MHz tuples.
+The dual-output profile accepts `number_of_clocks=2` and whole-MHz output
+frequencies from 1 to 100. Both must divide exactly from one shared checked
+feedback configuration, tried in order: reported 300, 320, then 400 MHz.
+For example, 40/25, 20/100 and 40/64 MHz are supported; 25/32 MHz is rejected
+because no checked configuration divides exactly into both. Equal output
+frequencies are supported. Both require zero phase and 50% duty; the existing
+50 MHz V11 reference, direct mode and reset rules still apply. Single-output
+selection remains restricted to its original 300/320 MHz tuples.
 
-Both outputs share the Quartus 17.0.2-checked 400 MHz configuration:
+The original 25/40 MHz pair retains the Quartus 17.0.2-checked 400 MHz configuration:
 M16/N2, BWCTRL7, CP_CURRENT1, M presets1/0. C6 divides by16 and C7 by10.
 Mistral already contains the connections and configuration fields; its pin
 is unchanged. The first output retains CMUXHG(0,35) subblock2, PLLIN14.
 The second uses subblock3, PLLIN13, with INPUT_SEL3=0x15 and PRE_SYNENB.
 Subblock3 has only a dedicated PLL input in nextpnr; fabric clocks cannot
 use it. The packer reserves both buffers with the PLL and assigns separate
-25/40 MHz constraints. No phase relationship timing model is added.
+output constraints. Odd C6 and C7 dividers enable duty-cycle correction.
+No phase relationship timing model is added.
 
 Run the host regression with the same tool paths used above:
 
@@ -303,3 +307,12 @@ of jitter, phase alignment or lock time, or native-image acceptance.
 The fixed single-output LED regression retains its original RBF hash.
 Additional BELs can change placement and artifact hashes for other designs;
 previous hardware acceptance does not automatically transfer to rebuilt artifacts.
+
+For other pairs, add `--mhz0 40 --mhz1 64` to `dual.py`. The runner checks
+emitted dividers, analog settings, odd-duty bits and both clock constraints.
+The selector test exhaustively checks all integer pairs through the accepted
+range plus its immediate boundaries, including deterministic shared-tuple
+selection. Routed regression pairs cover 25/40, 40/25, 20/100, 40/64, 80/80
+and 1/1 MHz. These generalized-pair checks are host-only; the hardware record
+above applies to the exact original 25/40 artifact. The existing hardware
+probe only accepts that original pair and must not be used for arbitrary pairs.
