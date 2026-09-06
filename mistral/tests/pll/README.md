@@ -628,7 +628,7 @@ remain unchanged.
 with a 50 MHz reference on V11, direct mode, zero phase and 50% duty on all
 three outputs. Other triple frequencies, references, phases, duties and
 fractional feedback are rejected. Existing reset/lock and buffered-output
-rules apply; four or more outputs remain unsupported.
+rules apply; the four-output profile below is separately checked.
 
 The profile uses M12/N2 and the checked 300 MHz configuration. Output0 uses
 C6=12, output1 C7=6 and output2 C5=3, including the odd-divider duty correction
@@ -662,3 +662,38 @@ and explicit mux checks validate the OSS lanes.
 Adding clock BELs can change placement and RBF hashes for existing profiles;
 functional configuration and timing regressions remain the acceptance checks.
 This work is host-only and does not update downstream toolchain pins.
+
+
+## Four outputs from one PLL
+
+`quad.v` extends the fixed triple profile with a 75 MHz fourth output:
+25/50/100/75 MHz, 50 MHz V11 reference, direct integer mode, zero phase and
+50% duty on all outputs, on `5CSEBA6U23I7`. Other four-output combinations
+and five or more outputs are rejected. Reset/lock and output-buffer rules
+remain the same.
+
+M12/N2 and all analog settings remain unchanged. The fourth output uses C8=4
+(high2/low2), whose existing Mistral link reaches
+`CMUXHG.000.035:PLLIN.12`. A new reserved buffer uses horizontal subblock0
+with input selection20; it accepts only the fourth PLL output and has no
+fabric input pip. Existing buffer BEL indices are preserved by adding it
+last. The packer checks availability of all four buffers before binding.
+No Mistral table changes are required.
+
+```sh
+python3 mistral/tests/pll/quad.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-quad
+```
+
+The runner verifies all four clock constraints/Fmax, buffer placements and
+CMUX selectors, then compares every emitted FPLL setting against the
+[bundled Quartus17.0.2 reference](fixtures/quad/README.md). The reference
+contains the compressed RBF, hashes and portable regeneration inputs.
+Quartus chooses different buffer lanes; the fixture documents the C8
+horizontal input selection and the runner explicitly checks the OSS lane.
+Unsupported parameters, disconnected/unbuffered fourth output and
+contradictory fourth-clock SDC are rejected by the regression.
+
+Validation is host-only. Unequal-frequency cross-clock timing relationships,
+input-reference phase alignment and analog hardware acceptance are outside
+this profile. Downstream locks and parent pins are unchanged.

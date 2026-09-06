@@ -210,13 +210,21 @@ struct MistralBitgen
             raw(CycloneV::CNT_IN_SRC, 0, 7);
             flag(CycloneV::C7_COUT_EN, true);
         }
-        if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 3) {
+        if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) >= 3) {
             // Checked 25/50/100 MHz profile: C5 divides the 300 MHz VCO by three.
             raw(CycloneV::DPRIO0_CNT_HI_DIV, 2, 5);
             raw(CycloneV::DPRIO0_CNT_LO_DIV, 1, 5);
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN, 5, true));
             raw(CycloneV::CNT_IN_SRC, 0, 5);
             flag(CycloneV::C5_COUT_EN, true);
+        }
+        if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 4) {
+            // Checked fourth output: C8 divides the 300 MHz VCO by four.
+            raw(CycloneV::DPRIO0_CNT_HI_DIV, 2, 8);
+            raw(CycloneV::DPRIO0_CNT_LO_DIV, 2, 8);
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN, 8, false));
+            raw(CycloneV::CNT_IN_SRC, 0, 8);
+            flag(CycloneV::C8_COUT_EN, true);
         }
         raw(CycloneV::M_CNT_HI_DIV_SETTING, (config->m + 1) / 2);
         raw(CycloneV::M_CNT_LO_DIV_SETTING, config->m / 2);

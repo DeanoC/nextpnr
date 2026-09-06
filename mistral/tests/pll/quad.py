@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the fixed 25/50/100 MHz triple PLL profile; host checks only."""
+"""Check the fixed 25/50/100/75 MHz quad PLL profile; host checks only."""
 import argparse
 import copy
 import gzip
@@ -27,12 +27,14 @@ def main():
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=True)
     run([str(args.yosys.resolve()), "-p",
-         f'read_verilog "{fixture / "triple.v"}"; '
+         f'read_verilog "{fixture / "quad.v"}"; '
          'synth_intel_alm -nobram -nolutram -nodsp -top top; '
          f'write_json "{out / "synth.json"}"'], out / "yosys.log")
     design = json.loads((out / "synth.json").read_text())
     cells = design["modules"]["top"]["cells"]
     assert sum(c["type"] == "altera_pll" for c in cells.values()) == 1
+    assert sum(c["type"] == "MISTRAL_CLKBUF" for c in cells.values()) == 4
+    assert sum(c["type"] == "cyclonev_hps_interface_mpu_general_purpose" for c in cells.values()) == 1
     sdc = out / "clocks.sdc"
     sdc.write_text("create_clock -name FPGA_CLK1_50 -period 20 [get_ports {FPGA_CLK1_50}]\n")
     command = [str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7",
@@ -43,11 +45,11 @@ def main():
     report = json.loads((out / "timing.json").read_text())
     util = report["utilization"]
     assert util["altera_pll"] == {"used": 1, "available": 6}
-    assert util["MISTRAL_CLKENA"]["used"] == 3
+    assert util["MISTRAL_CLKENA"]["used"] == 4
     assert util["cyclonev_hps_interface_mpu_general_purpose"]["used"] == 1
     for kind in ("MISTRAL_MUL9X9", "MISTRAL_M10K", "MISTRAL_MLAB"):
         assert util.get(kind, {"used": 0})["used"] == 0
-    for index, frequency in enumerate((25, 50, 100)):
+    for index, frequency in enumerate((25, 50, 100, 75)):
         clock = report["fmax"][f"clocks[{index}]"]
         assert abs(clock["constraint"] - frequency) <= frequency * 0.00005, clock
         assert clock["achieved"] >= frequency, clock
@@ -57,17 +59,18 @@ def main():
     assert len(re.findall(r"^s FPLL.*:FPLL_ENABLE 1$", bt, re.M)) == 1
     settings = fpll_settings(bt)
     assert settings
-    for lane, select in ((1, "17"), (2, "16"), (3, "15")):
+    for lane, select in ((0, "14"), (1, "17"), (2, "16"), (3, "15")):
         assert f"s CMUXHG.000.035:INPUT_SEL.{lane} {select}" in bt.splitlines()
         assert f"s CMUXHG.000.035:TESTSYN_ENOUT_SELECT.{lane} PRE_SYNENB" in bt.splitlines()
     routed = json.loads((out / "routed.json").read_text())["modules"]["top"]["cells"]
-    # BEL creation preserves existing lane2/lane3 indices, then adds lane1.
-    for index, bel in enumerate(("MISTRAL_CLKENA.0.35.0", "MISTRAL_CLKENA.0.35.1", "MISTRAL_CLKENA.0.35.2")):
+    # BEL creation preserves lane2/lane3/lane1 indices, then appends lane0.
+    for index, bel in enumerate(("MISTRAL_CLKENA.0.35.0", "MISTRAL_CLKENA.0.35.1", "MISTRAL_CLKENA.0.35.2",
+                                 "MISTRAL_CLKENA.0.35.3")):
         net = [cells["pll"]["connections"]["outclk"][index]]
         name = next(name for name, cell in cells.items()
                     if cell["type"] == "MISTRAL_CLKBUF" and cell["connections"]["A"] == net)
         assert routed[name]["attributes"]["NEXTPNR_BEL"] == bel, routed[name]
-    reference = fixture / "fixtures" / "triple"
+    reference = fixture / "fixtures" / "quad"
     hashes = json.loads((reference / "sha256.json").read_text())
     compressed = (reference / "top.rbf.gz").read_bytes()
     assert hashlib.sha256(compressed).hexdigest() == hashes["rbf.gz"]
@@ -93,17 +96,20 @@ def main():
     if not args.skip_negative:
         for name, parameter, value, reasons in (
             ("five-outputs", "number_of_clocks", format(5, "032b"), ("number_of_clocks",)),
-            ("reference25", "reference_clock_frequency", "25.0 MHz", ("triple", "reference")),
-            ("fractional", "fractional_vco_multiplier", "true", ("triple", "fractional")),
-            ("frequency0", "output_clock_frequency0", "20.0 MHz", ("triple",)),
-            ("frequency1", "output_clock_frequency1", "25.0 MHz", ("triple",)),
+            ("reference25", "reference_clock_frequency", "25.0 MHz", ("quad", "reference")),
+            ("fractional", "fractional_vco_multiplier", "true", ("quad", "fractional")),
+            ("frequency0", "output_clock_frequency0", "20.0 MHz", ("quad",)),
+            ("frequency1", "output_clock_frequency1", "25.0 MHz", ("quad",)),
             ("phase1", "phase_shift1", "10000 ps", ("phase",)),
-            ("duty0", "duty_cycle0", format(25, "032b"), ("triple",)),
-            ("duty1", "duty_cycle1", format(25, "032b"), ("triple", "frequencies/duties")),
-            ("frequency2", "output_clock_frequency2", "80.0 MHz", ("triple", "frequenc")),
-            ("phase2", "phase_shift2", "100 ps", ("triple", "phase")),
-            ("duty2", "duty_cycle2", format(25, "032b"), ("triple", "duty")),
-            ("missing-frequency2", "output_clock_frequency2", None, ("output_clock_frequency2",)),
+            ("duty0", "duty_cycle0", format(25, "032b"), ("quad",)),
+            ("duty1", "duty_cycle1", format(25, "032b"), ("quad", "frequencies/duties")),
+            ("frequency2", "output_clock_frequency2", "80.0 MHz", ("quad", "frequenc")),
+            ("phase2", "phase_shift2", "100 ps", ("quad", "phase")),
+            ("duty2", "duty_cycle2", format(25, "032b"), ("quad", "duty")),
+            ("frequency3", "output_clock_frequency3", "80.0 MHz", ("quad", "frequenc")),
+            ("phase3", "phase_shift3", "100 ps", ("phase",)),
+            ("duty3", "duty_cycle3", format(25, "032b"), ("quad", "duty")),
+            ("missing-frequency3", "output_clock_frequency3", None, ("output_clock_frequency3",)),
         ):
             invalid = copy.deepcopy(design)
             params = invalid["modules"]["top"]["cells"]["pll"]["parameters"]
@@ -112,7 +118,7 @@ def main():
             else:
                 params[parameter] = value
             reject(name, invalid, reasons)
-        for name in ("extra-port", "disconnected-third", "direct-third-sink"):
+        for name in ("extra-port", "disconnected-fourth", "direct-fourth-sink"):
             invalid = copy.deepcopy(design)
             invalid_cells = invalid["modules"]["top"]["cells"]
             pll = invalid_cells["pll"]
@@ -121,26 +127,26 @@ def main():
                 pll["port_directions"]["phase_en"] = "input"
                 reasons = ("unsupported port",)
             else:
-                third = pll["connections"]["outclk"][2]
+                fourth = pll["connections"]["outclk"][3]
                 buffer = next(c for c in invalid_cells.values()
-                              if c["type"] == "MISTRAL_CLKBUF" and c["connections"]["A"] == [third])
-                if name == "disconnected-third":
+                              if c["type"] == "MISTRAL_CLKBUF" and c["connections"]["A"] == [fourth])
+                if name == "disconnected-fourth":
                     # Leave the PLL output with no buffer sink, retaining its output port.
                     buffer["connections"]["A"] = ["0"]
                 else:
                     ff = next(c for c in invalid_cells.values()
                               if c["type"] == "MISTRAL_FF"
                               and c["connections"]["CLK"] == buffer["connections"]["Q"])
-                    ff["connections"]["CLK"] = [third]
-                reasons = ("outclk[2]", "clock buffer")
+                    ff["connections"]["CLK"] = [fourth]
+                reasons = ("outclk[3]", "clock buffer")
             reject(name, invalid, reasons)
-        conflicting_sdc = out / "conflicting-third.sdc"
+        conflicting_sdc = out / "conflicting-fourth.sdc"
         conflicting_sdc.write_text(sdc.read_text() +
-                                  "create_clock -period 20 [get_nets {clocks[2]}]\n")
+                                  "create_clock -period 20 [get_nets {clocks[3]}]\n")
         conflicting_command = command.copy()
         conflicting_command[conflicting_command.index("--sdc") + 1] = str(conflicting_sdc)
-        reject("conflicting-third", design, ("conflicting clock constraint",), conflicting_command)
-    print("PASS: triple PLL host checks", report["fmax"])
+        reject("conflicting-fourth", design, ("conflicting clock constraint",), conflicting_command)
+    print("PASS: quad PLL host checks", report["fmax"])
     print("RBF sha256", hashlib.sha256((out / "top.rbf").read_bytes()).hexdigest())
 
 
