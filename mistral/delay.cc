@@ -23,6 +23,14 @@ NEXTPNR_NAMESPACE_BEGIN
 TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, int &clockInfoCount) const
 {
     clockInfoCount = 0;
+    if (cell->type == id_altera_pll) {
+        if (port == id_refclk)
+            return TMG_CLOCK_INPUT;
+        if (port == id_outclk)
+            return TMG_GEN_CLOCK;
+        if (port == id_locked)
+            return TMG_STARTPOINT;
+    }
     if (cell->type == id_MISTRAL_MUL9X9) {
         const auto &name = port.str(this);
         if (name.find("A[") == 0 || name.find("B[") == 0)
@@ -355,6 +363,12 @@ bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, Del
         PipId pip = *it;
         auto src = getPipSrcWire(pip);
         auto dst = getPipDstWire(pip);
+
+        // A dedicated GPIO -> FPLL edge represents the COMBOUT clock tap,
+        // not a load on the GPIO's fabric DATAIN routing node. Mistral has
+        // no analogue model for that tap; retain the estimated arc instead.
+        if (pll_ref_select.count(pip))
+            return false;
 
         if (src.is_nextpnr_created())
             continue;

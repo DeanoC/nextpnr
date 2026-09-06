@@ -491,11 +491,106 @@ struct MistralPacker
         }
     }
 
+    void setup_plls()
+    {
+        for (auto &entry : ctx->cells) {
+            CellInfo *ci = entry.second.get();
+            if (ci->type != id_altera_pll)
+                continue;
+            // Deliberately a single profile checked against Quartus, not a divider or
+            // analog-setting solver. Reject parameters we cannot implement.
+            const dict<IdString, Property> profile = {
+                {ctx->id("reference_clock_frequency"), Property("50.0 MHz")},
+                {ctx->id("output_clock_frequency0"), Property("25.0 MHz")},
+                {ctx->id("operation_mode"), Property("direct")},
+                {ctx->id("fractional_vco_multiplier"), Property("false")},
+                {ctx->id("phase_shift0"), Property("0 ps")},
+                {ctx->id("number_of_clocks"), Property(1)},
+                {ctx->id("duty_cycle0"), Property(50)},
+            };
+            if (ctx->args.device != "5CSEBA6U23I7")
+                log_error("PLL '%s': initial PLL profile supports only 5CSEBA6U23I7.\n", ctx->nameOf(ci));
+            for (auto &param : ci->params) {
+                auto expected = profile.find(param.first);
+                if (expected == profile.end() || param.second != expected->second)
+                    log_error("PLL '%s': unsupported parameter '%s'; only the 50.0 MHz to 25.0 MHz direct profile is supported.\n",
+                              ctx->nameOf(ci), ctx->nameOf(param.first));
+            }
+            for (auto required : {"reference_clock_frequency", "output_clock_frequency0", "operation_mode"})
+                if (!ci->params.count(ctx->id(required)))
+                    log_error("PLL '%s': explicit parameter '%s' is required.\n", ctx->nameOf(ci), required);
+            for (auto &port : ci->ports)
+                if (!port.first.in(id_refclk, id_outclk, id_locked, id_rst))
+                    log_error("PLL '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
+            if (get_pin_needed_muxval(ci, id_rst) != PIN_0)
+                log_error("PLL '%s': initial profile requires rst tied to zero.\n", ctx->nameOf(ci));
+            ci->disconnectPort(id_rst);
+            ci->ports.erase(id_rst);
+
+            NetInfo *ref = ci->getPort(id_refclk), *out = ci->getPort(id_outclk);
+            NetInfo *buffered_ref = nullptr;
+            // clkbufmap promotes a reference also used by fabric registers.
+            // The PLL still needs the dedicated pad tap; keep the buffer for
+            // its fabric users. Only the unconditional CLKBUF is transparent.
+            if (ref && ref->driver.cell && ref->driver.cell->type == id_MISTRAL_CLKBUF &&
+                ref->driver.port == id_Q) {
+                NetInfo *pad_net = ref->driver.cell->getPort(id_A);
+                if (pad_net) {
+                    buffered_ref = ref;
+                    ci->disconnectPort(id_refclk);
+                    ci->connectPort(id_refclk, pad_net);
+                    ref = pad_net;
+                }
+            }
+            if (!ref || !ref->driver.cell || ref->driver.cell->type != id_MISTRAL_IB ||
+                str_or_default(ref->driver.cell->attrs, id_LOC, "") != "PIN_V11")
+                log_error("PLL '%s': initial profile requires a dedicated reference from PIN_V11.\n", ctx->nameOf(ci));
+            if (!out || out->users.entries() != 1 || !ctx->is_clkbuf_cell((*out->users.begin()).cell->type) ||
+                (*out->users.begin()).port != id_A)
+                log_error("PLL '%s': outclk must feed exactly one clock buffer.\n", ctx->nameOf(ci));
+            CellInfo *buf = (*out->users.begin()).cell;
+            auto set_clock = [&](NetInfo *net, int period) {
+                if (!net)
+                    log_error("PLL '%s': disconnected clock.\n", ctx->nameOf(ci));
+                if (net->clkconstr && (net->clkconstr->period.minDelay() != period ||
+                                      net->clkconstr->period.maxDelay() != period))
+                    log_error("PLL '%s': conflicting clock constraint on '%s'.\n", ctx->nameOf(ci), ctx->nameOf(net));
+                net->clkconstr.reset(new ClockConstraint());
+                net->clkconstr->period = DelayPair(period);
+                net->clkconstr->high = net->clkconstr->low = DelayPair(period / 2);
+            };
+            // Check the input pin's SDC constraint as well as the buffered net.
+            set_clock(ref->driver.cell->getPort(id_PAD), ctx->getDelayFromNS(20));
+            set_clock(ref, ctx->getDelayFromNS(20));
+            if (buffered_ref)
+                set_clock(buffered_ref, ctx->getDelayFromNS(20));
+            set_clock(out, ctx->getDelayFromNS(40));
+            set_clock(buf->getPort(id_Q), ctx->getDelayFromNS(40));
+            BelId chosen;
+            WireId pad = ctx->getBelPinWire(ref->driver.cell->bel, ref->driver.port);
+            for (auto &candidate : ctx->pll_clock_bels) {
+                WireId dst = ctx->getBelPinWire(candidate.first, id_refclk);
+                if (!ctx->pll_ref_select.count(PipId(pad.node, dst.node)) ||
+                    !ctx->checkBelAvail(candidate.first) || !ctx->checkBelAvail(candidate.second))
+                    continue;
+                chosen = candidate.first;
+                ctx->bindBel(chosen, ci, STRENGTH_LOCKED);
+                ctx->bindBel(candidate.second, buf, STRENGTH_LOCKED);
+                break;
+            }
+            if (chosen == BelId())
+                log_error("PLL '%s': no available dedicated PLL/clock-buffer pair.\n", ctx->nameOf(ci));
+            log_info("PLL '%s': 50 MHz -> 25 MHz, direct, M=12 N=2 C6=12, bel %s\n",
+                     ctx->nameOf(ci), ctx->nameOfBel(chosen));
+        }
+    }
+
     void run()
     {
         init_constant_nets();
-        pack_constants();
         pack_io();
+        setup_plls();
+        pack_constants();
         constrain_carries();
         constrain_lutram();
         setup_m10ks();

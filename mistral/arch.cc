@@ -128,6 +128,8 @@ Arch::Arch(ArchArgs args)
     for (auto dsp_pos : cyclonev->dsp_get_pos())
         create_dsp(CycloneV::pos2x(dsp_pos), CycloneV::pos2y(dsp_pos));
 
+    create_plls();
+
     // This import takes about 5s, perhaps long term we can speed it up, e.g. defer to Mistral more...
     log_info("Initialising routing graph...\n");
     int pip_count = 0;
