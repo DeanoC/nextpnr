@@ -118,7 +118,7 @@ def main():
         ("unsupported-reference", "reference_clock_frequency", "26.0 MHz",
          "reference frequency must be 25, 50 or 100 MHz"),
         ("missing-frequency1", "output_clock_frequency1", None, "explicit output_clock_frequency1 is required"),
-        ("four-outputs", "number_of_clocks", format(4, "032b"), "number_of_clocks must be 1, 2 or 3"),
+        ("five-outputs", "number_of_clocks", format(5, "032b"), "number_of_clocks must be 1, 2, 3 or 4"),
         ("unsupported-pair", "output_clock_frequency1", "7.0 MHz", "unsupported dual PLL frequencies"),
         ("incompatible-pair", "output_clock_frequency1", "32.0 MHz", "unsupported dual PLL frequencies"),
         ("malformed-decimal", "output_clock_frequency1", "12..5 MHz", "unsupported dual PLL frequencies"),

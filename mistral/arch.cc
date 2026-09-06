@@ -190,10 +190,11 @@ IdStringList Arch::getBelName(BelId bel) const
 bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
 {
     auto &data = bel_data(bel);
-    if (data.type == id_MISTRAL_CLKENA && (data.block_index == 3 || data.block_index == 1) && data.bound) {
+    if (data.type == id_MISTRAL_CLKENA && data.block_index != 2 && data.bound) {
         auto input = data.bound->getPort(id_A);
         return input && input->driver.cell && input->driver.cell->type == id_altera_pll &&
-               input->driver.port == id(data.block_index == 3 ? "outclk[1]" : "outclk[2]");
+               input->driver.port ==
+                       id(data.block_index == 3 ? "outclk[1]" : (data.block_index == 1 ? "outclk[2]" : "outclk[3]"));
     }
     if (data.type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB)) {
         return is_alm_legal(data.lab_data.lab, data.lab_data.alm) && check_lab_input_count(data.lab_data.lab) &&

@@ -483,6 +483,7 @@ struct Arch : BaseArch<ArchRanges>
     dict<BelId, BelId> pll_clock_bels;
     dict<BelId, BelId> pll_second_clock_bels;
     dict<BelId, BelId> pll_third_clock_bels;
+    dict<BelId, BelId> pll_fourth_clock_bels;
     void create_gpio(int x, int y);                    // io.cc
     void create_clkbuf(int x, int y);                  // globals.cc
     void create_control(int x, int y);                 // globals.cc
