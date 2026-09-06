@@ -197,11 +197,14 @@ struct MistralBitgen
         }
         int clocks = int_or_default(ci->params, ctx->id("number_of_clocks"), 1);
         std::optional<mistral_pll::MultiConfig> multi;
+        std::array<int, 4> duties{duty0, duty1, 50, 50};
         if (clocks >= 3) {
             std::array<int64_t, 4> hz{};
             for (int i = 0; i < clocks; ++i)
                 hz[i] = mistral_pll::parse_output_hz(ci->params.at(ctx->idf("output_clock_frequency%d", i)).as_string());
-            multi = mistral_pll::select_multi_hz(hz, clocks, reference_mhz);
+            for (int i = 2; i < clocks; ++i)
+                duties[i] = int_or_default(ci->params, ctx->idf("duty_cycle%d", i), 50);
+            multi = mistral_pll::select_multi_hz(hz, clocks, reference_mhz, duties);
             NPNR_ASSERT(multi);
             config = multi->feedback;
             c1 = multi->counters[1];
@@ -223,7 +226,7 @@ struct MistralBitgen
         }
         for (int i = 2; i < clocks; ++i) {
             int counter = i == 2 ? 5 : 8;
-            auto counts = mistral_pll::duty_counts(multi->counters[i], 50);
+            auto counts = mistral_pll::duty_counts(multi->counters[i], duties[i]);
             NPNR_ASSERT(counts);
             raw(CycloneV::DPRIO0_CNT_HI_DIV, counts->high, counter);
             raw(CycloneV::DPRIO0_CNT_LO_DIV, counts->low, counter);
