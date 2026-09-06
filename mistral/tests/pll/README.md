@@ -573,3 +573,40 @@ measured, and a frequency meter does not establish phase accuracy.
 
 See [the fork branch policy](../../../docs/mistral-fork.md) for integration and
 upstream PR bases.
+
+## Folded clock inversion: required Mistral correction
+
+The ladder's [misteross issue #9](https://github.com/DeanoC/misteross/issues/9)
+found that a folded falling-edge FF stayed at zero on hardware even though
+host timing passed. Mistral's LAB/MLAB tables had interchanged the physical
+`CLKx_INV` and `CLKx_SEL` addresses. Emitting inversion selected an unrouted
+CLKB input; the FF therefore received no toggling clock.
+
+Use Mistral `b28e30a` or a revision containing that correction. The
+`MISTRAL_CORRECT_LAB_CLOCK_MUXES` capability guards FF and MLAB write-clock
+inversion: an older library now produces an explicit error before RBF output.
+The pin correction is required in addition to nextpnr's packing/timing changes.
+Downstream toolchain locks must select the reviewed pair separately.
+
+`duty.py` and `phase.py` now check the selected FF clock mux, inversion,
+ungated enable and physical CLKIN.0 route using the corrected Mistral decoder.
+These checks reject the original bad RBF. Mistral's separate fixed-placement
+Quartus oracle tests verify the physical table addresses by whole-RBF equality
+for all three clock channels in LAB and MLAB, avoiding a compiler/decompiler
+pair that agrees on incorrect field labels.
+
+On the designated kit, the original minimal 25% fixture remained at
+`0xD7180002` while GPO[0] alternated. Changing only the misidentified clock
+bits produced `0xD7180002`/`0xD7180003` as capture followed the input. This
+isolates the clock-field defect; functional capture is separate from analog
+pulse-width or phase-accuracy acceptance.
+
+The freshly rebuilt tool pair produced the same corrected bytes and passed
+20 input changes with lock asserted on 2026-09-06. Artifact:
+`/home/deano/fes/out/dev/pll-invert/duty-25/rise-fall/top.rbf`, SHA256
+`7f8ff8b607a1a28ebee4301360e2d23ef937834d3f904f7ef83fbd5838f69b79`.
+The probe checked signature `0xD718`, lock at GPI[1] and capture at GPI[0]
+after alternating GPO[0]. Evidence: `out/dev/pll-invert/final-probe.log` in
+the FES workspace. The 25%/75% and phase host suites pass with the corrected
+library; the existing rising-edge single, dual and fractional RBF hashes
+remain unchanged.

@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from check import run
+from clock_bits import check_ff_clock
 from fractional import settings
 
 # Complete non-default selected-FPLL settings from Quartus 17.0.2:
@@ -104,7 +105,10 @@ def main():
         assert abs(fmax["achieved"] - expected_fmax) < expected_fmax * 0.0001, (fmax, expected_fmax)
         run([str(args.mistral_cv.resolve()), "decomp", "5CSEBA6U23I7",
              str(case / "top.rbf"), str(case / "top.bt")], case / "decomp.log")
-        assert settings((case / "top.bt").read_text()) == ORACLE
+        bt = (case / "top.bt").read_text()
+        assert settings(bt) == ORACLE
+        check_ff_clock(bt, routed, "launch", launch_edge == "negedge")
+        check_ff_clock(bt, routed, "capture", capture_edge == "negedge")
         print(f"PASS: {name}: {launch_edge} {source_clock} -> {capture_edge} {target_clock}, "
               f"budget {budget} ns, delay {path_delay} ns")
         print("RBF sha256", hashlib.sha256((case / "top.rbf").read_bytes()).hexdigest())
