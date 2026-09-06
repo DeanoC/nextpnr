@@ -385,7 +385,7 @@ historical kit evidence remains specific to its recorded artifacts.
 ## Checked fractional-N profile
 
 Set `fractional_vco_multiplier="true"` to request the separate, bounded
-50 MHz reference to 12.288 MHz single-output profile. Other fractional-N
+50 MHz reference to a checked 11.2896 or 12.288 MHz single-output profile. Other fractional-N
 reference/output combinations and multiple outputs are rejected. The existing
 V11 route, direct mode, zero phase, 50% duty and reset rules still apply.
 The default `"false"` mode retains exact integer-divider behavior.
@@ -424,3 +424,29 @@ The exact artifact passed ten kit reset/relock cycles, returning zero while
 reset and 1006–1007 counts after relock, with lock asserted and no sampled
 lock loss. This is functional diagnostic acceptance, not measured frequency
 precision, jitter characterization or native-image acceptance.
+
+### 44.1 kHz audio-clock profile
+
+The second checked fractional-N output is 11.2896 MHz (256 times 44.1 kHz).
+Quartus17.0.2 uses the same M8, N bypass and analog settings as the 12.288 MHz
+profile, with C6=36 and K551954751 (`0x20e6293f`). Both C high/low counts are 18;
+odd-duty correction is disabled. Calculated output is 11,289,599.972143251 Hz,
+about −0.00246747 ppm from the request. This preserves the observed oracle word;
+it does not claim that word is the closest possible numerical approximation.
+
+Run `fractional.py --mhz 11.2896` with the normal tool arguments. Its full
+FPLL settings assertion covers the new fractional word and even C divider.
+The 12.288 MHz default remains unchanged. The diagnostic uses signature D716;
+`fractional_probe.sh 11.2896` expects 924–925 running counts, with endpoint
+tolerance, and zero under reset. It must run under the normal kit lease.
+
+On 2026-09-06 the 11.2896 MHz diagnostic RBF had SHA-256
+`0d95fe235f42e2adc5e8d66771c136b1a608ce325e907da7ad945ae0535bfc02`.
+It used one PLL, two clock buffers and one HPS GP, with no DSP/RAM.
+Reference/output Fmax values were 195.274/340.716 MHz, meeting 50/11.2896 MHz.
+The exact artifact passed ten hardware reset/relock cycles with zero counts
+while reset and 925 counts after each relock. This establishes functional
+operation and sampled lock; it does not measure the calculated sub-ppm error
+or jitter. The integer and 12.288 MHz baseline artifact hashes are unchanged.
+
+Current `kit.py stop` completed development reboot recovery and left the kit free.

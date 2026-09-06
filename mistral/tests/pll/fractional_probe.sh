@@ -2,14 +2,17 @@
 # Run on the designated target only while holding its kit.py lease.
 # This script neither programs hardware nor manages its lifecycle.
 set -eu
-frequency=12.288
-# 12.288 MHz * 2^20 / (50 MHz * 256) = 1006.63296 counts.
-minimum=1005
-maximum=1008
+frequency=${1:-12.288}
+case "$frequency" in
+    12.288) signature=55061; minimum=1005; maximum=1008 ;;
+    11.2896) signature=55062; minimum=923; maximum=926 ;;
+    *) echo 'usage: fractional_probe.sh {12.288|11.2896}' >&2; exit 2 ;;
+esac
+# Count = output MHz * 2^20 / (50 * 256), with endpoint tolerance.
 read_gpi() { busybox devmem 0xFF706014 32; }
 write_gpo() { busybox devmem 0xFF706010 32 "$1"; }
 check_signature() {
-    if [ "$((($1 >> 16) & 65535))" -ne 55061 ]; then
+    if [ "$((($1 >> 16) & 65535))" -ne "$signature" ]; then
         echo "FAIL: frequency diagnostic signature missing: $1" >&2
         exit 1
     fi

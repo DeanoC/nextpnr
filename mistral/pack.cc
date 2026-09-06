@@ -542,7 +542,7 @@ struct MistralPacker
             auto config = fractional ? mistral_pll::select_fractional(output_hz, reference_mhz) :
                                        mistral_pll::select_hz(output_hz, reference_mhz);
             if (fractional && !config)
-                log_error("PLL '%s': fractional-N profile requires 50 MHz reference and 12.288 MHz output.\n", ctx->nameOf(ci));
+                log_error("PLL '%s': fractional-N profile requires 50 MHz reference and 11.2896 or 12.288 MHz output.\n", ctx->nameOf(ci));
             int64_t output1_hz = 0;
             if (clocks == 2) {
                 auto freq1 = ci->params.find(ctx->id("output_clock_frequency1"));

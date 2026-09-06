@@ -58,12 +58,22 @@ def main():
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--oracle-bt", type=Path,
                         help="also compare against a local Quartus 17.0.2 decomp")
+    parser.add_argument("--mhz", choices=("12.288", "11.2896"), default="12.288")
     args = parser.parse_args()
     fixture = Path(__file__).resolve().parent
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=True)
+    source = fixture / "fractional.v"
+    oracle = dict(ORACLE)
+    if args.mhz == "11.2896":
+        source = out / "fractional.v"
+        source.write_text((fixture / "fractional.v").read_text()
+                          .replace("12.288 MHz", "11.2896 MHz").replace("D715", "D716"))
+        oracle.update({"DPRIO0_CNT_HI_DIV.6": "12", "DPRIO0_CNT_LO_DIV.6": "12",
+                       "FRACTIONAL_DIVISION_SETTING": "20e6293f"})
+        del oracle["DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN.6"]
     run([str(args.yosys.resolve()), "-p",
-         f'read_verilog "{fixture / "pll_meter.v"}" "{fixture / "fractional.v"}"; '
+         f'read_verilog "{fixture / "pll_meter.v"}" "{source}"; '
          'synth_intel_alm -nobram -nolutram -nodsp -top top; '
          f'write_json "{out / "synth.json"}"'], out / "yosys.log")
     design = json.loads((out / "synth.json").read_text())
@@ -81,9 +91,15 @@ def main():
     assert util["cyclonev_hps_interface_mpu_general_purpose"]["used"] == 1
     for kind in ("MISTRAL_MUL9X9", "MISTRAL_M10K", "MISTRAL_MLAB"):
         assert util.get(kind, {"used": 0})["used"] == 0
-    achieved_hz = Fraction(50_000_000) * (8 + Fraction(0x1c2e33f0, 2**32)) / 33
-    error_ppm = (achieved_hz / 12_288_000 - 1) * 1_000_000
-    assert 0 < error_ppm < Fraction(2, 1_000_000)
+    fractional_word = int(oracle["FRACTIONAL_DIVISION_SETTING"], 16)
+    divider = sum(int(oracle[f"DPRIO0_CNT_{half}_DIV.6"], 16) for half in ("HI", "LO"))
+    achieved_hz = Fraction(50_000_000) * (8 + Fraction(fractional_word, 2**32)) / divider
+    error_ppm = (achieved_hz / (Fraction(args.mhz) * 1_000_000) - 1) * 1_000_000
+    if args.mhz == "12.288":
+        assert 0 < error_ppm < Fraction(2, 1_000_000)
+    else:
+        # Quartus uses this checked word, not the mathematically nearest word.
+        assert Fraction(-247, 100_000) < error_ppm < Fraction(-246, 100_000)
     for name, mhz in (("fractional_clock", achieved_hz / 1_000_000), ("meter.refclk", 50)):
         clock = report["fmax"][name]
         assert abs(clock["constraint"] - float(mhz)) <= float(mhz) * 0.00005
@@ -92,7 +108,7 @@ def main():
          str(out / "top.rbf"), str(out / "top.bt")], out / "decomp.log")
     bt = (out / "top.bt").read_text()
     emitted = settings(bt)
-    assert emitted == ORACLE, (emitted, ORACLE)
+    assert emitted == oracle, (emitted, oracle)
     if args.oracle_bt:
         assert emitted == settings(args.oracle_bt.read_text())
     assert len(re.findall(r"^s FPLL.*:FPLL_ENABLE 1$", bt, re.M)) == 1
