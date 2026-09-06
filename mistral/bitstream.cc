@@ -19,6 +19,7 @@
 
 #include "log.h"
 #include "nextpnr.h"
+#include "pll.h"
 #include "timing.h"
 #include "util.h"
 
@@ -165,18 +166,26 @@ struct MistralBitgen
         auto ref = ci->getPort(id_refclk);
         auto pip = ref->wires.at(ctx->getBelPinWire(ci->bel, id_refclk)).pip;
         raw(CycloneV::CLKIN_0_SRC, ctx->pll_ref_select.at(pip));
-        // Quartus-checked 50 MHz -> 25 MHz direct profile. N=2 (default 1+1),
-        // M=12, C6=12, VCO=300 MHz. See tests/pll/README.md.
-        raw(CycloneV::M_CNT_HI_DIV_SETTING, 6);
-        raw(CycloneV::M_CNT_LO_DIV_SETTING, 6);
-        raw(CycloneV::DPRIO0_CNT_HI_DIV, 6, 6);
-        raw(CycloneV::DPRIO0_CNT_LO_DIV, 6, 6);
+        auto config = mistral_pll::select(mistral_pll::parse_mhz(
+                ci->params.at(ctx->id("output_clock_frequency0")).as_string()));
+        NPNR_ASSERT(config);
+        raw(CycloneV::M_CNT_HI_DIV_SETTING, (config->m + 1) / 2);
+        raw(CycloneV::M_CNT_LO_DIV_SETTING, config->m / 2);
+        raw(CycloneV::N_CNT_HI_DIV_SETTING, (config->n + 1) / 2);
+        raw(CycloneV::N_CNT_LO_DIV_SETTING, config->n / 2);
+        // N has no duty-cycle correction, including the checked odd N=5.
+        raw(CycloneV::DPRIO0_CNT_HI_DIV, (config->c + 1) / 2, 6);
+        raw(CycloneV::DPRIO0_CNT_LO_DIV, config->c / 2, 6);
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
+                                  6, (config->c & 1) != 0));
+        raw(CycloneV::M_CNT_LO_PRESET_SETTING, config->m_low_preset);
+        raw(CycloneV::M_CNT_PH_MUX_PRESET_SETTING, config->m_phase_preset);
         raw(CycloneV::CNT_IN_SRC, 0, 6);
         raw(CycloneV::FBCLK_MUX_2, 1);
         raw(CycloneV::VCO_DIV, 0);
         raw(CycloneV::TCLK_SEL, 0);
-        raw(CycloneV::BWCTRL, 7);
-        raw(CycloneV::CP_CURRENT, 1);
+        raw(CycloneV::BWCTRL, config->bandwidth);
+        raw(CycloneV::CP_CURRENT, config->charge_pump);
         raw(CycloneV::FRACTIONAL_DIVISION_SETTING, 1);
         raw(CycloneV::LOCK_FILTER_CFG_SETTING, 0x19);
         raw(CycloneV::UNLOCK_FILTER_CFG_SETTING, 2);

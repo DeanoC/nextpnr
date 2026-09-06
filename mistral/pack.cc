@@ -20,6 +20,7 @@
 #include "design_utils.h"
 #include "log.h"
 #include "nextpnr.h"
+#include "pll.h"
 #include "util.h"
 
 NEXTPNR_NAMESPACE_BEGIN
@@ -497,11 +498,10 @@ struct MistralPacker
             CellInfo *ci = entry.second.get();
             if (ci->type != id_altera_pll)
                 continue;
-            // Deliberately a single profile checked against Quartus, not a divider or
-            // analog-setting solver. Reject parameters we cannot implement.
+            // Frequency selection uses only checked feedback/analog tuples.
+            // Other unsupported modes and parameters still fail closed.
             const dict<IdString, Property> profile = {
                 {ctx->id("reference_clock_frequency"), Property("50.0 MHz")},
-                {ctx->id("output_clock_frequency0"), Property("25.0 MHz")},
                 {ctx->id("operation_mode"), Property("direct")},
                 {ctx->id("fractional_vco_multiplier"), Property("false")},
                 {ctx->id("phase_shift0"), Property("0 ps")},
@@ -511,14 +511,22 @@ struct MistralPacker
             if (ctx->args.device != "5CSEBA6U23I7")
                 log_error("PLL '%s': initial PLL profile supports only 5CSEBA6U23I7.\n", ctx->nameOf(ci));
             for (auto &param : ci->params) {
+                if (param.first == ctx->id("output_clock_frequency0"))
+                    continue;
                 auto expected = profile.find(param.first);
                 if (expected == profile.end() || param.second != expected->second)
-                    log_error("PLL '%s': unsupported parameter '%s'; only the 50.0 MHz to 25.0 MHz direct profile is supported.\n",
+                    log_error("PLL '%s': unsupported parameter '%s'; only the 50.0 MHz reference, integer single-output direct profile is supported.\n",
                               ctx->nameOf(ci), ctx->nameOf(param.first));
             }
             for (auto required : {"reference_clock_frequency", "output_clock_frequency0", "operation_mode"})
                 if (!ci->params.count(ctx->id(required)))
                     log_error("PLL '%s': explicit parameter '%s' is required.\n", ctx->nameOf(ci), required);
+            const auto &frequency = ci->params.at(ctx->id("output_clock_frequency0"));
+            int output_mhz = frequency.is_string ? mistral_pll::parse_mhz(frequency.as_string()) : 0;
+            auto config = mistral_pll::select(output_mhz);
+            if (!config)
+                log_error("PLL '%s': unsupported PLL output frequency; require whole MHz from 1 to 100 "
+                          "and an exact integer C divider from a checked 300/320 MHz tuple.\n", ctx->nameOf(ci));
             for (auto &port : ci->ports)
                 if (!port.first.in(id_refclk, id_outclk, id_locked, id_rst))
                     log_error("PLL '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
@@ -568,8 +576,8 @@ struct MistralPacker
             set_clock(ref, ctx->getDelayFromNS(20));
             if (buffered_ref)
                 set_clock(buffered_ref, ctx->getDelayFromNS(20));
-            set_clock(out, ctx->getDelayFromNS(40));
-            set_clock(buf->getPort(id_Q), ctx->getDelayFromNS(40));
+            set_clock(out, ctx->getDelayFromNS(1000.0 / output_mhz));
+            set_clock(buf->getPort(id_Q), ctx->getDelayFromNS(1000.0 / output_mhz));
             BelId chosen;
             WireId pad = ctx->getBelPinWire(ref->driver.cell->bel, ref->driver.port);
             for (auto &candidate : ctx->pll_clock_bels) {
@@ -584,8 +592,8 @@ struct MistralPacker
             }
             if (chosen == BelId())
                 log_error("PLL '%s': no available dedicated PLL/clock-buffer pair.\n", ctx->nameOf(ci));
-            log_info("PLL '%s': 50 MHz -> 25 MHz, direct, M=12 N=2 C6=12, bel %s\n",
-                     ctx->nameOf(ci), ctx->nameOfBel(chosen));
+            log_info("PLL '%s': 50 MHz -> %d MHz, direct, M=%d N=%d C6=%d, bel %s\n",
+                     ctx->nameOf(ci), output_mhz, config->m, config->n, config->c, ctx->nameOfBel(chosen));
         }
     }
 
