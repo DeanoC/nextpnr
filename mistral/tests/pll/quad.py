@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the fixed 25/50/100/75 MHz quad PLL profile; host checks only."""
+"""Check the default or a selected 25/50/100/75 MHz quad PLL profile; host checks only."""
 import argparse
 import copy
 import gzip
@@ -20,6 +20,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("yosys", "nextpnr", "mistral-cv", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
+    parser.add_argument("--frequencies", nargs=4, default=('25', '50', '100', '75'),
+                        help="exact output frequencies in MHz")
+    parser.add_argument("--oracle-fixture", type=Path,
+                        help="directory containing top.rbf.gz and sha256.json")
     parser.add_argument("--oracle-bt", type=Path)
     parser.add_argument("--skip-negative", action="store_true")
     args = parser.parse_args()
@@ -33,6 +37,9 @@ def main():
     design = json.loads((out / "synth.json").read_text())
     cells = design["modules"]["top"]["cells"]
     assert sum(c["type"] == "altera_pll" for c in cells.values()) == 1
+    for index, frequency in enumerate(args.frequencies):
+        cells["pll"]["parameters"][f"output_clock_frequency{index}"] = f"{frequency} MHz"
+    (out / "synth.json").write_text(json.dumps(design))
     assert sum(c["type"] == "MISTRAL_CLKBUF" for c in cells.values()) == 4
     assert sum(c["type"] == "cyclonev_hps_interface_mpu_general_purpose" for c in cells.values()) == 1
     sdc = out / "clocks.sdc"
@@ -49,7 +56,7 @@ def main():
     assert util["cyclonev_hps_interface_mpu_general_purpose"]["used"] == 1
     for kind in ("MISTRAL_MUL9X9", "MISTRAL_M10K", "MISTRAL_MLAB"):
         assert util.get(kind, {"used": 0})["used"] == 0
-    for index, frequency in enumerate((25, 50, 100, 75)):
+    for index, frequency in enumerate(map(float, args.frequencies)):
         clock = report["fmax"][f"clocks[{index}]"]
         assert abs(clock["constraint"] - frequency) <= frequency * 0.00005, clock
         assert clock["achieved"] >= frequency, clock
@@ -70,7 +77,7 @@ def main():
         name = next(name for name, cell in cells.items()
                     if cell["type"] == "MISTRAL_CLKBUF" and cell["connections"]["A"] == net)
         assert routed[name]["attributes"]["NEXTPNR_BEL"] == bel, routed[name]
-    reference = fixture / "fixtures" / "quad"
+    reference = args.oracle_fixture or fixture / "fixtures" / "quad"
     hashes = json.loads((reference / "sha256.json").read_text())
     compressed = (reference / "top.rbf.gz").read_bytes()
     assert hashlib.sha256(compressed).hexdigest() == hashes["rbf.gz"]
@@ -96,19 +103,19 @@ def main():
     if not args.skip_negative:
         for name, parameter, value, reasons in (
             ("five-outputs", "number_of_clocks", format(5, "032b"), ("number_of_clocks",)),
-            ("reference25", "reference_clock_frequency", "25.0 MHz", ("quad", "reference")),
-            ("fractional", "fractional_vco_multiplier", "true", ("quad", "fractional")),
-            ("frequency0", "output_clock_frequency0", "20.0 MHz", ("quad",)),
-            ("frequency1", "output_clock_frequency1", "25.0 MHz", ("quad",)),
+            ("reference25", "reference_clock_frequency", "25.0 MHz", ("multi-output", "reference")),
+            ("fractional", "fractional_vco_multiplier", "true", ("multi-output", "fractional")),
+            ("frequency0", "output_clock_frequency0", "7.0 MHz", ("multi-output", "frequenc")),
+            ("frequency1", "output_clock_frequency1", "7.0 MHz", ("multi-output", "frequenc")),
             ("phase1", "phase_shift1", "10000 ps", ("phase",)),
-            ("duty0", "duty_cycle0", format(25, "032b"), ("quad",)),
-            ("duty1", "duty_cycle1", format(25, "032b"), ("quad", "frequencies/duties")),
-            ("frequency2", "output_clock_frequency2", "80.0 MHz", ("quad", "frequenc")),
-            ("phase2", "phase_shift2", "100 ps", ("quad", "phase")),
-            ("duty2", "duty_cycle2", format(25, "032b"), ("quad", "duty")),
-            ("frequency3", "output_clock_frequency3", "80.0 MHz", ("quad", "frequenc")),
+            ("duty0", "duty_cycle0", format(25, "032b"), ("multi-output",)),
+            ("duty1", "duty_cycle1", format(25, "032b"), ("multi-output", "frequencies/duties")),
+            ("frequency2", "output_clock_frequency2", "7.0 MHz", ("multi-output", "frequenc")),
+            ("phase2", "phase_shift2", "100 ps", ("multi-output", "phase")),
+            ("duty2", "duty_cycle2", format(25, "032b"), ("multi-output", "duty")),
+            ("frequency3", "output_clock_frequency3", "7.0 MHz", ("multi-output", "frequenc")),
             ("phase3", "phase_shift3", "100 ps", ("phase",)),
-            ("duty3", "duty_cycle3", format(25, "032b"), ("quad", "duty")),
+            ("duty3", "duty_cycle3", format(25, "032b"), ("multi-output", "duty")),
             ("missing-frequency3", "output_clock_frequency3", None, ("output_clock_frequency3",)),
         ):
             invalid = copy.deepcopy(design)
@@ -142,7 +149,7 @@ def main():
             reject(name, invalid, reasons)
         conflicting_sdc = out / "conflicting-fourth.sdc"
         conflicting_sdc.write_text(sdc.read_text() +
-                                  "create_clock -period 20 [get_nets {clocks[3]}]\n")
+                                  f"create_clock -period {2000 / float(args.frequencies[-1])} [get_nets {{clocks[3]}}]\n")
         conflicting_command = command.copy()
         conflicting_command[conflicting_command.index("--sdc") + 1] = str(conflicting_sdc)
         reject("conflicting-fourth", design, ("conflicting clock constraint",), conflicting_command)

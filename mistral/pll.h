@@ -133,6 +133,44 @@ inline std::optional<DualConfig> select_dual_hz(int64_t hz0, int64_t hz1, int re
     }
     return std::nullopt;
 }
+struct MultiConfig
+{
+    Config feedback;
+    std::array<int, 4> counters;
+};
+
+inline std::optional<MultiConfig> select_multi_hz(const std::array<int64_t, 4> &hz, int count, int reference_mhz)
+{
+    // Multi-output support retains the checked 50 MHz reference and 50% duty.
+    if (reference_mhz != 50 || count < 3 || count > 4)
+        return std::nullopt;
+    for (int i = 0; i < count; ++i)
+        if (hz[i] < 1000000 || hz[i] > 100000000)
+            return std::nullopt;
+    for (Config config : checked_configs(reference_mhz)) {
+        std::array<int, 4> counters{};
+        int64_t numerator = int64_t(reference_mhz) * 1000000 * config.m;
+        bool valid = true;
+        for (int i = 0; i < count; ++i) {
+            int64_t denominator = config.n * hz[i];
+            if (numerator % denominator) {
+                valid = false;
+                break;
+            }
+            counters[i] = numerator / denominator;
+            if (!duty_counts(counters[i], 50)) {
+                valid = false;
+                break;
+            }
+        }
+        if (valid) {
+            config.c = counters[0];
+            return MultiConfig{config, counters};
+        }
+    }
+    return std::nullopt;
+}
+
 // Keep whole-MHz callers on the same exact selector.
 inline std::optional<Config> select(int mhz, int reference_mhz = 50)
 {
