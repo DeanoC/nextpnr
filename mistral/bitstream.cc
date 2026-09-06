@@ -201,10 +201,10 @@ struct MistralBitgen
             NPNR_ASSERT(counts);
             raw(CycloneV::DPRIO0_CNT_HI_DIV, counts->high, 7);
             raw(CycloneV::DPRIO0_CNT_LO_DIV, counts->low, 7);
-            // Quartus 17.0.2: 25 MHz C12 at +10 ns (90 degrees) uses preset four
-            // at the checked quarter-period offset from the default preset of one.
-            if (str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps") == "10000 ps")
-                raw(CycloneV::CNT_PRESET, 4, 7);
+            auto phase = mistral_pll::select_phase_25mhz(str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps"));
+            NPNR_ASSERT(phase);
+            if (phase->shift_ns)
+                raw(CycloneV::CNT_PRESET, phase->c_preset, 7);
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
                                       7, counts->odd));
             raw(CycloneV::CNT_IN_SRC, 0, 7);

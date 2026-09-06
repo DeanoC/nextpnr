@@ -19,6 +19,26 @@ struct Config
     uint32_t fraction = 1;
 };
 
+struct PhaseConfig
+{
+    int shift_ns, c_preset;
+};
+
+// Quartus-checked C12 presets for the bounded dual-25-MHz profile.
+// Zero phase leaves the default preset untouched for all other profiles.
+inline std::optional<PhaseConfig> select_phase_25mhz(const std::string &text)
+{
+    if (text == "0 ps")
+        return PhaseConfig{0, 1};
+    if (text == "10000 ps")
+        return PhaseConfig{10, 4};
+    if (text == "20000 ps")
+        return PhaseConfig{20, 7};
+    if (text == "30000 ps")
+        return PhaseConfig{30, 10};
+    return std::nullopt;
+}
+
 inline int parse_mhz(const std::string &text)
 {
     static const std::regex pattern("^([0-9]{1,3})(\\.0+)? MHz$");

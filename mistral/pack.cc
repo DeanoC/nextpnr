@@ -561,8 +561,9 @@ struct MistralPacker
             bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
             std::string phase1 = str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps");
             bool shifted = phase1 != "0 ps";
-            if (shifted && (clocks != 2 || phase1 != "10000 ps"))
-                log_error("PLL '%s': phase profile requires two outputs with phase_shift1=10000 ps.\n",
+            auto phase = mistral_pll::select_phase_25mhz(phase1);
+            if (!phase || (shifted && clocks != 2))
+                log_error("PLL '%s': phase profile requires two outputs with phase_shift1=10000, 20000 or 30000 ps.\n",
                           ctx->nameOf(ci));
             int duty0 = int_or_default(ci->params, ctx->id("duty_cycle0"), 50);
             int duty1 = int_or_default(ci->params, ctx->id("duty_cycle1"), 50);
@@ -715,7 +716,7 @@ struct MistralPacker
                     for (NetInfo *net : {out, buf->getPort(id_Q), out1, buf1->getPort(id_Q)}) {
                         net->clkconstr->phase_group = ci->name;
                         net->clkconstr->phase_shift =
-                                (net == out1 || net == buf1->getPort(id_Q)) ? ctx->getDelayFromNS(10) : 0;
+                                (net == out1 || net == buf1->getPort(id_Q)) ? ctx->getDelayFromNS(phase->shift_ns) : 0;
                     }
                 }
                 if (fractional)
