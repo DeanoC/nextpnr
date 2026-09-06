@@ -526,3 +526,50 @@ g++ -std=c++17 -Wall -Wextra -pedantic -I mistral \
 
 These duty-cycle checks are host-only; no pulse-width hardware acceptance is
 claimed from the earlier frequency measurements.
+
+
+## Static 0°/90° outputs
+
+The checked phase profile uses a 50 MHz reference, two integer 25 MHz outputs,
+50% duty, `phase_shift0("0 ps")` and `phase_shift1("10000 ps")`. Output 1
+lags output 0 by 10 ns (90 degrees). Other shifts, frequency pairs, reference
+frequencies, fractional feedback and non-50% duty combinations are rejected.
+This is a static preset; dynamic phase adjustment is unsupported.
+
+Quartus 17.0.2 selects M12/N2 and C12 for both outputs. The C7 `CNT_PRESET`
+changes from its default 1 to 4 for the quarter-period offset. All other
+selected FPLL settings match the zero-phase pair. The existing Mistral field
+is sufficient; no geometry or analog table changes are needed.
+
+The packer declares a common phase origin for these two equal-period clocks.
+The timing engine checks paths between them with the next capture edge:
+0° rising to 90° rising has a 10 ns setup window; the reverse has 30 ns.
+Opposite-edge paths use the corresponding 30/10 ns windows. Physical clock
+skew remains part of the path delay. Hold checks use the previous capture edge.
+The related paths contribute to the launch clock's reported Fmax and to
+placement/router slack. No phase relation to the input reference is assumed.
+
+Use the PLL-derived constraints for the shifted output: a separate SDC
+`create_clock` cannot express this relationship and is rejected there.
+`phase.py` uses the same tool/output arguments as the other runners and checks
+all four edge combinations, configuration settings, timing and invalid
+profiles. Reproduce the Quartus reference using `phase-oracle.tcl` in an empty
+directory and the `quartus_sh --flow compile top`/Mistral decompile commands
+above. An optional `--oracle-bt` compares the saved reference against the
+embedded expected settings as well as checking every generated RBF.
+
+The device-independent analyser test covers 24 phase/edge/skew combinations
+and 48 hold-boundary checks. Run it without a device database:
+
+```sh
+cmake -S . -B /tmp/nextpnr-phase-tests -DARCH=generic \
+  -DBUILD_TESTS=ON -DBUILD_PYTHON=OFF
+cmake --build /tmp/nextpnr-phase-tests -j4
+ctest --test-dir /tmp/nextpnr-phase-tests --output-on-failure
+```
+
+Validation is host-only. PLL jitter and physical phase accuracy have not been
+measured, and a frequency meter does not establish phase accuracy.
+
+See [the fork branch policy](../../../docs/mistral-fork.md) for integration and
+upstream PR bases.
