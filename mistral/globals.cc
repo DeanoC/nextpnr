@@ -28,13 +28,14 @@ NEXTPNR_NAMESPACE_BEGIN
 void Arch::create_clkbuf(int x, int y)
 {
     for (int z = 0; z < 4; z++) {
-        if (z != 2)
-            continue; // TODO: why do other Zs not work?
-        // For now we only consider the input path from general routing, other inputs like dedicated clock pins are
-        // still a TODO
+        if (z != 2 && z != 3)
+            continue; // Other fabric clock paths remain unverified.
+        // Subblock 2 accepts fabric routing; subblock 3 is reserved for
+        // the dedicated second PLL output and has no fabric input pip.
         BelId bel = add_bel(x, y, idf("CLKBUF[%d]", z), id_MISTRAL_CLKENA);
         WireId input = add_wire(x, y, idf("CLKBUF%d_INPUT", z));
-        add_pip(get_port(CycloneV::CMUXHG, x, y, -1, CycloneV::CLKIN, z), input);
+        if (z == 2)
+            add_pip(get_port(CycloneV::CMUXHG, x, y, -1, CycloneV::CLKIN, z), input);
         add_bel_pin(bel, id_A, PORT_IN, input);
         add_bel_pin(bel, id_Q, PORT_OUT, get_port(CycloneV::CMUXHG, x, y, z, CycloneV::CLKOUT));
         // TODO: enable pin
@@ -46,7 +47,7 @@ bool Arch::is_clkbuf_cell(IdString cell_type) const { return cell_type.in(id_MIS
 
 void Arch::create_plls()
 {
-    // The initial supported configuration uses C6. Import physical FPLL sites
+    // The supported profiles use C6 and optionally C7. Import physical FPLL sites
     // and their dedicated edges from Mistral, rather than fabric substitutes.
     const auto links = cyclonev->get_all_p2p();
     for (auto pos : cyclonev->fpll_get_pos()) {
@@ -54,8 +55,10 @@ void Arch::create_plls()
         BelId bel = add_bel(x, y, id_altera_pll, id_altera_pll);
         WireId ref = add_wire(x, y, id("FPLL_REFCLK"));
         WireId out = add_wire(x, y, id("FPLL_C6"));
+        WireId out1 = add_wire(x, y, id("FPLL_C7"));
         add_bel_pin(bel, id_refclk, PORT_IN, ref);
         add_bel_pin(bel, id_outclk, PORT_OUT, out);
+        add_bel_pin(bel, id("outclk[1]"), PORT_OUT, out1);
         add_bel_pin(bel, id_rst, PORT_IN, get_port(CycloneV::FPLL, x, y, -1, CycloneV::NRESET0));
         add_bel_pin(bel, id_locked, PORT_OUT, get_port(CycloneV::FPLL, x, y, -1, CycloneV::LOCK0));
         for (auto link : links) {
@@ -68,14 +71,22 @@ void Arch::create_plls()
                 pll_ref_select[add_pip(pad, ref)] = 4;
             }
             if (CycloneV::pn2bt(src) != CycloneV::FPLL || CycloneV::pn2p(src) != pos ||
-                CycloneV::pn2pt(src) != CycloneV::PLLCOUT || CycloneV::pn2pi(src) != 6 ||
+                CycloneV::pn2pt(src) != CycloneV::PLLCOUT || (CycloneV::pn2pi(src) != 6 && CycloneV::pn2pi(src) != 7) ||
                 CycloneV::pn2bt(dst) != CycloneV::CMUXHG || CycloneV::pn2pt(dst) != CycloneV::PLLIN)
                 continue;
             for (BelId clock : getBelsByTile(CycloneV::pn2x(dst), CycloneV::pn2y(dst))) {
                 if (getBelType(clock) != id_MISTRAL_CLKENA)
                     continue;
-                pll_clock_select[add_pip(out, getBelPinWire(clock, id_A))] = 8 + CycloneV::pn2pi(dst);
-                pll_clock_bels[bel] = clock;
+                int counter = CycloneV::pn2pi(src);
+                int z = bel_data(clock).block_index;
+                if ((counter == 6 && z != 2) || (counter == 7 && z != 3))
+                    continue;
+                pll_clock_select[add_pip(counter == 6 ? out : out1, getBelPinWire(clock, id_A))] =
+                        8 + CycloneV::pn2pi(dst);
+                if (counter == 6)
+                    pll_clock_bels[bel] = clock;
+                else
+                    pll_second_clock_bels[bel] = clock;
             }
         }
     }

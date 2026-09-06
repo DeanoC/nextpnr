@@ -1,6 +1,7 @@
-# Cyclone V single-output integer PLL
+# Cyclone V integer PLL
 
-This is bounded support for single-output integer PLL configurations. The HPS diagnostic has
+This is bounded support for single-output integer PLL configurations and
+the dual-output profile described below. The HPS diagnostic has
 measured the expected output/reference frequency ratio and asserted lock on
 hardware. It is not general-purpose PLL support or system-image acceptance.
 
@@ -31,7 +32,8 @@ and mode parameters also fail. Reset must be tied low or driven; a permanently a
 Mistral already provides the FPLL geometry, port connections and PRAM fields.
 No Mistral table changes are needed. `create_plls()` imports the FPLL positions,
 the dedicated CLKIN.0 input links, and C6 links to CMUXHG PLLIN ports.
-The current clock-buffer implementation still exposes only CMUXHG subblock 2.
+Single-output profiles use CMUXHG subblock 2; the dual profile also exposes
+subblock 3 for its dedicated second output.
 
 The selected path is GPIO.032.000.0 -> FPLL.000.014 -> C6 ->
 CMUXHG.000.035 PLLIN.14 -> global clock subblock 2. `CLKIN_0_SRC=4`
@@ -257,3 +259,47 @@ Each compressed RBF is 1,955,948 bytes.
 | 20 | `771f5eb504896c411e3e61fcea64c465d90a4149c362a7b605c32b14d87c1d42` |
 | 40 | `0f63eefc0f8424f46af1e0c3776aff2a72af0b8bb2b653a798585fd2710700af` |
 | 100 | `009bc5914818c400455c061e90725e9fd7f0af80404fcdd8f08e892ee9e52b47` |
+
+## Two simultaneous outputs
+
+The dual-output profile accepts `number_of_clocks=2`, output 0 at 25 MHz
+and output 1 at 40 MHz. Both require zero phase and 50% duty; the existing
+50 MHz V11 reference, direct mode and reset rules still apply. Other pairs
+are rejected. Single-output selection remains restricted to its original
+300/320 MHz tuples.
+
+Both outputs share the Quartus 17.0.2-checked 400 MHz configuration:
+M16/N2, BWCTRL7, CP_CURRENT1, M presets1/0. C6 divides by16 and C7 by10.
+Mistral already contains the connections and configuration fields; its pin
+is unchanged. The first output retains CMUXHG(0,35) subblock2, PLLIN14.
+The second uses subblock3, PLLIN13, with INPUT_SEL3=0x15 and PRE_SYNENB.
+Subblock3 has only a dedicated PLL input in nextpnr; fabric clocks cannot
+use it. The packer reserves both buffers with the PLL and assigns separate
+25/40 MHz constraints. No phase relationship timing model is added.
+
+Run the host regression with the same tool paths used above:
+
+```sh
+python3 mistral/tests/pll/dual.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /absolute/path/dual-output
+```
+
+`dual.v` instantiates two independent reference-window meters. Signature
+D714 identifies this diagnostic. GPO3 selects the meter, including its result
+and status; GPO2 drives common reset, GPO1 requests measurement, and GPO0
+selects the result byte. With a kit lease held, run `dual_probe.sh 25` and
+`dual_probe.sh 40` on the target. These probes do not program or stop hardware.
+
+On 2026-09-06 the compressed dual-output RBF had SHA-256
+`b32e3972c4732fd89c22093c6a4724f0abd3113501a93c80767b24e81b2ca245`.
+It used one PLL, three clock buffers, one HPS GP, and no DSP or RAM. Reported
+reference/25 MHz/40 MHz Fmax values were 181.324/329.598/361.533 MHz.
+On the designated kit, each output passed ten reset/relock cycles: both
+returned zero while reset, then 2048 for 25 MHz and 3276–3277 for 40 MHz.
+`kit.py stop` completed development reboot recovery and left the kit free.
+This is exact-artifact functional diagnostic evidence, not characterization
+of jitter, phase alignment or lock time, or native-image acceptance.
+
+The fixed single-output LED regression retains its original RBF hash.
+Additional BELs can change placement and artifact hashes for other designs;
+previous hardware acceptance does not automatically transfer to rebuilt artifacts.

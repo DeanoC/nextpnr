@@ -16,6 +16,15 @@ int main()
             assert(50 / config->n >= 5); // PFD minimum
         }
     }
+    for (int a = 0; a <= 101; ++a)
+        for (int b = 0; b <= 101; ++b) {
+            auto dual = select_dual(a, b);
+            assert(bool(dual) == (a == 25 && b == 40));
+            if (dual) {
+                assert(50 * dual->feedback.m == a * dual->feedback.n * dual->feedback.c);
+                assert(50 * dual->feedback.m == b * dual->feedback.n * dual->c1);
+            }
+        }
     auto old = select(25);
     assert(old->m == 12 && old->n == 2 && old->c == 12);
     auto forty = select(40);
