@@ -1,23 +1,12 @@
-# Run with Quartus 17.0.2 quartus_sh -t /absolute/path/phase-oracle.tcl ?90|180|270?
+# Run with Quartus 17.0.2 quartus_sh -t /absolute/path/phase-oracle.tcl
 # in an empty output directory. This is a reference build, not an OSS dependency.
 package require ::quartus::project
 set fixture [file dirname [file normalize [info script]]]
-set degrees 90
-if {[llength $quartus(args)] > 1} { error "usage: phase-oracle.tcl ?90|180|270?" }
-if {[llength $quartus(args)] == 1} { set degrees [lindex $quartus(args) 0] }
-if {$degrees ni {90 180 270}} { error "degrees must be 90, 180 or 270" }
-set source [open [file join $fixture phase.v] r]
-set rtl [read $source]
-close $source
-set rtl [string map [list "10000 ps" "[expr {$degrees / 90 * 10000}] ps"] $rtl]
-set generated [open phase-generated.v w]
-puts -nonewline $generated $rtl
-close $generated
 project_new top -overwrite
 set_global_assignment -name FAMILY "Cyclone V"
 set_global_assignment -name DEVICE 5CSEBA6U23I7
 set_global_assignment -name TOP_LEVEL_ENTITY top
-set_global_assignment -name VERILOG_FILE phase-generated.v
+set_global_assignment -name VERILOG_FILE [file join $fixture phase.v]
 set_global_assignment -name SDC_FILE clocks.sdc
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name GENERATE_RBF_FILE ON

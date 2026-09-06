@@ -528,40 +528,50 @@ These duty-cycle checks are host-only; no pulse-width hardware acceptance is
 claimed from the earlier frequency measurements.
 
 
-## Static 0°/90° outputs
+## Static phase outputs
 
-The checked phase profile uses a 50 MHz reference, two integer 25 MHz outputs,
-50% duty, `phase_shift0("0 ps")` and `phase_shift1("10000 ps")`. Output 1
-lags output 0 by 10 ns (90 degrees). Other shifts, frequency pairs, reference
-frequencies, fractional feedback and non-50% duty combinations are rejected.
-This is a static preset; dynamic phase adjustment is unsupported.
+The checked phase profiles use a 50 MHz reference, two integer 25 MHz outputs,
+50% duty, `phase_shift0("0 ps")` and `phase_shift1` of `10000 ps`, `20000 ps`,
+or `30000 ps`. Output 1 lags output 0 by 90°, 180° or 270° respectively.
+Other shifts, frequency pairs, reference frequencies, fractional feedback and
+non-50% duty combinations are rejected. Dynamic phase adjustment is unsupported.
 
-Quartus 17.0.2 selects M12/N2 and C12 for both outputs. The C7 `CNT_PRESET`
-changes from its default 1 to 4 for the quarter-period offset. All other
-selected FPLL settings match the zero-phase pair. The existing Mistral field
-is sufficient; no geometry or analog table changes are needed.
+Quartus 17.0.2 selects M12/N2 and C12 for both outputs. C7 `CNT_PRESET`
+changes from its default 1 to 4, 7 or 10 respectively. All other selected FPLL
+settings match the zero-phase pair. No Mistral geometry or analog changes are needed.
 
 The packer declares a common phase origin for these two equal-period clocks.
 The timing engine checks paths between them with the next capture edge:
-0° rising to 90° rising has a 10 ns setup window; the reverse has 30 ns.
-Opposite-edge paths use the corresponding 30/10 ns windows. Physical clock
-skew remains part of the path delay. Hold checks use the previous capture edge.
+
+| Output1 phase | Forward rise→rise | Reverse rise→rise | Forward rise→fall | Reverse rise→fall |
+|---|---|---|---|---|
+| 90° | 10 ns | 30 ns | 30 ns | 10 ns |
+| 180° | 20 ns | 20 ns | 40 ns | 40 ns |
+| 270° | 30 ns | 10 ns | 10 ns | 30 ns |
+
+Coincident edges at 180° use the next strictly later capture edge for setup.
+Physical clock skew remains part of the path delay. Hold checks use the previous capture edge.
 The related paths contribute to the launch clock's reported Fmax and to
 placement/router slack. No phase relation to the input reference is assumed.
 
 Use the PLL-derived constraints for the shifted output: a separate SDC
 `create_clock` cannot express this relationship and is rejected there.
 `phase.py` uses the same tool/output arguments as the other runners and checks
-all four edge combinations, configuration settings, timing and invalid
-profiles. Reproduce the Quartus reference using `phase-oracle.tcl` in an empty
-directory and the `quartus_sh --flow compile top`/Mistral decompile commands
-above. An optional `--oracle-bt` compares the saved reference against the
+both directions with rising/falling capture edges, configuration settings,
+timing and invalid profiles. Select `--degrees 90`, `--degrees 180` or
+`--degrees 270` (default 90). The latter two automatically verify and decompile
+the [bundled Quartus references](fixtures/phase/README.md), requiring no Quartus
+installation. Reproduce the Quartus reference using `phase-oracle.tcl` in an
+empty directory, optionally passing `180` or `270` after the Tcl path, and then
+the `quartus_sh --flow compile top`/Mistral decompile commands above. An optional
+`--oracle-bt` compares the saved reference against the
 embedded expected settings as well as checking every generated RBF.
 
-The device-independent analyser test covers 24 phase/edge/skew combinations
-and 48 hold-boundary checks. Run it without a device database:
+The device-independent analyser test covers 32 phase/edge/skew combinations
+and 64 hold-boundary checks. Run it without a device database:
 
 ```sh
+git submodule update --init --recursive
 cmake -S . -B /tmp/nextpnr-phase-tests -DARCH=generic \
   -DBUILD_TESTS=ON -DBUILD_PYTHON=OFF
 cmake --build /tmp/nextpnr-phase-tests -j4

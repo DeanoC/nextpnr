@@ -26,7 +26,7 @@ USING_NEXTPNR_NAMESPACE
 // Exercise the common analyser without a device database or routing randomness.
 TEST(Timing, RelatedClockPhase)
 {
-    for (int phase : {0, 10, 30}) {
+    for (int phase : {0, 10, 20, 30}) {
         for (ClockEdge launch : {RISING_EDGE, FALLING_EDGE}) {
             for (ClockEdge capture : {RISING_EDGE, FALLING_EDGE}) {
                 for (bool skew : {false, true}) {
@@ -74,6 +74,8 @@ TEST(Timing, RelatedClockPhase)
                         interval = launch == capture ? 40 : 20;
                     else if (phase == 10)
                         interval = launch == capture ? 10 : 30;
+                    else if (phase == 20)
+                        interval = launch == capture ? 20 : 40;
                     else
                         interval = launch == capture ? 30 : 10;
                     // 2 ns clock-to-Q + 5 ns data route + 1 ns setup,
