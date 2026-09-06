@@ -33,7 +33,9 @@ void Arch::create_clkbuf(int x, int y)
         // For now we only consider the input path from general routing, other inputs like dedicated clock pins are
         // still a TODO
         BelId bel = add_bel(x, y, idf("CLKBUF[%d]", z), id_MISTRAL_CLKENA);
-        add_bel_pin(bel, id_A, PORT_IN, get_port(CycloneV::CMUXHG, x, y, -1, CycloneV::CLKIN, z));
+        WireId input = add_wire(x, y, idf("CLKBUF%d_INPUT", z));
+        add_pip(get_port(CycloneV::CMUXHG, x, y, -1, CycloneV::CLKIN, z), input);
+        add_bel_pin(bel, id_A, PORT_IN, input);
         add_bel_pin(bel, id_Q, PORT_OUT, get_port(CycloneV::CMUXHG, x, y, z, CycloneV::CLKOUT));
         // TODO: enable pin
         bel_data(bel).block_index = z;
@@ -41,6 +43,42 @@ void Arch::create_clkbuf(int x, int y)
 }
 
 bool Arch::is_clkbuf_cell(IdString cell_type) const { return cell_type.in(id_MISTRAL_CLKENA, id_MISTRAL_CLKBUF); }
+
+void Arch::create_plls()
+{
+    // The initial supported configuration uses C6. Import physical FPLL sites
+    // and their dedicated edges from Mistral, rather than fabric substitutes.
+    const auto links = cyclonev->get_all_p2p();
+    for (auto pos : cyclonev->fpll_get_pos()) {
+        int x = CycloneV::pos2x(pos), y = CycloneV::pos2y(pos);
+        BelId bel = add_bel(x, y, id_altera_pll, id_altera_pll);
+        WireId ref = add_wire(x, y, id("FPLL_REFCLK"));
+        WireId out = add_wire(x, y, id("FPLL_C6"));
+        add_bel_pin(bel, id_refclk, PORT_IN, ref);
+        add_bel_pin(bel, id_outclk, PORT_OUT, out);
+        add_bel_pin(bel, id_locked, PORT_OUT, get_port(CycloneV::FPLL, x, y, -1, CycloneV::LOCK0));
+        for (auto link : links) {
+            auto src = link.first, dst = link.second;
+            if (CycloneV::pn2bt(dst) == CycloneV::FPLL && CycloneV::pn2p(dst) == pos &&
+                CycloneV::pn2pt(dst) == CycloneV::CLKIN && CycloneV::pn2pi(dst) == 0 &&
+                CycloneV::pn2bt(src) == CycloneV::GPIO) {
+                WireId pad = get_port(CycloneV::GPIO, CycloneV::pn2x(src), CycloneV::pn2y(src),
+                                      CycloneV::pn2bi(src), CycloneV::DATAIN, 0);
+                pll_ref_select[add_pip(pad, ref)] = 4;
+            }
+            if (CycloneV::pn2bt(src) != CycloneV::FPLL || CycloneV::pn2p(src) != pos ||
+                CycloneV::pn2pt(src) != CycloneV::PLLCOUT || CycloneV::pn2pi(src) != 6 ||
+                CycloneV::pn2bt(dst) != CycloneV::CMUXHG || CycloneV::pn2pt(dst) != CycloneV::PLLIN)
+                continue;
+            for (BelId clock : getBelsByTile(CycloneV::pn2x(dst), CycloneV::pn2y(dst))) {
+                if (getBelType(clock) != id_MISTRAL_CLKENA)
+                    continue;
+                pll_clock_select[add_pip(out, getBelPinWire(clock, id_A))] = 8 + CycloneV::pn2pi(dst);
+                pll_clock_bels[bel] = clock;
+            }
+        }
+    }
+}
 
 void Arch::create_hps_mpu_general_purpose(int x, int y)
 {

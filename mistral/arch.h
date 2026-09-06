@@ -478,6 +478,9 @@ struct Arch : BaseArch<ArchRanges>
     void create_lab(int x, int y, bool is_mlab);       // lab.cc
     void create_m10k(int x, int y);                    // m10k.cc
     void create_dsp(int x, int y);                     // dsp.cc
+    void create_plls();                               // globals.cc
+    dict<PipId, int> pll_ref_select, pll_clock_select;
+    dict<BelId, BelId> pll_clock_bels;
     void create_gpio(int x, int y);                    // io.cc
     void create_clkbuf(int x, int y);                  // globals.cc
     void create_control(int x, int y);                 // globals.cc

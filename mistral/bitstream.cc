@@ -140,10 +140,61 @@ struct MistralBitgen
 
     void write_clkbuf_cell(CellInfo *ci, int x, int y, int bi)
     {
-        (void)ci; // currently unused
         auto pos = CycloneV::xy2pos(x, y);
-        cv->bmux_r_set(CycloneV::CMUXHG, pos, CycloneV::INPUT_SEL, bi, 0x1b); // hardcode to general routing
+        auto net = ci->getPort(id_A);
+        auto input = ctx->getBelPinWire(ci->bel, id_A);
+        int select = 0x1b;
+        if (net && net->wires.count(input)) {
+            auto pip = net->wires.at(input).pip;
+            if (ctx->pll_clock_select.count(pip))
+                select = ctx->pll_clock_select.at(pip);
+        }
+        NPNR_ASSERT(cv->bmux_r_set(CycloneV::CMUXHG, pos, CycloneV::INPUT_SEL, bi, select));
         cv->bmux_m_set(CycloneV::CMUXHG, pos, CycloneV::TESTSYN_ENOUT_SELECT, bi, CycloneV::PRE_SYNENB);
+    }
+
+    void write_pll_cell(CellInfo *ci, int x, int y)
+    {
+        auto pos = CycloneV::xy2pos(x, y);
+        auto raw = [&](CycloneV::bmux_type_t mux, uint64_t value, int index = 0) {
+            NPNR_ASSERT(cv->bmux_r_set(CycloneV::FPLL, pos, mux, index, value));
+        };
+        auto flag = [&](CycloneV::bmux_type_t mux, bool value) {
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, mux, 0, value));
+        };
+        auto ref = ci->getPort(id_refclk);
+        auto pip = ref->wires.at(ctx->getBelPinWire(ci->bel, id_refclk)).pip;
+        raw(CycloneV::CLKIN_0_SRC, ctx->pll_ref_select.at(pip));
+        // Quartus-checked 50 MHz -> 25 MHz direct profile. N=2 (default 1+1),
+        // M=12, C6=12, VCO=300 MHz. See tests/pll/README.md.
+        raw(CycloneV::M_CNT_HI_DIV_SETTING, 6);
+        raw(CycloneV::M_CNT_LO_DIV_SETTING, 6);
+        raw(CycloneV::DPRIO0_CNT_HI_DIV, 6, 6);
+        raw(CycloneV::DPRIO0_CNT_LO_DIV, 6, 6);
+        raw(CycloneV::CNT_IN_SRC, 0, 6);
+        raw(CycloneV::FBCLK_MUX_2, 1);
+        raw(CycloneV::VCO_DIV, 0);
+        raw(CycloneV::TCLK_SEL, 0);
+        raw(CycloneV::BWCTRL, 7);
+        raw(CycloneV::CP_CURRENT, 1);
+        raw(CycloneV::FRACTIONAL_DIVISION_SETTING, 1);
+        raw(CycloneV::LOCK_FILTER_CFG_SETTING, 0x19);
+        raw(CycloneV::UNLOCK_FILTER_CFG_SETTING, 2);
+        flag(CycloneV::CTRL_OVERRIDE_SETTING, false);
+        flag(CycloneV::NREVERT_INVERT, true);
+        flag(CycloneV::C6_COUT_EN, true);
+        flag(CycloneV::VCO0PH_EN, true);
+        for (auto mux : {CycloneV::VCO_PH0_EN, CycloneV::VCO_PH1_EN, CycloneV::VCO_PH2_EN, CycloneV::VCO_PH3_EN,
+                         CycloneV::VCO_PH4_EN, CycloneV::VCO_PH5_EN, CycloneV::VCO_PH6_EN, CycloneV::VCO_PH7_EN})
+            flag(mux, true);
+        flag(CycloneV::FPLL_ENABLE, true);
+        NPNR_ASSERT(cv->inv_set(find_rnode(CycloneV::FPLL, pos, CycloneV::NRESET0), true));
+        // The fixed 5CSEBA6U23I7/V11 profile also requires the unused
+        // auxiliary bandgap at (0,73) powered down. This is outside the
+        // selected FPLL's PRAM: omitting it gives no lock and no output on
+        // hardware despite identical settings at (0,14). See the PLL test.
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, CycloneV::xy2pos(0, 73),
+                                  CycloneV::PL_AUX_BG_POWERDOWN, 0, true));
     }
 
     void write_m10k_cell(CellInfo *ci, int x, int y, int bi)
@@ -217,6 +268,8 @@ struct MistralBitgen
                 write_m10k_cell(ci, loc.x, loc.y, bi);
             else if (ci->type == id_MISTRAL_MUL9X9)
                 write_dsp_cell(ci, loc.x, loc.y);
+            else if (ci->type == id_altera_pll)
+                write_pll_cell(ci, loc.x, loc.y);
         }
     }
 
