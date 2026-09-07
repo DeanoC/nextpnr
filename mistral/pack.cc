@@ -544,6 +544,105 @@ struct MistralPacker
         for (IdString name : remove) ctx->cells.erase(name);
     }
 
+    void setup_clock_enables()
+    {
+        std::vector<IdString> remove;
+        auto is_pll_clock = [&](NetInfo *net) {
+            return net && net->driver.cell && net->driver.cell->type == id_altera_pll &&
+                   net->driver.port.in(id_outclk, ctx->id("outclk[0]"), ctx->id("outclk[1]"),
+                                       ctx->id("outclk[2]"), ctx->id("outclk[3]"));
+        };
+        for (auto &entry : ctx->cells) {
+            CellInfo *ci = entry.second.get();
+            if (ci->type != ctx->id("cyclonev_clkena"))
+                continue;
+            auto parameter = [&](const char *name, const char *fallback) {
+                auto it = ci->params.find(ctx->id(name));
+                if (it == ci->params.end())
+                    return std::string(fallback);
+                if (!it->second.is_string)
+                    log_error("Clock enable '%s': parameter '%s' must be a string.\n", ctx->nameOf(ci), name);
+                return it->second.as_string();
+            };
+            std::string clock_type = parameter("clock_type", "auto");
+            if (clock_type != "auto" && clock_type != "global clock" && clock_type != "Global Clock")
+                log_error("Clock enable '%s': only global clocks are supported.\n", ctx->nameOf(ci));
+            for (auto expected : {std::make_pair("ena_register_mode", "falling edge"),
+                                  std::make_pair("ena_register_power_up", "high"),
+                                  std::make_pair("disable_mode", "low"), std::make_pair("test_syn", "high"),
+                                  std::make_pair("lpm_type", "cyclonev_clkena")}) {
+                const char *fallback = std::string(expected.first) == "ena_register_mode" ? "always enabled" : expected.second;
+                if (parameter(expected.first, fallback) != expected.second)
+                    log_error("Clock enable '%s': unsupported %s; require '%s'.\n",
+                              ctx->nameOf(ci), expected.first, expected.second);
+            }
+            for (auto &param : ci->params)
+                if (!param.first.in(ctx->id("clock_type"), ctx->id("ena_register_mode"),
+                                    ctx->id("ena_register_power_up"), ctx->id("disable_mode"),
+                                    ctx->id("test_syn"), ctx->id("lpm_type")))
+                    log_error("Clock enable '%s': unsupported parameter '%s'.\n", ctx->nameOf(ci), ctx->nameOf(param.first));
+            for (auto &port : ci->ports)
+                if (port.second.net && !port.first.in(ctx->id("inclk"), ctx->id("ena"), id_outclk))
+                    log_error("Clock enable '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
+            NetInfo *input = ci->getPort(ctx->id("inclk"));
+            NetInfo *enable = ci->getPort(ctx->id("ena"));
+            NetInfo *output = ci->getPort(id_outclk);
+            if (!is_pll_clock(input))
+                log_error("Clock enable '%s': input must come directly from a PLL clock output.\n", ctx->nameOf(ci));
+            if (!enable || !enable->driver.cell)
+                log_error("Clock enable '%s': ena must be driven.\n", ctx->nameOf(ci));
+            if (!output || output->users.entries() != 1 ||
+                (*output->users.begin()).cell->type != id_MISTRAL_CLKBUF || (*output->users.begin()).port != id_A)
+                log_error("Clock enable '%s': output must feed exactly one unconditional clock buffer.\n", ctx->nameOf(ci));
+            CellInfo *buffer = (*output->users.begin()).cell;
+            NetInfo *buffered = buffer->getPort(id_Q);
+            if (!buffered || buffered->users.empty())
+                log_error("Clock enable '%s': buffered output must have users.\n", ctx->nameOf(ci));
+            if (buffer->bel != BelId() || buffer->attrs.count(ctx->id("BEL")) || buffer->attrs.count(id_LOC) ||
+                buffer->attrs.count(ctx->id("NEXTPNR_BEL")))
+                log_error("Clock enable '%s': output buffer placement constraint prevents folding.\n", ctx->nameOf(ci));
+            if (output->clkconstr) {
+                auto differs = [](const DelayPair &a, const DelayPair &b) {
+                    return a.minDelay() != b.minDelay() || a.maxDelay() != b.maxDelay();
+                };
+                if (buffered->clkconstr && (differs(output->clkconstr->period, buffered->clkconstr->period) ||
+                                          differs(output->clkconstr->high, buffered->clkconstr->high) ||
+                                          differs(output->clkconstr->low, buffered->clkconstr->low)))
+                    log_error("Clock enable '%s': conflicting clock constraints.\n", ctx->nameOf(ci));
+                if (!buffered->clkconstr)
+                    buffered->clkconstr = std::move(output->clkconstr);
+            }
+            ci->disconnectPort(id_outclk);
+            buffer->disconnectPort(id_A);
+            buffer->disconnectPort(id_Q);
+            ci->connectPort(id_outclk, buffered);
+            ctx->nets.erase(output->name);
+            remove.push_back(buffer->name);
+            ci->renamePort(ctx->id("inclk"), id_A);
+            ci->renamePort(ctx->id("ena"), id_ENA);
+            ci->renamePort(id_outclk, id_Q);
+            ci->ports.erase(ctx->id("enaout"));
+            ci->params.clear();
+            ci->type = id_MISTRAL_CLKENA;
+        }
+        for (IdString name : remove)
+            ctx->cells.erase(name);
+        // MISTRAL_CLKENA has one fixed mode: falling-edge enable, power-up high.
+        for (auto &entry : ctx->cells) {
+            CellInfo *ci = entry.second.get();
+            if (ci->type != id_MISTRAL_CLKENA)
+                continue;
+            NetInfo *input = ci->getPort(id_A), *enable = ci->getPort(id_ENA);
+            if (!is_pll_clock(input))
+                log_error("Clock enable '%s': input must come directly from a PLL clock output.\n", ctx->nameOf(ci));
+            if (!enable || !enable->driver.cell || !ci->getPort(id_Q) || !ci->params.empty())
+                log_error("Clock enable '%s': require driven ENA, connected Q and no mode overrides.\n", ctx->nameOf(ci));
+            for (auto &port : ci->ports)
+                if (port.second.net && !port.first.in(id_A, id_ENA, id_Q))
+                    log_error("Clock enable '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
+        }
+    }
+
     void setup_plls()
     {
         for (auto &entry : ctx->cells) {
@@ -870,6 +969,7 @@ struct MistralPacker
     {
         init_constant_nets();
         pack_io();
+        setup_clock_enables();
         setup_plls();
         fold_inverted_pll_clock_buffers();
         pack_constants();

@@ -1057,3 +1057,73 @@ This change is based on nextpnr fork `mistral-stable` commit
 this test nor an RBF build programs hardware. Physical lock, frequency and
 phase behavior at the second site remain for ladder hardware acceptance.
 No misteross lock or FES parent pin changes are included.
+
+
+## Fabric-controlled PLL clock enable
+
+The existing Yosys `cyclonev_clkena` blackbox can gate a PLL output using a
+fabric signal. The checked profile uses a falling-edge enable register,
+power-up high and disabled output low. For example:
+
+```verilog
+cyclonev_clkena #(
+    .clock_type("global clock"),
+    .ena_register_mode("falling edge")
+) gate (
+    .inclk(pll_clock), .ena(enable), .outclk(gated_clock), .enaout()
+);
+```
+
+`ena` must have a driver, and `inclk` must come directly from an `altera_pll`
+output. `clock_type` accepts `auto`, `global clock` or `Global Clock`.
+The other supported parameters retain their primitive defaults:
+`ena_register_power_up="high"`, `disable_mode="low"`, `test_syn="high"`
+and `lpm_type="cyclonev_clkena"`. Other values, unknown parameters,
+connected `enaout`, missing enable drivers and non-PLL sources fail explicitly.
+The mode must be specified: the primitive's default `always enabled` is not
+this gated profile. Use the ordinary PLL output path for an unconditional clock.
+
+Packing converts the primitive to `MISTRAL_CLKENA` with ports `A`, `ENA`, `Q`.
+It removes the single unconditional output buffer inserted by Yosys, retaining
+its output net and checking clock constraints on both sides. A placement
+constraint on that buffer prevents folding and is rejected. The packed cell
+uses one existing clock-buffer BEL, so a gated output consumes one of the
+same four shared lanes as an ungated output. No Yosys or Mistral changes are
+required. Direct `MISTRAL_CLKENA` cells have the same fixed mode and accept
+no mode parameters.
+
+Mistral already exposes the fabric `CMUXHG.ENABLE` endpoint. The backend
+imports that BEL input and programs `ENABLE_REGISTER_MODE=REG1_ENOUT`.
+The existing `TESTSYN_ENOUT_SELECT=PRE_SYNENB` and power-up default 1 remain.
+The [portable Quartus 17.0.2 oracle](fixtures/clock-enable/README.md) fixes
+FPLL (0,14), C6 and CMUXHG (0,35) lane 2, confirming the enable route and
+configuration at the same sites used by the OSS fixture.
+
+```sh
+python3 mistral/tests/pll/clock_enable.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-clock-enable
+```
+
+The fixture uses the board's V11 50 MHz reference, a 25 MHz PLL and one HPS
+GP block. GPO bit 0 supplies enable; an eight-bit gated counter and PLL lock
+are observed on GPI. Tests verify one PLL and one clock buffer, output timing,
+the routed enable endpoint, complete FPLL and selected CMUXHG settings against
+the bundled RBF, inverted enable routing and invalid parameters/topologies.
+The oracle includes compressed RBF bytes, checksums and portable regeneration
+inputs; no private artifacts are needed.
+
+The gated output retains the PLL's running-clock period and waveform for
+ordinary downstream timing analysis. Stopping the clock does not relax those
+constraints. `ENA` is an asynchronous timing endpoint: the backend has no
+characterized setup/hold model for its falling-edge control register, so a
+passing downstream Fmax does not establish enable timing or metastability
+safety. The enable register powers up high; an initially low control does not
+imply suppression of every startup edge before the first falling-edge capture.
+
+Validation is host-only. Hardware stop/resume, startup and pulse behavior
+remain for the ladder using the 50 MHz board reference. This change starts
+from nextpnr `mistral-stable` commit
+`de0294945a90b7048d8b5130913f8ab8967c2746`, with unchanged Mistral
+`78ba2a580ae2523403d4f4f91891a6b11d7b6aba` and Yosys
+`13b43f8c85ec430a33ee55d058fb4c32b42b6910`. No misteross lock, experiment RTL
+or FES parent pin changes are included.

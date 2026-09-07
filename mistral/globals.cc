@@ -36,7 +36,7 @@ void Arch::create_clkbuf(int x, int y)
             add_pip(get_port(CycloneV::CMUXHG, x, y, -1, CycloneV::CLKIN, z), input);
         add_bel_pin(bel, id_A, PORT_IN, input);
         add_bel_pin(bel, id_Q, PORT_OUT, get_port(CycloneV::CMUXHG, x, y, z, CycloneV::CLKOUT));
-        // TODO: enable pin
+        add_bel_pin(bel, id_ENA, PORT_IN, get_port(CycloneV::CMUXHG, x, y, z, CycloneV::ENABLE));
         bel_data(bel).block_index = z;
     }
 }
