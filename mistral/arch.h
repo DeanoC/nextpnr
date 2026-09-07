@@ -480,10 +480,7 @@ struct Arch : BaseArch<ArchRanges>
     void create_dsp(int x, int y);                     // dsp.cc
     void create_plls();                               // globals.cc
     dict<PipId, int> pll_ref_select, pll_clock_select;
-    dict<BelId, BelId> pll_clock_bels;
-    dict<BelId, BelId> pll_second_clock_bels;
-    dict<BelId, BelId> pll_third_clock_bels;
-    dict<BelId, BelId> pll_fourth_clock_bels;
+    dict<BelId, std::array<std::vector<BelId>, 4>> pll_clock_bels;
     void create_gpio(int x, int y);                    // io.cc
     void create_clkbuf(int x, int y);                  // globals.cc
     void create_control(int x, int y);                 // globals.cc

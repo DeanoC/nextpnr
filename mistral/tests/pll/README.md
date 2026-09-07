@@ -1,9 +1,10 @@
-# Cyclone V integer PLL
+# Cyclone V PLL support
 
-This is bounded support for single-output integer PLL configurations and
-the dual-output profile described below. The HPS diagnostic has
-measured the expected output/reference frequency ratio and asserted lock on
-hardware. It is not general-purpose PLL support or system-image acceptance.
+This backend supports the bounded integer, fractional and phase profiles
+described below, including two independent PLLs on the board reference.
+Hardware evidence applies only to the explicitly recorded diagnostics; other
+profiles have host-only validation. This is not general-purpose PLL support
+or system-image acceptance.
 
 The test uses the existing Yosys `altera_pll` blackbox, without a Yosys patch.
 One physical FPLL is reserved per cell. On `5CSEBA6U23I7`, Mistral enumerates
@@ -36,9 +37,9 @@ and mode parameters also fail. Reset must be tied low or driven; a permanently a
 
 Mistral already provides the FPLL geometry, port connections and PRAM fields.
 No Mistral table changes are needed. `create_plls()` imports the FPLL positions,
-the dedicated CLKIN.0 input links, and C6 links to CMUXHG PLLIN ports.
-Single-output profiles use CMUXHG subblock 2; the dual profile also exposes
-subblock 3 for its dedicated second output.
+the dedicated reference links, and C6/C7/C5/C8 links to CMUXHG PLLIN ports.
+Outputs prefer subblocks 2/3/1/0 respectively. Each lane can select any
+imported PLL output; two PLLs share the available lanes as described below.
 
 The selected path is GPIO.032.000.0 -> FPLL.000.014 -> C6 ->
 CMUXHG.000.035 PLLIN.14 -> global clock subblock 2. `CLKIN_0_SRC=4`
@@ -1000,3 +1001,59 @@ available for a later ladder hardware experiment; physical phase accuracy is
 not established here. Shifted 50 MHz outputs still reject 25/100 MHz references.
 The 25 and 100 MHz output profiles retain their checked quarter-cycle choices.
 Downstream locks and FES pins are unchanged.
+
+
+## Two independent PLLs on the board reference
+
+Two `altera_pll` instances can share the DE10-Nano V11 50 MHz reference.
+The packer first uses FPLL (0,14), then FPLL (0,31). Each cell retains its
+own feedback configuration, output dividers and timing phase group. The
+second site is restricted to a 50 MHz reference; this extension does not
+add support for other physical reference sources.
+
+Mistral already describes both dedicated input routes and their output
+connections. No Mistral source or table changes are required:
+
+| FPLL | V11 reference input | `CLKIN_0_SRC` | C6 destination | HG selector |
+| --- | --- | --- | --- | --- |
+| (0,14) | CLKIN0 | 4 | CMUXHG (0,35) PLLIN14 | 0x16 |
+| (0,31) | CLKIN2 | 6 | CMUXHG (0,35) PLLIN6 | 0x0e |
+
+The backend imports each counter's connections to all four CMUXHG lanes,
+using Mistral's existing PLLIN selector encoding. Packing reserves a distinct
+free lane for every output before binding a PLL. The previous lane preference
+2/3/1/0 is preserved whenever those lanes are free; a second PLL uses remaining
+lanes. Dedicated clock-buffer legality now checks the actual PLL-to-buffer
+connection instead of requiring a fixed output number for each lane. Both
+PLLs together can use at most four output lanes on this mux. A third PLL or
+an output count exceeding the available lanes fails during packing.
+
+```sh
+python3 mistral/tests/pll/two_pll.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/two-pll
+```
+
+The main fixture combines a 25 MHz integer PLL and a 12.288 MHz fractional-N
+PLL with independent counters and one HPS GP block. Two
+[portable Quartus 17.0.2 oracle bundles](fixtures/two-pll/README.md) check
+both assignments of these profiles to the two physical sites. The runner
+verifies their compressed reference hashes and compares all emitted FPLL
+settings, including the auxiliary bandgap. It also checks the OSS mux
+selectors, utilization, compressed RBF generation and output timing.
+Quartus may choose a vertical clock mux for one output; the oracle comparison
+covers FPLL settings, while OSS horizontal mux selections are checked against
+the imported Mistral connections.
+
+An observed data crossing between the two PLL outputs remains cross-domain,
+including when the requested output frequencies are equal. A common reference
+does not establish a synchronous timing relationship between separate PLLs.
+The runner also exercises all four shared lanes and rejects a fifth output,
+a third PLL and a conflicting reference constraint.
+
+This change is based on nextpnr fork `mistral-stable` commit
+`1dad4cc2ea75944b0e3b645cf9e82dd88b6a9faa`, with unchanged Mistral
+`78ba2a580ae2523403d4f4f91891a6b11d7b6aba` and Yosys
+`13b43f8c85ec430a33ee55d058fb4c32b42b6910`. Validation is host-only; neither
+this test nor an RBF build programs hardware. Physical lock, frequency and
+phase behavior at the second site remain for ladder hardware acceptance.
+No misteross lock or FES parent pin changes are included.

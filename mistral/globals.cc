@@ -28,9 +28,8 @@ NEXTPNR_NAMESPACE_BEGIN
 void Arch::create_clkbuf(int x, int y)
 {
     for (int z : {2, 3, 1, 0}) {
-        // Subblock 2 accepts fabric routing; subblock 3 is reserved for
-        // the dedicated second PLL output and has no fabric input pip.
-        // Subblocks 1/0 likewise serve only the third/fourth PLL outputs.
+        // Subblock 2 accepts fabric routing. Other subblocks are reserved
+        // for dedicated PLL outputs; every lane can select any PLLIN0..15.
         BelId bel = add_bel(x, y, idf("CLKBUF[%d]", z), id_MISTRAL_CLKENA);
         WireId input = add_wire(x, y, idf("CLKBUF%d_INPUT", z));
         if (z == 2)
@@ -67,34 +66,27 @@ void Arch::create_plls()
         for (auto link : links) {
             auto src = link.first, dst = link.second;
             if (CycloneV::pn2bt(dst) == CycloneV::FPLL && CycloneV::pn2p(dst) == pos &&
-                CycloneV::pn2pt(dst) == CycloneV::CLKIN && CycloneV::pn2pi(dst) == 0 &&
+                CycloneV::pn2pt(dst) == CycloneV::CLKIN &&
+                (CycloneV::pn2pi(dst) == 0 || (x == 0 && y == 31 && CycloneV::pn2pi(dst) == 2)) &&
                 CycloneV::pn2bt(src) == CycloneV::GPIO) {
                 WireId pad = get_port(CycloneV::GPIO, CycloneV::pn2x(src), CycloneV::pn2y(src),
                                       CycloneV::pn2bi(src), CycloneV::DATAIN, 0);
-                pll_ref_select[add_pip(pad, ref)] = 4;
+                // Quartus-checked V11 routes: CLKIN0 uses 4; CLKIN2 at (0,31) uses 6.
+                pll_ref_select[add_pip(pad, ref)] = CycloneV::pn2pi(dst) == 0 ? 4 : 6;
             }
             if (CycloneV::pn2bt(src) != CycloneV::FPLL || CycloneV::pn2p(src) != pos ||
                 CycloneV::pn2pt(src) != CycloneV::PLLCOUT || (CycloneV::pn2pi(src) < 5 || CycloneV::pn2pi(src) > 8) ||
-                CycloneV::pn2bt(dst) != CycloneV::CMUXHG || CycloneV::pn2pt(dst) != CycloneV::PLLIN)
+                CycloneV::pn2bt(dst) != CycloneV::CMUXHG || CycloneV::pn2pt(dst) != CycloneV::PLLIN ||
+                CycloneV::pn2pi(dst) < 0 || CycloneV::pn2pi(dst) > 15)
                 continue;
             for (BelId clock : getBelsByTile(CycloneV::pn2x(dst), CycloneV::pn2y(dst))) {
                 if (getBelType(clock) != id_MISTRAL_CLKENA)
                     continue;
                 int counter = CycloneV::pn2pi(src);
-                int z = bel_data(clock).block_index;
-                if ((counter == 6 && z != 2) || (counter == 7 && z != 3) || (counter == 5 && z != 1) ||
-                    (counter == 8 && z != 0))
-                    continue;
                 WireId source = counter == 6 ? out : (counter == 7 ? out1 : (counter == 5 ? out2 : out3));
                 pll_clock_select[add_pip(source, getBelPinWire(clock, id_A))] = 8 + CycloneV::pn2pi(dst);
-                if (counter == 6)
-                    pll_clock_bels[bel] = clock;
-                else if (counter == 7)
-                    pll_second_clock_bels[bel] = clock;
-                else if (counter == 5)
-                    pll_third_clock_bels[bel] = clock;
-                else
-                    pll_fourth_clock_bels[bel] = clock;
+                int output = counter == 6 ? 0 : (counter == 7 ? 1 : (counter == 5 ? 2 : 3));
+                pll_clock_bels[bel][output].push_back(clock);
             }
         }
     }
