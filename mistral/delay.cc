@@ -32,6 +32,9 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         // no characterized setup/hold model for that clock-control register.
         if (port == id_ENA)
             return TMG_ENDPOINT;
+        // Status from the enable register has no characterized clock-to-Q arc.
+        if (port == id_ENAOUT)
+            return TMG_STARTPOINT;
     }
     if (cell->type == id_altera_pll) {
         if (port == id_refclk)

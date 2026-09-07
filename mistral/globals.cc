@@ -37,6 +37,7 @@ void Arch::create_clkbuf(int x, int y)
         add_bel_pin(bel, id_A, PORT_IN, input);
         add_bel_pin(bel, id_Q, PORT_OUT, get_port(CycloneV::CMUXHG, x, y, z, CycloneV::CLKOUT));
         add_bel_pin(bel, id_ENA, PORT_IN, get_port(CycloneV::CMUXHG, x, y, z, CycloneV::ENABLE));
+        add_bel_pin(bel, id_ENAOUT, PORT_OUT, get_port(CycloneV::CMUXHG, x, y, z, CycloneV::SYN_EN));
         bel_data(bel).block_index = z;
     }
 }
@@ -245,7 +246,8 @@ struct MistralGlobalRouter
             CellInfo *drv = ni->driver.cell;
             if (drv == nullptr)
                 continue;
-            if (drv->type.in(id_MISTRAL_CLKENA, id_MISTRAL_CLKBUF)) {
+            // ENAOUT is a fabric status signal, not a global clock.
+            if (drv->type.in(id_MISTRAL_CLKENA, id_MISTRAL_CLKBUF) && ni->driver.port == id_Q) {
                 route_clk_net(ni);
                 continue;
             }
