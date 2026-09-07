@@ -24,8 +24,8 @@
 NEXTPNR_NAMESPACE_BEGIN
 
 const dict<IdString, Arch::CellPinsData> Arch::cell_pins_db = {
-        // DSP inputs float high and have individual inversion bits, allowing
-        // constants and inverters to be folded by the existing packer.
+        // DSP inputs have individual inversion bits, allowing constants and
+        // inverters to be folded. Bitgen accounts for each physical default.
         {id_MISTRAL_MUL9X9,
          {{{id_CLK, PINSTYLE_CLK}, {id_ENA, PINSTYLE_CE}, {id_ACLR, PINSTYLE_RST},
            {id_ACCUMULATE, PINSTYLE_COMB}, {id_SUB, PINSTYLE_COMB}, {id_NEGATE, PINSTYLE_COMB},

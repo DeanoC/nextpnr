@@ -7,9 +7,17 @@ NEXTPNR_NAMESPACE_BEGIN
 
 void Arch::create_dsp(int x, int y)
 {
+    // The dedicated TCLK inputs are the normal path for global clocks and
+    // clears. Cyclone V also exposes fabric alternatives on GOUT; keep both
+    // BEL pins available so the packer can select the routable resource for a
+    // non-global control net.
+    const IdString clk_fabric = id("CLK_FABRIC");
+    const IdString aclr_fabric = id("ACLR_FABRIC");
     auto add_control_pins = [&](BelId bel) {
         add_bel_pin(bel, id_CLK, PORT_IN, get_port(CycloneV::DSP, x, y, -1, CycloneV::CLKIN, 0));
+        add_bel_pin(bel, clk_fabric, PORT_IN, get_port(CycloneV::DSP, x, y, -1, CycloneV::CLKIN, 3));
         add_bel_pin(bel, id_ACLR, PORT_IN, get_port(CycloneV::DSP, x, y, -1, CycloneV::ACLR, 0));
+        add_bel_pin(bel, aclr_fabric, PORT_IN, get_port(CycloneV::DSP, x, y, -1, CycloneV::ACLR, 2));
         add_bel_pin(bel, id_ENA, PORT_IN, get_port(CycloneV::DSP, x, y, -1, CycloneV::ENABLE, 0));
         add_bel_pin(bel, id_ACCUMULATE, PORT_IN,
                     get_port(CycloneV::DSP, x, y, -1, CycloneV::ACCUMULATE, -1));

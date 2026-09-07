@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Route a single 27x27 DSP primitive through one Cyclone V DSP site.
 
-The fixture starts with the locked 060 design and widens its multiplier for a
-host-side mode test.  The high result bits are sinks; placement, routing,
-timing, and mode programming are the assertions under test.
+Accepts the real 430 design or widens the locked 060 multiplier for a host-side
+cascade mode test. Placement, routing, timing, and control programming are the
+assertions under test; arithmetic requires a separate kit probe.
 """
 
 import argparse
@@ -13,19 +13,29 @@ import re
 import subprocess
 
 
-def make_fixture(path: Path) -> dict:
+def make_fixture(path: Path, controls=None) -> dict:
     design = json.loads(path.read_text())
     cells = design["modules"]["top"]["cells"]
-    names = [name for name, cell in cells.items() if cell["type"] == "MISTRAL_MUL9X9"]
+    names = [name for name, cell in cells.items() if cell["type"] in ("MISTRAL_MUL9X9", "MISTRAL_MUL27X27")]
     assert len(names) == 1, names
     mul = cells[names[0]]
-    mul["type"] = "MISTRAL_MUL27X27"
-    mul["attributes"]["src"] = mul["attributes"].get("src", "") + "|dsp-mode-test:27x27"
-    mul["parameters"].update(CASCADE_EN="1", CASCADE_1ST_EN="1", CHAIN_OUTPUT_EN="1")
-    mul["port_directions"]["ACCUMULATE"] = "input"
-    mul["connections"]["ACCUMULATE"] = [4]
-    mul["connections"]["A"] = list(mul["connections"]["A"]) + ["0"] * 18
-    mul["connections"]["B"] = list(mul["connections"]["B"]) + ["0"] * 18
+    if mul["type"] == "MISTRAL_MUL9X9":
+        mul["type"] = "MISTRAL_MUL27X27"
+        mul["attributes"]["src"] = mul["attributes"].get("src", "") + "|dsp-mode-test:27x27"
+        mul["parameters"].update(CASCADE_EN="1", CASCADE_1ST_EN="1", CHAIN_OUTPUT_EN="1")
+        mul["port_directions"]["ACCUMULATE"] = "input"
+        mul["connections"]["ACCUMULATE"] = [4]
+        mul["connections"]["A"] = list(mul["connections"]["A"]) + ["0"] * 18
+        mul["connections"]["B"] = list(mul["connections"]["B"]) + ["0"] * 18
+
+    if controls is not None:
+        for control in ("ACCUMULATE", "LOADCONST", "NEGATE", "SUB"):
+            if controls == "omitted":
+                mul["connections"].pop(control, None)
+                mul["port_directions"].pop(control, None)
+            else:
+                mul["port_directions"][control] = "input"
+                mul["connections"][control] = [controls]
 
     used = [
         bit
@@ -35,7 +45,9 @@ def make_fixture(path: Path) -> dict:
         if isinstance(bit, int)
     ]
     next_net = max(used) + 1
-    mul["connections"]["Y"] = list(mul["connections"]["Y"]) + list(range(next_net, next_net + 36))
+    missing_y_bits = 54 - len(mul["connections"]["Y"])
+    assert missing_y_bits >= 0
+    mul["connections"]["Y"] = list(mul["connections"]["Y"]) + list(range(next_net, next_net + missing_y_bits))
     return design
 
 
@@ -48,12 +60,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("nextpnr", "mistral-cv", "fixture", "qsf", "sdc", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
+    parser.add_argument("--controls", choices=("omitted", "0", "1"),
+                        help="remove or tie all four arithmetic controls; preserve fixture controls by default")
     args = parser.parse_args()
 
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=True)
     fixture = out / "synth.json"
-    fixture.write_text(json.dumps(make_fixture(args.fixture)))
+    design = make_fixture(args.fixture, args.controls)
+    fixture.write_text(json.dumps(design))
+    mul = next(cell for cell in design["modules"]["top"]["cells"].values()
+               if cell["type"] == "MISTRAL_MUL27X27")
     run(
         [
             str(args.nextpnr.resolve()),
@@ -104,10 +121,17 @@ def main():
     assert len(sites) == 1, sites
     site = sites[0]
     settings = dict(re.findall(r"^s " + re.escape(site) + r":(\S+) (\S+)$", bt, re.M))
-    assert settings["CASCADE_EN"] == "1", settings
-    assert settings["CASCADE_1ST_EN"] == "1", settings
-    assert settings["CHAIN_OUTPUT_EN"] == "1", settings
-    assert f"{sites[0]}:ACCUMULATE" in bt
+    for setting in ("CASCADE_EN", "CASCADE_1ST_EN", "CHAIN_OUTPUT_EN"):
+        expected = int(mul["parameters"].get(setting, "0"), 2)
+        assert int(settings.get(setting, "0")) == expected, settings
+    if args.controls is not None:
+        for control, setting in (("ACCUMULATE", "ACC_INV"), ("LOADCONST", "PRELOAD_INV"),
+                                 ("NEGATE", "DEC_INV"), ("SUB", "SUB_INV")):
+            expected = "0" if args.controls == "1" else "1"
+            assert settings.get(setting, "0") == expected, settings
+            assert not re.search(r"^r \S+ " + re.escape(f"{site}:{control}") + r"$", bt, re.M), control
+    else:
+        assert f"{site}:ACCUMULATE" in bt
     assert (out / "top.rbf").read_bytes()
     print("PASS", sites[0])
 

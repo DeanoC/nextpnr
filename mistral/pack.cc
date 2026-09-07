@@ -59,7 +59,11 @@ bool dsp_shared_control_nets_equal(const CellInfo *a, const CellInfo *b)
     for (IdString port : {id_CLK, id_ACLR, id_ENA, id_ACCUMULATE, id_SUB, id_NEGATE, id_LOADCONST}) {
         const NetInfo *an = a->getPort(port);
         const NetInfo *bn = b->getPort(port);
-        if (an != nullptr && bn != nullptr && an != bn)
+        // A hard constant has no net after packing, so compare both the net
+        // identity and the retained pin state. Otherwise two M9 lanes tied
+        // to opposite constants would be incorrectly clustered and the
+        // bitstream would apply the first lane's shared setting to both.
+        if (an != bn || a->get_pin_state(port) != b->get_pin_state(port))
             return false;
     }
     return true;
@@ -170,7 +174,6 @@ struct MistralPacker
 
     void process_inv_constants(CellInfo *cell)
     {
-        // TODO: we might need to create missing inputs here in some cases so we can tie them to the correct constant?
         // Fold inverters and constants into a cell
         for (auto &port : cell->ports) {
             // Iterate over all inputs
@@ -204,6 +207,53 @@ struct MistralPacker
                     cell->connectPort(port_name, (req_mux == PIN_1) ? vcc_net : gnd_net);
                 }
             }
+        }
+    }
+
+    void ensure_dsp_control_ports()
+    {
+        // The Yosys DSP cells intentionally contain only the controls used by
+        // the RTL. The physical block still needs explicit defaults on its
+        // control inputs, so materialise the omitted inputs before constant
+        // folding. This gives bitstream generation a PIN_0/PIN_1 state to
+        // encode instead of silently leaving the hardware default selected.
+        const std::array<IdString, 7> controls{
+                id_CLK, id_ACLR, id_ENA, id_ACCUMULATE, id_SUB, id_NEGATE, id_LOADCONST};
+        for (auto &entry : ctx->cells) {
+            CellInfo *cell = entry.second.get();
+            if (!is_dsp_multiplier(cell->type))
+                continue;
+            for (IdString control : controls)
+                if (!cell->ports.count(control))
+                    cell->addInput(control);
+        }
+    }
+
+    bool is_global_dsp_clock(const NetInfo *net) const
+    {
+        // MISTRAL_CLKBUF.Q is the output of the dedicated global clock path.
+        // Any other source (including an HPS/GPIO signal) needs the DSP's
+        // fabric CLKIN alternative.
+        return net != nullptr && net->driver.cell != nullptr &&
+               net->driver.cell->type.in(id_MISTRAL_CLKBUF, id_MISTRAL_CLKENA) && net->driver.port == id_Q;
+    }
+
+    void select_dsp_control_pinmaps()
+    {
+        const IdString clk_fabric = ctx->id("CLK_FABRIC");
+        const IdString aclr_fabric = ctx->id("ACLR_FABRIC");
+        for (auto &entry : ctx->cells) {
+            CellInfo *cell = entry.second.get();
+            if (!is_dsp_multiplier(cell->type))
+                continue;
+
+            NetInfo *clk = cell->getPort(id_CLK);
+            if (clk != nullptr && !is_global_dsp_clock(clk))
+                cell->pin_data[id_CLK].bel_pins = {clk_fabric};
+
+            NetInfo *aclr = cell->getPort(id_ACLR);
+            if (aclr != nullptr && !is_global_dsp_clock(aclr))
+                cell->pin_data[id_ACLR].bel_pins = {aclr_fabric};
         }
     }
 
@@ -585,7 +635,8 @@ struct MistralPacker
                     dsp_reg_param(ci->params, id_INREG_CTRL_AZ) || dsp_reg_param(ci->params, id_INREG_CTRL_BX) ||
                     dsp_reg_param(ci->params, id_INREG_CTRL_BY) || dsp_reg_param(ci->params, id_INREG_CTRL_BZ) ||
                     dsp_reg_param(ci->params, id_OREG_CTRL)) {
-                    if (ci->getPort(id_CLK) == nullptr)
+                    if (ci->getPort(id_CLK) == nullptr && ci->get_pin_state(id_CLK) != PIN_0 &&
+                        ci->get_pin_state(id_CLK) != PIN_1)
                         log_error("DSP cell '%s' enables a register without a CLK port.\n", ctx->nameOf(ci));
                 }
                 if (ci->type == id_MISTRAL_MUL18X18 && dsp_bool_param(ci->params, id_PREADDER_EN))
@@ -1182,7 +1233,9 @@ struct MistralPacker
         setup_clock_enables();
         setup_plls();
         fold_inverted_pll_clock_buffers();
+        ensure_dsp_control_ports();
         pack_constants();
+        select_dsp_control_pinmaps();
         constrain_carries();
         constrain_lutram();
         setup_m10ks();

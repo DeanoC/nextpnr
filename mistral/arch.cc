@@ -67,7 +67,10 @@ bool dsp_shared_config_equal(const CellInfo *a, const CellInfo *b)
     for (IdString port : {id_CLK, id_ACLR, id_ENA, id_ACCUMULATE, id_SUB, id_NEGATE, id_LOADCONST}) {
         const NetInfo *an = a->getPort(port);
         const NetInfo *bn = b->getPort(port);
-        if (an != nullptr && bn != nullptr && an != bn)
+        // Hard constants have no net after packing. Keep their retained pin
+        // states in the shared-control comparison so opposite constants do
+        // not become legal occupants of one three-lane DSP tile.
+        if (an != bn || a->get_pin_state(port) != b->get_pin_state(port))
             return false;
     }
     return true;

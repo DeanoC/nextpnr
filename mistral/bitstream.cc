@@ -210,6 +210,47 @@ struct MistralBitgen
         set_reg(CycloneV::INREG_CTRL_BZ, id_INREG_CTRL_BZ);
         set_reg(CycloneV::OREG_CTRL, id_OREG_CTRL);
 
+        // DSP control inputs are active-high at the tile boundary. Keep the
+        // packed PIN_0/PIN_1/PIN_INV state and translate it into the DSP's
+        // inversion/force bits instead of leaving a disconnected control at
+        // its silicon default.
+        auto control_state = [&](IdString port, CellPinState default_state) {
+            auto it = first->pin_data.find(port);
+            if (it != first->pin_data.end() && it->second.state != PIN_SIG)
+                return it->second.state;
+            if (first->getPort(port) == nullptr)
+                return default_state;
+            return PIN_SIG;
+        };
+        auto control_inverted = [&](IdString port, CellPinState default_state) {
+            CellPinState state = control_state(port, default_state);
+            return state == PIN_0 || state == PIN_INV;
+        };
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::ACC_INV, 0,
+                                  control_inverted(id_ACCUMULATE, PIN_0)));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::PRELOAD_INV, 0,
+                                  control_inverted(id_LOADCONST, PIN_0)));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::SUB_INV, 0,
+                                  control_inverted(id_SUB, PIN_0)));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::DEC_INV, 0,
+                                  control_inverted(id_NEGATE, PIN_0)));
+
+        auto uses_fabric_pin = [&](IdString port, const char *pin) {
+            if (first->getPort(port) == nullptr)
+                return true;
+            const auto &pins = first->pin_data.at(port).bel_pins;
+            return !pins.empty() && pins.front() == ctx->id(pin);
+        };
+        // Unrouted fabric clear is low (unlike the arithmetic/data inputs).
+        // Select it for constants and keep the unused second clear inactive.
+        CellPinState aclr_state = control_state(id_ACLR, PIN_0);
+        NPNR_ASSERT(cv->bmux_n_set(CycloneV::DSP, pos, CycloneV::ACLR0_SEL, 0,
+                                  uses_fabric_pin(id_ACLR, "ACLR_FABRIC") ? 2 : 0));
+        NPNR_ASSERT(cv->bmux_n_set(CycloneV::DSP, pos, CycloneV::ACLR1_SEL, 0, 3));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::ACLR0_INV, 0,
+                                  aclr_state == PIN_1 || aclr_state == PIN_INV));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::ACLR1_INV, 0, false));
+
         NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::PREADDER_EN, 0, preadder));
         NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::PREADDER_SUB, 0,
                                   dsp_bool_param(first->params, id_PREADDER_SUB)));
@@ -227,11 +268,25 @@ struct MistralBitgen
                             dsp_reg_param(first->params, id_INREG_CTRL_BY) ||
                             dsp_reg_param(first->params, id_INREG_CTRL_BZ) || dsp_reg_param(first->params, id_OREG_CTRL);
         if (any_register) {
-            if (first->getPort(id_CLK) == nullptr)
+            if (first->getPort(id_CLK) == nullptr && first->get_pin_state(id_CLK) != PIN_0 &&
+                first->get_pin_state(id_CLK) != PIN_1)
                 log_error("DSP cell '%s' enables a register without a CLK port.\n", ctx->nameOf(first));
+            CellPinState ena_state = control_state(id_ENA, PIN_1);
+            bool ena_inverted = ena_state == PIN_0 || ena_state == PIN_INV;
+            bool ena_forced = first->getPort(id_ENA) == nullptr && ena_state != PIN_0;
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::ENABLE0_INV, 0, ena_inverted));
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::ENABLE0_FORCE, 0,
-                                      first->getPort(id_ENA) == nullptr));
+                                      ena_forced));
+
+            CellPinState clk_state = control_state(id_CLK, PIN_SIG);
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::CLK0_INV, 0,
+                                      clk_state == PIN_1 || clk_state == PIN_INV));
         }
+
+        NPNR_ASSERT(cv->bmux_n_set(CycloneV::DSP, pos, CycloneV::CLK0_SEL, 0,
+                                  uses_fabric_pin(id_CLK, "CLK_FABRIC") ? 3 : 0));
+        NPNR_ASSERT(cv->bmux_n_set(CycloneV::DSP, pos, CycloneV::CLK1_SEL, 0, 4));
+        NPNR_ASSERT(cv->bmux_n_set(CycloneV::DSP, pos, CycloneV::CLK2_SEL, 0, 5));
 
         // Unrouted DSP inputs are 1; invert unused inputs to keep them at 0.
         for (int group = 0; group < 12; ++group) {

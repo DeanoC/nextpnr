@@ -39,10 +39,11 @@ constexpr std::array<int, 3> mistral_dsp_preadder_y_groups{{2, 3, 8}};
 constexpr std::array<int, 3> mistral_dsp_preadder_z_groups{{4, 5, 10}};
 
 // The M18X18P36 mode uses AX groups 0/1, AY groups 2/3, and the optional
-// 36-bit addend on BX groups 6..9 (least-significant slice first).
+// 36-bit addend on groups 8/9 (low half) and 6/7 (high half). Tracing
+// Quartus 17.0.2's A*B+C input routes confirms this concatenation order.
 constexpr std::array<int, 2> mistral_dsp_18x18_a_groups{{0, 1}};
 constexpr std::array<int, 2> mistral_dsp_18x18_b_groups{{2, 3}};
-constexpr std::array<int, 4> mistral_dsp_18x18_c_groups{{6, 7, 8, 9}};
+constexpr std::array<int, 4> mistral_dsp_18x18_c_groups{{8, 9, 6, 7}};
 
 // A 27x27 multiplier uses the same operand packing as the three 9x9 mode,
 // with one 54-bit result. RESULT port 36 is the physical hole between the

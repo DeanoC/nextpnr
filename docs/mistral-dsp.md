@@ -40,8 +40,29 @@ does not support accumulator or cascade controls. M27 has no addend or
 preadder port in this backend, but accepts the shared accumulator/cascade
 controls.
 
+The DSP control inputs are materialised by `mistral/pack.cc` even when Yosys
+omits them. This is required because the arithmetic controls default high when
+left floating. Constant zero/one and inverter drivers are folded into the
+retained pin state, then emitted as the DSP arithmetic inversion bits
+(`ACC_INV`, `PRELOAD_INV`, `SUB_INV`, and `DEC_INV`) or the registered enable
+force/inversion bits. Unused asynchronous clear selects the low-default fabric input without
+inversion. Constant-high clear uses its inversion bit. The same state is part of the M9 shared-control
+legality check, preventing lanes tied to opposite constants from sharing one
+site.
+
+Global clock-buffer outputs use the dedicated DSP TCLK input. A connected
+fabric `CLK` or `ACLR` net uses the additional `CLK_FABRIC` or `ACLR_FABRIC`
+BEL pin, mapped to `CLKIN.3` or `ACLR.2`, respectively. The selectors follow
+the selected BEL pins in every DSP mode. Hard clock constants use the fabric
+input and its inversion bit.
+
+M18 C bits use DATAIN groups `{8, 9, 6, 7}` in increasing significance order.
+Quartus routing confirms that the two 18-bit halves must be exchanged relative
+to numerical group order. This implements the P36 addend without enabling
+cascade-chain mode.
+
 The existing packer's constant/inverter folding is enabled through
-`mistral/pins.cc`. DSP inputs float high and have per-bit inversion controls.
+`mistral/pins.cc`. DSP data inputs float high and have per-bit inversion controls.
 `mistral/bitstream.cc` selects the mode, writes `AX_SIGNED`/`AY_SIGNED` from
 the Yosys parameters (default true), and writes all twelve `DATA_INV` groups.
 Unused inputs are zeroed. Register muxes default to bypass, while explicitly
@@ -63,7 +84,7 @@ This implementation starts from these exact revisions:
 
 | Repository | Base |
 | --- | --- |
-| nextpnr | `186e3c96327d5b1af37e91daae3a15fd2c7854d8` |
+| nextpnr | `89f7f1935e746ac38b94a0b65e9121a0d8fcce6b` |
 | Mistral | `78ba2a580ae2523403d4f4f91891a6b11d7b6aba` |
 | Yosys | `13b43f8c85ec430a33ee55d058fb4c32b42b6910` |
 | misteross regression | `2d171c8f6e9ef55ef4b34a7fe035aa176c30144b` |
@@ -107,6 +128,16 @@ python3 "$NEXTPNR_SOURCE/mistral/tests/mul18x18_mac.py" --nextpnr "$DSP_BUILD/ne
 python3 "$NEXTPNR_SOURCE/mistral/tests/mul18x18_registered.py" --nextpnr "$DSP_BUILD/nextpnr-mistral" --mistral-cv "$MISTRAL_CV" --fixture "$MISTEROSS/build/oss/060_dsp_mul/synth.json" --qsf "$MISTEROSS/boards/de10nano/pins.qsf" --sdc "$MISTEROSS/boards/de10nano/clocks.sdc" --output "$DSP_RESULTS/mul18x18-registered"
 ```
 
+The control-routing variants use the real ladder fixtures without changing
+the misteross checkout:
+
+```sh
+python3 "$NEXTPNR_SOURCE/mistral/tests/mul18x18_mac.py" --nextpnr "$DSP_BUILD/nextpnr-mistral" --mistral-cv "$MISTRAL_CV" --fixture "$MISTEROSS/build/oss/450_dsp_mac/synth.json" --qsf "$MISTEROSS/boards/de10nano/pins.qsf" --sdc "$MISTEROSS/boards/de10nano/clocks.sdc" --output "$DSP_RESULTS/mul18x18-mac-real"
+python3 "$NEXTPNR_SOURCE/mistral/tests/mul18x18_registered.py" --nextpnr "$DSP_BUILD/nextpnr-mistral" --mistral-cv "$MISTRAL_CV" --fixture "$MISTEROSS/build/oss/460_dsp_reg/synth.json" --qsf "$MISTEROSS/boards/de10nano/pins.qsf" --sdc "$MISTEROSS/boards/de10nano/clocks.sdc" --output "$DSP_RESULTS/mul18x18-registered-real"
+python3 "$NEXTPNR_SOURCE/mistral/tests/mul18x18_registered.py" --fabric-controls --nextpnr "$DSP_BUILD/nextpnr-mistral" --mistral-cv "$MISTRAL_CV" --fixture "$MISTEROSS/build/oss/460_dsp_reg/synth.json" --qsf "$MISTEROSS/boards/de10nano/pins.qsf" --sdc "$MISTEROSS/boards/de10nano/clocks.sdc" --output "$DSP_RESULTS/mul18x18-registered-fabric"
+python3 "$NEXTPNR_SOURCE/mistral/tests/mul18x18_registered.py" --constant-controls --nextpnr "$DSP_BUILD/nextpnr-mistral" --mistral-cv "$MISTRAL_CV" --fixture "$MISTEROSS/build/oss/460_dsp_reg/synth.json" --qsf "$MISTEROSS/boards/de10nano/pins.qsf" --sdc "$MISTEROSS/boards/de10nano/clocks.sdc" --output "$DSP_RESULTS/mul18x18-registered-constant"
+```
+
 These fixtures check the mode/control fields in the decompressed bitstream,
 one DSP used, no M10K or PLL use, a compressed nonempty RBF, and a passing
 50 MHz clock constraint. They are host-only configuration checks; they do not
@@ -140,3 +171,10 @@ builds. Do not rewrite those stamps to make an uncommitted tool appear pinned.
 For development, run the same nextpnr command directly, as the regression does.
 After review and authorized tool commits, update the nextpnr and Mistral lock
 entries, bootstrap them normally, then run `make oss EXP=060_dsp_mul`.
+
+The follow-up DSP control and C-order corrections were also checked on the
+DE10-Nano kit: M27 with controls omitted, M18 A*B+C without cascade, and M18
+registered multiplication with ENA hold/resume. See the [recorded results and
+repeat instructions](../mistral/tests/fixtures/dsp-controls/README.md) and
+[hardware probe](../mistral/tests/dsp_probe.sh). Fabric-control and hard-constant
+variants have host routing/configuration coverage.

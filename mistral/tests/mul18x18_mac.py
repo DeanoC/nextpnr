@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Route the M18X18P36 multiply-add and cascade controls."""
+"""Route an M18X18P36 multiply-add with zeroed DSP controls."""
 
 import argparse
 import json
@@ -12,33 +12,32 @@ def make_fixture(path: Path) -> dict:
     design = json.loads(path.read_text())
     module = design["modules"]["top"]
     cells = module["cells"]
-    names = [name for name, cell in cells.items() if cell["type"] == "MISTRAL_MUL9X9"]
+    names = [name for name, cell in cells.items() if cell["type"] in ("MISTRAL_MUL9X9", "MISTRAL_MUL18X18")]
     assert len(names) == 1, names
     mul = cells[names[0]]
-    mul["type"] = "MISTRAL_MUL18X18"
-    mul["parameters"].update(CASCADE_EN="1", CASCADE_1ST_EN="1", CHAIN_OUTPUT_EN="1")
-    mul["connections"]["A"] = list(mul["connections"]["A"]) + ["0"] * 9
-    mul["connections"]["B"] = list(mul["connections"]["B"]) + ["0"] * 9
-    mul["port_directions"]["C"] = "input"
-    mul["connections"]["C"] = list(mul["connections"]["A"][:9]) * 4
-    mul["port_directions"]["ACCUMULATE"] = "input"
-    mul["connections"]["ACCUMULATE"] = [4]
-    mul["port_directions"]["NEGATE"] = "input"
-    mul["connections"]["NEGATE"] = [4]
-    mul["port_directions"]["LOADCONST"] = "input"
-    mul["connections"]["LOADCONST"] = [4]
-    mul["port_directions"]["SUB"] = "input"
-    mul["connections"]["SUB"] = [4]
+    if mul["type"] == "MISTRAL_MUL9X9":
+        mul["type"] = "MISTRAL_MUL18X18"
+        mul["connections"]["A"] = list(mul["connections"]["A"]) + ["0"] * 9
+        mul["connections"]["B"] = list(mul["connections"]["B"]) + ["0"] * 9
+        mul["port_directions"]["C"] = "input"
+        mul["connections"]["C"] = list(mul["connections"]["A"][:9]) * 4
+        # Exercise hard constant handling on every arithmetic control.
+        for control in ("ACCUMULATE", "NEGATE", "LOADCONST", "SUB"):
+            mul["port_directions"][control] = "input"
+            mul["connections"][control] = ["0"]
+    for parameter in ("CASCADE_EN", "CASCADE_1ST_EN", "CHAIN_OUTPUT_EN"):
+        mul["parameters"].pop(parameter, None)
 
-    used = [
-        bit
-        for cell in cells.values()
-        for bits in cell.get("connections", {}).values()
-        for bit in bits
-        if isinstance(bit, int)
-    ]
-    next_net = max(used) + 1
-    mul["connections"]["Y"] = list(mul["connections"]["Y"]) + list(range(next_net, next_net + 18))
+    if len(mul["connections"]["Y"]) == 18:
+        used = [
+            bit
+            for cell in cells.values()
+            for bits in cell.get("connections", {}).values()
+            for bit in bits
+            if isinstance(bit, int)
+        ]
+        next_net = max(used) + 1
+        mul["connections"]["Y"] = list(mul["connections"]["Y"]) + list(range(next_net, next_net + 18))
     return design
 
 
@@ -56,7 +55,10 @@ def main():
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=True)
     fixture = out / "synth.json"
-    fixture.write_text(json.dumps(make_fixture(args.fixture)))
+    design = make_fixture(args.fixture)
+    fixture.write_text(json.dumps(design))
+    mul = next(cell for cell in design["modules"]["top"]["cells"].values()
+               if cell["type"] == "MISTRAL_MUL18X18")
     run(
         [
             str(args.nextpnr.resolve()),
@@ -106,13 +108,32 @@ def main():
     assert len(sites) == 1, sites
     site = sites[0]
     settings = dict(re.findall(r"^s " + re.escape(site) + r":(\S+) (\S+)$", bt, re.M))
-    assert settings["CASCADE_EN"] == "1", settings
-    assert settings["CASCADE_1ST_EN"] == "1", settings
-    assert settings["CHAIN_OUTPUT_EN"] == "1", settings
-    for group in (6, 7, 8, 9):
-        assert f"{site}.{group}:DATAIN." in bt
-    for control in ("ACCUMULATE", "SUB", "NEGATE", "LOADCONST"):
-        assert f"{site}:{control}" in bt
+    for setting in ("CASCADE_EN", "CASCADE_1ST_EN", "CHAIN_OUTPUT_EN"):
+        assert settings.get(setting, "0") == "0", settings
+    # Quartus uses the invert bits to make the unused control inputs low. The
+    # same settings are required for a constant-zero JSON connection.
+    for setting in ("ACC_INV", "PRELOAD_INV", "SUB_INV", "DEC_INV"):
+        assert settings[setting] == "1", settings
+    assert settings["ACLR0_SEL"] == "2", settings
+    assert settings["ACLR1_SEL"] == "3", settings
+    # Quartus's A*B+C oracle routes C[17:0] to groups 8/9 and C[35:18]
+    # to groups 6/7. The 450 fixture has 16 variable low bits: routing them
+    # to 6/7 instead silently adds C<<18, invisible on its low-16-bit GPI.
+    c_bits = mul["connections"]["C"]
+    assert len(c_bits) == 36, c_bits
+    for slice_index, group in enumerate((8, 9, 6, 7)):
+        expected_inv = 0
+        for bit, net in enumerate(c_bits[9 * slice_index:9 * (slice_index + 1)]):
+            endpoint = f"{site}.{group}:DATAIN.{bit}"
+            routed = re.search(r"^r \S+ " + re.escape(endpoint) + r"$", bt, re.M)
+            if isinstance(net, int):
+                assert routed, endpoint
+            else:
+                assert net in ("0", "1"), net
+                assert not routed, endpoint
+                expected_inv |= (net == "0") << bit
+        actual_inv = int(settings.get(f"DATA_INV.{group}", "0"), 16)
+        assert actual_inv == expected_inv, (group, actual_inv, expected_inv)
     assert (out / "top.rbf").read_bytes()
     print("PASS", site)
 
