@@ -16,16 +16,47 @@ def fpll_settings(text):
     return dict(re.findall(r"^s (FPLL\.\S+) (.+)$", text, re.M))
 
 
-def main():
+def crossing_source(phases, group=None):
+    """Use only live launch/capture registers so isolated routes stay compact."""
+    count = len(phases)
+    pairs = [(source, target, edge) for source in range(count)
+             for target in range(count) if source != target
+             for edge in ("posedge", "negedge")]
+    selected = [(i, pair) for i, pair in enumerate(pairs)
+                if group is None or i % (2 * (count - 1)) == group]
+    lines = ["module top(input wire FPGA_CLK1_50);",
+             f"wire [{count - 1}:0] clocks; wire locked; wire [31:0] gpo;"]
+    for i, (source, target, edge) in selected:
+        lines += [f"reg launch{i} = 0, capture{i} = 0;",
+                  f"always @(posedge clocks[{source}]) launch{i} <= gpo[{i}];",
+                  f"always @({edge} clocks[{target}]) capture{i} <= launch{i};"]
+    parameters = ['.reference_clock_frequency("50.0 MHz")',
+                  f'.number_of_clocks({count})', '.operation_mode("direct")',
+                  '.fractional_vco_multiplier("false")']
+    for i, phase in enumerate(phases):
+        parameters += [f'.output_clock_frequency{i}("25.0 MHz")',
+                       f'.phase_shift{i}("{phase * 1000} ps")', f'.duty_cycle{i}(50)']
+    lines += ["altera_pll #(" + ", ".join(parameters) +
+              ") pll (.refclk(FPGA_CLK1_50), .rst(1'b0), .outclk(clocks), .locked(locked));"]
+    captures = ", ".join(f"capture{i}" for i, _ in reversed(selected))
+    lines += ["cyclonev_hps_interface_mpu_general_purpose hps_gp (.gp_in({" +
+              f"{31 - len(selected)}'b0, locked, " + captures + "}), .gp_out(gpo));", "endmodule"]
+    return "\n".join(lines) + "\n"
+
+
+def main(phases=(0, 10, 20, 30), profile=None):
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("yosys", "nextpnr", "mistral-cv", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
     args = parser.parse_args()
     fixture = Path(__file__).resolve().parent
-    out = args.output.resolve()
+    count = len(phases)
+    out = args.output.resolve() / profile if profile else args.output.resolve()
     out.mkdir(parents=True, exist_ok=True)
+    source_file = out / "top.v"
+    source_file.write_text(crossing_source(phases))
     run([str(args.yosys.resolve()), "-p",
-         f'read_verilog "{fixture / "quadrature.v"}"; '
+         f'read_verilog "{source_file}"; '
          'synth_intel_alm -nobram -nolutram -nodsp -top top; '
          f'write_json "{out / "synth.json"}"'], out / "yosys.log")
     design = json.loads((out / "synth.json").read_text())
@@ -42,7 +73,7 @@ def main():
     report = json.loads((out / "timing.json").read_text())
     util = report["utilization"]
     assert util["altera_pll"] == {"used": 1, "available": 6}
-    assert util["MISTRAL_CLKENA"]["used"] == 4
+    assert util["MISTRAL_CLKENA"]["used"] == count
     assert util["cyclonev_hps_interface_mpu_general_purpose"]["used"] == 1
     for kind in ("MISTRAL_MUL9X9", "MISTRAL_M10K", "MISTRAL_MLAB"):
         assert util.get(kind, {"used": 0})["used"] == 0
@@ -50,39 +81,34 @@ def main():
         source = int(re.search(r"clocks\[(\d)\]", path["from"])[1])
         target = int(re.search(r"clocks\[(\d)\]", path["to"])[1])
         offset = 20 if path["to"].startswith("negedge") else 0
-        budget = ((target - source) * 10 + offset) % 40 or 40
+        budget = (phases[target] - phases[source] + offset) % 40 or 40
         assert abs(path["max_delay"] - budget) < 0.002, path
         delay = sum(segment["delay"] for segment in path["path"])
         assert 0 < delay < budget, path
         return source, 1000 * (budget / 40) / delay
 
     # Reports retain only the worst destination per source. Verify the combined
-    # design's aggregate Fmax against that path, then isolate six groups so
+    # design's aggregate Fmax against that path, then isolate compact groups so
     # every ordered pair and both capture edges become visible in a report.
-    assert len(report["critical_paths"]) == 4
+    assert len(report["critical_paths"]) == count
     for path in report["critical_paths"]:
         source, expected = check_path(path)
         clock = report["fmax"][f"clocks[{source}]"]
         assert abs(clock["constraint"] - 25) < 0.001 and clock["achieved"] >= 25, clock
         assert abs(clock["achieved"] - expected) < expected * 0.0001, (clock, expected)
     observed = set()
-    for group in range(6):
+    for group in range(2 * (count - 1)):
         case = out / f"crossings{group}"
         case.mkdir(exist_ok=True)
-        source_text = (fixture / "quadrature.v").read_text()
-        for index in range(24):
-            if index % 6 != group:
-                source_text = source_text.replace(f"capture{index} <= launch{index};",
-                                                  f"capture{index} <= 1'b0;")
         source_file = case / "top.v"
-        source_file.write_text(source_text)
+        source_file.write_text(crossing_source(phases, group))
         run([str(args.yosys.resolve()), "-p", f'read_verilog "{source_file}"; '
              'synth_intel_alm -nobram -nolutram -nodsp -top top; '
              f'write_json "{case / "synth.json"}"'], case / "yosys.log")
         run(command + ["--json", str(case / "synth.json"),
                        "--report", str(case / "timing.json")], case / "route.log")
         group_report = json.loads((case / "timing.json").read_text())
-        assert len(group_report["critical_paths"]) == 4
+        assert len(group_report["critical_paths"]) == count
         for path in group_report["critical_paths"]:
             source, expected = check_path(path)
             observed.add((path["from"], path["to"]))
@@ -90,7 +116,7 @@ def main():
             assert abs(clock["constraint"] - 25) < 0.001 and clock["achieved"] >= 25, clock
             assert abs(clock["achieved"] - expected) < expected * 0.0001, (clock, expected)
     expected_crossings = {(f"posedge clocks[{source}]", f"{edge} clocks[{target}]")
-                          for source in range(4) for target in range(4) if source != target
+                          for source in range(count) for target in range(count) if source != target
                           for edge in ("posedge", "negedge")}
     assert observed == expected_crossings, (observed, expected_crossings)
     run([str(args.mistral_cv.resolve()), "decomp", "5CSEBA6U23I7",
@@ -99,18 +125,18 @@ def main():
     assert len(re.findall(r"^s FPLL.*:FPLL_ENABLE 1$", bt, re.M)) == 1
     settings = fpll_settings(bt)
     assert settings
-    for lane, select in ((0, "14"), (1, "17"), (2, "16"), (3, "15")):
+    for lane, select in list(enumerate(("14", "17", "16", "15")))[4 - count:]:
         assert f"s CMUXHG.000.035:INPUT_SEL.{lane} {select}" in bt.splitlines()
         assert f"s CMUXHG.000.035:TESTSYN_ENOUT_SELECT.{lane} PRE_SYNENB" in bt.splitlines()
     routed = json.loads((out / "routed.json").read_text())["modules"]["top"]["cells"]
     # BEL creation preserves lane2/lane3/lane1 indices, then appends lane0.
     for index, bel in enumerate(("MISTRAL_CLKENA.0.35.0", "MISTRAL_CLKENA.0.35.1", "MISTRAL_CLKENA.0.35.2",
-                                 "MISTRAL_CLKENA.0.35.3")):
+                                 "MISTRAL_CLKENA.0.35.3")[:count]):
         net = [cells["pll"]["connections"]["outclk"][index]]
         name = next(name for name, cell in cells.items()
                     if cell["type"] == "MISTRAL_CLKBUF" and cell["connections"]["A"] == net)
         assert routed[name]["attributes"]["NEXTPNR_BEL"] == bel, routed[name]
-    reference = fixture / "fixtures" / "quadrature"
+    reference = fixture / "fixtures" / "phase-select" / profile if profile else fixture / "fixtures" / "quadrature"
     hashes = json.loads((reference / "sha256.json").read_text())
     compressed = (reference / "top.rbf.gz").read_bytes()
     assert hashlib.sha256(compressed).hexdigest() == hashes["rbf.gz"]
@@ -134,30 +160,40 @@ def main():
         assert "ERROR" in log and any(reason in log for reason in reasons), log
 
     for name, changes in (
-        ("permuted", {"phase_shift1": "20000 ps", "phase_shift2": "10000 ps"}),
-        ("partial", {"phase_shift3": "0 ps"}),
+        ("phase0", {"phase_shift0": "10000 ps"}),
+        *[(f"phase{i}-{value}", {f"phase_shift{i}": f"{value} ps"})
+          for i in range(1, count) for value in (5000, -10000, 40000)],
         ("reference", {"reference_clock_frequency": "25 MHz"}),
         ("fractional", {"fractional_vco_multiplier": "true"}),
-        *[(f"duty{i}", {f"duty_cycle{i}": format(25, "032b")}) for i in range(4)],
-        *[(f"frequency{i}", {f"output_clock_frequency{i}": "50 MHz"}) for i in range(4)],
+        *[(f"duty{i}", {f"duty_cycle{i}": format(25, "032b")}) for i in range(count)],
+        *[(f"frequency{i}", {f"output_clock_frequency{i}": "50 MHz"}) for i in range(count)],
     ):
         invalid = copy.deepcopy(design)
         invalid["modules"]["top"]["cells"]["pll"]["parameters"].update(changes)
         reject(name, invalid, ("phase", "quadrature"))
-    for index in (1, 2, 3):
+    for index in range(count):
         conflict_sdc = out / f"conflict{index}.sdc"
         conflict_sdc.write_text(sdc.read_text() +
                                 f"create_clock -period 40 [get_nets {{clocks[{index}]}}]\n")
         custom = command.copy()
         custom[custom.index("--sdc") + 1] = str(conflict_sdc)
-        reject(f"constraint{index}", design,
-               ("shifted output must use the PLL-derived phase constraint",), custom)
+        if phases[index]:
+            reject(f"constraint{index}", design,
+                   ("shifted output must use the PLL-derived phase constraint",), custom)
+        else:
+            aligned_report = out / f"aligned{index}.json"
+            run(custom + ["--json", str(out / "synth.json"),
+                          "--report", str(aligned_report)], out / f"aligned{index}.log")
+            aligned = json.loads(aligned_report.read_text())
+            assert len(aligned["critical_paths"]) == count
+            for path in aligned["critical_paths"]:
+                check_path(path)
     module = design["modules"]["top"]
     inverted = {tuple(c["connections"]["Q"]) for c in cells.values()
                 if c["type"] == "MISTRAL_NOT"}
     buffers = [c for c in cells.values() if c["type"] == "MISTRAL_CLKBUF"
                and tuple(c["connections"]["A"]) in inverted]
-    assert len(buffers) == 4, buffers
+    assert len(buffers) == count, buffers
     for index, buffer in enumerate(buffers):
         names = [name for name, net in module["netnames"].items()
                  if net["bits"] == buffer["connections"]["Q"]]
@@ -169,7 +205,8 @@ def main():
         custom[custom.index("--sdc") + 1] = str(conflict_sdc)
         reject(f"inverse{index}", design,
                ("explicit clock constraint cannot describe the PLL phase",), custom)
-    print("PASS: quadrature full FPLL oracle, four global clocks, 24 phase crossings and rejection checks")
+    print(f"PASS: {profile or 'quadrature'} full FPLL oracle, {count} global clocks, "
+          f"{len(expected_crossings)} phase crossings and rejection checks")
     print("RBF sha256", hashlib.sha256((out / "top.rbf").read_bytes()).hexdigest())
 
 

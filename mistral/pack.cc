@@ -560,14 +560,17 @@ struct MistralPacker
                 log_error("PLL '%s': reference frequency must be 25, 50 or 100 MHz.\n", ctx->nameOf(ci));
             bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
             std::string phase1 = str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps");
-            bool shifted = phase1 != "0 ps";
-            bool quadrature = clocks == 4 && phase1 == "10000 ps" &&
-                              str_or_default(ci->params, ctx->id("phase_shift2"), "0 ps") == "20000 ps" &&
-                              str_or_default(ci->params, ctx->id("phase_shift3"), "0 ps") == "30000 ps";
-            auto phase = mistral_pll::select_phase_25mhz(phase1);
-            if (!phase || (shifted && clocks != 2 && !quadrature))
-                log_error("PLL '%s': phase profile requires two outputs with phase_shift1=10000, 20000 or 30000 ps.\n",
-                          ctx->nameOf(ci));
+            std::array<std::string, 4> phases{"0 ps", phase1, "0 ps", "0 ps"};
+            std::array<int, 4> phase_ns{};
+            bool shifted = false;
+            for (int i = 1; i < clocks; ++i) {
+                phases[i] = str_or_default(ci->params, ctx->idf("phase_shift%d", i), "0 ps");
+                auto phase = mistral_pll::select_phase_25mhz(phases[i]);
+                if (!phase)
+                    log_error("PLL '%s': phase_shift%d must be 0, 10000, 20000 or 30000 ps.\n", ctx->nameOf(ci), i);
+                phase_ns[i] = phase->shift_ns;
+                shifted |= phase_ns[i] != 0;
+            }
             int duty0 = int_or_default(ci->params, ctx->id("duty_cycle0"), 50);
             int duty1 = int_or_default(ci->params, ctx->id("duty_cycle1"), 50);
             std::array<int, 4> duties{duty0, duty1, 50, 50};
@@ -593,11 +596,11 @@ struct MistralPacker
                 profile[ctx->id("duty_cycle1")] = Property(duty1);
             }
             if (clocks >= 3) {
-                profile[ctx->id("phase_shift2")] = Property(quadrature ? "20000 ps" : "0 ps");
+                profile[ctx->id("phase_shift2")] = Property(phases[2]);
                 profile[ctx->id("duty_cycle2")] = Property(duties[2]);
             }
             if (clocks == 4) {
-                profile[ctx->id("phase_shift3")] = Property(quadrature ? "30000 ps" : "0 ps");
+                profile[ctx->id("phase_shift3")] = Property(phases[3]);
                 profile[ctx->id("duty_cycle3")] = Property(duties[3]);
             }
             if (ctx->args.device != "5CSEBA6U23I7")
@@ -657,10 +660,10 @@ struct MistralPacker
                 if (fractional || reference_mhz != 50)
                     log_error("PLL '%s': multi-output profile requires integer feedback and 50 MHz reference.\n",
                               ctx->nameOf(ci));
-                if (quadrature)
+                if (shifted)
                     for (int i = 0; i < clocks; ++i)
                         if (output_hzs[i] != 25000000 || duties[i] != 50)
-                            log_error("PLL '%s': quadrature profile requires four 25 MHz outputs with 50 percent duty.\n",
+                            log_error("PLL '%s': phase profile requires 25 MHz on every output with 50 percent duty.\n",
                                       ctx->nameOf(ci));
                 auto multi = mistral_pll::select_multi_hz(output_hzs, clocks, reference_mhz, duties);
                 if (!multi)
@@ -717,7 +720,7 @@ struct MistralPacker
                     (*out1->users.begin()).port != id_A)
                     log_error("PLL '%s': outclk[1] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
                 buf1 = (*out1->users.begin()).cell;
-                if (shifted && (out1->clkconstr || (buf1->getPort(id_Q) && buf1->getPort(id_Q)->clkconstr)))
+                if (phase_ns[1] != 0 && (out1->clkconstr || (buf1->getPort(id_Q) && buf1->getPort(id_Q)->clkconstr)))
                     log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
                               ctx->nameOf(ci));
             }
@@ -729,7 +732,7 @@ struct MistralPacker
                     (*out2->users.begin()).port != id_A)
                     log_error("PLL '%s': outclk[2] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
                 buf2 = (*out2->users.begin()).cell;
-                if (quadrature && (out2->clkconstr || (buf2->getPort(id_Q) && buf2->getPort(id_Q)->clkconstr)))
+                if (phase_ns[2] != 0 && (out2->clkconstr || (buf2->getPort(id_Q) && buf2->getPort(id_Q)->clkconstr)))
                     log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
                               ctx->nameOf(ci));
             }
@@ -741,7 +744,7 @@ struct MistralPacker
                     (*out3->users.begin()).port != id_A)
                     log_error("PLL '%s': outclk[3] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
                 buf3 = (*out3->users.begin()).cell;
-                if (quadrature && (out3->clkconstr || (buf3->getPort(id_Q) && buf3->getPort(id_Q)->clkconstr)))
+                if (phase_ns[3] != 0 && (out3->clkconstr || (buf3->getPort(id_Q) && buf3->getPort(id_Q)->clkconstr)))
                     log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
                               ctx->nameOf(ci));
             }
@@ -795,10 +798,9 @@ struct MistralPacker
                 std::array<NetInfo *, 4> outputs{out, out1, out2, out3};
                 std::array<CellInfo *, 4> buffers{buf, buf1, buf2, buf3};
                 for (int i = 0; i < clocks; ++i) {
-                    int shift_ns = quadrature ? 10 * i : (i == 1 ? phase->shift_ns : 0);
                     for (NetInfo *net : {outputs[i], buffers[i]->getPort(id_Q)}) {
                         net->clkconstr->phase_group = ci->name;
-                        net->clkconstr->phase_shift = ctx->getDelayFromNS(shift_ns);
+                        net->clkconstr->phase_shift = ctx->getDelayFromNS(phase_ns[i]);
                     }
                 }
             }

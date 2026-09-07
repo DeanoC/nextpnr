@@ -774,9 +774,9 @@ Four 25 MHz outputs can use the static phase sequence 0/90/180/270 degrees
 with a 50 MHz V11 reference, integer feedback, direct mode and 50% duty.
 Set `number_of_clocks=4`, all output frequencies to `25 MHz`, and
 `phase_shift0/1/2/3` to `0 ps`, `10000 ps`, `20000 ps`, `30000 ps`.
-This is a bounded exception to the zero-phase multi-output profiles:
-permuted/partial phase sequences, other frequencies/duties and fractional
-feedback remain rejected. Three-output phase profiles are not added.
+This is an example of the selectable quarter-cycle phases described below.
+Other frequencies/duties and fractional feedback remain rejected whenever
+a phase shift is requested.
 
 C6/C7/C5/C8 all divide by 12. The existing C7 preset 4 is joined by C5 preset 7
 and C8 preset 10, confirmed by the [bundled Quartus reference](fixtures/quadrature/README.md).
@@ -805,4 +805,40 @@ table, so reviewers do not need private artifacts or Quartus to run checks.
 
 Validation is host-only. Physical phase accuracy and analog clock behavior
 have not been measured; downstream pins and hardware integration remain
+separate work.
+
+
+## Selectable quarter-cycle phases
+
+Three or four 25 MHz outputs can independently select 0°,90°,180° or270°,
+with output 0 fixed at 0°. Use the exact phase strings `0 ps`, `10000 ps`,
+`20000 ps` or `30000 ps` for the corresponding `phase_shift` parameters.
+A 50 MHz V11 reference, integer feedback, direct mode and 50% duty are required
+whenever any output is shifted. Other angles, nonzero output 0 and unsupported
+frequency/duty combinations are rejected. All-zero phase profiles retain
+the existing general frequency/duty selection and timing behavior.
+
+The packer detects shifts on every output rather than only output 1. If any
+output is shifted, all outputs share the same phase origin, including repeated
+and zero phases. Two distinct outputs with equal phases therefore receive
+40 ns rising-to-rising and 20 ns rising-to-falling setup intervals.
+Explicit matching SDC clocks remain allowed on zero-phase outputs; shifted
+outputs must use derived phase constraints. Explicit inverse-buffer clocks
+remain rejected when their source belongs to the shared phase group.
+
+```sh
+python3 mistral/tests/pll/phase_select.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-phase-select
+```
+
+The mandatory [reference bundles](fixtures/phase-select/) cover 0/0/270°,
+0/270/90/180° and 0/180/180/0°. Each includes compressed Quartus RBF bytes,
+checksums, portable inputs and fitter evidence. The runner checks complete
+FPLL settings, counter-to-buffer mapping, all ordered clock pairs with both
+capture edges, aligned-zero SDC acceptance and shifted/inverted SDC rejection.
+The original 0/90/180/270° fixture remains a regression baseline.
+
+No bitstream preset table, analog setting, clock route or Mistral source
+changes are needed. This is host-only validation; physical phase accuracy
+has not been measured. Downstream pins and hardware integration remain
 separate work.
