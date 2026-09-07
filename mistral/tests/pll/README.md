@@ -766,3 +766,43 @@ the requested high/low fractions. `triple.py` and `quad.py` also accept
 No analog tuple, clock route or Mistral table is added. Tests are host-only;
 physical pulse-width accuracy and hardware acceptance remain unmeasured.
 Downstream pin changes remain separate integration work.
+
+
+## Four-output quadrature profile
+
+Four 25 MHz outputs can use the static phase sequence 0/90/180/270 degrees
+with a 50 MHz V11 reference, integer feedback, direct mode and 50% duty.
+Set `number_of_clocks=4`, all output frequencies to `25 MHz`, and
+`phase_shift0/1/2/3` to `0 ps`, `10000 ps`, `20000 ps`, `30000 ps`.
+This is a bounded exception to the zero-phase multi-output profiles:
+permuted/partial phase sequences, other frequencies/duties and fractional
+feedback remain rejected. Three-output phase profiles are not added.
+
+C6/C7/C5/C8 all divide by 12. The existing C7 preset 4 is joined by C5 preset 7
+and C8 preset 10, confirmed by the [bundled Quartus reference](fixtures/quadrature/README.md).
+No Mistral table, analog configuration or clock route is added.
+
+All four outputs and their buffers share a PLL phase origin. The timing
+engine uses the next strictly later capture edge, modulo the 40 ns period,
+including wraparound and coincident edges. No phase relation to the input
+reference is assumed. Explicit SDC clocks on shifted outputs or folded
+inverted buffer outputs are rejected because `create_clock` cannot express
+this relationship in the current frontend.
+
+```sh
+python3 mistral/tests/pll/quadrature.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-quadrature
+```
+
+The runner verifies reference hashes and all emitted FPLL settings, four
+clock-buffer placements and selectors, phase crossing setup budgets and
+reported Fmax, plus invalid profiles and contradictory SDC constraints.
+A combined design checks worst-path reporting; six compact four-path designs
+expose all 24 ordered-pair/capture-edge combinations individually because the
+report retains only the worst destination per source clock.
+The reference includes portable regeneration inputs and the fitter's phase
+table, so reviewers do not need private artifacts or Quartus to run checks.
+
+Validation is host-only. Physical phase accuracy and analog clock behavior
+have not been measured; downstream pins and hardware integration remain
+separate work.

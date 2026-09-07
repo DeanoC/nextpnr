@@ -232,6 +232,11 @@ struct MistralBitgen
             raw(CycloneV::DPRIO0_CNT_LO_DIV, counts->low, counter);
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
                                       counter, counts->odd));
+            auto phase = mistral_pll::select_phase_25mhz(
+                    str_or_default(ci->params, ctx->idf("phase_shift%d", i), "0 ps"));
+            NPNR_ASSERT(phase);
+            if (phase->shift_ns)
+                raw(CycloneV::CNT_PRESET, phase->c_preset, counter);
             raw(CycloneV::CNT_IN_SRC, 0, counter);
             flag(i == 2 ? CycloneV::C5_COUT_EN : CycloneV::C8_COUT_EN, true);
         }
