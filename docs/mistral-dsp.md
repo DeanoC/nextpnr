@@ -10,10 +10,13 @@ supported by this change.
 `mistral/dsp.cc` imports `CycloneV::dsp_get_pos()` and adds three z-lanes at
 each site. Lane 0 connects `A[8:0]`/`B[8:0]` to DATAIN groups 0/2 and
 `Y[17:0]` to RESULT[17:0]; lanes 1 and 2 use groups 6/8 and 7/9 with result
-slices 18:35 and 36:53. These are Mistral's existing ports and routing nodes,
-as documented in its `docs/cyclonev_details.rst`; no routing or configuration
-tables are added. BEL and cell names match, so the existing placer legality,
-BEL buckets and default pin mapping apply without cell renaming.
+slices 18:35 and 37:54. The physical RESULT namespace has a one-bit hole at
+36 between the second and third 9x9 products; using 36 as lane 2's base makes
+the fabric read `(product << 1) | 1` on Cyclone V hardware. These are Mistral's
+existing ports and routing nodes, as documented in its
+`docs/cyclonev_details.rst`; no routing or configuration tables are added.
+BEL and cell names match, so the existing placer legality, BEL buckets and
+default pin mapping apply without cell renaming.
 
 `mistral/pack.cc` forms strict same-site clusters after grouping compatible
 signedness profiles in deterministic cell-name order. The root is z=0 and
@@ -81,6 +84,19 @@ three-cell designs, checks one physical site with z lanes 0/1/2, and decodes
 the compressed RBF DATA_INV masks. Both require one HPS GP, zero M10K and a
 passing intended 50 MHz clock. This is host configuration evidence, not an
 arithmetic hardware test.
+
+The lane-2 result-route regression uses the exact three-lane reproducer from
+`DeanoC/mistral-dsp-lane2-repro`. After synthesizing its `rtl/top.v` with the
+locked Yosys and routing it, run:
+
+```sh
+python3 "$NEXTPNR_SOURCE/mistral/tests/mul9x9_result_route.py" \
+  --routed "$REPRO/build/current/routed.json" \
+  --bitstream-text "$REPRO/build/current/top.bt"
+```
+
+It fails on the old mapping with `RESULT.36..51` and passes with
+`RESULT.37..52` for the exposed low 16 product bits.
 
 At the misteross base above, real `make oss` builds require canonical local
 tool directories plus binary digests and commit stamps matching `toolchain.lock`.

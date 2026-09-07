@@ -33,13 +33,15 @@ struct MistralDspLane
 };
 
 // Cyclone V three-multiplier mode packs three 9x9 products into the 27-bit
-// A/B inputs and the low 54 bits of the result. The order follows Mistral's
-// documented AX/AY packing table: the low lane is the existing single-mode
-// mapping and the two upper lanes use groups 6/8 and 7/9.
+// A/B inputs and the low 54 logical result bits. The physical RESULT port has
+// a one-bit hole at 36, so the third product starts at port 37. The order
+// follows Mistral's documented AX/AY packing table: the low lane is the
+// existing single-mode mapping and the two upper lanes use groups 6/8 and
+// 7/9.
 constexpr std::array<MistralDspLane, 3> mistral_dsp_lanes{{
         {0, 2, 0},
         {6, 8, 18},
-        {7, 9, 36},
+        {7, 9, 37},
 }};
 
 NEXTPNR_NAMESPACE_END
