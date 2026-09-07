@@ -483,6 +483,9 @@ struct MistralPacker
             CellInfo *ci = cell.second.get();
             if (ci->type != id_MISTRAL_MLAB)
                 continue;
+            auto init = ci->params.find(id_INIT);
+            if (init != ci->params.end() && (init->second.is_string || init->second.str.size() > 32))
+                log_error("MLAB '%s': INIT must be a numeric value of at most 32 bits.\n", ctx->nameOf(ci));
             auto key = ctx->get_mlab_key(ci, true);
             int key_idx = mlab_keys(key);
             if (key_idx >= int(mlab_groups.size()))

@@ -1,0 +1,9 @@
+{
+  "device": "5CSEBA6U23I7",
+  "quartus": "17.0.2 Build602 Lite Edition",
+  "rbf_sha256": "afe11a6cb7ed6156530bffdc5802e1c5d67b5b7ee74fefc35de28e2b0aa2e1f5",
+  "rbf_bytes": 1953240,
+  "classification": "host-only Quartus configuration oracle; no hardware programmed",
+  "fit_mlab_memory_bits": 640,
+  "fit_mlab_cells": 20
+}

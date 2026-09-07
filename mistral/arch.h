@@ -502,7 +502,8 @@ struct Arch : BaseArch<ArchRanges>
     void reassign_alm_inputs(uint32_t lab, uint8_t alm);    // lab.cc
     void update_alm_input_count(uint32_t lab, uint8_t alm); // lab.cc
 
-    uint64_t compute_lut_mask(uint32_t lab, uint8_t alm); // lab.cc
+    uint64_t compute_lut_mask(uint32_t lab, uint8_t alm);  // lab.cc
+    uint64_t compute_mlab_mask(uint32_t lab, uint8_t alm); // lab.cc
 
     // Keeping track of unique MLAB write ports to assign them indices
     dict<IdString, IdString> get_mlab_key(const CellInfo *cell, bool include_raddr = false) const; // lab.cc
