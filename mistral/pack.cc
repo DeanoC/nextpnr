@@ -810,29 +810,50 @@ struct MistralPacker
             }
             BelId chosen;
             WireId pad = ctx->getBelPinWire(ref->driver.cell->bel, ref->driver.port);
-            for (auto &candidate : ctx->pll_clock_bels) {
-                WireId dst = ctx->getBelPinWire(candidate.first, id_refclk);
-                if (!ctx->pll_ref_select.count(PipId(pad.node, dst.node)) ||
-                    !ctx->checkBelAvail(candidate.first) || !ctx->checkBelAvail(candidate.second))
+            std::vector<BelId> candidates;
+            for (const auto &candidate : ctx->pll_clock_bels)
+                candidates.push_back(candidate.first);
+            // Preserve the established V11 site (0,14) before trying (0,31).
+            std::sort(candidates.begin(), candidates.end());
+            const std::array<int, 4> preferred_lanes{2, 3, 1, 0};
+            const std::array<CellInfo *, 4> buffers{buf, buf1, buf2, buf3};
+            for (BelId candidate : candidates) {
+                WireId dst = ctx->getBelPinWire(candidate, id_refclk);
+                PipId ref_pip(pad.node, dst.node);
+                if (!ctx->pll_ref_select.count(ref_pip) || !ctx->checkBelAvail(candidate))
                     continue;
-                if (buf1 && (!ctx->pll_second_clock_bels.count(candidate.first) ||
-                             !ctx->checkBelAvail(ctx->pll_second_clock_bels.at(candidate.first))))
+                // The additional CLKIN2/site profile is checked at the board reference only.
+                if (ctx->pll_ref_select.at(ref_pip) == 6 && reference_mhz != 50)
                     continue;
-                if (buf2 && (!ctx->pll_third_clock_bels.count(candidate.first) ||
-                             !ctx->checkBelAvail(ctx->pll_third_clock_bels.at(candidate.first))))
+                std::array<BelId, 4> selected{};
+                bool available = true;
+                for (int i = 0; i < clocks; ++i) {
+                    const auto &options = ctx->pll_clock_bels.at(candidate)[i];
+                    auto try_lane = [&](int lane) {
+                        for (BelId clock : options) {
+                            if (ctx->bel_data(clock).block_index != lane || !ctx->checkBelAvail(clock) ||
+                                std::find(selected.begin(), selected.end(), clock) != selected.end())
+                                continue;
+                            selected[i] = clock;
+                            return true;
+                        }
+                        return false;
+                    };
+                    if (!try_lane(preferred_lanes[i]))
+                        for (int lane : preferred_lanes)
+                            if (try_lane(lane))
+                                break;
+                    if (selected[i] == BelId()) {
+                        available = false;
+                        break;
+                    }
+                }
+                if (!available)
                     continue;
-                if (buf3 && (!ctx->pll_fourth_clock_bels.count(candidate.first) ||
-                             !ctx->checkBelAvail(ctx->pll_fourth_clock_bels.at(candidate.first))))
-                    continue;
-                chosen = candidate.first;
+                chosen = candidate;
                 ctx->bindBel(chosen, ci, STRENGTH_LOCKED);
-                ctx->bindBel(candidate.second, buf, STRENGTH_LOCKED);
-                if (buf1)
-                    ctx->bindBel(ctx->pll_second_clock_bels.at(chosen), buf1, STRENGTH_LOCKED);
-                if (buf2)
-                    ctx->bindBel(ctx->pll_third_clock_bels.at(chosen), buf2, STRENGTH_LOCKED);
-                if (buf3)
-                    ctx->bindBel(ctx->pll_fourth_clock_bels.at(chosen), buf3, STRENGTH_LOCKED);
+                for (int i = 0; i < clocks; ++i)
+                    ctx->bindBel(selected[i], buffers[i], STRENGTH_LOCKED);
                 break;
             }
             if (chosen == BelId())
