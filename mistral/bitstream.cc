@@ -19,6 +19,7 @@
 
 #include "log.h"
 #include "nextpnr.h"
+#include "dsp.h"
 #include "pll.h"
 #include "timing.h"
 #include "util.h"
@@ -95,22 +96,52 @@ struct MistralBitgen
         }
     }
 
-    void write_dsp_cell(CellInfo *ci, int x, int y)
+    void write_dsp_block(int x, int y)
     {
         auto pos = CycloneV::xy2pos(x, y);
+
+        // The three BELs are logical lanes of one physical DSP. Discover the
+        // lane cells from the tile rather than relying on cell-map iteration
+        // order, then configure the shared mode/sign controls once.
+        std::array<CellInfo *, mistral_dsp_lanes.size()> lanes{};
+        std::vector<BelId> dsp_bels;
+        for (BelId bel : ctx->getBelsByTile(x, y)) {
+            if (ctx->getBelType(bel) == id_MISTRAL_MUL9X9)
+                dsp_bels.push_back(bel);
+        }
+        std::sort(dsp_bels.begin(), dsp_bels.end(), [](BelId a, BelId b) { return a.z < b.z; });
+        NPNR_ASSERT(dsp_bels.size() == mistral_dsp_lanes.size());
+        for (size_t lane = 0; lane < dsp_bels.size(); ++lane)
+            lanes.at(lane) = ctx->getBoundBelCell(dsp_bels.at(lane));
+
+        CellInfo *first = nullptr;
+        for (CellInfo *ci : lanes) {
+            if (ci != nullptr) {
+                first = ci;
+                break;
+            }
+        }
+        if (first == nullptr)
+            return;
+
         NPNR_ASSERT(cv->bmux_m_set(CycloneV::DSP, pos, CycloneV::MODE, 0, CycloneV::M9X9));
         NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AX_SIGNED, 0,
-                                  bool_or_default(ci->params, id_A_SIGNED, true)));
+                                  bool_or_default(first->params, id_A_SIGNED, true)));
         NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AY_SIGNED, 0,
-                                  bool_or_default(ci->params, id_B_SIGNED, true)));
+                                  bool_or_default(first->params, id_B_SIGNED, true)));
         // The primitive is combinational. Mistral defaults bypass input and
         // output registers and disable preaddition, accumulation and cascade.
         // Unrouted DSP inputs are 1; invert unused inputs to keep them at 0.
         for (int group = 0; group < 12; ++group) {
             unsigned inv = 0x1ff;
-            if (group == 0 || group == 2) {
+            for (size_t lane = 0; lane < mistral_dsp_lanes.size(); ++lane) {
+                const auto &mapping = mistral_dsp_lanes.at(lane);
+                CellInfo *ci = lanes.at(lane);
+                if (ci == nullptr || (group != mapping.a_group && group != mapping.b_group))
+                    continue;
+                bool is_a = group == mapping.a_group;
                 for (int bit = 0; bit < 9; ++bit) {
-                    IdString port = ctx->idf("%c[%d]", group == 0 ? 'A' : 'B', bit);
+                    IdString port = ctx->idf("%c[%d]", is_a ? 'A' : 'B', bit);
                     auto state = ci->get_pin_state(port);
                     bool invert = state == PIN_0 || state == PIN_INV ||
                                   (state == PIN_SIG && ci->getPort(port) == nullptr);
@@ -368,11 +399,11 @@ struct MistralBitgen
                 write_clkbuf_cell(ci, loc.x, loc.y, bi);
             else if (ci->type == id_MISTRAL_M10K)
                 write_m10k_cell(ci, loc.x, loc.y, bi);
-            else if (ci->type == id_MISTRAL_MUL9X9)
-                write_dsp_cell(ci, loc.x, loc.y);
             else if (ci->type == id_altera_pll)
                 write_pll_cell(ci, loc.x, loc.y);
         }
+        for (auto dsp_pos : cv->dsp_get_pos())
+            write_dsp_block(CycloneV::pos2x(dsp_pos), CycloneV::pos2y(dsp_pos));
     }
 
     bool write_alm(uint32_t lab, uint8_t alm)

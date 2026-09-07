@@ -18,6 +18,7 @@
  */
 
 #include "design_utils.h"
+#include "dsp.h"
 #include "log.h"
 #include "nextpnr.h"
 #include "pll.h"
@@ -489,6 +490,68 @@ struct MistralPacker
 
             for (int bit = bit_offset; bit < dbits; bit++)
                 ci->pin_data[ctx->idf("B1DATA[%d]", bit)].bel_pins = {ctx->idf("DATABOUT[%d]", bit - bit_offset)};
+        }
+    }
+
+    void constrain_dsps()
+    {
+        std::vector<CellInfo *> multipliers;
+        for (auto &cell : ctx->cells) {
+            CellInfo *ci = cell.second.get();
+            if (ci->type == id_MISTRAL_MUL9X9)
+                multipliers.push_back(ci);
+        }
+        if (multipliers.empty())
+            return;
+
+        std::sort(multipliers.begin(), multipliers.end(), [](CellInfo *a, CellInfo *b) {
+            bool a_signed = bool_or_default(a->params, id_A_SIGNED, true);
+            bool b_signed = bool_or_default(b->params, id_A_SIGNED, true);
+            if (a_signed != b_signed)
+                return a_signed < b_signed;
+            a_signed = bool_or_default(a->params, id_B_SIGNED, true);
+            b_signed = bool_or_default(b->params, id_B_SIGNED, true);
+            if (a_signed != b_signed)
+                return a_signed < b_signed;
+            return a->name.str(a->ctx) < b->name.str(b->ctx);
+        });
+
+        for (size_t i = 0; i < multipliers.size();) {
+            CellInfo *root = multipliers.at(i);
+            root->cluster = root->name;
+            root->constr_abs_z = true;
+            root->constr_z = 0;
+
+            bool a_signed = bool_or_default(root->params, id_A_SIGNED, true);
+            bool b_signed = bool_or_default(root->params, id_B_SIGNED, true);
+            size_t end = i + 1;
+            while (end < multipliers.size() && end - i < mistral_dsp_lanes.size() &&
+                   bool_or_default(multipliers.at(end)->params, id_A_SIGNED, true) == a_signed &&
+                   bool_or_default(multipliers.at(end)->params, id_B_SIGNED, true) == b_signed)
+                ++end;
+            for (size_t lane = i; lane < end; ++lane) {
+                CellInfo *ci = multipliers.at(lane);
+                if (bool_or_default(ci->params, id_A_SIGNED, true) != a_signed ||
+                    bool_or_default(ci->params, id_B_SIGNED, true) != b_signed) {
+                    log_error("MISTRAL_MUL9X9 cells '%s' and '%s' disagree on shared DSP signedness; "
+                              "three-lane packing requires matching A_SIGNED and B_SIGNED.\n",
+                              ctx->nameOf(root), ctx->nameOf(ci));
+                }
+                for (auto &param : ci->params) {
+                    if (!param.first.in(id_A_SIGNED, id_B_SIGNED))
+                        log_error("MISTRAL_MUL9X9 cell '%s' has unsupported parameter '%s'.\n", ctx->nameOf(ci),
+                                  ctx->nameOf(param.first));
+                }
+                if (lane == i)
+                    continue;
+                ci->cluster = root->name;
+                ci->constr_x = 0;
+                ci->constr_y = 0;
+                ci->constr_abs_z = true;
+                ci->constr_z = int(lane - i);
+                root->constr_children.push_back(ci);
+            }
+            i = end;
         }
     }
 
@@ -1003,6 +1066,7 @@ struct MistralPacker
         constrain_carries();
         constrain_lutram();
         setup_m10ks();
+        constrain_dsps();
     }
 };
 }; // namespace
