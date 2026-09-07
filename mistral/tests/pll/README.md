@@ -1082,11 +1082,13 @@ The startup parameter accepts `ena_register_power_up="high"` (default) or
 `"low"`. The other supported parameters retain their primitive defaults:
 `disable_mode="low"`, `test_syn="high"`
 and `lpm_type="cyclonev_clkena"`. Other values, unknown parameters,
-connected `enaout`, missing enable drivers and non-PLL sources fail explicitly.
+unknown ports, missing enable drivers and non-PLL sources fail explicitly.
+The optional `enaout` status output is supported as described below.
 The mode must be specified: the primitive's default `always enabled` is not
 this gated profile. Use the ordinary PLL output path for an unconditional clock.
 
-Packing converts the primitive to `MISTRAL_CLKENA` with ports `A`, `ENA`, `Q`.
+Packing converts the primitive to `MISTRAL_CLKENA` with ports `A`, `ENA`, `Q`
+and optional `ENAOUT` status.
 It removes the single unconditional output buffer inserted by Yosys, retaining
 its output net and checking clock constraints on both sides. A placement
 constraint on that buffer prevents folding and is rejected. The packed cell
@@ -1212,3 +1214,49 @@ Yosys `13b43f8c85ec430a33ee55d058fb4c32b42b6910` remain unchanged. Validation
 is host-only with the V11 50 MHz reference and 25 MHz clocks. Hardware
 stop/resume and startup acceptance remain with the ladder. No misteross
 experiment/lock or FES pin changes are included.
+
+
+## Clock-enable status output
+
+Connect `cyclonev_clkena.enaout` to observe the primitive's enable-status
+output. Packing preserves it as optional `MISTRAL_CLKENA.ENAOUT`; the BEL
+maps it to Mistral's existing `CMUXHG.SYN_EN` fabric endpoint. The signal
+uses ordinary fabric routing. Only the clock buffer's `Q` output is handled
+by the global-clock router. No additional clock-control configuration or
+Mistral table changes are needed.
+
+The [low/high Quartus references](fixtures/clock-enable-status/README.md)
+confirm `SYN_EN` driving a fabric register clocked by the 50 MHz reference.
+That register's output reaches HPS GP bit 9; bits 7:0 contain the gated
+counter and bit 8 contains PLL lock. Quartus rejected a direct status-to-HPS
+connection with error 175006, so the validated fixture uses this sampled
+fabric path. Its single sampling register is a routing diagnostic, not a
+validated CDC implementation.
+
+```sh
+python3 mistral/tests/pll/clock_enable_status.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-clock-status
+```
+
+The runner checks native and packed primitives with both startup values,
+compares complete FPLL and CMUXHG settings with portable Quartus oracles,
+and traces the actual status data path to its sampling register. Status
+receives no generated-clock constraint. A multiple-branch case checks
+separate status nets and mux endpoints with independent enables and mixed
+startup values. Existing unconnected-status gate and branch fixtures remain
+regressions. Both compressed reference RBFs and their regeneration inputs
+are bundled for reviewers.
+
+Timing treats `ENAOUT` as an asynchronous startpoint because this backend
+has no characterized enable-register clock-to-Q arc. The enable input's
+setup/hold limits also remain uncharacterized. Output-clock Fmax therefore
+does not establish status sampling safety. Enable status is distinct from
+measuring clock edges: the ladder's counter tests still establish whether
+the gated clock actually runs.
+
+Base nextpnr revision: `2154036125410d0de5fb09a3aa949d90f7b23a69` on
+`mistral-stable`; unchanged Mistral `78ba2a580ae2523403d4f4f91891a6b11d7b6aba`
+and Yosys `13b43f8c85ec430a33ee55d058fb4c32b42b6910`. Validation is host-only,
+using the V11 50 MHz reference and 25 MHz gated clock. Hardware acceptance
+remains with the ladder. No misteross experiment/lock or FES pin changes
+are included.

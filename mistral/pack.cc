@@ -592,7 +592,7 @@ struct MistralPacker
                                     ctx->id("test_syn"), ctx->id("lpm_type")))
                     log_error("Clock enable '%s': unsupported parameter '%s'.\n", ctx->nameOf(ci), ctx->nameOf(param.first));
             for (auto &port : ci->ports)
-                if (port.second.net && !port.first.in(ctx->id("inclk"), ctx->id("ena"), id_outclk))
+                if (port.second.net && !port.first.in(ctx->id("inclk"), ctx->id("ena"), id_outclk, ctx->id("enaout")))
                     log_error("Clock enable '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
             NetInfo *input = dedicated_source(ci->getPort(ctx->id("inclk")));
             NetInfo *enable = ci->getPort(ctx->id("ena"));
@@ -635,7 +635,8 @@ struct MistralPacker
             ci->renamePort(ctx->id("inclk"), id_A);
             ci->renamePort(ctx->id("ena"), id_ENA);
             ci->renamePort(id_outclk, id_Q);
-            ci->ports.erase(ctx->id("enaout"));
+            if (ci->ports.count(ctx->id("enaout")))
+                ci->renamePort(ctx->id("enaout"), id_ENAOUT);
             ci->params.clear();
             // High is the existing packed-cell default; only low needs an override.
             if (power_up == "low")
@@ -665,7 +666,7 @@ struct MistralPacker
                     log_error("Clock enable '%s': ena_register_power_up must be 'high' or 'low'.\n", ctx->nameOf(ci));
             }
             for (auto &port : ci->ports)
-                if (port.second.net && !port.first.in(id_A, id_ENA, id_Q))
+                if (port.second.net && !port.first.in(id_A, id_ENA, id_Q, id_ENAOUT))
                     log_error("Clock enable '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
         }
     }

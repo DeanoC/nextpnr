@@ -115,12 +115,12 @@ def main():
     reject("missing-ena", lambda top: top["cells"]["gate"]["connections"].pop("ena"), "ena")
     reject("undriven-ena", lambda top: top["cells"]["gate"]["connections"].update({"ena": [1000000]}), "ena")
 
-    def observe_enaout(top):
+    def observe_unknown_status(top):
         gate = top["cells"]["gate"]
-        gate["connections"]["enaout"] = [1000000]
-        gate["port_directions"]["enaout"] = "output"
+        gate["connections"]["unknown_status"] = [1000000]
+        gate["port_directions"]["unknown_status"] = "output"
         top["cells"]["hps_gp"]["connections"]["gp_in"][31] = 1000000
-    reject("enaout", observe_enaout, "enaout")
+    reject("unknown-status", observe_unknown_status, "unknown_status")
     reject("non-pll-source", lambda top: top["cells"]["gate"]["connections"].update(
         {"inclk": top["cells"]["hps_gp"]["connections"]["gp_out"][:1]}), "PLL")
     reject("mode-omitted", lambda top: top["cells"]["gate"]["parameters"].pop("ena_register_mode"), "ena_register_mode")
