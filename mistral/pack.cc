@@ -570,7 +570,7 @@ struct MistralPacker
                 phases[i] = str_or_default(ci->params, ctx->idf("phase_shift%d", i), "0 ps");
                 auto phase = mistral_pll::select_phase(phases[i], phase_output_hz);
                 if (!phase)
-                    log_error("PLL '%s': phase_shift%d must be zero or a checked quarter-cycle shift for the output frequency.\n", ctx->nameOf(ci), i);
+                    log_error("PLL '%s': phase_shift%d must be zero or a checked phase shift for the output frequency.\n", ctx->nameOf(ci), i);
                 phase_ps[i] = phase->shift_ps;
                 shifted |= phase_ps[i] != 0;
             }
