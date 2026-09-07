@@ -535,17 +535,26 @@ struct MistralPacker
             // It *does* generate ACLR[01] but leaves them unconnected if unused.
 
             // Enables.
-            // RDEN[1] is left unconnected.
+            // Preserve the existing physical write-enable polarity.
             if (dbits == 40)
                 ci->pin_data[ctx->id("A1EN")].bel_pins = {ctx->id("WREN[0]")};
             else
                 ci->pin_data[ctx->id("A1EN")].bel_pins = {ctx->id("WREN[1]")};
-            ci->pin_data[ctx->id("B1EN")].bel_pins = {ctx->id("RDEN[0]")};
 
-            // Clocks.
-            ci->pin_data[ctx->id("CLK1")].bel_pins = {ctx->id("CLKIN[0]")};
+            // Legacy cells use CLK1 for both ports; new SDP cells have an
+            // independent read clock on CLK2.
+            bool dual_clock = bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false);
+            ci->pin_data[id_B1EN].bel_pins = {ctx->id(dual_clock ? "ENABLE[0]" : "RDEN[0]")};
+            if (ci->getPort(id_CLK1) == nullptr || (dual_clock && ci->getPort(id_CLK2) == nullptr))
+                log_error("M10K '%s' requires a connected %s clock.\n", ctx->nameOf(ci),
+                          ci->getPort(id_CLK1) == nullptr ? "CLK1" : "CLK2");
+            if (!dual_clock && ci->getPort(id_CLK2) != nullptr)
+                log_error("M10K '%s': CLK2 requires CFG_DUAL_CLOCK=1.\n", ctx->nameOf(ci));
+            ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
+            if (dual_clock)
+                ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
 
-            // Enables left unconnected.
+            // Other clock-enable pins remain unconnected.
 
             // Address lines.
 
