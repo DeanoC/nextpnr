@@ -20,6 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("yosys", "nextpnr", "mistral-cv", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
+    parser.add_argument("--reference-mhz", type=int, default=50, choices=(25, 50, 100))
     parser.add_argument("--frequencies", nargs=3, default=('25', '50', '100'),
                         help="exact output frequencies in MHz")
     parser.add_argument("--duties", nargs=3, type=int, default=[50, 50, 50],
@@ -39,16 +40,18 @@ def main():
     design = json.loads((out / "synth.json").read_text())
     cells = design["modules"]["top"]["cells"]
     assert sum(c["type"] == "altera_pll" for c in cells.values()) == 1
+    cells["pll"]["parameters"]["reference_clock_frequency"] = f"{args.reference_mhz} MHz"
     for index, frequency in enumerate(args.frequencies):
         cells["pll"]["parameters"][f"output_clock_frequency{index}"] = f"{frequency} MHz"
     for index, duty in enumerate(args.duties):
         cells["pll"]["parameters"][f"duty_cycle{index}"] = format(duty, "032b")
     (out / "synth.json").write_text(json.dumps(design))
     sdc = out / "clocks.sdc"
-    sdc.write_text("create_clock -name FPGA_CLK1_50 -period 20 [get_ports {FPGA_CLK1_50}]\n")
+    sdc.write_text(f"create_clock -name FPGA_CLK1_50 -period {1000 / args.reference_mhz} "
+                   "[get_ports {FPGA_CLK1_50}]\n")
     command = [str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7",
                "--qsf", str(fixture / "diagnostic.qsf"), "--sdc", str(sdc),
-               "--freq", "50", "--compress-rbf"]
+               "--freq", str(args.reference_mhz), "--compress-rbf"]
     run(command + ["--json", str(out / "synth.json"), "--rbf", str(out / "top.rbf"),
                    "--report", str(out / "timing.json"), "--write", str(out / "routed.json")], out / "route.log")
     report = json.loads((out / "timing.json").read_text())
@@ -104,7 +107,7 @@ def main():
     if not args.skip_negative:
         for name, parameter, value, reasons in (
             ("five-outputs", "number_of_clocks", format(5, "032b"), ("number_of_clocks",)),
-            ("reference25", "reference_clock_frequency", "25.0 MHz", ("multi-output", "reference")),
+            ("reference26", "reference_clock_frequency", "26.0 MHz", ("multi-output", "reference")),
             ("fractional", "fractional_vco_multiplier", "true", ("multi-output", "fractional")),
             ("frequency0", "output_clock_frequency0", "7.0 MHz", ("multi-output", "frequenc")),
             ("frequency1", "output_clock_frequency1", "7.0 MHz", ("multi-output", "frequenc")),
