@@ -218,7 +218,7 @@ struct MistralBitgen
             auto phase = mistral_pll::select_phase(str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps"),
                     mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency0")).as_string()));
             NPNR_ASSERT(phase);
-            if (phase->shift_ns) {
+            if (phase->shift_ps) {
                 raw(CycloneV::CNT_PRESET, phase->c_preset, 7);
                 raw(CycloneV::CNT_PH_MUX_PRESET, phase->c_phase_preset, 7);
             }
@@ -239,7 +239,7 @@ struct MistralBitgen
                     str_or_default(ci->params, ctx->idf("phase_shift%d", i), "0 ps"),
                     mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency0")).as_string()));
             NPNR_ASSERT(phase);
-            if (phase->shift_ns) {
+            if (phase->shift_ps) {
                 raw(CycloneV::CNT_PRESET, phase->c_preset, counter);
                 raw(CycloneV::CNT_PH_MUX_PRESET, phase->c_phase_preset, counter);
             }
