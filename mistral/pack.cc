@@ -26,6 +26,83 @@
 
 NEXTPNR_NAMESPACE_BEGIN
 namespace {
+
+bool is_dsp_multiplier(IdString type)
+{
+    return type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27);
+}
+
+bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool def = false)
+{
+    auto it = params.find(key);
+    if (it == params.end())
+        return def;
+    if (!it->second.is_string)
+        return it->second.as_bool();
+    const std::string &value = it->second.as_string();
+    if (value == "1" || value == "true" || value == "TRUE" || value == "on" || value == "reg" ||
+        value == "registered")
+        return true;
+    if (value == "0" || value == "false" || value == "FALSE" || value == "off" || value == "bypass")
+        return false;
+    log_error("DSP parameter expects a boolean or register/bypass value, got '%s'.\n", value.c_str());
+    return def;
+}
+
+bool dsp_reg_param(const dict<IdString, Property> &params, IdString key)
+{
+    return dsp_bool_param(params, key, false);
+}
+
+bool dsp_shared_control_nets_equal(const CellInfo *a, const CellInfo *b)
+{
+    for (IdString port : {id_CLK, id_ACLR, id_ENA, id_ACCUMULATE, id_SUB, id_NEGATE, id_LOADCONST}) {
+        const NetInfo *an = a->getPort(port);
+        const NetInfo *bn = b->getPort(port);
+        if (an != nullptr && bn != nullptr && an != bn)
+            return false;
+    }
+    return true;
+}
+
+bool dsp_control_used(const CellInfo *cell, IdString port)
+{
+    if (cell->getPort(port) != nullptr)
+        return true;
+    auto state = cell->get_pin_state(port);
+    return state == PIN_1 || state == PIN_INV;
+}
+
+bool dsp_has_bus(const CellInfo *cell, const BaseCtx *ctx, const char *base)
+{
+    std::string prefix = std::string(base) + "[";
+    for (const auto &port : cell->ports)
+        if (port.first.str(ctx).find(prefix) == 0)
+            return true;
+    return false;
+}
+
+bool dsp_shared_config_equal(const CellInfo *a, const CellInfo *b)
+{
+    if (dsp_bool_param(a->params, id_A_SIGNED, true) != dsp_bool_param(b->params, id_A_SIGNED, true) ||
+        dsp_bool_param(a->params, id_B_SIGNED, true) != dsp_bool_param(b->params, id_B_SIGNED, true))
+        return false;
+    for (IdString key : {id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ, id_INREG_CTRL_BX,
+                         id_INREG_CTRL_BY, id_INREG_CTRL_BZ, id_OREG_CTRL, id_PREADDER_EN, id_PREADDER_SUB,
+                         id_CASCADE_EN, id_CASCADE_1ST_EN, id_CHAIN_OUTPUT_EN}) {
+        if (dsp_bool_param(a->params, key) != dsp_bool_param(b->params, key))
+            return false;
+    }
+    return dsp_shared_control_nets_equal(a, b);
+}
+
+bool is_supported_dsp_param(IdString key)
+{
+    return key.in(id_A_SIGNED, id_B_SIGNED, id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ,
+                  id_INREG_CTRL_BX, id_INREG_CTRL_BY, id_INREG_CTRL_BZ, id_OREG_CTRL, id_PREADDER_EN,
+                  id_PREADDER_SUB, id_CASCADE_EN, id_CASCADE_1ST_EN, id_CHAIN_OUTPUT_EN);
+}
+
 struct MistralPacker
 {
     MistralPacker(Context *ctx) : ctx(ctx) {};
@@ -498,49 +575,92 @@ struct MistralPacker
         std::vector<CellInfo *> multipliers;
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
-            if (ci->type == id_MISTRAL_MUL9X9)
+            if (is_dsp_multiplier(ci->type)) {
+                for (auto &param : ci->params) {
+                    if (!is_supported_dsp_param(param.first))
+                        log_error("DSP cell '%s' has unsupported parameter '%s'.\n", ctx->nameOf(ci),
+                                  ctx->nameOf(param.first));
+                }
+                if (dsp_reg_param(ci->params, id_INREG_CTRL_AX) || dsp_reg_param(ci->params, id_INREG_CTRL_AY) ||
+                    dsp_reg_param(ci->params, id_INREG_CTRL_AZ) || dsp_reg_param(ci->params, id_INREG_CTRL_BX) ||
+                    dsp_reg_param(ci->params, id_INREG_CTRL_BY) || dsp_reg_param(ci->params, id_INREG_CTRL_BZ) ||
+                    dsp_reg_param(ci->params, id_OREG_CTRL)) {
+                    if (ci->getPort(id_CLK) == nullptr)
+                        log_error("DSP cell '%s' enables a register without a CLK port.\n", ctx->nameOf(ci));
+                }
+                if (ci->type == id_MISTRAL_MUL18X18 && dsp_bool_param(ci->params, id_PREADDER_EN))
+                    log_error("MISTRAL_MUL18X18 does not support PREADDER_EN; use the M9 preadder mode.\n");
+                if (ci->type == id_MISTRAL_MUL18X18 && dsp_has_bus(ci, ctx, "Z"))
+                    log_error("MISTRAL_MUL18X18 does not support a Z preadder port in M18X18P36 mode.\n");
+                if (ci->type == id_MISTRAL_MUL9X9 && dsp_has_bus(ci, ctx, "C"))
+                    log_error("MISTRAL_MUL9X9 does not support a C addend port.\n");
+                if (ci->type == id_MISTRAL_MUL9X9 && dsp_has_bus(ci, ctx, "Z") &&
+                    !dsp_bool_param(ci->params, id_PREADDER_EN))
+                    log_error("MISTRAL_MUL9X9 Z preadder ports require PREADDER_EN.\n");
+                if (ci->type == id_MISTRAL_MUL27X27 &&
+                    (dsp_bool_param(ci->params, id_PREADDER_EN) || dsp_has_bus(ci, ctx, "C") ||
+                     dsp_has_bus(ci, ctx, "Z")))
+                    log_error("MISTRAL_MUL27X27 does not support addend or preadder ports.\n");
+                if (ci->type == id_MISTRAL_MUL9X9 &&
+                    (dsp_control_used(ci, id_ACCUMULATE) || dsp_control_used(ci, id_SUB) ||
+                     dsp_control_used(ci, id_NEGATE) || dsp_control_used(ci, id_LOADCONST) ||
+                     dsp_bool_param(ci->params, id_CASCADE_EN) || dsp_bool_param(ci->params, id_CASCADE_1ST_EN) ||
+                     dsp_bool_param(ci->params, id_CHAIN_OUTPUT_EN)))
+                    log_error("MISTRAL_MUL9X9 does not support accumulator or cascade controls.\n");
                 multipliers.push_back(ci);
+            }
         }
         if (multipliers.empty())
             return;
 
         std::sort(multipliers.begin(), multipliers.end(), [](CellInfo *a, CellInfo *b) {
-            bool a_signed = bool_or_default(a->params, id_A_SIGNED, true);
-            bool b_signed = bool_or_default(b->params, id_A_SIGNED, true);
+            if (a->type != b->type)
+                return a->type.index < b->type.index;
+            bool a_signed = dsp_bool_param(a->params, id_A_SIGNED, true);
+            bool b_signed = dsp_bool_param(b->params, id_A_SIGNED, true);
             if (a_signed != b_signed)
                 return a_signed < b_signed;
-            a_signed = bool_or_default(a->params, id_B_SIGNED, true);
-            b_signed = bool_or_default(b->params, id_B_SIGNED, true);
+            a_signed = dsp_bool_param(a->params, id_B_SIGNED, true);
+            b_signed = dsp_bool_param(b->params, id_B_SIGNED, true);
             if (a_signed != b_signed)
                 return a_signed < b_signed;
+            for (IdString key : {id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ, id_INREG_CTRL_BX,
+                                 id_INREG_CTRL_BY, id_INREG_CTRL_BZ, id_OREG_CTRL, id_PREADDER_EN, id_PREADDER_SUB,
+                                 id_CASCADE_EN, id_CASCADE_1ST_EN, id_CHAIN_OUTPUT_EN}) {
+                bool av = dsp_bool_param(a->params, key);
+                bool bv = dsp_bool_param(b->params, key);
+                if (av != bv)
+                    return av < bv;
+            }
             return a->name.str(a->ctx) < b->name.str(b->ctx);
         });
 
         for (size_t i = 0; i < multipliers.size();) {
             CellInfo *root = multipliers.at(i);
+            if (root->type != id_MISTRAL_MUL9X9) {
+                ++i;
+                continue;
+            }
             root->cluster = root->name;
             root->constr_abs_z = true;
             root->constr_z = 0;
 
-            bool a_signed = bool_or_default(root->params, id_A_SIGNED, true);
-            bool b_signed = bool_or_default(root->params, id_B_SIGNED, true);
+            bool a_signed = dsp_bool_param(root->params, id_A_SIGNED, true);
+            bool b_signed = dsp_bool_param(root->params, id_B_SIGNED, true);
             size_t end = i + 1;
             while (end < multipliers.size() && end - i < mistral_dsp_lanes.size() &&
-                   bool_or_default(multipliers.at(end)->params, id_A_SIGNED, true) == a_signed &&
-                   bool_or_default(multipliers.at(end)->params, id_B_SIGNED, true) == b_signed)
+                   multipliers.at(end)->type == id_MISTRAL_MUL9X9 &&
+                   dsp_bool_param(multipliers.at(end)->params, id_A_SIGNED, true) == a_signed &&
+                   dsp_bool_param(multipliers.at(end)->params, id_B_SIGNED, true) == b_signed &&
+                   dsp_shared_config_equal(root, multipliers.at(end)))
                 ++end;
             for (size_t lane = i; lane < end; ++lane) {
                 CellInfo *ci = multipliers.at(lane);
-                if (bool_or_default(ci->params, id_A_SIGNED, true) != a_signed ||
-                    bool_or_default(ci->params, id_B_SIGNED, true) != b_signed) {
+                if (dsp_bool_param(ci->params, id_A_SIGNED, true) != a_signed ||
+                    dsp_bool_param(ci->params, id_B_SIGNED, true) != b_signed) {
                     log_error("MISTRAL_MUL9X9 cells '%s' and '%s' disagree on shared DSP signedness; "
                               "three-lane packing requires matching A_SIGNED and B_SIGNED.\n",
                               ctx->nameOf(root), ctx->nameOf(ci));
-                }
-                for (auto &param : ci->params) {
-                    if (!param.first.in(id_A_SIGNED, id_B_SIGNED))
-                        log_error("MISTRAL_MUL9X9 cell '%s' has unsupported parameter '%s'.\n", ctx->nameOf(ci),
-                                  ctx->nameOf(param.first));
                 }
                 if (lane == i)
                     continue;
