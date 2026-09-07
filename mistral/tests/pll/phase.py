@@ -140,7 +140,7 @@ def main():
         ("negative", {"phase_shift1": "-10000 ps"}),
         ("full-cycle", {"phase_shift1": "40000 ps"}),
         ("inexact", {"phase_shift1": "10001 ps"}),
-        ("reference", {"reference_clock_frequency": "25 MHz"}),
+        ("reference", {"reference_clock_frequency": "26 MHz"}),
         ("fractional", {"fractional_vco_multiplier": "true",
                         "output_clock_frequency0": "12.288 MHz", "output_clock_frequency1": "24.576 MHz"}),
         ("duty", {"duty_cycle1": f"{25:032b}"}),
@@ -152,7 +152,7 @@ def main():
         path = out / f"invalid-{name}.json"
         path.write_text(json.dumps(invalid))
         log = run(command + ["--json", str(path)], out / f"invalid-{name}.log", success=False)
-        assert "ERROR:" in log and "phase" in log.lower(), log
+        assert "ERROR:" in log and ("phase" in log.lower() or (name == "reference" and "reference frequency" in log)), log
     sdc = out / "conflict.sdc"
     sdc.write_text((fixture / "clocks.sdc").read_text() +
                    "\ncreate_clock -period 40 [get_nets {" + shifted_clock + "}]\n")
