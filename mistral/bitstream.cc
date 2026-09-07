@@ -164,6 +164,8 @@ struct MistralBitgen
         if (ci->type == id_MISTRAL_CLKENA) {
             NPNR_ASSERT(cv->bmux_m_set(CycloneV::CMUXHG, pos, CycloneV::ENABLE_REGISTER_MODE, bi,
                                       CycloneV::REG1_ENOUT));
+            NPNR_ASSERT(cv->bmux_n_set(CycloneV::CMUXHG, pos, CycloneV::ENABLE_REGISTER_POWER_UP, bi,
+                                      str_or_default(ci->params, ctx->id("ena_register_power_up"), "high") == "low" ? 0 : 1));
         }
     }
 

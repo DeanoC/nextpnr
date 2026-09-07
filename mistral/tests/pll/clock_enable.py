@@ -16,6 +16,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("yosys", "nextpnr", "mistral-cv", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
+    parser.add_argument("--power-up", choices=("high", "low"), default="high")
     args = parser.parse_args()
     fixture = Path(__file__).resolve().parent
     out = args.output.resolve()
@@ -27,7 +28,14 @@ def main():
              f'write_json "{target}"'], target.with_suffix(".log"))
         return json.loads(target.read_text())
 
-    design = synth(fixture / "clock_enable.v", out / "synth.json")
+    source_text = (fixture / "clock_enable.v").read_text()
+    source = fixture / "clock_enable.v"
+    if args.power_up == "low":
+        source_text = source_text.replace('.ena_register_mode("falling edge")',
+                                          '.ena_register_mode("falling edge"), .ena_register_power_up("low")')
+        source = out / "low.v"
+        source.write_text(source_text)
+    design = synth(source, out / "synth.json")
     assert design["modules"]["top"]["cells"]["gate"]["type"] == "cyclonev_clkena"
     sdc = out / "clocks.sdc"
     sdc.write_text("create_clock -name FPGA_CLK1_50 -period 20 [get_ports {FPGA_CLK1_50}]\n")
@@ -66,11 +74,14 @@ def main():
                      "s CMUXHG.000.035:ENABLE_REGISTER_MODE.2 REG1_ENOUT",
                      "s CMUXHG.000.035:TESTSYN_ENOUT_SELECT.2 PRE_SYNENB"):
             assert line in bt.splitlines(), line
+        power = dict(re.findall(r"^s CMUXHG\.000\.035:(\S+) (\S+)$", bt, re.M))
+        # The default high setting is omitted by the decompiler.
+        assert power.get("ENABLE_REGISTER_POWER_UP.2", "1") == ("0" if args.power_up == "low" else "1"), power
         assert re.search(r"^r \S+ CMUXHG\.000\.035\.2:ENABLE$", bt, re.M), "missing routed enable"
         return report, bt
 
     report, bt = route(out, design)
-    reference = fixture / "fixtures" / "clock-enable"
+    reference = fixture / "fixtures" / ("clock-enable-low" if args.power_up == "low" else "clock-enable")
     hashes = json.loads((reference / "sha256.json").read_text())
     compressed = (reference / "top.rbf.gz").read_bytes()
     assert hashlib.sha256(compressed).hexdigest() == hashes["rbf.gz"]
@@ -86,7 +97,7 @@ def main():
     assert cmux_settings(oracle) and cmux_settings(oracle) == cmux_settings(bt), "CMUXHG settings differ from Quartus"
 
     inverted_source = out / "inverted.v"
-    inverted_source.write_text((fixture / "clock_enable.v").read_text().replace(".ena(gp_out[0])", ".ena(~gp_out[0])"))
+    inverted_source.write_text(source_text.replace(".ena(gp_out[0])", ".ena(~gp_out[0])"))
     inverted = synth(inverted_source, out / "inverted.json")
     route(out / "inverted", inverted)
 
@@ -98,7 +109,7 @@ def main():
         log = run(command + ["--json", str(path)], out / f"invalid-{name}.log", success=False)
         assert expected in log, log
 
-    for key, value in (("ena_register_mode", "none"), ("ena_register_power_up", "low"),
+    for key, value in (("ena_register_mode", "none"), ("ena_register_power_up", "invalid"),
                        ("disable_mode", "high"), ("test_syn", "low"), ("clock_type", "Regional Clock")):
         reject(key, lambda top, k=key, v=value: top["cells"]["gate"]["parameters"].update({k: v}), "only global clocks" if key == "clock_type" else key)
     reject("missing-ena", lambda top: top["cells"]["gate"]["connections"].pop("ena"), "ena")
@@ -127,7 +138,8 @@ def main():
         old_bit = gate["connections"]["outclk"][0]
         new_bit = buffer["connections"]["Q"][0]
         gate["type"] = "MISTRAL_CLKENA"
-        gate["parameters"] = {}
+        gate["parameters"] = {key: value for key, value in gate["parameters"].items()
+                              if key == "ena_register_power_up"}
         gate["connections"] = {"A": gate["connections"]["inclk"],
                                "ENA": gate["connections"]["ena"], "Q": [new_bit]}
         gate["port_directions"] = {"A": "input", "ENA": "input", "Q": "output"}
@@ -141,6 +153,19 @@ def main():
     route(out / "raw", raw)
     reject("raw-mode", lambda top: top["cells"]["gate"]["parameters"].update(
         {"ena_register_mode": "always enabled"}), "no mode overrides", raw)
+    for name, netlist in (("native", design), ("raw", raw)):
+        reject(name + "-power-up-non-string", lambda top: top["cells"]["gate"]["parameters"].update(
+            {"ena_register_power_up": "00000000000000000000000000000001"}), "ena_register_power_up", netlist)
+    reject("raw-power-up-invalid", lambda top: top["cells"]["gate"]["parameters"].update(
+        {"ena_register_power_up": "invalid"}), "ena_register_power_up", raw)
+
+    if args.power_up == "high":
+        for name, netlist in (("native", design), ("raw", raw)):
+            explicit = copy.deepcopy(netlist)
+            explicit["modules"]["top"]["cells"]["gate"]["parameters"]["ena_register_power_up"] = "high"
+            _, explicit_bt = route(out / (name + "-explicit-high"), explicit)
+            default_bt = bt if name == "native" else (out / "raw" / "top.bt").read_text()
+            assert cmux_settings(explicit_bt) == cmux_settings(default_bt), "explicit high differs from default"
     def raw_extra(top):
         top["cells"]["gate"]["connections"]["TEST"] = top["cells"]["gate"]["connections"]["ENA"]
         top["cells"]["gate"]["port_directions"]["TEST"] = "input"
@@ -148,7 +173,7 @@ def main():
 
     # Keep the real PLL clock observed: otherwise an unrelated unused-output check
     # could mask accepting LOCKED as if it were a dedicated clock output.
-    locked_source = (fixture / "clock_enable.v").read_text().replace(
+    locked_source = source_text.replace(
         ".inclk(pll_clock)", ".inclk(locked)").replace(
         "    reg [7:0] count = 0;", "    reg observed = 0;\n"
         "    always @(posedge pll_clock) observed <= !observed;\n    reg [7:0] count = 0;").replace(

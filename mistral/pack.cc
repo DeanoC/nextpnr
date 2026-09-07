@@ -564,11 +564,13 @@ struct MistralPacker
                     log_error("Clock enable '%s': parameter '%s' must be a string.\n", ctx->nameOf(ci), name);
                 return it->second.as_string();
             };
+            std::string power_up = parameter("ena_register_power_up", "high");
+            if (power_up != "high" && power_up != "low")
+                log_error("Clock enable '%s': ena_register_power_up must be 'high' or 'low'.\n", ctx->nameOf(ci));
             std::string clock_type = parameter("clock_type", "auto");
             if (clock_type != "auto" && clock_type != "global clock" && clock_type != "Global Clock")
                 log_error("Clock enable '%s': only global clocks are supported.\n", ctx->nameOf(ci));
             for (auto expected : {std::make_pair("ena_register_mode", "falling edge"),
-                                  std::make_pair("ena_register_power_up", "high"),
                                   std::make_pair("disable_mode", "low"), std::make_pair("test_syn", "high"),
                                   std::make_pair("lpm_type", "cyclonev_clkena")}) {
                 const char *fallback = std::string(expected.first) == "ena_register_mode" ? "always enabled" : expected.second;
@@ -623,11 +625,14 @@ struct MistralPacker
             ci->renamePort(id_outclk, id_Q);
             ci->ports.erase(ctx->id("enaout"));
             ci->params.clear();
+            // High is the existing packed-cell default; only low needs an override.
+            if (power_up == "low")
+                ci->params[ctx->id("ena_register_power_up")] = power_up;
             ci->type = id_MISTRAL_CLKENA;
         }
         for (IdString name : remove)
             ctx->cells.erase(name);
-        // MISTRAL_CLKENA has one fixed mode: falling-edge enable, power-up high.
+        // MISTRAL_CLKENA uses falling-edge enable, with selectable startup state.
         for (auto &entry : ctx->cells) {
             CellInfo *ci = entry.second.get();
             if (ci->type != id_MISTRAL_CLKENA)
@@ -635,8 +640,14 @@ struct MistralPacker
             NetInfo *input = ci->getPort(id_A), *enable = ci->getPort(id_ENA);
             if (!is_pll_clock(input))
                 log_error("Clock enable '%s': input must come directly from a PLL clock output.\n", ctx->nameOf(ci));
-            if (!enable || !enable->driver.cell || !ci->getPort(id_Q) || !ci->params.empty())
-                log_error("Clock enable '%s': require driven ENA, connected Q and no mode overrides.\n", ctx->nameOf(ci));
+            if (!enable || !enable->driver.cell || !ci->getPort(id_Q))
+                log_error("Clock enable '%s': require driven ENA and connected Q.\n", ctx->nameOf(ci));
+            for (auto &param : ci->params) {
+                if (param.first != ctx->id("ena_register_power_up"))
+                    log_error("Clock enable '%s': no mode overrides; only ena_register_power_up is supported.\n", ctx->nameOf(ci));
+                if (!param.second.is_string || (param.second.as_string() != "high" && param.second.as_string() != "low"))
+                    log_error("Clock enable '%s': ena_register_power_up must be 'high' or 'low'.\n", ctx->nameOf(ci));
+            }
             for (auto &port : ci->ports)
                 if (port.second.net && !port.first.in(id_A, id_ENA, id_Q))
                     log_error("Clock enable '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
