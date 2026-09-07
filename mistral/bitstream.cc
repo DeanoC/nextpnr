@@ -26,6 +26,29 @@
 
 NEXTPNR_NAMESPACE_BEGIN
 namespace {
+
+bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool def = false)
+{
+    auto it = params.find(key);
+    if (it == params.end())
+        return def;
+    if (!it->second.is_string)
+        return it->second.as_bool();
+    const std::string &value = it->second.as_string();
+    if (value == "1" || value == "true" || value == "TRUE" || value == "on" || value == "reg" ||
+        value == "registered")
+        return true;
+    if (value == "0" || value == "false" || value == "FALSE" || value == "off" || value == "bypass")
+        return false;
+    log_error("DSP parameter expects a boolean or register/bypass value, got '%s'.\n", value.c_str());
+    return def;
+}
+
+bool dsp_reg_param(const dict<IdString, Property> &params, IdString key)
+{
+    return dsp_bool_param(params, key, false);
+}
+
 struct MistralBitgen
 {
     MistralBitgen(Context *ctx) : ctx(ctx), cv(ctx->cyclonev) {};
@@ -100,54 +123,193 @@ struct MistralBitgen
     {
         auto pos = CycloneV::xy2pos(x, y);
 
-        // The three BELs are logical lanes of one physical DSP. Discover the
-        // lane cells from the tile rather than relying on cell-map iteration
-        // order, then configure the shared mode/sign controls once.
-        std::array<CellInfo *, mistral_dsp_lanes.size()> lanes{};
+        struct DspBinding
+        {
+            CellInfo *cell;
+            std::vector<int> a_groups;
+            std::vector<int> b_groups;
+            std::vector<int> z_groups;
+            std::vector<int> c_groups;
+        };
+
+        // A DSP tile has several logical BELs. Discover the bound cells from
+        // the tile rather than relying on cell-map iteration order, then
+        // configure the shared mode/sign controls once.
         std::vector<BelId> dsp_bels;
         for (BelId bel : ctx->getBelsByTile(x, y)) {
-            if (ctx->getBelType(bel) == id_MISTRAL_MUL9X9)
+            if (ctx->getBelType(bel).in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27) &&
+                ctx->getBoundBelCell(bel) != nullptr)
                 dsp_bels.push_back(bel);
         }
-        std::sort(dsp_bels.begin(), dsp_bels.end(), [](BelId a, BelId b) { return a.z < b.z; });
-        NPNR_ASSERT(dsp_bels.size() == mistral_dsp_lanes.size());
-        for (size_t lane = 0; lane < dsp_bels.size(); ++lane)
-            lanes.at(lane) = ctx->getBoundBelCell(dsp_bels.at(lane));
-
-        CellInfo *first = nullptr;
-        for (CellInfo *ci : lanes) {
-            if (ci != nullptr) {
-                first = ci;
-                break;
-            }
-        }
-        if (first == nullptr)
+        if (dsp_bels.empty())
             return;
 
-        NPNR_ASSERT(cv->bmux_m_set(CycloneV::DSP, pos, CycloneV::MODE, 0, CycloneV::M9X9));
+        std::sort(dsp_bels.begin(), dsp_bels.end(), [](BelId a, BelId b) { return a.z < b.z; });
+        IdString mode_type = ctx->getBelType(dsp_bels.front());
+        std::vector<DspBinding> bindings;
+        CellInfo *first = ctx->getBoundBelCell(dsp_bels.front());
+        NPNR_ASSERT(first != nullptr);
+        bool preadder = dsp_bool_param(first->params, id_PREADDER_EN);
+        for (BelId bel : dsp_bels) {
+            if (ctx->getBelType(bel) != mode_type)
+                log_error("DSP tile %s contains incompatible multiplier modes (%s and %s).\n", ctx->nameOfBel(bel),
+                          ctx->nameOf(mode_type), ctx->nameOf(ctx->getBelType(bel)));
+            CellInfo *cell = ctx->getBoundBelCell(bel);
+            if (cell == nullptr)
+                continue;
+            if (mode_type == id_MISTRAL_MUL9X9) {
+                NPNR_ASSERT(bel.z >= 0 && bel.z < int(mistral_dsp_lanes.size()));
+                const auto &lane = mistral_dsp_lanes.at(bel.z);
+                bindings.push_back({cell,
+                                    {lane.a_group},
+                                    {preadder ? mistral_dsp_preadder_y_groups.at(bel.z) : lane.b_group},
+                                    preadder ? std::vector<int>{mistral_dsp_preadder_z_groups.at(bel.z)}
+                                              : std::vector<int>{},
+                                    {}});
+            } else if (mode_type == id_MISTRAL_MUL18X18) {
+                bindings.push_back({cell,
+                                    {mistral_dsp_18x18_a_groups.begin(), mistral_dsp_18x18_a_groups.end()},
+                                    {mistral_dsp_18x18_b_groups.begin(), mistral_dsp_18x18_b_groups.end()},
+                                    {},
+                                    {mistral_dsp_18x18_c_groups.begin(), mistral_dsp_18x18_c_groups.end()}});
+            } else if (mode_type == id_MISTRAL_MUL27X27) {
+                bindings.push_back({cell,
+                                    {mistral_dsp_27x27_a_groups.begin(), mistral_dsp_27x27_a_groups.end()},
+                                    {mistral_dsp_27x27_b_groups.begin(), mistral_dsp_27x27_b_groups.end()},
+                                    {},
+                                    {}});
+            }
+        }
+        if (bindings.empty())
+            return;
+
+        CycloneV::bmux_type_t mode;
+        if (mode_type == id_MISTRAL_MUL9X9)
+            mode = CycloneV::M9X9;
+        else if (mode_type == id_MISTRAL_MUL18X18)
+            mode = CycloneV::M18X18P36;
+        else if (mode_type == id_MISTRAL_MUL27X27)
+            mode = CycloneV::M27X27;
+        else
+            NPNR_ASSERT_FALSE("unreachable DSP mode");
+        NPNR_ASSERT(cv->bmux_m_set(CycloneV::DSP, pos, CycloneV::MODE, 0, mode));
         NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AX_SIGNED, 0,
-                                  bool_or_default(first->params, id_A_SIGNED, true)));
+                                  dsp_bool_param(bindings.front().cell->params, id_A_SIGNED, true)));
         NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AY_SIGNED, 0,
-                                  bool_or_default(first->params, id_B_SIGNED, true)));
-        // The primitive is combinational. Mistral defaults bypass input and
-        // output registers and disable preaddition, accumulation and cascade.
+                                  dsp_bool_param(bindings.front().cell->params, id_B_SIGNED, true)));
+
+        auto set_reg = [&](CycloneV::bmux_type_t mux, IdString key) {
+            NPNR_ASSERT(cv->bmux_m_set(CycloneV::DSP, pos, mux, 0,
+                                      dsp_reg_param(first->params, key) ? CycloneV::REG : CycloneV::BYPASS));
+        };
+        set_reg(CycloneV::INREG_CTRL_AX, id_INREG_CTRL_AX);
+        set_reg(CycloneV::INREG_CTRL_AY, id_INREG_CTRL_AY);
+        set_reg(CycloneV::INREG_CTRL_AZ, id_INREG_CTRL_AZ);
+        set_reg(CycloneV::INREG_CTRL_BX, id_INREG_CTRL_BX);
+        set_reg(CycloneV::INREG_CTRL_BY, id_INREG_CTRL_BY);
+        set_reg(CycloneV::INREG_CTRL_BZ, id_INREG_CTRL_BZ);
+        set_reg(CycloneV::OREG_CTRL, id_OREG_CTRL);
+
+        // DSP control inputs are active-high at the tile boundary. Keep the
+        // packed PIN_0/PIN_1/PIN_INV state and translate it into the DSP's
+        // inversion/force bits instead of leaving a disconnected control at
+        // its silicon default.
+        auto control_state = [&](IdString port, CellPinState default_state) {
+            auto it = first->pin_data.find(port);
+            if (it != first->pin_data.end() && it->second.state != PIN_SIG)
+                return it->second.state;
+            if (first->getPort(port) == nullptr)
+                return default_state;
+            return PIN_SIG;
+        };
+        auto control_inverted = [&](IdString port, CellPinState default_state) {
+            CellPinState state = control_state(port, default_state);
+            return state == PIN_0 || state == PIN_INV;
+        };
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::ACC_INV, 0,
+                                  control_inverted(id_ACCUMULATE, PIN_0)));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::PRELOAD_INV, 0,
+                                  control_inverted(id_LOADCONST, PIN_0)));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::SUB_INV, 0,
+                                  control_inverted(id_SUB, PIN_0)));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::DEC_INV, 0,
+                                  control_inverted(id_NEGATE, PIN_0)));
+
+        auto uses_fabric_pin = [&](IdString port, const char *pin) {
+            if (first->getPort(port) == nullptr)
+                return true;
+            const auto &pins = first->pin_data.at(port).bel_pins;
+            return !pins.empty() && pins.front() == ctx->id(pin);
+        };
+        // Unrouted fabric clear is low (unlike the arithmetic/data inputs).
+        // Select it for constants and keep the unused second clear inactive.
+        CellPinState aclr_state = control_state(id_ACLR, PIN_0);
+        NPNR_ASSERT(cv->bmux_n_set(CycloneV::DSP, pos, CycloneV::ACLR0_SEL, 0,
+                                  uses_fabric_pin(id_ACLR, "ACLR_FABRIC") ? 2 : 0));
+        NPNR_ASSERT(cv->bmux_n_set(CycloneV::DSP, pos, CycloneV::ACLR1_SEL, 0, 3));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::ACLR0_INV, 0,
+                                  aclr_state == PIN_1 || aclr_state == PIN_INV));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::ACLR1_INV, 0, false));
+
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::PREADDER_EN, 0, preadder));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::PREADDER_SUB, 0,
+                                  dsp_bool_param(first->params, id_PREADDER_SUB)));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::CASCADE_EN, 0,
+                                  dsp_bool_param(first->params, id_CASCADE_EN)));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::CASCADE_1ST_EN, 0,
+                                  dsp_bool_param(first->params, id_CASCADE_1ST_EN)));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::CHAIN_OUTPUT_EN, 0,
+                                  dsp_bool_param(first->params, id_CHAIN_OUTPUT_EN)));
+
+        bool any_register = dsp_reg_param(first->params, id_INREG_CTRL_AX) ||
+                            dsp_reg_param(first->params, id_INREG_CTRL_AY) ||
+                            dsp_reg_param(first->params, id_INREG_CTRL_AZ) ||
+                            dsp_reg_param(first->params, id_INREG_CTRL_BX) ||
+                            dsp_reg_param(first->params, id_INREG_CTRL_BY) ||
+                            dsp_reg_param(first->params, id_INREG_CTRL_BZ) || dsp_reg_param(first->params, id_OREG_CTRL);
+        if (any_register) {
+            if (first->getPort(id_CLK) == nullptr && first->get_pin_state(id_CLK) != PIN_0 &&
+                first->get_pin_state(id_CLK) != PIN_1)
+                log_error("DSP cell '%s' enables a register without a CLK port.\n", ctx->nameOf(first));
+            CellPinState ena_state = control_state(id_ENA, PIN_1);
+            bool ena_inverted = ena_state == PIN_0 || ena_state == PIN_INV;
+            bool ena_forced = first->getPort(id_ENA) == nullptr && ena_state != PIN_0;
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::ENABLE0_INV, 0, ena_inverted));
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::ENABLE0_FORCE, 0,
+                                      ena_forced));
+
+            CellPinState clk_state = control_state(id_CLK, PIN_SIG);
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::CLK0_INV, 0,
+                                      clk_state == PIN_1 || clk_state == PIN_INV));
+        }
+
+        NPNR_ASSERT(cv->bmux_n_set(CycloneV::DSP, pos, CycloneV::CLK0_SEL, 0,
+                                  uses_fabric_pin(id_CLK, "CLK_FABRIC") ? 3 : 0));
+        NPNR_ASSERT(cv->bmux_n_set(CycloneV::DSP, pos, CycloneV::CLK1_SEL, 0, 4));
+        NPNR_ASSERT(cv->bmux_n_set(CycloneV::DSP, pos, CycloneV::CLK2_SEL, 0, 5));
+
         // Unrouted DSP inputs are 1; invert unused inputs to keep them at 0.
         for (int group = 0; group < 12; ++group) {
             unsigned inv = 0x1ff;
-            for (size_t lane = 0; lane < mistral_dsp_lanes.size(); ++lane) {
-                const auto &mapping = mistral_dsp_lanes.at(lane);
-                CellInfo *ci = lanes.at(lane);
-                if (ci == nullptr || (group != mapping.a_group && group != mapping.b_group))
-                    continue;
-                bool is_a = group == mapping.a_group;
-                for (int bit = 0; bit < 9; ++bit) {
-                    IdString port = ctx->idf("%c[%d]", is_a ? 'A' : 'B', bit);
-                    auto state = ci->get_pin_state(port);
-                    bool invert = state == PIN_0 || state == PIN_INV ||
-                                  (state == PIN_SIG && ci->getPort(port) == nullptr);
-                    if (!invert)
-                        inv &= ~(1u << bit);
-                }
+            for (const auto &binding : bindings) {
+                auto apply = [&](const std::vector<int> &groups, char port_name) {
+                    for (size_t slice = 0; slice < groups.size(); ++slice) {
+                        if (groups.at(slice) != group)
+                            continue;
+                        for (int bit = 0; bit < 9; ++bit) {
+                            IdString port = ctx->idf("%c[%d]", port_name, int(slice * 9 + bit));
+                            auto state = binding.cell->get_pin_state(port);
+                            bool invert = state == PIN_0 || state == PIN_INV ||
+                                          (state == PIN_SIG && binding.cell->getPort(port) == nullptr);
+                            if (!invert)
+                                inv &= ~(1u << bit);
+                        }
+                    }
+                };
+                apply(binding.a_groups, 'A');
+                apply(binding.b_groups, 'B');
+                apply(binding.z_groups, 'Z');
+                apply(binding.c_groups, 'C');
             }
             NPNR_ASSERT(cv->bmux_r_set(CycloneV::DSP, pos, CycloneV::DATA_INV, group, inv));
         }

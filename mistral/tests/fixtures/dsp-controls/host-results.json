@@ -1,0 +1,362 @@
+{
+  "mac": {
+    "rbf_sha256": "c978492e04c9065373fe677a4c7864481adf2980d66c0239224ca4f7f819e9f3",
+    "fixture_sha256": "1404b17a43ad9f025d23d00c61e3e801d28b20a6ef09daca1be6623c589b11f6",
+    "fmax": {
+      "product.FPGA_CLK1_50": {
+        "achieved": 315.0598449707031,
+        "constraint": 50
+      }
+    },
+    "utilization": {
+      "MISTRAL_M10K": {
+        "available": 553,
+        "used": 0
+      },
+      "MISTRAL_MUL18X18": {
+        "available": 112,
+        "used": 1
+      },
+      "MISTRAL_MUL27X27": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL9X9": {
+        "available": 336,
+        "used": 0
+      },
+      "altera_pll": {
+        "available": 6,
+        "used": 0
+      },
+      "cyclonev_hps_interface_mpu_general_purpose": {
+        "available": 1,
+        "used": 1
+      }
+    }
+  },
+  "reg": {
+    "rbf_sha256": "add216da6b056dd571e9a730a3ac7cbd8e1e9c7223c5e6d4f13afe5ce270614e",
+    "fixture_sha256": "92dda910da6f35706f2e080bcf7383f38e358956151cad55083cc91ca927f256",
+    "fmax": {
+      "product.FPGA_CLK1_50": {
+        "achieved": 346.6204528808594,
+        "constraint": 50
+      }
+    },
+    "utilization": {
+      "MISTRAL_M10K": {
+        "available": 553,
+        "used": 0
+      },
+      "MISTRAL_MUL18X18": {
+        "available": 112,
+        "used": 1
+      },
+      "MISTRAL_MUL27X27": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL9X9": {
+        "available": 336,
+        "used": 0
+      },
+      "altera_pll": {
+        "available": 6,
+        "used": 0
+      },
+      "cyclonev_hps_interface_mpu_general_purpose": {
+        "available": 1,
+        "used": 1
+      }
+    }
+  },
+  "fabric": {
+    "rbf_sha256": "f34d6037b1ed7379ff31b449302fcc7a93b3477611f250ec6c03be2dfd6e7cb6",
+    "fixture_sha256": "a7bddd54b090e08417e3ad0e6d3d754f24f9f0f48aa633306e99d373abe54b4b",
+    "fmax": {
+      "product.FPGA_CLK1_50": {
+        "achieved": 417.0141906738281,
+        "constraint": 50
+      }
+    },
+    "utilization": {
+      "MISTRAL_M10K": {
+        "available": 553,
+        "used": 0
+      },
+      "MISTRAL_MUL18X18": {
+        "available": 112,
+        "used": 1
+      },
+      "MISTRAL_MUL27X27": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL9X9": {
+        "available": 336,
+        "used": 0
+      },
+      "altera_pll": {
+        "available": 6,
+        "used": 0
+      },
+      "cyclonev_hps_interface_mpu_general_purpose": {
+        "available": 1,
+        "used": 1
+      }
+    }
+  },
+  "constants": {
+    "rbf_sha256": "21a01c3b1a2d5b5fc18d25539ff7b0d4e3ea28cee5b1b5ada2e552a5ef284490",
+    "fixture_sha256": "73f620258c3eac5ff54f0ed8071606d515677526d46d640d730e652263e96d24",
+    "fmax": {
+      "product.FPGA_CLK1_50": {
+        "achieved": 346.6204528808594,
+        "constraint": 50
+      }
+    },
+    "utilization": {
+      "MISTRAL_M10K": {
+        "available": 553,
+        "used": 0
+      },
+      "MISTRAL_MUL18X18": {
+        "available": 112,
+        "used": 1
+      },
+      "MISTRAL_MUL27X27": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL9X9": {
+        "available": 336,
+        "used": 0
+      },
+      "altera_pll": {
+        "available": 6,
+        "used": 0
+      },
+      "cyclonev_hps_interface_mpu_general_purpose": {
+        "available": 1,
+        "used": 1
+      }
+    }
+  },
+  "low": {
+    "rbf_sha256": "acd47323c03a3c80d30659564e4435dc07620438f90ecee23171e184a1c7a1ca",
+    "fixture_sha256": "249c55db0cf4b8a72cbd6b813f1480bd9ade8630c5310f7e7af05c201e63cbd9",
+    "fmax": {
+      "product.FPGA_CLK1_50": {
+        "achieved": 379.21881103515625,
+        "constraint": 50
+      }
+    },
+    "utilization": {
+      "MISTRAL_M10K": {
+        "available": 553,
+        "used": 0
+      },
+      "MISTRAL_MUL18X18": {
+        "available": 112,
+        "used": 1
+      },
+      "MISTRAL_MUL27X27": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL9X9": {
+        "available": 336,
+        "used": 0
+      },
+      "altera_pll": {
+        "available": 6,
+        "used": 0
+      },
+      "cyclonev_hps_interface_mpu_general_purpose": {
+        "available": 1,
+        "used": 1
+      }
+    }
+  },
+  "high": {
+    "rbf_sha256": "645ef20ac925d3fa767b4a4f35008062b18c9dbafbb9661b9c70feb8fe2ad9ca",
+    "fixture_sha256": "be90512446a041d585d958ceea3ba55910c2b17ab27dfa44de58d3cd682bdc54",
+    "fmax": {
+      "product.FPGA_CLK1_50": {
+        "achieved": 379.21881103515625,
+        "constraint": 50
+      }
+    },
+    "utilization": {
+      "MISTRAL_M10K": {
+        "available": 553,
+        "used": 0
+      },
+      "MISTRAL_MUL18X18": {
+        "available": 112,
+        "used": 1
+      },
+      "MISTRAL_MUL27X27": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL9X9": {
+        "available": 336,
+        "used": 0
+      },
+      "altera_pll": {
+        "available": 6,
+        "used": 0
+      },
+      "cyclonev_hps_interface_mpu_general_purpose": {
+        "available": 1,
+        "used": 1
+      }
+    }
+  },
+  "m27-omitted": {
+    "rbf_sha256": "a2bb2912cbc94438dd1aa9cf6fa983420b19e3c6bf9e962d69101192c6550ec6",
+    "fixture_sha256": "08b39b86bc12df23bee45397808861b89272e3dbeef3dc24d83463cb05474526",
+    "fmax": {
+      "product.FPGA_CLK1_50": {
+        "achieved": 415.1100158691406,
+        "constraint": 50
+      }
+    },
+    "utilization": {
+      "MISTRAL_M10K": {
+        "available": 553,
+        "used": 0
+      },
+      "MISTRAL_MUL18X18": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL27X27": {
+        "available": 112,
+        "used": 1
+      },
+      "MISTRAL_MUL9X9": {
+        "available": 336,
+        "used": 0
+      },
+      "altera_pll": {
+        "available": 6,
+        "used": 0
+      },
+      "cyclonev_hps_interface_mpu_general_purpose": {
+        "available": 1,
+        "used": 1
+      }
+    }
+  },
+  "m27-zero": {
+    "rbf_sha256": "ebcc0c3a14b49dc27990d2f9f4113c0eb24bbc6acad20329174aea53171c6890",
+    "fixture_sha256": "a35b877141399c9364ae46bebf22b7863f3517ebb7a7c22dfbc29504c48ce36e",
+    "fmax": {
+      "product.FPGA_CLK1_50": {
+        "achieved": 415.1100158691406,
+        "constraint": 50
+      }
+    },
+    "utilization": {
+      "MISTRAL_M10K": {
+        "available": 553,
+        "used": 0
+      },
+      "MISTRAL_MUL18X18": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL27X27": {
+        "available": 112,
+        "used": 1
+      },
+      "MISTRAL_MUL9X9": {
+        "available": 336,
+        "used": 0
+      },
+      "altera_pll": {
+        "available": 6,
+        "used": 0
+      },
+      "cyclonev_hps_interface_mpu_general_purpose": {
+        "available": 1,
+        "used": 1
+      }
+    }
+  },
+  "m27-one": {
+    "rbf_sha256": "44378f122a29ce6a0b073192cb9fce3db0edd939c015a000a184c9d57bc3a96e",
+    "fixture_sha256": "41298788957a4cefe280234496a5c1fb67a67877bce1d4035d6ee15bbcd5cc40",
+    "fmax": {
+      "product.FPGA_CLK1_50": {
+        "achieved": 415.1100158691406,
+        "constraint": 50
+      }
+    },
+    "utilization": {
+      "MISTRAL_M10K": {
+        "available": 553,
+        "used": 0
+      },
+      "MISTRAL_MUL18X18": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL27X27": {
+        "available": 112,
+        "used": 1
+      },
+      "MISTRAL_MUL9X9": {
+        "available": 336,
+        "used": 0
+      },
+      "altera_pll": {
+        "available": 6,
+        "used": 0
+      },
+      "cyclonev_hps_interface_mpu_general_purpose": {
+        "available": 1,
+        "used": 1
+      }
+    }
+  },
+  "m27-cascade": {
+    "rbf_sha256": "c5b0cc09048f675864a36236387391eb80356dfd668f0925fd9ba0eb2c336b5c",
+    "fixture_sha256": "411c26d2b620b5bb312a6e2ee89288d75d00910aee70d33bb63b4f46b07c810a",
+    "fmax": {
+      "product.FPGA_CLK1_50": {
+        "achieved": 288.1844482421875,
+        "constraint": 50
+      }
+    },
+    "utilization": {
+      "MISTRAL_M10K": {
+        "available": 553,
+        "used": 0
+      },
+      "MISTRAL_MUL18X18": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL27X27": {
+        "available": 112,
+        "used": 1
+      },
+      "MISTRAL_MUL9X9": {
+        "available": 336,
+        "used": 0
+      },
+      "altera_pll": {
+        "available": 6,
+        "used": 0
+      },
+      "cyclonev_hps_interface_mpu_general_purpose": {
+        "available": 1,
+        "used": 1
+      }
+    }
+  }
+}

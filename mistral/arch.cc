@@ -29,10 +29,54 @@
 #include "util.h"
 
 #include "cyclonev.h"
+#include "dsp.h"
 
 NEXTPNR_NAMESPACE_BEGIN
 
 using namespace mistral;
+
+namespace {
+
+bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool def = false)
+{
+    auto it = params.find(key);
+    if (it == params.end())
+        return def;
+    if (!it->second.is_string)
+        return it->second.as_bool();
+    const std::string &value = it->second.as_string();
+    if (value == "1" || value == "true" || value == "TRUE" || value == "on" || value == "reg" ||
+        value == "registered")
+        return true;
+    if (value == "0" || value == "false" || value == "FALSE" || value == "off" || value == "bypass")
+        return false;
+    return def;
+}
+
+bool dsp_shared_config_equal(const CellInfo *a, const CellInfo *b)
+{
+    if (dsp_bool_param(a->params, id_A_SIGNED, true) != dsp_bool_param(b->params, id_A_SIGNED, true) ||
+        dsp_bool_param(a->params, id_B_SIGNED, true) != dsp_bool_param(b->params, id_B_SIGNED, true))
+        return false;
+    for (IdString key : {id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ, id_INREG_CTRL_BX,
+                         id_INREG_CTRL_BY, id_INREG_CTRL_BZ, id_OREG_CTRL, id_PREADDER_EN, id_PREADDER_SUB,
+                         id_CASCADE_EN, id_CASCADE_1ST_EN, id_CHAIN_OUTPUT_EN}) {
+        if (dsp_bool_param(a->params, key) != dsp_bool_param(b->params, key))
+            return false;
+    }
+    for (IdString port : {id_CLK, id_ACLR, id_ENA, id_ACCUMULATE, id_SUB, id_NEGATE, id_LOADCONST}) {
+        const NetInfo *an = a->getPort(port);
+        const NetInfo *bn = b->getPort(port);
+        // Hard constants have no net after packing. Keep their retained pin
+        // states in the shared-control comparison so opposite constants do
+        // not become legal occupants of one three-lane DSP tile.
+        if (an != bn || a->get_pin_state(port) != b->get_pin_state(port))
+            return false;
+    }
+    return true;
+}
+
+} // namespace
 
 void IdString::initialize_arch(const BaseCtx *ctx)
 {
@@ -190,6 +234,29 @@ IdStringList Arch::getBelName(BelId bel) const
 bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
 {
     auto &data = bel_data(bel);
+    if (data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27) && data.bound) {
+        // The mode-specific BELs are alternate views of one physical DSP
+        // tile. Three M9 lanes may share a tile, while a wide multiplier owns
+        // the tile and cannot coexist with another mode.
+        for (BelId other : getBelsByTile(CycloneV::pos2x(bel.pos), CycloneV::pos2y(bel.pos))) {
+            if (other == bel)
+                continue;
+            const auto &other_data = bel_data(other);
+            if (!other_data.bound || !other_data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27))
+                continue;
+            if (other_data.type != data.type) {
+                if (explain_invalid)
+                    log_info("DSP tile already contains multiplier mode %s; cannot place %s here.\n",
+                             nameOf(other_data.type), nameOf(data.type));
+                return false;
+            }
+            if (data.type == id_MISTRAL_MUL9X9 && !dsp_shared_config_equal(data.bound, other_data.bound)) {
+                if (explain_invalid)
+                    log_info("DSP tile already contains an M9 lane with different shared controls.\n");
+                return false;
+            }
+        }
+    }
     if (data.type == id_MISTRAL_CLKENA && data.block_index != 2 && data.bound) {
         auto input = data.bound->getPort(id_A);
         if (!input || !input->driver.cell || input->driver.cell->type != id_altera_pll ||
