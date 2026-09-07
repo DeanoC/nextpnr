@@ -578,11 +578,13 @@ struct MistralPacker
             std::string clock_type = parameter("clock_type", "auto");
             if (clock_type != "auto" && clock_type != "global clock" && clock_type != "Global Clock")
                 log_error("Clock enable '%s': only global clocks are supported.\n", ctx->nameOf(ci));
-            for (auto expected : {std::make_pair("ena_register_mode", "falling edge"),
-                                  std::make_pair("disable_mode", "low"), std::make_pair("test_syn", "high"),
+            std::string register_mode = parameter("ena_register_mode", "always enabled");
+            if (register_mode != "falling edge" && register_mode != "double register")
+                log_error("Clock enable '%s': unsupported ena_register_mode; require 'falling edge' or 'double register'.\n",
+                          ctx->nameOf(ci));
+            for (auto expected : {std::make_pair("disable_mode", "low"), std::make_pair("test_syn", "high"),
                                   std::make_pair("lpm_type", "cyclonev_clkena")}) {
-                const char *fallback = std::string(expected.first) == "ena_register_mode" ? "always enabled" : expected.second;
-                if (parameter(expected.first, fallback) != expected.second)
+                if (parameter(expected.first, expected.second) != expected.second)
                     log_error("Clock enable '%s': unsupported %s; require '%s'.\n",
                               ctx->nameOf(ci), expected.first, expected.second);
             }
@@ -641,11 +643,16 @@ struct MistralPacker
             // High is the existing packed-cell default; only low needs an override.
             if (power_up == "low")
                 ci->params[ctx->id("ena_register_power_up")] = power_up;
+            // Falling-edge mode is the existing packed-cell default; retain the
+            // explicit double-register selection for bit generation.
+            if (register_mode == "double register")
+                ci->params[ctx->id("ena_register_mode")] = register_mode;
             ci->type = id_MISTRAL_CLKENA;
         }
         for (IdString name : remove)
             ctx->cells.erase(name);
-        // MISTRAL_CLKENA uses falling-edge enable, with selectable startup state.
+        // MISTRAL_CLKENA uses a falling-edge enable register, optionally with a
+        // second falling-edge register, and selectable startup state.
         for (auto &entry : ctx->cells) {
             CellInfo *ci = entry.second.get();
             if (ci->type != id_MISTRAL_CLKENA)
@@ -659,10 +666,19 @@ struct MistralPacker
             }
             if (!enable || !enable->driver.cell || !ci->getPort(id_Q))
                 log_error("Clock enable '%s': require driven ENA and connected Q.\n", ctx->nameOf(ci));
+            auto mode = ci->params.find(ctx->id("ena_register_mode"));
+            if (mode != ci->params.end()) {
+                if (!mode->second.is_string ||
+                    (mode->second.as_string() != "falling edge" && mode->second.as_string() != "double register"))
+                    log_error("Clock enable '%s': no mode overrides; ena_register_mode must be 'falling edge' or 'double register'.\n",
+                              ctx->nameOf(ci));
+            }
             for (auto &param : ci->params) {
-                if (param.first != ctx->id("ena_register_power_up"))
-                    log_error("Clock enable '%s': no mode overrides; only ena_register_power_up is supported.\n", ctx->nameOf(ci));
-                if (!param.second.is_string || (param.second.as_string() != "high" && param.second.as_string() != "low"))
+                if (!param.first.in(ctx->id("ena_register_power_up"), ctx->id("ena_register_mode")))
+                    log_error("Clock enable '%s': no mode overrides; only ena_register_mode and ena_register_power_up are supported.\n",
+                              ctx->nameOf(ci));
+                if (param.first == ctx->id("ena_register_power_up") &&
+                    (!param.second.is_string || (param.second.as_string() != "high" && param.second.as_string() != "low")))
                     log_error("Clock enable '%s': ena_register_power_up must be 'high' or 'low'.\n", ctx->nameOf(ci));
             }
             for (auto &port : ci->ports)
