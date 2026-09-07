@@ -657,8 +657,8 @@ struct MistralPacker
                         log_error("PLL '%s': explicit output_clock_frequency%d is required.\n", ctx->nameOf(ci), i);
                     output_hzs[i] = mistral_pll::parse_output_hz(freq->second.as_string());
                 }
-                if (fractional || reference_mhz != 50)
-                    log_error("PLL '%s': multi-output profile requires integer feedback and 50 MHz reference.\n",
+                if (fractional)
+                    log_error("PLL '%s': multi-output profile requires integer feedback.\n",
                               ctx->nameOf(ci));
                 if (shifted)
                     for (int i = 0; i < clocks; ++i)

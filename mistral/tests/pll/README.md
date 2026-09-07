@@ -626,8 +626,8 @@ remain unchanged.
 
 `triple.v` checks the bounded integer 25/50/100 MHz profile on `5CSEBA6U23I7`,
 with a 50 MHz reference on V11, direct mode, zero phase and 50% duty on all
-three outputs. Other references, phases and fractional feedback are rejected; compatible
-frequencies and representable duties are covered below. Existing reset/lock and buffered-output
+three outputs. Additional checked references, frequencies, duties and phase
+profiles are covered below; fractional feedback remains unsupported for three outputs. Existing reset/lock and buffered-output
 rules apply; the four-output profile below is separately checked.
 
 The profile uses M12/N2 and the checked 300 MHz configuration. Output0 uses
@@ -703,8 +703,8 @@ this profile. Downstream locks and parent pins are unchanged.
 
 The multi-output selector accepts exact decimal frequencies from 1 to 100 MHz
 when every output has an exact, representable divider from one checked
-300/320/400 MHz configuration. Requests retain the 50 MHz V11 reference,
-integer feedback and zero phase restrictions. Representable duties are
+300/320/400 MHz configuration. Zero-phase requests accept 25, 50 or 100 MHz
+references on V11 with integer feedback. Representable duties are
 covered below. This adds no new
 analog tuples and no Mistral geometry or clock-buffer routes.
 
@@ -742,7 +742,7 @@ frequencies and high/low counts fit one checked 300/320/400 MHz configuration.
 The selector considers the duty of every output before choosing a tuple.
 50% duty keeps the existing odd-divider correction; other duties require
 exact integer high/low counts, each within the existing counter limits.
-The 50 MHz reference, zero phase and integer feedback restrictions remain.
+Zero-phase profiles accept the checked 25/50/100 MHz references and require integer feedback.
 
 For example, a 25/50/100 MHz triple with duties 25/50/25 needs 400 MHz:
 25 MHz at 25% is representable at 300 MHz, but 100 MHz at 25% is not.
@@ -842,3 +842,31 @@ No bitstream preset table, analog setting, clock route or Mistral source
 changes are needed. This is host-only validation; physical phase accuracy
 has not been measured. Downstream pins and hardware integration remain
 separate work.
+
+
+## Three/four outputs with 25 or 100 MHz references
+
+Zero-phase multi-output profiles use the complete reference-specific feedback
+and analog tuples in the table above. The selector tests every output frequency
+and duty against one common 300/320/400 MHz configuration, preserving the
+existing preference order. Packing and bitstream generation share this selector.
+No new Mistral tables, BELs or routes are required.
+
+```sh
+python3 mistral/tests/pll/multi_reference.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-multi-reference
+```
+
+Six [portable Quartus oracle bundles](fixtures/multi-reference/) cover both
+references with a 25/50/100 MHz triple at 50% duty (300 MHz), the same triple
+at 25/50/25% duty (400 MHz), and a 40/80/16/20 MHz quad at 25/75/25/75% duty
+(320 MHz). The runner compares every emitted FPLL setting, checks output timing,
+buffer placement, mux selections and utilization, and rejects conflicting input
+SDC and shifted profiles at either new reference. `triple.py` and `quad.py` accept
+`--reference-mhz` with a matching `--oracle-fixture`.
+
+Shifted profiles remain restricted to a 50 MHz reference, 25 MHz outputs and
+50% duty. The onboard DE10-Nano oscillator is 50 MHz; the new reference cases
+are host-only checks and require an appropriate external clock for hardware
+use. This extension adds no timing relationship to the input reference or
+between unequal-frequency outputs. Downstream locks and FES pins are unchanged.

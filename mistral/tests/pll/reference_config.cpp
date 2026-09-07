@@ -38,7 +38,31 @@ int main()
             assert(c.m_low_preset == (v == 1 && r == 0 ? 7 : v == 1 && r == 1 ? 4 : 1));
             assert(c.m_phase_preset == (v == 1 && r == 0 ? 3 : v == 1 && r == 1 ? 2 : 0));
         }
+    for (int r = 0; r < 3; ++r) {
+        const std::array<int64_t, 4> triple = {25000000, 50000000, 100000000, 0};
+        const std::array<int64_t, 4> quad = {40000000, 80000000, 16000000, 20000000};
+        for (int v = 0; v < 3; ++v) {
+            const auto hz = v == 1 ? quad : triple;
+            const std::array<int, 4> duties = v == 0 ? std::array<int, 4>{50, 50, 50, 50}
+                : v == 1 ? std::array<int, 4>{25, 75, 25, 75} : std::array<int, 4>{25, 50, 25, 50};
+            const int count = v == 1 ? 4 : 3;
+            auto result = select_multi_hz(hz, count, refs[r], duties);
+            assert(result);
+            const auto &c = result->feedback;
+            assert(c.m == m[r][v] && c.n == n[r][v] && c.bandwidth == bw[r][v]);
+            assert(c.charge_pump == ((v == 1 && r != 2) ? 2 : 1));
+            assert(c.m_low_preset == (v == 1 && r == 0 ? 7 : v == 1 && r == 1 ? 4 : 1));
+            assert(c.m_phase_preset == (v == 1 && r == 0 ? 3 : v == 1 && r == 1 ? 2 : 0));
+            for (int i = 0; i < count; ++i) {
+                assert(int64_t(refs[r]) * 1000000 * c.m == hz[i] * c.n * result->counters[i]);
+                assert(duty_counts(result->counters[i], duties[i]));
+            }
+            assert(c.c == result->counters[0]);
+        }
+    }
     for (int ref : {-1, 0, 24, 26, 49, 51, 99, 101}) {
+        assert(!select_multi_hz({25000000, 50000000, 100000000, 0}, 3, ref));
+        assert(!select_multi_hz({40000000, 80000000, 16000000, 20000000}, 4, ref));
         assert(!select(25, ref));
         assert(!select_dual(25, 40, ref));
     }

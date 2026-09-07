@@ -142,8 +142,8 @@ struct MultiConfig
 inline std::optional<MultiConfig> select_multi_hz(const std::array<int64_t, 4> &hz, int count, int reference_mhz,
                                                    const std::array<int, 4> &duties = {50, 50, 50, 50})
 {
-    // Every frequency and duty must fit one checked 50 MHz reference configuration.
-    if (reference_mhz != 50 || count < 3 || count > 4)
+    // Every frequency and duty must fit one checked reference-specific configuration.
+    if (!valid_reference(reference_mhz) || count < 3 || count > 4)
         return std::nullopt;
     for (int i = 0; i < count; ++i)
         if (hz[i] < 1000000 || hz[i] > 100000000)
