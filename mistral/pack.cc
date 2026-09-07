@@ -561,8 +561,11 @@ struct MistralPacker
             bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
             std::string phase1 = str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps");
             bool shifted = phase1 != "0 ps";
+            bool quadrature = clocks == 4 && phase1 == "10000 ps" &&
+                              str_or_default(ci->params, ctx->id("phase_shift2"), "0 ps") == "20000 ps" &&
+                              str_or_default(ci->params, ctx->id("phase_shift3"), "0 ps") == "30000 ps";
             auto phase = mistral_pll::select_phase_25mhz(phase1);
-            if (!phase || (shifted && clocks != 2))
+            if (!phase || (shifted && clocks != 2 && !quadrature))
                 log_error("PLL '%s': phase profile requires two outputs with phase_shift1=10000, 20000 or 30000 ps.\n",
                           ctx->nameOf(ci));
             int duty0 = int_or_default(ci->params, ctx->id("duty_cycle0"), 50);
@@ -590,11 +593,11 @@ struct MistralPacker
                 profile[ctx->id("duty_cycle1")] = Property(duty1);
             }
             if (clocks >= 3) {
-                profile[ctx->id("phase_shift2")] = Property("0 ps");
+                profile[ctx->id("phase_shift2")] = Property(quadrature ? "20000 ps" : "0 ps");
                 profile[ctx->id("duty_cycle2")] = Property(duties[2]);
             }
             if (clocks == 4) {
-                profile[ctx->id("phase_shift3")] = Property("0 ps");
+                profile[ctx->id("phase_shift3")] = Property(quadrature ? "30000 ps" : "0 ps");
                 profile[ctx->id("duty_cycle3")] = Property(duties[3]);
             }
             if (ctx->args.device != "5CSEBA6U23I7")
@@ -654,6 +657,11 @@ struct MistralPacker
                 if (fractional || reference_mhz != 50)
                     log_error("PLL '%s': multi-output profile requires integer feedback and 50 MHz reference.\n",
                               ctx->nameOf(ci));
+                if (quadrature)
+                    for (int i = 0; i < clocks; ++i)
+                        if (output_hzs[i] != 25000000 || duties[i] != 50)
+                            log_error("PLL '%s': quadrature profile requires four 25 MHz outputs with 50 percent duty.\n",
+                                      ctx->nameOf(ci));
                 auto multi = mistral_pll::select_multi_hz(output_hzs, clocks, reference_mhz, duties);
                 if (!multi)
                     log_error("PLL '%s': unsupported multi-output frequencies/duties; require exact 1 to 100 MHz dividers "
@@ -721,6 +729,9 @@ struct MistralPacker
                     (*out2->users.begin()).port != id_A)
                     log_error("PLL '%s': outclk[2] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
                 buf2 = (*out2->users.begin()).cell;
+                if (quadrature && (out2->clkconstr || (buf2->getPort(id_Q) && buf2->getPort(id_Q)->clkconstr)))
+                    log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
+                              ctx->nameOf(ci));
             }
             NetInfo *out3 = ci->getPort(ctx->id("outclk[3]"));
             CellInfo *buf3 = nullptr;
@@ -730,6 +741,9 @@ struct MistralPacker
                     (*out3->users.begin()).port != id_A)
                     log_error("PLL '%s': outclk[3] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
                 buf3 = (*out3->users.begin()).cell;
+                if (quadrature && (out3->clkconstr || (buf3->getPort(id_Q) && buf3->getPort(id_Q)->clkconstr)))
+                    log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
+                              ctx->nameOf(ci));
             }
             auto set_clock = [&](NetInfo *net, int period, int duty = 50) {
                 int high = int(int64_t(period) * duty / 100);
@@ -764,13 +778,6 @@ struct MistralPacker
                 double generated1_hz = mistral_pll::achieved_hz(second_config, reference_mhz);
                 set_clock(out1, ctx->getDelayFromNS(1.0e9 / generated1_hz), duty1);
                 set_clock(buf1->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / generated1_hz), duty1);
-                if (shifted) {
-                    for (NetInfo *net : {out, buf->getPort(id_Q), out1, buf1->getPort(id_Q)}) {
-                        net->clkconstr->phase_group = ci->name;
-                        net->clkconstr->phase_shift =
-                                (net == out1 || net == buf1->getPort(id_Q)) ? ctx->getDelayFromNS(phase->shift_ns) : 0;
-                    }
-                }
                 if (fractional)
                     log_info("PLL '%s': fractional-N second requested %.6f Hz, achieved %.9f Hz, error %.9g ppm.\n",
                              ctx->nameOf(ci), double(output1_hz), generated1_hz,
@@ -783,6 +790,17 @@ struct MistralPacker
             if (buf3) {
                 set_clock(out3, ctx->getDelayFromNS(1.0e9 / output_hzs[3]), duties[3]);
                 set_clock(buf3->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output_hzs[3]), duties[3]);
+            }
+            if (shifted) {
+                std::array<NetInfo *, 4> outputs{out, out1, out2, out3};
+                std::array<CellInfo *, 4> buffers{buf, buf1, buf2, buf3};
+                for (int i = 0; i < clocks; ++i) {
+                    int shift_ns = quadrature ? 10 * i : (i == 1 ? phase->shift_ns : 0);
+                    for (NetInfo *net : {outputs[i], buffers[i]->getPort(id_Q)}) {
+                        net->clkconstr->phase_group = ci->name;
+                        net->clkconstr->phase_shift = ctx->getDelayFromNS(shift_ns);
+                    }
+                }
             }
             BelId chosen;
             WireId pad = ctx->getBelPinWire(ref->driver.cell->bel, ref->driver.port);
