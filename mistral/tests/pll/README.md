@@ -1063,8 +1063,10 @@ No misteross lock or FES parent pin changes are included.
 ## Fabric-controlled PLL clock enable
 
 The existing Yosys `cyclonev_clkena` blackbox can gate a PLL output using a
-fabric signal. The checked profile uses a falling-edge enable register and disabled output
-low. Enable-register startup defaults to high; low is supported as described below. For example:
+fabric signal. The checked profile supports a falling-edge enable register and
+the Cyclone V double-register enable path, with disabled output low.
+Enable-register startup defaults to high; low is supported as described below.
+For example:
 
 ```verilog
 cyclonev_clkena #(
@@ -1084,8 +1086,9 @@ The startup parameter accepts `ena_register_power_up="high"` (default) or
 and `lpm_type="cyclonev_clkena"`. Other values, unknown parameters,
 unknown ports, missing enable drivers and non-PLL sources fail explicitly.
 The optional `enaout` status output is supported as described below.
-The mode must be specified: the primitive's default `always enabled` is not
-this gated profile. Use the ordinary PLL output path for an unconditional clock.
+The mode must be specified as either `falling edge` or `double register`: the
+primitive's default `always enabled` is not this gated profile. Use the ordinary
+PLL output path for an unconditional clock.
 
 Packing converts the primitive to `MISTRAL_CLKENA` with ports `A`, `ENA`, `Q`
 and optional `ENAOUT` status.
@@ -1094,8 +1097,9 @@ its output net and checking clock constraints on both sides. A placement
 constraint on that buffer prevents folding and is rejected. The packed cell
 uses one existing clock-buffer BEL, so a gated output consumes one of the
 same four shared lanes as an ungated output. No Yosys or Mistral changes are
-required. Direct `MISTRAL_CLKENA` cells have the same falling-edge mode and accept
-only the string parameter `ena_register_power_up`, defaulting to `"high"`.
+required. Direct `MISTRAL_CLKENA` cells accept the string parameter
+`ena_register_mode` with the same two values and `ena_register_power_up`,
+defaulting to `"falling edge"` and `"high"`.
 
 Mistral already exposes the fabric `CMUXHG.ENABLE` endpoint. The backend
 imports that BEL input and programs `ENABLE_REGISTER_MODE=REG1_ENOUT`.
@@ -1162,6 +1166,52 @@ Base nextpnr revision: `8361201179be3ae82e3ab1fd3f6b4e15c5fc23a0` on
 Validation is host-only; the ladder retains startup and stop/resume hardware
 acceptance with the 50 MHz board reference. ENA setup/hold remains
 uncharacterized. No misteross lock or FES pin changes are included.
+
+
+## Clock-enable double register
+
+Set `.ena_register_mode("double register")` on a global-clock
+`cyclonev_clkena` to select Cyclone V's two-stage falling-edge enable path. The
+first stage captures `ena` on a falling edge and the second stage captures that
+value on the next falling edge; this adds one input-clock cycle of enable
+latency compared with `falling edge`. The mode is a configuration choice, not
+an additional BEL or a characterized CDC synchronizer. The
+[official ALTCLKCTRL guide](https://docs.altera.com/api/khub/documents/2R0lgtV~KL8vFMQjiDau_Q/content)
+describes the selected `clkout` as the second falling-edge register output;
+the one-cycle latency statement follows that documented circuit. `ENA`
+setup/hold and the observation latency of `ENAOUT` remain uncharacterized by
+this backend.
+
+Packing retains the explicit mode on `MISTRAL_CLKENA` only when it is
+`double register`; the existing packed default remains the single falling-edge
+register. Bit generation selects Mistral's existing
+`ENABLE_REGISTER_MODE=REG2_ENOUT` mux value for that parameter and keeps the
+same `ENABLE_REGISTER_POWER_UP`, `INPUT_SEL` and `TESTSYN_ENOUT_SELECT` fields.
+No new BEL or Mistral table is required: the locked Mistral data already
+describes `reg2_enout` for CMUXHG. Invalid modes remain explicit errors for
+both native `cyclonev_clkena` and direct `MISTRAL_CLKENA` cells.
+
+The focused runner exercises native and raw packed cells with high and low
+startup, status routing to a fabric sampling register, compressed RBF output,
+timing at 25 MHz and rejection cases:
+
+```sh
+python3 mistral/tests/pll/clock_enable_reg2.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-clock-enable-reg2
+```
+
+The [portable Quartus references](fixtures/clock-enable-reg2/README.md) use
+the same fixed FPLL.000.014/C6 and CMUXHG.000.035 lane 2 as the falling-edge
+fixture. Quartus emits `REG2_ENOUT`; the low and high references differ only
+in the startup power-up field. The exact compressed RBFs and regeneration
+inputs are bundled, so no private build path is needed.
+
+This change starts from nextpnr fork `mistral-stable`
+`880be337be4c92b2f7f3345a69a969020296f2d8`, with unchanged Mistral
+`78ba2a580ae2523403d4f4f91891a6b11d7b6aba` and Yosys
+`13b43f8c85ec430a33ee55d058fb4c32b42b6910`. Validation is host-only; the
+ladder owns any 50 MHz hardware test. No misteross lock, experiment RTL or FES
+parent pin changes are included.
 
 
 ## Running and gated branches of one PLL output

@@ -162,8 +162,9 @@ struct MistralBitgen
         NPNR_ASSERT(cv->bmux_r_set(CycloneV::CMUXHG, pos, CycloneV::INPUT_SEL, bi, select));
         cv->bmux_m_set(CycloneV::CMUXHG, pos, CycloneV::TESTSYN_ENOUT_SELECT, bi, CycloneV::PRE_SYNENB);
         if (ci->type == id_MISTRAL_CLKENA) {
+            std::string register_mode = str_or_default(ci->params, ctx->id("ena_register_mode"), "falling edge");
             NPNR_ASSERT(cv->bmux_m_set(CycloneV::CMUXHG, pos, CycloneV::ENABLE_REGISTER_MODE, bi,
-                                      CycloneV::REG1_ENOUT));
+                                      register_mode == "double register" ? CycloneV::REG2_ENOUT : CycloneV::REG1_ENOUT));
             NPNR_ASSERT(cv->bmux_n_set(CycloneV::CMUXHG, pos, CycloneV::ENABLE_REGISTER_POWER_UP, bi,
                                       str_or_default(ci->params, ctx->id("ena_register_power_up"), "high") == "low" ? 0 : 1));
         }
