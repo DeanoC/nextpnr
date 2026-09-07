@@ -567,8 +567,12 @@ struct MistralPacker
                           ctx->nameOf(ci));
             int duty0 = int_or_default(ci->params, ctx->id("duty_cycle0"), 50);
             int duty1 = int_or_default(ci->params, ctx->id("duty_cycle1"), 50);
-            if (duty0 <= 0 || duty0 >= 100 || (clocks == 2 && (duty1 <= 0 || duty1 >= 100)))
-                log_error("PLL '%s': duty cycle must be an integer percent from 1 to 99.\n", ctx->nameOf(ci));
+            std::array<int, 4> duties{duty0, duty1, 50, 50};
+            for (int i = 2; i < clocks; ++i)
+                duties[i] = int_or_default(ci->params, ctx->idf("duty_cycle%d", i), 50);
+            for (int i = 0; i < clocks; ++i)
+                if (duties[i] <= 0 || duties[i] >= 100)
+                    log_error("PLL '%s': duty cycle must be an integer percent from 1 to 99.\n", ctx->nameOf(ci));
             if (fractional && (duty0 != 50 || (clocks == 2 && duty1 != 50)))
                 log_error("PLL '%s': fractional-N profiles require 50 percent duty cycle.\n", ctx->nameOf(ci));
             // Frequency selection uses only checked feedback/analog tuples.
@@ -587,11 +591,11 @@ struct MistralPacker
             }
             if (clocks >= 3) {
                 profile[ctx->id("phase_shift2")] = Property("0 ps");
-                profile[ctx->id("duty_cycle2")] = Property(50);
+                profile[ctx->id("duty_cycle2")] = Property(duties[2]);
             }
             if (clocks == 4) {
                 profile[ctx->id("phase_shift3")] = Property("0 ps");
-                profile[ctx->id("duty_cycle3")] = Property(50);
+                profile[ctx->id("duty_cycle3")] = Property(duties[3]);
             }
             if (ctx->args.device != "5CSEBA6U23I7")
                 log_error("PLL '%s': initial PLL profile supports only 5CSEBA6U23I7.\n", ctx->nameOf(ci));
@@ -647,12 +651,12 @@ struct MistralPacker
                         log_error("PLL '%s': explicit output_clock_frequency%d is required.\n", ctx->nameOf(ci), i);
                     output_hzs[i] = mistral_pll::parse_output_hz(freq->second.as_string());
                 }
-                if (fractional || reference_mhz != 50 || duty0 != 50 || duty1 != 50)
-                    log_error("PLL '%s': multi-output profile requires integer feedback, 50 MHz reference and 50 percent duty.\n",
+                if (fractional || reference_mhz != 50)
+                    log_error("PLL '%s': multi-output profile requires integer feedback and 50 MHz reference.\n",
                               ctx->nameOf(ci));
-                auto multi = mistral_pll::select_multi_hz(output_hzs, clocks, reference_mhz);
+                auto multi = mistral_pll::select_multi_hz(output_hzs, clocks, reference_mhz, duties);
                 if (!multi)
-                    log_error("PLL '%s': unsupported multi-output frequencies; require exact 1 to 100 MHz dividers "
+                    log_error("PLL '%s': unsupported multi-output frequencies/duties; require exact 1 to 100 MHz dividers "
                               "from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
                 config = multi->feedback;
                 c1 = multi->counters[1];
@@ -773,12 +777,12 @@ struct MistralPacker
                              (generated1_hz / output1_hz - 1.0) * 1.0e6);
             }
             if (buf2) {
-                set_clock(out2, ctx->getDelayFromNS(1.0e9 / output_hzs[2]));
-                set_clock(buf2->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output_hzs[2]));
+                set_clock(out2, ctx->getDelayFromNS(1.0e9 / output_hzs[2]), duties[2]);
+                set_clock(buf2->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output_hzs[2]), duties[2]);
             }
             if (buf3) {
-                set_clock(out3, ctx->getDelayFromNS(1.0e9 / output_hzs[3]));
-                set_clock(buf3->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output_hzs[3]));
+                set_clock(out3, ctx->getDelayFromNS(1.0e9 / output_hzs[3]), duties[3]);
+                set_clock(buf3->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output_hzs[3]), duties[3]);
             }
             BelId chosen;
             WireId pad = ctx->getBelPinWire(ref->driver.cell->bel, ref->driver.port);

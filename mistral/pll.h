@@ -139,9 +139,10 @@ struct MultiConfig
     std::array<int, 4> counters;
 };
 
-inline std::optional<MultiConfig> select_multi_hz(const std::array<int64_t, 4> &hz, int count, int reference_mhz)
+inline std::optional<MultiConfig> select_multi_hz(const std::array<int64_t, 4> &hz, int count, int reference_mhz,
+                                                   const std::array<int, 4> &duties = {50, 50, 50, 50})
 {
-    // Multi-output support retains the checked 50 MHz reference and 50% duty.
+    // Every frequency and duty must fit one checked 50 MHz reference configuration.
     if (reference_mhz != 50 || count < 3 || count > 4)
         return std::nullopt;
     for (int i = 0; i < count; ++i)
@@ -158,7 +159,7 @@ inline std::optional<MultiConfig> select_multi_hz(const std::array<int64_t, 4> &
                 break;
             }
             counters[i] = numerator / denominator;
-            if (!duty_counts(counters[i], 50)) {
+            if (!duty_counts(counters[i], duties[i])) {
                 valid = false;
                 break;
             }

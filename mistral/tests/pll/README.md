@@ -180,7 +180,7 @@ SHA-256 `2d5be08a315dd7e5e9f620954e588e40340dbcfff7c735da707c3f68b8eb0bcb`.
 
 ## Fabric reset and relock
 
-`rst` maps to Mistral's existing FPLL `NRESET0` fabric endpoint. Quartus17's
+`rst` maps to Mistral's existing FPLL `NRESET0` fabric endpoint. Quartus 17's
 active-high routed reset uses the default inverter bit (0), whereas the
 unconnected folded-low profile needs bit1. No other FPLL PRAM fields or Mistral
 tables change. The input is an asynchronous timing endpoint: synchronous Fmax
@@ -392,7 +392,7 @@ combinations are rejected except the checked dual-output pair below. The existin
 V11 route, direct mode, zero phase, 50% duty and reset rules still apply.
 The default `"false"` mode retains exact integer-divider behavior.
 
-Quartus17.0.2 selects M8, N1 (bypass), C6=33 and fractional word
+Quartus 17.0.2 selects M8, N1 (bypass), C6=33 and fractional word
 K=472790000 (`0x1c2e33f0`) at 32-bit precision. The writer enables
 DSM_OUT_SEL1, sets N high/low counts0, M high/low4, C6 high17/low16 with
 odd-duty correction, BW7 and CP2. M presets1/0, lock filters0x19/2 and the
@@ -430,7 +430,7 @@ precision, jitter characterization or native-image acceptance.
 ### 44.1 kHz audio-clock profile
 
 The second checked fractional-N output is 11.2896 MHz (256 times 44.1 kHz).
-Quartus17.0.2 uses the same M8, N bypass and analog settings as the 12.288 MHz
+Quartus 17.0.2 uses the same M8, N bypass and analog settings as the 12.288 MHz
 profile, with C6=36 and K551954751 (`0x20e6293f`). Both C high/low counts are 18;
 odd-duty correction is disabled. Calculated output is 11,289,599.972143251 Hz,
 about −0.00246747 ppm from the request. This preserves the observed oracle word;
@@ -459,7 +459,7 @@ With `fractional_vco_multiplier="true"` and `number_of_clocks=2`, the checked
 pair is output0=12.288 MHz and output1=24.576 MHz, from the 50 MHz reference.
 Swapped outputs and other pairs remain unsupported. Both outputs share M8,
 N1 bypass and K=`0x5b18548b`, with C6=34 and C7=17. This is a separately
-checked Quartus17.0.2 configuration: the single 12.288 MHz fractional word
+checked Quartus 17.0.2 configuration: the single 12.288 MHz fractional word
 cannot be reused. C6 has even counts 17/17; C7 uses 9/8 and odd-duty correction.
 Analog settings remain BW7/CP2 and the existing presets/filters.
 
@@ -626,8 +626,8 @@ remain unchanged.
 
 `triple.v` checks the bounded integer 25/50/100 MHz profile on `5CSEBA6U23I7`,
 with a 50 MHz reference on V11, direct mode, zero phase and 50% duty on all
-three outputs. Other references, phases, duties and fractional feedback are
-rejected; compatible frequencies are covered by the selector below. Existing reset/lock and buffered-output
+three outputs. Other references, phases and fractional feedback are rejected; compatible
+frequencies and representable duties are covered below. Existing reset/lock and buffered-output
 rules apply; the four-output profile below is separately checked.
 
 The profile uses M12/N2 and the checked 300 MHz configuration. Output0 uses
@@ -687,7 +687,7 @@ python3 mistral/tests/pll/quad.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
 
 The runner verifies all four clock constraints/Fmax, buffer placements and
 CMUX selectors, then compares every emitted FPLL setting against the
-[bundled Quartus17.0.2 reference](fixtures/quad/README.md). The reference
+[bundled Quartus 17.0.2 reference](fixtures/quad/README.md). The reference
 contains the compressed RBF, hashes and portable regeneration inputs.
 Quartus chooses different buffer lanes; the fixture documents the C8
 horizontal input selection and the runner explicitly checks the OSS lane.
@@ -704,7 +704,8 @@ this profile. Downstream locks and parent pins are unchanged.
 The multi-output selector accepts exact decimal frequencies from 1 to 100 MHz
 when every output has an exact, representable divider from one checked
 300/320/400 MHz configuration. Requests retain the 50 MHz V11 reference,
-integer feedback, zero phase and 50% duty restrictions. This adds no new
+integer feedback and zero phase restrictions. Representable duties are
+covered below. This adds no new
 analog tuples and no Mistral geometry or clock-buffer routes.
 
 All outputs participate in selection, in the existing preference order
@@ -732,3 +733,36 @@ checked reference.
 Validation is host-only. The existing limitations on unequal-frequency
 cross-clock timing and analog acceptance still apply; downstream pin updates
 remain separate integration work.
+
+
+## Independent duties on three and four outputs
+
+Multi-output PLLs accept integer duty percentages from 1 to 99 when all
+frequencies and high/low counts fit one checked 300/320/400 MHz configuration.
+The selector considers the duty of every output before choosing a tuple.
+50% duty keeps the existing odd-divider correction; other duties require
+exact integer high/low counts, each within the existing counter limits.
+The 50 MHz reference, zero phase and integer feedback restrictions remain.
+
+For example, a 25/50/100 MHz triple with duties 25/50/25 needs 400 MHz:
+25 MHz at 25% is representable at 300 MHz, but 100 MHz at 25% is not.
+The four-output 25/50/50/100 profile with duties 25/50/50/25 similarly lets
+the fourth output force 400 MHz. A 320 MHz mixed-duty reference checks
+40/80/16/20 MHz with duties 25/75/25/75.
+
+```sh
+python3 mistral/tests/pll/multi_duty.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-multi-duty
+```
+
+All three [reference bundles](fixtures/multi-duty/) contain portable Quartus 17.0.2
+inputs, compressed RBFs and checksums. The runner compares all FPLL settings
+and global clock selectors, rejects out-of-range and unrepresentable duties
+on every output, and routes independent rising-to-falling and falling-to-rising
+paths for every clock. Their setup windows and reported Fmax must follow
+the requested high/low fractions. `triple.py` and `quad.py` also accept
+`--duties` alongside their frequency and oracle-fixture options.
+
+No analog tuple, clock route or Mistral table is added. Tests are host-only;
+physical pulse-width accuracy and hardware acceptance remain unmeasured.
+Downstream pin changes remain separate integration work.

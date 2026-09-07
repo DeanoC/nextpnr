@@ -22,6 +22,8 @@ def main():
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--frequencies", nargs=3, default=('25', '50', '100'),
                         help="exact output frequencies in MHz")
+    parser.add_argument("--duties", nargs=3, type=int, default=[50, 50, 50],
+                        help="exact output duty percentages")
     parser.add_argument("--oracle-fixture", type=Path,
                         help="directory containing top.rbf.gz and sha256.json")
     parser.add_argument("--oracle-bt", type=Path)
@@ -39,6 +41,8 @@ def main():
     assert sum(c["type"] == "altera_pll" for c in cells.values()) == 1
     for index, frequency in enumerate(args.frequencies):
         cells["pll"]["parameters"][f"output_clock_frequency{index}"] = f"{frequency} MHz"
+    for index, duty in enumerate(args.duties):
+        cells["pll"]["parameters"][f"duty_cycle{index}"] = format(duty, "032b")
     (out / "synth.json").write_text(json.dumps(design))
     sdc = out / "clocks.sdc"
     sdc.write_text("create_clock -name FPGA_CLK1_50 -period 20 [get_ports {FPGA_CLK1_50}]\n")
@@ -105,11 +109,11 @@ def main():
             ("frequency0", "output_clock_frequency0", "7.0 MHz", ("multi-output", "frequenc")),
             ("frequency1", "output_clock_frequency1", "7.0 MHz", ("multi-output", "frequenc")),
             ("phase1", "phase_shift1", "10000 ps", ("phase",)),
-            ("duty0", "duty_cycle0", format(25, "032b"), ("multi-output",)),
-            ("duty1", "duty_cycle1", format(25, "032b"), ("multi-output", "frequencies/duties")),
+            ("duty0", "duty_cycle0", format(0, "032b"), ("duty cycle",)),
+            ("duty1", "duty_cycle1", format(0, "032b"), ("duty cycle",)),
             ("frequency2", "output_clock_frequency2", "7.0 MHz", ("multi-output", "frequenc")),
             ("phase2", "phase_shift2", "100 ps", ("multi-output", "phase")),
-            ("duty2", "duty_cycle2", format(25, "032b"), ("multi-output", "duty")),
+            ("duty2", "duty_cycle2", format(0, "032b"), ("duty cycle",)),
             ("missing-frequency2", "output_clock_frequency2", None, ("output_clock_frequency2",)),
         ):
             invalid = copy.deepcopy(design)
