@@ -124,7 +124,7 @@ def main():
         ("malformed-decimal", "output_clock_frequency1", "12..5 MHz", "unsupported dual PLL frequencies"),
         ("excess-precision", "output_clock_frequency1", "12.5000001 MHz", "unsupported dual PLL frequencies"),
         ("inexact-divider", "output_clock_frequency1", "12.500001 MHz", "unsupported dual PLL frequencies"),
-        ("phase1", "phase_shift1", "100 ps", "phase_shift1 must be zero or a checked quarter-cycle shift"),
+        ("phase1", "phase_shift1", "100 ps", "phase_shift1 must be zero or a checked phase shift"),
     ):
         if args.skip_negative:
             continue

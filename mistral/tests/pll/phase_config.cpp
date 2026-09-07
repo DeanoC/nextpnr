@@ -22,8 +22,16 @@ int main()
         assert(fastest && fastest->shift_ps == quarter * 2500);
         assert(fastest->c_preset == presets100[quarter] && fastest->c_phase_preset == mux100[quarter]);
     }
+    // Quarter phases above remain unchanged; odd eighths are checked by phase-45 oracles.
+    const int presets45[] = {1, 1, 2, 3, 4, 4, 5, 6};
+    const int mux45[] = {0, 6, 4, 2, 0, 6, 4, 2};
+    for (int eighth = 0; eighth < 8; ++eighth) {
+        auto phase = select_phase(std::to_string(eighth * 2500) + " ps", 50000000);
+        assert(phase && phase->shift_ps == eighth * 2500);
+        assert(phase->c_preset == presets45[eighth] && phase->c_phase_preset == mux45[eighth]);
+    }
     for (int64_t hz : {25000000, 50000000, 100000000}) {
-        for (const char *invalid : {"-5000 ps", "100 ps", "2501 ps", "40000 ps", "5 ns", "junk"})
+        for (const char *invalid : {"-5000 ps", "100 ps", "1250 ps", "2501 ps", "40000 ps", "5 ns", "junk"})
             assert(!select_phase(invalid, hz));
     }
     assert(!select_phase("10000 ps", 100000000));

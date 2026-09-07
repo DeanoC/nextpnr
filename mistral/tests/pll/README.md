@@ -877,7 +877,8 @@ between unequal-frequency outputs. Downstream locks and FES pins are unchanged.
 ## Additional phase references and 50 MHz outputs
 
 Two, three or four equal-frequency outputs support the following checked
-quarter-cycle phase profiles. Output 0 remains at zero; the other outputs can
+quarter-cycle phase profiles, with 50 MHz eighth-cycle choices added below.
+Output 0 remains at zero; the other outputs can
 independently select any listed shift, including repeated and zero phases.
 
 | Reference MHz | Output MHz | Allowed shifts (ps) | C divider | Counter presets | Phase mux presets |
@@ -952,3 +953,50 @@ has not been measured. Shifted 100 MHz outputs with 25/100 MHz references
 remain unsupported, as do unequal-frequency phase relationships. Existing
 25/50 MHz phase profiles remain regression checks. Downstream locks and FES
 pins are unchanged.
+
+
+## 45-degree phase steps at 50 MHz
+
+Two, three or four equal 50 MHz outputs from the 50 MHz V11 reference can
+select phase shifts in 45° steps. Output 0 remains at zero; every other
+output independently accepts `0 ps`, `2500 ps`, `5000 ps`, `7500 ps`,
+`10000 ps`, `12500 ps`, `15000 ps` or `17500 ps`. Repeated and zero phases
+are allowed. All outputs require 50% duty and direct integer feedback.
+
+| Phase degrees | Shift ps | Counter preset | Phase-mux preset |
+| --- | --- | --- | --- |
+| 0 | 0 | 1 | 0 |
+| 45 | 2500 | 1 | 6 |
+| 90 | 5000 | 2 | 4 |
+| 135 | 7500 | 3 | 2 |
+| 180 | 10000 | 4 | 0 |
+| 225 | 12500 | 4 | 6 |
+| 270 | 15000 | 5 | 4 |
+| 315 | 17500 | 6 | 2 |
+
+Quartus 17.0.2 confirms the four new odd multiples of 45° at the existing
+300 MHz M12/N2 configuration with C6 dividers (high/low 3/3). The previous
+quarter-cycle entries remain unchanged. This extends the explicit checked
+phase table; the packer, bitstream writer and timing analysis already consume
+its picosecond offsets and counter/phase-mux presets. No Mistral tables, BELs,
+clock routes or timing algorithm changes are needed.
+
+```sh
+python3 mistral/tests/pll/phase_45.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-phase-45
+```
+
+Four [portable Quartus oracle bundles](fixtures/phase-45/) cover the new angles
+across two, three and four outputs, including repeated zero phases and mixed
+old/new angles. The runner compares every FPLL setting, verifies utilization
+and dedicated clock-buffer placement/muxes, and checks all 64 ordered
+rising/falling capture crossings against phase-derived setup windows and Fmax.
+It rejects 2501 ps and other inexact/out-of-range shifts, unsupported references,
+mixed frequencies, non-50% duties, fractional feedback and contradictory
+input/output constraints.
+
+Validation is host-only. The profile uses the board's 50 MHz reference and is
+available for a later ladder hardware experiment; physical phase accuracy is
+not established here. Shifted 50 MHz outputs still reject 25/100 MHz references.
+The 25 and 100 MHz output profiles retain their checked quarter-cycle choices.
+Downstream locks and FES pins are unchanged.
