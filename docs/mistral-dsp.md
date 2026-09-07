@@ -1,17 +1,25 @@
 # Cyclone V 9x9 DSP support
 
-The Mistral architecture exposes one `MISTRAL_MUL9X9` BEL per physical DSP
-block. `5CSEBA6U23I7` has 112 such BELs. A placed multiplier reserves the whole
-block; packing three independent 9x9 multipliers into its shared mode and
-register controls is not implemented. Other multiply sizes are not supported
-by this change.
+The Mistral architecture exposes three `MISTRAL_MUL9X9` BEL lanes per physical
+DSP block. `5CSEBA6U23I7` has 112 blocks and therefore 336 placeable lanes.
+The packer groups up to three independent 9x9 cells into one physical site and
+requires matching `A_SIGNED` and `B_SIGNED` values because mode, signedness and
+register controls are shared by the block. Other multiply sizes are not
+supported by this change.
 
-`mistral/dsp.cc` imports `CycloneV::dsp_get_pos()`. Lane 0 connects `A[8:0]`
-to DSP `DATAIN` group 0, `B[8:0]` to group 2, and `Y[17:0]` to
-`RESULT[17:0]`. These are Mistral's existing ports and routing nodes, as
-documented in its `docs/cyclonev_details.rst`; no routing or configuration
+`mistral/dsp.cc` imports `CycloneV::dsp_get_pos()` and adds three z-lanes at
+each site. Lane 0 connects `A[8:0]`/`B[8:0]` to DATAIN groups 0/2 and
+`Y[17:0]` to RESULT[17:0]; lanes 1 and 2 use groups 6/8 and 7/9 with result
+slices 18:35 and 36:53. These are Mistral's existing ports and routing nodes,
+as documented in its `docs/cyclonev_details.rst`; no routing or configuration
 tables are added. BEL and cell names match, so the existing placer legality,
 BEL buckets and default pin mapping apply without cell renaming.
+
+`mistral/pack.cc` forms strict same-site clusters after grouping compatible
+signedness profiles in deterministic cell-name order. The root is z=0 and
+children are z=1 and z=2. `mistral/bitstream.cc` configures each physical site
+once, combining the lane-specific DATA_INV masks while writing the shared mode
+and signedness controls.
 
 The existing packer's constant/inverter folding is enabled through
 `mistral/pins.cc`. DSP inputs float high and have per-bit inversion controls.
@@ -59,14 +67,20 @@ python3 "$NEXTPNR_SOURCE/mistral/tests/mul9x9.py" \
   --fixture "$MISTEROSS/build/oss/060_dsp_mul/synth.json" \
   --qsf "$MISTEROSS/boards/de10nano/pins.qsf" \
   --sdc "$MISTEROSS/boards/de10nano/clocks.sdc" --output "$DSP_RESULTS"
+python3 "$NEXTPNR_SOURCE/mistral/tests/mul9x9_multilane.py" \
+  --nextpnr "$DSP_BUILD/nextpnr-mistral" --mistral-cv "$MISTRAL_CV" \
+  --fixture "$MISTEROSS/build/oss/060_dsp_mul/synth.json" \
+  --qsf "$MISTEROSS/boards/de10nano/pins.qsf" \
+  --sdc "$MISTEROSS/boards/de10nano/clocks.sdc" --output "$DSP_RESULTS/multilane"
 ```
 
-Use `mistral-cv` built with the upper-tile fix. The regression routes the original
-fixture plus explicit unsigned/constant-high and mixed-signed/input-inversion
-variants in separate output directories. It requires one DSP, one HPS GP,
-zero M10K and a passing intended 50 MHz clock. It decodes each compressed RBF
-to check mode, signedness, constant/inversion masks, bypass and port routes.
-This is host configuration evidence, not an arithmetic hardware test.
+Use `mistral-cv` built with the upper-tile fix. The single-lane regression routes
+the original fixture plus explicit unsigned/constant-high and mixed-signed/input
+inversion variants. The multi-lane regression clones the fixture into two- and
+three-cell designs, checks one physical site with z lanes 0/1/2, and decodes
+the compressed RBF DATA_INV masks. Both require one HPS GP, zero M10K and a
+passing intended 50 MHz clock. This is host configuration evidence, not an
+arithmetic hardware test.
 
 At the misteross base above, real `make oss` builds require canonical local
 tool directories plus binary digests and commit stamps matching `toolchain.lock`.

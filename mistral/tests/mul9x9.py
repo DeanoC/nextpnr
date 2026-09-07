@@ -65,9 +65,13 @@ def main():
              "--report", str(out / "timing.json"), "--detailed-timing-report"], out / "route.log")
         report = json.loads((out / "timing.json").read_text())
         util = report["utilization"]
-        assert util["MISTRAL_MUL9X9"] == {"used": 1, "available": 112}
+        # The BEL class exposes three logical lanes for each of the 112
+        # physical DSP blocks. Physical capacity is 112 blocks; the report is
+        # expressed in placeable lane BELs.
+        assert util["MISTRAL_MUL9X9"] == {"used": 1, "available": 336}
         assert util["cyclonev_hps_interface_mpu_general_purpose"]["used"] == 1
         assert util["MISTRAL_M10K"]["used"] == 0
+        assert util["altera_pll"]["used"] == 0
         clock = report["fmax"]["product.FPGA_CLK1_50"]
         assert clock["constraint"] == 50 and clock["achieved"] >= 50
         run([str(args.mistral_cv.resolve()), "decomp", "5CSEBA6U23I7",
