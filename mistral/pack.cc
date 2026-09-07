@@ -552,6 +552,14 @@ struct MistralPacker
                    net->driver.port.in(id_outclk, ctx->id("outclk[0]"), ctx->id("outclk[1]"),
                                        ctx->id("outclk[2]"), ctx->id("outclk[3]"));
         };
+        auto dedicated_source = [&](NetInfo *net) {
+            if (net && net->driver.cell && net->driver.cell->type == id_MISTRAL_CLKBUF && net->driver.port == id_Q) {
+                NetInfo *tap = net->driver.cell->getPort(id_A);
+                if (is_pll_clock(tap))
+                    return tap;
+            }
+            return net;
+        };
         for (auto &entry : ctx->cells) {
             CellInfo *ci = entry.second.get();
             if (ci->type != ctx->id("cyclonev_clkena"))
@@ -586,7 +594,7 @@ struct MistralPacker
             for (auto &port : ci->ports)
                 if (port.second.net && !port.first.in(ctx->id("inclk"), ctx->id("ena"), id_outclk))
                     log_error("Clock enable '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
-            NetInfo *input = ci->getPort(ctx->id("inclk"));
+            NetInfo *input = dedicated_source(ci->getPort(ctx->id("inclk")));
             NetInfo *enable = ci->getPort(ctx->id("ena"));
             NetInfo *output = ci->getPort(id_outclk);
             if (!is_pll_clock(input))
@@ -620,6 +628,10 @@ struct MistralPacker
             ci->connectPort(id_outclk, buffered);
             ctx->nets.erase(output->name);
             remove.push_back(buffer->name);
+            // Yosys can buffer a PLL clock shared by fabric registers and this
+            // gate. Keep that running branch and reconnect the gate to its tap.
+            ci->disconnectPort(ctx->id("inclk"));
+            ci->connectPort(ctx->id("inclk"), input);
             ci->renamePort(ctx->id("inclk"), id_A);
             ci->renamePort(ctx->id("ena"), id_ENA);
             ci->renamePort(id_outclk, id_Q);
@@ -637,9 +649,13 @@ struct MistralPacker
             CellInfo *ci = entry.second.get();
             if (ci->type != id_MISTRAL_CLKENA)
                 continue;
-            NetInfo *input = ci->getPort(id_A), *enable = ci->getPort(id_ENA);
+            NetInfo *input = dedicated_source(ci->getPort(id_A)), *enable = ci->getPort(id_ENA);
             if (!is_pll_clock(input))
                 log_error("Clock enable '%s': input must come directly from a PLL clock output.\n", ctx->nameOf(ci));
+            if (input != ci->getPort(id_A)) {
+                ci->disconnectPort(id_A);
+                ci->connectPort(id_A, input);
+            }
             if (!enable || !enable->driver.cell || !ci->getPort(id_Q))
                 log_error("Clock enable '%s': require driven ENA and connected Q.\n", ctx->nameOf(ci));
             for (auto &param : ci->params) {
@@ -822,45 +838,28 @@ struct MistralPacker
             if (!ref || !ref->driver.cell || ref->driver.cell->type != id_MISTRAL_IB ||
                 str_or_default(ref->driver.cell->attrs, id_LOC, "") != "PIN_V11")
                 log_error("PLL '%s': initial profile requires a dedicated reference from PIN_V11.\n", ctx->nameOf(ci));
-            if (!out || out->users.entries() != 1 || !ctx->is_clkbuf_cell((*out->users.begin()).cell->type) ||
-                (*out->users.begin()).port != id_A)
-                log_error("PLL '%s': outclk must feed exactly one clock buffer.\n", ctx->nameOf(ci));
-            CellInfo *buf = (*out->users.begin()).cell;
-            NetInfo *out1 = ci->getPort(ctx->id("outclk[1]"));
-            CellInfo *buf1 = nullptr;
-            if (clocks >= 2) {
-                if (!out1 || out1->users.entries() != 1 ||
-                    !ctx->is_clkbuf_cell((*out1->users.begin()).cell->type) ||
-                    (*out1->users.begin()).port != id_A)
-                    log_error("PLL '%s': outclk[1] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
-                buf1 = (*out1->users.begin()).cell;
-                if (phase_ps[1] != 0 && (out1->clkconstr || (buf1->getPort(id_Q) && buf1->getPort(id_Q)->clkconstr)))
-                    log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
-                              ctx->nameOf(ci));
-            }
-            NetInfo *out2 = ci->getPort(ctx->id("outclk[2]"));
-            CellInfo *buf2 = nullptr;
-            if (clocks >= 3) {
-                if (!out2 || out2->users.entries() != 1 ||
-                    !ctx->is_clkbuf_cell((*out2->users.begin()).cell->type) ||
-                    (*out2->users.begin()).port != id_A)
-                    log_error("PLL '%s': outclk[2] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
-                buf2 = (*out2->users.begin()).cell;
-                if (phase_ps[2] != 0 && (out2->clkconstr || (buf2->getPort(id_Q) && buf2->getPort(id_Q)->clkconstr)))
-                    log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
-                              ctx->nameOf(ci));
-            }
-            NetInfo *out3 = ci->getPort(ctx->id("outclk[3]"));
-            CellInfo *buf3 = nullptr;
-            if (clocks == 4) {
-                if (!out3 || out3->users.entries() != 1 ||
-                    !ctx->is_clkbuf_cell((*out3->users.begin()).cell->type) ||
-                    (*out3->users.begin()).port != id_A)
-                    log_error("PLL '%s': outclk[3] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
-                buf3 = (*out3->users.begin()).cell;
-                if (phase_ps[3] != 0 && (out3->clkconstr || (buf3->getPort(id_Q) && buf3->getPort(id_Q)->clkconstr)))
-                    log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
-                              ctx->nameOf(ci));
+            std::array<NetInfo *, 4> outputs{out, ci->getPort(ctx->id("outclk[1]")),
+                                            ci->getPort(ctx->id("outclk[2]")), ci->getPort(ctx->id("outclk[3]"))};
+            std::array<std::vector<CellInfo *>, 4> branches;
+            for (int i = 0; i < clocks; ++i) {
+                if (!outputs[i] || outputs[i]->users.empty())
+                    log_error("PLL '%s': output %d must feed clock buffers.\n", ctx->nameOf(ci), i);
+                for (auto user : outputs[i]->users) {
+                    if (!ctx->is_clkbuf_cell(user.cell->type) || user.port != id_A)
+                        log_error("PLL '%s': output %d must feed only clock buffers.\n", ctx->nameOf(ci), i);
+                    branches[i].push_back(user.cell);
+                    if (phase_ps[i] != 0 && (outputs[i]->clkconstr ||
+                        (user.cell->getPort(id_Q) && user.cell->getPort(id_Q)->clkconstr)))
+                        log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
+                                  ctx->nameOf(ci));
+                }
+                // Preserve the ungated branch's established lane independently
+                // of cell insertion order; gate ordering is stable by name.
+                std::sort(branches[i].begin(), branches[i].end(), [&](CellInfo *a, CellInfo *b) {
+                    if (a->type != b->type)
+                        return a->type == id_MISTRAL_CLKBUF;
+                    return a->name.str(ctx) < b->name.str(ctx);
+                });
             }
             auto set_clock = [&](NetInfo *net, int period, int duty = 50) {
                 int high = int(int64_t(period) * duty / 100);
@@ -882,41 +881,35 @@ struct MistralPacker
             set_clock(ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
             if (buffered_ref)
                 set_clock(buffered_ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
-            double generated_hz = mistral_pll::achieved_hz(*config, reference_mhz);
-            set_clock(out, ctx->getDelayFromNS(1.0e9 / generated_hz), duty0);
-            set_clock(buf->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / generated_hz), duty0);
-            if (fractional)
-                log_info("PLL '%s': fractional-N requested %.6f Hz, achieved %.9f Hz, error %.9g ppm.\n",
-                         ctx->nameOf(ci), double(output_hz), generated_hz,
-                         (generated_hz / output_hz - 1.0) * 1.0e6);
-            if (buf1) {
+            std::array<double, 4> generated_hzs{mistral_pll::achieved_hz(*config, reference_mhz),
+                                               double(output1_hz), double(output_hzs[2]), double(output_hzs[3])};
+            if (clocks >= 2) {
                 auto second_config = *config;
                 second_config.c = c1;
-                double generated1_hz = mistral_pll::achieved_hz(second_config, reference_mhz);
-                set_clock(out1, ctx->getDelayFromNS(1.0e9 / generated1_hz), duty1);
-                set_clock(buf1->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / generated1_hz), duty1);
-                if (fractional)
-                    log_info("PLL '%s': fractional-N second requested %.6f Hz, achieved %.9f Hz, error %.9g ppm.\n",
-                             ctx->nameOf(ci), double(output1_hz), generated1_hz,
-                             (generated1_hz / output1_hz - 1.0) * 1.0e6);
+                generated_hzs[1] = mistral_pll::achieved_hz(second_config, reference_mhz);
             }
-            if (buf2) {
-                set_clock(out2, ctx->getDelayFromNS(1.0e9 / output_hzs[2]), duties[2]);
-                set_clock(buf2->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output_hzs[2]), duties[2]);
-            }
-            if (buf3) {
-                set_clock(out3, ctx->getDelayFromNS(1.0e9 / output_hzs[3]), duties[3]);
-                set_clock(buf3->getPort(id_Q), ctx->getDelayFromNS(1.0e9 / output_hzs[3]), duties[3]);
-            }
-            if (shifted) {
-                std::array<NetInfo *, 4> outputs{out, out1, out2, out3};
-                std::array<CellInfo *, 4> buffers{buf, buf1, buf2, buf3};
-                for (int i = 0; i < clocks; ++i) {
-                    for (NetInfo *net : {outputs[i], buffers[i]->getPort(id_Q)}) {
-                        net->clkconstr->phase_group = ci->name;
+            for (int i = 0; i < clocks; ++i) {
+                int period = ctx->getDelayFromNS(1.0e9 / generated_hzs[i]);
+                set_clock(outputs[i], period, duties[i]);
+                for (CellInfo *buffer : branches[i])
+                    set_clock(buffer->getPort(id_Q), period, duties[i]);
+                // Gating suppresses edges; it does not change the phase of the
+                // remaining edges. Relate branches of this counter only, unless
+                // the existing shifted profile already relates every output.
+                if (shifted || branches[i].size() > 1) {
+                    IdString group = shifted ? ci->name : ctx->idf("$pll_branch$%s$%d", ctx->nameOf(ci), i);
+                    auto set_phase = [&](NetInfo *net) {
+                        net->clkconstr->phase_group = group;
                         net->clkconstr->phase_shift = ctx->getDelayFromNS(phase_ps[i] / 1000.0f);
-                    }
+                    };
+                    set_phase(outputs[i]);
+                    for (CellInfo *buffer : branches[i])
+                        set_phase(buffer->getPort(id_Q));
                 }
+                if (fractional)
+                    log_info("PLL '%s': fractional-N %srequested %.6f Hz, achieved %.9f Hz, error %.9g ppm.\n",
+                             ctx->nameOf(ci), i == 0 ? "" : "second ", double(output_hzs[i]), generated_hzs[i],
+                             (generated_hzs[i] / output_hzs[i] - 1.0) * 1.0e6);
             }
             BelId chosen;
             WireId pad = ctx->getBelPinWire(ref->driver.cell->bel, ref->driver.port);
@@ -926,7 +919,12 @@ struct MistralPacker
             // Preserve the established V11 site (0,14) before trying (0,31).
             std::sort(candidates.begin(), candidates.end());
             const std::array<int, 4> preferred_lanes{2, 3, 1, 0};
-            const std::array<CellInfo *, 4> buffers{buf, buf1, buf2, buf3};
+            std::vector<std::pair<int, CellInfo *>> buffers;
+            for (int i = 0; i < clocks; ++i)
+                buffers.emplace_back(i, branches[i].front());
+            for (int i = 0; i < clocks; ++i)
+                for (size_t j = 1; j < branches[i].size(); ++j)
+                    buffers.emplace_back(i, branches[i][j]);
             for (BelId candidate : candidates) {
                 WireId dst = ctx->getBelPinWire(candidate, id_refclk);
                 PipId ref_pip(pad.node, dst.node);
@@ -935,10 +933,11 @@ struct MistralPacker
                 // The additional CLKIN2/site profile is checked at the board reference only.
                 if (ctx->pll_ref_select.at(ref_pip) == 6 && reference_mhz != 50)
                     continue;
-                std::array<BelId, 4> selected{};
+                std::vector<BelId> selected(buffers.size());
                 bool available = true;
-                for (int i = 0; i < clocks; ++i) {
-                    const auto &options = ctx->pll_clock_bels.at(candidate)[i];
+                for (size_t i = 0; i < buffers.size(); ++i) {
+                    int output = buffers[i].first;
+                    const auto &options = ctx->pll_clock_bels.at(candidate)[output];
                     auto try_lane = [&](int lane) {
                         for (BelId clock : options) {
                             if (ctx->bel_data(clock).block_index != lane || !ctx->checkBelAvail(clock) ||
@@ -949,7 +948,7 @@ struct MistralPacker
                         }
                         return false;
                     };
-                    if (!try_lane(preferred_lanes[i]))
+                    if (!try_lane(preferred_lanes[output]))
                         for (int lane : preferred_lanes)
                             if (try_lane(lane))
                                 break;
@@ -962,13 +961,13 @@ struct MistralPacker
                     continue;
                 chosen = candidate;
                 ctx->bindBel(chosen, ci, STRENGTH_LOCKED);
-                for (int i = 0; i < clocks; ++i)
-                    ctx->bindBel(selected[i], buffers[i], STRENGTH_LOCKED);
+                for (size_t i = 0; i < buffers.size(); ++i)
+                    ctx->bindBel(selected[i], buffers[i].second, STRENGTH_LOCKED);
                 break;
             }
             if (chosen == BelId())
                 log_error("PLL '%s': no available dedicated PLL/clock-buffer pair.\n", ctx->nameOf(ci));
-            if (buf1)
+            if (clocks >= 2)
                 log_info("PLL '%s': second output %.9g MHz, C7=%d.\n", ctx->nameOf(ci),
                          output1_hz / 1.0e6, c1);
             log_info("PLL '%s': %d MHz -> %.9g MHz, direct, M=%d N=%d C6=%d, bel %s\n",

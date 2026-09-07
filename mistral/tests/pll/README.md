@@ -21,7 +21,8 @@ six FPLL sites. The currently accepted configuration is:
 - Direct mode with integer feedback. Prefer M=12/N=2 (reported 300 MHz);
   otherwise M=32/N=5 (reported 320 MHz). Only C6 drives the output.
 - Active-high fabric-driven `rst`, or `rst` tied low; optional `locked` status output.
-- One existing MISTRAL clock buffer on the output; no other unbuffered sinks.
+- One or more existing MISTRAL clock buffers per output; direct fabric sinks
+  on the unbuffered PLL tap remain unsupported.
 
 Output frequencies use strings such as `"20 MHz"`, `"20.0 MHz"` or `"12.5 MHz"`. The reference accepts the same whole-MHz string syntax, restricted to 25,
 50 or 100 MHz; other parameters keep the values in `top.v`.
@@ -1074,8 +1075,9 @@ cyclonev_clkena #(
 );
 ```
 
-`ena` must have a driver, and `inclk` must come directly from an `altera_pll`
-output. `clock_type` accepts `auto`, `global clock` or `Global Clock`.
+`ena` must have a driver, and `inclk` must come from an `altera_pll` clock
+output. Packing also recognizes the unconditional buffer Yosys inserts when
+that output is shared with running logic, reconnecting the gate to the PLL tap. `clock_type` accepts `auto`, `global clock` or `Global Clock`.
 The startup parameter accepts `ena_register_power_up="high"` (default) or
 `"low"`. The other supported parameters retain their primitive defaults:
 `disable_mode="low"`, `test_syn="high"`
@@ -1158,3 +1160,55 @@ Base nextpnr revision: `8361201179be3ae82e3ab1fd3f6b4e15c5fc23a0` on
 Validation is host-only; the ladder retains startup and stop/resume hardware
 acceptance with the 50 MHz board reference. ENA setup/hold remains
 uncharacterized. No misteross lock or FES pin changes are included.
+
+
+## Running and gated branches of one PLL output
+
+One PLL counter can drive an always-running clock buffer and one or more
+individually gated buffers. For example, use `pll_clock` for control registers
+and connect it to `cyclonev_clkena.inclk` for a separately stoppable domain.
+Each branch occupies a distinct global-clock lane and retains its own enable
+and startup state. All branches of that output share the same counter and
+frequency. The four CMUXHG lanes remain shared across counters and PLLs.
+
+When Yosys promotes the running clock, the gate initially appears downstream
+of its unconditional buffer. Packing reconnects the gate to the dedicated
+PLL tap and retains the running buffer and its clock constraint. It still
+requires an actual PLL clock output; status signals, fabric clocks, gated
+input chains and direct fabric sinks on the raw PLL tap are rejected.
+
+The packer collects buffers for each counter, checks every output clock
+constraint, and reserves each counter's preferred primary lane before
+allocating additional branches. Ungated buffers take priority within a
+counter; other ordering follows cell names. Allocation checks all requested
+lanes before binding, and insufficient capacity produces a packing error.
+Existing single-branch profiles retain their lane preferences.
+
+Branches of one counter receive a shared phase origin. Their downstream
+paths use the running-clock waveform even when a gate can suppress edges.
+For a zero-phase 25 MHz output, rising-to-rising branch crossings have a
+40 ns setup interval. Separate unshifted counters retain their existing
+cross-domain classification; the previously checked shifted profiles keep
+their PLL-wide phase relationship. ENA setup/hold remains uncharacterized.
+
+```sh
+python3 mistral/tests/pll/clock_branches.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-clock-branches
+```
+
+The [portable Quartus reference](fixtures/clock-branches/README.md) confirms
+one FPLL (0,14) C6 counter driving both CMUXHG (0,35) lane 2 (running) and
+lane 3 (gated, startup low). Both mux lanes select `0x16`; only lane 3 enables
+the falling-edge register and routes its enable input. The runner compares
+complete FPLL and CMUXHG settings, checks native and packed gates, branch
+crossings and clock constraints, exercises all four lanes with mixed startup
+states, and rejects a fifth branch. A second-counter fixture checks primary
+lane reservation and separate-counter timing classification; a shifted variant
+checks that the existing 90-degree relationship retains a 10 ns interval.
+
+Base revision: `8a36e75fda8340d71abcf652cbce3cd6e810424f` on
+`mistral-stable`. Mistral `78ba2a580ae2523403d4f4f91891a6b11d7b6aba` and
+Yosys `13b43f8c85ec430a33ee55d058fb4c32b42b6910` remain unchanged. Validation
+is host-only with the V11 50 MHz reference and 25 MHz clocks. Hardware
+stop/resume and startup acceptance remain with the ladder. No misteross
+experiment/lock or FES pin changes are included.

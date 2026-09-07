@@ -82,7 +82,7 @@ def main():
             # A second sink on the unbuffered PLL clock is unsupported.
             ff = next(c for c in invalid["modules"]["top"]["cells"].values() if c["type"] == "MISTRAL_FF")
             ff["connections"]["CLK"] = pll["connections"]["outclk"]
-            expected = "outclk must feed exactly one clock buffer"
+            expected = "must feed only clock buffers"
         else:
             pll["connections"]["phase_en"] = ["0"]
             pll["port_directions"]["phase_en"] = "input"
