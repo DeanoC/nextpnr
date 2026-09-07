@@ -1062,8 +1062,8 @@ No misteross lock or FES parent pin changes are included.
 ## Fabric-controlled PLL clock enable
 
 The existing Yosys `cyclonev_clkena` blackbox can gate a PLL output using a
-fabric signal. The checked profile uses a falling-edge enable register,
-power-up high and disabled output low. For example:
+fabric signal. The checked profile uses a falling-edge enable register and disabled output
+low. Enable-register startup defaults to high; low is supported as described below. For example:
 
 ```verilog
 cyclonev_clkena #(
@@ -1076,8 +1076,9 @@ cyclonev_clkena #(
 
 `ena` must have a driver, and `inclk` must come directly from an `altera_pll`
 output. `clock_type` accepts `auto`, `global clock` or `Global Clock`.
-The other supported parameters retain their primitive defaults:
-`ena_register_power_up="high"`, `disable_mode="low"`, `test_syn="high"`
+The startup parameter accepts `ena_register_power_up="high"` (default) or
+`"low"`. The other supported parameters retain their primitive defaults:
+`disable_mode="low"`, `test_syn="high"`
 and `lpm_type="cyclonev_clkena"`. Other values, unknown parameters,
 connected `enaout`, missing enable drivers and non-PLL sources fail explicitly.
 The mode must be specified: the primitive's default `always enabled` is not
@@ -1089,8 +1090,8 @@ its output net and checking clock constraints on both sides. A placement
 constraint on that buffer prevents folding and is rejected. The packed cell
 uses one existing clock-buffer BEL, so a gated output consumes one of the
 same four shared lanes as an ungated output. No Yosys or Mistral changes are
-required. Direct `MISTRAL_CLKENA` cells have the same fixed mode and accept
-no mode parameters.
+required. Direct `MISTRAL_CLKENA` cells have the same falling-edge mode and accept
+only the string parameter `ena_register_power_up`, defaulting to `"high"`.
 
 Mistral already exposes the fabric `CMUXHG.ENABLE` endpoint. The backend
 imports that BEL input and programs `ENABLE_REGISTER_MODE=REG1_ENOUT`.
@@ -1117,7 +1118,7 @@ ordinary downstream timing analysis. Stopping the clock does not relax those
 constraints. `ENA` is an asynchronous timing endpoint: the backend has no
 characterized setup/hold model for its falling-edge control register, so a
 passing downstream Fmax does not establish enable timing or metastability
-safety. The enable register powers up high; an initially low control does not
+safety. With the default high startup, an initially low control does not
 imply suppression of every startup edge before the first falling-edge capture.
 
 Validation is host-only. Hardware stop/resume, startup and pulse behavior
@@ -1127,3 +1128,33 @@ from nextpnr `mistral-stable` commit
 `78ba2a580ae2523403d4f4f91891a6b11d7b6aba` and Yosys
 `13b43f8c85ec430a33ee55d058fb4c32b42b6910`. No misteross lock, experiment RTL
 or FES parent pin changes are included.
+
+
+## Clock-enable startup low
+
+Set `.ena_register_power_up("low")` on `cyclonev_clkena` to initialize its
+enable register low. The output remains disabled until a falling clock edge
+captures an asserted enable. Omitting the parameter or specifying `"high"`
+retains the previous startup behavior. Strings other than `"high"`/`"low"`
+and numeric values fail explicitly for both native and packed primitives.
+
+Packing retains a low override on `MISTRAL_CLKENA`; bit generation writes
+Mistral's existing `ENABLE_REGISTER_POWER_UP` field on the selected mux lane.
+The [low-startup Quartus oracle](fixtures/clock-enable-low/README.md) differs
+from the high-startup reference in exactly that emitted FPLL/CMUX setting:
+`CMUXHG.000.035:ENABLE_REGISTER_POWER_UP.2 0`. Enable routing, falling-edge
+register mode, PLL configuration and output clock timing are unchanged.
+No Mistral tables or Yosys changes are required.
+
+Run `clock_enable.py` with `--power-up low` and then `--power-up high`, using
+the same tool arguments shown above and separate output directories. Both
+runs compare the complete FPLL and selected CMUXHG settings to portable
+Quartus references, exercise native/raw and inverted-enable paths, preserve
+clock-constraint checks, and reject invalid startup values. The high run also
+compares explicit high with the omitted default.
+
+Base nextpnr revision: `8361201179be3ae82e3ab1fd3f6b4e15c5fc23a0` on
+`mistral-stable`. Mistral and Yosys revisions remain those listed above.
+Validation is host-only; the ladder retains startup and stop/resume hardware
+acceptance with the 50 MHz board reference. ENA setup/hold remains
+uncharacterized. No misteross lock or FES pin changes are included.
