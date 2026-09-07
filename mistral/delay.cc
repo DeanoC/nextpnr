@@ -23,6 +23,16 @@ NEXTPNR_NAMESPACE_BEGIN
 TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, int &clockInfoCount) const
 {
     clockInfoCount = 0;
+    if (cell->type == id_MISTRAL_CLKENA) {
+        if (port == id_A)
+            return TMG_CLOCK_INPUT;
+        if (port == id_Q)
+            return TMG_GEN_CLOCK;
+        // The hardware captures ENA on the falling edge, but the backend has
+        // no characterized setup/hold model for that clock-control register.
+        if (port == id_ENA)
+            return TMG_ENDPOINT;
+    }
     if (cell->type == id_altera_pll) {
         if (port == id_refclk)
             return TMG_CLOCK_INPUT;

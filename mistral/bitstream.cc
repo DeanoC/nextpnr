@@ -161,6 +161,10 @@ struct MistralBitgen
         }
         NPNR_ASSERT(cv->bmux_r_set(CycloneV::CMUXHG, pos, CycloneV::INPUT_SEL, bi, select));
         cv->bmux_m_set(CycloneV::CMUXHG, pos, CycloneV::TESTSYN_ENOUT_SELECT, bi, CycloneV::PRE_SYNENB);
+        if (ci->type == id_MISTRAL_CLKENA) {
+            NPNR_ASSERT(cv->bmux_m_set(CycloneV::CMUXHG, pos, CycloneV::ENABLE_REGISTER_MODE, bi,
+                                      CycloneV::REG1_ENOUT));
+        }
     }
 
     void write_pll_cell(CellInfo *ci, int x, int y)
