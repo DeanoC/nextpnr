@@ -215,10 +215,13 @@ struct MistralBitgen
             NPNR_ASSERT(counts);
             raw(CycloneV::DPRIO0_CNT_HI_DIV, counts->high, 7);
             raw(CycloneV::DPRIO0_CNT_LO_DIV, counts->low, 7);
-            auto phase = mistral_pll::select_phase_25mhz(str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps"));
+            auto phase = mistral_pll::select_phase(str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps"),
+                    mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency0")).as_string()));
             NPNR_ASSERT(phase);
-            if (phase->shift_ns)
+            if (phase->shift_ns) {
                 raw(CycloneV::CNT_PRESET, phase->c_preset, 7);
+                raw(CycloneV::CNT_PH_MUX_PRESET, phase->c_phase_preset, 7);
+            }
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
                                       7, counts->odd));
             raw(CycloneV::CNT_IN_SRC, 0, 7);
@@ -232,11 +235,14 @@ struct MistralBitgen
             raw(CycloneV::DPRIO0_CNT_LO_DIV, counts->low, counter);
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
                                       counter, counts->odd));
-            auto phase = mistral_pll::select_phase_25mhz(
-                    str_or_default(ci->params, ctx->idf("phase_shift%d", i), "0 ps"));
+            auto phase = mistral_pll::select_phase(
+                    str_or_default(ci->params, ctx->idf("phase_shift%d", i), "0 ps"),
+                    mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency0")).as_string()));
             NPNR_ASSERT(phase);
-            if (phase->shift_ns)
+            if (phase->shift_ns) {
                 raw(CycloneV::CNT_PRESET, phase->c_preset, counter);
+                raw(CycloneV::CNT_PH_MUX_PRESET, phase->c_phase_preset, counter);
+            }
             raw(CycloneV::CNT_IN_SRC, 0, counter);
             flag(i == 2 ? CycloneV::C5_COUT_EN : CycloneV::C8_COUT_EN, true);
         }

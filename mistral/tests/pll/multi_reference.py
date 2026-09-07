@@ -59,11 +59,11 @@ def main():
                     params[f"output_clock_frequency{output}"] = "25 MHz"
                     params[f"duty_cycle{output}"] = format(50, "032b")
                     params[f"phase_shift{output}"] = "0 ps"
-                params[f"phase_shift{index}"] = "10000 ps"
+                params[f"phase_shift{index}"] = "100 ps"
                 path = case / f"invalid-reference-phase{index}.json"
                 path.write_text(json.dumps(invalid))
                 log = run(command + ["--json", str(path)], path.with_suffix(".log"), success=False)
-                assert "ERROR" in log and "phase" in log and "50 MHz reference" in log, log
+                assert "ERROR" in log and "phase" in log, log
             print(f"PASS: {name}: all FPLLs, output clocks, utilization and rejection checks (host only)")
 
 

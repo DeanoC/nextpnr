@@ -21,21 +21,25 @@ struct Config
 
 struct PhaseConfig
 {
-    int shift_ns, c_preset;
+    int shift_ns, c_preset, c_phase_preset;
 };
 
-// Quartus-checked C12 presets for the bounded dual-25-MHz profile.
-// Zero phase leaves the default preset untouched for all other profiles.
-inline std::optional<PhaseConfig> select_phase_25mhz(const std::string &text)
+// Quartus-checked quarter-cycle presets at the checked 300 MHz configuration.
+// C12 (25 MHz) uses whole cycles; C6 (50 MHz) also needs phase mux 4.
+// Zero phase leaves defaults untouched for all other frequency profiles.
+inline std::optional<PhaseConfig> select_phase(const std::string &text, int64_t output_hz)
 {
     if (text == "0 ps")
-        return PhaseConfig{0, 1};
-    if (text == "10000 ps")
-        return PhaseConfig{10, 4};
-    if (text == "20000 ps")
-        return PhaseConfig{20, 7};
-    if (text == "30000 ps")
-        return PhaseConfig{30, 10};
+        return PhaseConfig{0, 1, 0};
+    if (output_hz == 25000000) {
+        if (text == "10000 ps") return PhaseConfig{10, 4, 0};
+        if (text == "20000 ps") return PhaseConfig{20, 7, 0};
+        if (text == "30000 ps") return PhaseConfig{30, 10, 0};
+    } else if (output_hz == 50000000) {
+        if (text == "5000 ps") return PhaseConfig{5, 2, 4};
+        if (text == "10000 ps") return PhaseConfig{10, 4, 0};
+        if (text == "15000 ps") return PhaseConfig{15, 5, 4};
+    }
     return std::nullopt;
 }
 

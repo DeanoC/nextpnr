@@ -530,11 +530,12 @@ claimed from the earlier frequency measurements.
 
 ## Static phase outputs
 
-The checked phase profiles use a 50 MHz reference, two integer 25 MHz outputs,
+The original checked phase profiles use a 50 MHz reference, two integer 25 MHz outputs,
 50% duty, `phase_shift0("0 ps")` and `phase_shift1` of `10000 ps`, `20000 ps`,
 or `30000 ps`. Output 1 lags output 0 by 90°, 180° or 270° respectively.
-Other shifts, frequency pairs, reference frequencies, fractional feedback and
-non-50% duty combinations are rejected. Dynamic phase adjustment is unsupported.
+The additional reference/rate profiles below expand this initial set. Other
+shifts, mixed frequency pairs, fractional feedback and non-50% duty combinations
+are rejected. Dynamic phase adjustment is unsupported.
 
 Quartus 17.0.2 selects M12/N2 and C12 for both outputs. C7 `CNT_PRESET`
 changes from its default 1 to 4, 7 or 10 respectively. All other selected FPLL
@@ -813,8 +814,9 @@ separate work.
 Three or four 25 MHz outputs can independently select 0°,90°,180° or270°,
 with output 0 fixed at 0°. Use the exact phase strings `0 ps`, `10000 ps`,
 `20000 ps` or `30000 ps` for the corresponding `phase_shift` parameters.
-A 50 MHz V11 reference, integer feedback, direct mode and 50% duty are required
-whenever any output is shifted. Other angles, nonzero output 0 and unsupported
+Integer feedback, direct mode and 50% duty are required whenever any output
+is shifted. The reference and output-rate extensions below expand the original
+50 MHz reference / 25 MHz output profile. Other angles, nonzero output 0 and unsupported
 frequency/duty combinations are rejected. All-zero phase profiles retain
 the existing general frequency/duty selection and timing behavior.
 
@@ -862,11 +864,51 @@ references with a 25/50/100 MHz triple at 50% duty (300 MHz), the same triple
 at 25/50/25% duty (400 MHz), and a 40/80/16/20 MHz quad at 25/75/25/75% duty
 (320 MHz). The runner compares every emitted FPLL setting, checks output timing,
 buffer placement, mux selections and utilization, and rejects conflicting input
-SDC and shifted profiles at either new reference. `triple.py` and `quad.py` accept
+SDC and unsupported fine phase shifts at either new reference. `triple.py` and `quad.py` accept
 `--reference-mhz` with a matching `--oracle-fixture`.
 
-Shifted profiles remain restricted to a 50 MHz reference, 25 MHz outputs and
-50% duty. The onboard DE10-Nano oscillator is 50 MHz; the new reference cases
+Shifted profiles use the separately checked reference/rate combinations below
+and require 50% duty. The onboard DE10-Nano oscillator is 50 MHz; the new reference cases
 are host-only checks and require an appropriate external clock for hardware
 use. This extension adds no timing relationship to the input reference or
 between unequal-frequency outputs. Downstream locks and FES pins are unchanged.
+
+
+## Additional phase references and 50 MHz outputs
+
+Two, three or four equal-frequency outputs support the following checked
+quarter-cycle phase profiles. Output 0 remains at zero; the other outputs can
+independently select any listed shift, including repeated and zero phases.
+
+| Reference MHz | Output MHz | Allowed shifts (ps) | C divider | Counter presets | Phase mux presets |
+| --- | --- | --- | --- | --- | --- |
+| 25, 50, 100 | 25 | 0, 10000, 20000, 30000 | 12 | 1, 4, 7, 10 | 0, 0, 0, 0 |
+| 50 | 50 | 0, 5000, 10000, 15000 | 6 | 1, 2, 4, 5 | 0, 4, 0, 4 |
+
+These use the existing reference-specific 300 MHz feedback/analog tuples.
+For 50 MHz outputs, the 90° and 270° shifts require `CNT_PH_MUX_PRESET=4`
+as well as the counter preset; changing `CNT_PRESET` alone is insufficient.
+The shared phase selector supplies both fields to bitstream generation and
+the nanosecond shift to timing constraints. Mistral already describes these
+fields; no Mistral table or clock-route change is needed.
+
+```sh
+python3 mistral/tests/pll/phase_rates.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-phase-rates
+```
+
+Nine [portable Quartus 17.0.2 oracle bundles](fixtures/phase-rates/) cover two,
+three and four outputs for each new reference/rate combination. The runner
+checks every emitted FPLL setting, clock buffers and muxes, utilization, all
+120 ordered rising/falling capture crossings, phase-derived setup budgets and
+Fmax. It rejects mixed output rates, unsupported phases/references/duties,
+fractional feedback, contradictory input SDC and explicit shifted/inverted
+output clocks. Existing zero-phase and 25 MHz phase profiles remain regressions.
+
+All validation here is host-only. Non-50 MHz references cannot be tested on
+the designated kit with its current clock source. The 50 MHz reference /
+50 MHz output profile is suitable for a later ladder hardware experiment;
+these compiler tests do not establish physical phase accuracy. Shifted 50 MHz
+outputs at 25/100 MHz references, other output rates and unequal-frequency
+phase relationships remain unsupported. Downstream locks and FES pins are
+unchanged.

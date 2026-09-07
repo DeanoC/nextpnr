@@ -562,12 +562,15 @@ struct MistralPacker
             std::string phase1 = str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps");
             std::array<std::string, 4> phases{"0 ps", phase1, "0 ps", "0 ps"};
             std::array<int, 4> phase_ns{};
+            auto freq0 = ci->params.find(ctx->id("output_clock_frequency0"));
+            int64_t phase_output_hz = freq0 != ci->params.end() && freq0->second.is_string ?
+                    mistral_pll::parse_output_hz(freq0->second.as_string()) : 0;
             bool shifted = false;
             for (int i = 1; i < clocks; ++i) {
                 phases[i] = str_or_default(ci->params, ctx->idf("phase_shift%d", i), "0 ps");
-                auto phase = mistral_pll::select_phase_25mhz(phases[i]);
+                auto phase = mistral_pll::select_phase(phases[i], phase_output_hz);
                 if (!phase)
-                    log_error("PLL '%s': phase_shift%d must be 0, 10000, 20000 or 30000 ps.\n", ctx->nameOf(ci), i);
+                    log_error("PLL '%s': phase_shift%d must be zero or a checked quarter-cycle shift for the output frequency.\n", ctx->nameOf(ci), i);
                 phase_ns[i] = phase->shift_ns;
                 shifted |= phase_ns[i] != 0;
             }
@@ -632,10 +635,11 @@ struct MistralPacker
                 if (freq1 == ci->params.end() || !freq1->second.is_string)
                     log_error("PLL '%s': explicit output_clock_frequency1 is required.\n", ctx->nameOf(ci));
                 output1_hz = mistral_pll::parse_output_hz(freq1->second.as_string());
-                if (shifted && (fractional || reference_mhz != 50 || output_hz != 25000000 || output1_hz != 25000000 ||
+                if (shifted && (fractional || (output_hz != 25000000 && output_hz != 50000000) ||
+                                output1_hz != output_hz || (output_hz == 50000000 && reference_mhz != 50) ||
                                 duty0 != 50 || duty1 != 50))
-                    log_error("PLL '%s': phase profile requires integer 25/25 MHz, 50 MHz reference and 50 percent "
-                              "duty.\n",
+                    log_error("PLL '%s': phase profile requires equal integer 25 MHz outputs with a checked reference, "
+                              "or 50 MHz outputs with a 50 MHz reference, and 50 percent duty.\n",
                               ctx->nameOf(ci));
                 auto dual = fractional ? mistral_pll::select_fractional_dual(output_hz, output1_hz, reference_mhz) :
                                          mistral_pll::select_dual_hz(output_hz, output1_hz, reference_mhz, duty0, duty1);
@@ -662,8 +666,8 @@ struct MistralPacker
                               ctx->nameOf(ci));
                 if (shifted)
                     for (int i = 0; i < clocks; ++i)
-                        if (output_hzs[i] != 25000000 || duties[i] != 50)
-                            log_error("PLL '%s': phase profile requires 25 MHz on every output with 50 percent duty.\n",
+                        if (output_hzs[i] != output_hz || duties[i] != 50)
+                            log_error("PLL '%s': phase profile requires the same frequency on every output with 50 percent duty.\n",
                                       ctx->nameOf(ci));
                 auto multi = mistral_pll::select_multi_hz(output_hzs, clocks, reference_mhz, duties);
                 if (!multi)
