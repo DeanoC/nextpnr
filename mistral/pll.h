@@ -21,24 +21,29 @@ struct Config
 
 struct PhaseConfig
 {
-    int shift_ns, c_preset, c_phase_preset;
+    int shift_ps, c_preset, c_phase_preset;
 };
 
 // Quartus-checked quarter-cycle presets at the checked 300 MHz configuration.
-// C12 (25 MHz) uses whole cycles; C6 (50 MHz) also needs phase mux 4.
+// C12 (25 MHz) uses whole cycles; C6 (50 MHz) uses half-cycle taps,
+// and C3 (100 MHz) uses quarter-cycle taps. Keep shifts in exact picoseconds.
 // Zero phase leaves defaults untouched for all other frequency profiles.
 inline std::optional<PhaseConfig> select_phase(const std::string &text, int64_t output_hz)
 {
     if (text == "0 ps")
         return PhaseConfig{0, 1, 0};
     if (output_hz == 25000000) {
-        if (text == "10000 ps") return PhaseConfig{10, 4, 0};
-        if (text == "20000 ps") return PhaseConfig{20, 7, 0};
-        if (text == "30000 ps") return PhaseConfig{30, 10, 0};
+        if (text == "10000 ps") return PhaseConfig{10000, 4, 0};
+        if (text == "20000 ps") return PhaseConfig{20000, 7, 0};
+        if (text == "30000 ps") return PhaseConfig{30000, 10, 0};
     } else if (output_hz == 50000000) {
-        if (text == "5000 ps") return PhaseConfig{5, 2, 4};
-        if (text == "10000 ps") return PhaseConfig{10, 4, 0};
-        if (text == "15000 ps") return PhaseConfig{15, 5, 4};
+        if (text == "5000 ps") return PhaseConfig{5000, 2, 4};
+        if (text == "10000 ps") return PhaseConfig{10000, 4, 0};
+        if (text == "15000 ps") return PhaseConfig{15000, 5, 4};
+    } else if (output_hz == 100000000) {
+        if (text == "2500 ps") return PhaseConfig{2500, 1, 6};
+        if (text == "5000 ps") return PhaseConfig{5000, 2, 4};
+        if (text == "7500 ps") return PhaseConfig{7500, 3, 2};
     }
     return std::nullopt;
 }

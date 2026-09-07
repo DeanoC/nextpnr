@@ -35,7 +35,7 @@ def crossing_source(phases, group=None, reference_mhz=50, output_mhz=25):
                   '.fractional_vco_multiplier("false")']
     for i, phase in enumerate(phases):
         parameters += [f'.output_clock_frequency{i}("{output_mhz}.0 MHz")',
-                       f'.phase_shift{i}("{phase * 1000} ps")', f'.duty_cycle{i}(50)']
+                       f'.phase_shift{i}("{phase * 1000:g} ps")', f'.duty_cycle{i}(50)']
     lines += ["altera_pll #(" + ", ".join(parameters) +
               ") pll (.refclk(FPGA_CLK1_50), .rst(1'b0), .outclk(clocks), .locked(locked));"]
     captures = ", ".join(f"capture{i}" for i, _ in reversed(selected))
@@ -163,7 +163,7 @@ def main(phases=(0, 10, 20, 30), profile=None, reference_mhz=50, output_mhz=25, 
     for name, changes in (
         ("phase0", {"phase_shift0": "10000 ps"}),
         *[(f"phase{i}-{value}", {f"phase_shift{i}": f"{value} ps"})
-          for i in range(1, count) for value in (100, -int(period_ns * 250), int(period_ns * 1000))],
+          for i in range(1, count) for value in (100, int(period_ns * 250) + 1, -int(period_ns * 250), int(period_ns * 1000))],
         ("reference", {"reference_clock_frequency": "26 MHz"}),
         ("fractional", {"fractional_vco_multiplier": "true"}),
         *[(f"duty{i}", {f"duty_cycle{i}": format(25, "032b")}) for i in range(count)],
@@ -172,11 +172,11 @@ def main(phases=(0, 10, 20, 30), profile=None, reference_mhz=50, output_mhz=25, 
         invalid = copy.deepcopy(design)
         invalid["modules"]["top"]["cells"]["pll"]["parameters"].update(changes)
         reject(name, invalid, ("phase", "quadrature", "reference frequency"))
-    if output_mhz == 50:
+    if output_mhz in (50, 100):
         for unsupported_reference in (25, 100):
             invalid = copy.deepcopy(design)
             invalid["modules"]["top"]["cells"]["pll"]["parameters"]["reference_clock_frequency"] = f"{unsupported_reference} MHz"
-            reject(f"shifted50-reference{unsupported_reference}", invalid, ("phase", "reference"))
+            reject(f"shifted{output_mhz}-reference{unsupported_reference}", invalid, ("phase", "reference"))
     conflict_reference = out / "conflict-reference.sdc"
     conflict_reference.write_text(f"create_clock -period {2000 / reference_mhz:g} [get_ports {{FPGA_CLK1_50}}]\n")
     custom = command.copy()

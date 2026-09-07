@@ -561,7 +561,7 @@ struct MistralPacker
             bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
             std::string phase1 = str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps");
             std::array<std::string, 4> phases{"0 ps", phase1, "0 ps", "0 ps"};
-            std::array<int, 4> phase_ns{};
+            std::array<int, 4> phase_ps{};
             auto freq0 = ci->params.find(ctx->id("output_clock_frequency0"));
             int64_t phase_output_hz = freq0 != ci->params.end() && freq0->second.is_string ?
                     mistral_pll::parse_output_hz(freq0->second.as_string()) : 0;
@@ -571,8 +571,8 @@ struct MistralPacker
                 auto phase = mistral_pll::select_phase(phases[i], phase_output_hz);
                 if (!phase)
                     log_error("PLL '%s': phase_shift%d must be zero or a checked quarter-cycle shift for the output frequency.\n", ctx->nameOf(ci), i);
-                phase_ns[i] = phase->shift_ns;
-                shifted |= phase_ns[i] != 0;
+                phase_ps[i] = phase->shift_ps;
+                shifted |= phase_ps[i] != 0;
             }
             int duty0 = int_or_default(ci->params, ctx->id("duty_cycle0"), 50);
             int duty1 = int_or_default(ci->params, ctx->id("duty_cycle1"), 50);
@@ -635,11 +635,11 @@ struct MistralPacker
                 if (freq1 == ci->params.end() || !freq1->second.is_string)
                     log_error("PLL '%s': explicit output_clock_frequency1 is required.\n", ctx->nameOf(ci));
                 output1_hz = mistral_pll::parse_output_hz(freq1->second.as_string());
-                if (shifted && (fractional || (output_hz != 25000000 && output_hz != 50000000) ||
-                                output1_hz != output_hz || (output_hz == 50000000 && reference_mhz != 50) ||
+                if (shifted && (fractional || (output_hz != 25000000 && output_hz != 50000000 && output_hz != 100000000) ||
+                                output1_hz != output_hz || (output_hz != 25000000 && reference_mhz != 50) ||
                                 duty0 != 50 || duty1 != 50))
                     log_error("PLL '%s': phase profile requires equal integer 25 MHz outputs with a checked reference, "
-                              "or 50 MHz outputs with a 50 MHz reference, and 50 percent duty.\n",
+                              "or 50/100 MHz outputs with a 50 MHz reference, and 50 percent duty.\n",
                               ctx->nameOf(ci));
                 auto dual = fractional ? mistral_pll::select_fractional_dual(output_hz, output1_hz, reference_mhz) :
                                          mistral_pll::select_dual_hz(output_hz, output1_hz, reference_mhz, duty0, duty1);
@@ -724,7 +724,7 @@ struct MistralPacker
                     (*out1->users.begin()).port != id_A)
                     log_error("PLL '%s': outclk[1] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
                 buf1 = (*out1->users.begin()).cell;
-                if (phase_ns[1] != 0 && (out1->clkconstr || (buf1->getPort(id_Q) && buf1->getPort(id_Q)->clkconstr)))
+                if (phase_ps[1] != 0 && (out1->clkconstr || (buf1->getPort(id_Q) && buf1->getPort(id_Q)->clkconstr)))
                     log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
                               ctx->nameOf(ci));
             }
@@ -736,7 +736,7 @@ struct MistralPacker
                     (*out2->users.begin()).port != id_A)
                     log_error("PLL '%s': outclk[2] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
                 buf2 = (*out2->users.begin()).cell;
-                if (phase_ns[2] != 0 && (out2->clkconstr || (buf2->getPort(id_Q) && buf2->getPort(id_Q)->clkconstr)))
+                if (phase_ps[2] != 0 && (out2->clkconstr || (buf2->getPort(id_Q) && buf2->getPort(id_Q)->clkconstr)))
                     log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
                               ctx->nameOf(ci));
             }
@@ -748,7 +748,7 @@ struct MistralPacker
                     (*out3->users.begin()).port != id_A)
                     log_error("PLL '%s': outclk[3] must feed exactly one clock buffer.\n", ctx->nameOf(ci));
                 buf3 = (*out3->users.begin()).cell;
-                if (phase_ns[3] != 0 && (out3->clkconstr || (buf3->getPort(id_Q) && buf3->getPort(id_Q)->clkconstr)))
+                if (phase_ps[3] != 0 && (out3->clkconstr || (buf3->getPort(id_Q) && buf3->getPort(id_Q)->clkconstr)))
                     log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
                               ctx->nameOf(ci));
             }
@@ -804,7 +804,7 @@ struct MistralPacker
                 for (int i = 0; i < clocks; ++i) {
                     for (NetInfo *net : {outputs[i], buffers[i]->getPort(id_Q)}) {
                         net->clkconstr->phase_group = ci->name;
-                        net->clkconstr->phase_shift = ctx->getDelayFromNS(phase_ns[i]);
+                        net->clkconstr->phase_shift = ctx->getDelayFromNS(phase_ps[i] / 1000.0f);
                     }
                 }
             }

@@ -908,7 +908,47 @@ output clocks. Existing zero-phase and 25 MHz phase profiles remain regressions.
 All validation here is host-only. Non-50 MHz references cannot be tested on
 the designated kit with its current clock source. The 50 MHz reference /
 50 MHz output profile is suitable for a later ladder hardware experiment;
-these compiler tests do not establish physical phase accuracy. Shifted 50 MHz
-outputs at 25/100 MHz references, other output rates and unequal-frequency
-phase relationships remain unsupported. Downstream locks and FES pins are
+these compiler tests do not establish physical phase accuracy. Shifted 50 MHz outputs at 25/100 MHz references and unequal-frequency
+phase relationships remain unsupported. The 100 MHz output extension below
+adds another checked rate on the board reference. Downstream locks and FES pins are
 unchanged.
+
+
+## 100 MHz quarter-phase outputs
+
+Two, three or four 100 MHz outputs from the 50 MHz V11 reference can use
+0°, 90°, 180° or 270° phases (`0 ps`, `2500 ps`, `5000 ps`, `7500 ps`).
+Output 0 stays at zero; all outputs must use 100 MHz and 50% duty.
+The existing direct integer-feedback mode and output-buffer rules apply.
+
+Quartus 17.0.2 uses the checked 300 MHz M12/N2 configuration with C3
+dividers. The counter presets are 1/1/2/3, and phase-mux presets are
+0/6/4/2. Odd-divider even-duty correction remains enabled. The nonzero
+phase mux is essential: counter presets alone cannot encode these shifts.
+No Mistral tables, BELs or clock routes are added.
+
+The phase helper stores integer picoseconds, preserving 2500 and 7500 ps
+through packing. Conversion to the existing timing API uses fractional
+nanoseconds; Mistral's delay units are already picoseconds. The shared timing
+algorithm is unchanged. Quarter-cycle setup windows are 2.5 ns, not rounded
+to whole nanoseconds.
+
+```sh
+python3 mistral/tests/pll/phase_100.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-phase-100
+```
+
+The three [portable Quartus oracle bundles](fixtures/phase-100/) include full
+compressed RBFs, hashes, fitter reports and regeneration inputs. The runner
+compares every FPLL setting, checks utilization and dedicated clock-buffer
+placement/muxes, and covers 40 ordered rising/falling capture crossings with
+phase-derived timing budgets and Fmax. It rejects inexact shifts (including
+2501 ps), out-of-range phases, mixed frequencies, non-50% duties, fractional
+feedback, unsupported references and contradictory input/output constraints.
+
+Validation is host-only; the 50 MHz board reference makes this profile
+available for a later ladder hardware experiment. Physical phase accuracy
+has not been measured. Shifted 100 MHz outputs with 25/100 MHz references
+remain unsupported, as do unequal-frequency phase relationships. Existing
+25/50 MHz phase profiles remain regression checks. Downstream locks and FES
+pins are unchanged.
