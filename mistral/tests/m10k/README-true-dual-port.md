@@ -4,8 +4,9 @@
 read/write ports in one existing M10K BEL. Packing converts the primitive to
 `MISTRAL_M10K` with `CFG_TDP=1`; no Mistral tables or additional BELs are needed.
 Supported physical geometries are 1024×10 and 512×20, including padded 8/16-bit
-payloads. Both ports have the same width. Byte masks and mixed widths are not
-supported in this mode.
+payloads. Both ports have the same width. Mixed widths are not supported. For optional
+byte masks and their different write-output contract, see
+[byte-masked TDP](README-true-dual-port-byte.md).
 
 Use the paired Yosys fork's explicit `ram_style="m10k_tdp"` inference style.
 Each port must describe synchronous, enabled reads and write-through: on a

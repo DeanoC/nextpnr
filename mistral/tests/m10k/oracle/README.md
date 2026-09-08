@@ -85,3 +85,11 @@ same decompression, inspection and regeneration commands above. The TDP
 backend's native 10/20-bit host outputs match every decoded non-RAM M10K
 configuration setting in these oracles. See
 [the TDP mapping](../README-true-dual-port.md) for logical port assignments.
+
+`tdp20-byte` extends the 512×20 TDP reference with two active-high 10-bit
+write masks on each port. `mapping.json` correlates all package signals with
+routes, including both BYTEENABLEA and BYTEENABLEB lanes. Its decoded M10K
+settings match the unmasked `tdp20` reference: the mask routes are the change.
+Quartus accepts NEW_DATA_NO_NBE_READ here and rejects
+NEW_DATA_WITH_NBE_READ. Disabled-byte outputs during a write are unspecified;
+this does not affect preservation of their stored contents for later reads.

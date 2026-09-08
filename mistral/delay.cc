@@ -227,7 +227,7 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
                     timing.setup = DelayPair{125, 125};
                 else if (name.find("DATA") != std::string::npos)
                     timing.setup = DelayPair{97, 97};
-                else if (port.in(id_A1WE, id_B1WE))
+                else if (port.in(id_A1WE, id_B1WE) || name.find("A1BE[") == 0 || name.find("B1BE[") == 0)
                     timing.setup = DelayPair{140, 140};
                 else if (port.in(id_A1EN, id_B1EN))
                     timing.setup = DelayPair{161, 161};
