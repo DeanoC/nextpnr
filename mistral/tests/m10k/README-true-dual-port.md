@@ -66,3 +66,6 @@ other payload widths. The probe checks initialization, each writer and its
 write-through output, opposite-port readback, simultaneous disjoint writes,
 and output/write suppression while disabled. Address and data settle before
 write enable rises; write enable falls before the next address change.
+
+Native 10/20-bit independent-clock kit results and the exact tested RBFs are
+retained in [hardware acceptance](acceptance/true-dual-port/README.md).
