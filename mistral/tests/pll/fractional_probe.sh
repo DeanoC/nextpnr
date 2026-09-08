@@ -6,7 +6,8 @@ frequency=${1:-12.288}
 case "$frequency" in
     12.288) signature=55061; minimum=1005; maximum=1008 ;;
     11.2896) signature=55062; minimum=923; maximum=926 ;;
-    *) echo 'usage: fractional_probe.sh {12.288|11.2896}' >&2; exit 2 ;;
+    74.25) signature=55106; minimum=6081; maximum=6084 ;;
+    *) echo 'usage: fractional_probe.sh {12.288|11.2896|74.25}' >&2; exit 2 ;;
 esac
 # Count = output MHz * 2^20 / (50 * 256), with endpoint tolerance.
 read_gpi() { busybox devmem 0xFF706014 32; }

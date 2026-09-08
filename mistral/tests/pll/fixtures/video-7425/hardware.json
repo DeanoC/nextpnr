@@ -1,0 +1,186 @@
+{
+  "classification": "exact-artifact kit diagnostic",
+  "device": "5CSEBA6U23I7",
+  "reference_mhz": 50,
+  "requested_mhz": 74.25,
+  "calculated_hz": 74249999.83243954,
+  "nextpnr_base": "5c12b20429bccc206cf1dfbb726c95bbb30f51d8",
+  "yosys_commit": "9a89681d0331f3c055c1c3e33945fd197a5de1e0",
+  "mistral_commit": "78ba2a580ae2523403d4f4f91891a6b11d7b6aba",
+  "nextpnr_binary_sha256": "8d88e4a743615b8a604654ac5cf12ee1cac7ddd88ed1f8b27d9ee9c27706e68e",
+  "yosys_binary_sha256": "285cfef7f8b503af7d00077640e847cc65364a1c971d63e2a1f343e118378e0c",
+  "source_sha256": {
+    "mistral/pll.h": "07776c6728336e1d64510db7fd00f852e55b034107bce5e5f82d11bb21220615",
+    "mistral/pack.cc": "d50e78c94d8812350acae413668bf0aa875df219e48890724902f2e37e2b5993",
+    "mistral/tests/pll/fractional.v": "8f68bb24229d0f18443b6564dbe702743155e9a0c99239285965c95d5ccfe8b8",
+    "mistral/tests/pll/pll_meter.v": "3c1b1db51e97aac3cdd50f1e51899d6ef9846925005d93377fa1c2d78a4196cf",
+    "mistral/tests/pll/fractional.py": "fe6e95e5ceba933667d1ce09522b7d0494e6e775c50a71a0d7cec2e885b8a689",
+    "mistral/tests/pll/fractional_probe.sh": "f32b2a809fd39e23224298a894afa1101256b262cf1e0ab98307a7549452e76e"
+  },
+  "rbf_sha256": "233511d0a10b02480b41468f4785a762c1dd50e9c4c66908891f351906ec378c",
+  "rbf_bytes": 1955855,
+  "fmax": {
+    "fractional_clock": {
+      "achieved": 343.87896728515625,
+      "constraint": 74.25006866455078
+    },
+    "meter.refclk": {
+      "achieved": 195.2743682861328,
+      "constraint": 50
+    }
+  },
+  "utilization": {
+    "MISTRAL_BUF": {
+      "available": 0,
+      "used": 33
+    },
+    "MISTRAL_CLKENA": {
+      "available": 8,
+      "used": 2
+    },
+    "MISTRAL_COMB": {
+      "available": 83820,
+      "used": 87
+    },
+    "MISTRAL_FF": {
+      "available": 167640,
+      "used": 73
+    },
+    "MISTRAL_IO": {
+      "available": 472,
+      "used": 1
+    },
+    "MISTRAL_M10K": {
+      "available": 553,
+      "used": 0
+    },
+    "MISTRAL_MUL18X18": {
+      "available": 112,
+      "used": 0
+    },
+    "MISTRAL_MUL27X27": {
+      "available": 112,
+      "used": 0
+    },
+    "MISTRAL_MUL9X9": {
+      "available": 336,
+      "used": 0
+    },
+    "altera_pll": {
+      "available": 6,
+      "used": 1
+    },
+    "cyclonev_hps_interface_mpu_general_purpose": {
+      "available": 1,
+      "used": 1
+    },
+    "cyclonev_oscillator": {
+      "available": 1,
+      "used": 0
+    }
+  },
+  "trials": [
+    {
+      "trial": 1,
+      "reset": 1,
+      "count": 0
+    },
+    {
+      "trial": 1,
+      "reset": 0,
+      "count": 6083
+    },
+    {
+      "trial": 2,
+      "reset": 1,
+      "count": 0
+    },
+    {
+      "trial": 2,
+      "reset": 0,
+      "count": 6083
+    },
+    {
+      "trial": 3,
+      "reset": 1,
+      "count": 0
+    },
+    {
+      "trial": 3,
+      "reset": 0,
+      "count": 6082
+    },
+    {
+      "trial": 4,
+      "reset": 1,
+      "count": 0
+    },
+    {
+      "trial": 4,
+      "reset": 0,
+      "count": 6083
+    },
+    {
+      "trial": 5,
+      "reset": 1,
+      "count": 0
+    },
+    {
+      "trial": 5,
+      "reset": 0,
+      "count": 6083
+    },
+    {
+      "trial": 6,
+      "reset": 1,
+      "count": 0
+    },
+    {
+      "trial": 6,
+      "reset": 0,
+      "count": 6083
+    },
+    {
+      "trial": 7,
+      "reset": 1,
+      "count": 0
+    },
+    {
+      "trial": 7,
+      "reset": 0,
+      "count": 6083
+    },
+    {
+      "trial": 8,
+      "reset": 1,
+      "count": 0
+    },
+    {
+      "trial": 8,
+      "reset": 0,
+      "count": 6082
+    },
+    {
+      "trial": 9,
+      "reset": 1,
+      "count": 0
+    },
+    {
+      "trial": 9,
+      "reset": 0,
+      "count": 6083
+    },
+    {
+      "trial": 10,
+      "reset": 1,
+      "count": 0
+    },
+    {
+      "trial": 10,
+      "reset": 0,
+      "count": 6083
+    }
+  ],
+  "cleanup": "kit.py stop/reboot/release returned free; no SSH reboot",
+  "validation": "six PLL selector test programs; full 74.25 MHz host/oracle comparison and negative cases; existing12.288 MHz route/oracle regression; independent review"
+}
