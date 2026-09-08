@@ -1,0 +1,410 @@
+[
+  {
+    "signal": "qb[4]",
+    "route": "M10K.049.002:DATABOUT.4 HMC.025.000:IOINTCKDOUT.0"
+  },
+  {
+    "signal": "qa[12]",
+    "route": "M10K.049.002:DATAAOUT.12 HMC.025.000:IOINTDQSBDOUT.8"
+  },
+  {
+    "signal": "qa[6]",
+    "route": "M10K.049.002:DATAAOUT.6 GPIO.056.000.0:DATAOUT.0"
+  },
+  {
+    "signal": "da[19]",
+    "route": "HMC.025.000:IOINTDQDIN.29 M10K.049.002:DATAAIN.19"
+  },
+  {
+    "signal": "qb[10]",
+    "route": "M10K.049.002:DATABOUT.10 HMC.025.000:IOINTDQDOUT.160"
+  },
+  {
+    "signal": "qa[4]",
+    "route": "M10K.049.002:DATAAOUT.4 HMC.025.000:IOINTDQDOUT.148"
+  },
+  {
+    "signal": "qa[19]",
+    "route": "M10K.049.002:DATAAOUT.19 HMC.025.000:IOINTDQDOUT.132"
+  },
+  {
+    "signal": "qb[6]",
+    "route": "M10K.049.002:DATABOUT.6 HMC.025.000:IOINTDQDOUT.128"
+  },
+  {
+    "signal": "qa[5]",
+    "route": "M10K.049.002:DATAAOUT.5 HMC.025.000:IOINTDQDOUT.120"
+  },
+  {
+    "signal": "db[5]",
+    "route": "HMC.025.000:IOINTDQDIN.9 M10K.049.002:DATABIN.5"
+  },
+  {
+    "signal": "da[15]",
+    "route": "GPIO.060.000.2:DATAIN.0 M10K.049.002:DATAAIN.15"
+  },
+  {
+    "signal": "qb[1]",
+    "route": "M10K.049.002:DATABOUT.1 HMC.025.000:IOINTDQDOUT.116"
+  },
+  {
+    "signal": "db[15]",
+    "route": "GPIO.040.000.3:DATAIN.1 M10K.049.002:DATABIN.15"
+  },
+  {
+    "signal": "qa[10]",
+    "route": "M10K.049.002:DATAAOUT.10 HMC.025.000:IOINTDQSDOUT.8"
+  },
+  {
+    "signal": "da[6]",
+    "route": "HMC.025.000:IOINTDQDIN.77 M10K.049.002:DATAAIN.6"
+  },
+  {
+    "signal": "qa[3]",
+    "route": "M10K.049.002:DATAAOUT.3 HMC.025.000:IOINTDQDOUT.72"
+  },
+  {
+    "signal": "db[6]",
+    "route": "HMC.025.000:IOINTDQDIN.93 M10K.049.002:DATABIN.6"
+  },
+  {
+    "signal": "da[16]",
+    "route": "GPIO.006.000.2:DATAIN.1 M10K.049.002:DATAAIN.16"
+  },
+  {
+    "signal": "db[7]",
+    "route": "GPIO.089.004.1:DATAIN.0 M10K.049.002:DATABIN.7"
+  },
+  {
+    "signal": "web",
+    "route": "HMC.025.000:IOINTDQDIN.0 M10K.049.002:WREN.1"
+  },
+  {
+    "signal": "da[17]",
+    "route": "GPIO.038.081.3:DATAIN.0 M10K.049.002:DATAAIN.17"
+  },
+  {
+    "signal": "ab[2]",
+    "route": "GPIO.006.000.0:DATAIN.0 M10K.049.002:ADDRB.5"
+  },
+  {
+    "signal": "da[8]",
+    "route": "GPIO.034.000.0:DATAIN.0 M10K.049.002:DATAAIN.8"
+  },
+  {
+    "signal": "ab[5]",
+    "route": "GPIO.026.000.0:DATAIN.1 M10K.049.002:ADDRB.8"
+  },
+  {
+    "signal": "db[18]",
+    "route": "GPIO.032.000.0:DATAIN.1 M10K.049.002:DATABIN.18"
+  },
+  {
+    "signal": "qa[15]",
+    "route": "M10K.049.002:DATAAOUT.15 HMC.025.000:IOINTBADOUT.8"
+  },
+  {
+    "signal": "da[18]",
+    "route": "HMC.025.000:IOINTDQDIN.4 M10K.049.002:DATAAIN.18"
+  },
+  {
+    "signal": "da[7]",
+    "route": "GPIO.030.000.3:DATAIN.0 M10K.049.002:DATAAIN.7"
+  },
+  {
+    "signal": "db[14]",
+    "route": "GPIO.040.000.1:DATAIN.0 M10K.049.002:DATABIN.14"
+  },
+  {
+    "signal": "db[9]",
+    "route": "HMC.025.000:IOINTDQDIN.48 M10K.049.002:DATABIN.9"
+  },
+  {
+    "signal": "ab[7]",
+    "route": "GPIO.062.000.3:DATAIN.1 M10K.049.002:ADDRB.10"
+  },
+  {
+    "signal": "ab[0]",
+    "route": "GPIO.052.000.1:DATAIN.1 M10K.049.002:ADDRB.3"
+  },
+  {
+    "signal": "da[14]",
+    "route": "GPIO.089.004.2:DATAIN.1 M10K.049.002:DATAAIN.14"
+  },
+  {
+    "signal": "qa[11]",
+    "route": "M10K.049.002:DATAAOUT.11 HMC.025.000:IOINTDQDOUT.20"
+  },
+  {
+    "signal": "db[19]",
+    "route": "GPIO.040.000.0:DATAIN.1 M10K.049.002:DATABIN.19"
+  },
+  {
+    "signal": "da[4]",
+    "route": "HMC.025.000:IOINTDQDIN.97 M10K.049.002:DATAAIN.4"
+  },
+  {
+    "signal": "db[13]",
+    "route": "GPIO.026.000.3:DATAIN.0 M10K.049.002:DATABIN.13"
+  },
+  {
+    "signal": "qb[15]",
+    "route": "M10K.049.002:DATABOUT.15 HMC.025.000:IOINTDMDOUT.0"
+  },
+  {
+    "signal": "qa[17]",
+    "route": "M10K.049.002:DATAAOUT.17 HMC.025.000:IOINTCSNDOUT.4"
+  },
+  {
+    "signal": "qb[2]",
+    "route": "M10K.049.002:DATABOUT.2 GPIO.008.000.0:DATAOUT.0"
+  },
+  {
+    "signal": "qa[1]",
+    "route": "M10K.049.002:DATAAOUT.1 HMC.025.000:IOINTADDRDOUT.40"
+  },
+  {
+    "signal": "da[13]",
+    "route": "GPIO.038.000.3:DATAIN.1 M10K.049.002:DATAAIN.13"
+  },
+  {
+    "signal": "aa[1]",
+    "route": "GPIO.060.000.0:DATAIN.0 M10K.049.002:ADDRA.4"
+  },
+  {
+    "signal": "da[9]",
+    "route": "HMC.025.000:IOINTDQDIN.36 M10K.049.002:DATAAIN.9"
+  },
+  {
+    "signal": "qa[18]",
+    "route": "M10K.049.002:DATAAOUT.18 HMC.025.000:IOINTDQSBDOUT.4"
+  },
+  {
+    "signal": "qb[14]",
+    "route": "M10K.049.002:DATABOUT.14 GPIO.002.000.1:DATAOUT.0"
+  },
+  {
+    "signal": "da[5]",
+    "route": "HMC.025.000:IOINTDQDIN.57 M10K.049.002:DATAAIN.5"
+  },
+  {
+    "signal": "db[0]",
+    "route": "GPIO.038.000.0:DATAIN.1 M10K.049.002:DATABIN.0"
+  },
+  {
+    "signal": "qb[17]",
+    "route": "M10K.049.002:DATABOUT.17 HMC.025.000:IOINTBADOUT.0"
+  },
+  {
+    "signal": "qb[16]",
+    "route": "M10K.049.002:DATABOUT.16 HMC.025.000:IOINTODTDOUT.0"
+  },
+  {
+    "signal": "aa[5]",
+    "route": "GPIO.032.000.3:DATAIN.1 M10K.049.002:ADDRA.8"
+  },
+  {
+    "signal": "da[11]",
+    "route": "GPIO.028.000.0:DATAIN.0 M10K.049.002:DATAAIN.11"
+  },
+  {
+    "signal": "aa[4]",
+    "route": "GPIO.070.000.3:DATAIN.1 M10K.049.002:ADDRA.7"
+  },
+  {
+    "signal": "db[1]",
+    "route": "GPIO.030.000.0:DATAIN.1 M10K.049.002:DATABIN.1"
+  },
+  {
+    "signal": "aa[6]",
+    "route": "GPIO.052.000.0:DATAIN.0 M10K.049.002:ADDRA.9"
+  },
+  {
+    "signal": "db[11]",
+    "route": "GPIO.076.000.1:DATAIN.1 M10K.049.002:DATABIN.11"
+  },
+  {
+    "signal": "wea",
+    "route": "HMC.025.000:IOINTDQDIN.85 M10K.049.002:WREN.0"
+  },
+  {
+    "signal": "qb[12]",
+    "route": "M10K.049.002:DATABOUT.12 HMC.025.000:IOINTADDRDOUT.48"
+  },
+  {
+    "signal": "qa[16]",
+    "route": "M10K.049.002:DATAAOUT.16 HMC.025.000:IOINTADDRDOUT.60"
+  },
+  {
+    "signal": "aa[0]",
+    "route": "GPIO.030.000.1:DATAIN.1 M10K.049.002:ADDRA.3"
+  },
+  {
+    "signal": "qb[0]",
+    "route": "M10K.049.002:DATABOUT.0 GPIO.006.000.1:DATAOUT.0"
+  },
+  {
+    "signal": "qb[5]",
+    "route": "M10K.049.002:DATABOUT.5 GPIO.008.000.3:DATAOUT.0"
+  },
+  {
+    "signal": "qb[3]",
+    "route": "M10K.049.002:DATABOUT.3 HMC.025.000:IOINTWENDOUT.0"
+  },
+  {
+    "signal": "qa[13]",
+    "route": "M10K.049.002:DATAAOUT.13 GPIO.032.000.1:DATAOUT.0"
+  },
+  {
+    "signal": "db[17]",
+    "route": "GPIO.028.000.3:DATAIN.1 M10K.049.002:DATABIN.17"
+  },
+  {
+    "signal": "ab[1]",
+    "route": "HMC.025.000:IOINTDQDIN.13 M10K.049.002:ADDRB.4"
+  },
+  {
+    "signal": "qb[19]",
+    "route": "M10K.049.002:DATABOUT.19 GPIO.034.000.3:DATAOUT.0"
+  },
+  {
+    "signal": "aa[3]",
+    "route": "HMC.025.000:IOINTDQDIN.17 M10K.049.002:ADDRA.6"
+  },
+  {
+    "signal": "qa[14]",
+    "route": "M10K.049.002:DATAAOUT.14 HMC.025.000:IOINTDQDOUT.64"
+  },
+  {
+    "signal": "aa[7]",
+    "route": "GPIO.064.000.0:DATAIN.0 M10K.049.002:ADDRA.10"
+  },
+  {
+    "signal": "aa[8]",
+    "route": "GPIO.064.000.1:DATAIN.0 M10K.049.002:ADDRA.11"
+  },
+  {
+    "signal": "db[8]",
+    "route": "GPIO.089.008.1:DATAIN.0 M10K.049.002:DATABIN.8"
+  },
+  {
+    "signal": "qb[18]",
+    "route": "M10K.049.002:DATABOUT.18 HMC.025.000:IOINTDQDOUT.124"
+  },
+  {
+    "signal": "ab[3]",
+    "route": "HMC.025.000:IOINTDQDIN.101 M10K.049.002:ADDRB.6"
+  },
+  {
+    "signal": "ena",
+    "route": "GPIO.036.000.1:DATAIN.1 M10K.049.002:ENABLE.1"
+  },
+  {
+    "signal": "qa[0]",
+    "route": "M10K.049.002:DATAAOUT.0 GPIO.004.000.0:DATAOUT.0"
+  },
+  {
+    "signal": "qb[7]",
+    "route": "M10K.049.002:DATABOUT.7 HMC.025.000:IOINTDQDOUT.40"
+  },
+  {
+    "signal": "da[12]",
+    "route": "GPIO.036.000.2:DATAIN.0 M10K.049.002:DATAAIN.12"
+  },
+  {
+    "signal": "qb[13]",
+    "route": "M10K.049.002:DATABOUT.13 HMC.025.000:IOINTDQDOUT.52"
+  },
+  {
+    "signal": "da[0]",
+    "route": "GPIO.089.004.3:DATAIN.1 M10K.049.002:DATAAIN.0"
+  },
+  {
+    "signal": "da[10]",
+    "route": "GPIO.006.000.3:DATAIN.1 M10K.049.002:DATAAIN.10"
+  },
+  {
+    "signal": "db[10]",
+    "route": "GPIO.054.000.3:DATAIN.1 M10K.049.002:DATABIN.10"
+  },
+  {
+    "signal": "qa[9]",
+    "route": "M10K.049.002:DATAAOUT.9 GPIO.056.000.1:DATAOUT.0"
+  },
+  {
+    "signal": "da[1]",
+    "route": "HMC.025.000:IOINTDQDIN.81 M10K.049.002:DATAAIN.1"
+  },
+  {
+    "signal": "qa[2]",
+    "route": "M10K.049.002:DATAAOUT.2 HMC.025.000:IOINTDQDOUT.44"
+  },
+  {
+    "signal": "db[2]",
+    "route": "GPIO.040.081.0:DATAIN.1 M10K.049.002:DATABIN.2"
+  },
+  {
+    "signal": "qb[8]",
+    "route": "M10K.049.002:DATABOUT.8 HMC.025.000:IOINTDQDOUT.60"
+  },
+  {
+    "signal": "db[16]",
+    "route": "GPIO.036.000.3:DATAIN.0 M10K.049.002:DATABIN.16"
+  },
+  {
+    "signal": "db[12]",
+    "route": "GPIO.040.000.2:DATAIN.1 M10K.049.002:DATABIN.12"
+  },
+  {
+    "signal": "da[3]",
+    "route": "GPIO.078.000.3:DATAIN.1 M10K.049.002:DATAAIN.3"
+  },
+  {
+    "signal": "db[3]",
+    "route": "GPIO.008.000.2:DATAIN.0 M10K.049.002:DATABIN.3"
+  },
+  {
+    "signal": "qb[9]",
+    "route": "M10K.049.002:DATABOUT.9 HMC.025.000:IOINTRESETNDOUT.0"
+  },
+  {
+    "signal": "qa[8]",
+    "route": "M10K.049.002:DATAAOUT.8 HMC.025.000:IOINTADDRDOUT.20"
+  },
+  {
+    "signal": "enb",
+    "route": "GPIO.008.000.1:DATAIN.0 M10K.049.002:ENABLE.0"
+  },
+  {
+    "signal": "db[4]",
+    "route": "GPIO.038.000.2:DATAIN.0 M10K.049.002:DATABIN.4"
+  },
+  {
+    "signal": "aa[2]",
+    "route": "GPIO.004.000.2:DATAIN.1 M10K.049.002:ADDRA.5"
+  },
+  {
+    "signal": "ab[6]",
+    "route": "GPIO.050.000.3:DATAIN.0 M10K.049.002:ADDRB.9"
+  },
+  {
+    "signal": "qa[7]",
+    "route": "M10K.049.002:DATAAOUT.7 GPIO.002.000.3:DATAOUT.0"
+  },
+  {
+    "signal": "ab[8]",
+    "route": "HMC.025.000:IOINTDQDIN.88 M10K.049.002:ADDRB.11"
+  },
+  {
+    "signal": "ab[4]",
+    "route": "HMC.025.000:IOINTDQDIN.25 M10K.049.002:ADDRB.7"
+  },
+  {
+    "signal": "qb[11]",
+    "route": "M10K.049.002:DATABOUT.11 HMC.025.000:IOINTCASNDOUT.0"
+  },
+  {
+    "signal": "da[2]",
+    "route": "GPIO.064.000.2:DATAIN.0 M10K.049.002:DATAAIN.2"
+  }
+]

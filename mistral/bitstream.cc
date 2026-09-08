@@ -501,6 +501,7 @@ struct MistralBitgen
 
         auto dbits = ci->params.at(id_CFG_DBITS).as_int64();
 
+        bool tdp = bool_or_default(ci->params, id_CFG_TDP, false);
         bool mixed = bool_or_default(ci->params, id_CFG_MIXED_WIDTH, false);
         int rdbits = mixed ? int_or_default(ci->params, id_CFG_RD_DBITS, dbits) : dbits;
         // Quartus clears data flow-through when either mixed port spans 40 bits.
@@ -541,8 +542,8 @@ struct MistralBitgen
                            dbits == 40 || wide_mixed ? 0 : 1);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_OUTCLK_SEL, bi, 1);
         }
-        if (byte_enable || mixed) {
-            // Byte-enabled and mixed-width SDP select the write core enable
+        if (byte_enable || mixed || tdp) {
+            // Byte-enabled SDP, mixed-width SDP and TDP select the write core enable
             // lane in addition to positive WREN[0].
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CORECLK_SEL, bi, 1);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_INCLK_SEL, bi, 1);
@@ -557,9 +558,14 @@ struct MistralBitgen
         // The legacy unused bottom clock is inverted in narrow modes. CLK2
         // is a real rising-edge read clock and must not inherit that inversion.
         cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_CLK_INV, bi, !dual_clock && dbits != 40);
-        cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_W_SEL, bi, byte_enable || mixed ? 0 : dbits != 40);
+        cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_W_SEL, bi, byte_enable || mixed || tdp ? 0 : dbits != 40);
 
-        cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TRUE_DUAL_PORT, bi, 0);
+        if (tdp) {
+            // Quartus BIDIR_DUAL_PORT with NEW_DATA_NO_NBE_READ on both ports.
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_INCLK_SEL, bi, 1);
+            cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_W_INV, bi, false);
+        }
+        cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TRUE_DUAL_PORT, bi, tdp);
 
         cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::DISABLE_UNUSED, bi, 0);
 
