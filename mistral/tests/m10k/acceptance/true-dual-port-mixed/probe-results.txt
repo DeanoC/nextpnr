@@ -1,0 +1,20 @@
+u8-a2-b1-c0
+PASS: initialized words through both port widths
+PASS: both writers, NEW_DATA, cross-width readback and preserved neighbors
+PASS: simultaneous disjoint writes and neighboring storage
+PASS: clock enable holds output and suppresses writes on both ports
+u8-a1-b2-c0
+PASS: initialized words through both port widths
+PASS: both writers, NEW_DATA, cross-width readback and preserved neighbors
+PASS: simultaneous disjoint writes and neighboring storage
+PASS: clock enable holds output and suppresses writes on both ports
+u10-a2-b1-c0
+PASS: initialized words through both port widths
+PASS: both writers, NEW_DATA, cross-width readback and preserved neighbors
+PASS: simultaneous disjoint writes and neighboring storage
+PASS: clock enable holds output and suppresses writes on both ports
+u10-a1-b2-c0
+PASS: initialized words through both port widths
+PASS: both writers, NEW_DATA, cross-width readback and preserved neighbors
+PASS: simultaneous disjoint writes and neighboring storage
+PASS: clock enable holds output and suppresses writes on both ports

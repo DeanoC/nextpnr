@@ -564,6 +564,13 @@ struct MistralBitgen
             // Quartus BIDIR_DUAL_PORT with NEW_DATA_NO_NBE_READ on both ports.
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_INCLK_SEL, bi, 1);
             cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_W_INV, bi, false);
+            if (mixed && dbits != rdbits) {
+                // These selectors match setup_tdp_m10k's mixed-width routes.
+                cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_CE0_SEL, bi, 0);
+                cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CE0_SEL, bi, 1);
+                cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_W_SEL, bi, dbits == 20 ? 1 : 0);
+                cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_W_SEL, bi, dbits == 20 ? 1 : 0);
+            }
         }
         cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TRUE_DUAL_PORT, bi, tdp);
 

@@ -4,7 +4,8 @@
 read/write ports in one existing M10K BEL. Packing converts the primitive to
 `MISTRAL_M10K` with `CFG_TDP=1`; no Mistral tables or additional BELs are needed.
 Supported physical geometries are 1024×10 and 512×20, including padded 8/16-bit
-payloads. Both ports have the same width. Mixed widths are not supported. For optional
+payloads. This style uses the same width on both ports. For different widths, see
+[mixed-width TDP](README-true-dual-port-mixed.md). For optional
 byte masks and their different write-output contract, see
 [byte-masked TDP](README-true-dual-port-byte.md).
 

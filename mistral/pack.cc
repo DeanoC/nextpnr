@@ -518,12 +518,19 @@ struct MistralPacker
     {
         int dbits = int_or_default(ci->params, id_CFG_DBITS, 10);
         int abits = int_or_default(ci->params, id_CFG_ABITS, 10);
-        if (!((dbits == 10 && abits == 10) || (dbits == 20 && abits == 9)))
-            log_error("M10K '%s': true dual-port requires equal 1024x10 or 512x20 ports.\n", ctx->nameOf(ci));
-        if (bool_or_default(ci->params, id_CFG_MIXED_WIDTH, false) ||
-            ci->params.count(id_CFG_RD_ABITS) || ci->params.count(id_CFG_RD_DBITS))
-            log_error("M10K '%s': true dual-port cannot combine mixed widths.\n", ctx->nameOf(ci));
+        int bdbits = int_or_default(ci->params, id_CFG_RD_DBITS, dbits);
+        int babits = int_or_default(ci->params, id_CFG_RD_ABITS, abits);
+        bool mixed = bool_or_default(ci->params, id_CFG_MIXED_WIDTH, false);
         bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
+        auto geometry = [](int a, int d) { return (d == 10 && a == 10) || (d == 20 && a == 9); };
+        if (mixed && byte_enable)
+            log_error("M10K '%s': true dual-port cannot combine mixed widths and byte enables.\n", ctx->nameOf(ci));
+        if (mixed && (!ci->params.count(id_CFG_RD_ABITS) || !ci->params.count(id_CFG_RD_DBITS)))
+            log_error("M10K '%s': mixed TDP requires explicit B geometry (CFG_RD_ABITS/CFG_RD_DBITS).\n", ctx->nameOf(ci));
+        if (!geometry(abits, dbits) || !geometry(babits, bdbits))
+            log_error("M10K '%s': true dual-port requires 1024x10 or 512x20 on each port.\n", ctx->nameOf(ci));
+        if (!mixed && (babits != abits || bdbits != dbits))
+            log_error("M10K '%s': unequal TDP B geometry requires CFG_MIXED_WIDTH=1.\n", ctx->nameOf(ci));
         if (byte_enable && dbits != 20)
             log_error("M10K '%s': true dual-port byte enables require 512x20 ports.\n", ctx->nameOf(ci));
         if (byte_enable) {
@@ -551,21 +558,30 @@ struct MistralPacker
         ci->params[id_CFG_ABITS] = abits;
         ci->params[id_CFG_DBITS] = dbits;
         ci->params[id_CFG_DUAL_CLOCK] = 1;
+        if (mixed) {
+            ci->params[id_CFG_RD_ABITS] = babits;
+            ci->params[id_CFG_RD_DBITS] = bdbits;
+        }
+        // Match the retained Quartus mixed-TDP control mux assignments.
+        bool unequal = dbits != bdbits;
+        bool swap_wren = unequal && dbits == 20;
         ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
         ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
-        ci->pin_data[id_A1EN].bel_pins = {ctx->id("ENABLE[1]")};
-        ci->pin_data[id_B1EN].bel_pins = {ctx->id("ENABLE[0]")};
-        ci->pin_data[id_A1WE].bel_pins = {ctx->id("WREN[0]")};
-        ci->pin_data[id_B1WE].bel_pins = {ctx->id("WREN[1]")};
+        ci->pin_data[id_A1EN].bel_pins = {ctx->idf("ENABLE[%d]", unequal ? 0 : 1)};
+        ci->pin_data[id_B1EN].bel_pins = {ctx->idf("ENABLE[%d]", unequal ? 1 : 0)};
+        ci->pin_data[id_A1WE].bel_pins = {ctx->idf("WREN[%d]", swap_wren ? 1 : 0)};
+        ci->pin_data[id_B1WE].bel_pins = {ctx->idf("WREN[%d]", swap_wren ? 0 : 1)};
         for (int port = 0; port < 2; port++) {
             char side = port == 0 ? 'A' : 'B';
-            for (int bit = 0; bit < abits; bit++)
+            int addr_bits = port == 0 ? abits : babits;
+            int data_bits = port == 0 ? dbits : bdbits;
+            for (int bit = 0; bit < addr_bits; bit++)
                 ci->pin_data[ctx->idf("%c1ADDR[%d]", side, bit)].bel_pins = {
-                        ctx->idf("ADDR%c[%d]", side, bit + 12 - abits)};
-            for (int bit = 0; bit < dbits; bit++) {
+                        ctx->idf("ADDR%c[%d]", side, bit + 12 - addr_bits)};
+            for (int bit = 0; bit < data_bits; bit++) {
                 auto &pins = ci->pin_data[ctx->idf("%c1DATA[%d]", side, bit)].bel_pins;
                 pins = {ctx->idf("DATA%cIN[%d]", side, bit)};
-                if (dbits == 10)
+                if (data_bits == 10)
                     pins.push_back(ctx->idf("DATA%cIN[%d]", side, bit + 10));
                 ci->pin_data[ctx->idf("%c1Q[%d]", side, bit)].bel_pins = {
                         ctx->idf("DATA%cOUT[%d]", side, bit)};
