@@ -1,0 +1,249 @@
+{
+  "classification": "exact-artifact hardware diagnostic acceptance",
+  "date": "2026-09-08",
+  "device": "5CSEBA6U23I7",
+  "kit_owner": "nextpnr-m10k-tdp-byte",
+  "nextpnr_base": "06747fec1cb02405c3400ceac54d15c0845dcc0b",
+  "nextpnr_source": "5b2db7e3962285eb059cbbaab5385ca75221c6e7",
+  "yosys_base": "ea0c44fc0dda595abee4cc27981ecf173628fc5c",
+  "yosys_source": "0a413c9e2d948dd66777a3f09808fa2566fea084",
+  "mistral_source": "78ba2a580ae2523403d4f4f91891a6b11d7b6aba",
+  "board_source": "ffdac202fd52e06855afb7d2baa8d4946ff765db",
+  "nextpnr_binary_sha256": "208483eafc6a601bf7464b3387facac028af1c5c20e70cde423e1e31a2fca0f0",
+  "yosys_binary_sha256": "10b1479344b2e5448ca46e90b3bdb9e6da875790d0176e92284156f5f53c7c71",
+  "fixture_sha256": "8a7900980ee302a153a7808e96a4d8ff473611d39c60d28e3b21343b279aa12b",
+  "probe_sha256": "18cbfa3522234f899153bd1d17aa76a90870a2d72b3998055ee657be67ee9ac0",
+  "cases": [
+    {
+      "name": "w20-c0",
+      "rbf_sha256": "eafe813d3a5ae7ddd98f45106bcf86d183a053ce031d61946d85083ffa2b9668",
+      "rbf_bytes": 1960490,
+      "synth_json_sha256": "eb0e57dd8e95d896b43df8f125e3d829e3fdf15a63ac59a5c72a304b3774cd53",
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 78
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 76
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 97
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "fmax": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 259.40338134765625,
+          "constraint": 50
+        },
+        "clock_b": {
+          "achieved": 331.6749572753906,
+          "constraint": 25
+        }
+      },
+      "probe_flags": [
+        "--width",
+        "20"
+      ],
+      "checks": [
+        "PASS: initialized reads through both ports",
+        "PASS: low/high/zero/full masks on both writers and preserved storage",
+        "PASS: inferred output hold during writes",
+        "PASS: simultaneous disjoint writes with different masks",
+        "PASS: clock enable holds output and suppresses masked writes"
+      ],
+      "cleanup": "kit.py development reboot recovered; free"
+    },
+    {
+      "name": "w16-c0",
+      "rbf_sha256": "22dd785da99e8f62ef76c019159690be7e771eef680a1fe791bbc54ba56070b6",
+      "rbf_bytes": 1960509,
+      "synth_json_sha256": "e16e30bed2ecd8668b1224b2dc985821204944e3d670016409baf686864ab5ee",
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 72
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 68
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 89
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "fmax": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 269.4691467285156,
+          "constraint": 50
+        },
+        "clock_b": {
+          "achieved": 376.9317626953125,
+          "constraint": 25
+        }
+      },
+      "probe_flags": [
+        "--width",
+        "16"
+      ],
+      "checks": [
+        "PASS: initialized reads through both ports",
+        "PASS: low/high/zero/full masks on both writers and preserved storage",
+        "PASS: inferred output hold during writes",
+        "PASS: simultaneous disjoint writes with different masks",
+        "PASS: clock enable holds output and suppresses masked writes"
+      ],
+      "cleanup": "kit.py development reboot recovered; free"
+    },
+    {
+      "name": "w20-c0-raw",
+      "rbf_sha256": "99d7298eb21d44aed6b957a8a95d5fdac4a8a32196b4f8456a93eb0a9bd313b3",
+      "rbf_bytes": 1958750,
+      "synth_json_sha256": "4c071c4d20bec93bfe4b97e7a889ef228e3d6bea4ff9d76d41d0e81b7f20b4b2",
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 48
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 30
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 55
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "fmax": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 389.4080810546875,
+          "constraint": 50
+        }
+      },
+      "probe_flags": [
+        "--width",
+        "20",
+        "--raw"
+      ],
+      "checks": [
+        "PASS: initialized reads through both ports",
+        "PASS: low/high/zero/full masks on both writers and preserved storage",
+        "PASS: enabled-byte NEW_DATA",
+        "PASS: simultaneous disjoint writes with different masks",
+        "PASS: clock enable holds output and suppresses masked writes"
+      ],
+      "cleanup": "kit.py development reboot recovered; free"
+    }
+  ]
+}

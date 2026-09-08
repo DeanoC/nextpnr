@@ -521,9 +521,28 @@ struct MistralPacker
         if (!((dbits == 10 && abits == 10) || (dbits == 20 && abits == 9)))
             log_error("M10K '%s': true dual-port requires equal 1024x10 or 512x20 ports.\n", ctx->nameOf(ci));
         if (bool_or_default(ci->params, id_CFG_MIXED_WIDTH, false) ||
-            bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false) ||
             ci->params.count(id_CFG_RD_ABITS) || ci->params.count(id_CFG_RD_DBITS))
-            log_error("M10K '%s': true dual-port cannot combine mixed widths or byte enables.\n", ctx->nameOf(ci));
+            log_error("M10K '%s': true dual-port cannot combine mixed widths.\n", ctx->nameOf(ci));
+        bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
+        if (byte_enable && dbits != 20)
+            log_error("M10K '%s': true dual-port byte enables require 512x20 ports.\n", ctx->nameOf(ci));
+        if (byte_enable) {
+            for (const auto &port : ci->ports) {
+                const auto &name = port.first.str(ctx);
+                if ((name.find("A1BE[") == 0 || name.find("B1BE[") == 0) &&
+                    name != "A1BE[0]" && name != "A1BE[1]" && name != "B1BE[0]" && name != "B1BE[1]")
+                    log_error("M10K '%s': true dual-port byte masks must have exactly two bits.\n", ctx->nameOf(ci));
+            }
+            for (char side : {'A', 'B'}) {
+                for (int bit = 0; bit < 2; bit++) {
+                    IdString port = ctx->idf("%c1BE[%d]", side, bit);
+                    if (!ci->getPort(port))
+                        log_error("M10K '%s': true dual-port byte mode requires connected %s.\n",
+                                  ctx->nameOf(ci), ctx->nameOf(port));
+                    ci->pin_data[port].bel_pins = {ctx->idf("BYTEENABLE%c[%d]", side, bit)};
+                }
+            }
+        }
         if (!ci->getPort(id_CLK1) || !ci->getPort(id_CLK2))
             log_error("M10K '%s': true dual-port requires both clocks.\n", ctx->nameOf(ci));
         for (IdString port : {id_A1EN, id_B1EN, id_A1WE, id_B1WE})
