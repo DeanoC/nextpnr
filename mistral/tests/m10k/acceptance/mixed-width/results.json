@@ -1,0 +1,702 @@
+{
+  "device": "5CSEBA6U23I7",
+  "date": "2026-09-08",
+  "nextpnr_base": "71d2ffdbdf669475d6596352990f4d22d90a9092",
+  "yosys_base": "4722ee98b2d658adc82504112573a712d40dacf1",
+  "mistral": "78ba2a580ae2523403d4f4f91891a6b11d7b6aba",
+  "router": "router1",
+  "board_reference_mhz": 50,
+  "read_clock_mhz": 25,
+  "source_sha256": {
+    "mixed_width.v": "76160d60e245e0a8e4b450692a5679e30fb5938aa4571fb8e610a534521430b4",
+    "mixed_width_probe.py": "3f0dd4c04a981ab87231488837e0b38c360f932600bbeed973f3f7ccae71c5b6",
+    "pins.qsf": "60ff2f577fafe5bf5dbeab94076f955e42cce28f04da812d4ed268ae9255eb54",
+    "clocks.sdc": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041"
+  },
+  "tool_binary_sha256": {
+    "yosys": "52eba12061fec378ffbdf04cd4de85d699df11371348a43c9858327d5d223c91",
+    "nextpnr-mistral": "318bdf4ff5c84b2b5ecfb2706728315e46871983bb9bcbdcf3c0dee3756f51e9"
+  },
+  "cases": {
+    "u10-w1-r1": {
+      "rbf_sha256": "469415e0b8caadd333b800fe99c57177bb0061b20d5bb4b697741c14a24e2ffd",
+      "rbf_bytes": 1958092,
+      "write_clock_fmax_mhz": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 531.349609375,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 26
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 22
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 38
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "hardware_result": "PASS"
+    },
+    "u10-w1-r2": {
+      "rbf_sha256": "64dece0166c78fe4105481d64f7b2ada8efdf004aff0bfa8e99bef8ec55ecb01",
+      "rbf_bytes": 1958260,
+      "write_clock_fmax_mhz": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 624.2197265625,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 30
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 28
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 38
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "hardware_result": "PASS"
+    },
+    "u10-w1-r4": {
+      "rbf_sha256": "5f69de941ea166a3ec4498e943fd5c4436aeee2abec64d64e578d9d8b9761eb0",
+      "rbf_bytes": 1958337,
+      "write_clock_fmax_mhz": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 590.3187866210938,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 30
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 28
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 38
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "hardware_result": "PASS"
+    },
+    "u10-w2-r1": {
+      "rbf_sha256": "26f464db879b9933a7ddb3e7dae009e499dde41fb2b7542a3ffc10df7e320720",
+      "rbf_bytes": 1958124,
+      "write_clock_fmax_mhz": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 521.920654296875,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 27
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 26
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 37
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "hardware_result": "PASS"
+    },
+    "u10-w2-r2": {
+      "rbf_sha256": "7ebe861aefd82c7b55fb268f13bd08d0eb67b0ea2e2dc144949f2af473720add",
+      "rbf_bytes": 1958146,
+      "write_clock_fmax_mhz": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 523.0125732421875,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 26
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 32
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 37
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "hardware_result": "PASS"
+    },
+    "u10-w2-r4": {
+      "rbf_sha256": "ea046d789ca3a7a8eb5e472f31ad57c3883e7f50d9a0da5a2b820fd5d4dd9c33",
+      "rbf_bytes": 1958306,
+      "write_clock_fmax_mhz": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 512.8204956054688,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 25
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 32
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 37
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "hardware_result": "PASS"
+    },
+    "u10-w4-r1": {
+      "rbf_sha256": "1955b42f36fee4779422233c215ab335c07cbd7ed84277b6306f11bc24291a9f",
+      "rbf_bytes": 1958086,
+      "write_clock_fmax_mhz": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 461.8937683105469,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 19
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 30
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 36
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "hardware_result": "PASS"
+    },
+    "u10-w4-r2": {
+      "rbf_sha256": "2ea33de4bb55b7b659c11cd3e4b9982b8cbe00027af461ee3343010ee65da1db",
+      "rbf_bytes": 1958255,
+      "write_clock_fmax_mhz": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 478.011474609375,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 21
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 36
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 36
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "hardware_result": "PASS"
+    },
+    "u10-w4-r4": {
+      "rbf_sha256": "6c9eacaa8e7c89a53f96e856655b37911757de00059b01c51b5673381d6d6498",
+      "rbf_bytes": 1958284,
+      "write_clock_fmax_mhz": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 470.3669128417969,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 20
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 36
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 36
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "hardware_result": "PASS"
+    },
+    "u8-w1-r4": {
+      "rbf_sha256": "66e95f65c2120ce7b87caa27babc0d52026dda614722744f567fd6ceda0b24af",
+      "rbf_bytes": 1958546,
+      "write_clock_fmax_mhz": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 601.6847534179688,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 25
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 28
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 36
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "hardware_result": "PASS"
+    },
+    "u8-w4-r1": {
+      "rbf_sha256": "0437d9774fe3384043e0d127a3bd152636f938a15d3579acb9e598f3eb6f57bc",
+      "rbf_bytes": 1958477,
+      "write_clock_fmax_mhz": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 486.61798095703125,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 20
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 27
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 34
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 1
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 1
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "hardware_result": "PASS"
+    }
+  },
+  "yosys_commit": "a18445dc033592cd568f2ac71317d94048042551",
+  "board_definitions_commit": "ffdac202fd52e06855afb7d2baa8d4946ff765db",
+  "classification": "exact-artifact hardware diagnostics",
+  "kit_protocol": "kit.py lease/load/stop with development reboot recovery; no SSH reboot",
+  "hardware_checks": [
+    "initialized words and wide read windows",
+    "writes with stopped read clock, lane ordering and neighboring-lane preservation",
+    "read-enable hold"
+  ]
+}
