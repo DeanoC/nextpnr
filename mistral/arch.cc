@@ -491,7 +491,7 @@ void Arch::add_bel_pin(BelId bel, IdString pin, PortType dir, WireId wire)
 
 void Arch::assign_default_pinmap(CellInfo *cell)
 {
-    if (cell->type == id_MISTRAL_M10K)
+    if (cell->type.in(id_MISTRAL_M10K, id_MISTRAL_M10K_TDP))
         return; // M10Ks always have a custom pinmap
     for (auto &port : cell->ports) {
         auto &pinmap = cell->pin_data[port.first].bel_pins;

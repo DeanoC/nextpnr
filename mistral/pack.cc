@@ -514,6 +514,46 @@ struct MistralPacker
         }
     }
 
+    void setup_tdp_m10k(CellInfo *ci)
+    {
+        int dbits = int_or_default(ci->params, id_CFG_DBITS, 10);
+        int abits = int_or_default(ci->params, id_CFG_ABITS, 10);
+        if (!((dbits == 10 && abits == 10) || (dbits == 20 && abits == 9)))
+            log_error("M10K '%s': true dual-port requires equal 1024x10 or 512x20 ports.\n", ctx->nameOf(ci));
+        if (bool_or_default(ci->params, id_CFG_MIXED_WIDTH, false) ||
+            bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false) ||
+            ci->params.count(id_CFG_RD_ABITS) || ci->params.count(id_CFG_RD_DBITS))
+            log_error("M10K '%s': true dual-port cannot combine mixed widths or byte enables.\n", ctx->nameOf(ci));
+        if (!ci->getPort(id_CLK1) || !ci->getPort(id_CLK2))
+            log_error("M10K '%s': true dual-port requires both clocks.\n", ctx->nameOf(ci));
+        for (IdString port : {id_A1EN, id_B1EN, id_A1WE, id_B1WE})
+            if (!ci->getPort(port))
+                log_error("M10K '%s': true dual-port requires connected %s.\n", ctx->nameOf(ci), ctx->nameOf(port));
+        ci->params[id_CFG_ABITS] = abits;
+        ci->params[id_CFG_DBITS] = dbits;
+        ci->params[id_CFG_DUAL_CLOCK] = 1;
+        ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
+        ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
+        ci->pin_data[id_A1EN].bel_pins = {ctx->id("ENABLE[1]")};
+        ci->pin_data[id_B1EN].bel_pins = {ctx->id("ENABLE[0]")};
+        ci->pin_data[id_A1WE].bel_pins = {ctx->id("WREN[0]")};
+        ci->pin_data[id_B1WE].bel_pins = {ctx->id("WREN[1]")};
+        for (int port = 0; port < 2; port++) {
+            char side = port == 0 ? 'A' : 'B';
+            for (int bit = 0; bit < abits; bit++)
+                ci->pin_data[ctx->idf("%c1ADDR[%d]", side, bit)].bel_pins = {
+                        ctx->idf("ADDR%c[%d]", side, bit + 12 - abits)};
+            for (int bit = 0; bit < dbits; bit++) {
+                auto &pins = ci->pin_data[ctx->idf("%c1DATA[%d]", side, bit)].bel_pins;
+                pins = {ctx->idf("DATA%cIN[%d]", side, bit)};
+                if (dbits == 10)
+                    pins.push_back(ctx->idf("DATA%cIN[%d]", side, bit + 10));
+                ci->pin_data[ctx->idf("%c1Q[%d]", side, bit)].bel_pins = {
+                        ctx->idf("DATA%cOUT[%d]", side, bit)};
+            }
+        }
+    }
+
     void setup_mixed_m10k(CellInfo *ci)
     {
         int wb = ci->params.at(id_CFG_DBITS).as_int64();
@@ -553,8 +593,17 @@ struct MistralPacker
     {
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
+            if (ci->type == id_MISTRAL_M10K_TDP) {
+                // Both SDP and TDP occupy one existing physical M10K BEL.
+                ci->type = id_MISTRAL_M10K;
+                ci->params[id_CFG_TDP] = 1;
+            }
             if (ci->type != id_MISTRAL_M10K)
                 continue;
+            if (bool_or_default(ci->params, id_CFG_TDP, false)) {
+                setup_tdp_m10k(ci);
+                continue;
+            }
 
             if (bool_or_default(ci->params, id_CFG_MIXED_WIDTH, false)) {
                 setup_mixed_m10k(ci);

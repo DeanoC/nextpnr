@@ -144,6 +144,19 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         }
     } else if (cell->type == id_MISTRAL_M10K) {
         const auto &name = port.str(this);
+        if (bool_or_default(cell->params, id_CFG_TDP, false)) {
+            if (port.in(id_CLK1, id_CLK2))
+                return TMG_CLOCK_INPUT;
+            if (name.find("A1Q") == 0 || name.find("B1Q") == 0) {
+                clockInfoCount = 1;
+                return TMG_REGISTER_OUTPUT;
+            }
+            if (name.find("A1") == 0 || name.find("B1") == 0) {
+                clockInfoCount = 1;
+                return TMG_REGISTER_INPUT;
+            }
+            return TMG_IGNORE;
+        }
         if (port.in(id_CLK1, id_CLK2)) {
             return TMG_CLOCK_INPUT;
         } else if (port.in(id_A1DATA, id_A1EN, id_A1BE, id_B1EN) || name.find("A1DATA[") == 0 ||
@@ -203,6 +216,24 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
         return timing;
     } else if (cell->type == id_MISTRAL_M10K) {
         const auto &name = port.str(this);
+        if (bool_or_default(cell->params, id_CFG_TDP, false)) {
+            timing.clock_port = name.find("B1") == 0 ? id_CLK2 : id_CLK1;
+            timing.edge = RISING_EDGE;
+            if (name.find("A1Q") == 0 || name.find("B1Q") == 0) {
+                timing.clockToQ = DelayQuad{1004};
+            } else {
+                timing.hold = DelayPair{42, 42};
+                if (name.find("ADDR") != std::string::npos)
+                    timing.setup = DelayPair{125, 125};
+                else if (name.find("DATA") != std::string::npos)
+                    timing.setup = DelayPair{97, 97};
+                else if (port.in(id_A1WE, id_B1WE))
+                    timing.setup = DelayPair{140, 140};
+                else if (port.in(id_A1EN, id_B1EN))
+                    timing.setup = DelayPair{161, 161};
+            }
+            return timing;
+        }
         bool read_port = port.in(id_B1DATA, id_B1EN) || name.find("B1DATA[") == 0 || name.find("B1ADDR") == 0;
         timing.clock_port = read_port && bool_or_default(cell->params, id_CFG_DUAL_CLOCK, false) ? id_CLK2 : id_CLK1;
         timing.edge = RISING_EDGE;

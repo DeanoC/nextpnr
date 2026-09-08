@@ -70,3 +70,18 @@ To regenerate either oracle, run `quartus_sh --flow compile top` inside
 its directory. RTL and QSF use relative paths. The retained RBF is the
 reference artifact; regeneration can change placement and routing while
 preserving the relevant behavior and configuration relationships.
+
+## True dual-port reference designs
+
+`tdp10` and `tdp20` retain native BIDIR_DUAL_PORT Quartus designs with two
+independently enabled read/write ports. Both use NEW_DATA_NO_NBE_READ on each
+port and DONT_CARE for mixed-port collisions. Quartus rejected OLD_DATA for
+this configuration. These are configuration oracles, not kit images.
+
+Each directory includes relative-path source/QSF/QPF, `top.rbf.gz`,
+`mapping.json` with its original digest and decoded settings, and
+`port-mapping.json` correlating package signals with Mistral routes. Use the
+same decompression, inspection and regeneration commands above. The TDP
+backend's native 10/20-bit host outputs match every decoded non-RAM M10K
+configuration setting in these oracles. See
+[the TDP mapping](../README-true-dual-port.md) for logical port assignments.
