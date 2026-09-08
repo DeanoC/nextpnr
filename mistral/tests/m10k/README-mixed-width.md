@@ -34,9 +34,12 @@ inference, both port geometries, one M10K/PLL/HPS GP, compressed RBF output,
 clock routing, decoded settings and 50 MHz write-clock timing, plus six
 invalid-configuration diagnostics. The read clock is a gated 25 MHz PLL
 output from the same 50 MHz reference; these settled-data probes do not
-establish cross-domain timing acceptance. It explicitly uses
-`--router router1`: router2 stalled on the 40→10 fixture with two contested
-wires (also with seed 2). This change does not resolve that router limitation.
+establish cross-domain timing acceptance. It uses the default router2 with a
+120-second timeout per routing run
+(adjustable with `--route-timeout`). The former two-wire stall is covered by
+[the retained congestion regression](../router2/README.md); Mistral now allows
+router2 to expand the search box when congestion persists. The earlier
+hardware acceptance artifacts retain their original router1 provenance.
 
 The target probe is generated separately, for example:
 

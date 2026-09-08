@@ -8,9 +8,9 @@ import re
 import subprocess
 
 
-def run(command, log):
+def run(command, log, timeout=None):
     with log.open('w') as stream:
-        subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, check=True)
+        subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=timeout)
 
 
 def diagnostics(args, design, name, out):
@@ -43,7 +43,10 @@ def main():
     for name in ('yosys', 'nextpnr', 'mistral-cv', 'qsf', 'sdc', 'output'):
         parser.add_argument('--' + name, required=True, type=Path)
     parser.add_argument('--case', action='append', help='Run only this uN-wN-rN case (repeatable)')
+    parser.add_argument('--route-timeout', type=float, default=120, help='Seconds allowed per routing run')
     args = parser.parse_args()
+    if args.route_timeout <= 0:
+        parser.error('--route-timeout must be positive')
     out = args.output.resolve()
     source = Path(__file__).with_suffix('.v').resolve()
     for unit, w, r in ((10,4,1), (10,1,4), (10,2,1), (10,1,2),
@@ -72,10 +75,11 @@ def main():
         assert len(cell['connections']['B1DATA']) == r*10
         if (unit, w, r) == (10, 4, 1):
             diagnostics(args, design, name, case)
-        run([str(args.nextpnr.resolve()), '--device', '5CSEBA6U23I7', '--router', 'router1', '--freq', '50',
+        run([str(args.nextpnr.resolve()), '--device', '5CSEBA6U23I7', '--freq', '50',
              '--qsf', str(args.qsf.resolve()), '--sdc', str(args.sdc.resolve()),
              '--json', str(case/'synth.json'), '--compress-rbf', '--rbf', str(case/'top.rbf'),
-             '--write', str(case/'routed.json'), '--report', str(case/'timing.json')], case/'route.log')
+             '--write', str(case/'routed.json'), '--report', str(case/'timing.json')],
+            case/'route.log', timeout=args.route_timeout)
         report = json.loads((case/'timing.json').read_text())
         for resource in ('MISTRAL_M10K','altera_pll','cyclonev_hps_interface_mpu_general_purpose'):
             assert report['utilization'][resource]['used'] == 1
