@@ -197,6 +197,7 @@ inline std::optional<DualConfig> select_dual(int mhz0, int mhz1, int reference_m
 inline std::optional<Config> select_fractional(int64_t hz, int reference_mhz)
 {
     if (reference_mhz != 50) return std::nullopt;
+    if (hz == 74250000) return Config{8, 1, 6, 7, 2, 1, 0, true, 0xe8f5c239};
     if (hz == 12288000) return Config{8, 1, 33, 7, 2, 1, 0, true, 472790000};
     if (hz == 11289600) return Config{8, 1, 36, 7, 2, 1, 0, true, 0x20e6293f};
     return std::nullopt;

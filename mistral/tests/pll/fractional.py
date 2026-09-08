@@ -58,7 +58,7 @@ def main():
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--oracle-bt", type=Path,
                         help="also compare against a local Quartus 17.0.2 decomp")
-    parser.add_argument("--mhz", choices=("12.288", "11.2896"), default="12.288")
+    parser.add_argument("--mhz", choices=("12.288", "11.2896", "74.25"), default="12.288")
     args = parser.parse_args()
     fixture = Path(__file__).resolve().parent
     out = args.output.resolve()
@@ -71,6 +71,13 @@ def main():
                           .replace("12.288 MHz", "11.2896 MHz").replace("D715", "D716"))
         oracle.update({"DPRIO0_CNT_HI_DIV.6": "12", "DPRIO0_CNT_LO_DIV.6": "12",
                        "FRACTIONAL_DIVISION_SETTING": "20e6293f"})
+        del oracle["DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN.6"]
+    if args.mhz == "74.25":
+        source = out / "fractional.v"
+        source.write_text((fixture / "fractional.v").read_text()
+                          .replace("12.288 MHz", "74.25 MHz").replace("D715", "D742"))
+        oracle.update({"DPRIO0_CNT_HI_DIV.6": "03", "DPRIO0_CNT_LO_DIV.6": "03",
+                       "FRACTIONAL_DIVISION_SETTING": "e8f5c239"})
         del oracle["DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN.6"]
     run([str(args.yosys.resolve()), "-p",
          f'read_verilog "{fixture / "pll_meter.v"}" "{source}"; '
@@ -97,9 +104,11 @@ def main():
     error_ppm = (achieved_hz / (Fraction(args.mhz) * 1_000_000) - 1) * 1_000_000
     if args.mhz == "12.288":
         assert 0 < error_ppm < Fraction(2, 1_000_000)
-    else:
+    elif args.mhz == "11.2896":
         # Quartus uses this checked word, not the mathematically nearest word.
         assert Fraction(-247, 100_000) < error_ppm < Fraction(-246, 100_000)
+    else:
+        assert Fraction(-2257, 1_000_000) < error_ppm < Fraction(-2256, 1_000_000)
     for name, mhz in (("fractional_clock", achieved_hz / 1_000_000), ("meter.refclk", 50)):
         clock = report["fmax"][name]
         assert abs(clock["constraint"] - float(mhz)) <= float(mhz) * 0.00005

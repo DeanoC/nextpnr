@@ -389,7 +389,7 @@ historical kit evidence remains specific to its recorded artifacts.
 ## Checked fractional-N profile
 
 Set `fractional_vco_multiplier="true"` to request the separate, bounded
-50 MHz reference to a checked 11.2896 or 12.288 MHz single-output profile. Other fractional-N
+50 MHz reference to a checked 11.2896, 12.288 or 74.25 MHz single-output profile. Other fractional-N
 combinations are rejected except the checked dual-output pair below. The existing
 V11 route, direct mode, zero phase, 50% duty and reset rules still apply.
 The default `"false"` mode retains exact integer-divider behavior.
@@ -1310,3 +1310,30 @@ and Yosys `13b43f8c85ec430a33ee55d058fb4c32b42b6910`. Validation is host-only,
 using the V11 50 MHz reference and 25 MHz gated clock. Hardware acceptance
 remains with the ladder. No misteross experiment/lock or FES pin changes
 are included.
+
+## 74.25 MHz video clock from the board reference
+
+Use `reference_clock_frequency="50.0 MHz"`, `number_of_clocks=1`,
+`output_clock_frequency0="74.25 MHz"`, `fractional_vco_multiplier="true"`,
+`operation_mode="direct"`, `phase_shift0="0 ps"` and `duty_cycle0=50`.
+This profile extends the checked fractional-N selector; integer mode still
+rejects 74.25 MHz. Other references, nearby requested frequencies, nonzero
+phase, other duty cycles and multi-output combinations are not added.
+
+The [retained Quartus oracle](fixtures/video-7425/README.md) selects
+M8/N1/C6=6 and K=`0xe8f5c239`, producing a calculated 74,249,999.83243954 Hz,
+about −0.00226 ppm from the request. Existing FPLL tables, bitstream writing
+and achieved-frequency timing propagation are reused; no Yosys or Mistral
+change is required.
+
+Run `fractional.py --mhz 74.25` with the normal tool arguments to check
+routing, one PLL/one HPS GP interface, clock constraints, complete FPLL
+settings and invalid requests. `fractional_config.cpp` also checks exact
+selection and rejects 25/100 MHz references, nearby requests and dual-output
+use. `fractional_probe.sh 74.25` checks ten reset/relock cycles and measures
+6081–6084 divided-clock edges per 2^20 reference cycles (nominal 6082.56).
+That counter validates the clock ratio and reset behavior; it does not
+measure sub-ppm accuracy, jitter, HDMI signaling or display acceptance.
+
+The exact OSS RBF, hashes and ten passing kit measurements are retained with
+the [74.25 MHz fixture](fixtures/video-7425/README.md).
