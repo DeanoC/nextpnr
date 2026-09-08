@@ -535,11 +535,29 @@ struct MistralPacker
             // It *does* generate ACLR[01] but leaves them unconnected if unused.
 
             // Enables.
-            // Preserve the existing physical write-enable polarity.
-            if (dbits == 40)
+            bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
+            auto byte_enable_port = [&](int bit) { return ci->getPort(ctx->idf("A1BE[%d]", bit)); };
+            if (byte_enable && dbits != 20)
+                log_error("M10K '%s': CFG_BYTE_ENABLE is currently supported only for 20-bit data.\n",
+                          ctx->nameOf(ci));
+            if (byte_enable && (byte_enable_port(0) == nullptr || byte_enable_port(1) == nullptr))
+                log_error("M10K '%s': CFG_BYTE_ENABLE requires a connected A1BE[1:0] port.\n",
+                          ctx->nameOf(ci));
+            if (!byte_enable && (byte_enable_port(0) != nullptr || byte_enable_port(1) != nullptr))
+                log_error("M10K '%s': A1BE requires CFG_BYTE_ENABLE=1.\n", ctx->nameOf(ci));
+            // The byte-enabled 20-bit mode uses positive WREN[0] and the
+            // corresponding core-enable lane. Legacy cells retain the
+            // established active-low WREN[1] mapping (or WREN[0] at 40 bit).
+            if (byte_enable)
+                ci->pin_data[id_A1EN].bel_pins = {ctx->id("WREN[0]"), ctx->id("ENABLE[1]")};
+            else if (dbits == 40)
                 ci->pin_data[ctx->id("A1EN")].bel_pins = {ctx->id("WREN[0]")};
             else
                 ci->pin_data[ctx->id("A1EN")].bel_pins = {ctx->id("WREN[1]")};
+            if (byte_enable) {
+                for (int bit = 0; bit < 2; bit++)
+                    ci->pin_data[ctx->idf("A1BE[%d]", bit)].bel_pins = {ctx->idf("BYTEENABLEA[%d]", bit)};
+            }
 
             // Legacy cells use CLK1 for both ports; new SDP cells have an
             // independent read clock on CLK2.

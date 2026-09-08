@@ -520,6 +520,7 @@ struct MistralBitgen
         cv->bmux_r_set(CycloneV::M10K, pos, CycloneV::B_WR_TIMER_PULSE, bi, 0x0b);
 
         bool dual_clock = bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false);
+        bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
         cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_CLK_SEL, bi, 1);
         if (dual_clock) {
             // Quartus SDP input-clock mode: write CLKIN.0, read CLKIN.1.
@@ -533,12 +534,23 @@ struct MistralBitgen
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_INCLK_SEL, bi, dbits == 40 ? 0 : 1);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_OUTCLK_SEL, bi, 1);
         }
-        cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TOP_W_INV, bi, dbits != 40);
-        cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_W_SEL, bi, dbits != 40);
+        if (byte_enable) {
+            // Quartus's 20-bit byte-enabled SDP selects the write core
+            // enable lane in addition to positive WREN[0].
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CORECLK_SEL, bi, 1);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_INCLK_SEL, bi, 1);
+            cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TOP_W_INV, bi, false);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_W_SEL, bi, 0);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_CE0_SEL, bi, 1);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_CORECLK_SEL, bi, 1);
+        } else {
+            cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TOP_W_INV, bi, dbits != 40);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_W_SEL, bi, dbits != 40);
+        }
         // The legacy unused bottom clock is inverted in narrow modes. CLK2
         // is a real rising-edge read clock and must not inherit that inversion.
         cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_CLK_INV, bi, !dual_clock && dbits != 40);
-        cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_W_SEL, bi, dbits != 40);
+        cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_W_SEL, bi, byte_enable ? 0 : dbits != 40);
 
         cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TRUE_DUAL_PORT, bi, 0);
 

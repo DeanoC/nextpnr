@@ -146,7 +146,8 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         const auto &name = port.str(this);
         if (port.in(id_CLK1, id_CLK2)) {
             return TMG_CLOCK_INPUT;
-        } else if (port.in(id_A1DATA, id_A1EN, id_B1EN) || name.find("A1DATA[") == 0 ||
+        } else if (port.in(id_A1DATA, id_A1EN, id_A1BE, id_B1EN) || name.find("A1DATA[") == 0 ||
+                   name.find("A1BE[") == 0 ||
                    name.find("A1ADDR") == 0 || name.find("B1ADDR") == 0) {
             clockInfoCount = 1;
             return TMG_REGISTER_INPUT;
@@ -213,7 +214,7 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
             timing.setup = DelayPair{97, 97};
             timing.hold = DelayPair{42, 42};
             timing.clockToQ = DelayQuad{};
-        } else if (port == id_A1EN) {
+        } else if (port == id_A1EN || port == id_A1BE || name.find("A1BE[") == 0) {
             timing.setup = DelayPair{140, 140};
             timing.hold = DelayPair{42, 42};
             timing.clockToQ = DelayQuad{};
