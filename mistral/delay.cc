@@ -143,14 +143,15 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
             return TMG_COMB_OUTPUT;
         }
     } else if (cell->type == id_MISTRAL_M10K) {
-        if (port == id_CLK1) {
+        const auto &name = port.str(this);
+        if (port.in(id_CLK1, id_CLK2)) {
             return TMG_CLOCK_INPUT;
-        } else if (port.in(id_A1DATA, id_A1EN, id_B1EN) || port.str(this).find("A1ADDR") == 0) {
+        } else if (port.in(id_A1DATA, id_A1EN, id_B1EN) || name.find("A1DATA[") == 0 ||
+                   name.find("A1ADDR") == 0 || name.find("B1ADDR") == 0) {
             clockInfoCount = 1;
             return TMG_REGISTER_INPUT;
-        } else if (port.str(this).find("B1ADDR") == 0) {
-            return TMG_REGISTER_INPUT;
-        } else if (port.in(id_B1DATA)) {
+        } else if (port == id_B1DATA || name.find("B1DATA[") == 0) {
+            clockInfoCount = 1;
             return TMG_REGISTER_OUTPUT;
         }
     }
@@ -200,13 +201,15 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
         }
         return timing;
     } else if (cell->type == id_MISTRAL_M10K) {
-        timing.clock_port = id_CLK1;
+        const auto &name = port.str(this);
+        bool read_port = port.in(id_B1DATA, id_B1EN) || name.find("B1DATA[") == 0 || name.find("B1ADDR") == 0;
+        timing.clock_port = read_port && bool_or_default(cell->params, id_CFG_DUAL_CLOCK, false) ? id_CLK2 : id_CLK1;
         timing.edge = RISING_EDGE;
         if (port.str(this).find("A1ADDR") == 0 || port.str(this).find("B1ADDR") == 0) {
             timing.setup = DelayPair{125, 125};
             timing.hold = DelayPair{42, 42};
             timing.clockToQ = DelayQuad{};
-        } else if (port == id_A1DATA) {
+        } else if (port == id_A1DATA || name.find("A1DATA[") == 0) {
             timing.setup = DelayPair{97, 97};
             timing.hold = DelayPair{42, 42};
             timing.clockToQ = DelayQuad{};
@@ -218,7 +221,7 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
             timing.setup = DelayPair{161, 161};
             timing.hold = DelayPair{42, 42};
             timing.clockToQ = DelayQuad{};
-        } else if (port == id_B1DATA) {
+        } else if (port == id_B1DATA || name.find("B1DATA[") == 0) {
             timing.setup = DelayPair{};
             timing.hold = DelayPair{};
             timing.clockToQ = DelayQuad{1004};
