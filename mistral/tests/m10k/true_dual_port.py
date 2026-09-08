@@ -17,7 +17,7 @@ def diagnostics(args, design, name, out):
     for label, params, disconnect, message in (
         ('width40', {'CFG_DBITS':40}, None, 'true dual-port requires'),
         ('address', {'CFG_ABITS':8}, None, 'true dual-port requires'),
-        ('mixed', {'CFG_MIXED_WIDTH':1}, None, 'cannot combine'),
+        ('mixed', {'CFG_MIXED_WIDTH':1}, None, 'mixed TDP requires explicit B geometry'),
         ('byte-enable', {'CFG_BYTE_ENABLE':1}, None, 'byte mode requires connected'),
         ('clock', {}, 'CLK1', 'both clocks'),
     ):
