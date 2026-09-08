@@ -59,3 +59,5 @@ CDC safety in user logic and unrelated clock-domain timing closure are not
 established by these tests. The hardware fixture samples data only after the
 host has allowed it to settle. Other M10K geometries retain their existing
 mapping but are not covered by this hardware test.
+
+For independent port widths, see [mixed-width SDP](README-mixed-width.md).

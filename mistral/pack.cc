@@ -514,12 +514,54 @@ struct MistralPacker
         }
     }
 
+    void setup_mixed_m10k(CellInfo *ci)
+    {
+        int wb = ci->params.at(id_CFG_DBITS).as_int64();
+        int wa = ci->params.at(id_CFG_ABITS).as_int64();
+        int rb = int_or_default(ci->params, id_CFG_RD_DBITS, wb);
+        int ra = int_or_default(ci->params, id_CFG_RD_ABITS, wa);
+        auto geometry = [](int a, int d) {
+            return (d == 10 && a == 10) || (d == 20 && a == 9) || (d == 40 && a == 8);
+        };
+        if (!geometry(wa, wb) || !geometry(ra, rb))
+            log_error("M10K '%s': mixed widths require 1024x10, 512x20 or 256x40 ports.\n", ctx->nameOf(ci));
+        if (!bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false) || ci->getPort(id_CLK1) == nullptr || ci->getPort(id_CLK2) == nullptr)
+            log_error("M10K '%s': mixed widths require CFG_DUAL_CLOCK=1 and both clocks.\n", ctx->nameOf(ci));
+        if (bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false) ||
+            ci->getPort(ctx->id("A1BE[0]")) || ci->getPort(ctx->id("A1BE[1]")))
+            log_error("M10K '%s': mixed-width byte enables are not supported.\n", ctx->nameOf(ci));
+        ci->pin_data[id_A1EN].bel_pins = {ctx->id("WREN[0]"), ctx->id("ENABLE[1]")};
+        ci->pin_data[id_B1EN].bel_pins = {ctx->id("ENABLE[0]")};
+        ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
+        ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
+        for (int bit = 0; bit < wa; bit++)
+            ci->pin_data[ctx->idf("A1ADDR[%d]", bit)].bel_pins = {ctx->idf("ADDRA[%d]", bit + 12 - wa)};
+        for (int bit = 0; bit < ra; bit++)
+            ci->pin_data[ctx->idf("B1ADDR[%d]", bit)].bel_pins = {ctx->idf("ADDRB[%d]", bit + 12 - ra)};
+        for (int bit = 0; bit < wb; bit++) {
+            auto &pins = ci->pin_data[ctx->idf("A1DATA[%d]", bit)].bel_pins;
+            pins = {ctx->idf(bit < 20 ? "DATAAIN[%d]" : "DATABIN[%d]", bit % 20)};
+            if (wb == 10)
+                pins.push_back(ctx->idf("DATAAIN[%d]", bit + 10));
+        }
+        for (int bit = 0; bit < rb; bit++)
+            ci->pin_data[ctx->idf("B1DATA[%d]", bit)].bel_pins = {
+                ctx->idf(rb == 40 && bit < 20 ? "DATAAOUT[%d]" : "DATABOUT[%d]", bit % 20)};
+    }
+
     void setup_m10ks()
     {
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
             if (ci->type != id_MISTRAL_M10K)
                 continue;
+
+            if (bool_or_default(ci->params, id_CFG_MIXED_WIDTH, false)) {
+                setup_mixed_m10k(ci);
+                continue;
+            }
+            if (ci->params.count(id_CFG_RD_DBITS) || ci->params.count(id_CFG_RD_ABITS))
+                log_error("M10K '%s': separate read geometry requires CFG_MIXED_WIDTH=1.\n", ctx->nameOf(ci));
 
             auto abits = ci->params.at(id_CFG_ABITS).as_int64();
             auto dbits = ci->params.at(id_CFG_DBITS).as_int64();
