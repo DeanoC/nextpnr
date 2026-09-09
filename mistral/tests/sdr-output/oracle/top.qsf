@@ -1,0 +1,16 @@
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEBA6U23I7
+set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name VERILOG_FILE top.v
+set_global_assignment -name SDC_FILE clocks.sdc
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name GENERATE_RBF_FILE ON
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+set_location_assignment PIN_V11 -to FPGA_CLK1_50
+set_location_assignment PIN_Y15 -to DATA
+set_location_assignment PIN_W15 -to SDR_OUT
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to FPGA_CLK1_50
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to DATA
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SDR_OUT
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDR_OUT
+set_global_assignment -name LAST_QUARTUS_VERSION "17.0.2 Lite Edition"
