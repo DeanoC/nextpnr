@@ -1,0 +1,315 @@
+{
+  "classification": "host-only; no hardware programmed or external waveform measured",
+  "nextpnr_base": "ef294430c57b1d64c52f15129adcc6236ecbce01",
+  "yosys_commit": "9a89681d0331f3c055c1c3e33945fd197a5de1e0",
+  "mistral_commit": "78ba2a580ae2523403d4f4f91891a6b11d7b6aba",
+  "nextpnr_binary_sha256": "7123eda8a7ea5b886ca51fd4ea06d64b92fdce970d300edcb8e299a11eb508db",
+  "source_sha256": {
+    "mistral/pack.cc": "5a212aa2c8b0be90728d3cfe7e0b61959349d04ee54ca601fdb434d40fd534d6",
+    "mistral/io.cc": "f60a14cb579f4c10e9b21044afca96c6e0c5359efb5b74540141b7f0977c718e",
+    "mistral/bitstream.cc": "8750268c2b8c2a86635ffff674b422925c0a2ad6228e50bdaf21a5b062a21f46",
+    "mistral/delay.cc": "02af2785cd312fde454b28a8cdbbeeb2aebdfbe2282c5cd358eb95fe2c8b52d3",
+    "mistral/constids.inc": "8a79a691501e35fc9e20d213cb00b4ef1cbb91b0e7c17aad76972d3862a8d6cf",
+    "mistral/tests/ddr-output/top.v": "4fe94a4c4903f0d47e07b405ddc8cf929fb71a10f3ad1dd7daaa895bad3c2e73"
+  },
+  "cases": {
+    "direct": {
+      "rbf_sha256": "7a4db15a5efb8c9a060d8d98330a2f6defb29f083de292b4dcc1cd9a39651e2d",
+      "rbf_bytes": 1953909,
+      "fabric_fmax": {
+        "clock_out": {
+          "achieved": 263.0886535644531,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 8
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 1
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 20
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 16
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 2
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 0
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 0
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "result": "PASS: dedicated DDR output packing, route, polarity and oracle settings"
+    },
+    "inverted": {
+      "rbf_sha256": "f3c16ed780bb482df7c08ba46066982dd5c1ca35870618f022584cf004b34f9d",
+      "rbf_bytes": 1953908,
+      "fabric_fmax": {
+        "clock_out": {
+          "achieved": 263.0886535644531,
+          "constraint": 50
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 8
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 1
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 20
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 16
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 2
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 0
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 0
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "result": "PASS: dedicated DDR output packing, route, polarity and oracle settings"
+    },
+    "minimal": {
+      "rbf_sha256": "fdd8c1180c2569c06e127e57b1d3755e4b17379bd68c2d85d0601d83428ce0f3",
+      "rbf_bytes": 1952826,
+      "fabric_fmax": {},
+      "utilization": {
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 1
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 2
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 0
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 2
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 0
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 0
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 0
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "result": "PASS: dedicated DDR output packing, route, polarity and oracle settings"
+    },
+    "pll-minimal": {
+      "rbf_sha256": "44c891a1eeed17fe7a1ba071e4774cb797b794cf6084fa4aa555904627c67eb2",
+      "rbf_bytes": 1952796,
+      "fabric_fmax": {},
+      "utilization": {
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 1
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 2
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 0
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 2
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 0
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 0
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "result": "PASS: dedicated DDR output packing, route, polarity and oracle settings"
+    },
+    "pll7425": {
+      "rbf_sha256": "ad5d67d953d3a43c07a72eeceb3fdfa96926bce535228a6f2b4273d510715494",
+      "rbf_bytes": 1953959,
+      "fabric_fmax": {
+        "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+          "achieved": 319.2847900390625,
+          "constraint": 50
+        },
+        "clock_out": {
+          "achieved": 274.6498107910156,
+          "constraint": 74.25006866455078
+        }
+      },
+      "utilization": {
+        "MISTRAL_BUF": {
+          "available": 0,
+          "used": 9
+        },
+        "MISTRAL_CLKENA": {
+          "available": 8,
+          "used": 2
+        },
+        "MISTRAL_COMB": {
+          "available": 83820,
+          "used": 20
+        },
+        "MISTRAL_FF": {
+          "available": 167640,
+          "used": 16
+        },
+        "MISTRAL_IO": {
+          "available": 472,
+          "used": 2
+        },
+        "MISTRAL_M10K": {
+          "available": 553,
+          "used": 0
+        },
+        "MISTRAL_MUL18X18": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL27X27": {
+          "available": 112,
+          "used": 0
+        },
+        "MISTRAL_MUL9X9": {
+          "available": 336,
+          "used": 0
+        },
+        "altera_pll": {
+          "available": 6,
+          "used": 1
+        },
+        "cyclonev_hps_interface_mpu_general_purpose": {
+          "available": 1,
+          "used": 1
+        },
+        "cyclonev_oscillator": {
+          "available": 1,
+          "used": 0
+        }
+      },
+      "result": "PASS: dedicated DDR output packing, route, polarity and oracle settings"
+    }
+  },
+  "ordinary_gpio": {
+    "rbf_sha256": "41c94ec67aae5bf6cb1a7226b4ec4650488ee8b84e1ccfef9d612cd697022cea",
+    "result": "old and new backend RBFs identical",
+    "source": "ordinary.v"
+  },
+  "negative_requests": 9,
+  "independent_review": "no remaining blockers"
+}

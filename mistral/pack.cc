@@ -413,6 +413,95 @@ struct MistralPacker
         }
     }
 
+    void pack_ddr_outputs()
+    {
+        std::vector<CellInfo *> cells;
+        for (auto &entry : ctx->cells)
+            if (entry.second->type == ctx->id("altddio_out"))
+                cells.push_back(entry.second.get());
+        for (CellInfo *ci : cells) {
+            auto fail = [&](const char *reason) { log_error("DDR output '%s': %s.\n", ctx->nameOf(ci), reason); };
+            if (int_or_default(ci->params, ctx->id("width"), 1) != 1)
+                fail("clock forwarding requires width=1");
+            const std::map<std::string, std::vector<std::string>> allowed = {
+                {"intended_device_family", {"Cyclone V"}}, {"power_up_high", {"OFF"}},
+                {"oe_reg", {"UNUSED", "UNREGISTERED"}}, {"extend_oe_disable", {"UNUSED", "OFF"}},
+                {"invert_output", {"OFF"}}, {"lpm_type", {"altddio_out"}}, {"lpm_hint", {"UNUSED"}}};
+            for (const auto &param : ci->params) {
+                if (param.first == ctx->id("width")) continue;
+                auto it = allowed.find(param.first.str(ctx));
+                if (it == allowed.end() || !param.second.is_string ||
+                    std::find(it->second.begin(), it->second.end(), param.second.as_string()) == it->second.end())
+                    fail("unsupported parameter; require the checked clock-forwarding profile");
+            }
+            for (const auto &port : ci->ports) {
+                const std::string name = port.first.str(ctx);
+                if (name != "datain_h" && name != "datain_l" && name != "dataout" && name != "outclock" &&
+                    name != "outclocken" && name != "oe" && name != "oe_out" && name != "aclr" &&
+                    name != "aset" && name != "sclr" && name != "sset")
+                    fail("unsupported port");
+            }
+            for (const char *name : {"outclocken", "oe", "aclr", "aset", "sclr", "sset"}) {
+                IdString port = ctx->id(name);
+                bool high = port == ctx->id("outclocken") || port == ctx->id("oe");
+                if (ci->getPort(port) && get_pin_needed_muxval(ci, port) != (high ? PIN_1 : PIN_0))
+                    fail("enable/OE must be constant high and resets constant low");
+            }
+            if (ci->getPort(ctx->id("oe_out"))) fail("oe_out must be unused");
+            auto h = get_pin_needed_muxval(ci, ctx->id("datain_h"));
+            auto l = get_pin_needed_muxval(ci, ctx->id("datain_l"));
+            if (!ci->getPort(ctx->id("datain_h")) || !ci->getPort(ctx->id("datain_l")) ||
+                !((h == PIN_1 && l == PIN_0) || (h == PIN_0 && l == PIN_1)))
+                fail("clock forwarding requires complementary constant datain_h/datain_l; fabric DDR data is not supported");
+            NetInfo *out = ci->getPort(ctx->id("dataout"));
+            if (!out || out->users.entries() != 1) fail("dataout must drive exactly one output buffer");
+            auto sink = *out->users.begin();
+            if (sink.cell->type != id_MISTRAL_OB || sink.port != id_I)
+                fail("dataout must directly drive a unidirectional output pin");
+            CellInfo *io = sink.cell;
+            auto loc = ctx->getBelLocation(io->bel);
+            int bi = ctx->bel_data(io->bel).block_index;
+            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode(CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1));
+            if (!dqs || !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKOUT, 0) ||
+                !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::DATAOUT, 1))
+                fail("selected pad has no supported DDR register/clock path");
+            NetInfo *clock = ci->getPort(ctx->id("outclock"));
+            if (!clock || !clock->driver.cell || clock->driver.cell->type.in(id_GND, id_VCC, id_MISTRAL_CONST))
+                fail("outclock must be driven by a clock, not a constant");
+            if (ctx->is_clkbuf_cell(clock->driver.cell->type) && clock->driver.port != id_Q)
+                fail("outclock must use the clock buffer Q output");
+            if (!ctx->is_clkbuf_cell(clock->driver.cell->type)) {
+                CellInfo *buffer = nullptr;
+                for (const auto &user : clock->users)
+                    if (user.cell->type == id_MISTRAL_CLKBUF && user.port == id_A) {
+                        buffer = user.cell;
+                        break;
+                    }
+                if (!buffer) {
+                    buffer = ctx->createCell(ctx->idf("%s$ddr_clkbuf", ctx->nameOf(ci)), id_MISTRAL_CLKBUF);
+                    buffer->addInput(id_A);
+                    buffer->addOutput(id_Q);
+                    buffer->connectPort(id_A, clock);
+                    NetInfo *buffered = ctx->createNet(ctx->idf("%s$ddr_clock", ctx->nameOf(ci)));
+                    buffer->connectPort(id_Q, buffered);
+                }
+                clock = buffer->getPort(id_Q);
+            }
+            if (!clock || !clock->driver.cell) fail("clock buffer must have a connected Q output");
+            io->disconnectPort(id_I);
+            io->ports.erase(id_I);
+            io->type = id_MISTRAL_DDROUT;
+            io->params[id_DDR_HIGH] = h == PIN_1;
+            io->addInput(id_CLK);
+            io->connectPort(id_CLK, clock);
+            for (auto &port : ci->ports) ci->disconnectPort(port.first);
+            log_info("Packed DDR clock forwarder '%s' into %s (%s phase).\n", ctx->nameOf(ci),
+                     ctx->nameOfBel(io->bel), h == PIN_1 ? "normal" : "inverted");
+            ctx->nets.erase(out->name);
+            ctx->cells.erase(ci->name);
+        }
+    }
+
     void constrain_carries()
     {
         for (auto &cell : ctx->cells) {
@@ -1386,6 +1475,7 @@ struct MistralPacker
     {
         init_constant_nets();
         pack_io();
+        pack_ddr_outputs();
         setup_clock_enables();
         setup_plls();
         fold_inverted_pll_clock_buffers();

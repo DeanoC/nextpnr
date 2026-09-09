@@ -62,6 +62,10 @@ IdString dsp_register_key(const CellInfo *cell, const std::string &port)
 TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, int &clockInfoCount) const
 {
     clockInfoCount = 0;
+    if (cell->type == id_MISTRAL_DDROUT) {
+        // Clock-forwarding only: no fabric DDR data or characterized pad delay.
+        return port == id_CLK ? TMG_CLOCK_INPUT : TMG_IGNORE;
+    }
     if (cell->type == id_MISTRAL_CLKENA) {
         if (port == id_A)
             return TMG_CLOCK_INPUT;

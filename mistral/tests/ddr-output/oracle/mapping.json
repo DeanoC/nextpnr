@@ -1,0 +1,23 @@
+{
+  "tool": "Quartus Prime Lite17.0.2 Build602",
+  "device": "5CSEBA6U23I7",
+  "pin": "W15",
+  "gpio": "GPIO.089.008.1",
+  "dqs": "DQS16.089.008",
+  "lane": 9,
+  "clock_mhz": 50,
+  "high": 1,
+  "low": 0,
+  "settings": {
+    "OUTREG_MODE_SEL.9": "DDR",
+    "OUTREG_OUTPUT_SEL.9": "SEL_SDR_DELAY",
+    "RBOE_LVL_FR_CLK_EN.9": "1"
+  },
+  "inversions": [
+    "i GPIO.089.008.1:DATAOUT.1 1 ; W15",
+    "i GPIO.089.008.1:OEIN.0 1 ; W15",
+    "i GPIO.089.008.1:OEIN.1 0 ; W15"
+  ],
+  "rbf_sha256": "e7986f9e30382b80076f6815c40e181e1059e8af1017477401b5f558f8af7ae6",
+  "rbf_bytes": 1952856
+}

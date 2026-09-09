@@ -36,6 +36,8 @@ void Arch::create_gpio(int x, int y)
             add_bel_pin(bel, id_OE, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::OEIN, 0));
             add_bel_pin(bel, id_O, PORT_OUT, get_port(CycloneV::GPIO, x, y, z, CycloneV::DATAIN, 0));
         }
+        if (has_port(CycloneV::GPIO, x, y, z, CycloneV::CLKOUT, 0))
+            add_bel_pin(bel, id_CLK, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::CLKOUT, 0));
         bel_data(bel).block_index = z;
     }
 }
@@ -46,6 +48,7 @@ bool Arch::is_io_cell(IdString cell_type) const
     switch (cell_type.index) {
     case ID_MISTRAL_IB:
     case ID_MISTRAL_OB:
+    case ID_MISTRAL_DDROUT:
     case ID_MISTRAL_IO:
         return true;
     default:
