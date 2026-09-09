@@ -413,6 +413,80 @@ struct MistralPacker
         }
     }
 
+    void pack_sdr_outputs()
+    {
+        std::vector<CellInfo *> outputs;
+        IdString request = ctx->id("FAST_OUTPUT_REGISTER");
+        for (auto &entry : ctx->cells) {
+            auto *io = entry.second.get();
+            if (!io->attrs.count(request)) continue;
+            const auto &value = io->attrs.at(request);
+            if (value.is_string && value.as_string() == "OFF") continue;
+            if (!value.is_string || value.as_string() != "ON")
+                log_error("FAST_OUTPUT_REGISTER on '%s' must be ON or OFF.\n", ctx->nameOf(io));
+            outputs.push_back(io);
+        }
+        for (auto *io : outputs) {
+            auto fail = [&](const char *reason) {
+                log_error("SDR output '%s': %s.\n", ctx->nameOf(io), reason);
+            };
+            if (io->type != id_MISTRAL_OB) fail("FAST_OUTPUT_REGISTER requires a unidirectional output");
+            NetInfo *out = io->getPort(id_I);
+            if (!out || !out->driver.cell || out->driver.cell->type != id_MISTRAL_FF || out->driver.port != id_Q ||
+                out->users.entries() != 1)
+                fail("require a directly connected MISTRAL_FF with no other Q consumers");
+            CellInfo *ff = out->driver.cell;
+            if (!ff->params.empty()) fail("unsupported register parameters");
+            for (auto port : {id_ENA, id_ACLR, id_SCLR, id_SLOAD}) {
+                bool high = port.in(id_ENA, id_ACLR);
+                if (!ff->getPort(port) || get_pin_needed_muxval(ff, port) != (high ? PIN_1 : PIN_0))
+                    fail("require constant ENA/ACLR high and SCLR/SLOAD low");
+            }
+            NetInfo *data = ff->getPort(id_DATAIN), *clock = ff->getPort(id_CLK);
+            if (!data || !data->driver.cell) fail("register data must be driven");
+            if (!clock || !clock->driver.cell || clock->driver.cell->type.in(id_GND, id_VCC, id_MISTRAL_CONST))
+                fail("register clock must be driven and nonconstant");
+            NetInfo *source = clock;
+            if (ctx->is_clkbuf_cell(source->driver.cell->type)) {
+                if (source->driver.port != id_Q) fail("clock buffer must drive Q");
+                source = source->driver.cell->getPort(id_A);
+            }
+            if (!source || !source->driver.cell || source->driver.cell->type.in(id_MISTRAL_NOT, id_GND, id_VCC, id_MISTRAL_CONST))
+                fail("require a noninverted clock source");
+            auto loc = ctx->getBelLocation(io->bel);
+            int bi = ctx->bel_data(io->bel).block_index;
+            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode(CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1));
+            if (!dqs || !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKOUT, 0))
+                fail("selected pad has no supported SDR register/clock path");
+            if (!ctx->is_clkbuf_cell(clock->driver.cell->type)) {
+                CellInfo *buffer = nullptr;
+                for (const auto &user : clock->users)
+                    if (user.cell->type == id_MISTRAL_CLKBUF && user.port == id_A) { buffer = user.cell; break; }
+                if (!buffer) {
+                    buffer = ctx->createCell(ctx->idf("%s$sdr_clkbuf", ctx->nameOf(io)), id_MISTRAL_CLKBUF);
+                    buffer->addInput(id_A);
+                    buffer->addOutput(id_Q);
+                    buffer->connectPort(id_A, clock);
+                    buffer->connectPort(id_Q, ctx->createNet(ctx->idf("%s$sdr_clock", ctx->nameOf(io))));
+                }
+                clock = buffer->getPort(id_Q);
+            }
+            if (!clock || !clock->driver.cell) fail("clock buffer must have a connected Q output");
+            io->disconnectPort(id_I);
+            io->connectPort(id_I, data);
+            io->type = id_MISTRAL_SDROUT;
+            io->addInput(id_CLK);
+            io->connectPort(id_CLK, clock);
+            for (auto &port : ff->ports) ff->disconnectPort(port.first);
+            log_info("Packed SDR output register '%s' into %s.\n", ctx->nameOf(ff), ctx->nameOfBel(io->bel));
+            ctx->nets.erase(out->name);
+            ctx->cells.erase(ff->name);
+        }
+        if (!outputs.empty())
+            log_warning("SDR output registers: setup/hold and clock-to-pad timing are uncharacterized; "
+                        "reported fabric Fmax does not establish output-interface timing closure.\n");
+    }
+
     void pack_ddr_outputs()
     {
         std::vector<CellInfo *> cells;
@@ -1475,6 +1549,7 @@ struct MistralPacker
     {
         init_constant_nets();
         pack_io();
+        pack_sdr_outputs();
         pack_ddr_outputs();
         setup_clock_enables();
         setup_plls();

@@ -317,7 +317,7 @@ struct MistralBitgen
 
     void write_io_cell(CellInfo *ci, int x, int y, int bi)
     {
-        bool is_output = (ci->type.in(id_MISTRAL_OB, id_MISTRAL_DDROUT) || (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
+        bool is_output = (ci->type.in(id_MISTRAL_OB, id_MISTRAL_DDROUT, id_MISTRAL_SDROUT) || (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
         bool is_input = (ci->type == id_MISTRAL_IB || (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr));
         auto pos = CycloneV::xy2pos(x, y);
         // TODO: configurable pull, IO standard, etc
@@ -341,6 +341,14 @@ struct MistralBitgen
                 bool high = bool_or_default(ci->params, id_DDR_HIGH, true);
                 cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 0), !high);
                 cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 1), high);
+            } else if (dqs && ci->type == id_MISTRAL_SDROUT) {
+                auto dp = CycloneV::pn2p(dqs);
+                int lane = CycloneV::pn2bi(dqs);
+                NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_OUTPUT_SEL, lane, CycloneV::SEL_SDR));
+                NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::OEREG_HR_CLK_EN, lane, true));
+                NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RBOE_LVL_FR_CLK_EN, lane, true));
+                NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::RB_T9_SEL_EREG_CFF_DELAY, lane, 0x1f));
+                NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::RB_T9_SEL_OREG_DFF_DELAY, lane, 0x1f));
             } else if (dqs) {
                 cv->bmux_m_set(CycloneV::DQS16, CycloneV::pn2p(dqs), CycloneV::INPUT_REG4_SEL, CycloneV::pn2bi(dqs),
                                CycloneV::SEL_LOCKED_DPA);

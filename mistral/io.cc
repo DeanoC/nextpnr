@@ -48,6 +48,7 @@ bool Arch::is_io_cell(IdString cell_type) const
     switch (cell_type.index) {
     case ID_MISTRAL_IB:
     case ID_MISTRAL_OB:
+    case ID_MISTRAL_SDROUT:
     case ID_MISTRAL_DDROUT:
     case ID_MISTRAL_IO:
         return true;
