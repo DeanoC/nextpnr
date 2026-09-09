@@ -317,7 +317,7 @@ struct MistralBitgen
 
     void write_io_cell(CellInfo *ci, int x, int y, int bi)
     {
-        bool is_output = (ci->type == id_MISTRAL_OB || (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
+        bool is_output = (ci->type.in(id_MISTRAL_OB, id_MISTRAL_DDROUT) || (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
         auto pos = CycloneV::xy2pos(x, y);
         // TODO: configurable pull, IO standard, etc
         cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_WEAK_PULLUP, bi, false);
@@ -327,7 +327,16 @@ struct MistralBitgen
 
             // Output gpios must also bypass things in the associated dqs
             auto dqs = cv->p2p_to(CycloneV::pnode(CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1));
-            if (dqs) {
+            if (dqs && ci->type == id_MISTRAL_DDROUT) {
+                auto dp = CycloneV::pn2p(dqs);
+                int lane = CycloneV::pn2bi(dqs);
+                NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_MODE_SEL, lane, CycloneV::DDR));
+                NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_OUTPUT_SEL, lane, CycloneV::SEL_SDR_DELAY));
+                NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RBOE_LVL_FR_CLK_EN, lane, true));
+                bool high = bool_or_default(ci->params, id_DDR_HIGH, true);
+                cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 0), !high);
+                cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 1), high);
+            } else if (dqs) {
                 cv->bmux_m_set(CycloneV::DQS16, CycloneV::pn2p(dqs), CycloneV::INPUT_REG4_SEL, CycloneV::pn2bi(dqs),
                                CycloneV::SEL_LOCKED_DPA);
                 cv->bmux_r_set(CycloneV::DQS16, CycloneV::pn2p(dqs), CycloneV::RB_T9_SEL_EREG_CFF_DELAY,

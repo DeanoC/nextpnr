@@ -155,3 +155,6 @@ X(router)
 X(step)
 
 X(ENAOUT)
+
+X(MISTRAL_DDROUT)
+X(DDR_HIGH)
