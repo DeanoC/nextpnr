@@ -105,6 +105,20 @@ void Arch::create_hps_mpu_general_purpose(int x, int y)
     }
 }
 
+void Arch::create_hps_peripheral_i2c(int x, int y)
+{
+    BelId i2c_bel = add_bel(x, y, id_cyclonev_hps_interface_peripheral_i2c,
+                            id_cyclonev_hps_interface_peripheral_i2c);
+    add_bel_pin(i2c_bel, id("scl"), PORT_IN,
+                get_port(CycloneV::HPS_PERIPHERAL_I2C, x, y, -1, CycloneV::SCL));
+    add_bel_pin(i2c_bel, id("sda"), PORT_IN,
+                get_port(CycloneV::HPS_PERIPHERAL_I2C, x, y, -1, CycloneV::SDA));
+    add_bel_pin(i2c_bel, id("out_clk"), PORT_OUT,
+                get_port(CycloneV::HPS_PERIPHERAL_I2C, x, y, -1, CycloneV::OUT_CLK));
+    add_bel_pin(i2c_bel, id("out_data"), PORT_OUT,
+                get_port(CycloneV::HPS_PERIPHERAL_I2C, x, y, -1, CycloneV::OUT_DATA));
+}
+
 void Arch::create_control(int x, int y)
 {
     BelId oscillator_bel = add_bel(x, y, id_cyclonev_oscillator, id_cyclonev_oscillator);

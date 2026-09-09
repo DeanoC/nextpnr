@@ -164,6 +164,10 @@ Arch::Arch(ArchArgs args)
     if (!hps_pos.empty()) {
         create_hps_mpu_general_purpose(CycloneV::pos2x(hps_pos[CycloneV::I_HPS_MPU_GENERAL_PURPOSE]),
                                        CycloneV::pos2y(hps_pos[CycloneV::I_HPS_MPU_GENERAL_PURPOSE]));
+        for (int index = 0; index < 4; index++) {
+            auto pos = hps_pos[CycloneV::I_HPS_PERIPHERAL_I2C + index];
+            create_hps_peripheral_i2c(CycloneV::pos2x(pos), CycloneV::pos2y(pos));
+        }
     }
 
     for (auto m10k_pos : cyclonev->m10k_get_pos())
@@ -201,18 +205,22 @@ int Arch::getTileBelDimZ(int x, int y) const
 
 BelId Arch::getBelByName(IdStringList name) const
 {
-    BelId bel;
-    NPNR_ASSERT(name.size() == 4);
-    int x = id2int.at(name[1]);
-    int y = id2int.at(name[2]);
-    int z = id2int.at(name[3]);
-
-    bel.pos = CycloneV::xy2pos(x, y);
-    bel.z = z;
-
-    NPNR_ASSERT(name[0] == getBelType(bel));
-
-    return bel;
+    if (name.size() != 4)
+        return BelId();
+    auto x_it = id2int.find(name[1]);
+    auto y_it = id2int.find(name[2]);
+    auto z_it = id2int.find(name[3]);
+    if (x_it == id2int.end() || y_it == id2int.end() || z_it == id2int.end())
+        return BelId();
+    int x = x_it->second;
+    int y = y_it->second;
+    int z = z_it->second;
+    if (x < 0 || x >= getGridDimX() || y < 0 || y >= getGridDimY())
+        return BelId();
+    const auto &bels = bels_by_tile.at(pos2idx(x, y));
+    if (z < 0 || z >= int(bels.size()) || bels.at(z).type != name[0])
+        return BelId();
+    return BelId(CycloneV::xy2pos(x, y), z);
 }
 
 IdStringList Arch::getBelName(BelId bel) const

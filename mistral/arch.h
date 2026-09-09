@@ -277,7 +277,7 @@ enum CellPinStyle
     PINSTYLE_CE = 0x027,   // CE type signal, invertible and defaults to enabled
     PINSTYLE_RST = 0x017,  // RST type signal, invertible and defaults to not reset
     PINSTYLE_DEDI = 0x000, // dedicated signals, leave alone
-    PINSTYLE_INP = 0x001,  // general inputs, no inversion/tieing but defaults low
+    PINSTYLE_INP = 0x010,  // general inputs, no inversion/tieing but defaults low
     PINSTYLE_PU = 0x022,   // signals that float high and default high
 
     PINSTYLE_CARRY = 0x001, // carry chains can be floating or 0?
@@ -479,6 +479,7 @@ struct Arch : BaseArch<ArchRanges>
     void create_clkbuf(int x, int y);                  // globals.cc
     void create_control(int x, int y);                 // globals.cc
     void create_hps_mpu_general_purpose(int x, int y); // globals.cc
+    void create_hps_peripheral_i2c(int x, int y);      // globals.cc
 
     // -------------------------------------------------
 
