@@ -698,10 +698,11 @@ struct MistralPacker
         for (auto &entry : ctx->cells)
             if (entry.second->type == ctx->id("altddio_out"))
                 cells.push_back(entry.second.get());
+        bool fabric_data_outputs = false;
         for (CellInfo *ci : cells) {
             auto fail = [&](const char *reason) { log_error("DDR output '%s': %s.\n", ctx->nameOf(ci), reason); };
             if (int_or_default(ci->params, ctx->id("width"), 1) != 1)
-                fail("clock forwarding requires width=1");
+                fail("DDR output requires width=1");
             const std::map<std::string, std::vector<std::string>> allowed = {
                 {"intended_device_family", {"Cyclone V"}}, {"power_up_high", {"OFF"}},
                 {"oe_reg", {"UNUSED", "UNREGISTERED"}}, {"extend_oe_disable", {"UNUSED", "OFF"}},
@@ -711,7 +712,7 @@ struct MistralPacker
                 auto it = allowed.find(param.first.str(ctx));
                 if (it == allowed.end() || !param.second.is_string ||
                     std::find(it->second.begin(), it->second.end(), param.second.as_string()) == it->second.end())
-                    fail("unsupported parameter; require the checked clock-forwarding profile");
+                    fail("unsupported parameter; require the checked DDR output profile");
             }
             for (const auto &port : ci->ports) {
                 const std::string name = port.first.str(ctx);
@@ -727,11 +728,22 @@ struct MistralPacker
                     fail("enable/OE must be constant high and resets constant low");
             }
             if (ci->getPort(ctx->id("oe_out"))) fail("oe_out must be unused");
-            auto h = get_pin_needed_muxval(ci, ctx->id("datain_h"));
-            auto l = get_pin_needed_muxval(ci, ctx->id("datain_l"));
-            if (!ci->getPort(ctx->id("datain_h")) || !ci->getPort(ctx->id("datain_l")) ||
-                !((h == PIN_1 && l == PIN_0) || (h == PIN_0 && l == PIN_1)))
-                fail("clock forwarding requires complementary constant datain_h/datain_l; fabric DDR data is not supported");
+            IdString datain_h = ctx->id("datain_h"), datain_l = ctx->id("datain_l");
+            auto h = get_pin_needed_muxval(ci, datain_h);
+            auto l = get_pin_needed_muxval(ci, datain_l);
+            bool have_h = ci->getPort(datain_h) != nullptr;
+            bool have_l = ci->getPort(datain_l) != nullptr;
+            bool h_constant = h == PIN_0 || h == PIN_1;
+            bool l_constant = l == PIN_0 || l == PIN_1;
+            bool clock_forward = (have_h && have_l &&
+                                  ((h == PIN_1 && l == PIN_0) || (h == PIN_0 && l == PIN_1)));
+            bool fabric_data = !clock_forward;
+            if (fabric_data && (!have_h || !have_l || h_constant || l_constant)) {
+                fail("fabric DDR data requires two connected nonconstant datain_h/datain_l nets");
+                // Do not transform a malformed primitive: data_h/data_l below
+                // are only valid for the two-net fabric-data form.
+                continue;
+            }
             NetInfo *out = ci->getPort(ctx->id("dataout"));
             if (!out || out->users.entries() != 1) fail("dataout must drive exactly one output buffer");
             auto sink = *out->users.begin();
@@ -770,15 +782,31 @@ struct MistralPacker
             io->disconnectPort(id_I);
             io->ports.erase(id_I);
             io->type = id_MISTRAL_DDROUT;
-            io->params[id_DDR_HIGH] = h == PIN_1;
+            NetInfo *data_h = ci->getPort(datain_h), *data_l = ci->getPort(datain_l);
+            if (fabric_data) {
+                io->addInput(id_D_H);
+                io->connectPort(id_D_H, data_h);
+                io->addInput(id_D_L);
+                io->connectPort(id_D_L, data_l);
+                io->params.erase(id_DDR_HIGH);
+                fabric_data_outputs = true;
+            } else {
+                io->params[id_DDR_HIGH] = h == PIN_1;
+            }
             io->addInput(id_CLK);
             io->connectPort(id_CLK, clock);
             for (auto &port : ci->ports) ci->disconnectPort(port.first);
-            log_info("Packed DDR clock forwarder '%s' into %s (%s phase).\n", ctx->nameOf(ci),
-                     ctx->nameOfBel(io->bel), h == PIN_1 ? "normal" : "inverted");
+            if (fabric_data)
+                log_info("Packed DDR output data '%s' into %s.\n", ctx->nameOf(ci), ctx->nameOfBel(io->bel));
+            else
+                log_info("Packed DDR clock forwarder '%s' into %s (%s phase).\n", ctx->nameOf(ci),
+                         ctx->nameOfBel(io->bel), h == PIN_1 ? "normal" : "inverted");
             ctx->nets.erase(out->name);
             ctx->cells.erase(ci->name);
         }
+        if (fabric_data_outputs)
+            log_warning("DDR output data: GPIO register setup/hold and clock-to-pad timing are uncharacterized; "
+                        "reported fabric Fmax does not establish output-interface timing closure.\n");
     }
 
     void constrain_carries()

@@ -339,9 +339,16 @@ struct MistralBitgen
                 NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_MODE_SEL, lane, CycloneV::DDR));
                 NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_OUTPUT_SEL, lane, CycloneV::SEL_SDR_DELAY));
                 NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RBOE_LVL_FR_CLK_EN, lane, true));
-                bool high = bool_or_default(ci->params, id_DDR_HIGH, true);
-                cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 0), !high);
-                cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 1), high);
+                if (ci->getPort(id_D_H) != nullptr) {
+                    // Fabric data is already driven on the two dedicated
+                    // lanes; leave both data paths non-inverted.
+                    NPNR_ASSERT(cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 0), false));
+                    NPNR_ASSERT(cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 1), false));
+                } else {
+                    bool high = bool_or_default(ci->params, id_DDR_HIGH, true);
+                    cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 0), !high);
+                    cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 1), high);
+                }
             } else if (dqs && ci->type == id_MISTRAL_SDROUT) {
                 auto dp = CycloneV::pn2p(dqs);
                 int lane = CycloneV::pn2bi(dqs);
