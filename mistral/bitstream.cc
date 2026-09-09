@@ -318,12 +318,17 @@ struct MistralBitgen
     void write_io_cell(CellInfo *ci, int x, int y, int bi)
     {
         bool is_output = (ci->type == id_MISTRAL_OB || (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
+        bool is_input = (ci->type == id_MISTRAL_IB || (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr));
         auto pos = CycloneV::xy2pos(x, y);
         // TODO: configurable pull, IO standard, etc
         cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_WEAK_PULLUP, bi, false);
         if (is_output) {
             cv->bmux_m_set(CycloneV::GPIO, pos, CycloneV::DRIVE_STRENGTH, bi, CycloneV::V3P3_LVTTL_16MA_LVCMOS_2MA);
-            cv->bmux_m_set(CycloneV::GPIO, pos, CycloneV::IOCSR_STD, bi, CycloneV::DIS);
+            // DIS turns off the pad's input buffer.  Keep the database input
+            // default when a bidirectional cell consumes O so external pad
+            // state still reaches the fabric or an HPS peripheral.
+            if (!is_input)
+                cv->bmux_m_set(CycloneV::GPIO, pos, CycloneV::IOCSR_STD, bi, CycloneV::DIS);
 
             // Output gpios must also bypass things in the associated dqs
             auto dqs = cv->p2p_to(CycloneV::pnode(CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1));

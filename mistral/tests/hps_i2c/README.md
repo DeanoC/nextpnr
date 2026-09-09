@@ -12,6 +12,12 @@ controls the matching GPIO output enable, and both GPIO data values are tied to
 zero.  The test checks the netlist connections as well as the routed endpoints,
 which proves each pin can only drive low or release.
 
+Bitgen must also leave the input buffer enabled when a `MISTRAL_IO` consumes
+its `O` feedback.  The check decompiles the emitted RBF and verifies that these
+two bidirectional pins retain the database input default.  A derived fixture
+uses one output-only and one input-only buffer to prove that only the former
+selects `IOCSR_STD=DIS`.
+
 The reference RBF is not redistributed here.  Its SHA-256 and recorded routing
 are checked by `check.py --reference-rbf` when that optional diagnostic input
 is supplied; this does not establish the reference build's source provenance.  The retained oracle digest is

@@ -21,6 +21,15 @@ def run(command, log, success=True):
     return log.read_text()
 
 
+def decompile(mistral_cv, rbf, output, name):
+    bitstream = output / f"{name}.bt"
+    run(
+        [str(mistral_cv.resolve()), "decomp", "5CSEBA6U23I7", str(rbf), str(bitstream)],
+        output / f"{name}-decompile.log",
+    )
+    return {line.split(" ;", 1)[0] for line in bitstream.read_text().splitlines()}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("yosys", "nextpnr", "mistral-cv", "output"):
@@ -114,6 +123,52 @@ def main():
         "HPS_PERIPHERAL_I2C.052.060:OUT_DATA GPIO.004.000.2:DATAOUT.0",
     ):
         assert not any(line.startswith(unsafe) for line in routes), (unsafe, routes)
+
+    # Both pads consume their input feedback, so bitgen must retain the GPIO
+    # input standard instead of disabling the input buffer merely because the
+    # same MISTRAL_IO also has an output-enable connection.
+    bidirectional = decompile(args.mistral_cv, output / "top.rbf", output, "bidirectional")
+    for disabled_input in (
+        "s GPIO.006.000:IOCSR_STD.0 DIS",
+        "s GPIO.004.000:IOCSR_STD.2 DIS",
+    ):
+        assert disabled_input not in bidirectional, disabled_input
+
+    # Exercise the neighboring policies with the same two physical pads:
+    # output-only retains DIS, while input-only retains the database default.
+    directional = copy.deepcopy(design)
+    directional_cells = directional["modules"]["top"]["cells"]
+    scl_pad = directional_cells["scl_pad"]
+    sda_pad = directional_cells["sda_pad"]
+    scl_pad["type"] = "MISTRAL_OB"
+    scl_pad["port_directions"] = {"I": "input", "PAD": "output"}
+    scl_pad["connections"] = {
+        "I": i2c_connections["out_clk"],
+        "PAD": scl_pad["connections"]["PAD"],
+    }
+    sda_pad["type"] = "MISTRAL_IB"
+    sda_pad["port_directions"] = {"O": "output", "PAD": "input"}
+    sda_pad["connections"] = {
+        "O": sda_pad["connections"]["O"],
+        "PAD": sda_pad["connections"]["PAD"],
+    }
+    directional_path = output / "io-directions.json"
+    directional_path.write_text(json.dumps(directional))
+    run(
+        command
+        + [
+            "--json",
+            str(directional_path),
+            "--rbf",
+            str(output / "io-directions.rbf"),
+        ],
+        output / "io-directions.log",
+    )
+    directions = decompile(
+        args.mistral_cv, output / "io-directions.rbf", output, "io-directions"
+    )
+    assert "s GPIO.006.000:IOCSR_STD.0 DIS" in directions, directions
+    assert "s GPIO.004.000:IOCSR_STD.2 DIS" not in directions, directions
 
     if args.reference_rbf:
         reference = args.reference_rbf.resolve()
