@@ -318,7 +318,8 @@ struct MistralBitgen
     void write_io_cell(CellInfo *ci, int x, int y, int bi)
     {
         bool is_output = (ci->type.in(id_MISTRAL_OB, id_MISTRAL_DDROUT, id_MISTRAL_SDROUT) || (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
-        bool is_input = (ci->type == id_MISTRAL_IB || (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr));
+        bool is_input = (ci->type.in(id_MISTRAL_IB, id_MISTRAL_SDRIN) ||
+                         (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr));
         auto pos = CycloneV::xy2pos(x, y);
         // TODO: configurable pull, IO standard, etc
         cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_WEAK_PULLUP, bi, false);
@@ -355,6 +356,14 @@ struct MistralBitgen
                 cv->bmux_r_set(CycloneV::DQS16, CycloneV::pn2p(dqs), CycloneV::RB_T9_SEL_EREG_CFF_DELAY,
                                CycloneV::pn2bi(dqs), 0x1f);
             }
+        }
+        if (ci->type == id_MISTRAL_SDRIN) {
+            auto dqs = cv->p2p_to(CycloneV::pnode(CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1));
+            NPNR_ASSERT(dqs);
+            auto dp = CycloneV::pn2p(dqs);
+            int lane = CycloneV::pn2bi(dqs);
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RB_FIFO_WCLK_EN, lane, true));
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RB_FIFO_WCLK_INV, lane, true));
         }
         // There seem to be two mirrored OEIN inversion bits for constant OE for inputs/outputs. This might be to
         // prevent a single bitflip from turning inputs to outputs and messing up other devices on the boards, notably
