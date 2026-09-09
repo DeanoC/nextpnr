@@ -62,6 +62,11 @@ IdString dsp_register_key(const CellInfo *cell, const std::string &port)
 TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, int &clockInfoCount) const
 {
     clockInfoCount = 0;
+    if (cell->type == id_MISTRAL_SDRIN) {
+        // The Mistral database has no characterized GPIO input-register
+        // setup/hold or register clock-to-Q model.
+        return port == id_CLK ? TMG_CLOCK_INPUT : TMG_IGNORE;
+    }
     if (cell->type == id_MISTRAL_SDROUT) {
         // No characterized GPIO register setup/hold or clock-to-pad arcs.
         if (port == id_CLK) return TMG_CLOCK_INPUT;

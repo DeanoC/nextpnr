@@ -1,0 +1,35 @@
+{
+  "tool": "Quartus Prime Lite 17.0.2 Build602",
+  "device": "5CSEBA6U23I7",
+  "pins": {
+    "clock": "V11",
+    "data": "Y15",
+    "observed": "W15"
+  },
+  "input_register": {
+    "assignment": "FAST_INPUT_REGISTER ON",
+    "packed_register": "captured",
+    "io_buffer": "DATA~input",
+    "fit_summary": "I/O registers: 1; primary/secondary fabric registers: 0"
+  },
+  "gpio": "GPIO.064.000.0",
+  "dqs": "DQS16.060.000",
+  "lane": 0,
+  "routes": [
+    "GPIO.064.000.0:DATAIN.3",
+    "GPIO.064.000.0:CLKIN.0"
+  ],
+  "settings": {
+    "RB_FIFO_WCLK_EN.0": "1",
+    "RB_FIFO_WCLK_INV.0": "1"
+  },
+  "quartus_fit": {
+    "logic_alms": "1 / 41910",
+    "total_registers": 1,
+    "total_pins": "3 / 314",
+    "total_dsp_blocks": "0 / 112",
+    "total_plls": "0 / 6"
+  },
+  "rbf_sha256": "d10fb3f13ac5f779e8194e9427cd91acb34e584686ad31021ed24bdf8e2522e3",
+  "rbf_bytes": 1952720
+}
