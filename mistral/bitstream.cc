@@ -318,7 +318,7 @@ struct MistralBitgen
     void write_io_cell(CellInfo *ci, int x, int y, int bi)
     {
         bool is_output = (ci->type.in(id_MISTRAL_OB, id_MISTRAL_DDROUT, id_MISTRAL_SDROUT) || (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
-        bool is_input = (ci->type.in(id_MISTRAL_IB, id_MISTRAL_SDRIN) ||
+        bool is_input = (ci->type.in(id_MISTRAL_IB, id_MISTRAL_SDRIN, id_MISTRAL_DDRIN) ||
                          (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr));
         auto pos = CycloneV::xy2pos(x, y);
         // TODO: configurable pull, IO standard, etc
@@ -357,7 +357,7 @@ struct MistralBitgen
                                CycloneV::pn2bi(dqs), 0x1f);
             }
         }
-        if (ci->type == id_MISTRAL_SDRIN) {
+        if (ci->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN)) {
             auto dqs = cv->p2p_to(CycloneV::pnode(CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1));
             NPNR_ASSERT(dqs);
             auto dp = CycloneV::pn2p(dqs);

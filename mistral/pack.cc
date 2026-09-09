@@ -582,6 +582,116 @@ struct MistralPacker
                         "reported fabric Fmax does not establish input-interface timing closure.\n");
     }
 
+    void pack_ddr_inputs()
+    {
+        std::vector<CellInfo *> inputs;
+        IdString type = ctx->id("altddio_in");
+        for (auto &entry : ctx->cells)
+            if (entry.second->type == type)
+                inputs.push_back(entry.second.get());
+        for (auto *ddr : inputs) {
+            auto fail = [&](const char *reason) { log_error("DDR input '%s': %s.\n", ctx->nameOf(ddr), reason); };
+            if (int_or_default(ddr->params, ctx->id("width"), 1) != 1)
+                fail("input capture requires width=1");
+            const std::map<std::string, std::vector<std::string>> allowed = {
+                    {"intended_device_family", {"Cyclone V"}}, {"power_up_high", {"OFF"}},
+                    {"invert_input_clocks", {"OFF"}}, {"lpm_type", {"altddio_in"}},
+                    {"lpm_hint", {"UNUSED"}}};
+            for (const auto &param : ddr->params) {
+                if (param.first == ctx->id("width"))
+                    continue;
+                auto it = allowed.find(param.first.str(ctx));
+                if (it == allowed.end() || !param.second.is_string ||
+                    std::find(it->second.begin(), it->second.end(), param.second.as_string()) == it->second.end())
+                    fail("unsupported parameter; require the checked DDR input profile");
+            }
+            for (const auto &port : ddr->ports) {
+                const std::string name = port.first.str(ctx);
+                if (name != "datain" && name != "inclock" && name != "inclocken" && name != "aset" &&
+                    name != "aclr" && name != "sset" && name != "sclr" && name != "dataout_h" &&
+                    name != "dataout_l")
+                    fail("unsupported port");
+            }
+            const IdString datain = ctx->id("datain"), inclock = ctx->id("inclock"), inclocken = ctx->id("inclocken");
+            const IdString aset = ctx->id("aset"), aclr = ctx->id("aclr"), sset = ctx->id("sset"), sclr = ctx->id("sclr");
+            const IdString dataout_h = ctx->id("dataout_h"), dataout_l = ctx->id("dataout_l");
+            for (auto port : {inclocken, aset, aclr, sset, sclr}) {
+                bool high = port == inclocken;
+                if (!ddr->getPort(port) || get_pin_needed_muxval(ddr, port) != (high ? PIN_1 : PIN_0))
+                    fail("enable must be high and set/clear controls low");
+            }
+            NetInfo *data = ddr->getPort(datain);
+            if (!data || !data->driver.cell || data->driver.cell->type != id_MISTRAL_IB ||
+                data->driver.port != id_O || data->users.entries() != 1)
+                fail("datain must be driven directly by one input buffer");
+            CellInfo *ib = data->driver.cell;
+            NetInfo *high = ddr->getPort(dataout_h), *low = ddr->getPort(dataout_l);
+            if (!high || !low || high == low)
+                fail("dataout_h and dataout_l must be separate connected nets");
+            NetInfo *clock = ddr->getPort(inclock);
+            if (!clock || !clock->driver.cell || clock->driver.cell->type.in(id_GND, id_VCC, id_MISTRAL_CONST))
+                fail("inclock must be driven by a clock, not a constant");
+            NetInfo *source = clock;
+            if (ctx->is_clkbuf_cell(source->driver.cell->type)) {
+                if (source->driver.port != id_Q)
+                    fail("clock buffer must drive Q");
+                source = source->driver.cell->getPort(id_A);
+            }
+            if (!source || !source->driver.cell ||
+                source->driver.cell->type.in(id_MISTRAL_NOT, id_GND, id_VCC, id_MISTRAL_CONST))
+                fail("require a noninverted clock source");
+            auto loc = ctx->getBelLocation(ib->bel);
+            int bi = ctx->bel_data(ib->bel).block_index;
+            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode(CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1));
+            if (!dqs || !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKIN, 0) ||
+                !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::DATAIN, 2) ||
+                !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::DATAIN, 3))
+                fail("selected pad has no supported DDR input register/clock path");
+            if (!ctx->is_clkbuf_cell(clock->driver.cell->type)) {
+                CellInfo *buffer = nullptr;
+                for (const auto &user : clock->users)
+                    if (user.cell->type == id_MISTRAL_CLKBUF && user.port == id_A) {
+                        buffer = user.cell;
+                        break;
+                    }
+                if (!buffer) {
+                    buffer = ctx->createCell(ctx->idf("%s$ddr_clkbuf", ctx->nameOf(ddr)), id_MISTRAL_CLKBUF);
+                    buffer->addInput(id_A);
+                    buffer->addOutput(id_Q);
+                    buffer->connectPort(id_A, clock);
+                    buffer->connectPort(id_Q, ctx->createNet(ctx->idf("%s$ddr_clock", ctx->nameOf(ddr))));
+                }
+                clock = buffer->getPort(id_Q);
+            }
+            if (!clock || !clock->driver.cell)
+                fail("clock buffer must have a connected Q output");
+
+            ddr->disconnectPort(datain);
+            ddr->disconnectPort(inclock);
+            ddr->disconnectPort(dataout_h);
+            ddr->disconnectPort(dataout_l);
+            ib->disconnectPort(id_O);
+            ib->ports.erase(id_O);
+            ib->addOutput(id_Q_H);
+            ib->connectPort(id_Q_H, high);
+            ib->addOutput(id_Q_L);
+            ib->connectPort(id_Q_L, low);
+            ib->addInput(id_CLK);
+            ib->connectPort(id_CLK, clock);
+            ib->pin_data[id_CLK].bel_pins = {ctx->id("CLKIN")};
+            ib->type = id_MISTRAL_DDRIN;
+            for (auto &port : ddr->ports)
+                ddr->disconnectPort(port.first);
+            log_info("Packed DDR input '%s' into %s.\n", ctx->nameOf(ddr), ctx->nameOfBel(ib->bel));
+            ctx->nets.erase(data->name);
+            ctx->cells.erase(ddr->name);
+        }
+        if (!inputs.empty())
+            log_warning("DDR input registers: setup/hold, GPIO register clock-to-Q, and Q-to-fabric timing are "
+                        "uncharacterized; "
+                        "reported fabric Fmax does not establish input-interface timing closure.\n");
+    }
+
     void pack_ddr_outputs()
     {
         std::vector<CellInfo *> cells;
@@ -1644,6 +1754,7 @@ struct MistralPacker
     {
         init_constant_nets();
         pack_io();
+        pack_ddr_inputs();
         pack_sdr_inputs();
         pack_sdr_outputs();
         pack_ddr_outputs();

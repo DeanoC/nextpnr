@@ -1,0 +1,40 @@
+Host-only validation (no board programmed)
+
+Fixture: 5CSEBA6U23I7, DATA=Y15, FPGA_CLK1_50=V11, OBSERVED_H=W15,
+OBSERVED_L=V16
+Backend: nextpnr-mistral from the dedicated-DDR-input branch
+Mistral database: 78ba2a580ae2523403d4f4f91891a6b11d7b6aba
+
+PASS: one DDR input register, GPIO high/low DATAIN lanes and DQS settings
+PASS: eight invalid DDR input requests rejected
+
+Routed utilization:
+  MISTRAL_DDRIN used=1 (represented by MISTRAL_IO used=4)
+  MISTRAL_IO used=4 available=472
+  MISTRAL_FF used=0 available=167640
+  MISTRAL_CLKENA used=1 available=8
+  MISTRAL_COMB used=2 available=83820
+  MISTRAL_MUL9X9 used=0 available=336
+  altera_pll used=0 available=6
+
+The timing report has no interior paths and therefore no Fmax entries. GPIO
+DDR input setup/hold and register clock-to-Q arcs are intentionally
+uncharacterized in this backend.
+
+Decompiled route/settings:
+  GPIO.064.000.0:DATAIN.3
+  GPIO.064.000.0:DATAIN.2
+  GPIO.064.000.0:CLKIN.0
+  DQS16.060.000:RB_FIFO_WCLK_EN.0 1
+  DQS16.060.000:RB_FIFO_WCLK_INV.0 1
+
+Raw nextpnr RBF: 1952836 bytes
+Raw nextpnr RBF SHA-256: 896c0d6bacaf6723510a6465e7ff01394a26b77904fc05689445d1c3a8363310
+Gzip artifact SHA-256: f0f5ddd8a5bd388f6fb45f0143849ac84d63943cd18e2c8c3e7f3d0f76c76d0e
+
+Regressions:
+  PASS: dedicated DDR output clock-forwarding matrix
+  PASS: dedicated SDR input matrix
+  PASS: ordinary FF datain path
+  PASS: ordinary GPIO RBF byte-identical against the pre-DDR-input binary
+        SHA-256: 41c94ec67aae5bf6cb1a7226b4ec4650488ee8b84e1ccfef9d612cd697022cea
