@@ -1,0 +1,4 @@
+set_location_assignment PIN_U10 -to HDMI_I2C_SCL
+set_location_assignment PIN_AA4 -to HDMI_I2C_SDA
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HDMI_I2C_SCL
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HDMI_I2C_SDA
