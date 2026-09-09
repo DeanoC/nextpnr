@@ -1017,6 +1017,28 @@ uint64_t permute_mlab_init(uint64_t orig)
 
 } // namespace
 
+// In RAM mode address 0 selects the last bit of each logical 32-bit half.
+// Storage is active-low, then uses the same MLAB CRAM permutation as logic.
+uint64_t Arch::compute_mlab_mask(uint32_t lab, uint8_t alm)
+{
+    uint64_t mask = 0;
+    const auto &alm_data = labs.at(lab).alms.at(alm);
+    for (int lane = 0; lane < 2; ++lane) {
+        const CellInfo *cell = getBoundBelCell(alm_data.lut_bels[lane]);
+        if (cell == nullptr)
+            continue; // An unused half retains the existing zero initialization.
+        NPNR_ASSERT(cell->type == id_MISTRAL_MLAB);
+        auto init = cell->params.find(id_INIT);
+        if (init == cell->params.end())
+            continue;
+        uint32_t bits = uint32_t(init->second.as_int64());
+        for (int addr = 0; addr < 32; ++addr)
+            if ((bits >> addr) & 1)
+                mask |= uint64_t(1) << (32 * lane + 31 - addr);
+    }
+    return permute_mlab_init(~mask);
+}
+
 uint64_t Arch::compute_lut_mask(uint32_t lab, uint8_t alm)
 {
     uint64_t mask = 0;

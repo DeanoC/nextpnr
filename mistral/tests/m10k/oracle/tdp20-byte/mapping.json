@@ -1,0 +1,724 @@
+{
+  "tool": "Quartus Prime Lite 17.0.2 Build 602",
+  "device": "5CSEBA6U23I7",
+  "site": "M10K.058.002",
+  "mode": "BIDIR_DUAL_PORT",
+  "width": 20,
+  "depth": 512,
+  "byte_size": 10,
+  "byte_mask_width": 2,
+  "read_during_write": "NEW_DATA_NO_NBE_READ",
+  "cross_port_collision": "DONT_CARE",
+  "rbf_sha256": "fdfe6302219d40832de6237061a242f39ca42e3cf0dbefe0f1612289d3949e33",
+  "rbf_bytes": 1958544,
+  "settings": {
+    "A_DATA_FLOW_THRU": "1",
+    "A_DATA_WIDTH": "20",
+    "A_FAST_WRITE": "FAST",
+    "A_SA_WREN_DELAY": "1",
+    "A_SAEN_DELAY": "2",
+    "A_WL_DELAY": "2",
+    "A_WR_TIMER_PULSE": "0b",
+    "B_DATA_FLOW_THRU": "1",
+    "B_DATA_WIDTH": "20",
+    "B_FAST_WRITE": "FAST",
+    "B_SA_WREN_DELAY": "1",
+    "B_SAEN_DELAY": "2",
+    "B_WL_DELAY": "2",
+    "B_WR_TIMER_PULSE": "0b",
+    "BOT_1_CORECLK_SEL": "1",
+    "BOT_1_INCLK_SEL": "1",
+    "BOT_1_OUTCLK_SEL": "1",
+    "BOT_CLK_SEL": "1",
+    "BOT_CORECLK_SEL": "1",
+    "BOT_INCLK_SEL": "1",
+    "DISABLE_UNUSED": "0",
+    "RAM.0": "ff.ffffffff",
+    "RAM.1": "ff.ffffffff",
+    "RAM.2": "ff.ffffffff",
+    "RAM.3": "ff.ffffffff",
+    "RAM.4": "ff.ffffffff",
+    "RAM.5": "ff.ffffffff",
+    "RAM.6": "ff.ffffffff",
+    "RAM.7": "ff.ffffffff",
+    "RAM.8": "ff.ffffffff",
+    "RAM.9": "ff.ffffffff",
+    "RAM.10": "ff.ffffffff",
+    "RAM.11": "ff.ffffffff",
+    "RAM.12": "ff.ffffffff",
+    "RAM.13": "ff.ffffffff",
+    "RAM.14": "ff.ffffffff",
+    "RAM.15": "ff.ffffffff",
+    "RAM.16": "ff.ffffffff",
+    "RAM.17": "ff.ffffffff",
+    "RAM.18": "ff.ffffffff",
+    "RAM.19": "ff.ffffffff",
+    "RAM.20": "ff.ffffffff",
+    "RAM.21": "ff.ffffffff",
+    "RAM.22": "ff.ffffffff",
+    "RAM.23": "ff.ffffffff",
+    "RAM.24": "ff.ffffffff",
+    "RAM.25": "ff.ffffffff",
+    "RAM.26": "ff.ffffffff",
+    "RAM.27": "ff.ffffffff",
+    "RAM.28": "ff.ffffffff",
+    "RAM.29": "ff.ffffffff",
+    "RAM.30": "ff.ffffffff",
+    "RAM.31": "ff.ffffffff",
+    "RAM.32": "ff.ffffffff",
+    "RAM.33": "ff.ffffffff",
+    "RAM.34": "ff.ffffffff",
+    "RAM.35": "ff.ffffffff",
+    "RAM.36": "ff.ffffffff",
+    "RAM.37": "ff.ffffffff",
+    "RAM.38": "ff.ffffffff",
+    "RAM.39": "ff.ffffffff",
+    "RAM.40": "ff.ffffffff",
+    "RAM.41": "ff.ffffffff",
+    "RAM.42": "ff.ffffffff",
+    "RAM.43": "ff.ffffffff",
+    "RAM.44": "ff.ffffffff",
+    "RAM.45": "ff.ffffffff",
+    "RAM.46": "ff.ffffffff",
+    "RAM.47": "ff.ffffffff",
+    "RAM.48": "ff.ffffffff",
+    "RAM.49": "ff.ffffffff",
+    "RAM.50": "ff.ffffffff",
+    "RAM.51": "ff.ffffffff",
+    "RAM.52": "ff.ffffffff",
+    "RAM.53": "ff.ffffffff",
+    "RAM.54": "ff.ffffffff",
+    "RAM.55": "ff.ffffffff",
+    "RAM.56": "ff.ffffffff",
+    "RAM.57": "ff.ffffffff",
+    "RAM.58": "ff.ffffffff",
+    "RAM.59": "ff.ffffffff",
+    "RAM.60": "ff.ffffffff",
+    "RAM.61": "ff.ffffffff",
+    "RAM.62": "ff.ffffffff",
+    "RAM.63": "ff.ffffffff",
+    "RAM.64": "ff.ffffffff",
+    "RAM.65": "ff.ffffffff",
+    "RAM.66": "ff.ffffffff",
+    "RAM.67": "ff.ffffffff",
+    "RAM.68": "ff.ffffffff",
+    "RAM.69": "ff.ffffffff",
+    "RAM.70": "ff.ffffffff",
+    "RAM.71": "ff.ffffffff",
+    "RAM.72": "ff.ffffffff",
+    "RAM.73": "ff.ffffffff",
+    "RAM.74": "ff.ffffffff",
+    "RAM.75": "ff.ffffffff",
+    "RAM.76": "ff.ffffffff",
+    "RAM.77": "ff.ffffffff",
+    "RAM.78": "ff.ffffffff",
+    "RAM.79": "ff.ffffffff",
+    "RAM.80": "ff.ffffffff",
+    "RAM.81": "ff.ffffffff",
+    "RAM.82": "ff.ffffffff",
+    "RAM.83": "ff.ffffffff",
+    "RAM.84": "ff.ffffffff",
+    "RAM.85": "ff.ffffffff",
+    "RAM.86": "ff.ffffffff",
+    "RAM.87": "ff.ffffffff",
+    "RAM.88": "ff.ffffffff",
+    "RAM.89": "ff.ffffffff",
+    "RAM.90": "ff.ffffffff",
+    "RAM.91": "ff.ffffffff",
+    "RAM.92": "ff.ffffffff",
+    "RAM.93": "ff.ffffffff",
+    "RAM.94": "ff.ffffffff",
+    "RAM.95": "ff.ffffffff",
+    "RAM.96": "ff.ffffffff",
+    "RAM.97": "ff.ffffffff",
+    "RAM.98": "ff.ffffffff",
+    "RAM.99": "ff.ffffffff",
+    "RAM.100": "ff.ffffffff",
+    "RAM.101": "ff.ffffffff",
+    "RAM.102": "ff.ffffffff",
+    "RAM.103": "ff.ffffffff",
+    "RAM.104": "ff.ffffffff",
+    "RAM.105": "ff.ffffffff",
+    "RAM.106": "ff.ffffffff",
+    "RAM.107": "ff.ffffffff",
+    "RAM.108": "ff.ffffffff",
+    "RAM.109": "ff.ffffffff",
+    "RAM.110": "ff.ffffffff",
+    "RAM.111": "ff.ffffffff",
+    "RAM.112": "ff.ffffffff",
+    "RAM.113": "ff.ffffffff",
+    "RAM.114": "ff.ffffffff",
+    "RAM.115": "ff.ffffffff",
+    "RAM.116": "ff.ffffffff",
+    "RAM.117": "ff.ffffffff",
+    "RAM.118": "ff.ffffffff",
+    "RAM.119": "ff.ffffffff",
+    "RAM.120": "ff.ffffffff",
+    "RAM.121": "ff.ffffffff",
+    "RAM.122": "ff.ffffffff",
+    "RAM.123": "ff.ffffffff",
+    "RAM.124": "ff.ffffffff",
+    "RAM.125": "ff.ffffffff",
+    "RAM.126": "ff.ffffffff",
+    "RAM.127": "ff.ffffffff",
+    "RAM.128": "ff.ffffffff",
+    "RAM.129": "ff.ffffffff",
+    "RAM.130": "ff.ffffffff",
+    "RAM.131": "ff.ffffffff",
+    "RAM.132": "ff.ffffffff",
+    "RAM.133": "ff.ffffffff",
+    "RAM.134": "ff.ffffffff",
+    "RAM.135": "ff.ffffffff",
+    "RAM.136": "ff.ffffffff",
+    "RAM.137": "ff.ffffffff",
+    "RAM.138": "ff.ffffffff",
+    "RAM.139": "ff.ffffffff",
+    "RAM.140": "ff.ffffffff",
+    "RAM.141": "ff.ffffffff",
+    "RAM.142": "ff.ffffffff",
+    "RAM.143": "ff.ffffffff",
+    "RAM.144": "ff.ffffffff",
+    "RAM.145": "ff.ffffffff",
+    "RAM.146": "ff.ffffffff",
+    "RAM.147": "ff.ffffffff",
+    "RAM.148": "ff.ffffffff",
+    "RAM.149": "ff.ffffffff",
+    "RAM.150": "ff.ffffffff",
+    "RAM.151": "ff.ffffffff",
+    "RAM.152": "ff.ffffffff",
+    "RAM.153": "ff.ffffffff",
+    "RAM.154": "ff.ffffffff",
+    "RAM.155": "ff.ffffffff",
+    "RAM.156": "ff.ffffffff",
+    "RAM.157": "ff.ffffffff",
+    "RAM.158": "ff.ffffffff",
+    "RAM.159": "ff.ffffffff",
+    "RAM.160": "ff.ffffffff",
+    "RAM.161": "ff.ffffffff",
+    "RAM.162": "ff.ffffffff",
+    "RAM.163": "ff.ffffffff",
+    "RAM.164": "ff.ffffffff",
+    "RAM.165": "ff.ffffffff",
+    "RAM.166": "ff.ffffffff",
+    "RAM.167": "ff.ffffffff",
+    "RAM.168": "ff.ffffffff",
+    "RAM.169": "ff.ffffffff",
+    "RAM.170": "ff.ffffffff",
+    "RAM.171": "ff.ffffffff",
+    "RAM.172": "ff.ffffffff",
+    "RAM.173": "ff.ffffffff",
+    "RAM.174": "ff.ffffffff",
+    "RAM.175": "ff.ffffffff",
+    "RAM.176": "ff.ffffffff",
+    "RAM.177": "ff.ffffffff",
+    "RAM.178": "ff.ffffffff",
+    "RAM.179": "ff.ffffffff",
+    "RAM.180": "ff.ffffffff",
+    "RAM.181": "ff.ffffffff",
+    "RAM.182": "ff.ffffffff",
+    "RAM.183": "ff.ffffffff",
+    "RAM.184": "ff.ffffffff",
+    "RAM.185": "ff.ffffffff",
+    "RAM.186": "ff.ffffffff",
+    "RAM.187": "ff.ffffffff",
+    "RAM.188": "ff.ffffffff",
+    "RAM.189": "ff.ffffffff",
+    "RAM.190": "ff.ffffffff",
+    "RAM.191": "ff.ffffffff",
+    "RAM.192": "ff.ffffffff",
+    "RAM.193": "ff.ffffffff",
+    "RAM.194": "ff.ffffffff",
+    "RAM.195": "ff.ffffffff",
+    "RAM.196": "ff.ffffffff",
+    "RAM.197": "ff.ffffffff",
+    "RAM.198": "ff.ffffffff",
+    "RAM.199": "ff.ffffffff",
+    "RAM.200": "ff.ffffffff",
+    "RAM.201": "ff.ffffffff",
+    "RAM.202": "ff.ffffffff",
+    "RAM.203": "ff.ffffffff",
+    "RAM.204": "ff.ffffffff",
+    "RAM.205": "ff.ffffffff",
+    "RAM.206": "ff.ffffffff",
+    "RAM.207": "ff.ffffffff",
+    "RAM.208": "ff.ffffffff",
+    "RAM.209": "ff.ffffffff",
+    "RAM.210": "ff.ffffffff",
+    "RAM.211": "ff.ffffffff",
+    "RAM.212": "ff.ffffffff",
+    "RAM.213": "ff.ffffffff",
+    "RAM.214": "ff.ffffffff",
+    "RAM.215": "ff.ffffffff",
+    "RAM.216": "ff.ffffffff",
+    "RAM.217": "ff.ffffffff",
+    "RAM.218": "ff.ffffffff",
+    "RAM.219": "ff.ffffffff",
+    "RAM.220": "ff.ffffffff",
+    "RAM.221": "ff.ffffffff",
+    "RAM.222": "ff.ffffffff",
+    "RAM.223": "ff.ffffffff",
+    "RAM.224": "ff.ffffffff",
+    "RAM.225": "ff.ffffffff",
+    "RAM.226": "ff.ffffffff",
+    "RAM.227": "ff.ffffffff",
+    "RAM.228": "ff.ffffffff",
+    "RAM.229": "ff.ffffffff",
+    "RAM.230": "ff.ffffffff",
+    "RAM.231": "ff.ffffffff",
+    "RAM.232": "ff.ffffffff",
+    "RAM.233": "ff.ffffffff",
+    "RAM.234": "ff.ffffffff",
+    "RAM.235": "ff.ffffffff",
+    "RAM.236": "ff.ffffffff",
+    "RAM.237": "ff.ffffffff",
+    "RAM.238": "ff.ffffffff",
+    "RAM.239": "ff.ffffffff",
+    "RAM.240": "ff.ffffffff",
+    "RAM.241": "ff.ffffffff",
+    "RAM.242": "ff.ffffffff",
+    "RAM.243": "ff.ffffffff",
+    "RAM.244": "ff.ffffffff",
+    "RAM.245": "ff.ffffffff",
+    "RAM.246": "ff.ffffffff",
+    "RAM.247": "ff.ffffffff",
+    "RAM.248": "ff.ffffffff",
+    "RAM.249": "ff.ffffffff",
+    "RAM.250": "ff.ffffffff",
+    "RAM.251": "ff.ffffffff",
+    "RAM.252": "ff.ffffffff",
+    "RAM.253": "ff.ffffffff",
+    "RAM.254": "ff.ffffffff",
+    "RAM.255": "ff.ffffffff",
+    "TOP_CE0_SEL": "1",
+    "TOP_CLK_SEL": "1",
+    "TOP_CORECLK_SEL": "1",
+    "TOP_INCLK_SEL": "1",
+    "TRUE_DUAL_PORT": "1"
+  },
+  "port_mapping": [
+    {
+      "signal": "qb[13]",
+      "route": "M10K.058.002:DATABOUT.13 HMC.025.000:IOINTADDRDOUT.36"
+    },
+    {
+      "signal": "qb[3]",
+      "route": "M10K.058.002:DATABOUT.3 GPIO.032.000.1:DATAOUT.0"
+    },
+    {
+      "signal": "qa[17]",
+      "route": "M10K.058.002:DATAAOUT.17 HMC.025.000:IOINTDQDOUT.144"
+    },
+    {
+      "signal": "qb[7]",
+      "route": "M10K.058.002:DATABOUT.7 HMC.025.000:IOINTDMDOUT.12"
+    },
+    {
+      "signal": "db[18]",
+      "route": "HMC.025.000:IOINTDQDIN.77 M10K.058.002:DATABIN.18"
+    },
+    {
+      "signal": "aa[8]",
+      "route": "HMC.025.000:IOINTDQDIN.81 M10K.058.002:ADDRA.11"
+    },
+    {
+      "signal": "db[5]",
+      "route": "GPIO.089.004.1:DATAIN.0 M10K.058.002:DATABIN.5"
+    },
+    {
+      "signal": "qb[9]",
+      "route": "M10K.058.002:DATABOUT.9 HMC.025.000:IOINTDQDOUT.148"
+    },
+    {
+      "signal": "qa[19]",
+      "route": "M10K.058.002:DATAAOUT.19 HMC.025.000:IOINTDQDOUT.108"
+    },
+    {
+      "signal": "qb[2]",
+      "route": "M10K.058.002:DATABOUT.2 HMC.025.000:IOINTDQDOUT.128"
+    },
+    {
+      "signal": "qb[1]",
+      "route": "M10K.058.002:DATABOUT.1 HMC.025.000:IOINTDQDOUT.0"
+    },
+    {
+      "signal": "da[7]",
+      "route": "HMC.025.000:IOINTDQDIN.17 M10K.058.002:DATAAIN.7"
+    },
+    {
+      "signal": "ab[2]",
+      "route": "GPIO.060.000.0:DATAIN.0 M10K.058.002:ADDRB.5"
+    },
+    {
+      "signal": "qa[6]",
+      "route": "M10K.058.002:DATAAOUT.6 HMC.025.000:IOINTDQDOUT.52"
+    },
+    {
+      "signal": "da[8]",
+      "route": "GPIO.040.000.2:DATAIN.1 M10K.058.002:DATAAIN.8"
+    },
+    {
+      "signal": "ab[4]",
+      "route": "GPIO.040.081.0:DATAIN.1 M10K.058.002:ADDRB.7"
+    },
+    {
+      "signal": "da[18]",
+      "route": "HMC.025.000:IOINTDQDIN.24 M10K.058.002:DATAAIN.18"
+    },
+    {
+      "signal": "qb[12]",
+      "route": "M10K.058.002:DATABOUT.12 HMC.025.000:IOINTCSNDOUT.0"
+    },
+    {
+      "signal": "db[9]",
+      "route": "GPIO.038.000.0:DATAIN.1 M10K.058.002:DATABIN.9"
+    },
+    {
+      "signal": "ab[5]",
+      "route": "GPIO.056.000.1:DATAIN.0 M10K.058.002:ADDRB.8"
+    },
+    {
+      "signal": "beb[1]",
+      "route": "GPIO.089.004.3:DATAIN.1 M10K.058.002:BYTEENABLEB.1"
+    },
+    {
+      "signal": "db[4]",
+      "route": "GPIO.034.000.0:DATAIN.1 M10K.058.002:DATABIN.4"
+    },
+    {
+      "signal": "beb[0]",
+      "route": "HMC.025.000:IOINTDQDIN.64 M10K.058.002:BYTEENABLEB.0"
+    },
+    {
+      "signal": "da[4]",
+      "route": "GPIO.056.000.2:DATAIN.0 M10K.058.002:DATAAIN.4"
+    },
+    {
+      "signal": "db[14]",
+      "route": "HMC.025.000:IOINTDQDIN.29 M10K.058.002:DATABIN.14"
+    },
+    {
+      "signal": "qa[13]",
+      "route": "M10K.058.002:DATAAOUT.13 HMC.025.000:IOINTDQDOUT.84"
+    },
+    {
+      "signal": "qb[8]",
+      "route": "M10K.058.002:DATABOUT.8 HMC.025.000:IOINTDQSDOUT.12"
+    },
+    {
+      "signal": "da[19]",
+      "route": "HMC.025.000:IOINTDQDIN.57 M10K.058.002:DATAAIN.19"
+    },
+    {
+      "signal": "ab[8]",
+      "route": "HMC.025.000:IOINTDQDIN.36 M10K.058.002:ADDRB.11"
+    },
+    {
+      "signal": "db[19]",
+      "route": "GPIO.068.000.0:DATAIN.0 M10K.058.002:DATABIN.19"
+    },
+    {
+      "signal": "da[13]",
+      "route": "GPIO.052.000.1:DATAIN.0 M10K.058.002:DATAAIN.13"
+    },
+    {
+      "signal": "ab[0]",
+      "route": "GPIO.036.000.2:DATAIN.1 M10K.058.002:ADDRB.3"
+    },
+    {
+      "signal": "db[17]",
+      "route": "HMC.025.000:IOINTDQDIN.100 M10K.058.002:DATABIN.17"
+    },
+    {
+      "signal": "ab[1]",
+      "route": "GPIO.056.000.0:DATAIN.0 M10K.058.002:ADDRB.4"
+    },
+    {
+      "signal": "db[8]",
+      "route": "GPIO.064.000.2:DATAIN.0 M10K.058.002:DATABIN.8"
+    },
+    {
+      "signal": "qa[14]",
+      "route": "M10K.058.002:DATAAOUT.14 HMC.025.000:IOINTADDRDOUT.8"
+    },
+    {
+      "signal": "db[15]",
+      "route": "GPIO.036.000.3:DATAIN.1 M10K.058.002:DATABIN.15"
+    },
+    {
+      "signal": "da[10]",
+      "route": "GPIO.040.000.3:DATAIN.0 M10K.058.002:DATAAIN.10"
+    },
+    {
+      "signal": "qb[17]",
+      "route": "M10K.058.002:DATABOUT.17 HMC.025.000:IOINTRASNDOUT.0"
+    },
+    {
+      "signal": "qb[15]",
+      "route": "M10K.058.002:DATABOUT.15 HMC.025.000:IOINTADDRDOUT.56"
+    },
+    {
+      "signal": "qa[0]",
+      "route": "M10K.058.002:DATAAOUT.0 HMC.025.000:IOINTDQDOUT.20"
+    },
+    {
+      "signal": "da[1]",
+      "route": "GPIO.078.000.3:DATAIN.0 M10K.058.002:DATAAIN.1"
+    },
+    {
+      "signal": "aa[3]",
+      "route": "GPIO.060.000.1:DATAIN.1 M10K.058.002:ADDRA.6"
+    },
+    {
+      "signal": "ena",
+      "route": "GPIO.036.000.0:DATAIN.1 M10K.058.002:ENABLE.1"
+    },
+    {
+      "signal": "web",
+      "route": "GPIO.034.000.2:DATAIN.1 M10K.058.002:WREN.1"
+    },
+    {
+      "signal": "qb[16]",
+      "route": "M10K.058.002:DATABOUT.16 HMC.025.000:IOINTADDRDOUT.44"
+    },
+    {
+      "signal": "da[2]",
+      "route": "HMC.025.000:IOINTDQDIN.4 M10K.058.002:DATAAIN.2"
+    },
+    {
+      "signal": "da[12]",
+      "route": "GPIO.068.000.1:DATAIN.0 M10K.058.002:DATAAIN.12"
+    },
+    {
+      "signal": "qa[16]",
+      "route": "M10K.058.002:DATAAOUT.16 GPIO.004.000.1:DATAOUT.0"
+    },
+    {
+      "signal": "qb[18]",
+      "route": "M10K.058.002:DATABOUT.18 HMC.025.000:IOINTADDRDOUT.32"
+    },
+    {
+      "signal": "da[11]",
+      "route": "HMC.025.000:IOINTDQDIN.137 M10K.058.002:DATAAIN.11"
+    },
+    {
+      "signal": "qb[5]",
+      "route": "M10K.058.002:DATABOUT.5 HMC.025.000:IOINTADDRDOUT.48"
+    },
+    {
+      "signal": "aa[0]",
+      "route": "GPIO.050.000.3:DATAIN.1 M10K.058.002:ADDRA.3"
+    },
+    {
+      "signal": "qb[4]",
+      "route": "M10K.058.002:DATABOUT.4 GPIO.034.000.3:DATAOUT.0"
+    },
+    {
+      "signal": "qb[0]",
+      "route": "M10K.058.002:DATABOUT.0 GPIO.026.000.3:DATAOUT.0"
+    },
+    {
+      "signal": "ab[6]",
+      "route": "GPIO.089.009.0:DATAIN.0 M10K.058.002:ADDRB.9"
+    },
+    {
+      "signal": "qa[9]",
+      "route": "M10K.058.002:DATAAOUT.9 HMC.025.000:IOINTADDRDOUT.60"
+    },
+    {
+      "signal": "qa[5]",
+      "route": "M10K.058.002:DATAAOUT.5 HMC.025.000:IOINTDQDOUT.12"
+    },
+    {
+      "signal": "db[16]",
+      "route": "HMC.025.000:IOINTDQDIN.88 M10K.058.002:DATABIN.16"
+    },
+    {
+      "signal": "qa[12]",
+      "route": "M10K.058.002:DATAAOUT.12 GPIO.008.000.3:DATAOUT.0"
+    },
+    {
+      "signal": "da[14]",
+      "route": "GPIO.076.000.1:DATAIN.1 M10K.058.002:DATAAIN.14"
+    },
+    {
+      "signal": "db[7]",
+      "route": "GPIO.040.081.1:DATAIN.0 M10K.058.002:DATABIN.7"
+    },
+    {
+      "signal": "ab[7]",
+      "route": "GPIO.028.000.3:DATAIN.0 M10K.058.002:ADDRB.10"
+    },
+    {
+      "signal": "db[3]",
+      "route": "GPIO.062.000.3:DATAIN.1 M10K.058.002:DATABIN.3"
+    },
+    {
+      "signal": "qa[3]",
+      "route": "M10K.058.002:DATAAOUT.3 GPIO.004.000.3:DATAOUT.0"
+    },
+    {
+      "signal": "qa[18]",
+      "route": "M10K.058.002:DATAAOUT.18 HMC.025.000:IOINTDQDOUT.152"
+    },
+    {
+      "signal": "db[12]",
+      "route": "GPIO.038.000.1:DATAIN.0 M10K.058.002:DATABIN.12"
+    },
+    {
+      "signal": "enb",
+      "route": "GPIO.040.000.0:DATAIN.0 M10K.058.002:ENABLE.0"
+    },
+    {
+      "signal": "db[0]",
+      "route": "GPIO.060.000.2:DATAIN.0 M10K.058.002:DATABIN.0"
+    },
+    {
+      "signal": "aa[6]",
+      "route": "GPIO.034.000.1:DATAIN.0 M10K.058.002:ADDRA.9"
+    },
+    {
+      "signal": "qa[8]",
+      "route": "M10K.058.002:DATAAOUT.8 HMC.025.000:IOINTDQDOUT.40"
+    },
+    {
+      "signal": "aa[5]",
+      "route": "GPIO.089.004.0:DATAIN.1 M10K.058.002:ADDRA.8"
+    },
+    {
+      "signal": "db[13]",
+      "route": "HMC.025.000:IOINTDQDIN.8 M10K.058.002:DATABIN.13"
+    },
+    {
+      "signal": "qb[11]",
+      "route": "M10K.058.002:DATABOUT.11 HMC.025.000:IOINTDQDOUT.72"
+    },
+    {
+      "signal": "db[11]",
+      "route": "GPIO.040.000.1:DATAIN.0 M10K.058.002:DATABIN.11"
+    },
+    {
+      "signal": "db[6]",
+      "route": "GPIO.004.000.2:DATAIN.1 M10K.058.002:DATABIN.6"
+    },
+    {
+      "signal": "qa[10]",
+      "route": "M10K.058.002:DATAAOUT.10 HMC.025.000:IOINTCASNDOUT.0"
+    },
+    {
+      "signal": "qa[4]",
+      "route": "M10K.058.002:DATAAOUT.4 GPIO.070.000.3:DATAOUT.0"
+    },
+    {
+      "signal": "da[3]",
+      "route": "GPIO.030.000.2:DATAIN.0 M10K.058.002:DATAAIN.3"
+    },
+    {
+      "signal": "qb[19]",
+      "route": "M10K.058.002:DATABOUT.19 HMC.025.000:IOINTADDRDOUT.12"
+    },
+    {
+      "signal": "bea[0]",
+      "route": "HMC.025.000:IOINTDQDIN.61 M10K.058.002:BYTEENABLEA.0"
+    },
+    {
+      "signal": "bea[1]",
+      "route": "GPIO.072.000.2:DATAIN.0 M10K.058.002:BYTEENABLEA.1"
+    },
+    {
+      "signal": "aa[1]",
+      "route": "GPIO.054.000.3:DATAIN.1 M10K.058.002:ADDRA.4"
+    },
+    {
+      "signal": "aa[4]",
+      "route": "GPIO.006.000.3:DATAIN.0 M10K.058.002:ADDRA.7"
+    },
+    {
+      "signal": "db[2]",
+      "route": "GPIO.068.000.2:DATAIN.1 M10K.058.002:DATABIN.2"
+    },
+    {
+      "signal": "da[9]",
+      "route": "HMC.025.000:IOINTDQDIN.93 M10K.058.002:DATAAIN.9"
+    },
+    {
+      "signal": "qa[7]",
+      "route": "M10K.058.002:DATAAOUT.7 HMC.025.000:IOINTDQDOUT.116"
+    },
+    {
+      "signal": "da[0]",
+      "route": "HMC.025.000:IOINTDQDIN.97 M10K.058.002:DATAAIN.0"
+    },
+    {
+      "signal": "qa[11]",
+      "route": "M10K.058.002:DATAAOUT.11 HMC.025.000:IOINTDQDOUT.48"
+    },
+    {
+      "signal": "db[10]",
+      "route": "GPIO.036.000.1:DATAIN.1 M10K.058.002:DATABIN.10"
+    },
+    {
+      "signal": "da[15]",
+      "route": "GPIO.032.000.0:DATAIN.1 M10K.058.002:DATAAIN.15"
+    },
+    {
+      "signal": "qb[6]",
+      "route": "M10K.058.002:DATABOUT.6 HMC.025.000:IOINTDQDOUT.44"
+    },
+    {
+      "signal": "aa[2]",
+      "route": "GPIO.008.000.2:DATAIN.0 M10K.058.002:ADDRA.5"
+    },
+    {
+      "signal": "da[17]",
+      "route": "GPIO.006.000.1:DATAIN.0 M10K.058.002:DATAAIN.17"
+    },
+    {
+      "signal": "aa[7]",
+      "route": "GPIO.006.000.2:DATAIN.0 M10K.058.002:ADDRA.10"
+    },
+    {
+      "signal": "da[6]",
+      "route": "GPIO.052.000.2:DATAIN.1 M10K.058.002:DATAAIN.6"
+    },
+    {
+      "signal": "qa[15]",
+      "route": "M10K.058.002:DATAAOUT.15 HMC.025.000:IOINTCSNDOUT.4"
+    },
+    {
+      "signal": "qa[1]",
+      "route": "M10K.058.002:DATAAOUT.1 HMC.025.000:IOINTDQSDOUT.0"
+    },
+    {
+      "signal": "db[1]",
+      "route": "HMC.025.000:IOINTDQDIN.125 M10K.058.002:DATABIN.1"
+    },
+    {
+      "signal": "da[16]",
+      "route": "HMC.025.000:IOINTDQDIN.113 M10K.058.002:DATAAIN.16"
+    },
+    {
+      "signal": "wea",
+      "route": "HMC.025.000:IOINTDQDIN.120 M10K.058.002:WREN.0"
+    },
+    {
+      "signal": "qb[10]",
+      "route": "M10K.058.002:DATABOUT.10 GPIO.002.000.2:DATAOUT.0"
+    },
+    {
+      "signal": "qb[14]",
+      "route": "M10K.058.002:DATABOUT.14 GPIO.006.000.0:DATAOUT.0"
+    },
+    {
+      "signal": "da[5]",
+      "route": "GPIO.064.000.1:DATAIN.0 M10K.058.002:DATAAIN.5"
+    },
+    {
+      "signal": "ab[3]",
+      "route": "HMC.025.000:IOINTDQDIN.132 M10K.058.002:ADDRB.6"
+    },
+    {
+      "signal": "qa[2]",
+      "route": "M10K.058.002:DATAAOUT.2 GPIO.064.000.0:DATAOUT.0"
+    }
+  ]
+}

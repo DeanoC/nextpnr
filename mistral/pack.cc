@@ -18,12 +18,95 @@
  */
 
 #include "design_utils.h"
+#include "dsp.h"
 #include "log.h"
 #include "nextpnr.h"
+#include "pll.h"
 #include "util.h"
 
 NEXTPNR_NAMESPACE_BEGIN
 namespace {
+
+bool is_dsp_multiplier(IdString type)
+{
+    return type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27);
+}
+
+bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool def = false)
+{
+    auto it = params.find(key);
+    if (it == params.end())
+        return def;
+    if (!it->second.is_string)
+        return it->second.as_bool();
+    const std::string &value = it->second.as_string();
+    if (value == "1" || value == "true" || value == "TRUE" || value == "on" || value == "reg" ||
+        value == "registered")
+        return true;
+    if (value == "0" || value == "false" || value == "FALSE" || value == "off" || value == "bypass")
+        return false;
+    log_error("DSP parameter expects a boolean or register/bypass value, got '%s'.\n", value.c_str());
+    return def;
+}
+
+bool dsp_reg_param(const dict<IdString, Property> &params, IdString key)
+{
+    return dsp_bool_param(params, key, false);
+}
+
+bool dsp_shared_control_nets_equal(const CellInfo *a, const CellInfo *b)
+{
+    for (IdString port : {id_CLK, id_ACLR, id_ENA, id_ACCUMULATE, id_SUB, id_NEGATE, id_LOADCONST}) {
+        const NetInfo *an = a->getPort(port);
+        const NetInfo *bn = b->getPort(port);
+        // A hard constant has no net after packing, so compare both the net
+        // identity and the retained pin state. Otherwise two M9 lanes tied
+        // to opposite constants would be incorrectly clustered and the
+        // bitstream would apply the first lane's shared setting to both.
+        if (an != bn || a->get_pin_state(port) != b->get_pin_state(port))
+            return false;
+    }
+    return true;
+}
+
+bool dsp_control_used(const CellInfo *cell, IdString port)
+{
+    if (cell->getPort(port) != nullptr)
+        return true;
+    auto state = cell->get_pin_state(port);
+    return state == PIN_1 || state == PIN_INV;
+}
+
+bool dsp_has_bus(const CellInfo *cell, const BaseCtx *ctx, const char *base)
+{
+    std::string prefix = std::string(base) + "[";
+    for (const auto &port : cell->ports)
+        if (port.first.str(ctx).find(prefix) == 0)
+            return true;
+    return false;
+}
+
+bool dsp_shared_config_equal(const CellInfo *a, const CellInfo *b)
+{
+    if (dsp_bool_param(a->params, id_A_SIGNED, true) != dsp_bool_param(b->params, id_A_SIGNED, true) ||
+        dsp_bool_param(a->params, id_B_SIGNED, true) != dsp_bool_param(b->params, id_B_SIGNED, true))
+        return false;
+    for (IdString key : {id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ, id_INREG_CTRL_BX,
+                         id_INREG_CTRL_BY, id_INREG_CTRL_BZ, id_OREG_CTRL, id_PREADDER_EN, id_PREADDER_SUB,
+                         id_CASCADE_EN, id_CASCADE_1ST_EN, id_CHAIN_OUTPUT_EN}) {
+        if (dsp_bool_param(a->params, key) != dsp_bool_param(b->params, key))
+            return false;
+    }
+    return dsp_shared_control_nets_equal(a, b);
+}
+
+bool is_supported_dsp_param(IdString key)
+{
+    return key.in(id_A_SIGNED, id_B_SIGNED, id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ,
+                  id_INREG_CTRL_BX, id_INREG_CTRL_BY, id_INREG_CTRL_BZ, id_OREG_CTRL, id_PREADDER_EN,
+                  id_PREADDER_SUB, id_CASCADE_EN, id_CASCADE_1ST_EN, id_CHAIN_OUTPUT_EN);
+}
+
 struct MistralPacker
 {
     MistralPacker(Context *ctx) : ctx(ctx) {};
@@ -91,7 +174,6 @@ struct MistralPacker
 
     void process_inv_constants(CellInfo *cell)
     {
-        // TODO: we might need to create missing inputs here in some cases so we can tie them to the correct constant?
         // Fold inverters and constants into a cell
         for (auto &port : cell->ports) {
             // Iterate over all inputs
@@ -125,6 +207,53 @@ struct MistralPacker
                     cell->connectPort(port_name, (req_mux == PIN_1) ? vcc_net : gnd_net);
                 }
             }
+        }
+    }
+
+    void ensure_dsp_control_ports()
+    {
+        // The Yosys DSP cells intentionally contain only the controls used by
+        // the RTL. The physical block still needs explicit defaults on its
+        // control inputs, so materialise the omitted inputs before constant
+        // folding. This gives bitstream generation a PIN_0/PIN_1 state to
+        // encode instead of silently leaving the hardware default selected.
+        const std::array<IdString, 7> controls{
+                id_CLK, id_ACLR, id_ENA, id_ACCUMULATE, id_SUB, id_NEGATE, id_LOADCONST};
+        for (auto &entry : ctx->cells) {
+            CellInfo *cell = entry.second.get();
+            if (!is_dsp_multiplier(cell->type))
+                continue;
+            for (IdString control : controls)
+                if (!cell->ports.count(control))
+                    cell->addInput(control);
+        }
+    }
+
+    bool is_global_dsp_clock(const NetInfo *net) const
+    {
+        // MISTRAL_CLKBUF.Q is the output of the dedicated global clock path.
+        // Any other source (including an HPS/GPIO signal) needs the DSP's
+        // fabric CLKIN alternative.
+        return net != nullptr && net->driver.cell != nullptr &&
+               net->driver.cell->type.in(id_MISTRAL_CLKBUF, id_MISTRAL_CLKENA) && net->driver.port == id_Q;
+    }
+
+    void select_dsp_control_pinmaps()
+    {
+        const IdString clk_fabric = ctx->id("CLK_FABRIC");
+        const IdString aclr_fabric = ctx->id("ACLR_FABRIC");
+        for (auto &entry : ctx->cells) {
+            CellInfo *cell = entry.second.get();
+            if (!is_dsp_multiplier(cell->type))
+                continue;
+
+            NetInfo *clk = cell->getPort(id_CLK);
+            if (clk != nullptr && !is_global_dsp_clock(clk))
+                cell->pin_data[id_CLK].bel_pins = {clk_fabric};
+
+            NetInfo *aclr = cell->getPort(id_ACLR);
+            if (aclr != nullptr && !is_global_dsp_clock(aclr))
+                cell->pin_data[id_ACLR].bel_pins = {aclr_fabric};
         }
     }
 
@@ -354,6 +483,9 @@ struct MistralPacker
             CellInfo *ci = cell.second.get();
             if (ci->type != id_MISTRAL_MLAB)
                 continue;
+            auto init = ci->params.find(id_INIT);
+            if (init != ci->params.end() && (init->second.is_string || init->second.str.size() > 32))
+                log_error("MLAB '%s': INIT must be a numeric value of at most 32 bits.\n", ctx->nameOf(ci));
             auto key = ctx->get_mlab_key(ci, true);
             int key_idx = mlab_keys(key);
             if (key_idx >= int(mlab_groups.size()))
@@ -382,12 +514,138 @@ struct MistralPacker
         }
     }
 
+    void setup_tdp_m10k(CellInfo *ci)
+    {
+        int dbits = int_or_default(ci->params, id_CFG_DBITS, 10);
+        int abits = int_or_default(ci->params, id_CFG_ABITS, 10);
+        int bdbits = int_or_default(ci->params, id_CFG_RD_DBITS, dbits);
+        int babits = int_or_default(ci->params, id_CFG_RD_ABITS, abits);
+        bool mixed = bool_or_default(ci->params, id_CFG_MIXED_WIDTH, false);
+        bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
+        auto geometry = [](int a, int d) { return (d == 10 && a == 10) || (d == 20 && a == 9); };
+        if (mixed && byte_enable)
+            log_error("M10K '%s': true dual-port cannot combine mixed widths and byte enables.\n", ctx->nameOf(ci));
+        if (mixed && (!ci->params.count(id_CFG_RD_ABITS) || !ci->params.count(id_CFG_RD_DBITS)))
+            log_error("M10K '%s': mixed TDP requires explicit B geometry (CFG_RD_ABITS/CFG_RD_DBITS).\n", ctx->nameOf(ci));
+        if (!geometry(abits, dbits) || !geometry(babits, bdbits))
+            log_error("M10K '%s': true dual-port requires 1024x10 or 512x20 on each port.\n", ctx->nameOf(ci));
+        if (!mixed && (babits != abits || bdbits != dbits))
+            log_error("M10K '%s': unequal TDP B geometry requires CFG_MIXED_WIDTH=1.\n", ctx->nameOf(ci));
+        if (byte_enable && dbits != 20)
+            log_error("M10K '%s': true dual-port byte enables require 512x20 ports.\n", ctx->nameOf(ci));
+        if (byte_enable) {
+            for (const auto &port : ci->ports) {
+                const auto &name = port.first.str(ctx);
+                if ((name.find("A1BE[") == 0 || name.find("B1BE[") == 0) &&
+                    name != "A1BE[0]" && name != "A1BE[1]" && name != "B1BE[0]" && name != "B1BE[1]")
+                    log_error("M10K '%s': true dual-port byte masks must have exactly two bits.\n", ctx->nameOf(ci));
+            }
+            for (char side : {'A', 'B'}) {
+                for (int bit = 0; bit < 2; bit++) {
+                    IdString port = ctx->idf("%c1BE[%d]", side, bit);
+                    if (!ci->getPort(port))
+                        log_error("M10K '%s': true dual-port byte mode requires connected %s.\n",
+                                  ctx->nameOf(ci), ctx->nameOf(port));
+                    ci->pin_data[port].bel_pins = {ctx->idf("BYTEENABLE%c[%d]", side, bit)};
+                }
+            }
+        }
+        if (!ci->getPort(id_CLK1) || !ci->getPort(id_CLK2))
+            log_error("M10K '%s': true dual-port requires both clocks.\n", ctx->nameOf(ci));
+        for (IdString port : {id_A1EN, id_B1EN, id_A1WE, id_B1WE})
+            if (!ci->getPort(port))
+                log_error("M10K '%s': true dual-port requires connected %s.\n", ctx->nameOf(ci), ctx->nameOf(port));
+        ci->params[id_CFG_ABITS] = abits;
+        ci->params[id_CFG_DBITS] = dbits;
+        ci->params[id_CFG_DUAL_CLOCK] = 1;
+        if (mixed) {
+            ci->params[id_CFG_RD_ABITS] = babits;
+            ci->params[id_CFG_RD_DBITS] = bdbits;
+        }
+        // Match the retained Quartus mixed-TDP control mux assignments.
+        bool unequal = dbits != bdbits;
+        bool swap_wren = unequal && dbits == 20;
+        ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
+        ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
+        ci->pin_data[id_A1EN].bel_pins = {ctx->idf("ENABLE[%d]", unequal ? 0 : 1)};
+        ci->pin_data[id_B1EN].bel_pins = {ctx->idf("ENABLE[%d]", unequal ? 1 : 0)};
+        ci->pin_data[id_A1WE].bel_pins = {ctx->idf("WREN[%d]", swap_wren ? 1 : 0)};
+        ci->pin_data[id_B1WE].bel_pins = {ctx->idf("WREN[%d]", swap_wren ? 0 : 1)};
+        for (int port = 0; port < 2; port++) {
+            char side = port == 0 ? 'A' : 'B';
+            int addr_bits = port == 0 ? abits : babits;
+            int data_bits = port == 0 ? dbits : bdbits;
+            for (int bit = 0; bit < addr_bits; bit++)
+                ci->pin_data[ctx->idf("%c1ADDR[%d]", side, bit)].bel_pins = {
+                        ctx->idf("ADDR%c[%d]", side, bit + 12 - addr_bits)};
+            for (int bit = 0; bit < data_bits; bit++) {
+                auto &pins = ci->pin_data[ctx->idf("%c1DATA[%d]", side, bit)].bel_pins;
+                pins = {ctx->idf("DATA%cIN[%d]", side, bit)};
+                if (data_bits == 10)
+                    pins.push_back(ctx->idf("DATA%cIN[%d]", side, bit + 10));
+                ci->pin_data[ctx->idf("%c1Q[%d]", side, bit)].bel_pins = {
+                        ctx->idf("DATA%cOUT[%d]", side, bit)};
+            }
+        }
+    }
+
+    void setup_mixed_m10k(CellInfo *ci)
+    {
+        int wb = ci->params.at(id_CFG_DBITS).as_int64();
+        int wa = ci->params.at(id_CFG_ABITS).as_int64();
+        int rb = int_or_default(ci->params, id_CFG_RD_DBITS, wb);
+        int ra = int_or_default(ci->params, id_CFG_RD_ABITS, wa);
+        auto geometry = [](int a, int d) {
+            return (d == 10 && a == 10) || (d == 20 && a == 9) || (d == 40 && a == 8);
+        };
+        if (!geometry(wa, wb) || !geometry(ra, rb))
+            log_error("M10K '%s': mixed widths require 1024x10, 512x20 or 256x40 ports.\n", ctx->nameOf(ci));
+        if (!bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false) || ci->getPort(id_CLK1) == nullptr || ci->getPort(id_CLK2) == nullptr)
+            log_error("M10K '%s': mixed widths require CFG_DUAL_CLOCK=1 and both clocks.\n", ctx->nameOf(ci));
+        if (bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false) ||
+            ci->getPort(ctx->id("A1BE[0]")) || ci->getPort(ctx->id("A1BE[1]")))
+            log_error("M10K '%s': mixed-width byte enables are not supported.\n", ctx->nameOf(ci));
+        ci->pin_data[id_A1EN].bel_pins = {ctx->id("WREN[0]"), ctx->id("ENABLE[1]")};
+        ci->pin_data[id_B1EN].bel_pins = {ctx->id("ENABLE[0]")};
+        ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
+        ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
+        for (int bit = 0; bit < wa; bit++)
+            ci->pin_data[ctx->idf("A1ADDR[%d]", bit)].bel_pins = {ctx->idf("ADDRA[%d]", bit + 12 - wa)};
+        for (int bit = 0; bit < ra; bit++)
+            ci->pin_data[ctx->idf("B1ADDR[%d]", bit)].bel_pins = {ctx->idf("ADDRB[%d]", bit + 12 - ra)};
+        for (int bit = 0; bit < wb; bit++) {
+            auto &pins = ci->pin_data[ctx->idf("A1DATA[%d]", bit)].bel_pins;
+            pins = {ctx->idf(bit < 20 ? "DATAAIN[%d]" : "DATABIN[%d]", bit % 20)};
+            if (wb == 10)
+                pins.push_back(ctx->idf("DATAAIN[%d]", bit + 10));
+        }
+        for (int bit = 0; bit < rb; bit++)
+            ci->pin_data[ctx->idf("B1DATA[%d]", bit)].bel_pins = {
+                ctx->idf(rb == 40 && bit < 20 ? "DATAAOUT[%d]" : "DATABOUT[%d]", bit % 20)};
+    }
+
     void setup_m10ks()
     {
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
+            if (ci->type == id_MISTRAL_M10K_TDP) {
+                // Both SDP and TDP occupy one existing physical M10K BEL.
+                ci->type = id_MISTRAL_M10K;
+                ci->params[id_CFG_TDP] = 1;
+            }
             if (ci->type != id_MISTRAL_M10K)
                 continue;
+            if (bool_or_default(ci->params, id_CFG_TDP, false)) {
+                setup_tdp_m10k(ci);
+                continue;
+            }
+
+            if (bool_or_default(ci->params, id_CFG_MIXED_WIDTH, false)) {
+                setup_mixed_m10k(ci);
+                continue;
+            }
+            if (ci->params.count(id_CFG_RD_DBITS) || ci->params.count(id_CFG_RD_ABITS))
+                log_error("M10K '%s': separate read geometry requires CFG_MIXED_WIDTH=1.\n", ctx->nameOf(ci));
 
             auto abits = ci->params.at(id_CFG_ABITS).as_int64();
             auto dbits = ci->params.at(id_CFG_DBITS).as_int64();
@@ -403,17 +661,44 @@ struct MistralPacker
             // It *does* generate ACLR[01] but leaves them unconnected if unused.
 
             // Enables.
-            // RDEN[1] is left unconnected.
-            if (dbits == 40)
+            bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
+            auto byte_enable_port = [&](int bit) { return ci->getPort(ctx->idf("A1BE[%d]", bit)); };
+            if (byte_enable && dbits != 20)
+                log_error("M10K '%s': CFG_BYTE_ENABLE is currently supported only for 20-bit data.\n",
+                          ctx->nameOf(ci));
+            if (byte_enable && (byte_enable_port(0) == nullptr || byte_enable_port(1) == nullptr))
+                log_error("M10K '%s': CFG_BYTE_ENABLE requires a connected A1BE[1:0] port.\n",
+                          ctx->nameOf(ci));
+            if (!byte_enable && (byte_enable_port(0) != nullptr || byte_enable_port(1) != nullptr))
+                log_error("M10K '%s': A1BE requires CFG_BYTE_ENABLE=1.\n", ctx->nameOf(ci));
+            // The byte-enabled 20-bit mode uses positive WREN[0] and the
+            // corresponding core-enable lane. Legacy cells retain the
+            // established active-low WREN[1] mapping (or WREN[0] at 40 bit).
+            if (byte_enable)
+                ci->pin_data[id_A1EN].bel_pins = {ctx->id("WREN[0]"), ctx->id("ENABLE[1]")};
+            else if (dbits == 40)
                 ci->pin_data[ctx->id("A1EN")].bel_pins = {ctx->id("WREN[0]")};
             else
                 ci->pin_data[ctx->id("A1EN")].bel_pins = {ctx->id("WREN[1]")};
-            ci->pin_data[ctx->id("B1EN")].bel_pins = {ctx->id("RDEN[0]")};
+            if (byte_enable) {
+                for (int bit = 0; bit < 2; bit++)
+                    ci->pin_data[ctx->idf("A1BE[%d]", bit)].bel_pins = {ctx->idf("BYTEENABLEA[%d]", bit)};
+            }
 
-            // Clocks.
-            ci->pin_data[ctx->id("CLK1")].bel_pins = {ctx->id("CLKIN[0]")};
+            // Legacy cells use CLK1 for both ports; new SDP cells have an
+            // independent read clock on CLK2.
+            bool dual_clock = bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false);
+            ci->pin_data[id_B1EN].bel_pins = {ctx->id(dual_clock ? "ENABLE[0]" : "RDEN[0]")};
+            if (ci->getPort(id_CLK1) == nullptr || (dual_clock && ci->getPort(id_CLK2) == nullptr))
+                log_error("M10K '%s' requires a connected %s clock.\n", ctx->nameOf(ci),
+                          ci->getPort(id_CLK1) == nullptr ? "CLK1" : "CLK2");
+            if (!dual_clock && ci->getPort(id_CLK2) != nullptr)
+                log_error("M10K '%s': CLK2 requires CFG_DUAL_CLOCK=1.\n", ctx->nameOf(ci));
+            ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
+            if (dual_clock)
+                ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
 
-            // Enables left unconnected.
+            // Other clock-enable pins remain unconnected.
 
             // Address lines.
 
@@ -491,14 +776,626 @@ struct MistralPacker
         }
     }
 
+    void constrain_dsps()
+    {
+        std::vector<CellInfo *> multipliers;
+        for (auto &cell : ctx->cells) {
+            CellInfo *ci = cell.second.get();
+            if (is_dsp_multiplier(ci->type)) {
+                for (auto &param : ci->params) {
+                    if (!is_supported_dsp_param(param.first))
+                        log_error("DSP cell '%s' has unsupported parameter '%s'.\n", ctx->nameOf(ci),
+                                  ctx->nameOf(param.first));
+                }
+                if (dsp_reg_param(ci->params, id_INREG_CTRL_AX) || dsp_reg_param(ci->params, id_INREG_CTRL_AY) ||
+                    dsp_reg_param(ci->params, id_INREG_CTRL_AZ) || dsp_reg_param(ci->params, id_INREG_CTRL_BX) ||
+                    dsp_reg_param(ci->params, id_INREG_CTRL_BY) || dsp_reg_param(ci->params, id_INREG_CTRL_BZ) ||
+                    dsp_reg_param(ci->params, id_OREG_CTRL)) {
+                    if (ci->getPort(id_CLK) == nullptr && ci->get_pin_state(id_CLK) != PIN_0 &&
+                        ci->get_pin_state(id_CLK) != PIN_1)
+                        log_error("DSP cell '%s' enables a register without a CLK port.\n", ctx->nameOf(ci));
+                }
+                if (ci->type == id_MISTRAL_MUL18X18 && dsp_bool_param(ci->params, id_PREADDER_EN))
+                    log_error("MISTRAL_MUL18X18 does not support PREADDER_EN; use the M9 preadder mode.\n");
+                if (ci->type == id_MISTRAL_MUL18X18 && dsp_has_bus(ci, ctx, "Z"))
+                    log_error("MISTRAL_MUL18X18 does not support a Z preadder port in M18X18P36 mode.\n");
+                if (ci->type == id_MISTRAL_MUL9X9 && dsp_has_bus(ci, ctx, "C"))
+                    log_error("MISTRAL_MUL9X9 does not support a C addend port.\n");
+                if (ci->type == id_MISTRAL_MUL9X9 && dsp_has_bus(ci, ctx, "Z") &&
+                    !dsp_bool_param(ci->params, id_PREADDER_EN))
+                    log_error("MISTRAL_MUL9X9 Z preadder ports require PREADDER_EN.\n");
+                if (ci->type == id_MISTRAL_MUL27X27 &&
+                    (dsp_bool_param(ci->params, id_PREADDER_EN) || dsp_has_bus(ci, ctx, "C") ||
+                     dsp_has_bus(ci, ctx, "Z")))
+                    log_error("MISTRAL_MUL27X27 does not support addend or preadder ports.\n");
+                if (ci->type == id_MISTRAL_MUL9X9 &&
+                    (dsp_control_used(ci, id_ACCUMULATE) || dsp_control_used(ci, id_SUB) ||
+                     dsp_control_used(ci, id_NEGATE) || dsp_control_used(ci, id_LOADCONST) ||
+                     dsp_bool_param(ci->params, id_CASCADE_EN) || dsp_bool_param(ci->params, id_CASCADE_1ST_EN) ||
+                     dsp_bool_param(ci->params, id_CHAIN_OUTPUT_EN)))
+                    log_error("MISTRAL_MUL9X9 does not support accumulator or cascade controls.\n");
+                multipliers.push_back(ci);
+            }
+        }
+        if (multipliers.empty())
+            return;
+
+        std::sort(multipliers.begin(), multipliers.end(), [](CellInfo *a, CellInfo *b) {
+            if (a->type != b->type)
+                return a->type.index < b->type.index;
+            bool a_signed = dsp_bool_param(a->params, id_A_SIGNED, true);
+            bool b_signed = dsp_bool_param(b->params, id_A_SIGNED, true);
+            if (a_signed != b_signed)
+                return a_signed < b_signed;
+            a_signed = dsp_bool_param(a->params, id_B_SIGNED, true);
+            b_signed = dsp_bool_param(b->params, id_B_SIGNED, true);
+            if (a_signed != b_signed)
+                return a_signed < b_signed;
+            for (IdString key : {id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ, id_INREG_CTRL_BX,
+                                 id_INREG_CTRL_BY, id_INREG_CTRL_BZ, id_OREG_CTRL, id_PREADDER_EN, id_PREADDER_SUB,
+                                 id_CASCADE_EN, id_CASCADE_1ST_EN, id_CHAIN_OUTPUT_EN}) {
+                bool av = dsp_bool_param(a->params, key);
+                bool bv = dsp_bool_param(b->params, key);
+                if (av != bv)
+                    return av < bv;
+            }
+            return a->name.str(a->ctx) < b->name.str(b->ctx);
+        });
+
+        for (size_t i = 0; i < multipliers.size();) {
+            CellInfo *root = multipliers.at(i);
+            if (root->type != id_MISTRAL_MUL9X9) {
+                ++i;
+                continue;
+            }
+            root->cluster = root->name;
+            root->constr_abs_z = true;
+            root->constr_z = 0;
+
+            bool a_signed = dsp_bool_param(root->params, id_A_SIGNED, true);
+            bool b_signed = dsp_bool_param(root->params, id_B_SIGNED, true);
+            size_t end = i + 1;
+            while (end < multipliers.size() && end - i < mistral_dsp_lanes.size() &&
+                   multipliers.at(end)->type == id_MISTRAL_MUL9X9 &&
+                   dsp_bool_param(multipliers.at(end)->params, id_A_SIGNED, true) == a_signed &&
+                   dsp_bool_param(multipliers.at(end)->params, id_B_SIGNED, true) == b_signed &&
+                   dsp_shared_config_equal(root, multipliers.at(end)))
+                ++end;
+            for (size_t lane = i; lane < end; ++lane) {
+                CellInfo *ci = multipliers.at(lane);
+                if (dsp_bool_param(ci->params, id_A_SIGNED, true) != a_signed ||
+                    dsp_bool_param(ci->params, id_B_SIGNED, true) != b_signed) {
+                    log_error("MISTRAL_MUL9X9 cells '%s' and '%s' disagree on shared DSP signedness; "
+                              "three-lane packing requires matching A_SIGNED and B_SIGNED.\n",
+                              ctx->nameOf(root), ctx->nameOf(ci));
+                }
+                if (lane == i)
+                    continue;
+                ci->cluster = root->name;
+                ci->constr_x = 0;
+                ci->constr_y = 0;
+                ci->constr_abs_z = true;
+                ci->constr_z = int(lane - i);
+                root->constr_children.push_back(ci);
+            }
+            i = end;
+        }
+    }
+
+    void fold_inverted_pll_clock_buffers()
+    {
+        std::vector<IdString> remove;
+        for (auto &entry : ctx->cells) {
+            CellInfo *buf = entry.second.get();
+            if (buf->type != id_MISTRAL_CLKBUF) continue;
+            NetInfo *in = buf->getPort(id_A), *out = buf->getPort(id_Q);
+            if (!in || !out || !in->driver.cell || in->driver.cell->type != id_MISTRAL_NOT) continue;
+            NetInfo *source = in->driver.cell->getPort(id_A);
+            if (!source || !source->driver.cell || source->driver.cell->type != id_MISTRAL_CLKBUF) continue;
+            NetInfo *pll_out = source->driver.cell->getPort(id_A);
+            if (!pll_out || !pll_out->driver.cell || pll_out->driver.cell->type != id_altera_pll) continue;
+            std::vector<PortRef> users;
+            bool foldable = true;
+            for (auto user : out->users) {
+                if (user.cell->type != id_MISTRAL_FF || user.port != id_CLK) foldable = false;
+                users.push_back(user);
+            }
+            if (!foldable || users.empty()) continue;
+            if (buf->bel != BelId() || buf->attrs.count(ctx->id("BEL")) || buf->attrs.count(id_LOC) ||
+                buf->attrs.count(ctx->id("NEXTPNR_BEL")))
+                log_error("PLL inverted clock buffer '%s': placement constraint prevents folding.\n", ctx->nameOf(buf));
+            auto differs = [](const DelayPair &a, const DelayPair &b) {
+                return a.minDelay() != b.minDelay() || a.maxDelay() != b.maxDelay();
+            };
+            // An explicitly constrained inverse clock must describe the swapped waveform.
+            for (NetInfo *net : {in, out}) {
+                if (!net->clkconstr)
+                    continue;
+                NPNR_ASSERT(source->clkconstr);
+                if (source->clkconstr->phase_group != IdString())
+                    log_error("PLL inverted clock '%s': explicit clock constraint cannot describe the PLL phase.\n",
+                              ctx->nameOf(net));
+                if (differs(net->clkconstr->period, source->clkconstr->period) ||
+                    differs(net->clkconstr->high, source->clkconstr->low) ||
+                    differs(net->clkconstr->low, source->clkconstr->high))
+                    log_error("PLL inverted clock '%s': conflicting clock constraint.\n", ctx->nameOf(net));
+            }
+            // Expose the inverter directly to FF clock pins; pack_constants folds
+            // it into their hardware clock inversion and retains the original domain.
+            for (auto user : users) {
+                user.cell->disconnectPort(id_CLK);
+                user.cell->connectPort(id_CLK, in);
+            }
+            buf->disconnectPort(id_A);
+            buf->disconnectPort(id_Q);
+            ctx->nets.erase(out->name);
+            remove.push_back(buf->name);
+        }
+        for (IdString name : remove) ctx->cells.erase(name);
+    }
+
+    void setup_clock_enables()
+    {
+        std::vector<IdString> remove;
+        auto is_pll_clock = [&](NetInfo *net) {
+            return net && net->driver.cell && net->driver.cell->type == id_altera_pll &&
+                   net->driver.port.in(id_outclk, ctx->id("outclk[0]"), ctx->id("outclk[1]"),
+                                       ctx->id("outclk[2]"), ctx->id("outclk[3]"));
+        };
+        auto dedicated_source = [&](NetInfo *net) {
+            if (net && net->driver.cell && net->driver.cell->type == id_MISTRAL_CLKBUF && net->driver.port == id_Q) {
+                NetInfo *tap = net->driver.cell->getPort(id_A);
+                if (is_pll_clock(tap))
+                    return tap;
+            }
+            return net;
+        };
+        for (auto &entry : ctx->cells) {
+            CellInfo *ci = entry.second.get();
+            if (ci->type != ctx->id("cyclonev_clkena"))
+                continue;
+            auto parameter = [&](const char *name, const char *fallback) {
+                auto it = ci->params.find(ctx->id(name));
+                if (it == ci->params.end())
+                    return std::string(fallback);
+                if (!it->second.is_string)
+                    log_error("Clock enable '%s': parameter '%s' must be a string.\n", ctx->nameOf(ci), name);
+                return it->second.as_string();
+            };
+            std::string power_up = parameter("ena_register_power_up", "high");
+            if (power_up != "high" && power_up != "low")
+                log_error("Clock enable '%s': ena_register_power_up must be 'high' or 'low'.\n", ctx->nameOf(ci));
+            std::string clock_type = parameter("clock_type", "auto");
+            if (clock_type != "auto" && clock_type != "global clock" && clock_type != "Global Clock")
+                log_error("Clock enable '%s': only global clocks are supported.\n", ctx->nameOf(ci));
+            std::string register_mode = parameter("ena_register_mode", "always enabled");
+            if (register_mode != "falling edge" && register_mode != "double register")
+                log_error("Clock enable '%s': unsupported ena_register_mode; require 'falling edge' or 'double register'.\n",
+                          ctx->nameOf(ci));
+            for (auto expected : {std::make_pair("disable_mode", "low"), std::make_pair("test_syn", "high"),
+                                  std::make_pair("lpm_type", "cyclonev_clkena")}) {
+                if (parameter(expected.first, expected.second) != expected.second)
+                    log_error("Clock enable '%s': unsupported %s; require '%s'.\n",
+                              ctx->nameOf(ci), expected.first, expected.second);
+            }
+            for (auto &param : ci->params)
+                if (!param.first.in(ctx->id("clock_type"), ctx->id("ena_register_mode"),
+                                    ctx->id("ena_register_power_up"), ctx->id("disable_mode"),
+                                    ctx->id("test_syn"), ctx->id("lpm_type")))
+                    log_error("Clock enable '%s': unsupported parameter '%s'.\n", ctx->nameOf(ci), ctx->nameOf(param.first));
+            for (auto &port : ci->ports)
+                if (port.second.net && !port.first.in(ctx->id("inclk"), ctx->id("ena"), id_outclk, ctx->id("enaout")))
+                    log_error("Clock enable '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
+            NetInfo *input = dedicated_source(ci->getPort(ctx->id("inclk")));
+            NetInfo *enable = ci->getPort(ctx->id("ena"));
+            NetInfo *output = ci->getPort(id_outclk);
+            if (!is_pll_clock(input))
+                log_error("Clock enable '%s': input must come directly from a PLL clock output.\n", ctx->nameOf(ci));
+            if (!enable || !enable->driver.cell)
+                log_error("Clock enable '%s': ena must be driven.\n", ctx->nameOf(ci));
+            if (!output || output->users.entries() != 1 ||
+                (*output->users.begin()).cell->type != id_MISTRAL_CLKBUF || (*output->users.begin()).port != id_A)
+                log_error("Clock enable '%s': output must feed exactly one unconditional clock buffer.\n", ctx->nameOf(ci));
+            CellInfo *buffer = (*output->users.begin()).cell;
+            NetInfo *buffered = buffer->getPort(id_Q);
+            if (!buffered || buffered->users.empty())
+                log_error("Clock enable '%s': buffered output must have users.\n", ctx->nameOf(ci));
+            if (buffer->bel != BelId() || buffer->attrs.count(ctx->id("BEL")) || buffer->attrs.count(id_LOC) ||
+                buffer->attrs.count(ctx->id("NEXTPNR_BEL")))
+                log_error("Clock enable '%s': output buffer placement constraint prevents folding.\n", ctx->nameOf(ci));
+            if (output->clkconstr) {
+                auto differs = [](const DelayPair &a, const DelayPair &b) {
+                    return a.minDelay() != b.minDelay() || a.maxDelay() != b.maxDelay();
+                };
+                if (buffered->clkconstr && (differs(output->clkconstr->period, buffered->clkconstr->period) ||
+                                          differs(output->clkconstr->high, buffered->clkconstr->high) ||
+                                          differs(output->clkconstr->low, buffered->clkconstr->low)))
+                    log_error("Clock enable '%s': conflicting clock constraints.\n", ctx->nameOf(ci));
+                if (!buffered->clkconstr)
+                    buffered->clkconstr = std::move(output->clkconstr);
+            }
+            ci->disconnectPort(id_outclk);
+            buffer->disconnectPort(id_A);
+            buffer->disconnectPort(id_Q);
+            ci->connectPort(id_outclk, buffered);
+            ctx->nets.erase(output->name);
+            remove.push_back(buffer->name);
+            // Yosys can buffer a PLL clock shared by fabric registers and this
+            // gate. Keep that running branch and reconnect the gate to its tap.
+            ci->disconnectPort(ctx->id("inclk"));
+            ci->connectPort(ctx->id("inclk"), input);
+            ci->renamePort(ctx->id("inclk"), id_A);
+            ci->renamePort(ctx->id("ena"), id_ENA);
+            ci->renamePort(id_outclk, id_Q);
+            if (ci->ports.count(ctx->id("enaout")))
+                ci->renamePort(ctx->id("enaout"), id_ENAOUT);
+            ci->params.clear();
+            // High is the existing packed-cell default; only low needs an override.
+            if (power_up == "low")
+                ci->params[ctx->id("ena_register_power_up")] = power_up;
+            // Falling-edge mode is the existing packed-cell default; retain the
+            // explicit double-register selection for bit generation.
+            if (register_mode == "double register")
+                ci->params[ctx->id("ena_register_mode")] = register_mode;
+            ci->type = id_MISTRAL_CLKENA;
+        }
+        for (IdString name : remove)
+            ctx->cells.erase(name);
+        // MISTRAL_CLKENA uses a falling-edge enable register, optionally with a
+        // second falling-edge register, and selectable startup state.
+        for (auto &entry : ctx->cells) {
+            CellInfo *ci = entry.second.get();
+            if (ci->type != id_MISTRAL_CLKENA)
+                continue;
+            NetInfo *input = dedicated_source(ci->getPort(id_A)), *enable = ci->getPort(id_ENA);
+            if (!is_pll_clock(input))
+                log_error("Clock enable '%s': input must come directly from a PLL clock output.\n", ctx->nameOf(ci));
+            if (input != ci->getPort(id_A)) {
+                ci->disconnectPort(id_A);
+                ci->connectPort(id_A, input);
+            }
+            if (!enable || !enable->driver.cell || !ci->getPort(id_Q))
+                log_error("Clock enable '%s': require driven ENA and connected Q.\n", ctx->nameOf(ci));
+            auto mode = ci->params.find(ctx->id("ena_register_mode"));
+            if (mode != ci->params.end()) {
+                if (!mode->second.is_string ||
+                    (mode->second.as_string() != "falling edge" && mode->second.as_string() != "double register"))
+                    log_error("Clock enable '%s': no mode overrides; ena_register_mode must be 'falling edge' or 'double register'.\n",
+                              ctx->nameOf(ci));
+            }
+            for (auto &param : ci->params) {
+                if (!param.first.in(ctx->id("ena_register_power_up"), ctx->id("ena_register_mode")))
+                    log_error("Clock enable '%s': no mode overrides; only ena_register_mode and ena_register_power_up are supported.\n",
+                              ctx->nameOf(ci));
+                if (param.first == ctx->id("ena_register_power_up") &&
+                    (!param.second.is_string || (param.second.as_string() != "high" && param.second.as_string() != "low")))
+                    log_error("Clock enable '%s': ena_register_power_up must be 'high' or 'low'.\n", ctx->nameOf(ci));
+            }
+            for (auto &port : ci->ports)
+                if (port.second.net && !port.first.in(id_A, id_ENA, id_Q, id_ENAOUT))
+                    log_error("Clock enable '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
+        }
+    }
+
+    void setup_plls()
+    {
+        for (auto &entry : ctx->cells) {
+            CellInfo *ci = entry.second.get();
+            if (ci->type != id_altera_pll)
+                continue;
+            int clocks = int_or_default(ci->params, ctx->id("number_of_clocks"), 1);
+            if (clocks < 1 || clocks > 4)
+                log_error("PLL '%s': number_of_clocks must be 1, 2, 3 or 4.\n", ctx->nameOf(ci));
+            auto reference = ci->params.find(ctx->id("reference_clock_frequency"));
+            int reference_mhz = reference != ci->params.end() && reference->second.is_string ?
+                    mistral_pll::parse_mhz(reference->second.as_string()) : 0;
+            if (!mistral_pll::valid_reference(reference_mhz))
+                log_error("PLL '%s': reference frequency must be 25, 50 or 100 MHz.\n", ctx->nameOf(ci));
+            bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
+            std::string phase1 = str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps");
+            std::array<std::string, 4> phases{"0 ps", phase1, "0 ps", "0 ps"};
+            std::array<int, 4> phase_ps{};
+            auto freq0 = ci->params.find(ctx->id("output_clock_frequency0"));
+            int64_t phase_output_hz = freq0 != ci->params.end() && freq0->second.is_string ?
+                    mistral_pll::parse_output_hz(freq0->second.as_string()) : 0;
+            bool shifted = false;
+            for (int i = 1; i < clocks; ++i) {
+                phases[i] = str_or_default(ci->params, ctx->idf("phase_shift%d", i), "0 ps");
+                auto phase = mistral_pll::select_phase(phases[i], phase_output_hz);
+                if (!phase)
+                    log_error("PLL '%s': phase_shift%d must be zero or a checked phase shift for the output frequency.\n", ctx->nameOf(ci), i);
+                phase_ps[i] = phase->shift_ps;
+                shifted |= phase_ps[i] != 0;
+            }
+            int duty0 = int_or_default(ci->params, ctx->id("duty_cycle0"), 50);
+            int duty1 = int_or_default(ci->params, ctx->id("duty_cycle1"), 50);
+            std::array<int, 4> duties{duty0, duty1, 50, 50};
+            for (int i = 2; i < clocks; ++i)
+                duties[i] = int_or_default(ci->params, ctx->idf("duty_cycle%d", i), 50);
+            for (int i = 0; i < clocks; ++i)
+                if (duties[i] <= 0 || duties[i] >= 100)
+                    log_error("PLL '%s': duty cycle must be an integer percent from 1 to 99.\n", ctx->nameOf(ci));
+            if (fractional && (duty0 != 50 || (clocks == 2 && duty1 != 50)))
+                log_error("PLL '%s': fractional-N profiles require 50 percent duty cycle.\n", ctx->nameOf(ci));
+            // Frequency selection uses only checked feedback/analog tuples.
+            // Other unsupported modes and parameters still fail closed.
+            dict<IdString, Property> profile = {
+                {ctx->id("reference_clock_frequency"), reference->second},
+                {ctx->id("operation_mode"), Property("direct")},
+                {ctx->id("fractional_vco_multiplier"), Property(fractional ? "true" : "false")},
+                {ctx->id("phase_shift0"), Property("0 ps")},
+                {ctx->id("number_of_clocks"), Property(clocks)},
+                {ctx->id("duty_cycle0"), Property(duty0)},
+            };
+            if (clocks >= 2) {
+                profile[ctx->id("phase_shift1")] = Property(phase1);
+                profile[ctx->id("duty_cycle1")] = Property(duty1);
+            }
+            if (clocks >= 3) {
+                profile[ctx->id("phase_shift2")] = Property(phases[2]);
+                profile[ctx->id("duty_cycle2")] = Property(duties[2]);
+            }
+            if (clocks == 4) {
+                profile[ctx->id("phase_shift3")] = Property(phases[3]);
+                profile[ctx->id("duty_cycle3")] = Property(duties[3]);
+            }
+            if (ctx->args.device != "5CSEBA6U23I7")
+                log_error("PLL '%s': initial PLL profile supports only 5CSEBA6U23I7.\n", ctx->nameOf(ci));
+            for (auto &param : ci->params) {
+                if (param.first == ctx->id("output_clock_frequency0") ||
+                    (clocks >= 2 && param.first == ctx->id("output_clock_frequency1")) ||
+                    (clocks >= 3 && param.first == ctx->id("output_clock_frequency2")) ||
+                    (clocks == 4 && param.first == ctx->id("output_clock_frequency3")))
+                    continue;
+                auto expected = profile.find(param.first);
+                if (expected == profile.end() || param.second != expected->second)
+                    log_error("PLL '%s': unsupported parameter '%s'; only checked direct profiles are supported.\n",
+                              ctx->nameOf(ci), ctx->nameOf(param.first));
+            }
+            for (auto required : {"reference_clock_frequency", "output_clock_frequency0", "operation_mode"})
+                if (!ci->params.count(ctx->id(required)))
+                    log_error("PLL '%s': explicit parameter '%s' is required.\n", ctx->nameOf(ci), required);
+            const auto &frequency = ci->params.at(ctx->id("output_clock_frequency0"));
+            int64_t output_hz = frequency.is_string ? mistral_pll::parse_output_hz(frequency.as_string()) : 0;
+            auto config = fractional ? mistral_pll::select_fractional(output_hz, reference_mhz) :
+                                       mistral_pll::select_hz(output_hz, reference_mhz, duty0);
+            if (fractional && clocks == 1 && !config)
+                log_error("PLL '%s': fractional-N profile requires 50 MHz reference and 11.2896, 12.288 or 74.25 MHz output.\n", ctx->nameOf(ci));
+            int64_t output1_hz = 0;
+            int c1 = 0;
+            if (clocks >= 2) {
+                auto freq1 = ci->params.find(ctx->id("output_clock_frequency1"));
+                if (freq1 == ci->params.end() || !freq1->second.is_string)
+                    log_error("PLL '%s': explicit output_clock_frequency1 is required.\n", ctx->nameOf(ci));
+                output1_hz = mistral_pll::parse_output_hz(freq1->second.as_string());
+                if (shifted && (fractional || (output_hz != 25000000 && output_hz != 50000000 && output_hz != 100000000) ||
+                                output1_hz != output_hz || (output_hz != 25000000 && reference_mhz != 50) ||
+                                duty0 != 50 || duty1 != 50))
+                    log_error("PLL '%s': phase profile requires equal integer 25 MHz outputs with a checked reference, "
+                              "or 50/100 MHz outputs with a 50 MHz reference, and 50 percent duty.\n",
+                              ctx->nameOf(ci));
+                auto dual = fractional ? mistral_pll::select_fractional_dual(output_hz, output1_hz, reference_mhz) :
+                                         mistral_pll::select_dual_hz(output_hz, output1_hz, reference_mhz, duty0, duty1);
+                if (fractional && !dual)
+                    log_error("PLL '%s': fractional-N dual profile requires 50 MHz reference and 12.288/24.576 MHz outputs.\n", ctx->nameOf(ci));
+                if (!dual)
+                    log_error("PLL '%s': unsupported dual PLL frequencies/duties; require exact decimal MHz from 1 to 100 with exact dividers from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
+                config = dual->feedback;
+                c1 = dual->c1;
+                if (!ci->getPort(ctx->id("outclk[0]")) || ci->ports.count(id_outclk))
+                    log_error("PLL '%s': dual profile requires outclk[0] and outclk[1].\n", ctx->nameOf(ci));
+                ci->renamePort(ctx->id("outclk[0]"), id_outclk);
+            }
+            std::array<int64_t, 4> output_hzs{output_hz, output1_hz, 0, 0};
+            if (clocks >= 3) {
+                for (int i = 2; i < clocks; ++i) {
+                    auto freq = ci->params.find(ctx->idf("output_clock_frequency%d", i));
+                    if (freq == ci->params.end() || !freq->second.is_string)
+                        log_error("PLL '%s': explicit output_clock_frequency%d is required.\n", ctx->nameOf(ci), i);
+                    output_hzs[i] = mistral_pll::parse_output_hz(freq->second.as_string());
+                }
+                if (fractional)
+                    log_error("PLL '%s': multi-output profile requires integer feedback.\n",
+                              ctx->nameOf(ci));
+                if (shifted)
+                    for (int i = 0; i < clocks; ++i)
+                        if (output_hzs[i] != output_hz || duties[i] != 50)
+                            log_error("PLL '%s': phase profile requires the same frequency on every output with 50 percent duty.\n",
+                                      ctx->nameOf(ci));
+                auto multi = mistral_pll::select_multi_hz(output_hzs, clocks, reference_mhz, duties);
+                if (!multi)
+                    log_error("PLL '%s': unsupported multi-output frequencies/duties; require exact 1 to 100 MHz dividers "
+                              "from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
+                config = multi->feedback;
+                c1 = multi->counters[1];
+            }
+            if (!config)
+                log_error("PLL '%s': unsupported PLL output frequency/duty; require exact decimal MHz from 1 to 100 "
+                          "and an exact integer C divider from a checked 300/320 MHz tuple.\n", ctx->nameOf(ci));
+            for (auto &port : ci->ports)
+                if (!port.first.in(id_refclk, id_outclk, id_locked, id_rst) &&
+                    !(clocks >= 2 && port.first == ctx->id("outclk[1]")) &&
+                    !(clocks >= 3 && port.first == ctx->id("outclk[2]")) &&
+                    !(clocks == 4 && port.first == ctx->id("outclk[3]")))
+                    log_error("PLL '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
+            auto reset_state = get_pin_needed_muxval(ci, id_rst);
+            if (reset_state == PIN_0) {
+                // Keep the established fixed-profile bitstream for inactive reset.
+                ci->disconnectPort(id_rst);
+                ci->ports.erase(id_rst);
+            } else if (reset_state == PIN_1 || !ci->getPort(id_rst) || !ci->getPort(id_rst)->driver.cell) {
+                log_error("PLL '%s': rst must be tied low or driven by a signal.\n", ctx->nameOf(ci));
+            }
+
+            NetInfo *ref = ci->getPort(id_refclk), *out = ci->getPort(id_outclk);
+            NetInfo *buffered_ref = nullptr;
+            // clkbufmap promotes a reference also used by fabric registers.
+            // The PLL still needs the dedicated pad tap; keep the buffer for
+            // its fabric users. Only the unconditional CLKBUF is transparent.
+            if (ref && ref->driver.cell && ref->driver.cell->type == id_MISTRAL_CLKBUF &&
+                ref->driver.port == id_Q) {
+                NetInfo *pad_net = ref->driver.cell->getPort(id_A);
+                if (pad_net) {
+                    buffered_ref = ref;
+                    ci->disconnectPort(id_refclk);
+                    ci->connectPort(id_refclk, pad_net);
+                    ref = pad_net;
+                }
+            }
+            if (!ref || !ref->driver.cell || ref->driver.cell->type != id_MISTRAL_IB ||
+                str_or_default(ref->driver.cell->attrs, id_LOC, "") != "PIN_V11")
+                log_error("PLL '%s': initial profile requires a dedicated reference from PIN_V11.\n", ctx->nameOf(ci));
+            std::array<NetInfo *, 4> outputs{out, ci->getPort(ctx->id("outclk[1]")),
+                                            ci->getPort(ctx->id("outclk[2]")), ci->getPort(ctx->id("outclk[3]"))};
+            std::array<std::vector<CellInfo *>, 4> branches;
+            for (int i = 0; i < clocks; ++i) {
+                if (!outputs[i] || outputs[i]->users.empty())
+                    log_error("PLL '%s': output %d must feed clock buffers.\n", ctx->nameOf(ci), i);
+                for (auto user : outputs[i]->users) {
+                    if (!ctx->is_clkbuf_cell(user.cell->type) || user.port != id_A)
+                        log_error("PLL '%s': output %d must feed only clock buffers.\n", ctx->nameOf(ci), i);
+                    branches[i].push_back(user.cell);
+                    if (phase_ps[i] != 0 && (outputs[i]->clkconstr ||
+                        (user.cell->getPort(id_Q) && user.cell->getPort(id_Q)->clkconstr)))
+                        log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
+                                  ctx->nameOf(ci));
+                }
+                // Preserve the ungated branch's established lane independently
+                // of cell insertion order; gate ordering is stable by name.
+                std::sort(branches[i].begin(), branches[i].end(), [&](CellInfo *a, CellInfo *b) {
+                    if (a->type != b->type)
+                        return a->type == id_MISTRAL_CLKBUF;
+                    return a->name.str(ctx) < b->name.str(ctx);
+                });
+            }
+            auto set_clock = [&](NetInfo *net, int period, int duty = 50) {
+                int high = int(int64_t(period) * duty / 100);
+                int low = duty == 50 ? high : period - high;
+                if (!net)
+                    log_error("PLL '%s': disconnected clock.\n", ctx->nameOf(ci));
+                if (net->clkconstr && (net->clkconstr->period.minDelay() != period ||
+                                      net->clkconstr->period.maxDelay() != period ||
+                                      net->clkconstr->high.minDelay() != high || net->clkconstr->high.maxDelay() != high ||
+                                      net->clkconstr->low.minDelay() != low || net->clkconstr->low.maxDelay() != low))
+                    log_error("PLL '%s': conflicting clock constraint on '%s'.\n", ctx->nameOf(ci), ctx->nameOf(net));
+                net->clkconstr.reset(new ClockConstraint());
+                net->clkconstr->period = DelayPair(period);
+                net->clkconstr->high = DelayPair(high);
+                net->clkconstr->low = DelayPair(low);
+            };
+            // Check the input pin's SDC constraint as well as the buffered net.
+            set_clock(ref->driver.cell->getPort(id_PAD), ctx->getDelayFromNS(1000.0 / reference_mhz));
+            set_clock(ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
+            if (buffered_ref)
+                set_clock(buffered_ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
+            std::array<double, 4> generated_hzs{mistral_pll::achieved_hz(*config, reference_mhz),
+                                               double(output1_hz), double(output_hzs[2]), double(output_hzs[3])};
+            if (clocks >= 2) {
+                auto second_config = *config;
+                second_config.c = c1;
+                generated_hzs[1] = mistral_pll::achieved_hz(second_config, reference_mhz);
+            }
+            for (int i = 0; i < clocks; ++i) {
+                int period = ctx->getDelayFromNS(1.0e9 / generated_hzs[i]);
+                set_clock(outputs[i], period, duties[i]);
+                for (CellInfo *buffer : branches[i])
+                    set_clock(buffer->getPort(id_Q), period, duties[i]);
+                // Gating suppresses edges; it does not change the phase of the
+                // remaining edges. Relate branches of this counter only, unless
+                // the existing shifted profile already relates every output.
+                if (shifted || branches[i].size() > 1) {
+                    IdString group = shifted ? ci->name : ctx->idf("$pll_branch$%s$%d", ctx->nameOf(ci), i);
+                    auto set_phase = [&](NetInfo *net) {
+                        net->clkconstr->phase_group = group;
+                        net->clkconstr->phase_shift = ctx->getDelayFromNS(phase_ps[i] / 1000.0f);
+                    };
+                    set_phase(outputs[i]);
+                    for (CellInfo *buffer : branches[i])
+                        set_phase(buffer->getPort(id_Q));
+                }
+                if (fractional)
+                    log_info("PLL '%s': fractional-N %srequested %.6f Hz, achieved %.9f Hz, error %.9g ppm.\n",
+                             ctx->nameOf(ci), i == 0 ? "" : "second ", double(output_hzs[i]), generated_hzs[i],
+                             (generated_hzs[i] / output_hzs[i] - 1.0) * 1.0e6);
+            }
+            BelId chosen;
+            WireId pad = ctx->getBelPinWire(ref->driver.cell->bel, ref->driver.port);
+            std::vector<BelId> candidates;
+            for (const auto &candidate : ctx->pll_clock_bels)
+                candidates.push_back(candidate.first);
+            // Preserve the established V11 site (0,14) before trying (0,31).
+            std::sort(candidates.begin(), candidates.end());
+            const std::array<int, 4> preferred_lanes{2, 3, 1, 0};
+            std::vector<std::pair<int, CellInfo *>> buffers;
+            for (int i = 0; i < clocks; ++i)
+                buffers.emplace_back(i, branches[i].front());
+            for (int i = 0; i < clocks; ++i)
+                for (size_t j = 1; j < branches[i].size(); ++j)
+                    buffers.emplace_back(i, branches[i][j]);
+            for (BelId candidate : candidates) {
+                WireId dst = ctx->getBelPinWire(candidate, id_refclk);
+                PipId ref_pip(pad.node, dst.node);
+                if (!ctx->pll_ref_select.count(ref_pip) || !ctx->checkBelAvail(candidate))
+                    continue;
+                // The additional CLKIN2/site profile is checked at the board reference only.
+                if (ctx->pll_ref_select.at(ref_pip) == 6 && reference_mhz != 50)
+                    continue;
+                std::vector<BelId> selected(buffers.size());
+                bool available = true;
+                for (size_t i = 0; i < buffers.size(); ++i) {
+                    int output = buffers[i].first;
+                    const auto &options = ctx->pll_clock_bels.at(candidate)[output];
+                    auto try_lane = [&](int lane) {
+                        for (BelId clock : options) {
+                            if (ctx->bel_data(clock).block_index != lane || !ctx->checkBelAvail(clock) ||
+                                std::find(selected.begin(), selected.end(), clock) != selected.end())
+                                continue;
+                            selected[i] = clock;
+                            return true;
+                        }
+                        return false;
+                    };
+                    if (!try_lane(preferred_lanes[output]))
+                        for (int lane : preferred_lanes)
+                            if (try_lane(lane))
+                                break;
+                    if (selected[i] == BelId()) {
+                        available = false;
+                        break;
+                    }
+                }
+                if (!available)
+                    continue;
+                chosen = candidate;
+                ctx->bindBel(chosen, ci, STRENGTH_LOCKED);
+                for (size_t i = 0; i < buffers.size(); ++i)
+                    ctx->bindBel(selected[i], buffers[i].second, STRENGTH_LOCKED);
+                break;
+            }
+            if (chosen == BelId())
+                log_error("PLL '%s': no available dedicated PLL/clock-buffer pair.\n", ctx->nameOf(ci));
+            if (clocks >= 2)
+                log_info("PLL '%s': second output %.9g MHz, C7=%d.\n", ctx->nameOf(ci),
+                         output1_hz / 1.0e6, c1);
+            log_info("PLL '%s': %d MHz -> %.9g MHz, direct, M=%d N=%d C6=%d, bel %s\n",
+                     ctx->nameOf(ci), reference_mhz, output_hz / 1.0e6, config->m, config->n, config->c, ctx->nameOfBel(chosen));
+        }
+    }
+
     void run()
     {
         init_constant_nets();
-        pack_constants();
         pack_io();
+        setup_clock_enables();
+        setup_plls();
+        fold_inverted_pll_clock_buffers();
+        ensure_dsp_control_ports();
+        pack_constants();
+        select_dsp_control_pinmaps();
         constrain_carries();
         constrain_lutram();
         setup_m10ks();
+        constrain_dsps();
     }
 };
 }; // namespace

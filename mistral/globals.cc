@@ -27,20 +27,71 @@ NEXTPNR_NAMESPACE_BEGIN
 
 void Arch::create_clkbuf(int x, int y)
 {
-    for (int z = 0; z < 4; z++) {
-        if (z != 2)
-            continue; // TODO: why do other Zs not work?
-        // For now we only consider the input path from general routing, other inputs like dedicated clock pins are
-        // still a TODO
+    for (int z : {2, 3, 1, 0}) {
+        // Subblock 2 accepts fabric routing. Other subblocks are reserved
+        // for dedicated PLL outputs; every lane can select any PLLIN0..15.
         BelId bel = add_bel(x, y, idf("CLKBUF[%d]", z), id_MISTRAL_CLKENA);
-        add_bel_pin(bel, id_A, PORT_IN, get_port(CycloneV::CMUXHG, x, y, -1, CycloneV::CLKIN, z));
+        WireId input = add_wire(x, y, idf("CLKBUF%d_INPUT", z));
+        if (z == 2)
+            add_pip(get_port(CycloneV::CMUXHG, x, y, -1, CycloneV::CLKIN, z), input);
+        add_bel_pin(bel, id_A, PORT_IN, input);
         add_bel_pin(bel, id_Q, PORT_OUT, get_port(CycloneV::CMUXHG, x, y, z, CycloneV::CLKOUT));
-        // TODO: enable pin
+        add_bel_pin(bel, id_ENA, PORT_IN, get_port(CycloneV::CMUXHG, x, y, z, CycloneV::ENABLE));
+        add_bel_pin(bel, id_ENAOUT, PORT_OUT, get_port(CycloneV::CMUXHG, x, y, z, CycloneV::SYN_EN));
         bel_data(bel).block_index = z;
     }
 }
 
 bool Arch::is_clkbuf_cell(IdString cell_type) const { return cell_type.in(id_MISTRAL_CLKENA, id_MISTRAL_CLKBUF); }
+
+void Arch::create_plls()
+{
+    // The supported profiles use C6 and optionally C7/C5/C8. Import physical FPLL sites
+    // and their dedicated edges from Mistral, rather than fabric substitutes.
+    const auto links = cyclonev->get_all_p2p();
+    for (auto pos : cyclonev->fpll_get_pos()) {
+        int x = CycloneV::pos2x(pos), y = CycloneV::pos2y(pos);
+        BelId bel = add_bel(x, y, id_altera_pll, id_altera_pll);
+        WireId ref = add_wire(x, y, id("FPLL_REFCLK"));
+        WireId out = add_wire(x, y, id("FPLL_C6"));
+        WireId out1 = add_wire(x, y, id("FPLL_C7"));
+        WireId out2 = add_wire(x, y, id("FPLL_C5"));
+        WireId out3 = add_wire(x, y, id("FPLL_C8"));
+        add_bel_pin(bel, id_refclk, PORT_IN, ref);
+        add_bel_pin(bel, id_outclk, PORT_OUT, out);
+        add_bel_pin(bel, id("outclk[1]"), PORT_OUT, out1);
+        add_bel_pin(bel, id("outclk[2]"), PORT_OUT, out2);
+        add_bel_pin(bel, id("outclk[3]"), PORT_OUT, out3);
+        add_bel_pin(bel, id_rst, PORT_IN, get_port(CycloneV::FPLL, x, y, -1, CycloneV::NRESET0));
+        add_bel_pin(bel, id_locked, PORT_OUT, get_port(CycloneV::FPLL, x, y, -1, CycloneV::LOCK0));
+        for (auto link : links) {
+            auto src = link.first, dst = link.second;
+            if (CycloneV::pn2bt(dst) == CycloneV::FPLL && CycloneV::pn2p(dst) == pos &&
+                CycloneV::pn2pt(dst) == CycloneV::CLKIN &&
+                (CycloneV::pn2pi(dst) == 0 || (x == 0 && y == 31 && CycloneV::pn2pi(dst) == 2)) &&
+                CycloneV::pn2bt(src) == CycloneV::GPIO) {
+                WireId pad = get_port(CycloneV::GPIO, CycloneV::pn2x(src), CycloneV::pn2y(src),
+                                      CycloneV::pn2bi(src), CycloneV::DATAIN, 0);
+                // Quartus-checked V11 routes: CLKIN0 uses 4; CLKIN2 at (0,31) uses 6.
+                pll_ref_select[add_pip(pad, ref)] = CycloneV::pn2pi(dst) == 0 ? 4 : 6;
+            }
+            if (CycloneV::pn2bt(src) != CycloneV::FPLL || CycloneV::pn2p(src) != pos ||
+                CycloneV::pn2pt(src) != CycloneV::PLLCOUT || (CycloneV::pn2pi(src) < 5 || CycloneV::pn2pi(src) > 8) ||
+                CycloneV::pn2bt(dst) != CycloneV::CMUXHG || CycloneV::pn2pt(dst) != CycloneV::PLLIN ||
+                CycloneV::pn2pi(dst) < 0 || CycloneV::pn2pi(dst) > 15)
+                continue;
+            for (BelId clock : getBelsByTile(CycloneV::pn2x(dst), CycloneV::pn2y(dst))) {
+                if (getBelType(clock) != id_MISTRAL_CLKENA)
+                    continue;
+                int counter = CycloneV::pn2pi(src);
+                WireId source = counter == 6 ? out : (counter == 7 ? out1 : (counter == 5 ? out2 : out3));
+                pll_clock_select[add_pip(source, getBelPinWire(clock, id_A))] = 8 + CycloneV::pn2pi(dst);
+                int output = counter == 6 ? 0 : (counter == 7 ? 1 : (counter == 5 ? 2 : 3));
+                pll_clock_bels[bel][output].push_back(clock);
+            }
+        }
+    }
+}
 
 void Arch::create_hps_mpu_general_purpose(int x, int y)
 {
@@ -52,6 +103,20 @@ void Arch::create_hps_mpu_general_purpose(int x, int y)
         add_bel_pin(gp_bel, idf("gp_out[%d]", i), PORT_OUT,
                     get_port(CycloneV::HPS_MPU_GENERAL_PURPOSE, x, y, -1, CycloneV::GP_OUT, i));
     }
+}
+
+void Arch::create_hps_peripheral_i2c(int x, int y)
+{
+    BelId i2c_bel = add_bel(x, y, id_cyclonev_hps_interface_peripheral_i2c,
+                            id_cyclonev_hps_interface_peripheral_i2c);
+    add_bel_pin(i2c_bel, id("scl"), PORT_IN,
+                get_port(CycloneV::HPS_PERIPHERAL_I2C, x, y, -1, CycloneV::SCL));
+    add_bel_pin(i2c_bel, id("sda"), PORT_IN,
+                get_port(CycloneV::HPS_PERIPHERAL_I2C, x, y, -1, CycloneV::SDA));
+    add_bel_pin(i2c_bel, id("out_clk"), PORT_OUT,
+                get_port(CycloneV::HPS_PERIPHERAL_I2C, x, y, -1, CycloneV::OUT_CLK));
+    add_bel_pin(i2c_bel, id("out_data"), PORT_OUT,
+                get_port(CycloneV::HPS_PERIPHERAL_I2C, x, y, -1, CycloneV::OUT_DATA));
 }
 
 void Arch::create_control(int x, int y)
@@ -195,7 +260,8 @@ struct MistralGlobalRouter
             CellInfo *drv = ni->driver.cell;
             if (drv == nullptr)
                 continue;
-            if (drv->type.in(id_MISTRAL_CLKENA, id_MISTRAL_CLKBUF)) {
+            // ENAOUT is a fabric status signal, not a global clock.
+            if (drv->type.in(id_MISTRAL_CLKENA, id_MISTRAL_CLKBUF) && ni->driver.port == id_Q) {
                 route_clk_net(ni);
                 continue;
             }

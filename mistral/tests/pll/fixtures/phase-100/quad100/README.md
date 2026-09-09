@@ -1,0 +1,32 @@
+# quad100 Quartus phase reference
+
+Quartus Prime Lite 17.0.2, device `5CSEBA6U23I7`, 50 MHz reference,
+4 outputs at 100 MHz, phases 0/2500/5000/7500 ps, 50% duty,
+direct integer mode. Host-only oracle; no hardware acceptance or deployment.
+This reference frequency matches the DE10-Nano oscillator.
+
+Output indices map to counters C6/C7/C5/C8.
+Fitter reports M12/N2, VCO300 MHz, divide3, counter presets
+1/1/2/3, and phase mux presets 0/6/4/2. Odd-divider even-duty correction
+is enabled for every output. Default preset1, phase mux0 and low divider1
+are absent from non-default decomp text.
+
+`top.v`, `oracle.tcl`, `pins.qsf`, and `clocks.sdc` retain portable build inputs.
+`top.qsf` is exported with the source path made relative. Regenerate from an
+empty working directory:
+
+```sh
+quartus_sh -t /path/to/phase-100/quad100/oracle.tcl
+quartus_sh --flow compile top
+mistral-cv decomp 5CSEBA6U23I7 output_files/top.rbf top.bt
+```
+
+`top.rbf.gz` preserves the exact output with gzip mtime zero; `sha256.json`
+records raw and compressed hashes. Rebuild placement/routing can vary.
+`pll-settings.txt` preserves every non-default FPLL/CMUX setting and route;
+full comparisons must load the RBF to include defaults. `fitter-pll.txt`
+preserves the complete PLL usage section.
+
+Compilation succeeded with zero errors. Expected warnings include tied reset,
+the Lite LogicLock notice, and ignored GLOBAL_SIGNAL assignments on the source
+bus. Counter placement is constrained; CMUX lane placement is not constrained.

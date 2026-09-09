@@ -1,0 +1,132 @@
+{
+  "20": {
+    "sha256": "f98473845008e88ddaffe469f49aa4239c4dec098bea7fa23dda56bb01e9717e",
+    "bytes": 1958989,
+    "fmax": {
+      "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+        "achieved": 427.53314208984375,
+        "constraint": 50
+      }
+    },
+    "utilization": {
+      "MISTRAL_BUF": {
+        "available": 0,
+        "used": 37
+      },
+      "MISTRAL_CLKENA": {
+        "available": 8,
+        "used": 2
+      },
+      "MISTRAL_COMB": {
+        "available": 83820,
+        "used": 29
+      },
+      "MISTRAL_FF": {
+        "available": 167640,
+        "used": 47
+      },
+      "MISTRAL_IO": {
+        "available": 472,
+        "used": 1
+      },
+      "MISTRAL_M10K": {
+        "available": 553,
+        "used": 1
+      },
+      "MISTRAL_MUL18X18": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL27X27": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL9X9": {
+        "available": 336,
+        "used": 0
+      },
+      "altera_pll": {
+        "available": 6,
+        "used": 1
+      },
+      "cyclonev_hps_interface_mpu_general_purpose": {
+        "available": 1,
+        "used": 1
+      },
+      "cyclonev_oscillator": {
+        "available": 1,
+        "used": 0
+      }
+    },
+    "checks": [
+      "PASS: all 20 data bits initialized, 50 MHz write / 25 MHz read clocks",
+      "PASS: read clock stopped while write clock updates memory; resume reads new value",
+      "PASS: read-enable hold/resume and write-enable hold"
+    ]
+  },
+  "40": {
+    "sha256": "2519c8427e3cc4c43842c68f4e3e725090dcbed959167431f0e1406cb0e90014",
+    "bytes": 1958737,
+    "fmax": {
+      "FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {
+        "achieved": 321.5434265136719,
+        "constraint": 50
+      }
+    },
+    "utilization": {
+      "MISTRAL_BUF": {
+        "available": 0,
+        "used": 29
+      },
+      "MISTRAL_CLKENA": {
+        "available": 8,
+        "used": 2
+      },
+      "MISTRAL_COMB": {
+        "available": 83820,
+        "used": 48
+      },
+      "MISTRAL_FF": {
+        "available": 167640,
+        "used": 46
+      },
+      "MISTRAL_IO": {
+        "available": 472,
+        "used": 1
+      },
+      "MISTRAL_M10K": {
+        "available": 553,
+        "used": 1
+      },
+      "MISTRAL_MUL18X18": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL27X27": {
+        "available": 112,
+        "used": 0
+      },
+      "MISTRAL_MUL9X9": {
+        "available": 336,
+        "used": 0
+      },
+      "altera_pll": {
+        "available": 6,
+        "used": 1
+      },
+      "cyclonev_hps_interface_mpu_general_purpose": {
+        "available": 1,
+        "used": 1
+      },
+      "cyclonev_oscillator": {
+        "available": 1,
+        "used": 0
+      }
+    },
+    "checks": [
+      "PASS: all 40 data bits initialized, 50 MHz write / 25 MHz read clocks",
+      "PASS: read clock stopped while write clock updates memory; resume reads new value",
+      "PASS: read-enable hold/resume and write-enable hold"
+    ]
+  }
+}

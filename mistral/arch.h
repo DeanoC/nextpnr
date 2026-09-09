@@ -277,7 +277,7 @@ enum CellPinStyle
     PINSTYLE_CE = 0x027,   // CE type signal, invertible and defaults to enabled
     PINSTYLE_RST = 0x017,  // RST type signal, invertible and defaults to not reset
     PINSTYLE_DEDI = 0x000, // dedicated signals, leave alone
-    PINSTYLE_INP = 0x001,  // general inputs, no inversion/tieing but defaults low
+    PINSTYLE_INP = 0x010,  // general inputs, no inversion/tieing but defaults low
     PINSTYLE_PU = 0x022,   // signals that float high and default high
 
     PINSTYLE_CARRY = 0x001, // carry chains can be floating or 0?
@@ -450,12 +450,6 @@ struct Arch : BaseArch<ArchRanges>
     BelBucketId getBelBucketForCellType(IdString cell_type) const override;
     BelBucketId getBelBucketForBel(BelId bel) const override;
 
-    // -------------------------------------------------
-    // Expanding bounding box seems to make thing worse for CycloneV
-    // as it slows down the resolution of TD congestion, disabling it
-    void expandBoundingBox(BoundingBox &bb) const override {};
-    // -------------------------------------------------
-
     void assignArchInfo() override;
     bool pack() override;
     bool place() override;
@@ -477,10 +471,15 @@ struct Arch : BaseArch<ArchRanges>
 
     void create_lab(int x, int y, bool is_mlab);       // lab.cc
     void create_m10k(int x, int y);                    // m10k.cc
+    void create_dsp(int x, int y);                     // dsp.cc
+    void create_plls();                               // globals.cc
+    dict<PipId, int> pll_ref_select, pll_clock_select;
+    dict<BelId, std::array<std::vector<BelId>, 4>> pll_clock_bels;
     void create_gpio(int x, int y);                    // io.cc
     void create_clkbuf(int x, int y);                  // globals.cc
     void create_control(int x, int y);                 // globals.cc
     void create_hps_mpu_general_purpose(int x, int y); // globals.cc
+    void create_hps_peripheral_i2c(int x, int y);      // globals.cc
 
     // -------------------------------------------------
 
@@ -498,7 +497,8 @@ struct Arch : BaseArch<ArchRanges>
     void reassign_alm_inputs(uint32_t lab, uint8_t alm);    // lab.cc
     void update_alm_input_count(uint32_t lab, uint8_t alm); // lab.cc
 
-    uint64_t compute_lut_mask(uint32_t lab, uint8_t alm); // lab.cc
+    uint64_t compute_lut_mask(uint32_t lab, uint8_t alm);  // lab.cc
+    uint64_t compute_mlab_mask(uint32_t lab, uint8_t alm); // lab.cc
 
     // Keeping track of unique MLAB write ports to assign them indices
     dict<IdString, IdString> get_mlab_key(const CellInfo *cell, bool include_raddr = false) const; // lab.cc

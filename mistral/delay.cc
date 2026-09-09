@@ -17,12 +17,97 @@
  */
 
 #include "nextpnr.h"
+#include "util.h"
 
 NEXTPNR_NAMESPACE_BEGIN
+
+namespace {
+
+bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool def = false)
+{
+    auto it = params.find(key);
+    if (it == params.end())
+        return def;
+    if (!it->second.is_string)
+        return it->second.as_bool();
+    const std::string &value = it->second.as_string();
+    if (value == "1" || value == "true" || value == "TRUE" || value == "on" || value == "reg" ||
+        value == "registered")
+        return true;
+    if (value == "0" || value == "false" || value == "FALSE" || value == "off" || value == "bypass")
+        return false;
+    return def;
+}
+
+bool dsp_reg_param(const dict<IdString, Property> &params, IdString key)
+{
+    return dsp_bool_param(params, key, false);
+}
+
+IdString dsp_register_key(const CellInfo *cell, const std::string &port)
+{
+    if (port.find("A[") == 0)
+        return id_INREG_CTRL_AX;
+    if (port.find("B[") == 0)
+        return id_INREG_CTRL_AY;
+    if (port.find("C[") == 0)
+        return id_INREG_CTRL_BX;
+    if (port.find("Z[") == 0)
+        return id_INREG_CTRL_AZ;
+    return IdString();
+}
+
+} // namespace
 
 TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, int &clockInfoCount) const
 {
     clockInfoCount = 0;
+    if (cell->type == id_MISTRAL_CLKENA) {
+        if (port == id_A)
+            return TMG_CLOCK_INPUT;
+        if (port == id_Q)
+            return TMG_GEN_CLOCK;
+        // The hardware captures ENA on the falling edge, but the backend has
+        // no characterized setup/hold model for that clock-control register.
+        if (port == id_ENA)
+            return TMG_ENDPOINT;
+        // Status from the enable register has no characterized clock-to-Q arc.
+        if (port == id_ENAOUT)
+            return TMG_STARTPOINT;
+    }
+    if (cell->type == id_altera_pll) {
+        if (port == id_refclk)
+            return TMG_CLOCK_INPUT;
+        if (port == id_outclk || port == id("outclk[1]") || port == id("outclk[2]") || port == id("outclk[3]"))
+            return TMG_GEN_CLOCK;
+        // Asynchronous control endpoint; no PLL recovery/removal model.
+        if (port == id_rst)
+            return TMG_ENDPOINT;
+        if (port == id_locked)
+            return TMG_STARTPOINT;
+    }
+    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27)) {
+        const auto &name = port.str(this);
+        if (port == id_CLK)
+            return TMG_CLOCK_INPUT;
+        if (name.find("A[") == 0 || name.find("B[") == 0 || name.find("C[") == 0 || name.find("Z[") == 0) {
+            IdString reg_key = dsp_register_key(cell, name);
+            if (reg_key != IdString() && dsp_reg_param(cell->params, reg_key)) {
+                clockInfoCount = 1;
+                return TMG_REGISTER_INPUT;
+            }
+            return TMG_COMB_INPUT;
+        }
+        if (name.find("Y[") == 0) {
+            if (dsp_reg_param(cell->params, id_OREG_CTRL)) {
+                clockInfoCount = 1;
+                return TMG_REGISTER_OUTPUT;
+            }
+            return TMG_COMB_OUTPUT;
+        }
+        if (port.in(id_ACLR, id_ENA, id_ACCUMULATE, id_SUB, id_NEGATE, id_LOADCONST))
+            return TMG_ENDPOINT;
+    }
     if (cell->type.in(id_MISTRAL_NOT, id_MISTRAL_BUF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
                       id_MISTRAL_ALUT5, id_MISTRAL_ALUT6)) {
         if (port.in(id_A, id_B, id_C, id_D, id_E, id_F))
@@ -58,14 +143,29 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
             return TMG_COMB_OUTPUT;
         }
     } else if (cell->type == id_MISTRAL_M10K) {
-        if (port == id_CLK1) {
+        const auto &name = port.str(this);
+        if (bool_or_default(cell->params, id_CFG_TDP, false)) {
+            if (port.in(id_CLK1, id_CLK2))
+                return TMG_CLOCK_INPUT;
+            if (name.find("A1Q") == 0 || name.find("B1Q") == 0) {
+                clockInfoCount = 1;
+                return TMG_REGISTER_OUTPUT;
+            }
+            if (name.find("A1") == 0 || name.find("B1") == 0) {
+                clockInfoCount = 1;
+                return TMG_REGISTER_INPUT;
+            }
+            return TMG_IGNORE;
+        }
+        if (port.in(id_CLK1, id_CLK2)) {
             return TMG_CLOCK_INPUT;
-        } else if (port.in(id_A1DATA, id_A1EN, id_B1EN) || port.str(this).find("A1ADDR") == 0) {
+        } else if (port.in(id_A1DATA, id_A1EN, id_A1BE, id_B1EN) || name.find("A1DATA[") == 0 ||
+                   name.find("A1BE[") == 0 ||
+                   name.find("A1ADDR") == 0 || name.find("B1ADDR") == 0) {
             clockInfoCount = 1;
             return TMG_REGISTER_INPUT;
-        } else if (port.str(this).find("B1ADDR") == 0) {
-            return TMG_REGISTER_INPUT;
-        } else if (port.in(id_B1DATA)) {
+        } else if (port == id_B1DATA || name.find("B1DATA[") == 0) {
+            clockInfoCount = 1;
             return TMG_REGISTER_OUTPUT;
         }
     }
@@ -75,9 +175,25 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
 TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port, int index) const
 {
     TimingClockingInfo timing{};
-    if (cell->type == id_MISTRAL_FF) {
+    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27)) {
         timing.clock_port = id_CLK;
         timing.edge = RISING_EDGE;
+        const auto &name = port.str(this);
+        if (name.find("A[") == 0 || name.find("B[") == 0 || name.find("C[") == 0 || name.find("Z[") == 0) {
+            IdString reg_key = dsp_register_key(cell, name);
+            if (reg_key != IdString() && dsp_reg_param(cell->params, reg_key)) {
+                timing.setup = DelayPair{125, 125};
+                timing.hold = DelayPair{42, 42};
+            }
+        } else if (name.find("Y[") == 0 && dsp_reg_param(cell->params, id_OREG_CTRL)) {
+            timing.clockToQ = DelayQuad{1000};
+        }
+        return timing;
+    } else if (cell->type == id_MISTRAL_FF) {
+        timing.clock_port = id_CLK;
+        auto clock_pin = cell->pin_data.find(id_CLK);
+        timing.edge = clock_pin != cell->pin_data.end() && clock_pin->second.state == PIN_INV ?
+                FALLING_EDGE : RISING_EDGE;
         // ACLR is considered synchronous for timing purposes.
         if (port.in(id_DATAIN, id_ACLR, id_ENA, id_SCLR, id_SLOAD, id_SDATA)) {
             timing.setup = DelayPair{-196, -196};
@@ -99,17 +215,37 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
         }
         return timing;
     } else if (cell->type == id_MISTRAL_M10K) {
-        timing.clock_port = id_CLK1;
+        const auto &name = port.str(this);
+        if (bool_or_default(cell->params, id_CFG_TDP, false)) {
+            timing.clock_port = name.find("B1") == 0 ? id_CLK2 : id_CLK1;
+            timing.edge = RISING_EDGE;
+            if (name.find("A1Q") == 0 || name.find("B1Q") == 0) {
+                timing.clockToQ = DelayQuad{1004};
+            } else {
+                timing.hold = DelayPair{42, 42};
+                if (name.find("ADDR") != std::string::npos)
+                    timing.setup = DelayPair{125, 125};
+                else if (name.find("DATA") != std::string::npos)
+                    timing.setup = DelayPair{97, 97};
+                else if (port.in(id_A1WE, id_B1WE) || name.find("A1BE[") == 0 || name.find("B1BE[") == 0)
+                    timing.setup = DelayPair{140, 140};
+                else if (port.in(id_A1EN, id_B1EN))
+                    timing.setup = DelayPair{161, 161};
+            }
+            return timing;
+        }
+        bool read_port = port.in(id_B1DATA, id_B1EN) || name.find("B1DATA[") == 0 || name.find("B1ADDR") == 0;
+        timing.clock_port = read_port && bool_or_default(cell->params, id_CFG_DUAL_CLOCK, false) ? id_CLK2 : id_CLK1;
         timing.edge = RISING_EDGE;
         if (port.str(this).find("A1ADDR") == 0 || port.str(this).find("B1ADDR") == 0) {
             timing.setup = DelayPair{125, 125};
             timing.hold = DelayPair{42, 42};
             timing.clockToQ = DelayQuad{};
-        } else if (port == id_A1DATA) {
+        } else if (port == id_A1DATA || name.find("A1DATA[") == 0) {
             timing.setup = DelayPair{97, 97};
             timing.hold = DelayPair{42, 42};
             timing.clockToQ = DelayQuad{};
-        } else if (port == id_A1EN) {
+        } else if (port == id_A1EN || port == id_A1BE || name.find("A1BE[") == 0) {
             timing.setup = DelayPair{140, 140};
             timing.hold = DelayPair{42, 42};
             timing.clockToQ = DelayQuad{};
@@ -117,7 +253,7 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
             timing.setup = DelayPair{161, 161};
             timing.hold = DelayPair{42, 42};
             timing.clockToQ = DelayQuad{};
-        } else if (port == id_B1DATA) {
+        } else if (port == id_B1DATA || name.find("B1DATA[") == 0) {
             timing.setup = DelayPair{};
             timing.hold = DelayPair{};
             timing.clockToQ = DelayQuad{1004};
@@ -129,6 +265,33 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
 
 bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort, DelayQuad &delay) const
 {
+    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27) &&
+        toPort.str(this).find("Y[") == 0) {
+        // Cyclone V arcs from Yosys techlibs/intel_alm/common/dsp_sim.v.
+        const auto &from_name = fromPort.str(this);
+        if (from_name.find("A[") == 0) {
+            delay = cell->type == id_MISTRAL_MUL18X18 ? DelayQuad{3180} :
+                    cell->type == id_MISTRAL_MUL27X27 ? DelayQuad{3732} : DelayQuad{2818};
+            return true;
+        }
+        if (from_name.find("B[") == 0) {
+            delay = cell->type == id_MISTRAL_MUL18X18 ? DelayQuad{3982} :
+                    cell->type == id_MISTRAL_MUL27X27 ? DelayQuad{3928} : DelayQuad{3051};
+            return true;
+        }
+        // The 9x9 preadder feeds the multiplier through its Y operand. The
+        // 18x18 P36 mode uses C as a 36-bit addend; model both with the
+        // conservative B-side datapath delay.
+        if (from_name.find("Z[") == 0 && cell->type == id_MISTRAL_MUL9X9 &&
+            dsp_bool_param(cell->params, id_PREADDER_EN)) {
+            delay = DelayQuad{3051};
+            return true;
+        }
+        if (from_name.find("C[") == 0 && cell->type == id_MISTRAL_MUL18X18) {
+            delay = DelayQuad{3982};
+            return true;
+        }
+    }
     // Based on 1.1V 100C timing corner of sx120f, using delays from LUT input to DFF input.
 
     // I have many regrets about naming my cell ports how I did...
@@ -337,6 +500,12 @@ bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, Del
         PipId pip = *it;
         auto src = getPipSrcWire(pip);
         auto dst = getPipDstWire(pip);
+
+        // A dedicated GPIO -> FPLL edge represents the COMBOUT clock tap,
+        // not a load on the GPIO's fabric DATAIN routing node. Mistral has
+        // no analogue model for that tap; retain the estimated arc instead.
+        if (pll_ref_select.count(pip))
+            return false;
 
         if (src.is_nextpnr_created())
             continue;

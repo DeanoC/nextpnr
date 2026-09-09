@@ -1,0 +1,21 @@
+w20-c0
+PASS: initialized reads through both ports
+PASS: low/high/zero/full masks on both writers and preserved storage
+PASS: inferred output hold during writes
+PASS: simultaneous disjoint writes with different masks
+PASS: clock enable holds output and suppresses masked writes
+cleanup: free (development reboot recovered)
+w16-c0
+PASS: initialized reads through both ports
+PASS: low/high/zero/full masks on both writers and preserved storage
+PASS: inferred output hold during writes
+PASS: simultaneous disjoint writes with different masks
+PASS: clock enable holds output and suppresses masked writes
+cleanup: free (development reboot recovered)
+w20-c0-raw
+PASS: initialized reads through both ports
+PASS: low/high/zero/full masks on both writers and preserved storage
+PASS: enabled-byte NEW_DATA
+PASS: simultaneous disjoint writes with different masks
+PASS: clock enable holds output and suppresses masked writes
+cleanup: free (development reboot recovered)

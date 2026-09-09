@@ -1,0 +1,321 @@
+{
+  "formula": "physical bit p[31-address]+32*lane = NOT INIT[address]",
+  "permutation": [
+    0,
+    1,
+    4,
+    5,
+    8,
+    9,
+    12,
+    13,
+    29,
+    28,
+    25,
+    24,
+    21,
+    20,
+    17,
+    16,
+    2,
+    3,
+    6,
+    7,
+    10,
+    11,
+    14,
+    15,
+    31,
+    30,
+    27,
+    26,
+    23,
+    22,
+    19,
+    18
+  ],
+  "expected": {
+    "0": [
+      "ffffffff",
+      "00000000"
+    ],
+    "1": [
+      "66666666",
+      "a5a5a5a5"
+    ],
+    "2": [
+      "f0f0f0f0",
+      "00ffff00"
+    ],
+    "3": [
+      "10ef10ef",
+      "0500ff5f"
+    ],
+    "4": [
+      "b7da4825",
+      "c699c9c6"
+    ],
+    "5": [
+      "9d4c6573",
+      "a3c35496"
+    ],
+    "6": [
+      "c23cb134",
+      "f08f6f38"
+    ],
+    "7": [
+      "48bb486f",
+      "9410faf5"
+    ],
+    "8": [
+      "49ef420b",
+      "cd409ef5"
+    ],
+    "9": [
+      "26f79378",
+      "806c2d6b"
+    ],
+    "10": [
+      "47243505",
+      "fdab453d"
+    ],
+    "11": [
+      "82168706",
+      "fea527fa"
+    ],
+    "12": [
+      "d7e2e150",
+      "89fd4d90"
+    ],
+    "13": [
+      "9cb67011",
+      "d8e9fc16"
+    ],
+    "14": [
+      "a9c9b9d7",
+      "0b925a2a"
+    ],
+    "15": [
+      "b580dc5e",
+      "9b37d142"
+    ],
+    "16": [
+      "16d0ea8e",
+      "4e37a993"
+    ],
+    "17": [
+      "f4dfb6fb",
+      "0240b508"
+    ],
+    "18": [
+      "074a91f8",
+      "235d4d7b"
+    ],
+    "19": [
+      "529b9f3f",
+      "d2102359"
+    ]
+  },
+  "observed": [
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 0,
+      "lane": 0,
+      "mask": "00000000",
+      "matching_source_bits": [
+        0
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 0,
+      "lane": 1,
+      "mask": "fdab453d",
+      "matching_source_bits": [
+        10
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 1,
+      "lane": 0,
+      "mask": "f08f6f38",
+      "matching_source_bits": [
+        6
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 1,
+      "lane": 1,
+      "mask": "4e37a993",
+      "matching_source_bits": [
+        16
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 2,
+      "lane": 0,
+      "mask": "00ffff00",
+      "matching_source_bits": [
+        2
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 2,
+      "lane": 1,
+      "mask": "89fd4d90",
+      "matching_source_bits": [
+        12
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 3,
+      "lane": 0,
+      "mask": "0500ff5f",
+      "matching_source_bits": [
+        3
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 3,
+      "lane": 1,
+      "mask": "d8e9fc16",
+      "matching_source_bits": [
+        13
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 4,
+      "lane": 0,
+      "mask": "c699c9c6",
+      "matching_source_bits": [
+        4
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 4,
+      "lane": 1,
+      "mask": "0b925a2a",
+      "matching_source_bits": [
+        14
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 5,
+      "lane": 0,
+      "mask": "a3c35496",
+      "matching_source_bits": [
+        5
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 5,
+      "lane": 1,
+      "mask": "9b37d142",
+      "matching_source_bits": [
+        15
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 6,
+      "lane": 0,
+      "mask": "a5a5a5a5",
+      "matching_source_bits": [
+        1
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 6,
+      "lane": 1,
+      "mask": "fea527fa",
+      "matching_source_bits": [
+        11
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 7,
+      "lane": 0,
+      "mask": "9410faf5",
+      "matching_source_bits": [
+        7
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 7,
+      "lane": 1,
+      "mask": "0240b508",
+      "matching_source_bits": [
+        17
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 8,
+      "lane": 0,
+      "mask": "cd409ef5",
+      "matching_source_bits": [
+        8
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 8,
+      "lane": 1,
+      "mask": "235d4d7b",
+      "matching_source_bits": [
+        18
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 9,
+      "lane": 0,
+      "mask": "806c2d6b",
+      "matching_source_bits": [
+        9
+      ]
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "alm": 9,
+      "lane": 1,
+      "mask": "d2102359",
+      "matching_source_bits": [
+        19
+      ]
+    }
+  ]
+}

@@ -29,10 +29,54 @@
 #include "util.h"
 
 #include "cyclonev.h"
+#include "dsp.h"
 
 NEXTPNR_NAMESPACE_BEGIN
 
 using namespace mistral;
+
+namespace {
+
+bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool def = false)
+{
+    auto it = params.find(key);
+    if (it == params.end())
+        return def;
+    if (!it->second.is_string)
+        return it->second.as_bool();
+    const std::string &value = it->second.as_string();
+    if (value == "1" || value == "true" || value == "TRUE" || value == "on" || value == "reg" ||
+        value == "registered")
+        return true;
+    if (value == "0" || value == "false" || value == "FALSE" || value == "off" || value == "bypass")
+        return false;
+    return def;
+}
+
+bool dsp_shared_config_equal(const CellInfo *a, const CellInfo *b)
+{
+    if (dsp_bool_param(a->params, id_A_SIGNED, true) != dsp_bool_param(b->params, id_A_SIGNED, true) ||
+        dsp_bool_param(a->params, id_B_SIGNED, true) != dsp_bool_param(b->params, id_B_SIGNED, true))
+        return false;
+    for (IdString key : {id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ, id_INREG_CTRL_BX,
+                         id_INREG_CTRL_BY, id_INREG_CTRL_BZ, id_OREG_CTRL, id_PREADDER_EN, id_PREADDER_SUB,
+                         id_CASCADE_EN, id_CASCADE_1ST_EN, id_CHAIN_OUTPUT_EN}) {
+        if (dsp_bool_param(a->params, key) != dsp_bool_param(b->params, key))
+            return false;
+    }
+    for (IdString port : {id_CLK, id_ACLR, id_ENA, id_ACCUMULATE, id_SUB, id_NEGATE, id_LOADCONST}) {
+        const NetInfo *an = a->getPort(port);
+        const NetInfo *bn = b->getPort(port);
+        // Hard constants have no net after packing. Keep their retained pin
+        // states in the shared-control comparison so opposite constants do
+        // not become legal occupants of one three-lane DSP tile.
+        if (an != bn || a->get_pin_state(port) != b->get_pin_state(port))
+            return false;
+    }
+    return true;
+}
+
+} // namespace
 
 void IdString::initialize_arch(const BaseCtx *ctx)
 {
@@ -120,10 +164,19 @@ Arch::Arch(ArchArgs args)
     if (!hps_pos.empty()) {
         create_hps_mpu_general_purpose(CycloneV::pos2x(hps_pos[CycloneV::I_HPS_MPU_GENERAL_PURPOSE]),
                                        CycloneV::pos2y(hps_pos[CycloneV::I_HPS_MPU_GENERAL_PURPOSE]));
+        for (int index = 0; index < 4; index++) {
+            auto pos = hps_pos[CycloneV::I_HPS_PERIPHERAL_I2C + index];
+            create_hps_peripheral_i2c(CycloneV::pos2x(pos), CycloneV::pos2y(pos));
+        }
     }
 
     for (auto m10k_pos : cyclonev->m10k_get_pos())
         create_m10k(CycloneV::pos2x(m10k_pos), CycloneV::pos2y(m10k_pos));
+
+    for (auto dsp_pos : cyclonev->dsp_get_pos())
+        create_dsp(CycloneV::pos2x(dsp_pos), CycloneV::pos2y(dsp_pos));
+
+    create_plls();
 
     // This import takes about 5s, perhaps long term we can speed it up, e.g. defer to Mistral more...
     log_info("Initialising routing graph...\n");
@@ -152,18 +205,22 @@ int Arch::getTileBelDimZ(int x, int y) const
 
 BelId Arch::getBelByName(IdStringList name) const
 {
-    BelId bel;
-    NPNR_ASSERT(name.size() == 4);
-    int x = id2int.at(name[1]);
-    int y = id2int.at(name[2]);
-    int z = id2int.at(name[3]);
-
-    bel.pos = CycloneV::xy2pos(x, y);
-    bel.z = z;
-
-    NPNR_ASSERT(name[0] == getBelType(bel));
-
-    return bel;
+    if (name.size() != 4)
+        return BelId();
+    auto x_it = id2int.find(name[1]);
+    auto y_it = id2int.find(name[2]);
+    auto z_it = id2int.find(name[3]);
+    if (x_it == id2int.end() || y_it == id2int.end() || z_it == id2int.end())
+        return BelId();
+    int x = x_it->second;
+    int y = y_it->second;
+    int z = z_it->second;
+    if (x < 0 || x >= getGridDimX() || y < 0 || y >= getGridDimY())
+        return BelId();
+    const auto &bels = bels_by_tile.at(pos2idx(x, y));
+    if (z < 0 || z >= int(bels.size()) || bels.at(z).type != name[0])
+        return BelId();
+    return BelId(CycloneV::xy2pos(x, y), z);
 }
 
 IdStringList Arch::getBelName(BelId bel) const
@@ -185,6 +242,38 @@ IdStringList Arch::getBelName(BelId bel) const
 bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
 {
     auto &data = bel_data(bel);
+    if (data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27) && data.bound) {
+        // The mode-specific BELs are alternate views of one physical DSP
+        // tile. Three M9 lanes may share a tile, while a wide multiplier owns
+        // the tile and cannot coexist with another mode.
+        for (BelId other : getBelsByTile(CycloneV::pos2x(bel.pos), CycloneV::pos2y(bel.pos))) {
+            if (other == bel)
+                continue;
+            const auto &other_data = bel_data(other);
+            if (!other_data.bound || !other_data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27))
+                continue;
+            if (other_data.type != data.type) {
+                if (explain_invalid)
+                    log_info("DSP tile already contains multiplier mode %s; cannot place %s here.\n",
+                             nameOf(other_data.type), nameOf(data.type));
+                return false;
+            }
+            if (data.type == id_MISTRAL_MUL9X9 && !dsp_shared_config_equal(data.bound, other_data.bound)) {
+                if (explain_invalid)
+                    log_info("DSP tile already contains an M9 lane with different shared controls.\n");
+                return false;
+            }
+        }
+    }
+    if (data.type == id_MISTRAL_CLKENA && data.block_index != 2 && data.bound) {
+        auto input = data.bound->getPort(id_A);
+        if (!input || !input->driver.cell || input->driver.cell->type != id_altera_pll ||
+            input->driver.cell->bel == BelId())
+            return false;
+        WireId source = getBelPinWire(input->driver.cell->bel, input->driver.port);
+        WireId dest = getBelPinWire(bel, id_A);
+        return pll_clock_select.count(PipId(source.node, dest.node));
+    }
     if (data.type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB)) {
         return is_alm_legal(data.lab_data.lab, data.lab_data.alm) && check_lab_input_count(data.lab_data.lab) &&
                check_mlab_groups(data.lab_data.lab);
@@ -410,7 +499,7 @@ void Arch::add_bel_pin(BelId bel, IdString pin, PortType dir, WireId wire)
 
 void Arch::assign_default_pinmap(CellInfo *cell)
 {
-    if (cell->type == id_MISTRAL_M10K)
+    if (cell->type.in(id_MISTRAL_M10K, id_MISTRAL_M10K_TDP))
         return; // M10Ks always have a custom pinmap
     for (auto &port : cell->ports) {
         auto &pinmap = cell->pin_data[port.first].bel_pins;
