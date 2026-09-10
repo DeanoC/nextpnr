@@ -62,7 +62,14 @@ const dict<IdString, Arch::CellPinsData> Arch::cell_pins_db = {
          {
                  {id_CLK1, PINSTYLE_CLK},
                  {id_A1EN, PINSTYLE_CE},
-         }}};
+         }},
+        // A RAM clock may be tied off when the corresponding port is unused.
+        // Keep a hard constant off the TCLK fabric route, while real and
+        // inverted clocks continue to use their normal physical pin.
+        {id_MISTRAL_M10K,
+         {{{id_CLK1, PINSTYLE_CLK}, {id_CLK2, PINSTYLE_CLK}, {{}, PINSTYLE_NONE}}}},
+        {id_MISTRAL_M10K_TDP,
+         {{{id_CLK1, PINSTYLE_CLK}, {id_CLK2, PINSTYLE_CLK}, {{}, PINSTYLE_NONE}}}}};
 
 CellPinStyle Arch::get_cell_pin_style(const CellInfo *cell, IdString port) const
 {

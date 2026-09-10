@@ -216,9 +216,13 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
         return timing;
     } else if (cell->type == id_MISTRAL_M10K) {
         const auto &name = port.str(this);
+        auto clock_edge = [&](IdString clock_port) {
+            auto clock_pin = cell->pin_data.find(clock_port);
+            return clock_pin != cell->pin_data.end() && clock_pin->second.state == PIN_INV ? FALLING_EDGE : RISING_EDGE;
+        };
         if (bool_or_default(cell->params, id_CFG_TDP, false)) {
             timing.clock_port = name.find("B1") == 0 ? id_CLK2 : id_CLK1;
-            timing.edge = RISING_EDGE;
+            timing.edge = clock_edge(timing.clock_port);
             if (name.find("A1Q") == 0 || name.find("B1Q") == 0) {
                 timing.clockToQ = DelayQuad{1004};
             } else {
@@ -236,7 +240,7 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
         }
         bool read_port = port.in(id_B1DATA, id_B1EN) || name.find("B1DATA[") == 0 || name.find("B1ADDR") == 0;
         timing.clock_port = read_port && bool_or_default(cell->params, id_CFG_DUAL_CLOCK, false) ? id_CLK2 : id_CLK1;
-        timing.edge = RISING_EDGE;
+        timing.edge = clock_edge(timing.clock_port);
         if (port.str(this).find("A1ADDR") == 0 || port.str(this).find("B1ADDR") == 0) {
             timing.setup = DelayPair{125, 125};
             timing.hold = DelayPair{42, 42};
