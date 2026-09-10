@@ -1238,6 +1238,7 @@ struct MistralPacker
         int wa = ci->params.at(id_CFG_ABITS).as_int64();
         int rb = int_or_default(ci->params, id_CFG_RD_DBITS, wb);
         int ra = int_or_default(ci->params, id_CFG_RD_ABITS, wa);
+        bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
         auto geometry = [](int a, int d) {
             return (d == 10 && a == 10) || (d == 20 && a == 9) || (d == 40 && a == 8);
         };
@@ -1245,9 +1246,24 @@ struct MistralPacker
             log_error("M10K '%s': mixed widths require 1024x10, 512x20 or 256x40 ports.\n", ctx->nameOf(ci));
         if (!bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false) || ci->getPort(id_CLK1) == nullptr || ci->getPort(id_CLK2) == nullptr)
             log_error("M10K '%s': mixed widths require CFG_DUAL_CLOCK=1 and both clocks.\n", ctx->nameOf(ci));
-        if (bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false) ||
-            ci->getPort(ctx->id("A1BE[0]")) || ci->getPort(ctx->id("A1BE[1]")))
-            log_error("M10K '%s': mixed-width byte enables are not supported.\n", ctx->nameOf(ci));
+        if (byte_enable || ci->getPort(ctx->id("A1BE[0]")) || ci->getPort(ctx->id("A1BE[1]"))) {
+            for (const auto &port : ci->ports) {
+                const auto &name = port.first.str(ctx);
+                if (name.find("A1BE[") == 0 && name != "A1BE[0]" && name != "A1BE[1]")
+                    log_error("M10K '%s': mixed-width byte masks must have exactly two bits.\n", ctx->nameOf(ci));
+            }
+            if (!byte_enable)
+                log_error("M10K '%s': mixed-width A1BE ports require CFG_BYTE_ENABLE=1.\n", ctx->nameOf(ci));
+            if (wb != 20)
+                log_error("M10K '%s': mixed-width byte enables require a 20-bit write port.\n", ctx->nameOf(ci));
+            for (int bit = 0; bit < 2; bit++) {
+                IdString port = ctx->idf("A1BE[%d]", bit);
+                if (!ci->getPort(port))
+                    log_error("M10K '%s': mixed-width byte-enable mode requires connected %s.\n", ctx->nameOf(ci),
+                              ctx->nameOf(port));
+                ci->pin_data[port].bel_pins = {ctx->idf("BYTEENABLEA[%d]", bit)};
+            }
+        }
         ci->pin_data[id_A1EN].bel_pins = {ctx->id("WREN[0]"), ctx->id("ENABLE[1]")};
         ci->pin_data[id_B1EN].bel_pins = {ctx->id("ENABLE[0]")};
         ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};

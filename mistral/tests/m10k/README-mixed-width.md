@@ -41,6 +41,21 @@ establish cross-domain timing acceptance. It uses the default router2 with a
 router2 to expand the search box when congestion persists. The earlier
 hardware acceptance artifacts retain their original router1 provenance.
 
+The mixed-width byte-enable regression uses the same locked Yosys fixture and
+adds the two `A1BE` nets at the JSON boundary until Yosys emits that combined
+mapping. It routes 512x20 writes with byte masks to both 1024x10 and 256x40
+read ports, checks the `BYTEENABLEA` routes and decoded settings, and rejects
+other write widths:
+
+```sh
+python3 mistral/tests/m10k/mixed_byte_enable.py \
+  --yosys /path/to/yosys --nextpnr /path/to/nextpnr-mistral \
+  --mistral-cv /path/to/mistral-cv \
+  --qsf /path/to/misteross/boards/de10nano/pins.qsf \
+  --sdc /path/to/misteross/boards/de10nano/clocks.sdc \
+  --output /tmp/m10k-mixed-byte-enable
+```
+
 The target probe is generated separately, for example:
 
 ```sh
@@ -55,10 +70,14 @@ clock stopped, and read-enable hold. Writes stage address/data before WE and
 remove WE before changing address because the HPS GP bus is asynchronous.
 Use the normal kit stop/reboot recovery and release protocol afterward.
 
-Mixed-width byte enables and true dual-port writes are unsupported. There
-is no defined result for a simultaneous read/write collision on overlapping
-storage. Existing untagged inference and legacy M10K modes retain their
-mapping. No Mistral database changes are required.
+Mixed-width byte enables use a 512x20 write port and a 1024x10 or 256x40
+read port. The two `A1BE` bits map to the existing `BYTEENABLEA` BEL pins;
+equal-width 512x20 byte enables continue to use the ordinary SDP path. A 10-
+or 40-bit write port cannot request byte enables, and mixed-width byte enables
+are still incompatible with true dual-port mode. There is no defined result
+for a simultaneous read/write collision on overlapping storage. Existing
+untagged inference and legacy M10K modes retain their mapping. No Mistral
+database changes are required.
 
 Quartus configuration references, including the actual compressed oracle
 artifacts, are in [oracle/mixed-width](oracle/mixed-width). The Yosys companion
