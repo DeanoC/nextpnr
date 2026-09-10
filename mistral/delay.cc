@@ -80,6 +80,15 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
             return TMG_ENDPOINT;
         return TMG_IGNORE;
     }
+    if (cell->type == id_MISTRAL_DDRBIDIR) {
+        // The Mistral database has no characterized bidirectional GPIO
+        // register setup/hold, clock-to-pad, or clock-to-fabric arcs.
+        if (port.in(id_CLK, id_CLKIN))
+            return TMG_CLOCK_INPUT;
+        if (port.in(id_D_H, id_D_L, id_OE))
+            return TMG_ENDPOINT;
+        return TMG_IGNORE;
+    }
     if (cell->type == id_MISTRAL_CLKENA) {
         if (port == id_A)
             return TMG_CLOCK_INPUT;
