@@ -229,6 +229,22 @@ struct MistralPacker
         }
     }
 
+    void ensure_m10k_control_ports()
+    {
+        // Yosys only emits the clear ports when the source primitive uses
+        // them.  Materialise both physical clear inputs before constant
+        // folding so an omitted input is represented as PIN_0 and is encoded
+        // as an inactive clear rather than being left at the M10K default.
+        for (auto &entry : ctx->cells) {
+            CellInfo *cell = entry.second.get();
+            if (!cell->type.in(id_MISTRAL_M10K, id_MISTRAL_M10K_TDP))
+                continue;
+            for (IdString control : {id_ACLR0, id_ACLR1})
+                if (!cell->ports.count(control))
+                    cell->addInput(control);
+        }
+    }
+
     bool is_global_dsp_clock(const NetInfo *net) const
     {
         // MISTRAL_CLKBUF.Q is the output of the dedicated global clock path.
@@ -1395,6 +1411,8 @@ struct MistralPacker
         bool swap_wren = unequal && dbits == 20;
         ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
         ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
+        ci->pin_data[id_ACLR0].bel_pins = {ctx->id("ACLR[0]")};
+        ci->pin_data[id_ACLR1].bel_pins = {ctx->id("ACLR[1]")};
         ci->pin_data[id_A1EN].bel_pins = {ctx->idf("ENABLE[%d]", unequal ? 0 : 1)};
         ci->pin_data[id_B1EN].bel_pins = {ctx->idf("ENABLE[%d]", unequal ? 1 : 0)};
         ci->pin_data[id_A1WE].bel_pins = {ctx->idf("WREN[%d]", swap_wren ? 1 : 0)};
@@ -1453,6 +1471,8 @@ struct MistralPacker
         ci->pin_data[id_B1EN].bel_pins = {ctx->id("ENABLE[0]")};
         ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
         ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
+        ci->pin_data[id_ACLR0].bel_pins = {ctx->id("ACLR[0]")};
+        ci->pin_data[id_ACLR1].bel_pins = {ctx->id("ACLR[1]")};
         for (int bit = 0; bit < wa; bit++)
             ci->pin_data[ctx->idf("A1ADDR[%d]", bit)].bel_pins = {ctx->idf("ADDRA[%d]", bit + 12 - wa)};
         for (int bit = 0; bit < ra; bit++)
@@ -1502,7 +1522,8 @@ struct MistralPacker
 
             // Quartus doesn't seem to generate ADDRSTALL[AB], BYTEENABLE[AB][01].
 
-            // It *does* generate ACLR[01] but leaves them unconnected if unused.
+            // It *does* generate ACLR[01]. Keep both logical inputs so the
+            // bitstream can retain explicit reset constants.
 
             // Enables.
             bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
@@ -1541,6 +1562,8 @@ struct MistralPacker
             ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
             if (dual_clock)
                 ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
+            ci->pin_data[id_ACLR0].bel_pins = {ctx->id("ACLR[0]")};
+            ci->pin_data[id_ACLR1].bel_pins = {ctx->id("ACLR[1]")};
 
             // Other clock-enable pins remain unconnected.
 
@@ -2240,6 +2263,7 @@ struct MistralPacker
         setup_plls();
         fold_inverted_pll_clock_buffers();
         ensure_dsp_control_ports();
+        ensure_m10k_control_ports();
         pack_constants();
         select_dsp_control_pinmaps();
         constrain_carries();

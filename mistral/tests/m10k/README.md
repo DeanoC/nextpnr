@@ -64,3 +64,5 @@ For independent port widths, see [mixed-width SDP](README-mixed-width.md).
 
 For two independently enabled read/write ports, see
 [true dual-port M10K](README-true-dual-port.md).
+
+For asynchronous clear controls, see [M10K ACLR](README-aclr.md).

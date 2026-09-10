@@ -174,6 +174,8 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         if (bool_or_default(cell->params, id_CFG_TDP, false)) {
             if (port.in(id_CLK1, id_CLK2))
                 return TMG_CLOCK_INPUT;
+            if (port.in(id_ACLR0, id_ACLR1))
+                return TMG_ENDPOINT;
             if (name.find("A1Q") == 0 || name.find("B1Q") == 0) {
                 clockInfoCount = 1;
                 return TMG_REGISTER_OUTPUT;
@@ -186,6 +188,8 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         }
         if (port.in(id_CLK1, id_CLK2)) {
             return TMG_CLOCK_INPUT;
+        } else if (port.in(id_ACLR0, id_ACLR1)) {
+            return TMG_ENDPOINT;
         } else if (port.in(id_A1DATA, id_A1EN, id_A1BE, id_B1EN) || name.find("A1DATA[") == 0 ||
                    name.find("A1BE[") == 0 ||
                    name.find("A1ADDR") == 0 || name.find("B1ADDR") == 0) {
