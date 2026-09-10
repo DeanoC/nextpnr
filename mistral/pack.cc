@@ -582,6 +582,253 @@ struct MistralPacker
                         "reported fabric Fmax does not establish input-interface timing closure.\n");
     }
 
+    bool check_altiobuf_params(CellInfo *ci, const std::map<std::string, std::vector<std::string>> &allowed,
+                               const char *profile)
+    {
+        bool valid = true;
+        for (const auto &param : ci->params) {
+            if (param.first == ctx->id("number_of_channels"))
+                continue;
+            auto it = allowed.find(param.first.str(ctx));
+            if (it == allowed.end() || !param.second.is_string ||
+                std::find(it->second.begin(), it->second.end(), param.second.as_string()) == it->second.end()) {
+                log_error("%s '%s': unsupported parameter; require the checked width-one profile.\n", profile,
+                          ctx->nameOf(ci));
+                valid = false;
+            }
+        }
+        return valid;
+    }
+
+    bool check_altiobuf_ports(CellInfo *ci, const std::set<std::string> &allowed, const char *profile)
+    {
+        bool valid = true;
+        for (const auto &port : ci->ports) {
+            if (!allowed.count(port.first.str(ctx))) {
+                log_error("%s '%s': unsupported port '%s'.\n", profile, ctx->nameOf(ci),
+                          port.first.str(ctx).c_str());
+                valid = false;
+            }
+        }
+        return valid;
+    }
+
+    CellInfo *find_altiobuf_io_user(NetInfo *net, IdString port, CellInfo *primitive, const char *profile)
+    {
+        CellInfo *io = nullptr;
+        for (const auto &user : net->users) {
+            if (user.cell == primitive)
+                continue;
+            if (user.cell->type == id_MISTRAL_IO && user.port == port) {
+                if (io != nullptr)
+                    log_error("%s '%s': pad net has more than one MISTRAL_IO user.\n", profile,
+                              ctx->nameOf(primitive));
+                io = user.cell;
+            }
+        }
+        return io;
+    }
+
+    void pack_altiobuf_inputs()
+    {
+        std::vector<CellInfo *> cells;
+        const IdString type = ctx->id("altiobuf_in");
+        for (auto &entry : ctx->cells)
+            if (entry.second->type == type)
+                cells.push_back(entry.second.get());
+
+        for (CellInfo *ci : cells) {
+            bool valid = true;
+            auto fail = [&](const char *reason) {
+                log_error("altiobuf input '%s': %s.\n", ctx->nameOf(ci), reason);
+                valid = false;
+            };
+            if (int_or_default(ci->params, ctx->id("number_of_channels"), 1) != 1)
+                fail("requires number_of_channels=1");
+            valid &= check_altiobuf_params(
+                    ci, {{"enable_bus_hold", {"FALSE"}}, {"use_differential_mode", {"FALSE"}}},
+                    "altiobuf input");
+            valid &= check_altiobuf_ports(ci, {"datain", "dataout"}, "altiobuf input");
+
+            const IdString datain = ctx->id("datain"), dataout = ctx->id("dataout");
+            NetInfo *pad_net = ci->getPort(datain), *data_net = ci->getPort(dataout);
+            if (!pad_net || !data_net)
+                fail("datain and dataout must be connected");
+            CellInfo *ib = nullptr;
+            if (pad_net) {
+                // MISTRAL_IB.O is the driver of the net that Yosys gives to
+                // altiobuf_in.datain.  The primitive itself is the sole user.
+                if (pad_net->driver.cell && pad_net->driver.cell->type == id_MISTRAL_IB &&
+                    pad_net->driver.port == id_O)
+                    ib = pad_net->driver.cell;
+                if (pad_net->users.entries() != 1 || ib == nullptr)
+                    fail("datain must directly connect to one input buffer");
+            }
+            if (data_net &&
+                (!data_net->driver.cell || data_net->driver.cell != ci || data_net->driver.port != dataout))
+                fail("dataout must be driven by this primitive");
+            if (!valid)
+                continue;
+
+            ci->disconnectPort(datain);
+            ci->disconnectPort(dataout);
+            ib->disconnectPort(id_O);
+            ib->connectPort(id_O, data_net);
+            if (pad_net->users.empty() && pad_net->driver.cell == nullptr)
+                ctx->nets.erase(pad_net->name);
+            IdString name = ci->name;
+            BelId bel = ib->bel;
+            ctx->cells.erase(name);
+            log_info("Packed altiobuf input '%s' into %s.\n", ctx->nameOf(name), ctx->nameOfBel(bel));
+        }
+    }
+
+    void pack_altiobuf_outputs()
+    {
+        std::vector<CellInfo *> cells;
+        const IdString type = ctx->id("altiobuf_out");
+        for (auto &entry : ctx->cells)
+            if (entry.second->type == type)
+                cells.push_back(entry.second.get());
+
+        for (CellInfo *ci : cells) {
+            bool valid = true;
+            auto fail = [&](const char *reason) {
+                log_error("altiobuf output '%s': %s.\n", ctx->nameOf(ci), reason);
+                valid = false;
+            };
+            if (int_or_default(ci->params, ctx->id("number_of_channels"), 1) != 1)
+                fail("requires number_of_channels=1");
+            valid &= check_altiobuf_params(
+                    ci, {{"enable_bus_hold", {"FALSE"}},
+                         {"use_differential_mode", {"FALSE"}},
+                         {"use_oe", {"FALSE"}}},
+                    "altiobuf output");
+            valid &= check_altiobuf_ports(ci, {"datain", "dataout"}, "altiobuf output");
+
+            const IdString datain = ctx->id("datain"), dataout = ctx->id("dataout");
+            NetInfo *data_net = ci->getPort(datain), *pad_net = ci->getPort(dataout);
+            if (!data_net || !pad_net)
+                fail("datain and dataout must be connected");
+            if (data_net && data_net->driver.cell == nullptr)
+                fail("datain must have a driver");
+            CellInfo *ob = nullptr;
+            if (pad_net) {
+                for (const auto &user : pad_net->users) {
+                    if (user.cell->type == id_MISTRAL_OB && user.port == id_I) {
+                        if (ob != nullptr)
+                            fail("dataout must directly connect to one output buffer");
+                        ob = user.cell;
+                    }
+                }
+                if (pad_net->users.entries() != 1 || ob == nullptr)
+                    fail("dataout must directly connect to one output buffer");
+            }
+            if (pad_net &&
+                (!pad_net->driver.cell || pad_net->driver.cell != ci || pad_net->driver.port != dataout))
+                fail("dataout must be driven by this primitive");
+            if (!valid)
+                continue;
+
+            ci->disconnectPort(datain);
+            ci->disconnectPort(dataout);
+            ob->disconnectPort(id_I);
+            ob->connectPort(id_I, data_net);
+            if (pad_net->users.empty() && pad_net->driver.cell == nullptr)
+                ctx->nets.erase(pad_net->name);
+            IdString name = ci->name;
+            BelId bel = ob->bel;
+            ctx->cells.erase(name);
+            log_info("Packed altiobuf output '%s' into %s.\n", ctx->nameOf(name), ctx->nameOfBel(bel));
+        }
+    }
+
+    void pack_altiobuf_bidir()
+    {
+        std::vector<CellInfo *> cells;
+        const IdString type = ctx->id("altiobuf_bidir");
+        for (auto &entry : ctx->cells)
+            if (entry.second->type == type)
+                cells.push_back(entry.second.get());
+
+        for (CellInfo *ci : cells) {
+            bool valid = true;
+            auto fail = [&](const char *reason) {
+                log_error("altiobuf bidirectional I/O '%s': %s.\n", ctx->nameOf(ci), reason);
+                valid = false;
+            };
+            if (int_or_default(ci->params, ctx->id("number_of_channels"), 1) != 1)
+                fail("requires number_of_channels=1");
+            valid &= check_altiobuf_params(ci, {{"enable_bus_hold", {"OFF", "FALSE"}}},
+                                           "altiobuf bidirectional I/O");
+            valid &= check_altiobuf_ports(ci, {"dataio", "oe", "datain", "dataout"},
+                                          "altiobuf bidirectional I/O");
+
+            const IdString dataio = ctx->id("dataio"), oe = ctx->id("oe"), datain = ctx->id("datain"),
+                           dataout = ctx->id("dataout");
+            NetInfo *pad_net = ci->getPort(dataio), *oe_net = ci->getPort(oe), *data_net = ci->getPort(datain),
+                    *out_net = ci->getPort(dataout);
+            if (!pad_net || !oe_net || !data_net)
+                fail("dataio, oe and datain must be connected");
+            if (pad_net && pad_net->driver.cell != nullptr)
+                fail("dataio must use an undriven pad-side net");
+            if (data_net && data_net->driver.cell == nullptr)
+                fail("datain must have a driver");
+            CellInfo *io = nullptr;
+            if (pad_net) {
+                io = find_altiobuf_io_user(pad_net, id_I, ci, "altiobuf bidirectional I/O");
+                if (pad_net->users.entries() != 2)
+                    fail("dataio must directly connect to one MISTRAL_IO pad");
+            }
+            if (!io)
+                fail("dataio must directly connect to one MISTRAL_IO pad");
+            if (io && io->getPort(id_O) != nullptr)
+                fail("MISTRAL_IO pad already has an input path");
+            if (io && !ctx->bel_data(io->bel).pins.count(id_O))
+                fail("selected MISTRAL_IO pad has no fabric output path");
+            if (out_net) {
+                if (out_net == data_net)
+                    fail("dataout must use a separate net from datain");
+                if (!out_net->driver.cell || out_net->driver.cell != ci || out_net->driver.port != dataout)
+                    fail("dataout must be driven by this primitive");
+            }
+            if (!valid)
+                continue;
+
+            ci->disconnectPort(dataio);
+            ci->disconnectPort(oe);
+            ci->disconnectPort(datain);
+            if (out_net)
+                ci->disconnectPort(dataout);
+            io->disconnectPort(id_I);
+            io->connectPort(id_I, data_net);
+            io->disconnectPort(id_OE);
+            io->connectPort(id_OE, oe_net);
+            if (out_net) {
+                // The primitive currently drives the fabric output net.
+                // Replace that driver with MISTRAL_IO.O and leave all users
+                // (including a top-level MISTRAL_OB) in place.
+                io->addOutput(id_O);
+                io->connectPort(id_O, out_net);
+            }
+            if (pad_net->users.empty() && pad_net->driver.cell == nullptr)
+                ctx->nets.erase(pad_net->name);
+            if (out_net && out_net->users.empty() && out_net->driver.cell == nullptr)
+                ctx->nets.erase(out_net->name);
+            IdString name = ci->name;
+            BelId bel = io->bel;
+            ctx->cells.erase(name);
+            log_info("Packed altiobuf bidirectional I/O '%s' into %s.\n", ctx->nameOf(name), ctx->nameOfBel(bel));
+        }
+    }
+
+    void pack_altiobufs()
+    {
+        pack_altiobuf_inputs();
+        pack_altiobuf_outputs();
+        pack_altiobuf_bidir();
+    }
+
     void pack_ddr_inputs()
     {
         std::vector<CellInfo *> inputs;
@@ -1782,6 +2029,7 @@ struct MistralPacker
     {
         init_constant_nets();
         pack_io();
+        pack_altiobufs();
         pack_ddr_inputs();
         pack_sdr_inputs();
         pack_sdr_outputs();

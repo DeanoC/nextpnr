@@ -1,0 +1,20 @@
+Classification: host-only; no hardware programmed or waveform measured
+Base nextpnr: 3e314db00a620caf3cbe09ecac93a4910df5f01a (fork mistral-stable)
+Mistral database: 78ba2a580ae2523403d4f4f91891a6b11d7b6aba
+Yosys: 13b43f8c85ec430a33ee55d058fb4c32b42b6910-compatible intel_alm flow
+Fixture: 5CSEBA6U23I7, ALTI_IN=Y15, ALTI_OUT=W15, ALTI_BIDIR=V16,
+         ALTI_OE=V11, BIDIR_DATA=AA15
+
+PASS: one altiobuf_in, one altiobuf_out and one altiobuf_bidir synthesized;
+      all three primitives were removed by packing and routed normally
+PASS: MISTRAL_IB=2, MISTRAL_OB=2, MISTRAL_IO=1; utilization MISTRAL_IO=5
+PASS: bidirectional MISTRAL_IO.I/OE/O stayed connected, including OE=0 and OE=1
+PASS: width, bus-hold and output-OE profiles were rejected before placement
+PASS: SDR/DDR GPIO and FF datain regressions passed
+
+Timing: no interior clocked paths in this unclocked GPIO fixture; no Fmax claim
+MISTRAL_FF used=0; MISTRAL_M10K used=0; altera_pll used=0
+
+Raw nextpnr RBF: 1952833 bytes
+Raw nextpnr RBF SHA-256: 414b36087cb431fbe8058ae0b1b2e00d1d263f412380a4c47bcfc872a08bdf1b
+Gzip artifact SHA-256: 7c0bea51d1484800e675e414caf5920f898d9dac082dc90dfb3294464ab0b347
