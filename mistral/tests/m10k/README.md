@@ -66,3 +66,6 @@ For two independently enabled read/write ports, see
 [true dual-port M10K](README-true-dual-port.md).
 
 For asynchronous clear controls, see [M10K ACLR](README-aclr.md).
+
+For a disabled true-dual-port side with a tied-off clock, see
+[constant disabled-port clock](README-constant-clock.md).

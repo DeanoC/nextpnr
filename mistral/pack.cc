@@ -1394,8 +1394,24 @@ struct MistralPacker
                 }
             }
         }
-        if (!ci->getPort(id_CLK1) || !ci->getPort(id_CLK2))
-            log_error("M10K '%s': true dual-port requires both clocks.\n", ctx->nameOf(ci));
+        auto hard_constant = [&](IdString port) {
+            CellPinState state = ci->get_pin_state(port);
+            return state == PIN_0 || state == PIN_1;
+        };
+        auto tied_low = [&](IdString port) {
+            return ci->get_pin_state(port) == PIN_0 || ci->getPort(port) == gnd_net;
+        };
+        bool clk1_signal = ci->getPort(id_CLK1) != nullptr;
+        bool clk2_signal = ci->getPort(id_CLK2) != nullptr;
+        bool clk1_constant = !clk1_signal && hard_constant(id_CLK1);
+        bool clk2_constant = !clk2_signal && hard_constant(id_CLK2);
+        if ((!clk1_signal && !clk1_constant) || (!clk2_signal && !clk2_constant))
+            log_error("M10K '%s': true dual-port requires both clocks or an explicit constant on an unused port.\n",
+                      ctx->nameOf(ci));
+        if (clk1_constant && !tied_low(id_A1EN))
+            log_error("M10K '%s': constant CLK1 is only valid when A1EN is tied low.\n", ctx->nameOf(ci));
+        if (clk2_constant && !tied_low(id_B1EN))
+            log_error("M10K '%s': constant CLK2 is only valid when B1EN is tied low.\n", ctx->nameOf(ci));
         for (IdString port : {id_A1EN, id_B1EN, id_A1WE, id_B1WE})
             if (!ci->getPort(port))
                 log_error("M10K '%s': true dual-port requires connected %s.\n", ctx->nameOf(ci), ctx->nameOf(port));
@@ -1409,8 +1425,10 @@ struct MistralPacker
         // Match the retained Quartus mixed-TDP control mux assignments.
         bool unequal = dbits != bdbits;
         bool swap_wren = unequal && dbits == 20;
-        ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
-        ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
+        if (clk1_signal)
+            ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
+        if (clk2_signal)
+            ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
         ci->pin_data[id_ACLR0].bel_pins = {ctx->id("ACLR[0]")};
         ci->pin_data[id_ACLR1].bel_pins = {ctx->id("ACLR[1]")};
         ci->pin_data[id_A1EN].bel_pins = {ctx->idf("ENABLE[%d]", unequal ? 0 : 1)};
@@ -1433,6 +1451,31 @@ struct MistralPacker
                         ctx->idf("DATA%cOUT[%d]", side, bit)};
             }
         }
+    }
+
+    void fold_m10k_constant_clock(CellInfo *ci, IdString port)
+    {
+        NetInfo *net = ci->getPort(port);
+        bool value;
+        if (net == gnd_net)
+            value = false;
+        else if (net == vcc_net)
+            value = true;
+        else if (net != nullptr && net->driver.cell != nullptr && net->driver.cell->type == id_GND)
+            value = false;
+        else if (net != nullptr && net->driver.cell != nullptr && net->driver.cell->type == id_VCC)
+            value = true;
+        else
+            return;
+
+        // process_inv_constants() normally folds direct GND/VCC drivers via
+        // PINSTYLE_CLK. An inverter whose input is a constant is rewired to
+        // the soft constant net with PIN_INV, however, so normalize that
+        // composition here before assigning a physical CLKIN pin.
+        if (ci->get_pin_state(port) == PIN_INV)
+            value = !value;
+        ci->disconnectPort(port);
+        ci->pin_data[port].state = value ? PIN_1 : PIN_0;
     }
 
     void setup_mixed_m10k(CellInfo *ci)
@@ -1499,6 +1542,8 @@ struct MistralPacker
             }
             if (ci->type != id_MISTRAL_M10K)
                 continue;
+            fold_m10k_constant_clock(ci, id_CLK1);
+            fold_m10k_constant_clock(ci, id_CLK2);
             if (bool_or_default(ci->params, id_CFG_TDP, false)) {
                 setup_tdp_m10k(ci);
                 continue;
@@ -1553,14 +1598,22 @@ struct MistralPacker
             // Legacy cells use CLK1 for both ports; new SDP cells have an
             // independent read clock on CLK2.
             bool dual_clock = bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false);
+            bool clk2_signal = ci->getPort(id_CLK2) != nullptr;
+            bool clk2_constant = !clk2_signal &&
+                                 (ci->get_pin_state(id_CLK2) == PIN_0 || ci->get_pin_state(id_CLK2) == PIN_1);
             ci->pin_data[id_B1EN].bel_pins = {ctx->id(dual_clock ? "ENABLE[0]" : "RDEN[0]")};
-            if (ci->getPort(id_CLK1) == nullptr || (dual_clock && ci->getPort(id_CLK2) == nullptr))
+            if (ci->getPort(id_CLK1) == nullptr)
                 log_error("M10K '%s' requires a connected %s clock.\n", ctx->nameOf(ci),
-                          ci->getPort(id_CLK1) == nullptr ? "CLK1" : "CLK2");
-            if (!dual_clock && ci->getPort(id_CLK2) != nullptr)
+                          "CLK1");
+            if (dual_clock && !clk2_signal && !clk2_constant)
+                log_error("M10K '%s' requires a connected CLK2 clock or an explicit constant on an unused read port.\n",
+                          ctx->nameOf(ci));
+            if (clk2_constant && ci->get_pin_state(id_B1EN) != PIN_0 && ci->getPort(id_B1EN) != gnd_net)
+                log_error("M10K '%s': constant CLK2 is only valid when B1EN is tied low.\n", ctx->nameOf(ci));
+            if (!dual_clock && clk2_signal)
                 log_error("M10K '%s': CLK2 requires CFG_DUAL_CLOCK=1.\n", ctx->nameOf(ci));
             ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
-            if (dual_clock)
+            if (dual_clock && clk2_signal)
                 ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
             ci->pin_data[id_ACLR0].bel_pins = {ctx->id("ACLR[0]")};
             ci->pin_data[id_ACLR1].bel_pins = {ctx->id("ACLR[1]")};
@@ -2269,6 +2322,7 @@ struct MistralPacker
         constrain_carries();
         constrain_lutram();
         setup_m10ks();
+        trim_design();
         constrain_dsps();
     }
 };
