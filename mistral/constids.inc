@@ -69,6 +69,8 @@ X(SDATA)
 X(Q)
 X(Q_H)
 X(Q_L)
+X(D_H)
+X(D_L)
 
 X(COMBOUT)
 X(SUM_OUT)

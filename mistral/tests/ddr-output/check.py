@@ -56,9 +56,9 @@ for name,pll,inv,minimum in [('direct',0,0,0),('inverted',0,1,0),('minimal',0,0,
     print('PASS:',name,'one DDR output, clock route, polarity, oracle settings and RBF',flush=True)
     if name!='direct':continue
     design=json.loads((case/'synth.json').read_text())
-    cases=[('width',{'width':2},{},'width=1'),
-           ('data',{}, {'datain_h':design['modules']['top']['cells']['ddr']['connections']['outclock']},'complementary constant'),
-           ('equal',{}, {'datain_l':['1']},'complementary constant'),
+    cases=[('width',{'width':2},{},'DDR output requires width=1'),
+           ('data',{}, {'datain_h':design['modules']['top']['cells']['ddr']['connections']['outclock']},'fabric DDR data requires'),
+           ('equal',{}, {'datain_l':['1']},'fabric DDR data requires'),
            ('clock',{}, {'outclock':[]},'outclock must'),
            ('clock-constant',{}, {'outclock':['0']},'outclock must'),
            ('reset',{}, {'aclr':['1']},'resets constant low'),

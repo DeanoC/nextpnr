@@ -73,8 +73,12 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         return port == id_I ? TMG_ENDPOINT : TMG_IGNORE;
     }
     if (cell->type == id_MISTRAL_DDROUT) {
-        // Clock-forwarding only: no fabric DDR data or characterized pad delay.
-        return port == id_CLK ? TMG_CLOCK_INPUT : TMG_IGNORE;
+        // No characterized GPIO register setup/hold or clock-to-pad arcs.
+        if (port == id_CLK)
+            return TMG_CLOCK_INPUT;
+        if (port.in(id_D_H, id_D_L))
+            return TMG_ENDPOINT;
+        return TMG_IGNORE;
     }
     if (cell->type == id_MISTRAL_CLKENA) {
         if (port == id_A)

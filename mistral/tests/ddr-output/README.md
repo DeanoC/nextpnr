@@ -12,10 +12,11 @@ polarity. The output uses the dedicated DDR registers, not a fabric LUT
 clock mux. Enable and OE must be high, all resets low, `oe_out` unused,
 `power_up_high="OFF"` and `invert_output="OFF"`. Unregistered/unused OE and
 OFF/unused extended OE-disable parameters are accepted. `dataout` must drive
-exactly one unidirectional output buffer. Widths above one, equal or fabric
-data inputs, enabled resets, dynamic controls and unsupported parameters
-are rejected. This first feature supports clock forwarding; general DDR data
-transfers require separate capture/setup/hold timing support.
+exactly one unidirectional output buffer. Widths above one, equal or malformed
+constant/data combinations, enabled resets, dynamic controls and unsupported
+parameters are rejected. This fixture covers constant-data clock forwarding;
+changing fabric `datain_h`/`datain_l` is covered by the separate
+[fabric-data DDR output fixture](../ddr-output-data).
 
 The packer reuses an existing global clock buffer or inserts one before PLL
 packing. This includes a minimal design containing only the reference input
