@@ -37,6 +37,8 @@ using namespace mistral;
 
 namespace {
 
+constexpr float router2_retry_margin = 1.10f;
+
 bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool def = false)
 {
     auto it = params.find(key);
@@ -582,8 +584,71 @@ bool Arch::route()
     if (router == "router1") {
         result = router1(getCtx(), Router1Cfg(getCtx()));
     } else if (router == "router2") {
-        router2(getCtx(), Router2Cfg(getCtx()));
+        int pll_count = 0;
+        int m10k_count = 0;
+        for (const auto &cell : getCtx()->cells) {
+            if (cell.second->type == id_altera_pll)
+                ++pll_count;
+            else if (cell.second->type == id_MISTRAL_M10K)
+                ++m10k_count;
+        }
+        const bool multi_pll_m10k = pll_count >= 2 && m10k_count > 0;
+
+        // Router2's final legality check invokes router1, whose normal
+        // timing report treats a pre-bitstream estimate miss as an error.
+        // A dense multi-clock design may intentionally take the retry below,
+        // so keep that diagnostic non-fatal while the first pass is running.
+        const IdString timing_allow_fail = id("timing/allowFail");
+        const auto old_timing_allow_fail = settings.find(timing_allow_fail);
+        const bool had_timing_allow_fail = old_timing_allow_fail != settings.end();
+        Property saved_timing_allow_fail;
+        if (had_timing_allow_fail)
+            saved_timing_allow_fail = old_timing_allow_fail->second;
+        auto restore_timing_allow_fail = [&]() {
+            if (!multi_pll_m10k)
+                return;
+            if (had_timing_allow_fail)
+                settings[timing_allow_fail] = saved_timing_allow_fail;
+            else
+                settings.erase(timing_allow_fail);
+        };
+        if (multi_pll_m10k)
+            settings[timing_allow_fail] = true;
+        try {
+            router2(getCtx(), Router2Cfg(getCtx()));
+        } catch (...) {
+            restore_timing_allow_fail();
+            throw;
+        }
+        restore_timing_allow_fail();
         result = true;
+
+        // Router2 is fast and normally provides the best result.  Dense
+        // designs combining multiple PLLs with M10Ks are more sensitive to
+        // its placement-dependent timing estimate, though.  Give those
+        // designs a slower router1 retry when the first route has little
+        // timing margin.  This keeps router2 as the default for ordinary
+        // designs while avoiding a marginal route that can fail analogue
+        // signoff after bitstream generation.
+        if (multi_pll_m10k) {
+            TimingAnalyser timing(getCtx());
+            timing.setup(false, false, true);
+            bool marginal = false;
+            for (const auto &clock : timing.get_timing_result().clock_fmax) {
+                if (clock.second.achieved < clock.second.constraint * router2_retry_margin) {
+                    marginal = true;
+                    break;
+                }
+            }
+            if (marginal) {
+                log_info("Router2 timing margin is small for a multi-PLL M10K design; retrying with router1.\n");
+                for (const auto &net : getCtx()->nets) {
+                    if (!net.second->is_global)
+                        getCtx()->ripupNet(net.first);
+                }
+                result = router1(getCtx(), Router1Cfg(getCtx()));
+            }
+        }
     } else {
         log_error("Mistral architecture does not support router '%s'\n", router.c_str());
     }
