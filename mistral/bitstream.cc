@@ -565,7 +565,13 @@ struct MistralBitgen
         cv->bmux_r_set(CycloneV::M10K, pos, CycloneV::B_WL_DELAY, bi, 2);
         cv->bmux_r_set(CycloneV::M10K, pos, CycloneV::B_WR_TIMER_PULSE, bi, 0x0b);
 
-        bool dual_clock = bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false);
+        // A hard-tied unused read clock is folded by the packer and has no
+        // TCLK route. In that case retain the single-clock M10K selector
+        // defaults instead of programming the bottom clock mux to an absent
+        // CLKIN[1] source. A live CLK2 still selects the independent clock
+        // path below.
+        bool dual_clock = bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false) &&
+                          ci->getPort(id_CLK2) != nullptr;
         bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
 
         // The two M10K clear inputs are shared by the address and output
@@ -608,7 +614,14 @@ struct MistralBitgen
             NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::B_OUTCLR_EN, bi, CycloneV::REG));
             NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::B_OUTPUT_SEL, bi, CycloneV::REG));
         }
+        auto clock_state = [&](IdString port) {
+            auto it = ci->pin_data.find(port);
+            return it == ci->pin_data.end() ? PIN_SIG : it->second.state;
+        };
+        CellPinState clk1_state = clock_state(id_CLK1);
+        CellPinState clk2_state = clock_state(id_CLK2);
         cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_CLK_SEL, bi, 1);
+        cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TOP_CLK_INV, bi, clk1_state == PIN_INV);
         if (dual_clock) {
             // Quartus SDP input-clock mode: write CLKIN.0, read CLKIN.1.
             // In 40-bit mode both data input halves use the write clock.
@@ -637,7 +650,8 @@ struct MistralBitgen
         }
         // The legacy unused bottom clock is inverted in narrow modes. CLK2
         // is a real rising-edge read clock and must not inherit that inversion.
-        cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_CLK_INV, bi, !dual_clock && dbits != 40);
+        cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_CLK_INV, bi,
+                       dual_clock ? clk2_state == PIN_INV : dbits != 40);
         cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_W_SEL, bi, byte_enable || mixed || tdp ? 0 : dbits != 40);
 
         if (tdp) {
