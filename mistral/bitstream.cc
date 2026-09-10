@@ -317,8 +317,9 @@ struct MistralBitgen
 
     void write_io_cell(CellInfo *ci, int x, int y, int bi)
     {
-        bool is_output = (ci->type.in(id_MISTRAL_OB, id_MISTRAL_DDROUT, id_MISTRAL_SDROUT) || (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
-        bool is_input = (ci->type.in(id_MISTRAL_IB, id_MISTRAL_SDRIN, id_MISTRAL_DDRIN) ||
+        bool is_output = (ci->type.in(id_MISTRAL_OB, id_MISTRAL_DDROUT, id_MISTRAL_SDROUT, id_MISTRAL_DDRBIDIR) ||
+                          (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
+        bool is_input = (ci->type.in(id_MISTRAL_IB, id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR) ||
                          (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr));
         auto pos = CycloneV::xy2pos(x, y);
         // TODO: configurable pull, IO standard, etc
@@ -333,7 +334,7 @@ struct MistralBitgen
 
             // Output gpios must also bypass things in the associated dqs
             auto dqs = cv->p2p_to(CycloneV::pnode(CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1));
-            if (dqs && ci->type == id_MISTRAL_DDROUT) {
+            if (dqs && ci->type.in(id_MISTRAL_DDROUT, id_MISTRAL_DDRBIDIR)) {
                 auto dp = CycloneV::pn2p(dqs);
                 int lane = CycloneV::pn2bi(dqs);
                 NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_MODE_SEL, lane, CycloneV::DDR));
@@ -364,7 +365,7 @@ struct MistralBitgen
                                CycloneV::pn2bi(dqs), 0x1f);
             }
         }
-        if (ci->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN)) {
+        if (ci->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR)) {
             auto dqs = cv->p2p_to(CycloneV::pnode(CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1));
             NPNR_ASSERT(dqs);
             auto dp = CycloneV::pn2p(dqs);

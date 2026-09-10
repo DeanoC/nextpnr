@@ -63,6 +63,7 @@ bool Arch::is_io_cell(IdString cell_type) const
     case ID_MISTRAL_OB:
     case ID_MISTRAL_SDROUT:
     case ID_MISTRAL_DDROUT:
+    case ID_MISTRAL_DDRBIDIR:
     case ID_MISTRAL_IO:
         return true;
     default:

@@ -1056,6 +1056,191 @@ struct MistralPacker
                         "reported fabric Fmax does not establish output-interface timing closure.\n");
     }
 
+    void pack_ddr_bidir()
+    {
+        std::vector<CellInfo *> cells;
+        IdString type = ctx->id("altddio_bidir");
+        for (auto &entry : ctx->cells)
+            if (entry.second->type == type)
+                cells.push_back(entry.second.get());
+
+        for (CellInfo *ddr : cells) {
+            bool valid = true;
+            auto fail = [&](const char *reason) {
+                valid = false;
+                log_error("DDR bidirectional I/O '%s': %s.\n", ctx->nameOf(ddr), reason);
+            };
+            if (int_or_default(ddr->params, ctx->id("width"), 1) != 1)
+                fail("requires width=1");
+            const std::map<std::string, std::vector<std::string>> allowed = {
+                    {"intended_device_family", {"Cyclone V"}},
+                    {"power_up_high", {"OFF"}},
+                    {"oe_reg", {"UNUSED", "UNREGISTERED"}},
+                    {"extend_oe_disable", {"UNUSED", "OFF"}},
+                    {"implement_input_in_lcell", {"UNUSED"}},
+                    {"invert_output", {"OFF"}},
+                    {"lpm_type", {"altddio_bidir"}},
+                    {"lpm_hint", {"UNUSED"}}};
+            for (const auto &param : ddr->params) {
+                if (param.first == ctx->id("width"))
+                    continue;
+                auto it = allowed.find(param.first.str(ctx));
+                if (it == allowed.end() || !param.second.is_string ||
+                    std::find(it->second.begin(), it->second.end(), param.second.as_string()) == it->second.end())
+                    fail("unsupported parameter; require the checked DDR bidirectional I/O profile");
+            }
+            for (const auto &port : ddr->ports) {
+                const std::string name = port.first.str(ctx);
+                if (name != "datain_h" && name != "datain_l" && name != "inclock" && name != "inclocken" &&
+                    name != "outclock" && name != "outclocken" && name != "aset" && name != "aclr" &&
+                    name != "sset" && name != "sclr" && name != "oe" && name != "dataout_h" &&
+                    name != "dataout_l" && name != "combout" && name != "oe_out" &&
+                    name != "dqsundelayedout" && name != "padio")
+                    fail("unsupported port");
+            }
+            if (!valid)
+                continue;
+            for (const char *name : {"inclocken", "outclocken", "aset", "aclr", "sset", "sclr"}) {
+                IdString port = ctx->id(name);
+                bool high = port == ctx->id("inclocken") || port == ctx->id("outclocken");
+                if (!ddr->getPort(port) || get_pin_needed_muxval(ddr, port) != (high ? PIN_1 : PIN_0))
+                    fail("enable must be high and set/clear controls low");
+            }
+            if (ddr->getPort(ctx->id("oe")) == nullptr)
+                fail("oe must be connected");
+            if (ddr->getPort(ctx->id("oe_out")) || ddr->getPort(ctx->id("dqsundelayedout")))
+                fail("oe_out and dqsundelayedout must be unused");
+            if (!valid)
+                continue;
+
+            IdString datain_h = ctx->id("datain_h"), datain_l = ctx->id("datain_l");
+            IdString dataout_h = ctx->id("dataout_h"), dataout_l = ctx->id("dataout_l");
+            IdString combout = ctx->id("combout"), padio = ctx->id("padio");
+            NetInfo *data_h = ddr->getPort(datain_h), *data_l = ddr->getPort(datain_l);
+            if (!data_h || !data_l || data_h == data_l || get_pin_needed_muxval(ddr, datain_h) != PIN_SIG ||
+                get_pin_needed_muxval(ddr, datain_l) != PIN_SIG)
+                fail("fabric DDR data requires two connected nonconstant datain_h/datain_l nets");
+            NetInfo *captured_h = ddr->getPort(dataout_h), *captured_l = ddr->getPort(dataout_l);
+            NetInfo *combined = ddr->getPort(combout);
+            if (!captured_h || !captured_l || !combined || captured_h == captured_l || captured_h == combined ||
+                captured_l == combined)
+                fail("dataout_h/dataout_l and combout must be connected to separate fabric nets");
+            NetInfo *pad_net = ddr->getPort(padio);
+            if (!pad_net)
+                fail("padio must connect to a constrained GPIO pad");
+            CellInfo *io = nullptr;
+            if (pad_net) {
+                for (const auto &user : pad_net->users) {
+                    // Yosys models an inout's pad net on the output-buffer
+                    // side of MISTRAL_IO (I), while PAD remains the
+                    // top-level package net.  The altddio_bidir padio is
+                    // therefore a user of I rather than PAD here.
+                    if (user.cell->type == id_MISTRAL_IO && user.port.in(id_I, id_PAD)) {
+                        io = user.cell;
+                        break;
+                    }
+                }
+            }
+            if (!io)
+                fail("padio must directly connect to a constrained MISTRAL_IO pad");
+            if (!valid)
+                continue;
+
+            NetInfo *inclock = ddr->getPort(ctx->id("inclock"));
+            NetInfo *outclock = ddr->getPort(ctx->id("outclock"));
+            if (!inclock || !outclock || inclock != outclock || !inclock->driver.cell ||
+                inclock->driver.cell->type.in(id_GND, id_VCC, id_MISTRAL_CONST) ||
+                outclock->driver.cell->type.in(id_GND, id_VCC, id_MISTRAL_CONST))
+                fail("inclock and outclock must be driven by the same clock");
+            if (!valid)
+                continue;
+            NetInfo *source = inclock;
+            if (ctx->is_clkbuf_cell(source->driver.cell->type)) {
+                if (source->driver.port != id_Q)
+                    fail("clock buffer must drive Q");
+            } else {
+                if (source->driver.cell->type.in(id_MISTRAL_NOT, id_GND, id_VCC, id_MISTRAL_CONST))
+                    fail("require a noninverted clock source");
+                if (!valid)
+                    continue;
+                CellInfo *buffer = nullptr;
+                for (const auto &user : inclock->users)
+                    if (user.cell->type == id_MISTRAL_CLKBUF && user.port == id_A) {
+                        buffer = user.cell;
+                        break;
+                    }
+                if (!buffer) {
+                    buffer = ctx->createCell(ctx->idf("%s$ddr_bidir_clkbuf", ctx->nameOf(ddr)), id_MISTRAL_CLKBUF);
+                    buffer->addInput(id_A);
+                    buffer->addOutput(id_Q);
+                    buffer->connectPort(id_A, inclock);
+                    buffer->connectPort(id_Q, ctx->createNet(ctx->idf("%s$ddr_bidir_clock", ctx->nameOf(ddr))));
+                }
+                inclock = buffer->getPort(id_Q);
+            }
+            if (!inclock || !inclock->driver.cell)
+                fail("clock buffer must have a connected Q output");
+            if (!valid)
+                continue;
+
+            auto loc = ctx->getBelLocation(io->bel);
+            int bi = ctx->bel_data(io->bel).block_index;
+            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode(CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1));
+            if (!dqs || !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKOUT, 0) ||
+                !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKIN, 0) ||
+                !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::DATAOUT, 1) ||
+                !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::DATAIN, 2) ||
+                !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::DATAIN, 3))
+                fail("selected pad has no supported DDR bidirectional register/clock path");
+            if (!valid)
+                continue;
+
+            NetInfo *oe = ddr->getPort(ctx->id("oe"));
+
+            auto replace_input = [&](IdString port, NetInfo *net) {
+                if (io->getPort(port))
+                    io->disconnectPort(port);
+                else
+                    io->addInput(port);
+                io->connectPort(port, net);
+            };
+            auto replace_output = [&](IdString port, NetInfo *net) {
+                if (io->getPort(port))
+                    io->disconnectPort(port);
+                else
+                    io->addOutput(port);
+                io->connectPort(port, net);
+            };
+            if (io->getPort(id_I)) {
+                io->disconnectPort(id_I);
+                io->ports.erase(id_I);
+            }
+            // The altddio outputs currently own these nets.  Release their
+            // drivers before attaching the corresponding GPIO BEL outputs;
+            // NetInfo permits only one driver.
+            ddr->disconnectPort(dataout_h);
+            ddr->disconnectPort(dataout_l);
+            ddr->disconnectPort(combout);
+            replace_input(id_D_H, data_h);
+            replace_input(id_D_L, data_l);
+            replace_input(id_CLK, inclock);
+            replace_input(id_CLKIN, inclock);
+            replace_input(id_OE, oe);
+            replace_output(id_O, combined);
+            replace_output(id_Q_H, captured_h);
+            replace_output(id_Q_L, captured_l);
+            ddr->disconnectPort(padio);
+            for (auto &port : ddr->ports)
+                ddr->disconnectPort(port.first);
+            io->type = id_MISTRAL_DDRBIDIR;
+            log_info("Packed DDR bidirectional I/O '%s' into %s.\n", ctx->nameOf(ddr), ctx->nameOfBel(io->bel));
+            ctx->cells.erase(ddr->name);
+        }
+        if (!cells.empty())
+            log_warning("DDR bidirectional I/O: GPIO register setup/hold, clock-to-pad and clock-to-fabric timing are "
+                        "uncharacterized; reported fabric Fmax does not establish interface timing closure.\n");
+    }
+
     void constrain_carries()
     {
         for (auto &cell : ctx->cells) {
@@ -2050,6 +2235,7 @@ struct MistralPacker
         pack_sdr_inputs();
         pack_sdr_outputs();
         pack_ddr_outputs();
+        pack_ddr_bidir();
         setup_clock_enables();
         setup_plls();
         fold_inverted_pll_clock_buffers();
