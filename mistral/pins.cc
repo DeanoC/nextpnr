@@ -62,7 +62,14 @@ const dict<IdString, Arch::CellPinsData> Arch::cell_pins_db = {
          {
                  {id_CLK1, PINSTYLE_CLK},
                  {id_A1EN, PINSTYLE_CE},
-         }}};
+         }},
+        // M10K clear inputs are active-high. Retain reset-style constant and
+        // inversion handling so omitted controls stay inactive without a
+        // fabric route, while constants and real nets remain distinguishable.
+        {id_MISTRAL_M10K,
+         {{{id_ACLR0, PINSTYLE_RST}, {id_ACLR1, PINSTYLE_RST}, {{}, PINSTYLE_NONE}}}},
+        {id_MISTRAL_M10K_TDP,
+         {{{id_ACLR0, PINSTYLE_RST}, {id_ACLR1, PINSTYLE_RST}, {{}, PINSTYLE_NONE}}}}};
 
 CellPinStyle Arch::get_cell_pin_style(const CellInfo *cell, IdString port) const
 {

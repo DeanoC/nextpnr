@@ -567,6 +567,47 @@ struct MistralBitgen
 
         bool dual_clock = bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false);
         bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
+
+        // The two M10K clear inputs are shared by the address and output
+        // clear paths.  The logical primitive names match the physical
+        // ACLR[0:1] pins, while the clear muxes select which source feeds the
+        // top and bottom halves.  PIN_0 leaves the corresponding output clear
+        // disabled, PIN_1 enables it from the M10K's default-high input,
+        // PIN_INV preserves the logical inversion, and PIN_SIG is routed
+        // normally.
+        auto aclr_state = [&](IdString port) {
+            auto it = ci->pin_data.find(port);
+            return it == ci->pin_data.end() ? PIN_0 : it->second.state;
+        };
+        CellPinState aclr0 = aclr_state(id_ACLR0);
+        CellPinState aclr1 = aclr_state(id_ACLR1);
+        // The M10K has separate address-clear and output-clear enables. The
+        // mapped logical ports describe output clears; Cyclone V ignores
+        // address clears on the input-register modes used by these cells.
+        // Keep the physical clear source selectors aligned with the two
+        // logical inputs, and only turn on an output-clear register when its
+        // control is actually active. This preserves the existing async
+        // output path for cells that have no reset behavior.
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TOP_CLR_INV, bi,
+                                  aclr0 == PIN_INV));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_CLR_INV, bi,
+                                  aclr1 == PIN_INV));
+        // A 40-bit SDP read spans both physical output halves, so the top
+        // output register participates in the clear path even though the
+        // logical cell is not true-dual-port.  Its source is ACLR0 (the
+        // default TOP_ADDCLR_SEL=0); TOP_OUTCLR_SEL=1 selects the output
+        // clear path rather than the address path.
+        if ((tdp || rdbits == 40) && aclr0 != PIN_0) {
+            if (rdbits == 40)
+                NPNR_ASSERT(cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_OUTCLR_SEL, bi, 1));
+            NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::A_OUTCLR_EN, bi, CycloneV::REG));
+            NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::A_OUTPUT_SEL, bi, CycloneV::REG));
+        }
+        if (aclr1 != PIN_0) {
+            NPNR_ASSERT(cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_OUTCLR_SEL, bi, 1));
+            NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::B_OUTCLR_EN, bi, CycloneV::REG));
+            NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::B_OUTPUT_SEL, bi, CycloneV::REG));
+        }
         cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_CLK_SEL, bi, 1);
         if (dual_clock) {
             // Quartus SDP input-clock mode: write CLKIN.0, read CLKIN.1.
