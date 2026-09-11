@@ -182,6 +182,10 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
                 return TMG_CLOCK_INPUT;
             if (port.in(id_ACLR0, id_ACLR1))
                 return TMG_ENDPOINT;
+            if (port.in(id_ADDRSTALLA, id_ADDRSTALLB)) {
+                clockInfoCount = 1;
+                return TMG_REGISTER_INPUT;
+            }
             if (name.find("A1Q") == 0 || name.find("B1Q") == 0) {
                 clockInfoCount = 1;
                 return TMG_REGISTER_OUTPUT;
@@ -197,6 +201,10 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
                 return TMG_CLOCK_INPUT;
             if (port.in(id_ACLR0, id_ACLR1))
                 return TMG_ENDPOINT;
+            if (port.in(id_ADDRSTALLA, id_ADDRSTALLB)) {
+                clockInfoCount = 1;
+                return TMG_REGISTER_INPUT;
+            }
             if (port.in(id_A1DATA, id_A1EN, id_A1BE) || name.find("A1DATA[") == 0 ||
                 name.find("A1BE[") == 0 || name.find("A1ADDR") == 0) {
                 clockInfoCount = 1;
@@ -212,6 +220,9 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
             return TMG_CLOCK_INPUT;
         } else if (port.in(id_ACLR0, id_ACLR1)) {
             return TMG_ENDPOINT;
+        } else if (port.in(id_ADDRSTALLA, id_ADDRSTALLB)) {
+            clockInfoCount = 1;
+            return TMG_REGISTER_INPUT;
         } else if (port.in(id_A1DATA, id_A1EN, id_A1BE, id_B1EN) || name.find("A1DATA[") == 0 ||
                    name.find("A1BE[") == 0 ||
                    name.find("A1ADDR") == 0 || name.find("B1ADDR") == 0) {
@@ -279,6 +290,8 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
         };
         if (bool_or_default(cell->params, id_CFG_TDP, false)) {
             timing.clock_port = name.find("B1") == 0 ? id_CLK2 : id_CLK1;
+            if (port == id_ADDRSTALLB)
+                timing.clock_port = id_CLK2;
             timing.edge = clock_edge(timing.clock_port);
             if (name.find("A1Q") == 0 || name.find("B1Q") == 0) {
                 timing.clockToQ = DelayQuad{1004};
@@ -299,8 +312,14 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
             return timing;
         bool read_port = port.in(id_B1DATA, id_B1EN) || name.find("B1DATA[") == 0 || name.find("B1ADDR") == 0;
         timing.clock_port = read_port && bool_or_default(cell->params, id_CFG_DUAL_CLOCK, false) ? id_CLK2 : id_CLK1;
+        if (port == id_ADDRSTALLB && bool_or_default(cell->params, id_CFG_DUAL_CLOCK, false))
+            timing.clock_port = id_CLK2;
         timing.edge = clock_edge(timing.clock_port);
-        if (port.str(this).find("A1ADDR") == 0 || port.str(this).find("B1ADDR") == 0) {
+        if (port.in(id_ADDRSTALLA, id_ADDRSTALLB)) {
+            timing.setup = DelayPair{125, 125};
+            timing.hold = DelayPair{42, 42};
+            timing.clockToQ = DelayQuad{};
+        } else if (port.str(this).find("A1ADDR") == 0 || port.str(this).find("B1ADDR") == 0) {
             timing.setup = DelayPair{125, 125};
             timing.hold = DelayPair{42, 42};
             timing.clockToQ = DelayQuad{};

@@ -69,5 +69,7 @@ For a combinational read port, see [asynchronous-read M10K](README-async-read.md
 
 For asynchronous clear controls, see [M10K ACLR](README-aclr.md).
 
+For explicit address-stall controls, see [M10K address-stall](README-address-stall.md).
+
 For a disabled true-dual-port side with a tied-off clock, see
 [constant disabled-port clock](README-constant-clock.md).
