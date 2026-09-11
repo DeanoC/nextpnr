@@ -62,7 +62,7 @@ void set_global_assignment_cmd(Context *ctx, const option_map_t &options, const 
 static const std::vector<QsfCommand> commands = {
         {"set_location_assignment", {{"to", 1, true}}, 1, set_location_assignment_cmd},
         {"set_instance_assignment",
-         {{"to", 1, true}, {"name", 1, true}, {"section_id", 1, false}},
+         {{"to", 1, true}, {"name", 1, true}, {"section_id", 1, false}, {"entity", 1, false}},
          1,
          set_instance_assignment_cmd},
         {"set_global_assignment",
