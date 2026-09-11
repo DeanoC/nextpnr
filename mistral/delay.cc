@@ -52,6 +52,8 @@ IdString dsp_register_key(const CellInfo *cell, const std::string &port)
         return id_INREG_CTRL_AY;
     if (port.find("C[") == 0)
         return id_INREG_CTRL_BX;
+    if (port.find("D[") == 0)
+        return id_INREG_CTRL_BY;
     if (port.find("Z[") == 0)
         return id_INREG_CTRL_AZ;
     return IdString();
@@ -113,11 +115,13 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         if (port == id_locked)
             return TMG_STARTPOINT;
     }
-    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27)) {
+    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                      id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED)) {
         const auto &name = port.str(this);
         if (port == id_CLK)
             return TMG_CLOCK_INPUT;
-        if (name.find("A[") == 0 || name.find("B[") == 0 || name.find("C[") == 0 || name.find("Z[") == 0) {
+        if (name.find("A[") == 0 || name.find("B[") == 0 || name.find("C[") == 0 ||
+            name.find("D[") == 0 || name.find("Z[") == 0) {
             IdString reg_key = dsp_register_key(cell, name);
             if (reg_key != IdString() && dsp_reg_param(cell->params, reg_key)) {
                 clockInfoCount = 1;
@@ -206,11 +210,13 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
 TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port, int index) const
 {
     TimingClockingInfo timing{};
-    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27)) {
+    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                      id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED)) {
         timing.clock_port = id_CLK;
         timing.edge = RISING_EDGE;
         const auto &name = port.str(this);
-        if (name.find("A[") == 0 || name.find("B[") == 0 || name.find("C[") == 0 || name.find("Z[") == 0) {
+        if (name.find("A[") == 0 || name.find("B[") == 0 || name.find("C[") == 0 ||
+            name.find("D[") == 0 || name.find("Z[") == 0) {
             IdString reg_key = dsp_register_key(cell, name);
             if (reg_key != IdString() && dsp_reg_param(cell->params, reg_key)) {
                 timing.setup = DelayPair{125, 125};
@@ -300,18 +306,25 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
 
 bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort, DelayQuad &delay) const
 {
-    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27) &&
+    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                      id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) &&
         toPort.str(this).find("Y[") == 0) {
         // Cyclone V arcs from Yosys techlibs/intel_alm/common/dsp_sim.v.
         const auto &from_name = fromPort.str(this);
-        if (from_name.find("A[") == 0) {
+        if (from_name.find("A[") == 0 ||
+            (from_name.find("C[") == 0 && cell->type.in(id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED))) {
             delay = cell->type == id_MISTRAL_MUL18X18 ? DelayQuad{3180} :
-                    cell->type == id_MISTRAL_MUL27X27 ? DelayQuad{3732} : DelayQuad{2818};
+                    cell->type == id_MISTRAL_MUL27X27 ? DelayQuad{3732} :
+                    cell->type.in(id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) ? DelayQuad{3180} :
+                                                                                         DelayQuad{2818};
             return true;
         }
-        if (from_name.find("B[") == 0) {
+        if (from_name.find("B[") == 0 || from_name.find("D[") == 0 ||
+            (from_name.find("C[") == 0 && cell->type == id_MISTRAL_MUL18X18)) {
             delay = cell->type == id_MISTRAL_MUL18X18 ? DelayQuad{3982} :
-                    cell->type == id_MISTRAL_MUL27X27 ? DelayQuad{3928} : DelayQuad{3051};
+                    cell->type == id_MISTRAL_MUL27X27 ? DelayQuad{3928} :
+                    cell->type.in(id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) ? DelayQuad{3982} :
+                                                                                         DelayQuad{3051};
             return true;
         }
         // The 9x9 preadder feeds the multiplier through its Y operand. The

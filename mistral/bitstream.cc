@@ -130,6 +130,7 @@ struct MistralBitgen
             std::vector<int> b_groups;
             std::vector<int> z_groups;
             std::vector<int> c_groups;
+            std::vector<int> d_groups;
         };
 
         // A DSP tile has several logical BELs. Discover the bound cells from
@@ -137,7 +138,8 @@ struct MistralBitgen
         // configure the shared mode/sign controls once.
         std::vector<BelId> dsp_bels;
         for (BelId bel : ctx->getBelsByTile(x, y)) {
-            if (ctx->getBelType(bel).in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27) &&
+            if (ctx->getBelType(bel).in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                                        id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) &&
                 ctx->getBoundBelCell(bel) != nullptr)
                 dsp_bels.push_back(bel);
         }
@@ -165,19 +167,29 @@ struct MistralBitgen
                                     {preadder ? mistral_dsp_preadder_y_groups.at(bel.z) : lane.b_group},
                                     preadder ? std::vector<int>{mistral_dsp_preadder_z_groups.at(bel.z)}
                                               : std::vector<int>{},
+                                    {},
                                     {}});
             } else if (mode_type == id_MISTRAL_MUL18X18) {
                 bindings.push_back({cell,
                                     {mistral_dsp_18x18_a_groups.begin(), mistral_dsp_18x18_a_groups.end()},
                                     {mistral_dsp_18x18_b_groups.begin(), mistral_dsp_18x18_b_groups.end()},
                                     {},
-                                    {mistral_dsp_18x18_c_groups.begin(), mistral_dsp_18x18_c_groups.end()}});
+                                    {mistral_dsp_18x18_c_groups.begin(), mistral_dsp_18x18_c_groups.end()},
+                                    {}});
             } else if (mode_type == id_MISTRAL_MUL27X27) {
                 bindings.push_back({cell,
                                     {mistral_dsp_27x27_a_groups.begin(), mistral_dsp_27x27_a_groups.end()},
                                     {mistral_dsp_27x27_b_groups.begin(), mistral_dsp_27x27_b_groups.end()},
                                     {},
+                                    {},
                                     {}});
+            } else if (mode_type.in(id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED)) {
+                bindings.push_back({cell,
+                                    {mistral_dsp_18x19_a_groups.begin(), mistral_dsp_18x19_a_groups.end()},
+                                    {mistral_dsp_18x19_b_groups.begin(), mistral_dsp_18x19_b_groups.end()},
+                                    {},
+                                    {mistral_dsp_18x19_c_groups.begin(), mistral_dsp_18x19_c_groups.end()},
+                                    {mistral_dsp_18x19_d_groups.begin(), mistral_dsp_18x19_d_groups.end()}});
             }
         }
         if (bindings.empty())
@@ -190,6 +202,10 @@ struct MistralBitgen
             mode = CycloneV::M18X18P36;
         else if (mode_type == id_MISTRAL_MUL27X27)
             mode = CycloneV::M27X27;
+        else if (mode_type == id_MISTRAL_MUL18X19)
+            mode = CycloneV::M18X19;
+        else if (mode_type == id_MISTRAL_MUL18X19_COMBINED)
+            mode = CycloneV::M18X19_COMBINED;
         else
             NPNR_ASSERT_FALSE("unreachable DSP mode");
         NPNR_ASSERT(cv->bmux_m_set(CycloneV::DSP, pos, CycloneV::MODE, 0, mode));
@@ -197,6 +213,16 @@ struct MistralBitgen
                                   dsp_bool_param(bindings.front().cell->params, id_A_SIGNED, true)));
         NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AY_SIGNED, 0,
                                   dsp_bool_param(bindings.front().cell->params, id_B_SIGNED, true)));
+        if (mode_type.in(id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED)) {
+            NPNR_ASSERT(cv->bmux_b_set(
+                    CycloneV::DSP, pos, CycloneV::BX_SIGNED, 0,
+                    dsp_bool_param(bindings.front().cell->params, id_C_SIGNED,
+                                   dsp_bool_param(bindings.front().cell->params, id_A_SIGNED, true))));
+            NPNR_ASSERT(cv->bmux_b_set(
+                    CycloneV::DSP, pos, CycloneV::BY_SIGNED, 0,
+                    dsp_bool_param(bindings.front().cell->params, id_D_SIGNED,
+                                   dsp_bool_param(bindings.front().cell->params, id_B_SIGNED, true))));
+        }
 
         auto set_reg = [&](CycloneV::bmux_type_t mux, IdString key) {
             NPNR_ASSERT(cv->bmux_m_set(CycloneV::DSP, pos, mux, 0,
@@ -310,6 +336,7 @@ struct MistralBitgen
                 apply(binding.b_groups, 'B');
                 apply(binding.z_groups, 'Z');
                 apply(binding.c_groups, 'C');
+                apply(binding.d_groups, 'D');
             }
             NPNR_ASSERT(cv->bmux_r_set(CycloneV::DSP, pos, CycloneV::DATA_INV, group, inv));
         }
