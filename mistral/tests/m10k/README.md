@@ -67,6 +67,9 @@ For two independently enabled read/write ports, see
 
 For a combinational read port, see [asynchronous-read M10K](README-async-read.md).
 
+For an explicitly registered read output, see
+[registered M10K outputs](README-output-register.md).
+
 For asynchronous clear controls, see [M10K ACLR](README-aclr.md).
 
 For explicit address-stall controls, see [M10K address-stall](README-address-stall.md).

@@ -1501,11 +1501,18 @@ struct MistralPacker
         int rb = int_or_default(ci->params, id_CFG_RD_DBITS, wb);
         int ra = int_or_default(ci->params, id_CFG_RD_ABITS, wa);
         bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
+        bool output_reg_a = bool_or_default(ci->params, id_CFG_OUT_REG_A, false);
+        bool output_reg_b = bool_or_default(ci->params, id_CFG_OUT_REG_B, false);
         auto geometry = [](int a, int d) {
             return (d == 10 && a == 10) || (d == 20 && a == 9) || (d == 40 && a == 8);
         };
         if (!geometry(wa, wb) || !geometry(ra, rb))
             log_error("M10K '%s': mixed widths require 1024x10, 512x20 or 256x40 ports.\n", ctx->nameOf(ci));
+        if (output_reg_a && rb != 40)
+            log_error("M10K '%s': CFG_OUT_REG_A requires true dual-port or a 40-bit read.\n",
+                      ctx->nameOf(ci));
+        if (bool_or_default(ci->params, id_CFG_ASYNC_READ, false) && (output_reg_a || output_reg_b))
+            log_error("M10K '%s': CFG_ASYNC_READ cannot use CFG_OUT_REG_A/B.\n", ctx->nameOf(ci));
         if (!bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false) || ci->getPort(id_CLK1) == nullptr || ci->getPort(id_CLK2) == nullptr)
             log_error("M10K '%s': mixed widths require CFG_DUAL_CLOCK=1 and both clocks.\n", ctx->nameOf(ci));
         if (byte_enable || ci->getPort(ctx->id("A1BE[0]")) || ci->getPort(ctx->id("A1BE[1]"))) {
@@ -1586,6 +1593,11 @@ struct MistralPacker
             // hand-written primitives remain useful while the mapper lands.
             bool user_b1en = ci->getPort(id_B1EN) != nullptr;
             bool async_read = bool_or_default(ci->params, id_CFG_ASYNC_READ, false) || !user_b1en;
+            bool output_reg_a = bool_or_default(ci->params, id_CFG_OUT_REG_A, false);
+            bool output_reg_b = bool_or_default(ci->params, id_CFG_OUT_REG_B, false);
+            if (output_reg_a && dbits != 40)
+                log_error("M10K '%s': CFG_OUT_REG_A requires true dual-port or a 40-bit read.\n",
+                          ctx->nameOf(ci));
             if (async_read) {
                 // Preserve the mode after the hidden RDEN connection is
                 // materialised; the bitstream writer must not infer async
@@ -1594,6 +1606,8 @@ struct MistralPacker
                 if (user_b1en)
                     log_error("M10K '%s': CFG_ASYNC_READ requires no connected B1EN read enable.\n",
                               ctx->nameOf(ci));
+                if (output_reg_a || output_reg_b)
+                    log_error("M10K '%s': CFG_ASYNC_READ cannot use CFG_OUT_REG_A/B.\n", ctx->nameOf(ci));
                 if (bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false) || ci->getPort(id_CLK2) != nullptr)
                     log_error("M10K '%s': CFG_ASYNC_READ cannot use CFG_DUAL_CLOCK or CLK2.\n",
                               ctx->nameOf(ci));
