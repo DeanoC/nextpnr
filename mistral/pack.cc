@@ -1482,6 +1482,18 @@ struct MistralPacker
         ci->pin_data[port].state = value ? PIN_1 : PIN_0;
     }
 
+    void setup_m10k_address_stalls(CellInfo *ci)
+    {
+        // ADDRSTALLA/B are dedicated M10K GOUT inputs.  They are ordinary
+        // fabric controls: unlike the clock and clear muxes, Quartus does
+        // not program a separate mode bit for them.  Keep a connected port
+        // visible so the router can reach the physical BEL pin.
+        if (ci->getPort(id_ADDRSTALLA) != nullptr)
+            ci->pin_data[id_ADDRSTALLA].bel_pins = {ctx->id("ADDRSTALLA")};
+        if (ci->getPort(id_ADDRSTALLB) != nullptr)
+            ci->pin_data[id_ADDRSTALLB].bel_pins = {ctx->id("ADDRSTALLB")};
+    }
+
     void setup_mixed_m10k(CellInfo *ci)
     {
         int wb = ci->params.at(id_CFG_DBITS).as_int64();
@@ -1548,6 +1560,7 @@ struct MistralPacker
                 continue;
             fold_m10k_constant_clock(ci, id_CLK1);
             fold_m10k_constant_clock(ci, id_CLK2);
+            setup_m10k_address_stalls(ci);
             if (bool_or_default(ci->params, id_CFG_TDP, false)) {
                 setup_tdp_m10k(ci);
                 continue;
@@ -1612,7 +1625,8 @@ struct MistralPacker
             log_info("Setting up %ld-bit address, %ld-bit data M10K for %s.\n", abits, dbits,
                      ci->name.str(ctx).c_str());
 
-            // Quartus doesn't seem to generate ADDRSTALL[AB], BYTEENABLE[AB][01].
+            // Quartus usually ties ADDRSTALL[AB] low, but explicit primitive
+            // users may drive either dedicated control from fabric.
 
             // It *does* generate ACLR[01]. Keep both logical inputs so the
             // bitstream can retain explicit reset constants.

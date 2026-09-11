@@ -1,6 +1,6 @@
 # M10K independent-clock configuration oracles
 
-These two retained Quartus Prime Lite 17.0.2 Build 602 designs target
+These retained Quartus Prime Lite 17.0.2 Build 602 fixtures target
 `5CSEBA6U23I7`. Each occupies one M10K in simple dual-port mode. They are
 host-only configuration evidence, not hardware acceptance.
 
@@ -8,6 +8,7 @@ host-only configuration evidence, not hardware acceptance.
 | --- | --- | --- |
 | `explicit20re1` | 512×20, separate write/read clocks, read enable tied high | Isolate read clock selection without a read-side ENABLE route |
 | `dual40` | Initialized 256×40, separate clocks, conditional read | Show the 40-bit input-clock exception and read-enable routing |
+| `address-stall` | 1024×10 BIDIR_DUAL_PORT, both address-stall controls live | Confirm ADDRSTALLA/B are routed GOUT pins with no extra mode field |
 
 Both use write `clka` on `CLKIN.0` and read `clkb` on `CLKIN.1`.
 Quartus assigned clka to GCLK11 (`CMUXHG.089.035.3:CLKOUT`) and clkb to
@@ -65,6 +66,11 @@ mistral-cv routes 5CSEBA6U23I7 /tmp/m10k-explicit20.rbf
 
 Compare the digest with `mapping.json`. Repeat for `dual40` to inspect the
 width and enable differences. No local experiment RBF is required.
+
+The `address-stall` oracle is a true-dual-port configuration with independent
+`addressstall_a` and `addressstall_b` inputs. `mapping.json` records the two
+M10K GOUT routes and confirms that the relevant non-RAM settings are otherwise
+the ordinary 10-bit TDP configuration. It is regenerated in the same way.
 
 To regenerate either oracle, run `quartus_sh --flow compile top` inside
 its directory. RTL and QSF use relative paths. The retained RBF is the
