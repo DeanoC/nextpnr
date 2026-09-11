@@ -151,19 +151,26 @@ def main():
     fields = dict(re.findall(r"^s " + re.escape(site) + r":(\S+) (\S+)$",
                              bitstream, re.MULTILINE))
     assert fields.get("B_OUTPUT_SEL", "async") == "async", fields
-    # Byte-enable wiring is a write-side concern here.  Both bottom read
-    # clock selectors must retain their single-clock defaults because the
-    # asynchronous port has no CLKIN[1] route.
+    # The flow-through read path still has no independent logical clock, but
+    # Cyclone V's split M10K clock mux needs the shared CLK1 route on both
+    # physical clock sinks.  The second-half selectors must choose that
+    # bottom clock tree; the first-half selectors remain at their defaults.
+    assert fields.get("BOT_CLK_SEL", "0") == "1", fields
+    assert fields.get("BOT_1_CORECLK_SEL", "0") == "1", fields
+    assert fields.get("BOT_1_INCLK_SEL", "0") == "1", fields
+    assert fields.get("BOT_1_OUTCLK_SEL", "0") == "1", fields
     assert fields.get("BOT_CORECLK_SEL", "0") == "0", fields
     assert fields.get("BOT_INCLK_SEL", "0") == "0", fields
-    assert not re.search(r"^r \S+ " + re.escape(site + ":CLKIN.1") + r"$",
-                         bitstream, re.MULTILINE)
+    assert fields.get("BOT_CLK_INV", "0") == "0", fields
+    for clock_pin in ("CLKIN.0", "CLKIN.1"):
+        assert re.search(r"^r \S+ " + re.escape(site + ":" + clock_pin) + r"$",
+                         bitstream, re.MULTILINE), clock_pin
     assert re.search(r"^r \S+ " + re.escape(site + ":RDEN.0") + r"$",
                      bitstream, re.MULTILINE), bitstream
     for pin in ("BYTEENABLEA.0", "BYTEENABLEA.1"):
         assert re.search(r"^r \S+ " + re.escape(site + ":" + pin) + r"$",
                          bitstream, re.MULTILINE), pin
-    print("PASS: one asynchronous-read M10K, RDEN.0 tied high, no read clock, 50 MHz timing")
+    print("PASS: one asynchronous-read M10K, shared CLK1 on both clock sinks, RDEN.0 tied high, 50 MHz timing")
 
 
 if __name__ == "__main__":

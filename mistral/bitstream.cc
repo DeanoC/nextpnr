@@ -663,6 +663,17 @@ struct MistralBitgen
                            dbits == 40 || wide_mixed ? 0 : 1);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_OUTCLK_SEL, bi, 1);
         }
+        if (async_read) {
+            // Quartus's flow-through simple-dual configurations select the
+            // bottom clock tree and program all three selectors for the
+            // second data half.  The logical write clock is fanned out to
+            // both CLKIN sinks by setup_m10ks(); without these settings the
+            // combinational B port can remain on the unused/default branch.
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CLK_SEL, bi, 1);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_CORECLK_SEL, bi, 1);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_INCLK_SEL, bi, 1);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_OUTCLK_SEL, bi, 1);
+        }
         if (byte_enable || mixed || tdp) {
             // Byte-enabled SDP, mixed-width SDP and TDP select the write core enable
             // lane in addition to positive WREN[0].
@@ -684,7 +695,7 @@ struct MistralBitgen
         // The legacy unused bottom clock is inverted in narrow modes. CLK2
         // is a real rising-edge read clock and must not inherit that inversion.
         cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_CLK_INV, bi,
-                       dual_clock ? clk2_state == PIN_INV : dbits != 40);
+                       dual_clock ? clk2_state == PIN_INV : (async_read ? false : dbits != 40));
         cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_W_SEL, bi, byte_enable || mixed || tdp ? 0 : dbits != 40);
 
         if (tdp) {

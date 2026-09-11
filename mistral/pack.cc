@@ -1662,7 +1662,16 @@ struct MistralPacker
                 log_error("M10K '%s': constant CLK2 is only valid when B1EN is tied low.\n", ctx->nameOf(ci));
             if (!dual_clock && clk2_signal)
                 log_error("M10K '%s': CLK2 requires CFG_DUAL_CLOCK=1.\n", ctx->nameOf(ci));
-            ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
+            // The M10K clock mux is split between the two physical halves.
+            // Quartus feeds both CLKIN pins for a flow-through simple-dual
+            // port, even when the two logical clocks are the same signal.
+            // Keep the shared-clock legacy path on CLKIN[0], but fan an
+            // asynchronous read clock onto both physical sinks so the read
+            // half cannot remain on an unclocked/default branch.
+            if (async_read)
+                ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]"), ctx->id("CLKIN[1]")};
+            else
+                ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
             if (dual_clock && clk2_signal)
                 ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
             ci->pin_data[id_ACLR0].bel_pins = {ctx->id("ACLR[0]")};

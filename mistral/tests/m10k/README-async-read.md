@@ -14,11 +14,13 @@ pins, and does not create a TCLK route. Cyclone V still requires the physical
 `RDEN[0]` lane high for this data path, so nextpnr adds an internal soft-VCC
 connection to that BEL pin; it is not exposed as a user read-enable. A
 connected user read enable, second clock or active ACLR is rejected because
-each selects a synchronous read configuration. When the write side uses
-20-bit byte-enable wiring, the writer still leaves `BOT_CORECLK_SEL` and
-`BOT_INCLK_SEL` at their single-clock defaults; selecting the independent
-read-clock path would make the combinational port listen to an unrouted
-`CLKIN[1]`. No Mistral geometry or physical table changes are needed.
+each selects a synchronous read configuration. The shared write/read clock is
+fanned out to both physical `CLKIN` sinks, and the writer selects the bottom
+clock tree plus the second-half core/input/output clock muxes. Quartus uses the
+same arrangement for flow-through simple-dual configurations; leaving the
+second sink on its default branch can leave the combinational read path
+unclocked on silicon. No Mistral geometry or physical table changes are
+needed.
 
 Timing classifies `B1ADDR` as a combinational input and `B1DATA` as a
 combinational output. Since Mistral has no characterized Cyclone V M10K
