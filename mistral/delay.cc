@@ -187,6 +187,8 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
                 return TMG_REGISTER_INPUT;
             }
             if (name.find("A1Q") == 0 || name.find("B1Q") == 0) {
+                if (async_read)
+                    return TMG_COMB_OUTPUT;
                 clockInfoCount = 1;
                 return TMG_REGISTER_OUTPUT;
             }
@@ -293,7 +295,7 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
             if (port == id_ADDRSTALLB)
                 timing.clock_port = id_CLK2;
             timing.edge = clock_edge(timing.clock_port);
-            if (name.find("A1Q") == 0 || name.find("B1Q") == 0) {
+            if ((name.find("A1Q") == 0 || name.find("B1Q") == 0) && !async_read) {
                 timing.clockToQ = DelayQuad{1004};
             } else {
                 timing.hold = DelayPair{42, 42};
@@ -492,8 +494,11 @@ bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort
         }
     } else if (cell->type == id_MISTRAL_M10K &&
                (bool_or_default(cell->params, id_CFG_ASYNC_READ, false) || cell->getPort(id_B1EN) == nullptr) &&
-               (toPort == id_B1DATA || toPort.str(this).find("B1DATA[") == 0) &&
-               fromPort.str(this).find("B1ADDR") == 0) {
+               (((toPort == id_B1DATA || toPort.str(this).find("B1DATA[") == 0) &&
+                 fromPort.str(this).find("B1ADDR") == 0) ||
+                (bool_or_default(cell->params, id_CFG_TDP, false) &&
+                 (((toPort.str(this).find("A1Q") == 0) && fromPort.str(this).find("A1ADDR") == 0) ||
+                  ((toPort.str(this).find("B1Q") == 0) && fromPort.str(this).find("B1ADDR") == 0))))) {
         // Mistral does not yet contain a characterized M10K address-to-data
         // arc.  Use a conservative 1.5 ns estimate so an asynchronous read
         // is visible to host timing without pretending to be silicon data.
