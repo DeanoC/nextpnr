@@ -138,9 +138,9 @@ def main():
     assert packed["parameters"]["CFG_ASYNC_READ"][-1] == "1"
     assert packed["parameters"]["CFG_BYTE_ENABLE"][-1] == "1"
     # The mapper omits B1EN for a combinational read, but Cyclone V still
-    # requires the physical read-enable lane to be high.  The packer adds an
-    # internal soft-VCC connection so the route is visible in the bitstream;
-    # it is not a user-controlled port.
+    # requires the physical port-B core-enable lane to be high.  The packer
+    # adds an internal soft-VCC connection so the route is visible in the
+    # bitstream; it is not a user-controlled port.
     assert "B1EN" in packed["connections"]
 
     run([str(args.mistral_cv.resolve()), "decomp", DEVICE, str(case / "top.rbf"),
@@ -159,18 +159,20 @@ def main():
     assert fields.get("BOT_1_CORECLK_SEL", "0") == "1", fields
     assert fields.get("BOT_1_INCLK_SEL", "0") == "1", fields
     assert fields.get("BOT_1_OUTCLK_SEL", "0") == "1", fields
-    assert fields.get("BOT_CORECLK_SEL", "0") == "0", fields
+    assert fields.get("BOT_CORECLK_SEL", "0") == "1", fields
     assert fields.get("BOT_INCLK_SEL", "0") == "0", fields
     assert fields.get("BOT_CLK_INV", "0") == "0", fields
     for clock_pin in ("CLKIN.0", "CLKIN.1"):
         assert re.search(r"^r \S+ " + re.escape(site + ":" + clock_pin) + r"$",
                          bitstream, re.MULTILINE), clock_pin
-    assert re.search(r"^r \S+ " + re.escape(site + ":RDEN.0") + r"$",
+    assert re.search(r"^r \S+ " + re.escape(site + ":ENABLE.0") + r"$",
                      bitstream, re.MULTILINE), bitstream
+    assert not re.search(r"^r \S+ " + re.escape(site + ":RDEN.0") + r"$",
+                         bitstream, re.MULTILINE), bitstream
     for pin in ("BYTEENABLEA.0", "BYTEENABLEA.1"):
         assert re.search(r"^r \S+ " + re.escape(site + ":" + pin) + r"$",
                          bitstream, re.MULTILINE), pin
-    print("PASS: one asynchronous-read M10K, shared CLK1 on both clock sinks, RDEN.0 tied high, 50 MHz timing")
+    print("PASS: one asynchronous-read M10K, shared CLK1 on both clock sinks, ENABLE.0 tied high, 50 MHz timing")
 
 
 if __name__ == "__main__":

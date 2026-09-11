@@ -1598,13 +1598,13 @@ struct MistralPacker
                                   ctx->nameOf(clear));
                 }
 
-                // The Cyclone V M10K read-enable input is active even when
-                // the output is combinational.  The mapper omits B1EN in
+                // The Cyclone V flow-through simple-dual read core uses the
+                // port-B core-enable lane even when the output is
+                // combinational.  Quartus routes a dynamic rden_b to
+                // ENABLE.0 with BOT_CORECLK_SEL=1.  The mapper omits B1EN in
                 // this mode because there is no user read-enable signal, so
-                // materialise an internal high connection to the physical
-                // RDEN lane.  Leaving RDEN unrouted leaves the read core
-                // disabled on hardware and produces zero data despite valid
-                // INIT and address/data routes.
+                // materialise an internal high connection to that physical
+                // lane.
                 ci->addInput(id_B1EN);
                 ci->connectPort(id_B1EN, vcc_net);
             }
@@ -1649,7 +1649,7 @@ struct MistralPacker
             bool clk2_constant = !clk2_signal &&
                                  (ci->get_pin_state(id_CLK2) == PIN_0 || ci->get_pin_state(id_CLK2) == PIN_1);
             if (async_read)
-                ci->pin_data[id_B1EN].bel_pins = {ctx->id("RDEN[0]")};
+                ci->pin_data[id_B1EN].bel_pins = {ctx->id("ENABLE[0]")};
             else if (ci->getPort(id_B1EN) != nullptr)
                 ci->pin_data[id_B1EN].bel_pins = {ctx->id(dual_clock ? "ENABLE[0]" : "RDEN[0]")};
             if (ci->getPort(id_CLK1) == nullptr)

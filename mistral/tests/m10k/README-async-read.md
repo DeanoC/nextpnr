@@ -11,16 +11,17 @@ form used by the memory mapper.
 
 The packer leaves the read group on the existing M10K address and output BEL
 pins, and does not create a TCLK route. Cyclone V still requires the physical
-`RDEN[0]` lane high for this data path, so nextpnr adds an internal soft-VCC
+`ENABLE[0]` lane high for this data path, so nextpnr adds an internal soft-VCC
 connection to that BEL pin; it is not exposed as a user read-enable. A
 connected user read enable, second clock or active ACLR is rejected because
-each selects a synchronous read configuration. The shared write/read clock is
-fanned out to both physical `CLKIN` sinks, and the writer selects the bottom
-clock tree plus the second-half core/input/output clock muxes. Quartus uses the
-same arrangement for flow-through simple-dual configurations; leaving the
-second sink on its default branch can leave the combinational read path
-unclocked on silicon. No Mistral geometry or physical table changes are
-needed.
+each selects a synchronous read configuration. Quartus routes a flow-through
+simple-dual `rden_b` to `ENABLE[0]` with `BOT_CORECLK_SEL=1`; nextpnr applies
+that same physical core-enable path to the hidden always-high B1EN. The shared
+write/read clock is fanned out to both physical `CLKIN` sinks, and the writer
+selects the bottom clock tree plus the second-half core/input/output clock
+muxes. Leaving the second sink on its default branch can leave the
+combinational read path unclocked on silicon. No Mistral geometry or physical
+table changes are needed.
 
 Timing classifies `B1ADDR` as a combinational input and `B1DATA` as a
 combinational output. Since Mistral has no characterized Cyclone V M10K
@@ -30,7 +31,7 @@ result is captured by a fabric register.
 
 The portable host regression synthesizes a direct primitive, edits it into the
 future mapper's JSON shape, checks malformed controls, emits a compressed RBF,
-decodes the M10K settings (including the `RDEN[0]` tie) and checks the 50 MHz
+decodes the M10K settings (including the `ENABLE[0]` tie) and checks the 50 MHz
 report:
 
 ```sh

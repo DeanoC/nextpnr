@@ -673,16 +673,14 @@ struct MistralBitgen
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_CORECLK_SEL, bi, 1);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_INCLK_SEL, bi, 1);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_OUTCLK_SEL, bi, 1);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CORECLK_SEL, bi, 1);
         }
         if (byte_enable || mixed || tdp) {
-            // Byte-enabled SDP, mixed-width SDP and TDP select the write core enable
-            // lane in addition to positive WREN[0].
-            // An asynchronous read has no second clock.  Keep the read
-            // clock/core selectors at their single-clock defaults even when
-            // the write side uses byte-enable wiring; selecting the
-            // independent read-clock path here leaves the combinational port
-            // listening to an unrouted CLKIN[1].
-            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CORECLK_SEL, bi, async_read ? 0 : 1);
+            // Byte-enabled SDP, mixed-width SDP and TDP select the write core
+            // enable lane in addition to positive WREN[0].  The async path
+            // uses the port-B core-enable lane selected above, while its
+            // input-clock selector remains on the shared single-clock path.
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CORECLK_SEL, bi, 1);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_INCLK_SEL, bi, async_read ? 0 : 1);
             cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TOP_W_INV, bi, false);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_W_SEL, bi, 0);
