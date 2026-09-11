@@ -4,6 +4,7 @@
 The locked Yosys tree does not yet emit this primitive shape.  The fixture is
 therefore synthesized as a direct MISTRAL_M10K and then edited like the
 future memory_libmap output: CFG_ASYNC_READ=1 and no B1EN/CLK2 read controls.
+The packer must add an internal high RDEN[0] route for this shape.
 """
 
 import argparse
@@ -126,7 +127,11 @@ def main():
     routed = json.loads((case / "routed.json").read_text())["modules"]["top"]["cells"]
     packed = routed[name]
     assert packed["parameters"]["CFG_ASYNC_READ"][-1] == "1"
-    assert "B1EN" not in packed["connections"]
+    # The mapper omits B1EN for a combinational read, but Cyclone V still
+    # requires the physical read-enable lane to be high.  The packer adds an
+    # internal soft-VCC connection so the route is visible in the bitstream;
+    # it is not a user-controlled port.
+    assert "B1EN" in packed["connections"]
 
     run([str(args.mistral_cv.resolve()), "decomp", DEVICE, str(case / "top.rbf"),
          str(case / "top.bt")], case / "decomp.log")
@@ -138,7 +143,9 @@ def main():
     assert fields.get("B_OUTPUT_SEL", "async") == "async", fields
     assert not re.search(r"^r \S+ " + re.escape(site + ":CLKIN.1") + r"$",
                          bitstream, re.MULTILINE)
-    print("PASS: one asynchronous-read M10K, no read clock/enable route, 50 MHz timing")
+    assert re.search(r"^r \S+ " + re.escape(site + ":RDEN.0") + r"$",
+                     bitstream, re.MULTILINE), bitstream
+    print("PASS: one asynchronous-read M10K, RDEN.0 tied high, no read clock, 50 MHz timing")
 
 
 if __name__ == "__main__":

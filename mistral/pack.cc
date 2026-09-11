@@ -1571,10 +1571,10 @@ struct MistralPacker
             // CFG_ASYNC_READ makes that contract explicit for primitive JSON
             // produced by a future Yosys mapper.  Keep both forms so older
             // hand-written primitives remain useful while the mapper lands.
-            bool async_read = bool_or_default(ci->params, id_CFG_ASYNC_READ, false) ||
-                              ci->getPort(id_B1EN) == nullptr;
+            bool user_b1en = ci->getPort(id_B1EN) != nullptr;
+            bool async_read = bool_or_default(ci->params, id_CFG_ASYNC_READ, false) || !user_b1en;
             if (async_read) {
-                if (ci->getPort(id_B1EN) != nullptr)
+                if (user_b1en)
                     log_error("M10K '%s': CFG_ASYNC_READ requires no connected B1EN read enable.\n",
                               ctx->nameOf(ci));
                 if (bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false) || ci->getPort(id_CLK2) != nullptr)
@@ -1593,6 +1593,16 @@ struct MistralPacker
                         log_error("M10K '%s': CFG_ASYNC_READ requires inactive %s.\n", ctx->nameOf(ci),
                                   ctx->nameOf(clear));
                 }
+
+                // The Cyclone V M10K read-enable input is active even when
+                // the output is combinational.  The mapper omits B1EN in
+                // this mode because there is no user read-enable signal, so
+                // materialise an internal high connection to the physical
+                // RDEN lane.  Leaving RDEN unrouted leaves the read core
+                // disabled on hardware and produces zero data despite valid
+                // INIT and address/data routes.
+                ci->addInput(id_B1EN);
+                ci->connectPort(id_B1EN, vcc_net);
             }
 
             log_info("Setting up %ld-bit address, %ld-bit data M10K for %s.\n", abits, dbits,
@@ -1634,7 +1644,9 @@ struct MistralPacker
             bool clk2_signal = ci->getPort(id_CLK2) != nullptr;
             bool clk2_constant = !clk2_signal &&
                                  (ci->get_pin_state(id_CLK2) == PIN_0 || ci->get_pin_state(id_CLK2) == PIN_1);
-            if (ci->getPort(id_B1EN) != nullptr)
+            if (async_read)
+                ci->pin_data[id_B1EN].bel_pins = {ctx->id("RDEN[0]")};
+            else if (ci->getPort(id_B1EN) != nullptr)
                 ci->pin_data[id_B1EN].bel_pins = {ctx->id(dual_clock ? "ENABLE[0]" : "RDEN[0]")};
             if (ci->getPort(id_CLK1) == nullptr)
                 log_error("M10K '%s' requires a connected %s clock.\n", ctx->nameOf(ci),
