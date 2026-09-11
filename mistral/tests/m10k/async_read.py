@@ -4,7 +4,8 @@
 The locked Yosys tree does not yet emit this primitive shape.  The fixture is
 therefore synthesized as a direct MISTRAL_M10K and then edited like the
 future memory_libmap output: CFG_ASYNC_READ=1 and no B1EN/CLK2 read controls.
-The packer preserves that constant-rden shape at the BEL boundary.
+The packer materialises the omitted read enable as a constant-high route to
+the physical ENABLE[0] pin.
 """
 
 import argparse
@@ -72,11 +73,13 @@ def main():
     cell["port_directions"]["A1BE"] = "input"
     assert len(cell["connections"]["A1BE"]) == 2
 
-    # This is the future Yosys output contract.  A read enable or a second
-    # clock would make the port clocked, so an explicit B1EN is malformed.
+    # A dynamic read enable would make the port clocked, so it is malformed in
+    # the asynchronous contract.  A constant-high B1EN remains valid and is
+    # covered below as a separate case.
     invalid = copy.deepcopy(base)
     invalid_cell = invalid["modules"]["top"]["cells"][name]
     invalid_cell["parameters"]["CFG_ASYNC_READ"] = "00000000000000000000000000000001"
+    invalid_cell["connections"]["B1EN"] = [invalid_cell["connections"]["B1ADDR"][0]]
     invalid_case = output / "invalid-enable"
     invalid_case.mkdir(exist_ok=True)
     invalid_fixture = invalid_case / "synth.json"
@@ -86,8 +89,8 @@ def main():
          "--qsf", str(qsf), "--sdc", str(args.sdc.resolve()),
          "--json", str(invalid_fixture)], capture_output=True, text=True, timeout=120)
     (invalid_case / "route.log").write_text(result.stdout + result.stderr)
-    assert result.returncode != 0, "CFG_ASYNC_READ must reject a connected B1EN"
-    assert "CFG_ASYNC_READ" in result.stdout + result.stderr
+    assert result.returncode != 0, "CFG_ASYNC_READ must reject a dynamic B1EN"
+    assert "CFG_ASYNC_READ requires B1EN tied high" in result.stdout + result.stderr
 
     invalid_clear = copy.deepcopy(base)
     invalid_clear_cell = invalid_clear["modules"]["top"]["cells"][name]
@@ -137,9 +140,10 @@ def main():
     packed = routed[name]
     assert packed["parameters"]["CFG_ASYNC_READ"][-1] == "1"
     assert packed["parameters"]["CFG_BYTE_ENABLE"][-1] == "1"
-    # The mapper omits B1EN for a combinational read. Preserve that omission
-    # so the bitstream uses the M10K's constant-rden mode, as Quartus does.
-    assert "B1EN" not in packed["connections"]
+    # The mapper omits B1EN for a combinational read. The packer keeps that
+    # logical omission at the input boundary but adds an internal VCC-backed
+    # connection so the physical ENABLE[0] route is explicit.
+    assert "B1EN" in packed["connections"]
 
     run([str(args.mistral_cv.resolve()), "decomp", DEVICE, str(case / "top.rbf"),
          str(case / "top.bt")], case / "decomp.log")
@@ -151,20 +155,20 @@ def main():
     assert fields.get("B_OUTPUT_SEL", "async") == "async", fields
     # The flow-through read path still has no independent logical clock, but
     # Cyclone V's split M10K clock mux needs the shared CLK1 route on both
-    # physical clock sinks.  The second-half selectors must choose that
-    # bottom clock tree; the first-half selectors remain at their defaults.
+    # physical clock sinks. The explicit constant-high enable path selects
+    # the bottom core/input clock tree as well as the second-half muxes.
     assert fields.get("BOT_CLK_SEL", "0") == "1", fields
+    assert fields.get("BOT_CORECLK_SEL", "0") == "1", fields
+    assert fields.get("BOT_INCLK_SEL", "0") == "1", fields
     assert fields.get("BOT_1_CORECLK_SEL", "0") == "1", fields
     assert fields.get("BOT_1_INCLK_SEL", "0") == "1", fields
     assert fields.get("BOT_1_OUTCLK_SEL", "0") == "1", fields
-    assert fields.get("BOT_CORECLK_SEL", "0") == "0", fields
-    assert fields.get("BOT_INCLK_SEL", "0") == "0", fields
     assert fields.get("BOT_CLK_INV", "0") == "0", fields
     for clock_pin in ("CLKIN.0", "CLKIN.1"):
         assert re.search(r"^r \S+ " + re.escape(site + ":" + clock_pin) + r"$",
                          bitstream, re.MULTILINE), clock_pin
-    assert not re.search(r"^r \S+ " + re.escape(site + ":ENABLE.0") + r"$",
-                         bitstream, re.MULTILINE), bitstream
+    assert re.search(r"^r \S+ " + re.escape(site + ":ENABLE.0") + r"$",
+                     bitstream, re.MULTILINE), bitstream
     assert not re.search(r"^r \S+ " + re.escape(site + ":RDEN.0") + r"$",
                          bitstream, re.MULTILINE), bitstream
     # Constant-high byte enables are part of the flow-through mode's default
@@ -196,10 +200,32 @@ def main():
     for pin in ("BYTEENABLEA.0", "BYTEENABLEA.1"):
         assert re.search(r"^r \S+ " + re.escape(mixed_site + ":" + pin) + r"$",
                          mixed_bitstream, re.MULTILINE), pin
-    for pin in ("ENABLE.0", "RDEN.0"):
-        assert not re.search(r"^r \S+ " + re.escape(mixed_site + ":" + pin) + r"$",
-                             mixed_bitstream, re.MULTILINE), pin
-    print("PASS: asynchronous-read M10K, Quartus-matching constants and routed mixed mask, 50 MHz timing")
+    assert re.search(r"^r \S+ " + re.escape(mixed_site + ":ENABLE.0") + r"$",
+                     mixed_bitstream, re.MULTILINE), mixed_bitstream
+    assert not re.search(r"^r \S+ " + re.escape(mixed_site + ":RDEN.0") + r"$",
+                         mixed_bitstream, re.MULTILINE), mixed_bitstream
+
+    # Explicit constant-high B1EN is accepted as the equivalent primitive
+    # spelling and must use the same physical enable route.
+    explicit_design = copy.deepcopy(base)
+    explicit_cell = explicit_design["modules"]["top"]["cells"][name]
+    explicit_cell["parameters"]["CFG_ASYNC_READ"] = "00000000000000000000000000000001"
+    for clear in ("ACLR0", "ACLR1"):
+        explicit_cell["connections"][clear] = ["0"]
+        explicit_cell["port_directions"][clear] = "input"
+    explicit_case = output / "async-explicit-enable"
+    explicit_case.mkdir(exist_ok=True)
+    route(args, qsf, explicit_case, explicit_design)
+    explicit_packed = json.loads((explicit_case / "routed.json").read_text())["modules"]["top"]["cells"][name]
+    assert "B1EN" in explicit_packed["connections"]
+    run([str(args.mistral_cv.resolve()), "decomp", DEVICE, str(explicit_case / "top.rbf"),
+         str(explicit_case / "top.bt")], explicit_case / "decomp.log")
+    _, ex, ey, _ = explicit_packed["attributes"]["NEXTPNR_BEL"].split(".")
+    explicit_site = f"M10K.{int(ex):03d}.{int(ey):03d}"
+    explicit_bitstream = (explicit_case / "top.bt").read_text()
+    assert re.search(r"^r \S+ " + re.escape(explicit_site + ":ENABLE.0") + r"$",
+                     explicit_bitstream, re.MULTILINE), explicit_bitstream
+    print("PASS: asynchronous-read M10K, explicit constant-high enable, routed mixed mask, 50 MHz timing")
 
 
 if __name__ == "__main__":
