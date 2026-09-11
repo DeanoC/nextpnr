@@ -38,6 +38,34 @@ The former override cited slow TD congestion resolution. The existing M10K
 byte-enable, independent-clock, same-clock and legacy fixtures are therefore
 compared before/after in addition to the eleven-case mixed-width sweep.
 
+## Multi-clock timing regression
+
+The Mistral backend keeps router2 as its normal first pass. A design with at
+least two PLLs and one M10K is retried with router1 when the routed timing
+estimate has less than ten percent margin. This covers the denser multi-clock
+case where the pre-bitstream estimate can be optimistic about the analogue
+interconnect delay. The retry removes only ordinary routed nets; dedicated
+global clock routes remain in place.
+
+Run the retained ZX81 OSS fixture from the companion misteross checkout with
+the three seeds used by the ladder:
+
+```sh
+python3 mistral/tests/router2/timing_qor.py \
+  --nextpnr /path/to/nextpnr-mistral \
+  --fixture /path/to/fes-zx81-oss/synth.json \
+  --qsf /path/to/fes-zx81/constraints-oss.qsf \
+  --sdc /path/to/fes-zx81/clocks-oss.sdc \
+  --output /tmp/mistral-timing-qor \
+  --timing-allow-fail
+```
+
+The script checks that both PLLs and an M10K are present, a compressed RBF is
+written, and every constrained clock meets its signoff frequency. It accepts
+`--seed` repeatedly for a smaller run. The fixture is intentionally supplied
+by the caller because the generated JSON is several megabytes and belongs to
+the core regression, not the nextpnr source tree.
+
 ## Fixture provenance
 
 `m10k-mixed.json.gz` is the exact synth JSON from
