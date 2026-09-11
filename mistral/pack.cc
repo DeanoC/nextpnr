@@ -1588,9 +1588,9 @@ struct MistralPacker
 
             // An unclocked read group is represented by the absence of its
             // read-enable port, matching memory_libmap's clocks 1 0 form.
-            // CFG_ASYNC_READ makes that contract explicit for primitive JSON
-            // produced by a future Yosys mapper.  Keep both forms so older
-            // hand-written primitives remain useful while the mapper lands.
+            // CFG_ASYNC_READ makes that contract explicit for native Yosys
+            // primitive JSON. Keep both forms so older hand-written
+            // primitives remain useful.
             bool user_b1en = ci->getPort(id_B1EN) != nullptr;
             bool async_read = bool_or_default(ci->params, id_CFG_ASYNC_READ, false) || !user_b1en;
             bool output_reg_a = bool_or_default(ci->params, id_CFG_OUT_REG_A, false);
@@ -1703,9 +1703,19 @@ struct MistralPacker
                 ci->pin_data[id_B1EN].bel_pins = {ctx->id("ENABLE[0]")};
             else if (ci->getPort(id_B1EN) != nullptr)
                 ci->pin_data[id_B1EN].bel_pins = {ctx->id(dual_clock ? "ENABLE[0]" : "RDEN[0]")};
-            if (ci->getPort(id_CLK1) == nullptr)
-                log_error("M10K '%s' requires a connected %s clock.\n", ctx->nameOf(ci),
-                          "CLK1");
+            if (ci->getPort(id_CLK1) == nullptr) {
+                // A read-only async memory has no write edge to route.  Its
+                // mapper supplies an inactive A1EN and a folded constant
+                // CLK1; accepting that shape avoids fabricating a clock just
+                // to feed an unused write half of the M10K.
+                bool clk1_constant = ci->get_pin_state(id_CLK1) == PIN_0 || ci->get_pin_state(id_CLK1) == PIN_1;
+                bool a1en_low = ci->getPort(id_A1EN) == gnd_net || ci->get_pin_state(id_A1EN) == PIN_0;
+                bool a1en_high = ci->getPort(id_A1EN) == vcc_net || ci->get_pin_state(id_A1EN) == PIN_1;
+                bool write_disabled = dbits == 40 ? a1en_low : a1en_high;
+                if (!(async_read && clk1_constant && write_disabled))
+                    log_error("M10K '%s' requires a connected %s clock.\n", ctx->nameOf(ci),
+                              "CLK1");
+            }
             if (dual_clock && !clk2_signal && !clk2_constant)
                 log_error("M10K '%s' requires a connected CLK2 clock or an explicit constant on an unused read port.\n",
                           ctx->nameOf(ci));
