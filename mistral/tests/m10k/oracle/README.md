@@ -4,6 +4,11 @@ These retained Quartus Prime Lite 17.0.2 Build 602 fixtures target
 `5CSEBA6U23I7`. Each occupies one M10K in simple dual-port mode. They are
 host-only configuration evidence, not hardware acceptance.
 
+For output-register selector mappings, see
+[registered-output](registered-output/README.md). Those fixtures cover a
+registered B output in 20-bit true dual-port mode and the two physical output
+halves used by a 40-bit simple-dual read.
+
 | Fixture | Configuration | Purpose |
 | --- | --- | --- |
 | `explicit20re1` | 512×20, separate write/read clocks, read enable tied high | Isolate read clock selection without a read-side ENABLE route |
