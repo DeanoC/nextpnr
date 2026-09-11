@@ -1574,6 +1574,10 @@ struct MistralPacker
             bool user_b1en = ci->getPort(id_B1EN) != nullptr;
             bool async_read = bool_or_default(ci->params, id_CFG_ASYNC_READ, false) || !user_b1en;
             if (async_read) {
+                // Preserve the mode after the hidden RDEN connection is
+                // materialised; the bitstream writer must not infer async
+                // mode from the now-present synthetic B1EN port.
+                ci->params[id_CFG_ASYNC_READ] = 1;
                 if (user_b1en)
                     log_error("M10K '%s': CFG_ASYNC_READ requires no connected B1EN read enable.\n",
                               ctx->nameOf(ci));

@@ -63,6 +63,15 @@ def main():
     name, cell = next((n, c) for n, c in cells.items() if c["type"] == CELL)
     assert cell["port_directions"].get("B1EN") == "input"
 
+    # The locked M10K library cell predates the byte-enable mapper and has no
+    # A1BE port.  Add the two always-enabled write lanes at the JSON boundary
+    # so this regression covers the 20-bit byte-enable selector path used by
+    # the hardware fixture without changing that pinned library.
+    cell["parameters"]["CFG_BYTE_ENABLE"] = "00000000000000000000000000000001"
+    cell["connections"]["A1BE"] = ["1", "1"]
+    cell["port_directions"]["A1BE"] = "input"
+    assert len(cell["connections"]["A1BE"]) == 2
+
     # This is the future Yosys output contract.  A read enable or a second
     # clock would make the port clocked, so an explicit B1EN is malformed.
     invalid = copy.deepcopy(base)
@@ -127,6 +136,7 @@ def main():
     routed = json.loads((case / "routed.json").read_text())["modules"]["top"]["cells"]
     packed = routed[name]
     assert packed["parameters"]["CFG_ASYNC_READ"][-1] == "1"
+    assert packed["parameters"]["CFG_BYTE_ENABLE"][-1] == "1"
     # The mapper omits B1EN for a combinational read, but Cyclone V still
     # requires the physical read-enable lane to be high.  The packer adds an
     # internal soft-VCC connection so the route is visible in the bitstream;
@@ -141,10 +151,18 @@ def main():
     fields = dict(re.findall(r"^s " + re.escape(site) + r":(\S+) (\S+)$",
                              bitstream, re.MULTILINE))
     assert fields.get("B_OUTPUT_SEL", "async") == "async", fields
+    # Byte-enable wiring is a write-side concern here.  Both bottom read
+    # clock selectors must retain their single-clock defaults because the
+    # asynchronous port has no CLKIN[1] route.
+    assert fields.get("BOT_CORECLK_SEL", "0") == "0", fields
+    assert fields.get("BOT_INCLK_SEL", "0") == "0", fields
     assert not re.search(r"^r \S+ " + re.escape(site + ":CLKIN.1") + r"$",
                          bitstream, re.MULTILINE)
     assert re.search(r"^r \S+ " + re.escape(site + ":RDEN.0") + r"$",
                      bitstream, re.MULTILINE), bitstream
+    for pin in ("BYTEENABLEA.0", "BYTEENABLEA.1"):
+        assert re.search(r"^r \S+ " + re.escape(site + ":" + pin) + r"$",
+                         bitstream, re.MULTILINE), pin
     print("PASS: one asynchronous-read M10K, RDEN.0 tied high, no read clock, 50 MHz timing")
 
 
