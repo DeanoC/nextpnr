@@ -1566,6 +1566,49 @@ struct MistralPacker
             NPNR_ASSERT(dbits == 1 || dbits == 2 || dbits == 5 || dbits == 10 || dbits == 20 || dbits == 40);
             NPNR_ASSERT((1 << abits) * dbits <= 10240);
 
+            // An unclocked read group is represented by the absence of its
+            // read-enable port, matching memory_libmap's clocks 1 0 form.
+            // CFG_ASYNC_READ makes that contract explicit for primitive JSON
+            // produced by a future Yosys mapper.  Keep both forms so older
+            // hand-written primitives remain useful while the mapper lands.
+            bool user_b1en = ci->getPort(id_B1EN) != nullptr;
+            bool async_read = bool_or_default(ci->params, id_CFG_ASYNC_READ, false) || !user_b1en;
+            if (async_read) {
+                // Preserve the mode after the hidden RDEN connection is
+                // materialised; the bitstream writer must not infer async
+                // mode from the now-present synthetic B1EN port.
+                ci->params[id_CFG_ASYNC_READ] = 1;
+                if (user_b1en)
+                    log_error("M10K '%s': CFG_ASYNC_READ requires no connected B1EN read enable.\n",
+                              ctx->nameOf(ci));
+                if (bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false) || ci->getPort(id_CLK2) != nullptr)
+                    log_error("M10K '%s': CFG_ASYNC_READ cannot use CFG_DUAL_CLOCK or CLK2.\n",
+                              ctx->nameOf(ci));
+                // An active clear selects the M10K output register, which is
+                // incompatible with a combinational read result.  Omitted
+                // controls have already been materialised and folded to
+                // PIN_0 by ensure_m10k_control_ports/pack_constants.
+                for (IdString clear : {id_ACLR0, id_ACLR1}) {
+                    // A connected constant-zero control is folded to PIN_0
+                    // before setup and is valid.  Reject active constants and
+                    // fabric nets, which would select the M10K output
+                    // register and change the read port back to synchronous.
+                    if (ci->get_pin_state(clear) != PIN_0)
+                        log_error("M10K '%s': CFG_ASYNC_READ requires inactive %s.\n", ctx->nameOf(ci),
+                                  ctx->nameOf(clear));
+                }
+
+                // The Cyclone V flow-through simple-dual read core uses the
+                // port-B core-enable lane even when the output is
+                // combinational.  Quartus routes a dynamic rden_b to
+                // ENABLE.0 with BOT_CORECLK_SEL=1.  The mapper omits B1EN in
+                // this mode because there is no user read-enable signal, so
+                // materialise an internal high connection to that physical
+                // lane.
+                ci->addInput(id_B1EN);
+                ci->connectPort(id_B1EN, vcc_net);
+            }
+
             log_info("Setting up %ld-bit address, %ld-bit data M10K for %s.\n", abits, dbits,
                      ci->name.str(ctx).c_str());
 
@@ -1605,7 +1648,10 @@ struct MistralPacker
             bool clk2_signal = ci->getPort(id_CLK2) != nullptr;
             bool clk2_constant = !clk2_signal &&
                                  (ci->get_pin_state(id_CLK2) == PIN_0 || ci->get_pin_state(id_CLK2) == PIN_1);
-            ci->pin_data[id_B1EN].bel_pins = {ctx->id(dual_clock ? "ENABLE[0]" : "RDEN[0]")};
+            if (async_read)
+                ci->pin_data[id_B1EN].bel_pins = {ctx->id("ENABLE[0]")};
+            else if (ci->getPort(id_B1EN) != nullptr)
+                ci->pin_data[id_B1EN].bel_pins = {ctx->id(dual_clock ? "ENABLE[0]" : "RDEN[0]")};
             if (ci->getPort(id_CLK1) == nullptr)
                 log_error("M10K '%s' requires a connected %s clock.\n", ctx->nameOf(ci),
                           "CLK1");
@@ -1616,7 +1662,16 @@ struct MistralPacker
                 log_error("M10K '%s': constant CLK2 is only valid when B1EN is tied low.\n", ctx->nameOf(ci));
             if (!dual_clock && clk2_signal)
                 log_error("M10K '%s': CLK2 requires CFG_DUAL_CLOCK=1.\n", ctx->nameOf(ci));
-            ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
+            // The M10K clock mux is split between the two physical halves.
+            // Quartus feeds both CLKIN pins for a flow-through simple-dual
+            // port, even when the two logical clocks are the same signal.
+            // Keep the shared-clock legacy path on CLKIN[0], but fan an
+            // asynchronous read clock onto both physical sinks so the read
+            // half cannot remain on an unclocked/default branch.
+            if (async_read)
+                ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]"), ctx->id("CLKIN[1]")};
+            else
+                ci->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
             if (dual_clock && clk2_signal)
                 ci->pin_data[id_CLK2].bel_pins = {ctx->id("CLKIN[1]")};
             ci->pin_data[id_ACLR0].bel_pins = {ctx->id("ACLR[0]")};
