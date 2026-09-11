@@ -1599,9 +1599,8 @@ struct MistralPacker
                 log_error("M10K '%s': CFG_OUT_REG_A requires true dual-port or a 40-bit read.\n",
                           ctx->nameOf(ci));
             if (async_read) {
-                // Preserve the mode after the hidden RDEN connection is
-                // materialised; the bitstream writer must not infer async
-                // mode from the now-present synthetic B1EN port.
+                // Preserve the explicit mode so the bitstream writer does
+                // not need to infer it from the omitted B1EN port.
                 ci->params[id_CFG_ASYNC_READ] = 1;
                 if (user_b1en)
                     log_error("M10K '%s': CFG_ASYNC_READ requires no connected B1EN read enable.\n",
@@ -1625,15 +1624,9 @@ struct MistralPacker
                                   ctx->nameOf(clear));
                 }
 
-                // The Cyclone V flow-through simple-dual read core uses the
-                // port-B core-enable lane even when the output is
-                // combinational.  Quartus routes a dynamic rden_b to
-                // ENABLE.0 with BOT_CORECLK_SEL=1.  The mapper omits B1EN in
-                // this mode because there is no user read-enable signal, so
-                // materialise an internal high connection to that physical
-                // lane.
-                ci->addInput(id_B1EN);
-                ci->connectPort(id_B1EN, vcc_net);
+                // A flow-through simple-dual read with a constant rden_b is
+                // represented by the absence of B1EN. Keep that omission at
+                // the BEL boundary, matching Quartus's constant-rden mode.
             }
 
             log_info("Setting up %ld-bit address, %ld-bit data M10K for %s.\n", abits, dbits,
@@ -1666,8 +1659,21 @@ struct MistralPacker
             else
                 ci->pin_data[ctx->id("A1EN")].bel_pins = {ctx->id("WREN[1]")};
             if (byte_enable) {
-                for (int bit = 0; bit < 2; bit++)
-                    ci->pin_data[ctx->idf("A1BE[%d]", bit)].bel_pins = {ctx->idf("BYTEENABLEA[%d]", bit)};
+                for (int bit = 0; bit < 2; bit++) {
+                    IdString port = ctx->idf("A1BE[%d]", bit);
+                    // Quartus leaves constant-high byte enables on the
+                    // M10K's default source.  Preserve that encoding for the
+                    // flow-through read mode; a low or dynamic mask still
+                    // needs an ordinary fabric route.
+                    bool constant_high = ci->getPort(port) == vcc_net ||
+                                         (ci->getPort(port) == nullptr && ci->get_pin_state(port) == PIN_1);
+                    if (async_read && constant_high) {
+                        ci->disconnectPort(port);
+                        ci->pin_data[port].state = PIN_1;
+                    } else {
+                        ci->pin_data[port].bel_pins = {ctx->idf("BYTEENABLEA[%d]", bit)};
+                    }
+                }
             }
 
             // Legacy cells use CLK1 for both ports; new SDP cells have an
@@ -1676,9 +1682,7 @@ struct MistralPacker
             bool clk2_signal = ci->getPort(id_CLK2) != nullptr;
             bool clk2_constant = !clk2_signal &&
                                  (ci->get_pin_state(id_CLK2) == PIN_0 || ci->get_pin_state(id_CLK2) == PIN_1);
-            if (async_read)
-                ci->pin_data[id_B1EN].bel_pins = {ctx->id("ENABLE[0]")};
-            else if (ci->getPort(id_B1EN) != nullptr)
+            if (!async_read && ci->getPort(id_B1EN) != nullptr)
                 ci->pin_data[id_B1EN].bel_pins = {ctx->id(dual_clock ? "ENABLE[0]" : "RDEN[0]")};
             if (ci->getPort(id_CLK1) == nullptr)
                 log_error("M10K '%s' requires a connected %s clock.\n", ctx->nameOf(ci),
