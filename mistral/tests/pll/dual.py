@@ -76,13 +76,17 @@ def main():
     bt = (out / "top.bt").read_text()
     assert len(re.findall(r"^s FPLL.*:FPLL_ENABLE 1$", bt, re.M)) == 1
     settings = dict(re.findall(r"^s FPLL\.000\.014:(\S+) (\S+)$", bt, re.M))
-    vco = next(v for v in (300, 320, 400)
-               if all(v % hz == 0 and (duty == 50 or (v / hz * duty) % 100 == 0)
+    vco = next(v for v in (300, 320, 400, 520)
+               if all(v % hz == 0 and 2 <= v / hz <= 512 and
+                      (duty == 50 or (v / hz * duty) % 100 == 0)
                       for hz, duty in ((args.mhz0, args.duty0), (args.mhz1, args.duty1))))
     m, n, bw, cp, preset, phase = {
-        25: {300: (24, 2, 6, 1, 1, 0), 320: (64, 5, 3, 2, 7, 3), 400: (32, 2, 6, 1, 1, 0)},
-        100: {300: (6, 2, 8, 1, 1, 0), 320: (32, 10, 6, 1, 1, 0), 400: (8, 2, 7, 1, 1, 0)},
-        50: {300: (12, 2, 7, 1, 1, 0), 320: (32, 5, 6, 2, 4, 2), 400: (16, 2, 7, 1, 1, 0)},
+        25: {300: (24, 2, 6, 1, 1, 0), 320: (64, 5, 3, 2, 7, 3),
+             400: (32, 2, 6, 1, 1, 0), 520: (104, 5, 2, 2, 11, 3)},
+        100: {300: (6, 2, 8, 1, 1, 0), 320: (32, 10, 6, 1, 1, 0),
+              400: (8, 2, 7, 1, 1, 0), 520: (52, 10, 4, 1, 1, 0)},
+        50: {300: (12, 2, 7, 1, 1, 0), 320: (32, 5, 6, 2, 4, 2),
+             400: (16, 2, 7, 1, 1, 0), 520: (52, 5, 4, 2, 6, 2)},
     }[args.reference_mhz][vco]
     ratios = (vco / args.mhz0, vco / args.mhz1)
     assert all(c.denominator == 1 and 2 <= c <= 512 for c in ratios), ratios
@@ -99,7 +103,7 @@ def main():
                         "DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN.6": c0 % 2 if args.duty0 == 50 else 0,
                         "DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN.7": c1 % 2 if args.duty1 == 50 else 0,
                         "BWCTRL": bw, "CP_CURRENT": cp}.items():
-        default = "2" if name == "CP_CURRENT" else "0"
+        default = "2" if name == "CP_CURRENT" else "4" if name == "BWCTRL" else "0"
         assert int(settings.get(name, default)) == value, (name, settings)
     for name, value in {"C6_COUT_EN": "1", "C7_COUT_EN": "1", "CNT_IN_SRC.6": "0",
                         "CNT_IN_SRC.7": "0", "CLKIN_0_SRC": "4", "FBCLK_MUX_2": "1",

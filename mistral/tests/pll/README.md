@@ -1,10 +1,12 @@
 # Cyclone V PLL support
 
-This backend supports the bounded integer, fractional and phase profiles
-described below, including two independent PLLs on the board reference.
+This backend supports the integer, fractional and phase profiles described
+below, including two independent PLLs on the board reference. Integer output
+selection is generic over a table of complete Quartus-checked feedback
+profiles: the requested rate is solved as an exact C divider, so adding a
+rate that divides a supported VCO does not require a rate-specific case.
 Hardware evidence applies only to the explicitly recorded diagnostics; other
-profiles have host-only validation. This is not general-purpose PLL support
-or system-image acceptance.
+profiles have host-only validation.
 
 The test uses the existing Yosys `altera_pll` blackbox, without a Yosys patch.
 One physical FPLL is reserved per cell. On `5CSEBA6U23I7`, Mistral enumerates
@@ -14,21 +16,22 @@ six FPLL sites. The currently accepted configuration is:
   The DE10-Nano onboard oscillator supplies 50 MHz; other references require
   an appropriate external physical clock source.
 - Output: one clock from 1 to 100 MHz, expressed as decimal MHz with
-  at most one-Hz precision and an exact C divisor
-  from the checked 300/320 MHz reported VCO configurations; zero phase.
+  at most one-Hz precision and an exact C divisor from a checked 300, 320 or
+  520 MHz feedback profile; zero phase.
   Integer duty percentages are supported when exactly representable by the
   selected C high/low counters (see below).
-- Direct mode with integer feedback. Prefer M=12/N=2 (reported 300 MHz);
-  otherwise M=32/N=5 (reported 320 MHz). Only C6 drives the output.
+- Direct mode with integer feedback. The selector prefers the 300 MHz profile,
+  then 320 MHz, then the 520 MHz profile. Only C6 drives a single output.
 - Active-high fabric-driven `rst`, or `rst` tied low; optional `locked` status output.
 - One or more existing MISTRAL clock buffers per output; direct fabric sinks
   on the unbuffered PLL tap remain unsupported.
 
 Output frequencies use strings such as `"20 MHz"`, `"20.0 MHz"` or `"12.5 MHz"`. The reference accepts the same whole-MHz string syntax, restricted to 25,
 50 or 100 MHz; other parameters keep the values in `top.v`.
-The supported whole-MHz subset is 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 25,
-30, 32, 40, 50, 60, 64, 75, 80, and 100. This is a bounded selector over two
-checked feedback/analog configurations, not an arbitrary M/N analog solver.
+The supported whole-MHz subset is 1, 2, 3, 4, 5, 6, 8, 10, 12, 13, 15, 16,
+20, 25, 26, 30, 32, 40, 50, 52, 60, 64, 65, 75, 80, and 100. The selector
+searches complete feedback/analog profiles; it does not invent analog values
+for an unverified VCO.
 Out-of-range or inexact requests (for example 7 MHz or 12.3 MHz) fail.
 Unsupported device, pin, frequency, phase, duty cycle, clock count,
 reconfiguration ports, or output topology fail explicitly. Missing frequency
@@ -62,8 +65,9 @@ at FPLL (0,73) must be powered down via `PL_AUX_BG_POWERDOWN=1`. Matching
 only the 28 settings/inversions in the selected FPLL is insufficient: the
 first hardware diagnostic reported no lock and zero output counts. Adding
 that single field produced lock and the expected frequency ratio. This
-setting is part of this specific device/reference profile, not a rule for
-arbitrary PLL configurations. No analog parameter solver is implemented.
+setting is part of this specific device/reference profile. The integer
+calculator only solves C after selecting one of the complete profiles; it does
+not derive unverified analog settings.
 
 The packer constrains both sides of the output buffer to the selected frequency and checks
 conflicting clock periods, including the selected input pin constraint. Downstream
@@ -110,10 +114,10 @@ Quartus chooses clock mux subblock 0; nextpnr uses its existing subblock 2.
 
 ## Source bases
 
-- nextpnr fork: `99cf0efd724a07b0df3a8d91c29aaec6613bfa1f`, including DSP support
-  on upstream `7d4f72c0aabc15da932748a54e82a6ff7b41921e`.
-- Mistral fork: `328cfb8046d6bcb979fa69df7cfb95bd6f7e73f8`, including the DSP
-  tile fix on upstream `bfa096c1deac6180a3eee784693c28dac491ab18`.
+- nextpnr fork base: `d22eaef1a858e2d81bcbe971b580f69265e59bde`, including
+  DSP support on upstream `7d4f72c0aabc15da932748a54e82a6ff7b41921e`.
+- Mistral fork used for host builds: `b28e30a36b5139aaed5a5d361a30b542e6b7c758`,
+  including the Cyclone V clock-field fixes on upstream `bfa096c1deac6180a3eee784693c28dac491ab18`.
 - Yosys: `13b43f8c85ec430a33ee55d058fb4c32b42b6910`.
 
 No misteross ladder changes or lock updates are part of this test. Integration
@@ -247,7 +251,7 @@ fields and analog settings. `frequency_meter_sim.cpp` drives the production
 meter at 20/40/100 MHz with `WINDOW_BITS=12`, including stops and restarts.
 
 After loading the corresponding frequency RBF under a kit lease, run
-`sh frequency_probe.sh 20` (or `40` / `100`) on the designated target. Each run
+`sh frequency_probe.sh 20` (or `40`, `52` / `100`) on the designated target. Each run
 checks ten held-reset zero counts and ten recovered counts around
 `frequency_MHz * 4096 / 50`, allowing one edge at the window endpoints.
 This establishes frequency ratio and functional reset/relock, not analog
@@ -267,16 +271,40 @@ Each compressed RBF is 1,955,948 bytes.
 | 40 | `0f63eefc0f8424f46af1e0c3776aff2a72af0b8bb2b653a798585fd2710700af` |
 | 100 | `009bc5914818c400455c061e90725e9fd7f0af80404fcdd8f08e892ee9e52b47` |
 
+## Generic 520 MHz feedback profile
+
+The integer calculator also includes a Quartus-checked 520 MHz feedback
+profile. With the 50 MHz board reference it uses M=52/N=5, C6=10, the default
+BWCTRL/CP_CURRENT values (4/2), and M presets 6/2. Therefore 52 MHz and the
+other exact 520 MHz divisors (13, 26 and 65 MHz in the 1--100 MHz range) use
+the same selector path without adding frequency-specific code. The 25 and
+100 MHz reference rows are included in the table below for host-only builds.
+
+Run the 52 MHz host check with:
+
+```sh
+python3 mistral/tests/pll/frequency.py --yosys "$YOSYS" \
+  --nextpnr "$NEXTPNR" --mistral-cv "$MISTRAL_CV" \
+  --output /tmp/pll-frequency-52 --mhz 52
+```
+
+The check routes one PLL, emits a compressed RBF, verifies the 50/52 MHz
+timing constraints and compares all programmed counters and analog fields.
+The corresponding 52/65 MHz dual-output case is available through
+`dual.py --mhz0 52 --mhz1 65`; both outputs share the same 520 MHz feedback.
+These regressions are host-only; no new hardware acceptance is implied.
+
 ## Two simultaneous outputs
 
 The dual-output profile accepts `number_of_clocks=2` and exact decimal output
 frequencies from 1 to 100 MHz. Both must divide exactly from one shared checked
-feedback configuration, tried in order: reported 300, 320, then 400 MHz.
+feedback configuration, tried in order: reported 300, 320, 400, then 520 MHz.
 For example, 40/25, 20/100 and 40/64 MHz are supported; 25/32 MHz is rejected
 because no checked configuration divides exactly into both. Equal output
 frequencies are supported. Both require zero phase and 50% duty; the existing
 V11 reference route, direct mode and reset rules still apply. Single-output
-selection remains restricted to its original 300/320 MHz tuples.
+selection uses the 300, 320 and 520 MHz profiles; the 400 MHz profile remains
+reserved for shared dual/multi-output feedback.
 
 The original 25/40 MHz pair retains the Quartus 17.0.2-checked 400 MHz configuration:
 M16/N2, BWCTRL7, CP_CURRENT1, M presets1/0. C6 divides by16 and C7 by10.
@@ -327,22 +355,26 @@ probe only accepts that original pair and must not be used for arbitrary pairs.
 ## Checked reference frequencies
 
 Reference selection uses a complete table of Quartus 17.0.2-checked tuples.
-It does not scale M/N while assuming unchanged analog settings. Single-output
-selection uses reported 300/320 MHz configurations; dual-output selection may
-also use 400 MHz. Rows below give M/N, bandwidth, charge pump and M low/phase
-presets. Dividers use `reference * M = output * N * C` for both outputs.
+It does not scale M/N while assuming unchanged analog settings. The selector
+solves C over these complete profiles; single-output selection uses the 300,
+320 and 520 MHz rows, while dual-output selection may also use 400 MHz. Rows
+below give M/N, bandwidth, charge pump and M low/phase presets. Dividers use
+`reference * M = output * N * C` for both outputs.
 
 | Reference MHz | Reported VCO MHz | M/N | BW | CP | M presets |
 | --- | --- | --- | --- | --- | --- |
 | 25 | 300 | 24/2 | 6 | 1 | 1/0 |
 | 25 | 320 | 64/5 | 3 | 2 | 7/3 |
 | 25 | 400 | 32/2 | 6 | 1 | 1/0 |
+| 25 | 520 | 104/5 | 2 | 2 | 11/3 |
 | 50 | 300 | 12/2 | 7 | 1 | 1/0 |
 | 50 | 320 | 32/5 | 6 | 2 | 4/2 |
 | 50 | 400 | 16/2 | 7 | 1 | 1/0 |
+| 50 | 520 | 52/5 | 4 | 2 | 6/2 |
 | 100 | 300 | 6/2 | 8 | 1 | 1/0 |
 | 100 | 320 | 32/10 | 6 | 1 | 1/0 |
 | 100 | 400 | 8/2 | 7 | 1 | 1/0 |
+| 100 | 520 | 52/10 | 4 | 1 | 1/0 |
 
 The packer checks the input pad, dedicated reference net and buffered fabric
 reference against the selected period, rejecting conflicting SDC constraints.
@@ -706,13 +738,13 @@ this profile. Downstream locks and parent pins are unchanged.
 
 The multi-output selector accepts exact decimal frequencies from 1 to 100 MHz
 when every output has an exact, representable divider from one checked
-300/320/400 MHz configuration. Zero-phase requests accept 25, 50 or 100 MHz
+300/320/400/520 MHz configuration. Zero-phase requests accept 25, 50 or 100 MHz
 references on V11 with integer feedback. Representable duties are
 covered below. This adds no new
 analog tuples and no Mistral geometry or clock-buffer routes.
 
 All outputs participate in selection, in the existing preference order
-300, 320, 400 MHz. For example, 25/50 MHz alone prefers 300 MHz, but adding
+300, 320, 400, 520 MHz. For example, 25/50 MHz alone prefers 300 MHz, but adding
 80 MHz requires 400 MHz; 25/50/100/80 similarly selects 400 MHz because of
 the fourth output. 75/80 MHz has no common checked tuple and is rejected,
 even though each frequency is individually supported. Packing and bitstream
@@ -741,7 +773,7 @@ remain separate integration work.
 ## Independent duties on three and four outputs
 
 Multi-output PLLs accept integer duty percentages from 1 to 99 when all
-frequencies and high/low counts fit one checked 300/320/400 MHz configuration.
+frequencies and high/low counts fit one checked 300/320/400/520 MHz configuration.
 The selector considers the duty of every output before choosing a tuple.
 50% duty keeps the existing odd-divider correction; other duties require
 exact integer high/low counts, each within the existing counter limits.
@@ -852,7 +884,7 @@ separate work.
 
 Zero-phase multi-output profiles use the complete reference-specific feedback
 and analog tuples in the table above. The selector tests every output frequency
-and duty against one common 300/320/400 MHz configuration, preserving the
+and duty against one common 300/320/400/520 MHz configuration, preserving the
 existing preference order. Packing and bitstream generation share this selector.
 No new Mistral tables, BELs or routes are required.
 
