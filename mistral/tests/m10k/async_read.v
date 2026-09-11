@@ -2,8 +2,8 @@
 //
 // The direct primitive keeps this test independent of the pending Yosys
 // memory_libmap rule.  async_read.py removes B1EN and adds CFG_ASYNC_READ to
-// model the JSON that that rule will emit.  nextpnr supplies the physical
-// RDEN[0] tie required by the Cyclone V read core.
+// model the JSON that that rule will emit.  The backend preserves the omitted
+// B1EN constant-rden form used by Quartus.
 module top(
     input wire FPGA_CLK1_50,
     output wire [0:0] LED

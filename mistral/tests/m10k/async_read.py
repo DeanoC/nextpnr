@@ -4,7 +4,7 @@
 The locked Yosys tree does not yet emit this primitive shape.  The fixture is
 therefore synthesized as a direct MISTRAL_M10K and then edited like the
 future memory_libmap output: CFG_ASYNC_READ=1 and no B1EN/CLK2 read controls.
-The packer must add an internal high RDEN[0] route for this shape.
+The packer preserves that constant-rden shape at the BEL boundary.
 """
 
 import argparse
@@ -137,11 +137,9 @@ def main():
     packed = routed[name]
     assert packed["parameters"]["CFG_ASYNC_READ"][-1] == "1"
     assert packed["parameters"]["CFG_BYTE_ENABLE"][-1] == "1"
-    # The mapper omits B1EN for a combinational read, but Cyclone V still
-    # requires the physical port-B core-enable lane to be high.  The packer
-    # adds an internal soft-VCC connection so the route is visible in the
-    # bitstream; it is not a user-controlled port.
-    assert "B1EN" in packed["connections"]
+    # The mapper omits B1EN for a combinational read. Preserve that omission
+    # so the bitstream uses the M10K's constant-rden mode, as Quartus does.
+    assert "B1EN" not in packed["connections"]
 
     run([str(args.mistral_cv.resolve()), "decomp", DEVICE, str(case / "top.rbf"),
          str(case / "top.bt")], case / "decomp.log")
@@ -159,20 +157,49 @@ def main():
     assert fields.get("BOT_1_CORECLK_SEL", "0") == "1", fields
     assert fields.get("BOT_1_INCLK_SEL", "0") == "1", fields
     assert fields.get("BOT_1_OUTCLK_SEL", "0") == "1", fields
-    assert fields.get("BOT_CORECLK_SEL", "0") == "1", fields
+    assert fields.get("BOT_CORECLK_SEL", "0") == "0", fields
     assert fields.get("BOT_INCLK_SEL", "0") == "0", fields
     assert fields.get("BOT_CLK_INV", "0") == "0", fields
     for clock_pin in ("CLKIN.0", "CLKIN.1"):
         assert re.search(r"^r \S+ " + re.escape(site + ":" + clock_pin) + r"$",
                          bitstream, re.MULTILINE), clock_pin
-    assert re.search(r"^r \S+ " + re.escape(site + ":ENABLE.0") + r"$",
-                     bitstream, re.MULTILINE), bitstream
+    assert not re.search(r"^r \S+ " + re.escape(site + ":ENABLE.0") + r"$",
+                         bitstream, re.MULTILINE), bitstream
     assert not re.search(r"^r \S+ " + re.escape(site + ":RDEN.0") + r"$",
                          bitstream, re.MULTILINE), bitstream
+    # Constant-high byte enables are part of the flow-through mode's default
+    # source. Keep CFG_BYTE_ENABLE set, but do not route the two constant masks
+    # through fabric; dynamic or low masks still use BYTEENABLEA pins.
     for pin in ("BYTEENABLEA.0", "BYTEENABLEA.1"):
-        assert re.search(r"^r \S+ " + re.escape(site + ":" + pin) + r"$",
-                         bitstream, re.MULTILINE), pin
-    print("PASS: one asynchronous-read M10K, shared CLK1 on both clock sinks, ENABLE.0 tied high, 50 MHz timing")
+        assert not re.search(r"^r \S+ " + re.escape(site + ":" + pin) + r"$",
+                             bitstream, re.MULTILINE), pin
+
+    # A nonconstant mask must keep the normal byte-enable routes. Reuse a
+    # live read-address bit for one lane and tie the other low so this case
+    # covers both dynamic and constant-low inputs without changing geometry.
+    mixed_design = copy.deepcopy(design)
+    mixed_cell = mixed_design["modules"]["top"]["cells"][name]
+    mixed_cell["connections"]["A1BE"] = [mixed_cell["connections"]["B1ADDR"][0], "0"]
+    mixed_case = output / "async-mixed-mask"
+    mixed_case.mkdir(exist_ok=True)
+    route(args, qsf, mixed_case, mixed_design)
+    mixed_report = json.loads((mixed_case / "timing.json").read_text())
+    assert mixed_report["utilization"][CELL]["used"] == 1
+    assert mixed_report["fmax"] and all(clock["achieved"] >= clock["constraint"] == 50
+                                           for clock in mixed_report["fmax"].values())
+    run([str(args.mistral_cv.resolve()), "decomp", DEVICE, str(mixed_case / "top.rbf"),
+         str(mixed_case / "top.bt")], mixed_case / "decomp.log")
+    mixed_packed = json.loads((mixed_case / "routed.json").read_text())["modules"]["top"]["cells"][name]
+    _, mx, my, _ = mixed_packed["attributes"]["NEXTPNR_BEL"].split(".")
+    mixed_site = f"M10K.{int(mx):03d}.{int(my):03d}"
+    mixed_bitstream = (mixed_case / "top.bt").read_text()
+    for pin in ("BYTEENABLEA.0", "BYTEENABLEA.1"):
+        assert re.search(r"^r \S+ " + re.escape(mixed_site + ":" + pin) + r"$",
+                         mixed_bitstream, re.MULTILINE), pin
+    for pin in ("ENABLE.0", "RDEN.0"):
+        assert not re.search(r"^r \S+ " + re.escape(mixed_site + ":" + pin) + r"$",
+                             mixed_bitstream, re.MULTILINE), pin
+    print("PASS: asynchronous-read M10K, Quartus-matching constants and routed mixed mask, 50 MHz timing")
 
 
 if __name__ == "__main__":
