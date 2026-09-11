@@ -58,7 +58,9 @@ bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool d
 bool dsp_shared_config_equal(const CellInfo *a, const CellInfo *b)
 {
     if (dsp_bool_param(a->params, id_A_SIGNED, true) != dsp_bool_param(b->params, id_A_SIGNED, true) ||
-        dsp_bool_param(a->params, id_B_SIGNED, true) != dsp_bool_param(b->params, id_B_SIGNED, true))
+        dsp_bool_param(a->params, id_B_SIGNED, true) != dsp_bool_param(b->params, id_B_SIGNED, true) ||
+        dsp_bool_param(a->params, id_C_SIGNED, true) != dsp_bool_param(b->params, id_C_SIGNED, true) ||
+        dsp_bool_param(a->params, id_D_SIGNED, true) != dsp_bool_param(b->params, id_D_SIGNED, true))
         return false;
     for (IdString key : {id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ, id_INREG_CTRL_BX,
                          id_INREG_CTRL_BY, id_INREG_CTRL_BZ, id_OREG_CTRL, id_PREADDER_EN, id_PREADDER_SUB,
@@ -244,7 +246,9 @@ IdStringList Arch::getBelName(BelId bel) const
 bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
 {
     auto &data = bel_data(bel);
-    if (data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27) && data.bound) {
+    if (data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                     id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) &&
+        data.bound) {
         // The mode-specific BELs are alternate views of one physical DSP
         // tile. Three M9 lanes may share a tile, while a wide multiplier owns
         // the tile and cannot coexist with another mode.
@@ -252,7 +256,9 @@ bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
             if (other == bel)
                 continue;
             const auto &other_data = bel_data(other);
-            if (!other_data.bound || !other_data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27))
+            if (!other_data.bound ||
+                !other_data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                                    id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED))
                 continue;
             if (other_data.type != data.type) {
                 if (explain_invalid)

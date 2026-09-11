@@ -29,7 +29,8 @@ namespace {
 
 bool is_dsp_multiplier(IdString type)
 {
-    return type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27);
+    return type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                   id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED);
 }
 
 bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool def = false)
@@ -89,7 +90,9 @@ bool dsp_has_bus(const CellInfo *cell, const BaseCtx *ctx, const char *base)
 bool dsp_shared_config_equal(const CellInfo *a, const CellInfo *b)
 {
     if (dsp_bool_param(a->params, id_A_SIGNED, true) != dsp_bool_param(b->params, id_A_SIGNED, true) ||
-        dsp_bool_param(a->params, id_B_SIGNED, true) != dsp_bool_param(b->params, id_B_SIGNED, true))
+        dsp_bool_param(a->params, id_B_SIGNED, true) != dsp_bool_param(b->params, id_B_SIGNED, true) ||
+        dsp_bool_param(a->params, id_C_SIGNED, true) != dsp_bool_param(b->params, id_C_SIGNED, true) ||
+        dsp_bool_param(a->params, id_D_SIGNED, true) != dsp_bool_param(b->params, id_D_SIGNED, true))
         return false;
     for (IdString key : {id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ, id_INREG_CTRL_BX,
                          id_INREG_CTRL_BY, id_INREG_CTRL_BZ, id_OREG_CTRL, id_PREADDER_EN, id_PREADDER_SUB,
@@ -102,7 +105,8 @@ bool dsp_shared_config_equal(const CellInfo *a, const CellInfo *b)
 
 bool is_supported_dsp_param(IdString key)
 {
-    return key.in(id_A_SIGNED, id_B_SIGNED, id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ,
+    return key.in(id_A_SIGNED, id_B_SIGNED, id_C_SIGNED, id_D_SIGNED, id_INREG_CTRL_AX, id_INREG_CTRL_AY,
+                  id_INREG_CTRL_AZ,
                   id_INREG_CTRL_BX, id_INREG_CTRL_BY, id_INREG_CTRL_BZ, id_OREG_CTRL, id_PREADDER_EN,
                   id_PREADDER_SUB, id_CASCADE_EN, id_CASCADE_1ST_EN, id_CHAIN_OUTPUT_EN);
 }
@@ -1719,6 +1723,9 @@ struct MistralPacker
                     log_error("MISTRAL_MUL18X18 does not support PREADDER_EN; use the M9 preadder mode.\n");
                 if (ci->type == id_MISTRAL_MUL18X18 && dsp_has_bus(ci, ctx, "Z"))
                     log_error("MISTRAL_MUL18X18 does not support a Z preadder port in M18X18P36 mode.\n");
+                if (ci->type.in(id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) &&
+                    (dsp_bool_param(ci->params, id_PREADDER_EN) || dsp_has_bus(ci, ctx, "Z")))
+                    log_error("18x19 DSP modes do not support preadder ports.\n");
                 if (ci->type == id_MISTRAL_MUL9X9 && dsp_has_bus(ci, ctx, "C"))
                     log_error("MISTRAL_MUL9X9 does not support a C addend port.\n");
                 if (ci->type == id_MISTRAL_MUL9X9 && dsp_has_bus(ci, ctx, "Z") &&
@@ -1734,6 +1741,18 @@ struct MistralPacker
                      dsp_bool_param(ci->params, id_CASCADE_EN) || dsp_bool_param(ci->params, id_CASCADE_1ST_EN) ||
                      dsp_bool_param(ci->params, id_CHAIN_OUTPUT_EN)))
                     log_error("MISTRAL_MUL9X9 does not support accumulator or cascade controls.\n");
+                if (ci->type == id_MISTRAL_MUL18X19 &&
+                    (dsp_control_used(ci, id_ACCUMULATE) || dsp_control_used(ci, id_SUB) ||
+                     dsp_control_used(ci, id_NEGATE) || dsp_control_used(ci, id_LOADCONST) ||
+                     dsp_bool_param(ci->params, id_CASCADE_EN) || dsp_bool_param(ci->params, id_CASCADE_1ST_EN) ||
+                     dsp_bool_param(ci->params, id_CHAIN_OUTPUT_EN)))
+                    log_error("MISTRAL_MUL18X19 does not support accumulator or arithmetic controls.\n");
+                if (ci->type == id_MISTRAL_MUL18X19_COMBINED &&
+                    (dsp_control_used(ci, id_ACCUMULATE) || dsp_control_used(ci, id_NEGATE) ||
+                     dsp_control_used(ci, id_LOADCONST) || dsp_bool_param(ci->params, id_CASCADE_EN) ||
+                     dsp_bool_param(ci->params, id_CASCADE_1ST_EN) ||
+                     dsp_bool_param(ci->params, id_CHAIN_OUTPUT_EN)))
+                    log_error("MISTRAL_MUL18X19_COMBINED only supports the SUB control.\n");
                 multipliers.push_back(ci);
             }
         }
@@ -1749,6 +1768,14 @@ struct MistralPacker
                 return a_signed < b_signed;
             a_signed = dsp_bool_param(a->params, id_B_SIGNED, true);
             b_signed = dsp_bool_param(b->params, id_B_SIGNED, true);
+            if (a_signed != b_signed)
+                return a_signed < b_signed;
+            a_signed = dsp_bool_param(a->params, id_C_SIGNED, true);
+            b_signed = dsp_bool_param(b->params, id_C_SIGNED, true);
+            if (a_signed != b_signed)
+                return a_signed < b_signed;
+            a_signed = dsp_bool_param(a->params, id_D_SIGNED, true);
+            b_signed = dsp_bool_param(b->params, id_D_SIGNED, true);
             if (a_signed != b_signed)
                 return a_signed < b_signed;
             for (IdString key : {id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ, id_INREG_CTRL_BX,

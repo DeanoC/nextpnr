@@ -1,6 +1,7 @@
 # Cyclone V DSP support
 
 The Mistral architecture exposes three `MISTRAL_MUL9X9` BEL lanes, one
+`MISTRAL_MUL18X19` BEL, one `MISTRAL_MUL18X19_COMBINED` BEL, one
 `MISTRAL_MUL18X18` BEL, and one `MISTRAL_MUL27X27` BEL per physical DSP block.
 `5CSEBA6U23I7` has 112 blocks, so the device reports 336 placeable M9 lanes or
 112 wide-mode BELs. The packer groups up to three independent 9x9 cells into
@@ -20,20 +21,32 @@ existing ports and routing nodes, as documented in its
 BEL and cell names match, so the existing placer legality, BEL buckets and
 default pin mapping apply without cell renaming. M18 mode maps the two 9-bit
 halves of A and B to groups 0/1 and 2/3, the optional 36-bit C addend to groups
-6..9, and Y to RESULT[35:0]. M27 mode maps A to groups 0/6/7, B to 2/8/9, and
-Y to the 54-bit RESULT port with its physical hole at bit 36.
+6..9, and Y to RESULT[35:0]. The native 18x19 views map the two products to
+AX/AY and BX/BY: A and C use groups 0/1 and 6/7 at 18 bits, while B and D use
+groups 2/3 and 8/9 at 19 bits. Their parallel result is Y[73:0], split into
+37-bit products at RESULT[36:0] and RESULT[73:37]; the combined view exposes a
+38-bit add/sub result. The nineteenth B and D bits use Mistral's currently
+unnamed `UNK_IN` GOUT endpoints (pi 94 and 30), which are valid reverse-routed
+DSP inputs even though the generated Mistral tables do not assign symbolic
+names to them. M27 mode maps A to groups 0/6/7, B to 2/8/9, and Y to the 54-bit
+RESULT port with its physical hole at bit 36.
 
 `mistral/pack.cc` forms strict same-site M9 clusters after grouping compatible
 profiles in deterministic cell-name order. The root is z=0 and children are
-z=1 and z=2. M18 and M27 cells are placed directly at their one wide-mode BEL.
-`mistral/arch.cc` rejects mixed modes and incompatible shared settings at a
-tile, including control-net mismatches between packed M9 lanes.
+z=1 and z=2. M18, M18x19, M18x19-combined, and M27 cells are placed directly at
+their one wide-mode BEL. The 18x19 views add C/D signedness to the shared
+profile; the parallel view is a pure dual product and the combined view permits
+only its SUB control. `mistral/arch.cc` rejects mixed modes and incompatible
+shared settings at a tile, including control-net mismatches between packed M9
+lanes.
 
 `mistral/bitstream.cc` configures each physical site once. It selects
-`M9X9`, `M18X18P36`, or `M27X27`, writes the shared signedness and DATA_INV
-settings, and programs the input/output register muxes. M9 supports the
-reverse-engineered preadder mapping (`PREADDER_EN`/`PREADDER_SUB`). M18
-supports its 36-bit C addend and the accumulator/cascade controls
+`M9X9`, `M18X19`, `M18X19_COMBINED`, `M18X18P36`, or `M27X27`, writes the shared
+signedness and DATA_INV settings, and programs the input/output register muxes.
+The 18x19 modes program the BX/BY signedness fields from C/D (falling back to
+A/B when those parameters are omitted). M9 supports the reverse-engineered
+preadder mapping (`PREADDER_EN`/`PREADDER_SUB`). M18 supports its 36-bit C
+addend and the accumulator/cascade controls
 (`ACCUMULATE`, `SUB`, `NEGATE`, `LOADCONST`, `CASCADE_EN`,
 `CASCADE_1ST_EN`, and `CHAIN_OUTPUT_EN`). The independent three-lane M9 mode
 does not support accumulator or cascade controls. M27 has no addend or
@@ -73,9 +86,9 @@ API calls are checked for success.
 `mistral/delay.cc` classifies the multiplier data and control ports and models
 registered input/output timing when the register muxes are enabled. It uses
 the Cyclone V arcs in locked Yosys `techlibs/intel_alm/common/dsp_sim.v`: M9
-A→Y 2818 ps and B→Y 3051 ps, M18 A→Y 3180 ps and B/C→Y 3982 ps, and M27 A→Y
-3732 ps and B→Y 3928 ps. These fixed arcs retain the source model's speed-grade
-limitations.
+A→Y 2818 ps and B→Y 3051 ps, M18 A→Y 3180 ps and B/C→Y 3982 ps, M18x19
+A/C→Y 3180 ps and B/D→Y 3982 ps, and M27 A→Y 3732 ps and B→Y 3928 ps. These
+fixed arcs retain the source model's speed-grade limitations.
 The synchronous clock Fmax does not constrain asynchronous HPS GP operands.
 
 ## Source bases
@@ -84,8 +97,8 @@ This implementation starts from these exact revisions:
 
 | Repository | Base |
 | --- | --- |
-| nextpnr | `89f7f1935e746ac38b94a0b65e9121a0d8fcce6b` |
-| Mistral | `78ba2a580ae2523403d4f4f91891a6b11d7b6aba` |
+| nextpnr | `9cdc03cc8521317b729f986c65448733e4aa0422` |
+| Mistral | `b28e30a36b5139aaed5a5d361a30b542e6b7c758` |
 | Yosys | `13b43f8c85ec430a33ee55d058fb4c32b42b6910` |
 | misteross regression | `2d171c8f6e9ef55ef4b34a7fe035aa176c30144b` |
 
@@ -126,6 +139,8 @@ python3 "$NEXTPNR_SOURCE/mistral/tests/mul27x27.py" --nextpnr "$DSP_BUILD/nextpn
 python3 "$NEXTPNR_SOURCE/mistral/tests/mul9x9_preadder.py" --nextpnr "$DSP_BUILD/nextpnr-mistral" --mistral-cv "$MISTRAL_CV" --fixture "$MISTEROSS/build/oss/060_dsp_mul/synth.json" --qsf "$MISTEROSS/boards/de10nano/pins.qsf" --sdc "$MISTEROSS/boards/de10nano/clocks.sdc" --output "$DSP_RESULTS/mul9x9-preadder"
 python3 "$NEXTPNR_SOURCE/mistral/tests/mul18x18_mac.py" --nextpnr "$DSP_BUILD/nextpnr-mistral" --mistral-cv "$MISTRAL_CV" --fixture "$MISTEROSS/build/oss/060_dsp_mul/synth.json" --qsf "$MISTEROSS/boards/de10nano/pins.qsf" --sdc "$MISTEROSS/boards/de10nano/clocks.sdc" --output "$DSP_RESULTS/mul18x18-mac"
 python3 "$NEXTPNR_SOURCE/mistral/tests/mul18x18_registered.py" --nextpnr "$DSP_BUILD/nextpnr-mistral" --mistral-cv "$MISTRAL_CV" --fixture "$MISTEROSS/build/oss/060_dsp_mul/synth.json" --qsf "$MISTEROSS/boards/de10nano/pins.qsf" --sdc "$MISTEROSS/boards/de10nano/clocks.sdc" --output "$DSP_RESULTS/mul18x18-registered"
+python3 "$NEXTPNR_SOURCE/mistral/tests/mul18x19.py" --mode parallel --nextpnr "$DSP_BUILD/nextpnr-mistral" --mistral-cv "$MISTRAL_CV" --fixture "$MISTEROSS/build/oss/060_dsp_mul/synth.json" --qsf "$MISTEROSS/boards/de10nano/pins.qsf" --sdc "$MISTEROSS/boards/de10nano/clocks.sdc" --output "$DSP_RESULTS/mul18x19-parallel"
+python3 "$NEXTPNR_SOURCE/mistral/tests/mul18x19.py" --mode combined --nextpnr "$DSP_BUILD/nextpnr-mistral" --mistral-cv "$MISTRAL_CV" --fixture "$MISTEROSS/build/oss/060_dsp_mul/synth.json" --qsf "$MISTEROSS/boards/de10nano/pins.qsf" --sdc "$MISTEROSS/boards/de10nano/clocks.sdc" --output "$DSP_RESULTS/mul18x19-combined"
 ```
 
 The control-routing variants use the real ladder fixtures without changing
@@ -140,8 +155,9 @@ python3 "$NEXTPNR_SOURCE/mistral/tests/mul18x18_registered.py" --constant-contro
 
 These fixtures check the mode/control fields in the decompressed bitstream,
 one DSP used, no M10K or PLL use, a compressed nonempty RBF, and a passing
-50 MHz clock constraint. They are host-only configuration checks; they do not
-program a board or verify arithmetic.
+50 MHz clock constraint. The 18x19 fixture also checks all eight ordinary
+operand groups and both unnamed nineteenth-bit endpoints. They are host-only
+configuration checks; they do not program a board or verify arithmetic.
 
 Use `mistral-cv` built with the upper-tile fix. The single-lane regression routes
 the original fixture plus explicit unsigned/constant-high and mixed-signed/input
