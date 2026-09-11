@@ -4,16 +4,31 @@
 int main()
 {
     using namespace mistral_pll;
+    const int expected_m[] = {104, 52, 52};
+    const int expected_n[] = {5, 5, 10};
+    const int expected_bw[] = {2, 4, 4};
+    const int expected_cp[] = {2, 2, 1};
+    const int expected_low[] = {11, 6, 1};
+    const int expected_phase[] = {3, 2, 0};
+    const int profile_refs[] = {25, 50, 100};
+    for (int i = 0; i < 3; ++i) {
+        auto profile = select(52, profile_refs[i]);
+        assert(profile && profile->m == expected_m[i] && profile->n == expected_n[i]);
+        assert(profile->bandwidth == expected_bw[i] && profile->charge_pump == expected_cp[i]);
+        assert(profile->m_low_preset == expected_low[i] && profile->m_phase_preset == expected_phase[i]);
+        assert(profile->c == 10);
+    }
     for (int ref : {25, 50, 100}) {
         for (int a = 0; a <= 101; ++a) {
             auto single = select(a, ref);
-            assert(bool(single) == (a > 0 && a <= 100 && (300 % a == 0 || 320 % a == 0)));
+            assert(bool(single) == (a > 0 && a <= 100 && (300 % a == 0 || 320 % a == 0 || 520 % a == 0)));
             if (single) assert(ref * single->m == a * single->n * single->c);
             for (int b = 0; b <= 101; ++b) {
                 int vco = 0;
                 if (a > 0 && a <= 100 && b > 0 && b <= 100)
-                    for (int candidate : {300, 320, 400})
-                        if (!vco && candidate % a == 0 && candidate % b == 0) vco = candidate;
+                    for (int candidate : {300, 320, 400, 520})
+                        if (!vco && candidate % a == 0 && candidate % b == 0 && candidate / a <= 512 && candidate / b <= 512)
+                            vco = candidate;
                 auto pair = select_dual(a, b, ref);
                 assert(bool(pair) == bool(vco));
                 if (pair) {

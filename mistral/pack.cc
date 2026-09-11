@@ -2126,7 +2126,7 @@ struct MistralPacker
                 if (fractional && !dual)
                     log_error("PLL '%s': fractional-N dual profile requires 50 MHz reference and 12.288/24.576 MHz outputs.\n", ctx->nameOf(ci));
                 if (!dual)
-                    log_error("PLL '%s': unsupported dual PLL frequencies/duties; require exact decimal MHz from 1 to 100 with exact dividers from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
+                    log_error("PLL '%s': unsupported dual PLL frequencies/duties; require exact decimal MHz from 1 to 100 with exact dividers from one checked 300/320/400/520 MHz tuple.\n", ctx->nameOf(ci));
                 config = dual->feedback;
                 c1 = dual->c1;
                 if (!ci->getPort(ctx->id("outclk[0]")) || ci->ports.count(id_outclk))
@@ -2152,13 +2152,13 @@ struct MistralPacker
                 auto multi = mistral_pll::select_multi_hz(output_hzs, clocks, reference_mhz, duties);
                 if (!multi)
                     log_error("PLL '%s': unsupported multi-output frequencies/duties; require exact 1 to 100 MHz dividers "
-                              "from one checked 300/320/400 MHz tuple.\n", ctx->nameOf(ci));
+                              "from one checked 300/320/400/520 MHz tuple.\n", ctx->nameOf(ci));
                 config = multi->feedback;
                 c1 = multi->counters[1];
             }
             if (!config)
                 log_error("PLL '%s': unsupported PLL output frequency/duty; require exact decimal MHz from 1 to 100 "
-                          "and an exact integer C divider from a checked 300/320 MHz tuple.\n", ctx->nameOf(ci));
+                          "and an exact integer C divider from a checked 300/320/520 MHz tuple.\n", ctx->nameOf(ci));
             for (auto &port : ci->ports)
                 if (!port.first.in(id_refclk, id_outclk, id_locked, id_rst) &&
                     !(clocks >= 2 && port.first == ctx->id("outclk[1]")) &&

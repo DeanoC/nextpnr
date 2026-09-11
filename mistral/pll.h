@@ -8,8 +8,9 @@
 #include <string>
 
 // Checked 25/50/100 MHz references, exact decimal outputs, integer dividers, direct mode. These
-// feedback/analog tuples were checked against Quartus 17.0.2; do not derive
-// additional analog settings from the frequency equation alone.
+// feedback/analog tuples were checked against Quartus 17.0.2. The output
+// selector calculates C dividers from the table; it does not derive analog
+// settings from the frequency equation alone.
 namespace mistral_pll {
 struct Config
 {
@@ -22,6 +23,13 @@ struct Config
 struct PhaseConfig
 {
     int shift_ps, c_preset, c_phase_preset;
+};
+
+struct Profile
+{
+    Config config;
+    int vco_mhz;
+    bool single_output;
 };
 
 // Quartus-checked static phase presets at the checked 300 MHz configuration.
@@ -77,14 +85,41 @@ inline int64_t parse_output_hz(const std::string &text)
     return hz >= 1000000 && hz <= 100000000 ? hz : 0;
 }
 
-inline std::array<Config, 3> checked_configs(int reference_mhz)
+inline Profile make_profile(int vco_mhz, int m, int n, int bandwidth, int charge_pump,
+                            int m_low_preset, int m_phase_preset, bool single_output = true)
 {
-    // Order: reported 300, 320, 400 MHz. Each complete tuple is oracle-checked.
+    return Profile{Config{m, n, 0, bandwidth, charge_pump, m_low_preset, m_phase_preset}, vco_mhz,
+                   single_output};
+}
+
+inline std::array<Profile, 4> checked_profiles(int reference_mhz)
+{
+    // Order: reported 300, 320, 400 and 520 MHz. Each complete tuple is
+    // oracle-checked. The 400 MHz tuple is retained for shared dual/multi
+    // output feedback; the other tuples are valid for a single output too.
     if (reference_mhz == 25)
-        return {{{24, 2, 0, 6, 1, 1, 0}, {64, 5, 0, 3, 2, 7, 3}, {32, 2, 0, 6, 1, 1, 0}}};
+        return {make_profile(300, 24, 2, 6, 1, 1, 0),
+                make_profile(320, 64, 5, 3, 2, 7, 3),
+                make_profile(400, 32, 2, 6, 1, 1, 0, false),
+                make_profile(520, 104, 5, 2, 2, 11, 3)};
     if (reference_mhz == 100)
-        return {{{6, 2, 0, 8, 1, 1, 0}, {32, 10, 0, 6, 1, 1, 0}, {8, 2, 0, 7, 1, 1, 0}}};
-    return {{{12, 2, 0, 7, 1, 1, 0}, {32, 5, 0, 6, 2, 4, 2}, {16, 2, 0, 7, 1, 1, 0}}};
+        return {make_profile(300, 6, 2, 8, 1, 1, 0),
+                make_profile(320, 32, 10, 6, 1, 1, 0),
+                make_profile(400, 8, 2, 7, 1, 1, 0, false),
+                make_profile(520, 52, 10, 4, 1, 1, 0)};
+    return {make_profile(300, 12, 2, 7, 1, 1, 0),
+            make_profile(320, 32, 5, 6, 2, 4, 2),
+            make_profile(400, 16, 2, 7, 1, 1, 0, false),
+            make_profile(520, 52, 5, 4, 2, 6, 2)};
+}
+
+inline std::array<Config, 4> checked_configs(int reference_mhz)
+{
+    std::array<Config, 4> result{};
+    auto profiles = checked_profiles(reference_mhz);
+    for (size_t i = 0; i < profiles.size(); ++i)
+        result[i] = profiles[i].config;
+    return result;
 }
 
 inline bool valid_reference(int mhz) { return mhz == 25 || mhz == 50 || mhz == 100; }
@@ -105,21 +140,36 @@ inline std::optional<DutyCounts> duty_counts(int c, int duty)
     return DutyCounts{high, low, odd};
 }
 
+// Solve an output counter for one complete feedback profile. Keeping this
+// arithmetic separate from profile selection means new rates only need to be
+// exact divisors of a checked VCO; no output-specific case is required.
+inline std::optional<int> select_counter(int vco_mhz, int64_t hz, int duty = 50)
+{
+    if (vco_mhz <= 0 || hz < 1000000 || hz > 100000000)
+        return std::nullopt;
+    int64_t vco_hz = int64_t(vco_mhz) * 1000000;
+    if (vco_hz % hz)
+        return std::nullopt;
+    int64_t c = vco_hz / hz;
+    if (c < 2 || c > 512 || !duty_counts(int(c), duty))
+        return std::nullopt;
+    return int(c);
+}
+
 inline std::optional<Config> select_hz(int64_t hz, int reference_mhz = 50, int duty = 50)
 {
     if (!valid_reference(reference_mhz) || hz < 1000000 || hz > 100000000)
         return std::nullopt;
     // Prefer the established 300 MHz tuple, preserving the 25 MHz bitstream.
-    auto configs = checked_configs(reference_mhz);
-    for (int i = 0; i < 2; ++i) {
-        Config config = configs[i];
-        int64_t numerator = int64_t(reference_mhz) * 1000000 * config.m;
-        int64_t denominator = config.n * hz;
-        if (numerator % denominator != 0)
+    for (const auto &profile : checked_profiles(reference_mhz)) {
+        if (!profile.single_output)
             continue;
-        config.c = numerator / denominator;
-        if (duty_counts(config.c, duty))
-            return config;
+        Config config = profile.config;
+        auto counter = select_counter(profile.vco_mhz, hz, duty);
+        if (!counter)
+            continue;
+        config.c = *counter;
+        return config;
     }
     return std::nullopt;
 }
@@ -134,15 +184,14 @@ inline std::optional<DualConfig> select_dual_hz(int64_t hz0, int64_t hz1, int re
     if (!valid_reference(reference_mhz) || hz0 < 1000000 || hz0 > 100000000 || hz1 < 1000000 || hz1 > 100000000)
         return std::nullopt;
     // Both counters must share one checked feedback/analog configuration.
-    for (Config config : checked_configs(reference_mhz)) {
-        int64_t numerator = int64_t(reference_mhz) * 1000000 * config.m;
-        int64_t denominator0 = config.n * hz0, denominator1 = config.n * hz1;
-        if (numerator % denominator0 || numerator % denominator1)
-            continue;
-        config.c = numerator / denominator0;
-        int c1 = numerator / denominator1;
-        if (duty_counts(config.c, duty0) && duty_counts(c1, duty1))
-            return DualConfig{config, c1};
+    for (const auto &profile : checked_profiles(reference_mhz)) {
+        Config config = profile.config;
+        auto c0 = select_counter(profile.vco_mhz, hz0, duty0);
+        auto c1 = select_counter(profile.vco_mhz, hz1, duty1);
+        if (c0 && c1) {
+            config.c = *c0;
+            return DualConfig{config, *c1};
+        }
     }
     return std::nullopt;
 }
@@ -161,21 +210,17 @@ inline std::optional<MultiConfig> select_multi_hz(const std::array<int64_t, 4> &
     for (int i = 0; i < count; ++i)
         if (hz[i] < 1000000 || hz[i] > 100000000)
             return std::nullopt;
-    for (Config config : checked_configs(reference_mhz)) {
+    for (const auto &profile : checked_profiles(reference_mhz)) {
+        Config config = profile.config;
         std::array<int, 4> counters{};
-        int64_t numerator = int64_t(reference_mhz) * 1000000 * config.m;
         bool valid = true;
         for (int i = 0; i < count; ++i) {
-            int64_t denominator = config.n * hz[i];
-            if (numerator % denominator) {
+            auto counter = select_counter(profile.vco_mhz, hz[i], duties[i]);
+            if (!counter) {
                 valid = false;
                 break;
             }
-            counters[i] = numerator / denominator;
-            if (!duty_counts(counters[i], duties[i])) {
-                valid = false;
-                break;
-            }
+            counters[i] = *counter;
         }
         if (valid) {
             config.c = counters[0];

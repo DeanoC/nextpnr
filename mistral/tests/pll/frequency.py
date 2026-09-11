@@ -62,7 +62,13 @@ def main():
         if line.startswith("s FPLL.000.014:"):
             name, value = line.split()[1:]
             settings[name.split(":")[1]] = value
-    m, n, vco = (12, 2, 300) if 300 % args.mhz == 0 else (32, 5, 320)
+    profiles = ((12, 2, 300, 7, 1, 1, 0),
+                (32, 5, 320, 6, 2, 4, 2),
+                (52, 5, 520, 4, 2, 6, 2))
+    selected = next((profile for profile in profiles
+                     if profile[2] % args.mhz == 0 and 2 <= profile[2] // args.mhz <= 512), None)
+    assert selected is not None, args.mhz
+    m, n, vco, expected_bw, expected_cp, expected_low, expected_phase = selected
     c = vco // args.mhz
     for name, value in {
         "M_CNT_HI_DIV_SETTING": (m + 1) // 2, "M_CNT_LO_DIV_SETTING": m // 2,
@@ -72,10 +78,10 @@ def main():
         assert int(settings.get(name, "01"), 16) == value, (name, settings)
     assert int(settings.get("DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN.6", "0")) == c % 2
     assert settings.get("N_CNT_ODD_DIV_DUTY_EN", "0") == "0"
-    assert int(settings.get("BWCTRL", "0")) == (7 if m == 12 else 6)
-    assert int(settings.get("CP_CURRENT", "2")) == (1 if m == 12 else 2)
-    assert int(settings.get("M_CNT_LO_PRESET_SETTING", "01"), 16) == (1 if m == 12 else 4)
-    assert int(settings.get("M_CNT_PH_MUX_PRESET_SETTING", "0")) == (0 if m == 12 else 2)
+    assert int(settings.get("BWCTRL", "4")) == expected_bw
+    assert int(settings.get("CP_CURRENT", "2")) == expected_cp
+    assert int(settings.get("M_CNT_LO_PRESET_SETTING", "01"), 16) == expected_low
+    assert int(settings.get("M_CNT_PH_MUX_PRESET_SETTING", "0")) == expected_phase
     print("PASS: frequency host checks", args.mhz, report["fmax"])
     print("RBF sha256", hashlib.sha256((out / "top.rbf").read_bytes()).hexdigest())
 
