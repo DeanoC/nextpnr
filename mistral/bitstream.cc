@@ -682,16 +682,23 @@ struct MistralBitgen
             // both CLKIN sinks by setup_m10ks(); without these settings the
             // combinational B port can remain on the unused/default branch.
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CLK_SEL, bi, 1);
+            // The packer materialises the omitted logical B1EN as a
+            // constant-high route on ENABLE[0]. Select that core/input path
+            // explicitly; relying on the site's default can leave a
+            // flow-through read disabled on some M10K locations.
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CORECLK_SEL, bi, 1);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_INCLK_SEL, bi, 1);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_CORECLK_SEL, bi, 1);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_INCLK_SEL, bi, 1);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_OUTCLK_SEL, bi, 1);
         }
         if (byte_enable || mixed || tdp) {
             // Byte-enabled SDP, mixed-width SDP and TDP select the write core
-            // enable lane. Flow-through reads retain the single-clock
-            // selector defaults, matching Quartus's constant-rden mode.
-            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CORECLK_SEL, bi, async_read ? 0 : 1);
-            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_INCLK_SEL, bi, async_read ? 0 : 1);
+            // enable lane. Async reads use the explicit constant-high
+            // ENABLE[0] route selected above; synchronous modes retain the
+            // same core/input selector values used by the existing mapping.
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CORECLK_SEL, bi, 1);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_INCLK_SEL, bi, 1);
             cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TOP_W_INV, bi, false);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_W_SEL, bi, 0);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_CE0_SEL, bi, 1);

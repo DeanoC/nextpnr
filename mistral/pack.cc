@@ -1602,9 +1602,25 @@ struct MistralPacker
                 // Preserve the explicit mode so the bitstream writer does
                 // not need to infer it from the omitted B1EN port.
                 ci->params[id_CFG_ASYNC_READ] = 1;
-                if (user_b1en)
-                    log_error("M10K '%s': CFG_ASYNC_READ requires no connected B1EN read enable.\n",
-                              ctx->nameOf(ci));
+                if (user_b1en) {
+                    // A constant-high read enable is useful even for the
+                    // unclocked JSON contract.  Some Cyclone V M10K sites
+                    // power up with the omitted enable path inactive, while
+                    // an explicit ENABLE[0] route is reliable.  Preserve
+                    // dynamic and constant-low controls as errors: they do
+                    // not describe a flow-through read.
+                    NetInfo *b1en = ci->getPort(id_B1EN);
+                    bool tied_high = ci->get_pin_state(id_B1EN) == PIN_1 || b1en == vcc_net;
+                    if (!tied_high)
+                        log_error("M10K '%s': CFG_ASYNC_READ requires B1EN tied high.\n", ctx->nameOf(ci));
+                } else {
+                    // Keep the logical omission at the JSON boundary, but
+                    // materialise the hardware's constant-high read enable.
+                    // The soft VCC net is routed to ENABLE[0] below rather
+                    // than relying on the M10K site's power-up default.
+                    ci->addInput(id_B1EN);
+                    ci->connectPort(id_B1EN, vcc_net);
+                }
                 if (output_reg_a || output_reg_b)
                     log_error("M10K '%s': CFG_ASYNC_READ cannot use CFG_OUT_REG_A/B.\n", ctx->nameOf(ci));
                 if (bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false) || ci->getPort(id_CLK2) != nullptr)
@@ -1625,8 +1641,9 @@ struct MistralPacker
                 }
 
                 // A flow-through simple-dual read with a constant rden_b is
-                // represented by the absence of B1EN. Keep that omission at
-                // the BEL boundary, matching Quartus's constant-rden mode.
+                // represented by the absence of B1EN at the JSON boundary.
+                // The internal port added above gives the physical BEL an
+                // explicit constant-high ENABLE[0] route.
             }
 
             log_info("Setting up %ld-bit address, %ld-bit data M10K for %s.\n", abits, dbits,
@@ -1682,7 +1699,9 @@ struct MistralPacker
             bool clk2_signal = ci->getPort(id_CLK2) != nullptr;
             bool clk2_constant = !clk2_signal &&
                                  (ci->get_pin_state(id_CLK2) == PIN_0 || ci->get_pin_state(id_CLK2) == PIN_1);
-            if (!async_read && ci->getPort(id_B1EN) != nullptr)
+            if (async_read)
+                ci->pin_data[id_B1EN].bel_pins = {ctx->id("ENABLE[0]")};
+            else if (ci->getPort(id_B1EN) != nullptr)
                 ci->pin_data[id_B1EN].bel_pins = {ctx->id(dual_clock ? "ENABLE[0]" : "RDEN[0]")};
             if (ci->getPort(id_CLK1) == nullptr)
                 log_error("M10K '%s' requires a connected %s clock.\n", ctx->nameOf(ci),
