@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Route an M10K with an unregistered (combinational) read port.
 
-The locked Yosys tree does not yet emit this primitive shape.  The fixture is
-therefore synthesized as a direct MISTRAL_M10K and then edited like the
-future memory_libmap output: CFG_ASYNC_READ=1 and no B1EN/CLK2 read controls.
-The packer materialises the omitted read enable as a constant-high route to
-the physical ENABLE[0] pin.
+The fixture is synthesized as a direct MISTRAL_M10K and then edited like the
+native memory_libmap output: CFG_ASYNC_READ=1 and no CLK2 read clock. The
+packer materialises an omitted read enable as a constant-high route to the
+physical ENABLE[0] pin, including the read-only shape whose write clock folds
+away as a constant.
 """
 
 import argparse
@@ -177,6 +177,34 @@ def main():
     for pin in ("BYTEENABLEA.0", "BYTEENABLEA.1"):
         assert not re.search(r"^r \S+ " + re.escape(site + ":" + pin) + r"$",
                              bitstream, re.MULTILINE), pin
+
+    # A ROM-like async memory can have its write clock folded away by
+    # memory_libmap. The inactive A1EN and constant CLK1 must be accepted
+    # without creating a fabric clock route for the unused write half.
+    readonly_design = copy.deepcopy(design)
+    readonly_cell = readonly_design["modules"]["top"]["cells"][name]
+    readonly_cell["connections"]["CLK1"] = ["0"]
+    readonly_cell["connections"]["A1EN"] = ["1"]
+    readonly_case = output / "async-readonly"
+    readonly_case.mkdir(exist_ok=True)
+    route(args, qsf, readonly_case, readonly_design)
+    readonly_report = json.loads((readonly_case / "timing.json").read_text())
+    assert readonly_report["utilization"][CELL]["used"] == 1
+    assert readonly_report["fmax"] and all(clock["achieved"] >= clock["constraint"] == 50
+                                               for clock in readonly_report["fmax"].values())
+    readonly_packed = json.loads((readonly_case / "routed.json").read_text())["modules"]["top"]["cells"][name]
+    assert not readonly_packed["connections"].get("CLK1")
+    run([str(args.mistral_cv.resolve()), "decomp", DEVICE, str(readonly_case / "top.rbf"),
+         str(readonly_case / "top.bt")], readonly_case / "decomp.log")
+    _, rx, ry, _ = readonly_packed["attributes"]["NEXTPNR_BEL"].split(".")
+    readonly_site = f"M10K.{int(rx):03d}.{int(ry):03d}"
+    readonly_bitstream = (readonly_case / "top.bt").read_text()
+    assert re.search(r"^r \S+ " + re.escape(readonly_site + ":ENABLE.0") + r"$",
+                     readonly_bitstream, re.MULTILINE), readonly_bitstream
+    assert not re.search(r"^r \S+ " + re.escape(readonly_site + ":CLKIN.0") + r"$",
+                         readonly_bitstream, re.MULTILINE), readonly_bitstream
+    assert not re.search(r"^r \S+ " + re.escape(readonly_site + ":CLKIN.1") + r"$",
+                         readonly_bitstream, re.MULTILINE), readonly_bitstream
 
     # A nonconstant mask must keep the normal byte-enable routes. Reuse a
     # live read-address bit for one lane and tie the other low so this case
