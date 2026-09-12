@@ -39,7 +39,7 @@ namespace {
 struct Visit
 {
     float g;
-    int32_t parent; // wire index, -1 for seeds
+    int32_t edge; // CSR index of the pip that reached the wire, -1 for seeds
 };
 
 struct QEntry
@@ -47,7 +47,7 @@ struct QEntry
     float f;
     float g;
     int32_t wire;
-    int32_t parent;
+    int32_t edge;
     bool operator>(const QEntry &o) const
     {
         if (f != o.f)
@@ -56,7 +56,7 @@ struct QEntry
             return g > o.g;
         if (wire != o.wire)
             return wire > o.wire;
-        return parent > o.parent;
+        return edge > o.edge;
     }
 };
 
@@ -83,12 +83,11 @@ class CpuBackend : public Backend
         }
     }
 
-    float edge_base_cost(int parent, int wire) const
+    int edge_src(int e) const
     {
-        for (int e = g_.out_off[parent]; e < g_.out_off[parent + 1]; e++)
-            if (g_.out_dst[e] == wire)
-                return g_.edge_cost[e];
-        return 0.0f;
+        // largest wire whose CSR row starts at or before e
+        auto it = std::upper_bound(g_.out_off, g_.out_off + g_.n_wires + 1, e);
+        return int(it - g_.out_off) - 1;
     }
 
     void route(const RouteParams &p, const std::vector<TaskDesc> &tasks, const std::vector<ArcDesc> &arcs,
@@ -101,7 +100,7 @@ class CpuBackend : public Backend
         size_t total_paths = 0;
         for (auto &t : tasks)
             total_paths = std::max(total_paths, (size_t)t.path_off + (size_t)t.path_cap);
-        paths.assign(total_paths, PathEntry{-1, -1, 0.0f});
+        paths.assign(total_paths, PathEntry{-1, -1, -1, 0.0f});
 
         std::unordered_map<int32_t, Visit> visited;
         std::unordered_map<int32_t, float> tree_delay, tree_load;
@@ -141,7 +140,7 @@ class CpuBackend : public Backend
                 }
                 bool found = false;
                 float best_g = 0.0f;
-                int32_t best_parent = -1;
+                int32_t best_edge = -1;
                 int expanded = 0;
                 while (!queue.empty()) {
                     QEntry cur = queue.top();
@@ -154,7 +153,7 @@ class CpuBackend : public Backend
                     expanded++;
                     const int u = cur.wire;
                     float branch_extra = 0.0f;
-                    if (p.load_penalty > 0.0f && vit->second.parent == -1) {
+                    if (p.load_penalty > 0.0f && vit->second.edge == -1) {
                         auto tl = tree_load.find(u);
                         if (tl != tree_load.end())
                             branch_extra = p.load_penalty * tl->second;
@@ -180,29 +179,29 @@ class CpuBackend : public Backend
                                            ((float)(std::abs(vx - task.cx) + std::abs(vy - task.cy)) / (float)task.hpwl);
                         const float gv = cur.g + c * hist * pres + bias + branch_extra;
                         if (v == sink) {
-                            if (!found || gv < best_g || (gv == best_g && u < best_parent)) {
+                            if (!found || gv < best_g || (gv == best_g && e < best_edge)) {
                                 found = true;
                                 best_g = gv;
-                                best_parent = u;
+                                best_edge = e;
                             }
                             continue;
                         }
                         const float f = gv + h(v);
                         if (found && f >= best_g)
                             continue;
-                        auto ins = visited.emplace(v, Visit{gv, u});
+                        auto ins = visited.emplace(v, Visit{gv, e});
                         if (!ins.second) {
                             Visit &old = ins.first->second;
-                            if (old.parent == -1)
+                            if (old.edge == -1)
                                 continue; // tree wire keeps its driver
-                            if (gv < old.g || (gv == old.g && u < old.parent)) {
+                            if (gv < old.g || (gv == old.g && e < old.edge)) {
                                 old.g = gv;
-                                old.parent = u;
+                                old.edge = e;
                             } else {
                                 continue;
                             }
                         }
-                        queue.push(QEntry{f, gv, v, u});
+                        queue.push(QEntry{f, gv, v, e});
                     }
                 }
                 r.expanded = expanded;
@@ -214,20 +213,21 @@ class CpuBackend : public Backend
                 }
                 r.cost = best_g;
                 r.status = ARC_OK;
-                int32_t cur = sink, par = best_parent;
+                int32_t cur = sink, edge = best_edge;
                 int pos = path_pos;
                 while (true) {
                     if (pos >= task.path_cap) {
                         r.status = ARC_PATH_FULL;
                         break;
                     }
-                    paths[task.path_off + pos] = PathEntry{cur, par, 0.0f};
+                    const int32_t par = edge_src(edge);
+                    paths[task.path_off + pos] = PathEntry{cur, par, edge, 0.0f};
                     pos++;
                     const Visit &pv = visited.at(par);
-                    if (pv.parent == -1)
+                    if (pv.edge == -1)
                         break;
                     cur = par;
-                    par = pv.parent;
+                    edge = pv.edge;
                 }
                 if (r.status != ARC_OK)
                     continue;
@@ -235,7 +235,7 @@ class CpuBackend : public Backend
                 float d = tree_delay.at(paths[task.path_off + pos - 1].parent);
                 for (int i = pos - 1; i >= path_pos; i--) {
                     PathEntry &pe = paths[task.path_off + i];
-                    d += edge_base_cost(pe.parent, pe.wire);
+                    d += g_.edge_cost[pe.edge];
                     pe.delay = d;
                     tree.push_back(pe.wire);
                     tree_delay[pe.wire] = d;

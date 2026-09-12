@@ -467,13 +467,23 @@ struct GpuRouter
         ad.pre_routed = false;
     }
 
-    PipId find_pip(int32_t parent, int32_t wire) const
+    // The pip behind CSR edge `edge`: the (edge - out_off[parent])-th downhill
+    // pip of the parent wire, in the same enumeration order the graph was
+    // built from, so parallel pips between one wire pair stay distinct.
+    PipId pip_for_edge(int32_t parent, int32_t wire, int32_t edge) const
     {
         WireId pw = idx_to_wire.at(parent), dw = idx_to_wire.at(wire);
-        for (auto pip : ctx->getPipsDownhill(pw))
-            if (ctx->getPipDstWire(pip) == dw)
-                return pip;
-        log_error("Internal error: no pip from %s to %s.\n", ctx->nameOfWire(pw), ctx->nameOfWire(dw));
+        if (edge >= out_off.at(parent) && edge < out_off.at(parent + 1)) {
+            int32_t k = edge - out_off.at(parent);
+            for (auto pip : ctx->getPipsDownhill(pw)) {
+                if (k-- == 0) {
+                    NPNR_ASSERT(ctx->getPipDstWire(pip) == dw);
+                    return pip;
+                }
+            }
+        }
+        log_error("Internal error: edge %d is not a pip from %s to %s.\n", edge, ctx->nameOfWire(pw),
+                  ctx->nameOfWire(dw));
     }
 
     void apply_path(NetData &nd, ArcData &ad, const gpuroute::PathEntry *entries, int len)
@@ -483,7 +493,7 @@ struct GpuRouter
         for (int k = len - 1; k >= 0; k--) {
             int32_t w = entries[k].wire, parent = entries[k].parent;
             NPNR_ASSERT(parent >= 0);
-            bind_internal(nd, w, parent, find_pip(parent, w));
+            bind_internal(nd, w, parent, pip_for_edge(parent, w, entries[k].edge));
         }
         // The arc also uses the existing tree from the attach point up to
         // the source; count it there too so shared wires survive rip-ups

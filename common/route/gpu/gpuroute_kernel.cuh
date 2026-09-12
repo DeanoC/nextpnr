@@ -21,7 +21,7 @@
  *  Included by gpuroute_hip.hip (ROCm / HIP) and gpuroute_cuda.cu (CUDA).
  *
  *  Algorithm outline (per block, per arc of the task):
- *    1. Clear a private open-addressing hash table  wire -> (g, parent wire).
+ *    1. Clear a private open-addressing hash table  wire -> (g, parent edge).
  *    2. Insert every wire of the net's current routing tree as a seed with
  *       g = 0 (connection-based routing: the sink may attach anywhere) and
  *       put the seeds on the frontier pile.
@@ -30,15 +30,16 @@
  *       about expand_k entries, expand those in parallel and push improved
  *       children back onto the frontier. Stop when the frontier is empty or
  *       its lowest f is not below the best sink cost found so far.
- *    4. Thread 0 walks the parent chain and writes (wire, parent) pairs.
+ *    4. Thread 0 walks the parent chain and writes (wire, parent, edge) entries.
  *
  *  This is a K-best parallel A*: with expand_k = 1 it is ordinary A*, larger
  *  values trade a small amount of path optimality for parallel work.
  *
  *  Determinism: each step relaxes edges against the table state at the
  *  start of the step and only then applies the candidates, and the
- *  (g, parent wire) pair is stored as one 64-bit value updated with
- *  atomicMin, so equal-cost ties resolve to the smallest parent wire index
+ *  (g, parent edge) pair is stored as one 64-bit value updated with
+ *  atomicMin, so equal-cost ties resolve to the smallest parent edge index
+ *  (edges are ordered by source wire, then pip order)
  *  and the table after a step is an elementwise minimum over a
  *  scheduling-independent set; the expansion set of each step is chosen from
  *  deterministic counts over the de-duplicated frontier, and pruning uses a
@@ -92,7 +93,7 @@ struct Scratch
     float *sdelay;             // slots * cap, upstream base delay of seed entries
     float *sload;              // slots * cap, existing branch count of seed entries
     unsigned long long *piles; // slots * NPILES * cap
-    uint32_t *cand_par;        // slots * cap, parent wire of each candidate
+    uint32_t *cand_par;        // slots * cap, parent edge of each candidate
     int cap;
 };
 
@@ -193,12 +194,18 @@ __device__ __forceinline__ float h_est(const RouteParams &p, int x, int y, int s
     return p.est_weight * (p.est_x * (float)dx + p.est_y * (float)dy);
 }
 
-__device__ __forceinline__ float edge_base_cost(const DevGraph &g, int parent, int wire)
+// Source wire of CSR edge e: the largest wire whose row starts at or before e
+__device__ __forceinline__ int edge_src(const DevGraph &g, int e)
 {
-    for (int ei = g.out_off[parent]; ei < g.out_off[parent + 1]; ei++)
-        if (g.out_dst[ei] == wire)
-            return g.edge_cost[ei];
-    return 0.0f;
+    int lo = 0, hi = g.n_wires - 1;
+    while (lo < hi) {
+        int mid = (lo + hi + 1) >> 1;
+        if (g.out_off[mid] <= e)
+            lo = mid;
+        else
+            hi = mid - 1;
+    }
+    return lo;
 }
 
 __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p, const TaskDesc *tasks, int ntasks,
@@ -469,7 +476,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                                     p.bias_factor * (c / (float)task.fanout) * ((float)(bdx + bdy) / (float)task.hpwl);
                             const float gv = gu + c * hist_c * pres + bias + branch_extra;
                             if (v == sink) {
-                                atomicMin(&st.best, pack(gv, u));
+                                atomicMin(&st.best, pack(gv, (uint32_t)ei));
                                 continue;
                             }
                             const float f = gv + h_est(p, vx, vy, sx, sy);
@@ -480,13 +487,13 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                             const int sv = table_find(keys, mask, p.max_probe, (uint32_t)v);
                             if (sv >= 0) {
                                 const unsigned long long cur = vals[sv];
-                                if (pack_lo(cur) == NONE_SLOT || pack(gv, u) >= cur)
+                                if (pack_lo(cur) == NONE_SLOT || pack(gv, (uint32_t)ei) >= cur)
                                     continue;
                             }
                             int pos = atomicAdd(&st.cand_n, 1);
                             if (pos < cap) {
                                 cand[pos] = pack(gv, (uint32_t)v);
-                                cand_par[pos] = u;
+                                cand_par[pos] = (uint32_t)ei;
                             } else {
                                 st.fail = FAIL_PILE;
                             }
@@ -567,7 +574,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                 } else {
                     r.status = ARC_OK;
                     r.cost = pack_g(st.best);
-                    uint32_t par = pack_lo(st.best);
+                    uint32_t edge = pack_lo(st.best);
                     int pos = st.path_pos;
                     int32_t cur = sink;
                     float attach_delay = 0.0f;
@@ -576,13 +583,15 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                             r.status = ARC_PATH_FULL;
                             break;
                         }
+                        const int32_t par = edge_src(g, (int)edge);
                         PathEntry pe;
                         pe.wire = cur;
-                        pe.parent = (int32_t)par;
+                        pe.parent = par;
+                        pe.edge = (int32_t)edge;
                         pe.delay = 0.0f;
                         paths[task.path_off + pos] = pe;
                         pos++;
-                        const int pslot = table_find(keys, mask, p.max_probe, par);
+                        const int pslot = table_find(keys, mask, p.max_probe, (uint32_t)par);
                         if (pslot < 0) {
                             r.status = ARC_OVERFLOW; // cannot happen: parent was inserted
                             break;
@@ -592,15 +601,15 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                             attach_delay = sdelay[pslot];
                             break; // par is a seed (already in the tree)
                         }
-                        cur = (int32_t)par;
-                        par = gp;
+                        cur = par;
+                        edge = gp;
                     }
                     if (r.status == ARC_OK) {
                         // upstream base delay of every new wire, attach point first
                         float d = attach_delay;
                         for (int k = pos - 1; k >= st.path_pos; k--) {
                             PathEntry &pe = paths[task.path_off + k];
-                            d += edge_base_cost(g, pe.parent, pe.wire);
+                            d += g.edge_cost[pe.edge];
                             pe.delay = d;
                         }
                         r.path_len = pos - st.path_pos;
@@ -765,7 +774,7 @@ class DeviceBackend : public Backend
         size_t total_paths = 0;
         for (auto &t : tasks)
             total_paths = std::max(total_paths, (size_t)t.path_off + (size_t)t.path_cap);
-        paths.assign(total_paths, PathEntry{-1, -1, 0.0f});
+        paths.assign(total_paths, PathEntry{-1, -1, -1, 0.0f});
         if (tasks.empty())
             return;
 

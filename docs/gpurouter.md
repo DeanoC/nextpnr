@@ -128,9 +128,11 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 One thread block (256 threads) routes one net; the arcs of a net are routed
 in sequence so later arcs can attach to earlier ones. Per arc:
 
-1. A private open-addressing hash table `wire → (g, parent wire)` is
+1. A private open-addressing hash table `wire → (g, parent edge)` is
    cleared. Keys use double hashing; the value is one 64-bit word so it can
-   be updated with `atomicMin`.
+   be updated with `atomicMin`. The parent is the CSR index of the pip, not
+   just the wire it comes from, so architectures with several pips between
+   one pair of wires bind the pip the search actually chose.
 2. The tree wires are inserted as seeds with `g = crit·upstream delay`
    (scaled by `seedDelayWeight`/`seedDelayFloor`) and pushed onto the
    frontier pile.
@@ -144,7 +146,7 @@ in sequence so later arcs can attach to earlier ones. Per arc:
    search ends when the sink has been reached and no frontier entry has `f`
    below the best sink cost, or the frontier is empty.
 4. Thread 0 walks the parent chain back to the first tree wire and writes
-   `(wire, parent, upstream delay)` triples to the task's output region;
+   `(wire, parent, edge, upstream delay)` entries to the task's output region;
    later arcs of the same task use them as additional seeds.
 
 The per-wire cost is router2's: `base · hist(w) · present(w) + bias`, with
@@ -163,8 +165,8 @@ The result of a run does not depend on GPU thread scheduling:
 - expansion candidates are computed from the table state at the start of a
   step and applied afterwards, so the table after each step is an
   elementwise minimum over a scheduling-independent set;
-- `(g, parent wire)` is one 64-bit value, so equal-cost ties resolve to the
-  smallest parent wire index;
+- `(g, parent edge)` is one 64-bit value, so equal-cost ties resolve to the
+  smallest parent edge index (edges are ordered by source wire, then pip);
 - nodes are re-queued only on strict `g` improvement, so the frontier is a
   set, not an order-dependent multiset;
 - the expansion threshold is chosen from counts over the de-duplicated
@@ -189,7 +191,9 @@ allocated once per run.
 
 `mistral/tests/gpurouter/qor.py` routes a fixture with `--router gpu` twice
 and with `--router router2`, checks convergence, signoff timing and
-reproducibility, and prints router time and Fmax side by side. Run it on the
+reproducibility, and prints router time and Fmax side by side. When
+Mistral's flow retries a marginal router2 result with router1, the script
+reports router2's own Fmax and labels the final numbers as router1's. Run it on the
 retained M10K netlist without arguments, or point it at a larger synthesis
 output such as the misteross FES ZX81, Pong or ColecoVision cores.
 

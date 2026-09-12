@@ -35,6 +35,8 @@ ROUTER_TIME = {
     "gpu": re.compile(r"GPU router time ([0-9.]+)s"),
 }
 CHECKSUM = re.compile(r"Info: Checksum: (0x[0-9a-f]+)")
+RETRY = "retrying with router1"
+FMAX_LINE = re.compile(r"Max frequency for clock +'([^']+)': ([0-9.]+) MHz")
 
 
 def run(args, router, seed, output, extra=()):
@@ -63,8 +65,17 @@ def run(args, router, seed, output, extra=()):
     checksums = CHECKSUM.findall(text)
     data = json.loads(report.read_text())
     fmax = {clock: (r["achieved"], r["constraint"]) for clock, r in data.get("fmax", {}).items()}
+    # Mistral retries a marginal router2 result with router1; the report then
+    # describes router1's routing, so keep router2's own numbers separately.
+    retried = None
+    if router == "router2" and RETRY in text:
+        before = text.split(RETRY, 1)[0]
+        own = {}
+        for clock, achieved in FMAX_LINE.findall(before):
+            own[clock] = float(achieved)
+        retried = {"final_router": "router1", "router2_fmax": own}
     return {"wall": wall, "router_time": router_time, "checksum": checksums[-1] if checksums else None,
-            "fmax": fmax}
+            "fmax": fmax, "retried": retried}
 
 
 def main():
@@ -110,8 +121,14 @@ def main():
         line = f"seed {seed}: gpu {gpu['router_time']}s (wall {gpu['wall']:.1f}s) checksum {gpu['checksum']}"
         line += " " + ", ".join(f"{c}={a:.2f}/{k:.2f} MHz" for c, (a, k) in gpu["fmax"].items())
         if ref is not None:
-            line += f" | router2 {ref['router_time']}s (wall {ref['wall']:.1f}s) "
-            line += ", ".join(f"{c}={a:.2f} MHz" for c, (a, k) in ref["fmax"].items())
+            if ref["retried"] is None:
+                line += f" | router2 {ref['router_time']}s (wall {ref['wall']:.1f}s) "
+                line += ", ".join(f"{c}={a:.2f} MHz" for c, (a, k) in ref["fmax"].items())
+            else:
+                own = ref["retried"]["router2_fmax"]
+                line += f" | router2 {ref['router_time']}s " + ", ".join(f"{c}={a:.2f} MHz" for c, a in own.items())
+                line += " (Mistral retried with router1; final wall {:.1f}s ".format(ref["wall"])
+                line += ", ".join(f"{c}={a:.2f} MHz" for c, (a, k) in ref["fmax"].items()) + ")"
         print(line, flush=True)
     if failures:
         raise SystemExit("FAIL: " + "; ".join(failures))

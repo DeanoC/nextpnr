@@ -136,13 +136,16 @@ struct ArcResult
     float cost = 0.0f;    // accumulated cost of the found path
 };
 
-// Path entries are (wire, parent_wire) pairs, listed from the sink back to
-// (but excluding) the first wire that was already part of the net's tree.
-// delay is the base delay from the net source to wire along the tree (ns).
+// Path entries are listed from the sink back to (but excluding) the first
+// wire that was already part of the net's tree. edge is the CSR index of the
+// pip parent -> wire that the search selected (architectures may have
+// several pips between the same pair of wires); delay is the base delay
+// from the net source to wire along the tree (ns).
 struct PathEntry
 {
     int32_t wire;
     int32_t parent;
+    int32_t edge;
     float delay;
 };
 
