@@ -7,7 +7,9 @@ nextpnr-mistral.  It keeps the input clock constraint, while accepting
 the generated clocks from the `altera_pll` cell, so these commands do not
 create duplicate constraints.  The QSF fixture also uses Quartus's `-entity`
 qualifier on `set_instance_assignment`; nextpnr applies the assignment to the
-selected top-level object.
+selected top-level object. The HPS I2C regression additionally accepts an
+internal hard-block `HPS_LOCATION` assignment and converts it to a BEL
+constraint.
 
 Run it with the locked toolchain executables:
 

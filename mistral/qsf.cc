@@ -22,6 +22,7 @@
 #include "util.h"
 
 #include <iterator>
+#include <regex>
 
 NEXTPNR_NAMESPACE_BEGIN
 
@@ -51,7 +52,45 @@ void set_location_assignment_cmd(Context *ctx, const option_map_t &options, cons
 
 void set_instance_assignment_cmd(Context *ctx, const option_map_t &options, const std::vector<std::string> &pos_args)
 {
-    ctx->io_attr[ctx->id(options.at("to").at(0))][ctx->id(options.at("name").at(0))] = pos_args.at(0);
+    IdString target = ctx->id(options.at("to").at(0));
+    IdString assignment = ctx->id(options.at("name").at(0));
+    ctx->io_attr[target][assignment] = pos_args.at(0);
+
+    // Quartus places HPS hard blocks with an instance assignment instead of
+    // the BEL attribute emitted by the RTL primitive.  Keep the existing
+    // io_attr path for package-pin assignments, but translate this internal
+    // assignment to the normal nextpnr BEL constraint when its target cell is
+    // present in the loaded JSON design.
+    if (options.at("name").at(0) != "HPS_LOCATION")
+        return;
+
+    auto cell = ctx->cells.find(target);
+    if (cell == ctx->cells.end()) {
+        log_error("HPS_LOCATION target '%s' is not an internal cell.\n", options.at("to").at(0).c_str());
+        return;
+    }
+    const IdString hps_i2c = ctx->id("cyclonev_hps_interface_peripheral_i2c");
+    if (cell->second->type != hps_i2c) {
+        log_error("HPS_LOCATION target '%s' is not a peripheral I2C cell.\n", options.at("to").at(0).c_str());
+        return;
+    }
+
+    static const std::regex location_pattern(
+            R"(^HPSINTERFACEPERIPHERALI2C_X([0-9]+)_Y([0-9]+)_N[0-9]+$)");
+    std::smatch match;
+    const std::string &location = pos_args.at(0);
+    if (!std::regex_match(location, match, location_pattern)) {
+        log_error("Unsupported HPS_LOCATION '%s' for '%s'.\n", location.c_str(), options.at("to").at(0).c_str());
+        return;
+    }
+
+    const std::string bel = hps_i2c.str(ctx) + "." + match[1].str() + "." + match[2].str() + ".0";
+    BelId bel_id = ctx->getBelByNameStr(bel);
+    if (bel_id == BelId() || ctx->getBelType(bel_id) != hps_i2c) {
+        log_error("HPS_LOCATION '%s' resolves to unsupported BEL '%s'.\n", location.c_str(), bel.c_str());
+        return;
+    }
+    cell->second->attrs[ctx->id("BEL")] = bel;
 }
 
 void set_global_assignment_cmd(Context *ctx, const option_map_t &options, const std::vector<std::string> &pos_args)
