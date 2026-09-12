@@ -36,6 +36,8 @@ option(EXTERNAL_CHIPDB "Create build with pre-built chipdb binaries" OFF)
 option(WERROR "pass -Werror to compiler (used for CI)" OFF)
 option(PROFILER "Link against libprofiler" OFF)
 option(USE_IPO "Compile nextpnr with IPO" ON)
+set(GPU_ROUTER "OFF" CACHE STRING "GPU device backend for the GPU router: OFF, HIP or CUDA")
+set_property(CACHE GPU_ROUTER PROPERTY STRINGS OFF HIP CUDA)
 
 set(PROGRAM_PREFIX "" CACHE STRING "Name prefix for executables")
 
