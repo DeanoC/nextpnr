@@ -1370,6 +1370,59 @@ struct MistralPacker
         int babits = int_or_default(ci->params, id_CFG_RD_ABITS, abits);
         bool mixed = bool_or_default(ci->params, id_CFG_MIXED_WIDTH, false);
         bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
+
+        // Cyclone V BIDIR_DUAL_PORT has one physical read-during-write
+        // implementation: NEW_DATA_NO_NBE_READ.  Quartus also accepts the
+        // weaker DONT_CARE contract for collisions, but it emits the same
+        // M10K configuration.  Keep these contracts explicit at the JSON
+        // boundary so unsupported OLD_DATA and byte-preserving modes cannot
+        // silently fall back to a site's default mux state.
+        auto normalize_rdw = [&](IdString key, const char *port, const char *default_mode, bool allow_new) {
+            auto it = ci->params.find(key);
+            std::string value = default_mode;
+            if (it != ci->params.end())
+                value = it->second.is_string ? it->second.as_string() : std::to_string(it->second.as_int64());
+            int mode = -1;
+            if (it == ci->params.end()) {
+                mode = std::string(default_mode) == "DONT_CARE" ? 1 : 0;
+            } else if (!it->second.is_string) {
+                mode = int(it->second.as_int64());
+            } else {
+                const std::string &text = it->second.as_string();
+                if (boost::iequals(text, "NEW") || boost::iequals(text, "NEW_DATA") ||
+                    boost::iequals(text, "NEW_DATA_NO_NBE_READ"))
+                    mode = 0;
+                else if (boost::iequals(text, "DONT_CARE") || boost::iequals(text, "DONTCARE"))
+                    mode = 1;
+                else if (boost::iequals(text, "OLD") || boost::iequals(text, "OLD_DATA"))
+                    mode = 2;
+                else if (boost::iequals(text, "NEW_DATA_WITH_NBE_READ") ||
+                         boost::iequals(text, "NEW_WITH_NBE_READ"))
+                    mode = 3;
+                else {
+                    bool binary = !text.empty() && text.find_first_not_of("01") == std::string::npos;
+                    try {
+                        mode = binary && text.size() > 1 ? int(std::stoll(text, nullptr, 2)) : std::stoi(text);
+                    } catch (const std::invalid_argument &) {
+                        mode = -1;
+                    } catch (const std::out_of_range &) {
+                        mode = -1;
+                    }
+                }
+            }
+            const char *canonical = mode == 1 ? "DONT_CARE" : (allow_new && mode == 0) ? "NEW_DATA_NO_NBE_READ" : nullptr;
+            if (canonical == nullptr)
+                log_error("M10K '%s': unsupported read-during-write mode '%s' for %s; Cyclone V %s supports %s.\n",
+                          ctx->nameOf(ci), value.c_str(), port,
+                          allow_new ? "true dual-port" : "cross-port collisions",
+                          allow_new ? "NEW_DATA_NO_NBE_READ or DONT_CARE" : "DONT_CARE");
+            ci->params[key] = Property(canonical);
+            return mode;
+        };
+        normalize_rdw(id_CFG_RDW_MODE_A, "port A", "NEW_DATA_NO_NBE_READ", true);
+        normalize_rdw(id_CFG_RDW_MODE_B, "port B", "NEW_DATA_NO_NBE_READ", true);
+        normalize_rdw(id_CFG_RDW_MODE_MIXED, "mixed-port collisions", "DONT_CARE", false);
+
         auto geometry = [](int a, int d) { return (d == 10 && a == 10) || (d == 20 && a == 9); };
         if (mixed && byte_enable)
             log_error("M10K '%s': true dual-port cannot combine mixed widths and byte enables.\n", ctx->nameOf(ci));
@@ -1565,10 +1618,15 @@ struct MistralPacker
             }
             if (ci->type != id_MISTRAL_M10K)
                 continue;
+            bool tdp = bool_or_default(ci->params, id_CFG_TDP, false);
+            if (!tdp && (ci->params.count(id_CFG_RDW_MODE_A) || ci->params.count(id_CFG_RDW_MODE_B) ||
+                         ci->params.count(id_CFG_RDW_MODE_MIXED)))
+                log_error("M10K '%s': read-during-write mode parameters require true dual-port mode (CFG_TDP=1).\n",
+                          ctx->nameOf(ci));
             fold_m10k_constant_clock(ci, id_CLK1);
             fold_m10k_constant_clock(ci, id_CLK2);
             setup_m10k_address_stalls(ci);
-            if (bool_or_default(ci->params, id_CFG_TDP, false)) {
+            if (tdp) {
                 setup_tdp_m10k(ci);
                 continue;
             }
