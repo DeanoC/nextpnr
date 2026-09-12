@@ -253,10 +253,13 @@ one-net-at-a-time repair run a handful of blocks.
   take alternate batches with the same deterministic apply order.
 - The tail of the negotiation (a few nets fighting over a few wires) and
   the one-net-at-a-time repair leave most of the GPU idle. `cpuLaneNets`
-  routes such tiny batches on the host backend instead; it saves about a
-  second on the ZX81 core but its exact A* picks different equal-cost paths
-  than the K-best kernel, which moved Fmax both ways on the fixtures (Pong
-  +3.7 MHz, ColecoVision pixel clock −18 MHz), so it is off by default.
+  routes such tiny batches on the host backend instead, with identical
+  results now that the host backend mirrors the kernel, but the scalar
+  K-best steps are slower than a one-block launch on these fixtures (ZX81
+  6.2 s against 4.8 s), so it is off by default.
+- A route whose new wires do not fit the task's path output region comes
+  back as `ARC_PATH_FULL` and is retried with the region scaled up eight
+  times per attempt, bounded by the wire count.
 - The graph is flattened on every run. Caching the CSR on disk keyed by the
   device would remove most of the fixed setup cost for small designs.
 - Pong shows router1 still ahead by about 4 %; the repair phase stops when

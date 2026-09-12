@@ -762,6 +762,7 @@ struct GpuRouter
     {
         int net;
         std::vector<std::pair<int, int>> arcs; // (user index, phys pin)
+        int path_scale = 1;                    // grows when a path did not fit its output region
     };
 
     std::vector<int> route_queue;
@@ -897,7 +898,13 @@ struct GpuRouter
             }
             td.arc_cnt = int32_t(ads.size()) - td.arc_off;
             td.path_off = path_cursor;
-            td.path_cap = 96 * td.arc_cnt + 256;
+            // Output region for the new wires of this task's arcs. A route
+            // that does not fit returns ARC_PATH_FULL and is retried with
+            // the region scaled up (bounded by the wire count, which no
+            // simple path can exceed).
+            int64_t cap = int64_t(96 * td.arc_cnt + 256) * t.path_scale;
+            cap = std::min<int64_t>(cap, int64_t(idx_to_wire.size()) * std::max(1, td.arc_cnt));
+            td.path_cap = int32_t(cap);
             path_cursor += td.path_cap;
             td.cx = nd.cx;
             td.cy = nd.cy;
@@ -922,8 +929,11 @@ struct GpuRouter
             auto &nd = nets.at(td.net);
             HostTask rt;
             rt.net = td.net;
+            rt.path_scale = tasks[ti].path_scale;
             for (int k = 0; k < td.arc_cnt; k++) {
                 const auto &r = results.at(td.arc_off + k);
+                if (r.status == gpuroute::ARC_PATH_FULL)
+                    rt.path_scale = std::min(tasks[ti].path_scale * 8, 1 << 20);
                 auto &ad = nd.arcs.at(arc_map[ti][k].first).at(arc_map[ti][k].second);
                 if (ctx->debug)
                     log("    TRACE %s arc %d.%d status %d cost %.4f expanded %d steps %d len %d attach %d\n",
@@ -1653,7 +1663,8 @@ struct GpuRouter
         auto tup = Clock::now();
         if (!backend->init(gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, err))
             log_error("GPU router backend initialisation failed: %s\n", err.c_str());
-        if (cpu_backend && !cpu_backend->init(gd, 0, 0, 0, 0, err))
+        if (cpu_backend &&
+            !cpu_backend->init(gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, err))
             log_error("GPU router CPU lane initialisation failed: %s\n", err.c_str());
         log_info("    backend %s ready in %.2fs (estimate %.3f ns/x, %.3f ns/y)\n", backend->name(), secs_since(tup),
                  est_x, est_y);
