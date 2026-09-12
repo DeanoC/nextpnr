@@ -65,6 +65,9 @@ For independent port widths, see [mixed-width SDP](README-mixed-width.md).
 For two independently enabled read/write ports, see
 [true dual-port M10K](README-true-dual-port.md).
 
+For explicit read-during-write contracts and collision validation, see
+[M10K read-during-write contracts](README-read-during-write.md).
+
 For a combinational read port, see [asynchronous-read M10K](README-async-read.md).
 
 For an explicitly registered read output, see

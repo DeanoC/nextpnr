@@ -721,6 +721,10 @@ struct MistralBitgen
 
         if (tdp) {
             // Quartus BIDIR_DUAL_PORT with NEW_DATA_NO_NBE_READ on both ports.
+            // CFG_RDW_MODE_A/B and CFG_RDW_MODE_MIXED are normalized by the
+            // packer. Cyclone V has no independent collision mux, so the
+            // accepted DONT_CARE contract intentionally uses these same
+            // physical write-through settings.
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_INCLK_SEL, bi, 1);
             cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_W_INV, bi, false);
             if (mixed && dbits != rdbits) {
