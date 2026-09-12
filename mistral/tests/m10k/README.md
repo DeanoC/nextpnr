@@ -82,3 +82,6 @@ For a disabled true-dual-port side with a tied-off clock, see
 
 For a design-scale audit of every packed M10K clock selector, see
 [M10K design-scale selector audit](README-scale-selectors.md).
+
+For equal-width 1-, 2- and 5-bit true-dual-port geometries, see
+[narrow true-dual-port M10K](README-narrow.md).
