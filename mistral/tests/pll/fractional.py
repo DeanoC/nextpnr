@@ -129,8 +129,8 @@ def main():
     assert "i FPLL.000.014:NRESET0 1" not in bt
     assert any(line.startswith("r ") and "FPLL.000.014:NRESET0" in line for line in bt.splitlines())
     for name, parameter, value, expected in (
-        ("reference", "reference_clock_frequency", "25.0 MHz", "fractional-N profile requires 50 MHz reference"),
-        ("output", "output_clock_frequency0", "12.5 MHz", "fractional-N profile requires 50 MHz reference"),
+        ("reference", "reference_clock_frequency", "25.0 MHz", "fractional-N selector requires a 50 MHz reference"),
+        ("output", "output_clock_frequency0", "0.5 MHz", "fractional-N selector requires a 50 MHz reference"),
         ("integer-mode", "fractional_vco_multiplier", "false", "unsupported PLL output frequency"),
         ("two-outputs", "number_of_clocks", f"{2:032b}", "explicit output_clock_frequency1 is required"),
     ):

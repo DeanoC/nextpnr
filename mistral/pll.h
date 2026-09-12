@@ -241,16 +241,88 @@ inline std::optional<DualConfig> select_dual(int mhz0, int mhz1, int reference_m
 }
 inline std::optional<Config> select_fractional(int64_t hz, int reference_mhz)
 {
-    if (reference_mhz != 50) return std::nullopt;
-    if (hz == 74250000) return Config{8, 1, 6, 7, 2, 1, 0, true, 0xe8f5c239};
-    if (hz == 12288000) return Config{8, 1, 33, 7, 2, 1, 0, true, 472790000};
-    if (hz == 11289600) return Config{8, 1, 36, 7, 2, 1, 0, true, 0x20e6293f};
+    if (reference_mhz != 50 || hz < 1000000 || hz > 100000000)
+        return std::nullopt;
+
+    // Preserve the Quartus-selected words for the three hardware-checked
+    // profiles. Quartus does not always choose the mathematically nearest
+    // 32-bit word, so these compatibility entries remain authoritative.
+    if (hz == 74250000)
+        return Config{8, 1, 6, 7, 2, 1, 0, true, 0xe8f5c239};
+    if (hz == 12288000)
+        return Config{8, 1, 33, 7, 2, 1, 0, true, 472790000};
+    if (hz == 11289600)
+        return Config{8, 1, 36, 7, 2, 1, 0, true, 0x20e6293f};
+
+    // The checked fractional tuple uses a 50 MHz reference, N bypass and
+    // BW7/CP2 analog settings. Its reported VCO window is bounded by the
+    // 400 and 500 MHz Quartus configurations. Search C from the low end so
+    // the selected VCO follows Quartus's first-in-window choice, then solve
+    // the integer M and 32-bit fractional word with exact integer arithmetic.
+    constexpr int64_t min_vco_hz = 400000000;
+    constexpr int64_t max_vco_hz = 500000000;
+    constexpr uint64_t fraction_scale = uint64_t(1) << 32;
+    const int64_t reference_hz = int64_t(reference_mhz) * 1000000;
+    for (int c = 2; c <= 512; ++c) {
+        if (!duty_counts(c, 50))
+            continue;
+        int64_t vco_hz = hz * c;
+        if (vco_hz < min_vco_hz || vco_hz > max_vco_hz)
+            continue;
+
+        // Round the fixed-point multiplier to the nearest 2^-32. __int128
+        // keeps the product below overflow for the complete C search range.
+        __int128 numerator = __int128(vco_hz) * fraction_scale;
+        __int128 whole = numerator / reference_hz;
+        __int128 remainder = numerator % reference_hz;
+        if (remainder * 2 >= reference_hz)
+            ++whole;
+        int m = int(whole / fraction_scale);
+        uint64_t fraction = uint64_t(whole % fraction_scale);
+        if (m < 1 || m > 512)
+            continue;
+        return Config{m, 1, c, 7, 2, 1, 0, true, uint32_t(fraction)};
+    }
     return std::nullopt;
 }
 inline std::optional<DualConfig> select_fractional_dual(int64_t hz0, int64_t hz1, int reference_mhz)
 {
-    if (reference_mhz != 50 || hz0 != 12288000 || hz1 != 24576000) return std::nullopt;
-    return DualConfig{Config{8, 1, 34, 7, 2, 1, 0, true, 0x5b18548b}, 17};
+    if (reference_mhz != 50 || hz0 < 1000000 || hz0 > 100000000 || hz1 < 1000000 || hz1 > 100000000)
+        return std::nullopt;
+    if (hz0 == 12288000 && hz1 == 24576000)
+        return DualConfig{Config{8, 1, 34, 7, 2, 1, 0, true, 0x5b18548b}, 17};
+    if (hz0 == 24576000 && hz1 == 12288000)
+        return DualConfig{Config{8, 1, 17, 7, 2, 1, 0, true, 0x5b18548b}, 34};
+
+    // A dual fractional PLL has one feedback VCO. Accept only exact common
+    // VCO products in the same bounded window; independent approximations
+    // would give different output errors and are therefore rejected.
+    constexpr int64_t min_vco_hz = 400000000;
+    constexpr int64_t max_vco_hz = 500000000;
+    constexpr uint64_t fraction_scale = uint64_t(1) << 32;
+    const int64_t reference_hz = int64_t(reference_mhz) * 1000000;
+    for (int c0 = 2; c0 <= 512; ++c0) {
+        if (!duty_counts(c0, 50))
+            continue;
+        int64_t vco_hz = hz0 * c0;
+        if (vco_hz < min_vco_hz || vco_hz > max_vco_hz)
+            continue;
+        for (int c1 = 2; c1 <= 512; ++c1) {
+            if (!duty_counts(c1, 50) || hz1 * c1 != vco_hz)
+                continue;
+            __int128 numerator = __int128(vco_hz) * fraction_scale;
+            __int128 whole = numerator / reference_hz;
+            __int128 remainder = numerator % reference_hz;
+            if (remainder * 2 >= reference_hz)
+                ++whole;
+            int m = int(whole / fraction_scale);
+            uint64_t fraction = uint64_t(whole % fraction_scale);
+            if (m < 1 || m > 512)
+                continue;
+            return DualConfig{Config{m, 1, c0, 7, 2, 1, 0, true, uint32_t(fraction)}, c1};
+        }
+    }
+    return std::nullopt;
 }
 inline double achieved_hz(const Config &config, int reference_mhz)
 {
