@@ -220,6 +220,13 @@ router2 alone, before Mistral's flow retries it with router1).
 | FES ZX81 | 3.43 s (+ router1 retry) | 4.75 s | 41.2 s / 34.1 s / 15.8 s |
 | FES ColecoVision | 17.60 s (+ router1 retry) | 4.90 s | 63.0 s / 58.9 s / 13.6 s |
 
+Those Fmax values are the per-pip table model, which is what the final
+report uses when no bitstream is written. With `--rbf` Mistral configures
+the bitstream first and reports its analogue interconnect model instead;
+the misteross-sealed FES ZX81 package routed by the host backend reports
+55.04 / 114.94 MHz that way, against 54.18 / 97.59 MHz for the previous
+router1 seal.
+
 The sequential CPU reference backend (`--gpu-cpu`) reaches similar Fmax
 (ZX81 57.77 / 121.26, ColecoVision 58.45 / 91.73) in 5.1 s and 8.8 s of
 router time, so on these small cores the GPU mostly buys the whole-run wall
