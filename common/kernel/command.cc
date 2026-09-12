@@ -394,6 +394,12 @@ po::options_description CommandHandler::getGeneralOptions()
                           "enable experimental timing-driven ripup in router (deprecated; use --tmg-ripup instead)");
 
     general.add_options()("router2-alt-weights", "use alternate router2 weights");
+    general.add_options()("gpu-device", po::value<int>(), "GPU device index for --router gpu (default: most compute units)");
+    general.add_options()("gpu-cpu", "run --router gpu on the sequential CPU reference backend");
+    general.add_options()("gpu-perf", "print GPU router timing and backend statistics");
+    general.add_options()("gpu-batches", po::value<int>(), "GPU router: bounding-box-disjoint batches per iteration");
+    general.add_options()("gpu-opt", po::value<std::vector<std::string>>(),
+                          "GPU router tuning setting as name=value (sets gpurouter/<name>; see docs/gpurouter.md)");
 
     general.add_options()("report", po::value<std::string>(),
                           "write timing and utilization report in JSON format to file");
@@ -527,6 +533,22 @@ void CommandHandler::setupContext(Context *ctx)
 
     if (vm.count("router2-alt-weights"))
         ctx->settings[ctx->id("router2/alt-weights")] = true;
+    if (vm.count("gpu-device"))
+        ctx->settings[ctx->id("gpurouter/device")] = vm["gpu-device"].as<int>();
+    if (vm.count("gpu-cpu"))
+        ctx->settings[ctx->id("gpurouter/cpu")] = true;
+    if (vm.count("gpu-perf"))
+        ctx->settings[ctx->id("gpurouter/perfProfile")] = true;
+    if (vm.count("gpu-batches"))
+        ctx->settings[ctx->id("gpurouter/maxBatches")] = vm["gpu-batches"].as<int>();
+    if (vm.count("gpu-opt")) {
+        for (const auto &opt : vm["gpu-opt"].as<std::vector<std::string>>()) {
+            size_t eq = opt.find('=');
+            if (eq == std::string::npos || eq == 0)
+                log_error("--gpu-opt expects name=value, got '%s'\n", opt.c_str());
+            ctx->settings[ctx->id("gpurouter/" + opt.substr(0, eq))] = opt.substr(eq + 1);
+        }
+    }
 
     if (vm.count("static-dump-density"))
         ctx->settings[ctx->id("static/dump_density")] = true;

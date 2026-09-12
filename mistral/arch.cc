@@ -25,6 +25,7 @@
 #include "placer_heap.h"
 #include "router1.h"
 #include "router2.h"
+#include "gpurouter.h"
 #include "timing.h"
 #include "util.h"
 
@@ -655,8 +656,20 @@ bool Arch::route()
                 result = router1(getCtx(), Router1Cfg(getCtx()));
             }
         }
+    } else if (router == "gpu") {
+        result = gpurouter(getCtx(), GpuRouterCfg(getCtx()));
     } else {
         log_error("Mistral architecture does not support router '%s'\n", router.c_str());
+    }
+    {
+        // The routers optimise nextpnr's per-pip delay table; the final report
+        // after bitstream generation uses Mistral's analogue model. Log the
+        // table-model view so the two can be compared.
+        TimingAnalyser timing(getCtx());
+        timing.setup(false, false, true);
+        for (const auto &clock : timing.get_timing_result().clock_fmax)
+            log_info("Routed Fmax (pip delay table) for clock '%s': %.2f MHz\n", clock.first.c_str(getCtx()),
+                     clock.second.achieved);
     }
     getCtx()->attrs[id_step] = std::string("route");
     archInfoToAttributes();
@@ -668,6 +681,6 @@ const std::string Arch::defaultPlacer = "heap";
 const std::vector<std::string> Arch::availablePlacers = {"sa", "heap"};
 
 const std::string Arch::defaultRouter = "router2";
-const std::vector<std::string> Arch::availableRouters = {"router1", "router2"};
+const std::vector<std::string> Arch::availableRouters = {"router1", "router2", "gpu"};
 
 NEXTPNR_NAMESPACE_END
