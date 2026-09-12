@@ -12,14 +12,18 @@ The test uses the existing Yosys `altera_pll` blackbox, without a Yosys patch.
 One physical FPLL is reserved per cell. On `5CSEBA6U23I7`, Mistral enumerates
 six FPLL sites. The currently accepted configuration is:
 
-- Reference: 25, 50 or 100 MHz from the dedicated V11 input route.
-  The DE10-Nano onboard oscillator supplies 50 MHz; other references require
-  an appropriate external physical clock source.
-- Output: one clock from 1 to 100 MHz, expressed as decimal MHz with
-  at most one-Hz precision and an exact C divisor from a checked 300, 320 or
-  520 MHz feedback profile; zero phase.
+- Reference: 25, 50 or 100 MHz for integer mode, and 50 MHz for fractional-N
+  mode, from the dedicated V11 input route. The DE10-Nano onboard oscillator
+  supplies 50 MHz; other references require an appropriate external physical
+  clock source.
+- Output: one clock from 1 to 100 MHz, expressed as decimal MHz with at most
+  one-Hz precision. Integer mode requires an exact C divisor from a checked
+  300, 320 or 520 MHz feedback profile. Fractional-N mode calculates M, C and
+  a 32-bit fraction in the bounded reported-VCO window described below; zero
+  phase.
   Integer duty percentages are supported when exactly representable by the
-  selected C high/low counters (see below).
+  selected C high/low counters (see below). Fractional-N mode requires 50%
+  duty.
 - Direct mode with integer feedback. The selector prefers the 300 MHz profile,
   then 320 MHz, then the 520 MHz profile. Only C6 drives a single output.
 - Active-high fabric-driven `rst`, or `rst` tied low; optional `locked` status output.
@@ -28,11 +32,13 @@ six FPLL sites. The currently accepted configuration is:
 
 Output frequencies use strings such as `"20 MHz"`, `"20.0 MHz"` or `"12.5 MHz"`. The reference accepts the same whole-MHz string syntax, restricted to 25,
 50 or 100 MHz; other parameters keep the values in `top.v`.
-The supported whole-MHz subset is 1, 2, 3, 4, 5, 6, 8, 10, 12, 13, 15, 16,
-20, 25, 26, 30, 32, 40, 50, 52, 60, 64, 65, 75, 80, and 100. The selector
-searches complete feedback/analog profiles; it does not invent analog values
-for an unverified VCO.
-Out-of-range or inexact requests (for example 7 MHz or 12.3 MHz) fail.
+The supported whole-MHz integer subset is 1, 2, 3, 4, 5, 6, 8, 10, 12, 13,
+15, 16, 20, 25, 26, 30, 32, 40, 50, 52, 60, 64, 65, 75, 80, and 100. The
+integer selector searches complete feedback/analog profiles; it does not
+invent analog values for an unverified VCO. Fractional-N accepts any parsed
+1–100 MHz request for which its bounded calculator finds legal counters.
+Out-of-range or inexact integer requests (for example 7 MHz or 12.3 MHz) fail;
+fractional-N requests fail when no bounded solution exists.
 Unsupported device, pin, frequency, phase, duty cycle, clock count,
 reconfiguration ports, or output topology fail explicitly. Missing frequency
 and mode parameters also fail. Reset must be tied low or driven; a permanently asserted or undriven reset fails.
@@ -67,7 +73,9 @@ first hardware diagnostic reported no lock and zero output counts. Adding
 that single field produced lock and the expected frequency ratio. This
 setting is part of this specific device/reference profile. The integer
 calculator only solves C after selecting one of the complete profiles; it does
-not derive unverified analog settings.
+not derive unverified analog settings. Fractional-N uses a separate checked
+50 MHz/N-bypass analog tuple and calculates its digital M/C/fraction values
+inside the bounded window described below.
 
 The packer constrains both sides of the output buffer to the selected frequency and checks
 conflicting clock periods, including the selected input pin constraint. Downstream
@@ -97,6 +105,22 @@ reference pin and conflicting input/output clocks. It programs no hardware.
 Before the implementation, the same synthesis fixture fails placement with
 `no BELs remaining to implement cell type 'altera_pll'`.
 
+The generic fractional calculator regression routes two single-output rates
+(27 and 99 MHz) and a dual-output 27/13.5 MHz pair. It checks the complete
+decompiled FPLL settings, generated timing constraints, utilization and
+compressed RBFs:
+
+```sh
+python3 mistral/tests/pll/fractional_calculator.py \
+  --yosys /path/to/yosys \
+  --nextpnr /path/to/nextpnr-mistral \
+  --mistral-cv /path/to/mistral-cv \
+  --output /path/to/fractional-calculator-results
+```
+
+These are host-only route checks; they do not claim hardware acceptance for
+new rates.
+
 For an independent Quartus reference, run in an empty scratch directory:
 
 ```sh
@@ -114,8 +138,8 @@ Quartus chooses clock mux subblock 0; nextpnr uses its existing subblock 2.
 
 ## Source bases
 
-- nextpnr fork base: `d22eaef1a858e2d81bcbe971b580f69265e59bde`, including
-  DSP support on upstream `7d4f72c0aabc15da932748a54e82a6ff7b41921e`.
+- nextpnr fork base: `5909feb560da457c55374eec226d1040c4dc8dba`, the
+  `mistral-stable` branch after async M10K support.
 - Mistral fork used for host builds: `b28e30a36b5139aaed5a5d361a30b542e6b7c758`,
   including the Cyclone V clock-field fixes on upstream `bfa096c1deac6180a3eee784693c28dac491ab18`.
 - Yosys: `13b43f8c85ec430a33ee55d058fb4c32b42b6910`.
@@ -418,13 +442,27 @@ checks parsing, exact divisibility, rejection and whole-MHz compatibility.
 rational-arithmetic oracle. New decimal-output validation is host-only;
 historical kit evidence remains specific to its recorded artifacts.
 
-## Checked fractional-N profile
+## Fractional-N profiles and calculator
 
-Set `fractional_vco_multiplier="true"` to request the separate, bounded
-50 MHz reference to a checked 11.2896, 12.288 or 74.25 MHz single-output profile. Other fractional-N
-combinations are rejected except the checked dual-output pair below. The existing
-V11 route, direct mode, zero phase, 50% duty and reset rules still apply.
-The default `"false"` mode retains exact integer-divider behavior.
+Set `fractional_vco_multiplier="true"` to select fractional-N mode. It uses
+the 50 MHz V11 reference, direct mode, zero phase and 50% duty; the existing
+reset and output-buffer rules still apply. The default `"false"` mode retains
+exact integer-divider behavior.
+
+For a single output, the selector scans C counters from 2 through 512 and
+keeps the first 50%-duty counter whose reported VCO (`output × C`) is between
+400 and 500 MHz. It then rounds the feedback multiplier to the nearest
+32-bit fraction using integer arithmetic, emitting N=1, BW7, CP2 and the
+checked fractional analog tuple. An odd integer M also enables the hardware's
+even-duty correction bit. The window and analog tuple are deliberately
+bounded: this calculator does not claim that arbitrary Cyclone V VCO settings
+are safe.
+
+The three hardware-checked single-output rates retain their exact Quartus
+words as compatibility profiles: 11.2896, 12.288 and 74.25 MHz. Quartus did
+not always choose the mathematically nearest word, so these entries remain
+authoritative even though the generic calculator handles nearby and other
+in-window requests.
 
 Quartus 17.0.2 selects M8, N1 (bypass), C6=33 and fractional word
 K=472790000 (`0x1c2e33f0`) at 32-bit precision. The writer enables
@@ -433,18 +471,22 @@ odd-duty correction, BW7 and CP2. M presets1/0, lock filters0x19/2 and the
 auxiliary bandgap powerdown remain as checked in the oracle. Mistral already
 exposes all these fields; no table changes are needed.
 
-Using `50e6 * (8 + K/2^32) /33`, the calculated output is
+Using `50e6 * (8 + K/2^32) /33`, the calculated output for the 12.288 MHz
+compatibility profile is
 12,288,000.000019869 Hz, approximately +0.000001617 ppm from the request.
 The packer reports requested/achieved/error and constrains the calculated
-frequency at backend timing resolution. This is a specific checked approximation,
-not a generic permitted-error solver. It does not silently relax the exactness
-of integer mode. For comparison, Quartus with fractional mode disabled chooses
+frequency at backend timing resolution. For a generic request, the same report
+shows the quantized result and error; integer mode remains exact and is never
+silently relaxed. For comparison, Quartus with fractional mode disabled chooses
 12,288,135.593 Hz for the same request, about +11.035 ppm.
 
 `fractional.py` builds the diagnostic fixture and checks routing, timing,
 emitted settings and unsupported requests. Its optional oracle comparison
-checks all emitted FPLL settings. `fractional_config.cpp` checks the bounded
-selector and achieved-frequency calculation. `fractional_probe.sh` runs under
+checks all emitted FPLL settings. `fractional_config.cpp` checks the checked
+compatibility entries and nearby requests; `fractional_calculator_config.cpp`
+checks generic single and exact-common-VCO dual selection. The
+`fractional_calculator.py` route regression covers 27/99 MHz singles and a
+27/13.5 MHz pair. `fractional_probe.sh` runs under
 a kit lease and checks signature D715, output counts and ten reset/relock cycles.
 The reference-window meter expects 1006–1007 counts when running, with endpoint
 tolerance; it cannot resolve the tiny calculated quantization error or measure
@@ -489,12 +531,13 @@ Current `kit.py stop` completed development reboot recovery and left the kit fre
 
 ### Dual fractional-N audio clocks
 
-With `fractional_vco_multiplier="true"` and `number_of_clocks=2`, the checked
-pair is output0=12.288 MHz and output1=24.576 MHz, from the 50 MHz reference.
-Swapped outputs and other pairs remain unsupported. Both outputs share M8,
-N1 bypass and K=`0x5b18548b`, with C6=34 and C7=17. This is a separately
-checked Quartus 17.0.2 configuration: the single 12.288 MHz fractional word
-cannot be reused. C6 has even counts 17/17; C7 uses 9/8 and odd-duty correction.
+With `fractional_vco_multiplier="true"` and `number_of_clocks=2`, both output
+counters must produce the same exact VCO product in the bounded 400–500 MHz
+window. This supports swapped outputs, equal outputs and other exact-ratio
+pairs such as 27/13.5 MHz; independent per-output approximations remain
+unsupported. The checked 12.288/24.576 MHz pair retains its separate Quartus
+configuration: both outputs share M8, N1 bypass and K=`0x5b18548b`, with C6=34
+and C7=17. C6 has even counts 17/17; C7 uses 9/8 and odd-duty correction.
 Analog settings remain BW7/CP2 and the existing presets/filters.
 
 Calculated outputs are 12,288,000.000134 Hz and 24,576,000.000268 Hz, both
@@ -503,7 +546,9 @@ use calculated frequency at backend timing resolution, and both errors are
 reported. Independent per-output divider selection is not permitted.
 
 `fractional_dual.py` checks the complete oracle FPLL configuration, three clock
-constraints, reset routing and unsupported combinations. Its D717 fixture
+constraints, reset routing and unsupported combinations. The generic
+`fractional_calculator.py` fixture additionally routes 27/13.5 MHz on one
+PLL. Its D717 fixture
 has independent meters; GPO3 selects each meter's result and status.
 Run `fractional_dual_probe.sh 12.288` and `fractional_dual_probe.sh 24.576`
 under a kit lease. Expected running counts are 1006–1007 and 2013–2014,
@@ -1349,8 +1394,10 @@ Use `reference_clock_frequency="50.0 MHz"`, `number_of_clocks=1`,
 `output_clock_frequency0="74.25 MHz"`, `fractional_vco_multiplier="true"`,
 `operation_mode="direct"`, `phase_shift0="0 ps"` and `duty_cycle0=50`.
 This profile extends the checked fractional-N selector; integer mode still
-rejects 74.25 MHz. Other references, nearby requested frequencies, nonzero
-phase, other duty cycles and multi-output combinations are not added.
+rejects 74.25 MHz. The exact 74.25 MHz request remains a compatibility entry;
+nearby and other in-window rates use the generic fractional calculator and are
+host-only until separately checked on hardware. Other references, nonzero
+phase and other duty cycles remain unsupported.
 
 The [retained Quartus oracle](fixtures/video-7425/README.md) selects
 M8/N1/C6=6 and K=`0xe8f5c239`, producing a calculated 74,249,999.83243954 Hz,
@@ -1360,9 +1407,9 @@ change is required.
 
 Run `fractional.py --mhz 74.25` with the normal tool arguments to check
 routing, one PLL/one HPS GP interface, clock constraints, complete FPLL
-settings and invalid requests. `fractional_config.cpp` also checks exact
-selection and rejects 25/100 MHz references, nearby requests and dual-output
-use. `fractional_probe.sh 74.25` checks ten reset/relock cycles and measures
+settings and invalid requests. `fractional_config.cpp` checks the exact
+compatibility selection and generic nearby behavior; `fractional_calculator.py`
+covers additional host-only rates and a dual-output pair. `fractional_probe.sh 74.25` checks ten reset/relock cycles and measures
 6081–6084 divided-clock edges per 2^20 reference cycles (nominal 6082.56).
 That counter validates the clock ratio and reset behavior; it does not
 measure sub-ppm accuracy, jitter, HDMI signaling or display acceptance.

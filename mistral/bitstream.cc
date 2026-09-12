@@ -514,6 +514,12 @@ struct MistralBitgen
         }
         raw(CycloneV::M_CNT_HI_DIV_SETTING, (config->m + 1) / 2);
         raw(CycloneV::M_CNT_LO_DIV_SETTING, config->m / 2);
+        // Fractional profiles may use an odd integer part of M. Quartus
+        // enables the even-duty correction for those divide values; keep the
+        // established even-M profiles at their default without emitting a
+        // redundant zero.
+        if (fractional && (config->m & 1))
+            flag(CycloneV::M_CNT_ODD_DIV_DUTY_EN, true);
         raw(CycloneV::N_CNT_HI_DIV_SETTING, fractional ? 0 : (config->n + 1) / 2);
         raw(CycloneV::N_CNT_LO_DIV_SETTING, fractional ? 0 : config->n / 2);
         if (fractional) {

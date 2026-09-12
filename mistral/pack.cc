@@ -2223,7 +2223,8 @@ struct MistralPacker
             auto config = fractional ? mistral_pll::select_fractional(output_hz, reference_mhz) :
                                        mistral_pll::select_hz(output_hz, reference_mhz, duty0);
             if (fractional && clocks == 1 && !config)
-                log_error("PLL '%s': fractional-N profile requires 50 MHz reference and 11.2896, 12.288 or 74.25 MHz output.\n", ctx->nameOf(ci));
+                log_error("PLL '%s': fractional-N selector requires a 50 MHz reference and a 1-100 MHz output with a bounded 400-500 MHz shared VCO.\n",
+                          ctx->nameOf(ci));
             int64_t output1_hz = 0;
             int c1 = 0;
             if (clocks >= 2) {
@@ -2240,7 +2241,8 @@ struct MistralPacker
                 auto dual = fractional ? mistral_pll::select_fractional_dual(output_hz, output1_hz, reference_mhz) :
                                          mistral_pll::select_dual_hz(output_hz, output1_hz, reference_mhz, duty0, duty1);
                 if (fractional && !dual)
-                    log_error("PLL '%s': fractional-N dual profile requires 50 MHz reference and 12.288/24.576 MHz outputs.\n", ctx->nameOf(ci));
+                    log_error("PLL '%s': fractional-N dual selector requires a 50 MHz reference and exact shared-VCO output counters in the bounded 400-500 MHz window.\n",
+                              ctx->nameOf(ci));
                 if (!dual)
                     log_error("PLL '%s': unsupported dual PLL frequencies/duties; require exact decimal MHz from 1 to 100 with exact dividers from one checked 300/320/400/520 MHz tuple.\n", ctx->nameOf(ci));
                 config = dual->feedback;
