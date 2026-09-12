@@ -151,6 +151,11 @@ struct GpuRouter
 
     template <typename F> void parallel_chunks(size_t count, F fn)
     {
+#ifdef NPNR_DISABLE_THREADS
+        // e.g. the WASI build: pthread_create() always fails there
+        fn(size_t(0), count);
+        return;
+#endif
         int nt = std::min<size_t>(num_threads(), std::max<size_t>(1, count / 4096));
         if (nt <= 1) {
             fn(size_t(0), count);
