@@ -79,3 +79,6 @@ For explicit address-stall controls, see [M10K address-stall](README-address-sta
 
 For a disabled true-dual-port side with a tied-off clock, see
 [constant disabled-port clock](README-constant-clock.md).
+
+For a design-scale audit of every packed M10K clock selector, see
+[M10K design-scale selector audit](README-scale-selectors.md).
