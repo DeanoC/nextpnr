@@ -1423,13 +1423,33 @@ struct MistralPacker
         normalize_rdw(id_CFG_RDW_MODE_B, "port B", "NEW_DATA_NO_NBE_READ", true);
         normalize_rdw(id_CFG_RDW_MODE_MIXED, "mixed-port collisions", "DONT_CARE", false);
 
-        auto geometry = [](int a, int d) { return (d == 10 && a == 10) || (d == 20 && a == 9); };
+        // Equal-width true-dual-port M10Ks are available in the three narrow
+        // Cyclone V geometries as well as the legacy 10/20-bit mappings.  A
+        // separate predicate keeps the mixed-width contract fail-closed:
+        // setup_mixed_m10k has only been characterized for the 10/20-bit
+        // port pairs, so accepting a narrow mixed pair here would select
+        // unverified WREN/CE mux assignments.
+        auto equal_geometry = [](int a, int d) {
+            return (d == 1 && a == 13) || (d == 2 && a == 12) ||
+                   (d == 5 && a == 11) || (d == 10 && a == 10) ||
+                   (d == 20 && a == 9);
+        };
+        auto mixed_geometry = [](int a, int d) {
+            return (d == 10 && a == 10) || (d == 20 && a == 9);
+        };
         if (mixed && byte_enable)
             log_error("M10K '%s': true dual-port cannot combine mixed widths and byte enables.\n", ctx->nameOf(ci));
         if (mixed && (!ci->params.count(id_CFG_RD_ABITS) || !ci->params.count(id_CFG_RD_DBITS)))
             log_error("M10K '%s': mixed TDP requires explicit B geometry (CFG_RD_ABITS/CFG_RD_DBITS).\n", ctx->nameOf(ci));
-        if (!geometry(abits, dbits) || !geometry(babits, bdbits))
-            log_error("M10K '%s': true dual-port requires 1024x10 or 512x20 on each port.\n", ctx->nameOf(ci));
+        if ((!mixed && (!equal_geometry(abits, dbits) || !equal_geometry(babits, bdbits))) ||
+            (mixed && (!mixed_geometry(abits, dbits) || !mixed_geometry(babits, bdbits)))) {
+            if (mixed)
+                log_error("M10K '%s': mixed true dual-port requires 1024x10 or 512x20 on each port.\n",
+                          ctx->nameOf(ci));
+            else
+                log_error("M10K '%s': true dual-port requires 8192x1, 4096x2, 2048x5, 1024x10 or 512x20 on each port.\n",
+                          ctx->nameOf(ci));
+        }
         if (!mixed && (babits != abits || bdbits != dbits))
             log_error("M10K '%s': unequal TDP B geometry requires CFG_MIXED_WIDTH=1.\n", ctx->nameOf(ci));
         if (byte_enable && dbits != 20)
@@ -1496,15 +1516,55 @@ struct MistralPacker
             char side = port == 0 ? 'A' : 'B';
             int addr_bits = port == 0 ? abits : babits;
             int data_bits = port == 0 ? dbits : bdbits;
-            for (int bit = 0; bit < addr_bits; bit++)
+            int addr_offset = std::max(12 - addr_bits, 0);
+            int addr_start = 0;
+            // The 8192x1 physical mode uses one data lane as the thirteenth
+            // address bit. This is the same M10K bank wiring used by the
+            // existing simple-dual narrow mapper.
+            if (addr_bits == 13) {
+                ci->pin_data[ctx->idf("%c1ADDR[0]", side)].bel_pins = {
+                        ctx->idf("DATA%cIN[%d]", side, side == 'A' ? 4 : 19)};
+                addr_start = 1;
+            }
+            for (int bit = addr_start; bit < addr_bits; bit++)
                 ci->pin_data[ctx->idf("%c1ADDR[%d]", side, bit)].bel_pins = {
-                        ctx->idf("ADDR%c[%d]", side, bit + 12 - addr_bits)};
+                        ctx->idf("ADDR%c[%d]", side, bit + addr_offset - addr_start)};
+
+            std::vector<int> offsets{0};
+            if (addr_bits >= 10 && data_bits <= 10)
+                offsets.push_back(10);
+            if (addr_bits >= 11 && data_bits <= 5) {
+                offsets.push_back(5);
+                offsets.push_back(15);
+            }
+            if (addr_bits >= 12 && data_bits <= 2) {
+                offsets.push_back(2);
+                offsets.push_back(7);
+                offsets.push_back(12);
+                offsets.push_back(17);
+            }
+            if (addr_bits == 13 && data_bits == 1) {
+                offsets.push_back(1);
+                offsets.push_back(3);
+                offsets.push_back(6);
+                offsets.push_back(8);
+                offsets.push_back(11);
+                offsets.push_back(13);
+                offsets.push_back(16);
+                offsets.push_back(18);
+            }
+
             for (int bit = 0; bit < data_bits; bit++) {
-                auto &pins = ci->pin_data[ctx->idf("%c1DATA[%d]", side, bit)].bel_pins;
-                pins = {ctx->idf("DATA%cIN[%d]", side, bit)};
-                if (data_bits == 10)
-                    pins.push_back(ctx->idf("DATA%cIN[%d]", side, bit + 10));
-                ci->pin_data[ctx->idf("%c1Q[%d]", side, bit)].bel_pins = {
+                IdString data_port = data_bits == 1 ? ctx->idf("%c1DATA", side) :
+                                                       ctx->idf("%c1DATA[%d]", side, bit);
+                auto &pins = ci->pin_data[data_port].bel_pins;
+                pins.clear();
+                for (int offset : offsets)
+                    pins.push_back(ctx->idf("DATA%cIN[%d]", side, bit + offset));
+
+                IdString q_port = data_bits == 1 ? ctx->idf("%c1Q", side) :
+                                                   ctx->idf("%c1Q[%d]", side, bit);
+                ci->pin_data[q_port].bel_pins = {
                         ctx->idf("DATA%cOUT[%d]", side, bit)};
             }
         }
