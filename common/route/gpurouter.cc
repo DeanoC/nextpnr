@@ -861,19 +861,23 @@ struct GpuRouter
                 clean[w] = ok;
                 return ok;
             };
+            int clean_count = 0;
             for (auto &w : nd.wires) {
-                if (repair_mode && !is_clean(w.first))
-                    continue;
                 seeds.push_back(w.first);
-                seed_delay.push_back(w.second.delay);
                 auto ch = children.find(w.first);
                 seed_load.push_back(ch == children.end() ? 0.0f : float(ch->second));
+                if (repair_mode && !is_clean(w.first)) {
+                    // still part of the tree (keeps its driver) but not an
+                    // attach point and not passable in this search
+                    seed_delay.push_back(-1.0f);
+                } else {
+                    seed_delay.push_back(w.second.delay);
+                    clean_count++;
+                }
             }
-            if (td.tree_off == int32_t(seeds.size())) {
-                // nothing clean to attach to: route from the source anyway
-                seeds.push_back(nd.src);
-                seed_delay.push_back(0.0f);
-                seed_load.push_back(0.0f);
+            if (clean_count == 0) {
+                // nothing clean to attach to: allow the source itself
+                seed_delay[td.tree_off + int32_t(std::distance(nd.wires.begin(), nd.wires.find(nd.src)))] = 0.0f;
             }
             td.tree_cnt = int32_t(seeds.size()) - td.tree_off;
             td.arc_off = int32_t(ads.size());

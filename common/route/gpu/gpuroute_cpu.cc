@@ -15,19 +15,23 @@
  *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- *  Sequential host reference implementation of the GPU routing backend.
+ *  Sequential host implementation of the GPU routing backend.
  *
- *  It evaluates exactly the same cost function as the device kernel with a
- *  conventional binary-heap A*, so it serves three purposes: a fallback when
- *  no GPU is present, a correctness oracle for the device kernel, and a
- *  single-threaded speed baseline for the same algorithm.
+ *  This is a scalar transcription of the device kernel in
+ *  gpuroute_kernel.cuh: the same K-best stepping (frontier compaction,
+ *  histogram threshold, two-phase relaxation, minimum over (g, edge)), the
+ *  same cost expressions in the same evaluation order, and the same
+ *  tie-breaking. A machine without a GPU therefore produces the same routes
+ *  as one with a GPU, and the two backends can check each other. It also
+ *  serves as the fallback backend and as a single-threaded speed baseline.
  */
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
-#include <queue>
+#include <cstring>
+#include <limits>
 #include <unordered_map>
 
 #include "gpuroute_backend.h"
@@ -36,37 +40,41 @@ namespace gpuroute {
 
 namespace {
 
-struct Visit
+constexpr int NBINS = 128;                  // as in the kernel
+constexpr uint32_t NONE_EDGE = 0xFFFFFFFFu; // "parent" marker of a seed wire
+constexpr float INF = std::numeric_limits<float>::infinity();
+
+struct Entry
 {
-    float g;
-    int32_t edge; // CSR index of the pip that reached the wire, -1 for seeds
+    float g = INF;
+    uint32_t lo = NONE_EDGE; // parent edge, or NONE_EDGE for a tree wire
+    float sdelay = 0.0f;     // upstream base delay of a seed
+    float sload = 0.0f;      // existing branch count of a seed
 };
 
-struct QEntry
+struct Pile
 {
-    float f;
     float g;
     int32_t wire;
-    int32_t edge;
-    bool operator>(const QEntry &o) const
-    {
-        if (f != o.f)
-            return f > o.f;
-        if (g != o.g)
-            return g > o.g;
-        if (wire != o.wire)
-            return wire > o.wire;
-        return edge > o.edge;
-    }
 };
+
+// Lexicographic (g, lo) order, matching the kernel's packed 64-bit compare
+inline bool less_pair(float g1, uint32_t lo1, float g2, uint32_t lo2)
+{
+    if (g1 != g2)
+        return g1 < g2;
+    return lo1 < lo2;
+}
 
 class CpuBackend : public Backend
 {
   public:
-    bool init(const GraphData &graph, int /*small_slots*/, int /*small_bits*/, int /*large_slots*/,
-              int /*large_bits*/, std::string & /*error*/) override
+    bool init(const GraphData &graph, int /*small_slots*/, int small_bits, int /*large_slots*/, int large_bits,
+              std::string & /*error*/) override
     {
         g_ = graph;
+        small_cap_ = 1 << small_bits;
+        large_cap_ = 1 << large_bits;
         occ_.assign(graph.wire_occ, graph.wire_occ + graph.n_wires);
         hist_.assign(graph.wire_hist, graph.wire_hist + graph.n_wires);
         reserved_.assign(graph.wire_reserved, graph.wire_reserved + graph.n_wires);
@@ -92,29 +100,34 @@ class CpuBackend : public Backend
 
     void route(const RouteParams &p, const std::vector<TaskDesc> &tasks, const std::vector<ArcDesc> &arcs,
                const std::vector<int32_t> &seeds, const std::vector<float> &seed_delay,
-               const std::vector<float> &seed_load, bool /*large_lane*/, std::vector<ArcResult> &results,
+               const std::vector<float> &seed_load, bool large_lane, std::vector<ArcResult> &results,
                std::vector<PathEntry> &paths) override
     {
         auto t0 = std::chrono::steady_clock::now();
+        // The device fails an arc once its hash table passes 60 % load and
+        // the host re-routes it in the large lane after the rest of the
+        // batch was applied. Emulate that limit so both backends take the
+        // same route through the retry lanes.
+        const int cap = large_lane ? large_cap_ : small_cap_;
+        const size_t load_limit = size_t((cap / 5) * 3) + 1;
         results.assign(arcs.size(), ArcResult());
         size_t total_paths = 0;
         for (auto &t : tasks)
             total_paths = std::max(total_paths, (size_t)t.path_off + (size_t)t.path_cap);
         paths.assign(total_paths, PathEntry{-1, -1, -1, 0.0f});
 
-        std::unordered_map<int32_t, Visit> visited;
-        std::unordered_map<int32_t, float> tree_delay, tree_load;
-        std::priority_queue<QEntry, std::vector<QEntry>, std::greater<QEntry>> queue;
-        std::vector<int32_t> tree;
+        std::unordered_map<int32_t, Entry> table;
+        std::vector<Pile> far, far2, near;
+        struct Cand
+        {
+            float g;
+            int32_t wire;
+            uint32_t edge;
+        };
+        std::vector<Cand> cand;
+        std::vector<int> hist(NBINS);
 
         for (const auto &task : tasks) {
-            tree.assign(seeds.begin() + task.tree_off, seeds.begin() + task.tree_off + task.tree_cnt);
-            tree_delay.clear();
-            tree_load.clear();
-            for (int i = 0; i < task.tree_cnt; i++) {
-                tree_delay[seeds[task.tree_off + i]] = seed_delay[task.tree_off + i];
-                tree_load[seeds[task.tree_off + i]] = seed_load[task.tree_off + i];
-            }
             int path_pos = 0;
             for (int a = 0; a < task.arc_cnt; a++) {
                 const ArcDesc &arc = arcs[task.arc_off + a];
@@ -122,124 +135,230 @@ class CpuBackend : public Backend
                 r.path_off = task.path_off + path_pos;
                 const int sink = arc.sink;
                 const int sx = g_.wire_x[sink], sy = g_.wire_y[sink];
-                auto h = [&](int w) {
-                    return p.est_weight *
-                           (p.est_x * (float)std::abs(g_.wire_x[w] - sx) + p.est_y * (float)std::abs(g_.wire_y[w] - sy));
+                auto h_est = [&](int x, int y) {
+                    int dx = x - sx, dy = y - sy;
+                    dx = dx < 0 ? -dx : dx;
+                    dy = dy < 0 ? -dy : dy;
+                    return p.est_weight * (p.est_x * (float)dx + p.est_y * (float)dy);
                 };
-                visited.clear();
-                while (!queue.empty())
-                    queue.pop();
+
+                // 1./2. table and seeds
+                table.clear();
+                far.clear();
                 const float seed_scale =
                         p.seed_delay_weight * (p.seed_delay_floor + (1.0f - p.seed_delay_floor) * arc.crit);
-                for (int w : tree) {
+                const int nseed = task.tree_cnt + path_pos;
+                for (int i = 0; i < nseed; i++) {
+                    int w;
+                    float d, ld = 0.0f;
+                    if (i < task.tree_cnt) {
+                        w = seeds[task.tree_off + i];
+                        d = seed_delay[task.tree_off + i];
+                        ld = seed_load[task.tree_off + i];
+                    } else {
+                        const PathEntry &pe = paths[task.path_off + (i - task.tree_cnt)];
+                        w = pe.wire;
+                        d = pe.delay;
+                    }
                     if (w == sink)
                         continue;
-                    float g0 = seed_scale * tree_delay.at(w);
-                    if (visited.emplace(w, Visit{g0, -1}).second)
-                        queue.push(QEntry{g0 + h(w), g0, w, -1});
-                }
-                bool found = false;
-                float best_g = 0.0f;
-                int32_t best_edge = -1;
-                int expanded = 0;
-                while (!queue.empty()) {
-                    QEntry cur = queue.top();
-                    queue.pop();
-                    if (found && cur.f >= best_g)
-                        break;
-                    auto vit = visited.find(cur.wire);
-                    if (vit == visited.end() || vit->second.g != cur.g)
+                    auto ins = table.emplace(w, Entry());
+                    if (!ins.second)
                         continue;
-                    expanded++;
-                    const int u = cur.wire;
-                    float branch_extra = 0.0f;
-                    if (p.load_penalty > 0.0f && vit->second.edge == -1) {
-                        auto tl = tree_load.find(u);
-                        if (tl != tree_load.end())
-                            branch_extra = p.load_penalty * tl->second;
+                    Entry &e = ins.first->second;
+                    if (d < 0.0f) {
+                        e.g = INF; // blocked tree wire
+                        continue;
                     }
-                    for (int e = g_.out_off[u]; e < g_.out_off[u + 1]; e++) {
-                        const int v = g_.out_dst[e];
-                        float c = g_.edge_cost[e];
-                        if (c < 0.0f)
+                    e.g = seed_scale * d;
+                    e.sdelay = d;
+                    e.sload = ld;
+                    far.push_back(Pile{e.g, w});
+                }
+
+                bool have_best = false;
+                float best_g = INF;
+                uint32_t best_edge = NONE_EDGE;
+                float prune = INF;
+                int expanded = 0, steps = 0;
+                bool overflow = false;
+
+                // 3. K-best steps
+                while (!overflow) {
+                    // pass 1: compact the frontier, track the f range
+                    far2.clear();
+                    float minf = INF, maxf = 0.0f;
+                    for (const Pile &e : far) {
+                        auto it = table.find(e.wire);
+                        if (it == table.end() || it->second.g != e.g)
                             continue;
-                        c += p.pip_adder;
-                        const int vx = g_.wire_x[v], vy = g_.wire_y[v];
-                        if (p.use_bb && (vx < task.bb_x0 || vx > task.bb_x1 || vy < task.bb_y0 || vy > task.bb_y1))
+                        const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
+                        if (f >= prune)
                             continue;
-                        if (g_.wire_flags[v] & WIRE_UNAVAILABLE)
-                            continue;
-                        const int rsv = reserved_[v];
-                        if (rsv != -1 && (rsv & ~RESERVED_SOFT) != task.net &&
-                            !(p.ignore_soft && (rsv & RESERVED_SOFT)))
-                            continue;
-                        const float hist = 1.0f + arc.crit_weight * (hist_[v] - 1.0f);
-                        const float pres = 1.0f + (float)occ_[v] * p.curr_cong_weight * arc.crit_weight;
-                        const float bias = p.bias_factor * (c / (float)task.fanout) *
-                                           ((float)(std::abs(vx - task.cx) + std::abs(vy - task.cy)) / (float)task.hpwl);
-                        const float gv = cur.g + c * hist * pres + bias + branch_extra;
-                        if (v == sink) {
-                            if (!found || gv < best_g || (gv == best_g && e < best_edge)) {
-                                found = true;
-                                best_g = gv;
-                                best_edge = e;
-                            }
-                            continue;
+                        minf = std::min(minf, f);
+                        maxf = std::max(maxf, f);
+                        far2.push_back(e);
+                    }
+                    if (far2.empty() || minf == INF || (have_best && minf >= best_g))
+                        break;
+                    const float range = maxf - minf;
+                    const float binw = range > 1e-6f ? range / (float)NBINS : 0.0f;
+
+                    // pass 2: histogram and threshold
+                    float thr = INF;
+                    if (binw > 0.0f) {
+                        std::fill(hist.begin(), hist.end(), 0);
+                        for (const Pile &e : far2) {
+                            const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
+                            int b = (int)((f - minf) / binw);
+                            b = b < 0 ? 0 : (b >= NBINS ? NBINS - 1 : b);
+                            hist[b]++;
                         }
-                        const float f = gv + h(v);
-                        if (found && f >= best_g)
-                            continue;
-                        auto ins = visited.emplace(v, Visit{gv, e});
-                        if (!ins.second) {
-                            Visit &old = ins.first->second;
-                            if (old.edge == -1)
-                                continue; // tree wire keeps its driver
-                            if (gv < old.g || (gv == old.g && e < old.edge)) {
-                                old.g = gv;
-                                old.edge = e;
-                            } else {
+                        int cum = 0;
+                        int want = p.expand_k;
+                        if (p.expand_div > 0 && int(far2.size()) / p.expand_div > want)
+                            want = int(far2.size()) / p.expand_div;
+                        for (int b = 0; b < NBINS; b++) {
+                            cum += hist[b];
+                            if (cum >= want) {
+                                thr = minf + (float)(b + 1) * binw;
+                                break;
+                            }
+                        }
+                    }
+
+                    // pass 3: split into this step's expansion set and the rest
+                    near.clear();
+                    far.clear();
+                    for (const Pile &e : far2) {
+                        const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
+                        if (f < thr)
+                            near.push_back(e);
+                        else
+                            far.push_back(e);
+                    }
+                    prune = have_best ? best_g : INF;
+
+                    // phase A: relax against the step-start table
+                    cand.clear();
+                    for (const Pile &e : near) {
+                        const int32_t u = e.wire;
+                        const float gu = e.g;
+                        expanded++;
+                        float branch_extra = 0.0f;
+                        if (p.load_penalty > 0.0f) {
+                            auto su = table.find(u);
+                            if (su != table.end() && su->second.lo == NONE_EDGE)
+                                branch_extra = p.load_penalty * su->second.sload;
+                        }
+                        for (int ei = g_.out_off[u]; ei < g_.out_off[u + 1]; ei++) {
+                            const int v = g_.out_dst[ei];
+                            float c = g_.edge_cost[ei];
+                            if (c < 0.0f)
+                                continue;
+                            c += p.pip_adder;
+                            const int vx = g_.wire_x[v], vy = g_.wire_y[v];
+                            if (p.use_bb && (vx < task.bb_x0 || vx > task.bb_x1 || vy < task.bb_y0 || vy > task.bb_y1))
+                                continue;
+                            if (g_.wire_flags[v] & WIRE_UNAVAILABLE)
+                                continue;
+                            const int rsv = reserved_[v];
+                            if (rsv != -1 && (rsv & ~RESERVED_SOFT) != task.net &&
+                                !(p.ignore_soft && (rsv & RESERVED_SOFT)))
+                                continue;
+                            const float hist_c = 1.0f + arc.crit_weight * (hist_[v] - 1.0f);
+                            const float pres = 1.0f + (float)occ_[v] * p.curr_cong_weight * arc.crit_weight;
+                            int bdx = vx - task.cx, bdy = vy - task.cy;
+                            bdx = bdx < 0 ? -bdx : bdx;
+                            bdy = bdy < 0 ? -bdy : bdy;
+                            const float bias =
+                                    p.bias_factor * (c / (float)task.fanout) * ((float)(bdx + bdy) / (float)task.hpwl);
+                            const float gv = gu + c * hist_c * pres + bias + branch_extra;
+                            if (v == sink) {
+                                if (!have_best || less_pair(gv, (uint32_t)ei, best_g, best_edge)) {
+                                    have_best = true;
+                                    best_g = gv;
+                                    best_edge = (uint32_t)ei;
+                                }
                                 continue;
                             }
+                            const float f = gv + h_est(vx, vy);
+                            if (f >= prune)
+                                continue;
+                            auto sv = table.find(v);
+                            if (sv != table.end()) {
+                                const Entry &cur = sv->second;
+                                if (cur.lo == NONE_EDGE || !less_pair(gv, (uint32_t)ei, cur.g, cur.lo))
+                                    continue;
+                            }
+                            cand.push_back(Cand{gv, v, (uint32_t)ei});
                         }
-                        queue.push(QEntry{f, gv, v, e});
                     }
+
+                    // phase B: apply the candidates as a minimum over (g, edge)
+                    for (const Cand &cd : cand) {
+                        auto ins = table.emplace(cd.wire, Entry());
+                        if (ins.second && table.size() > load_limit)
+                            overflow = true;
+                        Entry &e = ins.first->second;
+                        const float old_g = e.g;
+                        if (less_pair(cd.g, cd.edge, e.g, e.lo)) {
+                            e.g = cd.g;
+                            e.lo = cd.edge;
+                        }
+                        // re-queue only when g itself improves
+                        if (cd.g < old_g)
+                            far.push_back(Pile{cd.g, cd.wire});
+                    }
+                    steps++;
                 }
+
                 r.expanded = expanded;
+                r.steps = steps;
                 stats_.arcs_routed++;
                 stats_.wires_expanded += expanded;
-                if (!found) {
+                if (overflow) {
+                    r.status = ARC_OVERFLOW;
+                    r.reason = FAIL_LOAD;
+                    continue;
+                }
+                if (!have_best) {
                     r.status = ARC_NO_PATH;
                     continue;
                 }
+
+                // 4. path
                 r.cost = best_g;
                 r.status = ARC_OK;
-                int32_t cur = sink, edge = best_edge;
+                uint32_t edge = best_edge;
+                int32_t cur = sink;
                 int pos = path_pos;
+                float attach_delay = 0.0f;
                 while (true) {
                     if (pos >= task.path_cap) {
                         r.status = ARC_PATH_FULL;
                         break;
                     }
-                    const int32_t par = edge_src(edge);
-                    paths[task.path_off + pos] = PathEntry{cur, par, edge, 0.0f};
+                    const int32_t par = edge_src((int)edge);
+                    paths[task.path_off + pos] = PathEntry{cur, par, (int32_t)edge, 0.0f};
                     pos++;
-                    const Visit &pv = visited.at(par);
-                    if (pv.edge == -1)
+                    const Entry &pe = table.at(par);
+                    if (pe.lo == NONE_EDGE) {
+                        attach_delay = pe.sdelay;
                         break;
+                    }
                     cur = par;
-                    edge = pv.edge;
+                    edge = pe.lo;
                 }
                 if (r.status != ARC_OK)
                     continue;
-                r.path_len = pos - path_pos;
-                float d = tree_delay.at(paths[task.path_off + pos - 1].parent);
-                for (int i = pos - 1; i >= path_pos; i--) {
-                    PathEntry &pe = paths[task.path_off + i];
+                float d = attach_delay;
+                for (int k = pos - 1; k >= path_pos; k--) {
+                    PathEntry &pe = paths[task.path_off + k];
                     d += g_.edge_cost[pe.edge];
                     pe.delay = d;
-                    tree.push_back(pe.wire);
-                    tree_delay[pe.wire] = d;
                 }
+                r.path_len = pos - path_pos;
                 path_pos = pos;
             }
         }
@@ -252,6 +371,7 @@ class CpuBackend : public Backend
 
   private:
     GraphData g_;
+    int small_cap_ = 1 << 16, large_cap_ = 1 << 22;
     std::vector<int32_t> occ_, reserved_;
     std::vector<float> hist_;
     BackendStats stats_;

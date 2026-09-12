@@ -5,7 +5,9 @@ shortest-path searches run on a GPU, followed by a timing-repair phase that
 re-routes the worst-slack connections at pure delay. It is built on ROCm/HIP
 or CUDA and falls back to a sequential host implementation of the same
 algorithm when nextpnr is built without a device backend or no GPU is
-present.
+present. The host backend is a scalar transcription of the kernel (same
+K-best steps, cost expressions, tie-breaking and per-lane capacity limits),
+so a machine without a GPU produces the same routing as one with a GPU.
 
 Design goals: at least router1-class timing with router2-class run time,
 and results that do not depend on GPU scheduling (two runs with the same
@@ -226,16 +228,21 @@ router2 alone, before Mistral's flow retries it with router1).
 
 Those Fmax values are the per-pip table model, which is what the final
 report uses when no bitstream is written. With `--rbf` Mistral configures
-the bitstream first and reports its analogue interconnect model instead;
-the misteross-sealed FES ZX81 package routed by the host backend reports
-55.04 / 114.94 MHz that way, against 54.18 / 97.59 MHz for the previous
-router1 seal.
+the bitstream first and reports its analogue interconnect model instead.
+The analogue result varies noticeably between Yosys builds of the same
+core: on one FES ZX81 synthesis every router fails the 52 MHz clock under
+the analogue model except this one (router1 with rip-up 49.64 MHz, router2
+then router1 47.71 MHz, GPU router 59.36 MHz), while on another all pass.
 
-The sequential CPU reference backend (`--gpu-cpu`) reaches similar Fmax
-(ZX81 57.77 / 121.26, ColecoVision 58.45 / 91.73) in 5.1 s and 8.8 s of
-router time, so on these small cores the GPU mostly buys the whole-run wall
-time and the headroom for larger designs; the QoR comes from the algorithm.
-On these fixtures the device is far from busy: the negotiation tail and the
+The host backend (`--gpu-cpu`) produces the identical routing (checked
+net by net on the M10K fixture and by Fmax on the ZX81 fixtures) in about
+3.5 times the router time of the GPU (ZX81 17.7 s against 4.8 s), still
+faster than router1 there. The K-best stepping itself matters for quality:
+an earlier exact-A* host backend that only matched the cost model routed
+the same synthesis to 49.9 MHz under Mistral's analogue model where the
+K-best search reaches 59.4 MHz, because the two prefer different equal-cost
+paths and the analogue model punishes heavily loaded trunks. On these
+fixtures the device is far from busy: the negotiation tail and the
 one-net-at-a-time repair run a handful of blocks.
 
 ## Limitations and future work

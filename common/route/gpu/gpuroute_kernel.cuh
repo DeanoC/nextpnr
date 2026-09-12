@@ -289,11 +289,18 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                     }
                     if (!ins)
                         continue;
+                    atomicAdd(&st.inserted, 1);
+                    if (d < 0.0f) {
+                        // blocked tree wire: present so nothing relaxes into it, never expanded
+                        vals[s] = pack(u2f(INF_BITS), NONE_SLOT);
+                        sdelay[s] = 0.0f;
+                        sload[s] = 0.0f;
+                        continue;
+                    }
                     const float g0 = seed_scale * d;
                     vals[s] = pack(g0, NONE_SLOT);
                     sdelay[s] = d;
                     sload[s] = ld;
-                    atomicAdd(&st.inserted, 1);
                     int pos = atomicAdd(&st.far_n, 1);
                     if (pos < cap)
                         far[pos] = pack(g0, (uint32_t)w);

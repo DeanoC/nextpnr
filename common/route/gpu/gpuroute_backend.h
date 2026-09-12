@@ -176,7 +176,9 @@ class Backend
     // Route a batch of tasks. results has one entry per arc (in ArcDesc
     // order); paths receives the concatenated path entries. seed_delay[i]
     // is the base delay from the net source to seeds[i] along the tree and
-    // seed_load[i] the number of tree branches seeds[i] already drives.
+    // seed_load[i] the number of tree branches seeds[i] already drives. A
+    // negative seed_delay marks a tree wire the arc may not attach to or
+    // pass through (it keeps its driver but is excluded from this search).
     virtual void route(const RouteParams &params, const std::vector<TaskDesc> &tasks,
                        const std::vector<ArcDesc> &arcs, const std::vector<int32_t> &seeds,
                        const std::vector<float> &seed_delay, const std::vector<float> &seed_load, bool large_lane,
