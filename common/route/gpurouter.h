@@ -63,6 +63,12 @@ struct GpuRouterCfg
     // are still repaired, until the worst slack stops improving
     float repair_band;
     int repair_improve_rounds;
+    // A repair that cannot find its minimum-delay route may displace frozen
+    // arcs of other nets with at least repair_displace_margin (ps) more slack
+    bool repair_displace;
+    float repair_displace_margin;
+    // Batches of at most this many nets run on the host backend (0 = never)
+    int cpu_lane_nets;
     // Frontier entries expanded per parallel step: at least expand_k and at
     // least frontier_size / expand_div (expand_k = 1, expand_div = 0 is A*)
     int expand_k, expand_div;

@@ -56,6 +56,8 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `critWeightFloor`, `critWeightMode`, `critExponent` | 0.05, 0, 2 | criticality weight `max(floor, 1−crit²)` (mode 0) or `(1−crit)^exp` (mode 1) |
 | `loadPenalty`, `pipAdder` | 0, 0 | optional analogue-model approximations (ns per existing branch, ns per pip) |
 | `repairRounds`, `repairSlack`, `repairBand`, `repairImproveRounds` | 10, 0 ps, 300 ps, 4 | timing repair (below) |
+| `repairDisplace`, `repairDisplaceMargin` | true, 0 ps | a stuck repair may displace frozen arcs with at least this much more slack |
+| `cpuLaneNets` | 0 | batches of at most this many nets run on the host backend (0: never) |
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
 | `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 4, 22 | device scratch: concurrent nets and log2 table size per lane |
@@ -110,9 +112,13 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    follows moves the displaced non-critical arcs instead of the repaired
    ones. A repaired arc may only attach to tree wires whose upstream path
    is free of other nets' reservations, which is what makes two frozen arcs
-   unable to deadlock on a shared wire. Rounds continue while the worst
-   slack improves; the best state is snapshotted and restored if a later
-   round made it worse.
+   unable to deadlock on a shared wire. Reservations made by freezing are
+   *soft*: when a repair finds no route at all, it is retried ignoring other
+   nets' soft reservations, and if every frozen arc it would displace has at
+   least `repairDisplaceMargin` more slack, those arcs are unfrozen and left
+   to the negotiation loop; otherwise the route is given up. Rounds continue
+   while the worst slack improves; the best state is snapshotted and
+   restored if a later round made it worse.
 7. **Binding.** The trees are bound into the Arch with `bindWire`/`bindPip`;
    anything the Arch rejects is negotiated again. router1 then runs as the
    final legality check exactly as after router2.
@@ -228,8 +234,11 @@ one-net-at-a-time repair run a handful of blocks.
 - Only one GPU is used. The batch structure would allow a second device to
   take alternate batches with the same deterministic apply order.
 - The tail of the negotiation (a few nets fighting over a few wires) and
-  the one-net-at-a-time repair leave most of the GPU idle; a CPU lane for
-  iterations with very few nets is an obvious extension.
+  the one-net-at-a-time repair leave most of the GPU idle. `cpuLaneNets`
+  routes such tiny batches on the host backend instead; it saves about a
+  second on the ZX81 core but its exact A* picks different equal-cost paths
+  than the K-best kernel, which moved Fmax both ways on the fixtures (Pong
+  +3.7 MHz, ColecoVision pixel clock −18 MHz), so it is off by default.
 - The graph is flattened on every run. Caching the CSR on disk keyed by the
   device would remove most of the fixed setup cost for small designs.
 - Pong shows router1 still ahead by about 4 %; the repair phase stops when

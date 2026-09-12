@@ -62,6 +62,12 @@ enum WireFlags : uint8_t
     WIRE_UNAVAILABLE = 0x01, // locked to another net; never expand into it
 };
 
+// wire_reserved entries are -1 (free) or a net index, optionally with
+// RESERVED_SOFT set: a soft reservation belongs to a frozen timing-repaired
+// arc and may be overridden by a repair search with ignore_soft set.
+constexpr int32_t RESERVED_SOFT = 0x40000000;
+inline int32_t reserved_owner(int32_t r) { return r == -1 ? -1 : (r & ~RESERVED_SOFT); }
+
 // Parameters of the cost function; identical for every task in a batch.
 struct RouteParams
 {
@@ -77,6 +83,7 @@ struct RouteParams
     int expand_k = 256;    // minimum frontier entries expanded per step
     int expand_div = 0;    // if > 0, also expand at least frontier_size / expand_div entries
     int use_bb = 1;        // honour task bounding boxes
+    int ignore_soft = 0;   // treat other nets' soft reservations as free (repair displacement)
     int max_probe = 512;   // hash table probe limit
 };
 

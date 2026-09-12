@@ -62,7 +62,8 @@ struct GpuRouter
     Context *ctx;
     GpuRouterCfg cfg;
     TimingAnalyser tmg;
-    std::unique_ptr<gpuroute::Backend> backend;
+    std::unique_ptr<gpuroute::Backend> backend;     // device (or CPU fallback)
+    std::unique_ptr<gpuroute::Backend> cpu_backend; // CPU lane for tiny batches, if distinct
 
     bool timing_driven = false, timing_driven_ripup = false;
     float curr_cong_weight = 0.5f, hist_cong_weight = 1.0f;
@@ -772,8 +773,22 @@ struct GpuRouter
             dirty_mark[dirty_wires[i]] = 0;
         }
         backend->update_wire_state(dirty_wires.size(), dirty_wires.data(), o.data(), h.data(), r.data());
+        if (cpu_backend)
+            cpu_backend->update_wire_state(dirty_wires.size(), dirty_wires.data(), o.data(), h.data(), r.data());
         dirty_wires.clear();
     }
+
+    // Tiny batches (the negotiation tail, one-net repairs) are cheaper on
+    // the host than as a one-block launch plus table clears on the device
+    gpuroute::Backend *backend_for(size_t ntasks)
+    {
+        if (cpu_backend && int(ntasks) <= cfg.cpu_lane_nets)
+            return cpu_backend.get();
+        return backend.get();
+    }
+
+    // Repair displacement: soft reservations of other nets are ignored
+    bool ignore_soft = false;
 
     // Timing repair mode: pure delay, no congestion terms, no bias
     bool repair_mode = false;
@@ -793,6 +808,7 @@ struct GpuRouter
         p.expand_k = cfg.expand_k;
         p.expand_div = cfg.expand_div;
         p.use_bb = use_bb ? 1 : 0;
+        p.ignore_soft = ignore_soft ? 1 : 0;
         p.max_probe = 512;
         return p;
     }
@@ -828,7 +844,7 @@ struct GpuRouter
                 auto fnd = clean.find(w);
                 if (fnd != clean.end())
                     return fnd->second;
-                bool ok = (reserved[w] == -1 || reserved[w] == t.net);
+                bool ok = (reserved[w] == -1 || gpuroute::reserved_owner(reserved[w]) == t.net);
                 auto tw = nd.wires.find(w);
                 if (ok && tw != nd.wires.end() && tw->second.parent >= 0 && w != nd.src)
                     ok = is_clean(tw->second.parent);
@@ -882,7 +898,8 @@ struct GpuRouter
         std::vector<gpuroute::ArcResult> results;
         std::vector<gpuroute::PathEntry> paths;
         auto t0 = Clock::now();
-        backend->route(make_params(use_bb), tds, ads, seeds, seed_delay, seed_load, large_lane, results, paths);
+        backend_for(tasks.size())->route(make_params(use_bb), tds, ads, seeds, seed_delay, seed_load, large_lane,
+                                         results, paths);
         gpu_time += secs_since(t0);
 
         std::vector<HostTask> retry;
@@ -1276,6 +1293,110 @@ struct GpuRouter
         } while (!failed_nets.empty());
     }
 
+    // Reserve every wire on the arc's path for its net (soft) and freeze it
+    void freeze_arc(int net, ArcData &ad)
+    {
+        auto &nd = nets.at(net);
+        int32_t cursor = ad.sink;
+        while (true) {
+            if (reserved[cursor] == -1) {
+                reserved[cursor] = net | gpuroute::RESERVED_SOFT;
+                mark_dirty(cursor);
+            }
+            auto fnd = nd.wires.find(cursor);
+            if (fnd == nd.wires.end() || fnd->second.parent == -1 || cursor == nd.src)
+                break;
+            cursor = fnd->second.parent;
+        }
+        ad.frozen = true;
+    }
+
+    bool arc_uses_wire(const NetData &nd, const ArcData &ad, int32_t wire) const
+    {
+        int32_t cursor = ad.sink;
+        while (true) {
+            if (cursor == wire)
+                return true;
+            auto fnd = nd.wires.find(cursor);
+            if (fnd == nd.wires.end() || fnd->second.parent == -1 || cursor == nd.src)
+                return false;
+            cursor = fnd->second.parent;
+        }
+    }
+
+    // Drop and rebuild the soft reservations of a net from its frozen arcs
+    void rebuild_soft_reservations(int net)
+    {
+        auto &nd = nets.at(net);
+        for (auto &w : nd.wires)
+            if (reserved[w.first] == (net | gpuroute::RESERVED_SOFT)) {
+                reserved[w.first] = -1;
+                mark_dirty(w.first);
+            }
+        for (auto &arcs : nd.arcs)
+            for (auto &ad : arcs)
+                if (ad.frozen)
+                    freeze_arc(net, ad);
+    }
+
+    // A repaired arc of `net` was routed through other nets' soft
+    // reservations. Unfreeze the frozen arcs holding them when they have at
+    // least as much slack as the repaired arc; otherwise give the route up.
+    void displace_for(int net, std::pair<int, int> arc)
+    {
+        NetInfo *ni = nets_by_udata.at(net);
+        auto &nd = nets.at(net);
+        auto &ad = nd.arcs.at(arc.first).at(arc.second);
+        float my_slack = tmg.get_setup_slack(CellPortKey(ni->users.at(store_index<PortRef>(arc.first))));
+        std::vector<std::pair<int, std::pair<int, int>>> victims; // (net, (user, phys))
+        bool ok = true;
+        int32_t cursor = ad.sink;
+        while (ok) {
+            int32_t r = reserved[cursor];
+            int owner = gpuroute::reserved_owner(r);
+            if (owner != -1 && owner != net) {
+                if (!(r & gpuroute::RESERVED_SOFT)) {
+                    ok = false; // hard reservation: should not happen
+                    break;
+                }
+                NetInfo *oi = nets_by_udata.at(owner);
+                auto &od = nets.at(owner);
+                for (auto usr : oi->users.enumerate()) {
+                    auto &arcs = od.arcs.at(usr.index.idx());
+                    for (size_t j = 0; j < arcs.size(); j++) {
+                        if (!arcs[j].frozen || !arc_uses_wire(od, arcs[j], cursor))
+                            continue;
+                        float their_slack = tmg.get_setup_slack(CellPortKey(usr.value));
+                        if (their_slack < my_slack + cfg.repair_displace_margin) {
+                            ok = false;
+                            break;
+                        }
+                        victims.emplace_back(owner, std::make_pair(usr.index.idx(), int(j)));
+                    }
+                    if (!ok)
+                        break;
+                }
+            }
+            auto fnd = nd.wires.find(cursor);
+            if (fnd == nd.wires.end() || fnd->second.parent == -1 || cursor == nd.src)
+                break;
+            cursor = fnd->second.parent;
+        }
+        if (!ok) {
+            ripup_arc(nd, ad); // leave it for the normal negotiation
+            return;
+        }
+        pool<int> touched;
+        for (auto &v : victims) {
+            nets.at(v.first).arcs.at(v.second.first).at(v.second.second).frozen = false;
+            touched.insert(v.first);
+        }
+        for (int o : touched)
+            rebuild_soft_reservations(o);
+        displaced_total += int(victims.size());
+    }
+    int displaced_total = 0;
+
     // Arcs that still fail slack after negotiation are re-routed at pure
     // delay with their tree costed by upstream delay, one net at a time so
     // repaired arcs never compete, and their wires are reserved so the
@@ -1405,6 +1526,23 @@ struct GpuRouter
                 std::vector<HostTask> retry = route_tasks(one, true, false);
                 if (!retry.empty())
                     retry = route_tasks(retry, false, true);
+                if (!retry.empty() && cfg.repair_displace) {
+                    // The minimum-delay route needs wires frozen by other
+                    // arcs. Take them if those arcs have more slack than
+                    // this one, and unfreeze them so negotiation moves them.
+                    ignore_soft = true;
+                    std::vector<HostTask> still = route_tasks(retry, false, true);
+                    ignore_soft = false;
+                    pool<std::pair<int, int>> still_unrouted;
+                    for (auto &r : still)
+                        for (auto &a : r.arcs)
+                            still_unrouted.insert(a);
+                    for (auto &r : retry)
+                        for (auto &a : r.arcs)
+                            if (!still_unrouted.count(a))
+                                displace_for(t.net, a);
+                    retry = still;
+                }
                 pool<std::pair<int, int>> unrouted;
                 for (auto &r : retry)
                     for (auto &a : r.arcs)
@@ -1415,19 +1553,7 @@ struct GpuRouter
                         failed_repairs++;
                         continue; // left unrouted; negotiate() routes it normally
                     }
-                    // freeze: reserve every wire on the path for this net
-                    int32_t cursor = ad.sink;
-                    while (true) {
-                        if (reserved[cursor] == -1) {
-                            reserved[cursor] = t.net;
-                            mark_dirty(cursor);
-                        }
-                        auto fnd = nd.wires.find(cursor);
-                        if (fnd == nd.wires.end() || fnd->second.parent == -1 || cursor == nd.src)
-                            break;
-                        cursor = fnd->second.parent;
-                    }
-                    ad.frozen = true;
+                    freeze_arc(t.net, ad);
                     repaired++;
                 }
                 flush_state();
@@ -1449,6 +1575,8 @@ struct GpuRouter
             route_queue.erase(std::unique(route_queue.begin(), route_queue.end()), route_queue.end());
             negotiate();
         }
+        if (displaced_total > 0)
+            log_info("    timing repair displaced %d frozen arcs with more slack\n", displaced_total);
         if (repaired_total > 0) {
             tmg.run(false);
             float wns = std::numeric_limits<float>::max();
@@ -1486,6 +1614,8 @@ struct GpuRouter
         }
         if (!cfg.cpu_backend && gpuroute::device_backend_available() && ctx->verbose)
             log_info("    GPU devices: %s\n", gpuroute::describe_devices().c_str());
+        if (cfg.cpu_lane_nets > 0 && std::string(backend->name()) != "cpu-reference")
+            cpu_backend = gpuroute::create_cpu_backend();
 
         log_info("Setting up routing resources...\n");
         setup_net_indices();
@@ -1509,6 +1639,8 @@ struct GpuRouter
         auto tup = Clock::now();
         if (!backend->init(gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, err))
             log_error("GPU router backend initialisation failed: %s\n", err.c_str());
+        if (cpu_backend && !cpu_backend->init(gd, 0, 0, 0, 0, err))
+            log_error("GPU router CPU lane initialisation failed: %s\n", err.c_str());
         log_info("    backend %s ready in %.2fs (estimate %.3f ns/x, %.3f ns/y)\n", backend->name(), secs_since(tup),
                  est_x, est_y);
         // The backend snapshot already contains the setup-time state
@@ -1548,6 +1680,11 @@ struct GpuRouter
                  "%.2fs transfers)\n",
                  secs_since(rstart), backend->name(), (long long)st.launches, (long long)st.arcs_routed,
                  (long long)st.wires_expanded, st.route_seconds, st.transfer_seconds);
+        if (cpu_backend) {
+            const auto &cs = cpu_backend->stats();
+            log_info("    CPU lane: %lld batches, %lld arcs, %lld wires expanded, %.2fs\n", (long long)cs.launches,
+                     (long long)cs.arcs_routed, (long long)cs.wires_expanded, cs.route_seconds);
+        }
 
         log_info("Running router1 to check that route is legal...\n");
         lock.unlock();
@@ -1580,6 +1717,9 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     repair_slack = ctx->setting<float>("gpurouter/repairSlack", 0.0f);
     repair_band = ctx->setting<float>("gpurouter/repairBand", 300.0f);
     repair_improve_rounds = ctx->setting<int>("gpurouter/repairImproveRounds", 4);
+    repair_displace = ctx->setting<bool>("gpurouter/repairDisplace", true);
+    repair_displace_margin = ctx->setting<float>("gpurouter/repairDisplaceMargin", 0.0f);
+    cpu_lane_nets = ctx->setting<int>("gpurouter/cpuLaneNets", 0);
     crit_exponent = ctx->setting<float>("gpurouter/critExponent", 2.0f);
     load_penalty = ctx->setting<float>("gpurouter/loadPenalty", 0.0f);
     pip_adder = ctx->setting<float>("gpurouter/pipAdder", 0.0f);

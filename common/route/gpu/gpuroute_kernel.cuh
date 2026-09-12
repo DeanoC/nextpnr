@@ -457,7 +457,8 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                             if (g.flags[v] & WIRE_UNAVAILABLE)
                                 continue;
                             const int rsv = g.reserved[v];
-                            if (rsv != -1 && rsv != task.net)
+                            if (rsv != -1 && (rsv & ~RESERVED_SOFT) != task.net &&
+                                !(p.ignore_soft && (rsv & RESERVED_SOFT)))
                                 continue;
                             const float hist_c = 1.0f + arc.crit_weight * (g.hist[v] - 1.0f);
                             const float pres = 1.0f + (float)g.occ[v] * p.curr_cong_weight * arc.crit_weight;

@@ -171,7 +171,8 @@ class CpuBackend : public Backend
                         if (g_.wire_flags[v] & WIRE_UNAVAILABLE)
                             continue;
                         const int rsv = reserved_[v];
-                        if (rsv != -1 && rsv != task.net)
+                        if (rsv != -1 && (rsv & ~RESERVED_SOFT) != task.net &&
+                            !(p.ignore_soft && (rsv & RESERVED_SOFT)))
                             continue;
                         const float hist = 1.0f + arc.crit_weight * (hist_[v] - 1.0f);
                         const float pres = 1.0f + (float)occ_[v] * p.curr_cong_weight * arc.crit_weight;
