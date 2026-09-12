@@ -688,6 +688,11 @@ struct MistralBitgen
             // both CLKIN sinks by setup_m10ks(); without these settings the
             // combinational B port can remain on the unused/default branch.
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CLK_SEL, bi, 1);
+            // The flow-through read data path also uses the top CE0 source.
+            // Native 10-bit ROM cells do not carry CFG_BYTE_ENABLE, so this
+            // selector must be programmed here rather than only in the
+            // byte-enabled/mixed-width branch below.
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_CE0_SEL, bi, 1);
             // The packer materialises the omitted logical B1EN as a
             // constant-high route on ENABLE[0]. Select that core/input path
             // explicitly; relying on the site's default can leave a

@@ -10,7 +10,7 @@ selects the same mode so the backend can consume the `clocks 1 0` form used by
 the memory mapper. An explicit B1EN is accepted only when it is tied high.
 
 The packer leaves the read group on the existing M10K address and output BEL
-pins, and does not create a TCLK route. A flow-through simple-dual `rden_b=1`
+pins. A flow-through simple-dual `rden_b=1`
 is represented by an omitted B1EN port; nextpnr keeps that logical contract
 but materialises a constant-high internal B1EN connection to physical
 `ENABLE[0]`. This avoids relying on a site-dependent power-up default: the
@@ -20,11 +20,14 @@ An explicit constant-high B1EN is accepted and uses the same route. A
 connected dynamic or low read enable, second clock or active ACLR is rejected
 because each selects a synchronous read configuration. The shared write/read
 clock is fanned out to both physical `CLKIN` sinks, and the bitstream selects
-the bottom core/input clock tree plus the second-half core/input/output muxes
-for the flow-through path. Constant-high byte enables stay on the M10K
-default source; `CFG_BYTE_ENABLE` remains enabled, but no fabric route is
-emitted for those constants. A dynamic or low byte mask still routes through
-`BYTEENABLEA`. No Mistral geometry or physical table changes are needed.
+the bottom clock tree, the top CE0 path, and the second-half core/input/output
+muxes for the flow-through path. When a read-only mapper folds the logical
+write clock, the packer borrows a live buffered design clock for those
+physical clock sinks while keeping the write enable inactive. Constant-high
+byte enables stay on the M10K default source; `CFG_BYTE_ENABLE` remains
+enabled, but no fabric route is emitted for those constants. A dynamic or low
+byte mask still routes through `BYTEENABLEA`. No Mistral geometry or physical
+table changes are needed.
 
 Timing classifies `B1ADDR` as a combinational input and `B1DATA` as a
 combinational output. Since Mistral has no characterized Cyclone V M10K
@@ -49,4 +52,7 @@ python3 mistral/tests/m10k/async_read.py \
 The locked Yosys tree still describes M10K inference with `clocks 1 1`, so
 this nextpnr change does not alter Yosys or `toolchain.lock`. A follow-up
 Yosys mapper change can emit the same cell shape without another backend
-change. The regression is host-only and does not establish hardware behavior.
+change. A separate DE10-Nano diagnostic loaded a full ZX81 image with the same
+async-ROM shape and returned the expected `0/0` response after keyboard input;
+that result is diagnostic evidence for the selected nextpnr/Mistral build,
+not a release artifact.

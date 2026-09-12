@@ -183,6 +183,18 @@ def main():
     # without creating a fabric clock route for the unused write half.
     readonly_design = copy.deepcopy(design)
     readonly_cell = readonly_design["modules"]["top"]["cells"][name]
+    # Native 10-bit ROMs do not carry the byte-enable parameter or ports. The
+    # main fixture is a 512x20 cell, so trim its JSON shape to the native
+    # 1024x10 geometry before applying the mapper's read-only edits.
+    readonly_cell["parameters"]["CFG_ABITS"] = f"{10:032b}"
+    readonly_cell["parameters"]["CFG_DBITS"] = f"{10:032b}"
+    for address in ("A1ADDR", "B1ADDR"):
+        readonly_cell["connections"][address].append("0")
+    for data in ("A1DATA", "B1DATA"):
+        readonly_cell["connections"][data] = readonly_cell["connections"][data][:10]
+    readonly_cell["parameters"].pop("CFG_BYTE_ENABLE", None)
+    readonly_cell["connections"].pop("A1BE", None)
+    readonly_cell["port_directions"].pop("A1BE", None)
     readonly_cell["connections"]["CLK1"] = ["0"]
     readonly_cell["connections"]["A1EN"] = ["1"]
     readonly_case = output / "async-readonly"
@@ -193,18 +205,30 @@ def main():
     assert readonly_report["fmax"] and all(clock["achieved"] >= clock["constraint"] == 50
                                                for clock in readonly_report["fmax"].values())
     readonly_packed = json.loads((readonly_case / "routed.json").read_text())["modules"]["top"]["cells"][name]
-    assert not readonly_packed["connections"].get("CLK1")
+    # The logical write clock is folded before packing, then replaced by the
+    # borrowed buffered clock so the physical flow-through read mux has a
+    # live TCLK source. The routed JSON therefore records the internal clock
+    # connection even though the input fixture supplied a constant zero.
+    assert readonly_packed["connections"].get("CLK1")
     run([str(args.mistral_cv.resolve()), "decomp", DEVICE, str(readonly_case / "top.rbf"),
          str(readonly_case / "top.bt")], readonly_case / "decomp.log")
     _, rx, ry, _ = readonly_packed["attributes"]["NEXTPNR_BEL"].split(".")
     readonly_site = f"M10K.{int(rx):03d}.{int(ry):03d}"
     readonly_bitstream = (readonly_case / "top.bt").read_text()
+    readonly_fields = dict(re.findall(r"^s " + re.escape(readonly_site) + r":(\S+) (\S+)$",
+                                      readonly_bitstream, re.MULTILINE))
+    # Flow-through reads use the top CE path as well as the bottom clock tree;
+    # this selector is present on the passing 20-bit async fixture and must be
+    # explicit for native 10-bit ROMs too.
+    assert readonly_fields.get("TOP_CE0_SEL", "0") == "1", readonly_fields
     assert re.search(r"^r \S+ " + re.escape(readonly_site + ":ENABLE.0") + r"$",
                      readonly_bitstream, re.MULTILINE), readonly_bitstream
-    assert not re.search(r"^r \S+ " + re.escape(readonly_site + ":CLKIN.0") + r"$",
-                         readonly_bitstream, re.MULTILINE), readonly_bitstream
-    assert not re.search(r"^r \S+ " + re.escape(readonly_site + ":CLKIN.1") + r"$",
-                         readonly_bitstream, re.MULTILINE), readonly_bitstream
+    # The logical write clock is folded away, but the Cyclone V flow-through
+    # read path still needs a live physical clock tree.  The packer borrows
+    # the top-level reference clock when this fixture has no other M10K clock.
+    for clock_pin in ("CLKIN.0", "CLKIN.1"):
+        assert re.search(r"^r \S+ " + re.escape(readonly_site + ":" + clock_pin) + r"$",
+                         readonly_bitstream, re.MULTILINE), clock_pin
 
     # A nonconstant mask must keep the normal byte-enable routes. Reuse a
     # live read-address bit for one lane and tie the other low so this case
