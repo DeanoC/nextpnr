@@ -17,6 +17,9 @@
  *
  */
 
+#include <algorithm>
+#include <cctype>
+
 #include "design_utils.h"
 #include "dsp.h"
 #include "log.h"
@@ -1669,13 +1672,91 @@ struct MistralPacker
 
     void setup_m10ks()
     {
+        // Cyclone V flow-through M10K reads still require a running physical
+        // clock tree even when the logical mapper has no write clock.  The
+        // read-only shape emitted by memory_libmap spells CLK1 as a hard
+        // constant because the write side is disabled; leaving that constant
+        // folded would leave both CLKIN sinks disconnected and the initialized
+        // read data is zero on silicon.  Prefer a live clock already used by
+        // another M10K in this design (normally the system clock), then fall
+        // back to the first named top-level clock input.  This clock only
+        // services the physical read path; A1EN remains tied inactive, so it
+        // cannot turn a ROM into a writable memory.
+        NetInfo *async_read_clock = nullptr;
+        auto select_async_read_clock = [&](NetInfo *net) {
+            if (net == nullptr || net->driver.cell == nullptr)
+                return;
+            async_read_clock = net;
+            // A raw MISTRAL_IB output is the pad-side net. Prefer the
+            // following ungated global clock buffer when one exists; this is
+            // the same Q net used by ordinary clocked M10Ks.
+            if (net->driver.cell->type == id_MISTRAL_IB && net->driver.port == id_O) {
+                for (const auto &user : net->users) {
+                    if (user.cell->type != id_MISTRAL_CLKBUF || user.port != id_A)
+                        continue;
+                    NetInfo *buffered = user.cell->getPort(id_Q);
+                    if (buffered != nullptr && buffered->driver.cell == user.cell) {
+                        async_read_clock = buffered;
+                        break;
+                    }
+                }
+            }
+        };
+
+        // Normalize TDP cells before looking for a shared clock.  The second
+        // pass below retains the existing per-cell validation and mapping.
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
             if (ci->type == id_MISTRAL_M10K_TDP) {
-                // Both SDP and TDP occupy one existing physical M10K BEL.
                 ci->type = id_MISTRAL_M10K;
                 ci->params[id_CFG_TDP] = 1;
             }
+        }
+        for (auto &cell : ctx->cells) {
+            CellInfo *ci = cell.second.get();
+            if (ci->type != id_MISTRAL_M10K)
+                continue;
+            for (IdString port : {id_CLK1, id_CLK2}) {
+                NetInfo *net = ci->getPort(port);
+                if (net == nullptr || net == gnd_net || net == vcc_net ||
+                    ci->get_pin_state(port) == PIN_0 || ci->get_pin_state(port) == PIN_1)
+                    continue;
+                if (net->driver.cell != nullptr) {
+                    select_async_read_clock(net);
+                    break;
+                }
+            }
+            if (async_read_clock != nullptr)
+                break;
+        }
+        if (async_read_clock == nullptr) {
+            // The top-level input buffer remains in ctx->cells after
+            // prepare_io(); its O output is the live pad-side clock net.
+            // Prefer a named clock, with the DE10-Nano reference pin as a
+            // name-independent fallback for constrained designs.
+            for (auto &cell : ctx->cells) {
+                CellInfo *ib = cell.second.get();
+                if (ib->type != id_MISTRAL_IB)
+                    continue;
+                NetInfo *out = ib->getPort(id_O);
+                if (out == nullptr || out->driver.cell != ib)
+                    continue;
+                std::string lower = ib->name.str(ctx);
+                std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) {
+                    return char(std::tolower(c));
+                });
+                bool named_clock = lower.find("clk") != std::string::npos ||
+                                   lower.find("clock") != std::string::npos;
+                bool reference_pin = str_or_default(ib->attrs, id_LOC, "") == "PIN_V11";
+                if (named_clock || reference_pin) {
+                    select_async_read_clock(out);
+                    break;
+                }
+            }
+        }
+
+        for (auto &cell : ctx->cells) {
+            CellInfo *ci = cell.second.get();
             if (ci->type != id_MISTRAL_M10K)
                 continue;
             bool tdp = bool_or_default(ci->params, id_CFG_TDP, false);
@@ -1825,7 +1906,9 @@ struct MistralPacker
                 // A read-only async memory has no write edge to route.  Its
                 // mapper supplies an inactive A1EN and a folded constant
                 // CLK1; accepting that shape avoids fabricating a clock just
-                // to feed an unused write half of the M10K.
+                // to feed an unused write half of the M10K.  The physical
+                // flow-through read path nevertheless needs a live clock
+                // tree, so borrow the design's active clock below.
                 bool clk1_constant = ci->get_pin_state(id_CLK1) == PIN_0 || ci->get_pin_state(id_CLK1) == PIN_1;
                 bool a1en_low = ci->getPort(id_A1EN) == gnd_net || ci->get_pin_state(id_A1EN) == PIN_0;
                 bool a1en_high = ci->getPort(id_A1EN) == vcc_net || ci->get_pin_state(id_A1EN) == PIN_1;
@@ -1833,6 +1916,15 @@ struct MistralPacker
                 if (!(async_read && clk1_constant && write_disabled))
                     log_error("M10K '%s' requires a connected %s clock.\n", ctx->nameOf(ci),
                               "CLK1");
+                if (async_read) {
+                    if (async_read_clock == nullptr)
+                        log_error("M10K '%s': read-only asynchronous mode requires a live design clock.\n",
+                                  ctx->nameOf(ci));
+                    else {
+                        ci->connectPort(id_CLK1, async_read_clock);
+                        ci->pin_data[id_CLK1].state = PIN_SIG;
+                    }
+                }
             }
             if (dual_clock && !clk2_signal && !clk2_constant)
                 log_error("M10K '%s' requires a connected CLK2 clock or an explicit constant on an unused read port.\n",
