@@ -18,7 +18,10 @@
  */
 
 #include <algorithm>
-#include <cctype>
+#include <cstring>
+#include <deque>
+#include <map>
+#include <set>
 
 #include "design_utils.h"
 #include "dsp.h"
@@ -1672,39 +1675,7 @@ struct MistralPacker
 
     void setup_m10ks()
     {
-        // Cyclone V flow-through M10K reads still require a running physical
-        // clock tree even when the logical mapper has no write clock.  The
-        // read-only shape emitted by memory_libmap spells CLK1 as a hard
-        // constant because the write side is disabled; leaving that constant
-        // folded would leave both CLKIN sinks disconnected and the initialized
-        // read data is zero on silicon.  Prefer a live clock already used by
-        // another M10K in this design (normally the system clock), then fall
-        // back to the first named top-level clock input.  This clock only
-        // services the physical read path; A1EN remains tied inactive, so it
-        // cannot turn a ROM into a writable memory.
-        NetInfo *async_read_clock = nullptr;
-        auto select_async_read_clock = [&](NetInfo *net) {
-            if (net == nullptr || net->driver.cell == nullptr)
-                return;
-            async_read_clock = net;
-            // A raw MISTRAL_IB output is the pad-side net. Prefer the
-            // following ungated global clock buffer when one exists; this is
-            // the same Q net used by ordinary clocked M10Ks.
-            if (net->driver.cell->type == id_MISTRAL_IB && net->driver.port == id_O) {
-                for (const auto &user : net->users) {
-                    if (user.cell->type != id_MISTRAL_CLKBUF || user.port != id_A)
-                        continue;
-                    NetInfo *buffered = user.cell->getPort(id_Q);
-                    if (buffered != nullptr && buffered->driver.cell == user.cell) {
-                        async_read_clock = buffered;
-                        break;
-                    }
-                }
-            }
-        };
-
-        // Normalize TDP cells before looking for a shared clock.  The second
-        // pass below retains the existing per-cell validation and mapping.
+        // Normalize TDP cells before the per-cell setup below.
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
             if (ci->type == id_MISTRAL_M10K_TDP) {
@@ -1712,48 +1683,114 @@ struct MistralPacker
                 ci->params[id_CFG_TDP] = 1;
             }
         }
-        for (auto &cell : ctx->cells) {
-            CellInfo *ci = cell.second.get();
-            if (ci->type != id_MISTRAL_M10K)
-                continue;
-            for (IdString port : {id_CLK1, id_CLK2}) {
-                NetInfo *net = ci->getPort(port);
-                if (net == nullptr || net == gnd_net || net == vcc_net ||
-                    ci->get_pin_state(port) == PIN_0 || ci->get_pin_state(port) == PIN_1)
+
+        // A read-only flow-through M10K has no logical write clock, but the
+        // physical read mux still needs a live clock tree. Select that clock
+        // from the read data's downstream timing domain rather than from the
+        // first unrelated M10K in cell iteration order. A cell-level override
+        // is available for an output with no registered consumer or with an
+        // intentionally shared/mixed clock domain.
+        const IdString async_read_clock_attr = ctx->id("MISTRAL_ASYNC_READ_CLOCK");
+        auto normalize_async_read_clock = [&](NetInfo *net) -> NetInfo * {
+            // Resolve a top-level input alias through its MISTRAL_IB PAD pin.
+            // The loop also protects against malformed alias/buffer cycles.
+            for (int depth = 0; net != nullptr && depth < 4; depth++) {
+                if (net->driver.cell == nullptr) {
+                    NetInfo *next = nullptr;
+                    for (const auto &user : net->users) {
+                        if (user.cell != nullptr && user.cell->type == id_MISTRAL_IB && user.port == id_PAD) {
+                            next = user.cell->getPort(id_O);
+                            break;
+                        }
+                    }
+                    if (next == nullptr)
+                        return nullptr;
+                    net = next;
                     continue;
-                if (net->driver.cell != nullptr) {
-                    select_async_read_clock(net);
-                    break;
+                }
+                if (net->driver.cell->type.in(id_GND, id_VCC, id_MISTRAL_CONST))
+                    return nullptr;
+                if (net->driver.cell->type == id_MISTRAL_IB && net->driver.port == id_O) {
+                    for (const auto &user : net->users) {
+                        if (user.cell->type != id_MISTRAL_CLKBUF || user.port != id_A)
+                            continue;
+                        NetInfo *buffered = user.cell->getPort(id_Q);
+                        if (buffered != nullptr && buffered->driver.cell == user.cell)
+                            return buffered;
+                    }
+                }
+                return net;
+            }
+            return nullptr;
+        };
+
+        auto find_async_read_clock = [&](CellInfo *ci, std::string &source) -> NetInfo * {
+            std::string requested = str_or_default(ci->attrs, async_read_clock_attr, "");
+            if (!requested.empty()) {
+                NetInfo *net = normalize_async_read_clock(ctx->getNetByAlias(ctx->id(requested)));
+                if (net == nullptr)
+                    log_error("M10K '%s': %s names no live clock net '%s'.\n", ctx->nameOf(ci),
+                              ctx->nameOf(async_read_clock_attr), requested.c_str());
+                source = "MISTRAL_ASYNC_READ_CLOCK attribute";
+                return net;
+            }
+
+            std::deque<NetInfo *> pending;
+            std::set<NetInfo *> visited;
+            for (const auto &port : ci->ports) {
+                const std::string name = port.first.str(ctx);
+                if ((port.first == id_B1DATA || name.find("B1DATA[") == 0) && port.second.net != nullptr)
+                    pending.push_back(port.second.net);
+            }
+
+            std::map<NetInfo *, int> scores;
+            while (!pending.empty()) {
+                NetInfo *net = pending.front();
+                pending.pop_front();
+                if (net == nullptr || !visited.insert(net).second)
+                    continue;
+                for (const auto &user : net->users) {
+                    if (user.cell == nullptr)
+                        continue;
+                    int clock_count = 0;
+                    TimingPortClass timing_class = ctx->getPortTimingClass(user.cell, user.port, clock_count);
+                    if (timing_class == TMG_REGISTER_INPUT) {
+                        for (int index = 0; index < clock_count; index++) {
+                            TimingClockingInfo clock_info = ctx->getPortClockingInfo(user.cell, user.port, index);
+                            NetInfo *clock = normalize_async_read_clock(user.cell->getPort(clock_info.clock_port));
+                            if (clock != nullptr)
+                                scores[clock]++;
+                        }
+                    } else if (timing_class == TMG_COMB_INPUT) {
+                        for (const auto &output : user.cell->ports) {
+                            if (output.second.type == PORT_OUT && output.second.net != nullptr)
+                                pending.push_back(output.second.net);
+                        }
+                    }
                 }
             }
-            if (async_read_clock != nullptr)
-                break;
-        }
-        if (async_read_clock == nullptr) {
-            // The top-level input buffer remains in ctx->cells after
-            // prepare_io(); its O output is the live pad-side clock net.
-            // Prefer a named clock, with the DE10-Nano reference pin as a
-            // name-independent fallback for constrained designs.
-            for (auto &cell : ctx->cells) {
-                CellInfo *ib = cell.second.get();
-                if (ib->type != id_MISTRAL_IB)
-                    continue;
-                NetInfo *out = ib->getPort(id_O);
-                if (out == nullptr || out->driver.cell != ib)
-                    continue;
-                std::string lower = ib->name.str(ctx);
-                std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) {
-                    return char(std::tolower(c));
-                });
-                bool named_clock = lower.find("clk") != std::string::npos ||
-                                   lower.find("clock") != std::string::npos;
-                bool reference_pin = str_or_default(ib->attrs, id_LOC, "") == "PIN_V11";
-                if (named_clock || reference_pin) {
-                    select_async_read_clock(out);
-                    break;
-                }
+
+            if (scores.empty()) {
+                source = "downstream consumer analysis";
+                return nullptr;
             }
-        }
+            int best_score = 0;
+            for (const auto &score : scores)
+                best_score = std::max(best_score, score.second);
+            std::vector<NetInfo *> best;
+            for (const auto &score : scores)
+                if (score.second == best_score)
+                    best.push_back(score.first);
+            std::sort(best.begin(), best.end(), [&](NetInfo *a, NetInfo *b) {
+                return std::strcmp(ctx->nameOf(a), ctx->nameOf(b)) < 0;
+            });
+            if (best.size() > 1)
+                log_warning("M10K '%s': downstream async-read clock domains tie; selecting '%s'. "
+                            "Set MISTRAL_ASYNC_READ_CLOCK to choose explicitly.\n",
+                            ctx->nameOf(ci), ctx->nameOf(best.front()));
+            source = best.size() > 1 ? "downstream consumer analysis (tie)" : "downstream consumer analysis";
+            return best.front();
+        };
 
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
@@ -1917,12 +1954,17 @@ struct MistralPacker
                     log_error("M10K '%s' requires a connected %s clock.\n", ctx->nameOf(ci),
                               "CLK1");
                 if (async_read) {
-                    if (async_read_clock == nullptr)
-                        log_error("M10K '%s': read-only asynchronous mode requires a live design clock.\n",
+                    std::string clock_source;
+                    NetInfo *read_clock = find_async_read_clock(ci, clock_source);
+                    if (read_clock == nullptr)
+                        log_error("M10K '%s': read-only asynchronous mode has no downstream clock domain; "
+                                  "connect CLK1 or set MISTRAL_ASYNC_READ_CLOCK to a live clock net.\n",
                                   ctx->nameOf(ci));
                     else {
-                        ci->connectPort(id_CLK1, async_read_clock);
+                        ci->connectPort(id_CLK1, read_clock);
                         ci->pin_data[id_CLK1].state = PIN_SIG;
+                        log_info("M10K '%s': async read clock '%s' selected from %s.\n", ctx->nameOf(ci),
+                                 ctx->nameOf(read_clock), clock_source.c_str());
                     }
                 }
             }

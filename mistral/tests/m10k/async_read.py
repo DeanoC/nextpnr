@@ -200,6 +200,9 @@ def main():
     readonly_case = output / "async-readonly"
     readonly_case.mkdir(exist_ok=True)
     route(args, qsf, readonly_case, readonly_design)
+    readonly_log = (readonly_case / "route.log").read_text()
+    assert ("async read clock 'FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q' "
+            "selected from downstream consumer analysis." in readonly_log), readonly_log
     readonly_report = json.loads((readonly_case / "timing.json").read_text())
     assert readonly_report["utilization"][CELL]["used"] == 1
     assert readonly_report["fmax"] and all(clock["achieved"] >= clock["constraint"] == 50
@@ -224,11 +227,85 @@ def main():
     assert re.search(r"^r \S+ " + re.escape(readonly_site + ":ENABLE.0") + r"$",
                      readonly_bitstream, re.MULTILINE), readonly_bitstream
     # The logical write clock is folded away, but the Cyclone V flow-through
-    # read path still needs a live physical clock tree.  The packer borrows
-    # the top-level reference clock when this fixture has no other M10K clock.
+    # read path still needs a live physical clock tree. The packer selects the
+    # q_sample consumer's buffered top-level clock for this fixture.
     for clock_pin in ("CLKIN.0", "CLKIN.1"):
         assert re.search(r"^r \S+ " + re.escape(readonly_site + ":" + clock_pin) + r"$",
                          readonly_bitstream, re.MULTILINE), clock_pin
+
+    # Put an unrelated, clocked M10K ahead of the ROM by name and feed it a
+    # second buffered copy of the reference clock. The ROM result still ends
+    # in q_sample's original clock domain; a global first-M10K scan would
+    # borrow capture_clock instead. This is the regression for per-cell
+    # downstream clock selection.
+    domain_design = copy.deepcopy(readonly_design)
+    domain_module = domain_design["modules"]["top"]
+    domain_cells = domain_module["cells"]
+    domain_nets = domain_module["netnames"]
+
+    signal_ids = [bit for net in domain_nets.values() for bit in net["bits"] if isinstance(bit, int)]
+    next_signal = max(signal_ids) + 1
+    capture_clock_bit = next_signal
+    capture_data_bits = list(range(next_signal + 1, next_signal + 11))
+    capture_sample_bits = list(range(next_signal + 11, next_signal + 21))
+
+    clock_buffer_name = next(name for name, cell in domain_cells.items() if cell["type"] == "MISTRAL_CLKBUF")
+    capture_buffer = copy.deepcopy(domain_cells[clock_buffer_name])
+    capture_buffer["connections"]["Q"] = [capture_clock_bit]
+    capture_buffer["attributes"] = {}
+
+    capture_cell = copy.deepcopy(domain_cells[name])
+    capture_cell["parameters"].pop("CFG_ASYNC_READ", None)
+    capture_cell["connections"]["B1EN"] = ["1"]
+    capture_cell["port_directions"]["B1EN"] = "input"
+    capture_cell["connections"]["CLK1"] = [capture_clock_bit]
+    capture_cell["connections"]["B1DATA"] = capture_data_bits
+    capture_cell["attributes"].pop("NEXTPNR_BEL", None)
+
+    sample_template = next(cell for cell in domain_cells.values() if cell["type"] == "MISTRAL_FF")
+    capture_samples = {}
+    for index, (data_bit, sample_bit) in enumerate(zip(capture_data_bits, capture_sample_bits)):
+        sample = copy.deepcopy(sample_template)
+        sample["connections"]["CLK"] = [capture_clock_bit]
+        sample["connections"]["DATAIN"] = [data_bit]
+        sample["connections"]["Q"] = [sample_bit]
+        sample["attributes"] = {}
+        capture_samples[f"capture_sample_{index}"] = sample
+
+    # JSON frontend cells are ordered by name, so "capture" is the first
+    # M10K in nextpnr's cell map regardless of the source fixture's order.
+    domain_cells = {"capture": capture_cell, "capture_clock": capture_buffer, **capture_samples, **domain_cells}
+    domain_module["cells"] = domain_cells
+    domain_nets["capture_clock"] = {"hide_name": 0, "bits": [capture_clock_bit], "attributes": {}}
+    domain_nets["capture_data"] = {"hide_name": 0, "bits": capture_data_bits, "attributes": {}}
+    for index, bit in enumerate(capture_sample_bits):
+        domain_nets[f"capture_sample_{index}"] = {"hide_name": 0, "bits": [bit], "attributes": {}}
+
+    domain_case = output / "async-clock-domain"
+    domain_case.mkdir(exist_ok=True)
+    route(args, qsf, domain_case, domain_design)
+    domain_log = (domain_case / "route.log").read_text()
+    assert ("M10K 'ram': async read clock 'FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q' "
+            "selected from downstream consumer analysis." in domain_log), domain_log
+    domain_report = json.loads((domain_case / "timing.json").read_text())
+    assert domain_report["utilization"][CELL]["used"] == 2
+    assert domain_report["fmax"] and all(clock["achieved"] >= clock["constraint"] == 50
+                                            for clock in domain_report["fmax"].values())
+    domain_routed = json.loads((domain_case / "routed.json").read_text())["modules"]["top"]["cells"]
+    assert domain_routed["ram"]["connections"]["CLK1"] != domain_routed["capture"]["connections"]["CLK1"]
+
+    # The cell attribute is an explicit escape hatch for a deliberately
+    # shared or otherwise ambiguous consumer graph. It names the net alias,
+    # and the packer resolves it through the live clock buffer.
+    override_design = copy.deepcopy(domain_design)
+    override_design["modules"]["top"]["cells"]["ram"]["attributes"]["MISTRAL_ASYNC_READ_CLOCK"] = "capture_clock"
+    override_case = output / "async-clock-override"
+    override_case.mkdir(exist_ok=True)
+    route(args, qsf, override_case, override_design)
+    override_log = (override_case / "route.log").read_text()
+    assert "M10K 'ram': async read clock 'capture_clock' selected from MISTRAL_ASYNC_READ_CLOCK attribute." in override_log
+    override_routed = json.loads((override_case / "routed.json").read_text())["modules"]["top"]["cells"]
+    assert override_routed["ram"]["connections"]["CLK1"] == override_routed["capture"]["connections"]["CLK1"]
 
     # A nonconstant mask must keep the normal byte-enable routes. Reuse a
     # live read-address bit for one lane and tie the other low so this case
