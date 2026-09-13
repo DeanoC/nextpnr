@@ -307,6 +307,59 @@ def main():
     override_routed = json.loads((override_case / "routed.json").read_text())["modules"]["top"]["cells"]
     assert override_routed["ram"]["connections"]["CLK1"] == override_routed["capture"]["connections"]["CLK1"]
 
+    # A read-only ROM whose data reaches only an output has no registered
+    # consumer domain. The removed board-pin fallback must become an explicit
+    # packing error instead of silently selecting an unrelated clock.
+    no_domain_design = copy.deepcopy(readonly_design)
+    no_domain_module = no_domain_design["modules"]["top"]
+    no_domain_cells = no_domain_module["cells"]
+    no_domain_ram = no_domain_cells[name]
+    led_cell = next(cell for cell in no_domain_cells.values() if cell["type"] == "MISTRAL_OB")
+    no_domain_ram["connections"]["B1DATA"][0] = led_cell["connections"]["I"][0]
+    sample_name = next(cell_name for cell_name, cell in no_domain_cells.items()
+                       if cell_name.startswith("q_sample_") and cell["type"] == "MISTRAL_FF")
+    no_domain_cells.pop(sample_name)
+    no_domain_case = output / "async-clock-no-domain"
+    no_domain_case.mkdir(exist_ok=True)
+    no_domain_fixture = no_domain_case / "synth.json"
+    no_domain_fixture.write_text(json.dumps(no_domain_design))
+    no_domain_result = subprocess.run(
+        [str(args.nextpnr.resolve()), "--device", DEVICE, "--freq", "50",
+         "--qsf", str(qsf), "--sdc", str(args.sdc.resolve()),
+         "--json", str(no_domain_fixture)], capture_output=True, text=True, timeout=120)
+    no_domain_log = no_domain_result.stdout + no_domain_result.stderr
+    (no_domain_case / "route.log").write_text(no_domain_log)
+    assert no_domain_result.returncode != 0, "async read without a consumer domain must fail"
+    assert "has no downstream clock domain" in no_domain_log, no_domain_log
+
+    # Add one registered consumer on each of the two domains. The equal score
+    # must produce the documented warning and choose the name-ordered clock,
+    # rather than depending on cell-map or user-list iteration order.
+    tie_design = copy.deepcopy(domain_design)
+    tie_module = tie_design["modules"]["top"]
+    tie_cells = tie_module["cells"]
+    tie_nets = tie_module["netnames"]
+    tie_signal_ids = [bit for net in tie_nets.values() for bit in net["bits"] if isinstance(bit, int)]
+    tie_sample_bit = max(tie_signal_ids) + 1
+    tie_sample_name = next(cell_name for cell_name, cell in tie_cells.items()
+                           if cell_name.startswith("q_sample_") and cell["type"] == "MISTRAL_FF")
+    tie_sample = copy.deepcopy(tie_cells[tie_sample_name])
+    tie_sample["connections"]["CLK"] = [capture_clock_bit]
+    tie_sample["connections"]["DATAIN"] = [tie_cells[name]["connections"]["B1DATA"][0]]
+    tie_sample["connections"]["Q"] = [tie_sample_bit]
+    tie_sample["attributes"] = {}
+    tie_cells["tie_sample"] = tie_sample
+    tie_nets["tie_sample"] = {"hide_name": 0, "bits": [tie_sample_bit], "attributes": {}}
+    tie_case = output / "async-clock-tie"
+    tie_case.mkdir(exist_ok=True)
+    route(args, qsf, tie_case, tie_design)
+    tie_log = (tie_case / "route.log").read_text()
+    assert "downstream async-read clock domains tie; selecting 'FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q'." in tie_log, tie_log
+    assert ("M10K 'ram': async read clock 'FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q' "
+            "selected from downstream consumer analysis (tie)." in tie_log), tie_log
+    tie_routed = json.loads((tie_case / "routed.json").read_text())["modules"]["top"]["cells"]
+    assert tie_routed[name]["connections"]["CLK1"] == tie_routed[tie_sample_name]["connections"]["CLK"]
+
     # A nonconstant mask must keep the normal byte-enable routes. Reuse a
     # live read-address bit for one lane and tie the other low so this case
     # covers both dynamic and constant-low inputs without changing geometry.
