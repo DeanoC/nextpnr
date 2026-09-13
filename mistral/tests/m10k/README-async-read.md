@@ -29,6 +29,17 @@ enabled, but no fabric route is emitted for those constants. A dynamic or low
 byte mask still routes through `BYTEENABLEA`. No Mistral geometry or physical
 table changes are needed.
 
+When the mapper folds a read-only cell's logical write clock to a constant, the
+packer selects a live clock separately for each M10K. It follows the read data
+through combinational consumers and scores the clocks on registered inputs, so
+a capture buffer in another clock domain cannot determine the ROM clock by
+cell iteration order. The selected net and selection method are logged. A
+cell with no registered downstream consumer must set the
+`MISTRAL_ASYNC_READ_CLOCK` attribute to a live net alias; the same attribute
+can override a deliberately mixed or tied set of consumer domains. Ties are
+resolved deterministically with a warning that names the override. There is no
+board-specific pin fallback in this generic path.
+
 Timing classifies `B1ADDR` as a combinational input and `B1DATA` as a
 combinational output. Since Mistral has no characterized Cyclone V M10K
 address-to-data arc, the host timing model uses a conservative 1.5 ns estimate;
@@ -52,7 +63,8 @@ python3 mistral/tests/m10k/async_read.py \
 The locked Yosys tree still describes M10K inference with `clocks 1 1`, so
 this nextpnr change does not alter Yosys or `toolchain.lock`. A follow-up
 Yosys mapper change can emit the same cell shape without another backend
-change. A separate DE10-Nano diagnostic loaded a full ZX81 image with the same
-async-ROM shape and returned the expected `0/0` response after keyboard input;
-that result is diagnostic evidence for the selected nextpnr/Mistral build,
-not a release artifact.
+change. The 50 MHz result above is a focused host-fixture check, not a
+full-system frequency limit. Full-core closure is placement, router, and seed
+dependent; any reported value such as the ZX81 diagnostic's 50.98 MHz must be
+identified with its exact recipe and seed. Kit bring-up remains a separate
+exact-artifact validation.
