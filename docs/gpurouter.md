@@ -59,6 +59,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `loadPenalty`, `pipAdder` | 0, 0 | optional analogue-model approximations (ns per existing branch, ns per pip) |
 | `repairRounds`, `repairSlack`, `repairBand`, `repairImproveRounds` | 10, 0 ps, 300 ps, 4 | timing repair (below) |
 | `repairDisplace`, `repairDisplaceMargin` | true, 0 ps | a stuck repair may displace frozen arcs with at least this much more slack |
+| `repairCongWeight` | 1.0 | present-congestion weight used when re-routing a same-band peer group (0 disables) |
 | `cpuLaneNets` | 0 | batches of at most this many nets run on the host backend (0: never) |
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
@@ -118,9 +119,18 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    *soft*: when a repair finds no route at all, it is retried ignoring other
    nets' soft reservations, and if every frozen arc it would displace has at
    least `repairDisplaceMargin` more slack, those arcs are unfrozen and left
-   to the negotiation loop; otherwise the route is given up. Rounds continue
-   while the worst slack improves; the best state is snapshotted and
-   restored if a later round made it worse.
+   to the negotiation loop; otherwise the failed arc is kept for a
+   *peer-group* pass. That pass groups a failed repair with frozen arcs in
+   the same slack band (`repairBand`) that occupy its minimum-delay wires,
+   rips the group, and re-routes it worst-slack-first at pure delay plus
+   `repairCongWeight` present congestion so later peers can share a short
+   trunk at 2× cost instead of being blocked by a hard reservation. The
+   group is frozen only after every member has been attempted. Each round's
+   worst slack is the design WNS over every sink, including frozen arcs; a
+   freeze that still fails slack is unfrozen and re-repaired. Rounds continue
+   while that WNS improves. If a round does not improve and the WNS still
+   fails the request, one reversed-order retry is attempted from the best
+   snapshot; the best state is restored if a later round made it worse.
 7. **Binding.** The trees are bound into the Arch with `bindWire`/`bindPip`;
    anything the Arch rejects is negotiated again. router1 then runs as the
    final legality check exactly as after router2.
@@ -262,7 +272,7 @@ one-net-at-a-time repair run a handful of blocks.
   times per attempt, bounded by the wire count.
 - The graph is flattened on every run. Caching the CSR on disk keyed by the
   device would remove most of the fixed setup cost for small designs.
-- Pong shows router1 still ahead by about 4 %; the repair phase stops when
-  the worst slack stops improving and some repairs fail because the wires
-  they need are already reserved, so a smarter repair order or unfreezing
-  is the next step.
+- Pong remains about 4 % behind router1 on the documented seed-1 fixture.
+  Repair decisions use the design WNS, including frozen sinks, so freeze-first
+  cannot hide a failing critical path. A reversed-order retry still runs when
+  a round does not improve and that WNS fails the request.
