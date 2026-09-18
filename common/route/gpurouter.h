@@ -67,6 +67,12 @@ struct GpuRouterCfg
     // arcs of other nets with at least repair_displace_margin (ps) more slack
     bool repair_displace;
     float repair_displace_margin;
+    // When a later same-band repair is blocked by an already-frozen peer,
+    // those nets are ripped together and re-routed at pure delay plus this
+    // present-congestion weight so they share short wires instead of the
+    // first freeze leaving the rest unroutable. 1.0 makes an occupied wire
+    // cost 2x delay. 0 disables the peer-group pass.
+    float repair_cong_weight;
     // Batches of at most this many nets run on the host backend (0 = never)
     int cpu_lane_nets;
     // Frontier entries expanded per parallel step: at least expand_k and at

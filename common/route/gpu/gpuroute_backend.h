@@ -84,6 +84,7 @@ struct RouteParams
     int expand_div = 0;    // if > 0, also expand at least frontier_size / expand_div entries
     int use_bb = 1;        // honour task bounding boxes
     int ignore_soft = 0;   // treat other nets' soft reservations as free (repair displacement)
+    int ignore_hist = 0;   // drop history cost (peer-group present-congestion only)
     int max_probe = 512;   // hash table probe limit
 };
 
