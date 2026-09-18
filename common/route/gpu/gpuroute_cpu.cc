@@ -266,7 +266,8 @@ class CpuBackend : public Backend
                             if (rsv != -1 && (rsv & ~RESERVED_SOFT) != task.net &&
                                 !(p.ignore_soft && (rsv & RESERVED_SOFT)))
                                 continue;
-                            const float hist_c = 1.0f + arc.crit_weight * (hist_[v] - 1.0f);
+                            const float hist_c =
+                                    p.ignore_hist ? 1.0f : 1.0f + arc.crit_weight * (hist_[v] - 1.0f);
                             const float pres = 1.0f + (float)occ_[v] * p.curr_cong_weight * arc.crit_weight;
                             int bdx = vx - task.cx, bdy = vy - task.cy;
                             bdx = bdx < 0 ? -bdx : bdx;

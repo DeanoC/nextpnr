@@ -59,7 +59,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `loadPenalty`, `pipAdder` | 0, 0 | optional analogue-model approximations (ns per existing branch, ns per pip) |
 | `repairRounds`, `repairSlack`, `repairBand`, `repairImproveRounds` | 10, 0 ps, 300 ps, 4 | timing repair (below) |
 | `repairDisplace`, `repairDisplaceMargin` | true, 0 ps | a stuck repair may displace frozen arcs with at least this much more slack |
-| `repairCongWeight` | 1.0 | present-congestion weight used when re-routing a same-band peer group (0 disables) |
+| `repairCongWeight` | 1.0 | present-congestion weight used when re-routing a same-band peer group (0 disables). History cost is ignored in that pass, so an occupied wire costs `(1 + occ * weight)` times delay. |
 | `cpuLaneNets` | 0 | batches of at most this many nets run on the host backend (0: never) |
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
@@ -123,11 +123,13 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    *peer-group* pass. That pass groups a failed repair with frozen arcs in
    the same slack band (`repairBand`) that occupy its minimum-delay wires,
    rips the group, and re-routes it worst-slack-first at pure delay plus
-   `repairCongWeight` present congestion so later peers can share a short
-   trunk at 2× cost instead of being blocked by a hard reservation. The
-   group is frozen only after every member has been attempted. Each round's
-   worst slack is the design WNS over every sink, including frozen arcs; a
-   freeze that still fails slack is unfrozen and re-repaired. Rounds continue
+   `repairCongWeight` present congestion (history cost ignored) so later
+   peers can share a short trunk at 2× cost instead of being blocked by a
+   hard reservation. The group is frozen only after every member has been
+   attempted. Each round's worst slack is the design WNS over every sink,
+   including frozen arcs; a freeze that still fails the slack request is
+   unfrozen and re-repaired, while a freeze that already meets the request
+   is left reserved even if it sits inside the Fmax improvement band. Rounds continue
    while that WNS improves. If a round does not improve and the WNS still
    fails the request, one reversed-order retry is attempted from the best
    snapshot; the best state is restored if a later round made it worse.

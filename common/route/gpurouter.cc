@@ -856,6 +856,7 @@ struct GpuRouter
         p.expand_div = cfg.expand_div;
         p.use_bb = use_bb ? 1 : 0;
         p.ignore_soft = ignore_soft ? 1 : 0;
+        p.ignore_hist = repair_cong ? 1 : 0;
         p.max_probe = 512;
         return p;
     }
@@ -1771,7 +1772,9 @@ struct GpuRouter
                         if (arcs[j].pre_routed)
                             continue;
                         if (arcs[j].frozen) {
-                            if (!unfreeze_failing)
+                            // Keep a freeze that already meets the request;
+                            // only rip arcs whose slack still fails.
+                            if (!unfreeze_failing || slack >= cfg.repair_slack)
                                 continue;
                             arcs[j].frozen = false;
                             unfrozen_nets.insert(int(i));
