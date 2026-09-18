@@ -472,6 +472,19 @@ struct GpuRouter
         ad.pre_routed = false;
     }
 
+    void restore_net(int net, const NetData &saved)
+    {
+        auto &nd = nets.at(net);
+        while (!nd.wires.empty())
+            unbind_internal(nd, nd.wires.begin()->first);
+        nd = saved;
+        for (auto &w : nd.wires) {
+            occ[w.first]++;
+            mark_dirty(w.first);
+        }
+        flush_state();
+    }
+
     // The pip behind CSR edge `edge`: the (edge - out_off[parent])-th downhill
     // pip of the parent wire, in the same enumeration order the graph was
     // built from, so parallel pips between one wire pair stay distinct.
@@ -1572,8 +1585,11 @@ struct GpuRouter
         for (int i = 0; i < n; i++)
             count[find(i)]++;
         float band_hi = std::numeric_limits<float>::lowest();
-        for (auto &f : failed)
+        pool<std::pair<int, std::pair<int, int>>> failed_arcs;
+        for (auto &f : failed) {
             band_hi = std::max(band_hi, f.slack);
+            failed_arcs.insert({f.net, f.arc});
+        }
         band_hi += cfg.repair_band;
 
         int repaired = 0;
@@ -1603,7 +1619,11 @@ struct GpuRouter
                     for (size_t j = 0; j < arcs.size(); j++) {
                         if (arcs[j].pre_routed)
                             continue;
-                        if (arcs[j].frozen || !arcs[j].routed)
+                        // Include delay-only failures even after their legal
+                        // tree was restored, otherwise this pass only sees
+                        // frozen/unrouted peers and rips them alone.
+                        if (arcs[j].frozen || !arcs[j].routed ||
+                            failed_arcs.count({i, {usr.index.idx(), int(j)}}))
                             add(slack, i, {usr.index.idx(), int(j)});
                     }
                 }
@@ -1621,6 +1641,9 @@ struct GpuRouter
             }
             for (int o : touched)
                 rebuild_soft_reservations(o);
+            dict<int, NetData> saved;
+            for (int o : touched)
+                saved[o] = nets.at(o);
             for (auto &m : members) {
                 int net = std::get<1>(m);
                 auto arc = std::get<2>(m);
@@ -1636,16 +1659,25 @@ struct GpuRouter
                 by_net[net].push_back(std::get<2>(m));
             }
             std::vector<std::pair<int, std::pair<int, int>>> routed;
+            pool<int> restored;
             for (int net : net_order) {
                 auto unrouted = route_repair_net(net, by_net[net]);
                 pool<std::pair<int, int>> u;
                 for (auto &a : unrouted)
                     u.insert(a);
+                bool any_failed = false;
                 for (auto &a : by_net[net]) {
                     auto &ad = nets.at(net).arcs.at(a.first).at(a.second);
-                    if (!u.count(a) && ad.routed)
-                        routed.push_back({net, a});
+                    if (u.count(a) || !ad.routed)
+                        any_failed = true;
                 }
+                if (any_failed) {
+                    restore_net(net, saved.at(net));
+                    restored.insert(net);
+                    continue;
+                }
+                for (auto &a : by_net[net])
+                    routed.push_back({net, a});
             }
             for (auto &r : routed) {
                 auto &ad = nets.at(r.first).arcs.at(r.second.first).at(r.second.second);
@@ -1818,6 +1850,7 @@ struct GpuRouter
             repair_mode = true;
             for (auto &t : tasks) {
                 auto &nd = nets.at(t.net);
+                NetData saved = nd;
                 for (auto &a : t.arcs)
                     ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
                 flush_state();
@@ -1854,9 +1887,17 @@ struct GpuRouter
                     for (auto &a : r.arcs)
                         unrouted.insert(a);
                 NetInfo *ni = nets_by_udata.at(t.net);
+                bool any_failed = false;
                 for (auto &a : t.arcs) {
                     auto &ad = nd.arcs.at(a.first).at(a.second);
-                    if (unrouted.count(a) || !ad.routed) {
+                    if (unrouted.count(a) || !ad.routed)
+                        any_failed = true;
+                }
+                if (any_failed) {
+                    // Delay-only search left the net illegal. Put the previous
+                    // legal tree back so re-negotiation does not abort.
+                    restore_net(t.net, saved);
+                    for (auto &a : t.arcs) {
                         failed_repairs++;
                         FailedRepair rec;
                         rec.slack = tmg.get_setup_slack(CellPortKey(ni->users.at(store_index<PortRef>(a.first))));
@@ -1866,12 +1907,14 @@ struct GpuRouter
                         if (fnd != soft_blockers.end())
                             rec.blockers = fnd->second;
                         failed_records.push_back(std::move(rec));
-                        continue;
                     }
-                    freeze_arc(t.net, ad);
-                    repaired++;
+                } else {
+                    for (auto &a : t.arcs) {
+                        freeze_arc(t.net, nd.arcs.at(a.first).at(a.second));
+                        repaired++;
+                    }
+                    flush_state();
                 }
-                flush_state();
             }
             if (failed_repairs > 0)
                 repaired += repair_peer_groups(failed_records);
