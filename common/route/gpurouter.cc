@@ -1818,6 +1818,7 @@ struct GpuRouter
             repair_mode = true;
             for (auto &t : tasks) {
                 auto &nd = nets.at(t.net);
+                NetData saved = nd;
                 for (auto &a : t.arcs)
                     ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
                 flush_state();
@@ -1854,9 +1855,24 @@ struct GpuRouter
                     for (auto &a : r.arcs)
                         unrouted.insert(a);
                 NetInfo *ni = nets_by_udata.at(t.net);
+                bool any_failed = false;
                 for (auto &a : t.arcs) {
                     auto &ad = nd.arcs.at(a.first).at(a.second);
-                    if (unrouted.count(a) || !ad.routed) {
+                    if (unrouted.count(a) || !ad.routed)
+                        any_failed = true;
+                }
+                if (any_failed) {
+                    // Delay-only search left the net illegal. Put the previous
+                    // legal tree back so re-negotiation does not abort.
+                    while (!nd.wires.empty())
+                        unbind_internal(nd, nd.wires.begin()->first);
+                    nd = saved;
+                    for (auto &w : nd.wires) {
+                        occ[w.first]++;
+                        mark_dirty(w.first);
+                    }
+                    flush_state();
+                    for (auto &a : t.arcs) {
                         failed_repairs++;
                         FailedRepair rec;
                         rec.slack = tmg.get_setup_slack(CellPortKey(ni->users.at(store_index<PortRef>(a.first))));
@@ -1866,12 +1882,14 @@ struct GpuRouter
                         if (fnd != soft_blockers.end())
                             rec.blockers = fnd->second;
                         failed_records.push_back(std::move(rec));
-                        continue;
                     }
-                    freeze_arc(t.net, ad);
-                    repaired++;
+                } else {
+                    for (auto &a : t.arcs) {
+                        freeze_arc(t.net, nd.arcs.at(a.first).at(a.second));
+                        repaired++;
+                    }
+                    flush_state();
                 }
-                flush_state();
             }
             if (failed_repairs > 0)
                 repaired += repair_peer_groups(failed_records);

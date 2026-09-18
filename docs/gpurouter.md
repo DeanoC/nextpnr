@@ -120,7 +120,9 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    nets' soft reservations, and if every frozen arc it would displace has at
    least `repairDisplaceMargin` more slack, those arcs are unfrozen and left
    to the negotiation loop; otherwise the failed arc is kept for a
-   *peer-group* pass. That pass groups a failed repair with frozen arcs in
+   *peer-group* pass. A delay-only attempt that still cannot route restores
+   that net's previous legal tree so re-negotiation does not abort on an
+   unrouted arc. That pass groups a failed repair with frozen arcs in
    the same slack band (`repairBand`) that occupy its minimum-delay wires,
    rips the group, and re-routes it worst-slack-first at pure delay plus
    `repairCongWeight` present congestion (history cost ignored) so later
