@@ -1572,8 +1572,11 @@ struct GpuRouter
         for (int i = 0; i < n; i++)
             count[find(i)]++;
         float band_hi = std::numeric_limits<float>::lowest();
-        for (auto &f : failed)
+        pool<std::pair<int, std::pair<int, int>>> failed_arcs;
+        for (auto &f : failed) {
             band_hi = std::max(band_hi, f.slack);
+            failed_arcs.insert({f.net, f.arc});
+        }
         band_hi += cfg.repair_band;
 
         int repaired = 0;
@@ -1603,7 +1606,11 @@ struct GpuRouter
                     for (size_t j = 0; j < arcs.size(); j++) {
                         if (arcs[j].pre_routed)
                             continue;
-                        if (arcs[j].frozen || !arcs[j].routed)
+                        // Include delay-only failures even after their legal
+                        // tree was restored, otherwise this pass only sees
+                        // frozen/unrouted peers and rips them alone.
+                        if (arcs[j].frozen || !arcs[j].routed ||
+                            failed_arcs.count({i, {usr.index.idx(), int(j)}}))
                             add(slack, i, {usr.index.idx(), int(j)});
                     }
                 }
