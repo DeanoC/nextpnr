@@ -17,6 +17,7 @@
  */
 
 #include <algorithm>
+#include <sstream>
 
 #include "log.h"
 #include "nextpnr.h"
@@ -244,9 +245,99 @@ IdStringList Arch::getBelName(BelId bel) const
     return IdStringList(ids);
 }
 
+void Arch::note_reserved_bel(const std::string &name)
+{
+    BelId bel = getCtx()->getBelByNameStr(name);
+    if (bel == BelId())
+        log_error("FES_RESERVED_BEL '%s' is not a device BEL.\n", name.c_str());
+    fes_reserved_bels.insert(bel);
+    log_info("FES reserved BEL %s\n", name.c_str());
+}
+
+void Arch::note_reserved_rect(const std::string &spec)
+{
+    std::istringstream in(spec);
+    int x0, y0, x1, y1;
+    if (!(in >> x0 >> y0 >> x1 >> y1))
+        log_error("FES_RESERVED_RECT '%s' must be 'x0 y0 x1 y1'.\n", spec.c_str());
+    if (x1 < x0 || y1 < y0)
+        log_error("FES_RESERVED_RECT '%s' is empty.\n", spec.c_str());
+    int count = 0;
+    for (BelId bel : getBels()) {
+        Loc loc = getBelLocation(bel);
+        if (loc.x < x0 || loc.x > x1 || loc.y < y0 || loc.y > y1)
+            continue;
+        fes_reserved_bels.insert(bel);
+        ++count;
+    }
+    fes_rect_x0 = x0;
+    fes_rect_y0 = y0;
+    fes_rect_x1 = x1;
+    fes_rect_y1 = y1;
+    fes_has_reserved_rect = true;
+    log_info("FES reserved rect %d %d %d %d (%d bels)\n", x0, y0, x1, y1, count);
+}
+
+bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_invalid) const
+{
+    if (fes_reserved_bels.empty() || cell == nullptr)
+        return true;
+    const bool reserved = fes_reserved_bels.count(bel);
+    const bool slot_cell = cell->attrs.count(id("FES_SLOT")) && cell->attrs.at(id("FES_SLOT")).as_bool();
+    bool bel_locked = false;
+    if (cell->attrs.count(id("BEL"))) {
+        const Property &locked = cell->attrs.at(id("BEL"));
+        const std::string name = locked.is_string ? locked.as_string() : locked.to_string();
+        bel_locked = (name == getBelName(bel).str(getCtx()));
+    }
+    if (reserved && !(slot_cell || bel_locked)) {
+        if (explain_invalid)
+            log_info("FES reserved BEL %s rejects unconstrained cell %s.\n", getBelName(bel).str(getCtx()).c_str(),
+                     nameOf(cell));
+        return false;
+    }
+    if (slot_cell && !reserved) {
+        if (explain_invalid)
+            log_info("FES slot cell %s must stay in the reserved region (tried %s).\n", nameOf(cell),
+                     getBelName(bel).str(getCtx()).c_str());
+        return false;
+    }
+    return true;
+}
+
 bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
 {
     auto &data = bel_data(bel);
+    if (data.bound && !fes_placement_allowed(bel, data.bound, explain_invalid))
+        return false;
+    if (data.type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB, id_MISTRAL_FF)) {
+        bool any_locked = false;
+        auto occupant_ok = [&](BelId other) {
+            CellInfo *cell = getBoundBelCell(other);
+            if (cell == nullptr)
+                return true;
+            if (cell->belStrength < STRENGTH_LOCKED)
+                return false;
+            any_locked = true;
+            return true;
+        };
+        const auto &alm_data = labs.at(data.lab_data.lab).alms.at(data.lab_data.alm);
+        if (occupant_ok(alm_data.lut_bels[0]) && occupant_ok(alm_data.lut_bels[1]) && occupant_ok(alm_data.ff_bels[0]) &&
+            occupant_ok(alm_data.ff_bels[1]) && occupant_ok(alm_data.ff_bels[2]) && occupant_ok(alm_data.ff_bels[3]) &&
+            any_locked)
+            return true;
+        if (data.bound == nullptr) {
+            const auto &lab_data = labs.at(data.lab_data.lab);
+            for (const auto &alm : lab_data.alms) {
+                for (BelId other : {alm.lut_bels[0], alm.lut_bels[1], alm.ff_bels[0], alm.ff_bels[1], alm.ff_bels[2],
+                                    alm.ff_bels[3]}) {
+                    CellInfo *cell = getBoundBelCell(other);
+                    if (cell != nullptr && cell->belStrength >= STRENGTH_LOCKED)
+                        return true;
+                }
+            }
+        }
+    }
     if (data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
                      id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) &&
         data.bound) {
@@ -512,17 +603,20 @@ void Arch::assign_default_pinmap(CellInfo *cell)
         return; // M10Ks always have a custom pinmap
     for (auto &port : cell->ports) {
         auto &pinmap = cell->pin_data[port.first].bel_pins;
+        if ((is_comb_cell(cell->type) || cell->type.in(id_MISTRAL_BUF, id_MISTRAL_MLAB)) &&
+            comb_pinmap.count(port.first)) {
+            pinmap = {comb_pinmap.at(port.first)};
+            continue;
+        }
         if (!pinmap.empty())
             continue; // already mapped
-        if (is_comb_cell(cell->type) && comb_pinmap.count(port.first))
-            pinmap.push_back(comb_pinmap.at(port.first)); // default comb mapping for placer purposes
-        else
-            pinmap.push_back(port.first); // default: assume bel pin named the same as cell pin
+        pinmap.push_back(port.first); // default: assume bel pin named the same as cell pin
     }
 }
 
 void Arch::assignArchInfo()
 {
+    std::vector<BelId> placed;
     for (auto &cell : cells) {
         CellInfo *ci = cell.second.get();
         if (is_comb_cell(ci->type) || ci->type == id_MISTRAL_MLAB)
@@ -530,7 +624,12 @@ void Arch::assignArchInfo()
         else if (ci->type == id_MISTRAL_FF)
             assign_ff_info(ci);
         assign_default_pinmap(ci);
+        if (ci->bel != BelId())
+            placed.push_back(ci->bel);
     }
+    // bindBel during JSON reload ran before combInfo existed; recount now.
+    for (BelId bel : placed)
+        update_bel(bel);
 }
 
 BoundingBox Arch::getRouteBoundingBox(WireId src, WireId dst) const

@@ -2722,6 +2722,40 @@ struct MistralPacker
         trim_design();
         constrain_dsps();
     }
+
+    void pack_constants_unbound()
+    {
+        for (auto &cell : ctx->cells) {
+            CellInfo *ci = cell.second.get();
+            if (ci->bel != BelId())
+                continue;
+            if (ci->type != id_MISTRAL_NOT && ci->type != id_GND && ci->type != id_VCC)
+                process_inv_constants(ci);
+        }
+        for (auto &cell : ctx->cells) {
+            CellInfo *ci = cell.second.get();
+            if (ci->bel != BelId() || ci->type != id_MISTRAL_FF)
+                continue;
+            if (ci->get_pin_state(id_SLOAD) != PIN_0)
+                continue;
+            ci->disconnectPort(id_SDATA);
+        }
+        trim_design();
+    }
+
+    void run_unbound()
+    {
+        if (ctx->cells.count(ctx->id("$PACKER_GND_DRV")) && ctx->nets.count(ctx->id("$PACKER_GND_NET")) &&
+            ctx->nets.count(ctx->id("$PACKER_VCC_NET"))) {
+            gnd_net = ctx->nets.at(ctx->id("$PACKER_GND_NET")).get();
+            vcc_net = ctx->nets.at(ctx->id("$PACKER_VCC_NET")).get();
+        } else {
+            init_constant_nets();
+        }
+        ensure_m10k_control_ports();
+        pack_constants_unbound();
+        setup_m10ks();
+    }
 };
 }; // namespace
 
@@ -2732,6 +2766,14 @@ bool Arch::pack()
 
     assignArchInfo();
 
+    return true;
+}
+
+bool Arch::pack_unbound_cells()
+{
+    MistralPacker packer(getCtx());
+    packer.run_unbound();
+    assignArchInfo();
     return true;
 }
 

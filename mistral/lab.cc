@@ -22,6 +22,8 @@
 #include "nextpnr.h"
 #include "util.h"
 
+#include <algorithm>
+
 NEXTPNR_NAMESPACE_BEGIN
 
 // This file contains functions related to our custom LAB structure, including creating the LAB bels; checking the
@@ -488,10 +490,19 @@ void Arch::update_alm_input_count(uint32_t lab, uint8_t alm)
     std::array<const CellInfo *, 2> luts{getBoundBelCell(alm_data.lut_bels[0]), getBoundBelCell(alm_data.lut_bels[1])};
     std::array<const CellInfo *, 4> ffs{getBoundBelCell(alm_data.ff_bels[0]), getBoundBelCell(alm_data.ff_bels[1]),
                                         getBoundBelCell(alm_data.ff_bels[2]), getBoundBelCell(alm_data.ff_bels[3])};
+    auto lut_input_count = [](const CellInfo *cell) -> int {
+        if (cell == nullptr)
+            return -1;
+        // JSON reload bindBel runs before assignArchInfo fills combInfo.
+        int n = cell->combInfo.lut_input_count;
+        if (n < 0 || n > int(cell->combInfo.lut_in.size()))
+            return -1;
+        return n;
+    };
     int total_inputs = 0;
     int total_lut_inputs = 0;
     for (int i = 0; i < 2; i++) {
-        if (!luts[i])
+        if (!luts[i] || lut_input_count(luts[i]) < 0)
             continue;
         // MLAB that has been clustered with other MLABs (due to shared read port) costs no extra inputs
         if (luts[i]->combInfo.mlab_group != -1 && luts[i]->constr_z > 2) {
@@ -502,12 +513,14 @@ void Arch::update_alm_input_count(uint32_t lab, uint8_t alm)
         total_lut_inputs += luts[i]->combInfo.used_lut_input_count - luts[i]->combInfo.chain_shared_input_count;
     }
     int shared_lut_inputs = 0;
-    if (luts[0] && luts[1]) {
-        for (int i = 0; i < luts[1]->combInfo.lut_input_count; i++) {
+    const int n0 = lut_input_count(luts[0]);
+    const int n1 = lut_input_count(luts[1]);
+    if (n0 >= 0 && n1 >= 0) {
+        for (int i = 0; i < n1; i++) {
             const NetInfo *sig = luts[1]->combInfo.lut_in[i];
             if (!sig)
                 continue;
-            for (int j = 0; j < luts[0]->combInfo.lut_input_count; j++) {
+            for (int j = 0; j < n0; j++) {
                 if (sig == luts[0]->combInfo.lut_in[j]) {
                     ++shared_lut_inputs;
                     break;
@@ -691,6 +704,20 @@ void Arch::lab_pre_route()
 {
     log_info("Preparing LABs for routing...\n");
     for (uint32_t lab = 0; lab < labs.size(); lab++) {
+        bool frozen = false;
+        for (uint8_t alm = 0; alm < 10 && !frozen; alm++) {
+            const auto &alm_data = labs.at(lab).alms.at(alm);
+            for (BelId bel : {alm_data.lut_bels[0], alm_data.lut_bels[1], alm_data.ff_bels[0], alm_data.ff_bels[1],
+                              alm_data.ff_bels[2], alm_data.ff_bels[3]}) {
+                CellInfo *cell = getBoundBelCell(bel);
+                if (cell != nullptr && cell->belStrength >= STRENGTH_LOCKED) {
+                    frozen = true;
+                    break;
+                }
+            }
+        }
+        if (frozen)
+            continue;
         assign_control_sets(lab);
         for (uint8_t alm = 0; alm < 10; alm++) {
             reassign_alm_inputs(lab, alm);
@@ -706,7 +733,11 @@ void Arch::assign_control_sets(uint32_t lab)
     // Similarly for how inverted & noninverted variants must be kept separate
     LabCtrlSetWorker worker;
     bool legal = worker.run(this, lab);
-    NPNR_ASSERT(legal);
+    if (!legal) {
+        log_warning("Skipping LAB %u control-set reservation (frozen scaffold or illegal after cart merge).\n",
+                    unsigned(lab));
+        return;
+    }
     auto &lab_data = labs.at(lab);
 
     for (int j = 0; j < 2; j++) {
@@ -842,8 +873,10 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
         // First find up to two shared inputs
         dict<IdString, int> shared_nets;
         if (luts[0] && luts[1]) {
-            for (int i = 0; i < luts[0]->combInfo.lut_input_count; i++) {
-                for (int j = 0; j < luts[1]->combInfo.lut_input_count; j++) {
+            const int n0 = std::max(0, std::min(luts[0]->combInfo.lut_input_count, 6));
+            const int n1 = std::max(0, std::min(luts[1]->combInfo.lut_input_count, 6));
+            for (int i = 0; i < n0; i++) {
+                for (int j = 0; j < n1; j++) {
                     if (luts[0]->combInfo.lut_in[i] == nullptr)
                         continue;
                     if (luts[0]->combInfo.lut_in[i] != luts[1]->combInfo.lut_in[j])
@@ -882,7 +915,7 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
                 avail_phys_ports.push_back(id_A);
             int phys_idx = 0;
 
-            for (int j = 0; j < luts[i]->combInfo.lut_input_count; j++) {
+            for (int j = 0; j < std::max(0, std::min(luts[i]->combInfo.lut_input_count, 6)); j++) {
                 IdString log = get_lut_pin(luts[i], j);
                 auto &bel_pins = luts[i]->pin_data[log].bel_pins;
                 bel_pins.clear();
@@ -901,6 +934,8 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
                     bel_pins.push_back((i == 1) ? id_F1 : id_F0); // reserved
                 } else {
                     // Allocate from the general pool of available physical pins
+                    if (phys_idx >= int(avail_phys_ports.size()))
+                        continue;
                     IdString phys = avail_phys_ports.at(phys_idx++);
                     bel_pins.push_back(phys);
                     // Mark A/B unavailable for the other LUT, if needed
@@ -921,6 +956,8 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
         for (int j = 0; j < 2; j++) {
             CellInfo *ff = ffs[i * 2 + j];
             if (!ff || !ff->ffInfo.datain || alm_data.l6_mode || alm_data.carry_mode)
+                continue;
+            if (ff->belStrength >= STRENGTH_LOCKED)
                 continue;
             CellInfo *rt_lut = createCell(idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
             rt_lut->addInput(id_A);
@@ -1027,7 +1064,8 @@ uint64_t Arch::compute_mlab_mask(uint32_t lab, uint8_t alm)
         const CellInfo *cell = getBoundBelCell(alm_data.lut_bels[lane]);
         if (cell == nullptr)
             continue; // An unused half retains the existing zero initialization.
-        NPNR_ASSERT(cell->type == id_MISTRAL_MLAB);
+        if (cell->type != id_MISTRAL_MLAB)
+            continue;
         auto init = cell->params.find(id_INIT);
         if (init == cell->params.end())
             continue;
@@ -1048,6 +1086,8 @@ uint64_t Arch::compute_lut_mask(uint32_t lab, uint8_t alm)
     for (int i = 0; i < 2; i++) {
         CellInfo *lut = luts[i];
         if (!lut)
+            continue;
+        if (!is_comb_cell(lut->type) && lut->type != id_MISTRAL_MLAB)
             continue;
         int offset = ((i == 1) && !alm_data.l6_mode) ? 32 : 0;
         bool arith = lut->combInfo.is_carry;

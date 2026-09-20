@@ -338,6 +338,18 @@ struct Arch : BaseArch<ArchRanges>
     std::vector<IdString> getBelPins(BelId bel) const override;
 
     bool isBelLocationValid(BelId bel, bool explain_invalid = false) const override;
+    void note_reserved_bel(const std::string &name);
+    void note_reserved_rect(const std::string &spec);
+    bool fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_invalid = false) const;
+    bool fes_cell_is_slot(const CellInfo *cell) const;
+    bool fes_net_touches_slot(const NetInfo *net) const;
+    bool fes_pip_in_socket(PipId pip) const;
+    bool fes_pip_in_plug_halo(PipId pip) const;
+    bool fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const;
+    void fes_rip_reserved_shell_pips();
+    void lock_fes_scaffold();
+    void merge_fes_cart(const std::string &filename);
+    bool pack_unbound_cells();
 
     void bindBel(BelId bel, CellInfo *cell, PlaceStrength strength) override
     {
@@ -416,6 +428,15 @@ struct Arch : BaseArch<ArchRanges>
     {
         if (is_pip_blocked(pip))
             return false;
+        if (fes_fence_active && fes_has_reserved_rect && net != nullptr) {
+            const bool slot_driven = fes_cell_is_slot(net->driver.cell);
+            const bool slot_user = fes_net_touches_slot(net);
+            const bool in_socket = fes_pip_in_socket(pip);
+            if (slot_driven && !fes_pip_in_plug_halo(pip) && !fes_pip_reaches_net_shell_tile(pip, net))
+                return false;
+            if (!slot_user && in_socket && BaseArch::checkPipAvail(pip))
+                return false;
+        }
         return BaseArch::checkPipAvailForNet(pip, net);
     }
 
@@ -570,6 +591,14 @@ struct Arch : BaseArch<ArchRanges>
     // List of IO constraints, used by QSF parser
     dict<IdString, dict<IdString, Property>> io_attr;
     void read_qsf(std::istream &in); // qsf.cc
+
+    // Static expansion slot: HeAP may not place unconstrained cells on these
+    // BELs. Cells with a matching BEL attribute or FES_SLOT=1 may use them,
+    // and FES_SLOT cells may not leave the reserved set.
+    std::set<BelId> fes_reserved_bels;
+    bool fes_has_reserved_rect = false;
+    bool fes_fence_active = false;
+    int fes_rect_x0 = 0, fes_rect_y0 = 0, fes_rect_x1 = -1, fes_rect_y1 = -1;
 
     // -------------------------------------------------
 
