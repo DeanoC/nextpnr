@@ -52,6 +52,7 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("compress-rbf", "generate compressed bitstream");
     specific.add_options()("fes-scaffold", "lock loaded shell BEL+routing to STRENGTH_USER");
     specific.add_options()("fes-cart", po::value<std::string>(), "merge unbound cart JSON into the reserved socket");
+    specific.add_options()("fes-slot-clock", po::value<std::string>(), "exact shell clock net for FES cart cells");
 
     return specific;
 }
@@ -88,6 +89,8 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
+    if (vm.count("fes-slot-clock"))
+        ctx->settings[ctx->id("fes/slot_clock")] = vm["fes-slot-clock"].as<std::string>();
     if (vm.count("router"))
         ctx->settings[ctx->id("router")] = vm["router"].as<std::string>();
     if (vm.count("qsf")) {

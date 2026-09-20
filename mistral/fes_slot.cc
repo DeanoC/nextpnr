@@ -66,6 +66,17 @@ NetInfo *find_plug_addr_bit(Context *ctx, int index)
 
 NetInfo *shell_clock_net(Context *ctx)
 {
+    const IdString selection = ctx->id("fes/slot_clock");
+    if (ctx->settings.count(selection)) {
+        const std::string name = ctx->settings.at(selection).as_string();
+        NetInfo *clock = find_named_net(ctx, name);
+        if (clock == nullptr || clock->driver.cell == nullptr)
+            log_error("FES slot clock '%s' is not a driven shell net.\n", name.c_str());
+        if (ctx->fes_cell_is_slot(clock->driver.cell))
+            log_error("FES slot clock '%s' is driven by the cart, not the shell.\n", name.c_str());
+        return clock;
+    }
+    NetInfo *clock = nullptr;
     for (auto &item : ctx->cells) {
         CellInfo *ci = item.second.get();
         if (ci->type != id_MISTRAL_FF)
@@ -73,10 +84,18 @@ NetInfo *shell_clock_net(Context *ctx)
         if (ci->attrs.count(ctx->id("FES_SLOT")) && ci->attrs.at(ctx->id("FES_SLOT")).as_bool())
             continue;
         NetInfo *clk = ci->getPort(id_CLK);
-        if (clk != nullptr)
-            return clk;
+        if (clk != nullptr) {
+            if (clock != nullptr && clock != clk)
+                log_error("FES shell has multiple clocks; select the socket clock with --fes-slot-clock.\n");
+            clock = clk;
+        }
     }
-    return find_named_net(ctx, "FPGA_CLK1_50");
+    if (clock != nullptr)
+        return clock;
+    clock = find_named_net(ctx, "FPGA_CLK1_50");
+    if (clock == nullptr || clock->driver.cell == nullptr)
+        log_error("FES shell has no driven socket clock; use --fes-slot-clock.\n");
+    return clock;
 }
 
 CellInfo *find_rdata_ff(Context *ctx, const std::string &port)
@@ -503,8 +522,18 @@ void Arch::merge_fes_cart(const std::string &filename)
                             dst->addInput(pid);
                         char constant = 0;
                         int signal = 0;
-                        if (fes_json_const(bits[i], constant))
+                        if (fes_json_const(bits[i], constant)) {
+                            if (ptype != PORT_IN)
+                                log_error("FES cart cell '%s' has a constant output port.\n", item.first.c_str());
+                            if (!ctx->nets.count(ctx->id("$PACKER_GND_NET")) ||
+                                !ctx->nets.count(ctx->id("$PACKER_VCC_NET")))
+                                log_error("FES cart merge requires a packed shell with constant nets.\n");
+                            // Let the existing unbound packer choose the hard
+                            // constant mux or a routed shell constant. Dropping
+                            // this value would apply the pin's default instead.
+                            dst->pin_data[pid].state = constant == '1' ? PIN_1 : PIN_0;
                             continue;
+                        }
                         if (!fes_json_signal(bits[i], signal))
                             continue;
                         NetInfo *mapped = intern_bit_net(signal);
@@ -524,17 +553,27 @@ void Arch::merge_fes_cart(const std::string &filename)
     if (clk != nullptr) {
         for (auto &item : ctx->cells) {
             CellInfo *ci = item.second.get();
-            if (ci->type != id_MISTRAL_M10K || !fes_cell_is_slot(ci))
+            if (!ci->type.in(id_MISTRAL_M10K, id_MISTRAL_M10K_TDP, id_MISTRAL_FF) || !fes_cell_is_slot(ci))
                 continue;
-            NetInfo *existing = ci->getPort(id_CLK1);
-            if (existing == clk)
-                continue;
-            if (existing != nullptr)
-                ci->disconnectPort(id_CLK1);
-            if (!ci->ports.count(id_CLK1))
-                ci->addInput(id_CLK1);
-            ci->pin_data[id_CLK1].state = PIN_SIG;
-            ci->connectPort(id_CLK1, clk);
+            // FES sockets have one declared clock. Synthesis inserts clock
+            // buffers which are removed at the cart boundary; reconnect all
+            // supported sequential cells, including writable true-dual RAM.
+            const std::vector<IdString> ports = ci->type == id_MISTRAL_FF
+                                                      ? std::vector<IdString>{id_CLK}
+                                                      : ci->type == id_MISTRAL_M10K_TDP
+                                                                ? std::vector<IdString>{id_CLK1, id_CLK2}
+                                                                : std::vector<IdString>{id_CLK1};
+            for (IdString port : ports) {
+                NetInfo *existing = ci->getPort(port);
+                if (existing == clk)
+                    continue;
+                if (existing != nullptr)
+                    ci->disconnectPort(port);
+                if (!ci->ports.count(port))
+                    ci->addInput(port);
+                ci->pin_data[port].state = PIN_SIG;
+                ci->connectPort(port, clk);
+            }
         }
     }
     assignArchInfo();
