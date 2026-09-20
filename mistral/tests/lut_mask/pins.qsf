@@ -1,0 +1,6 @@
+set_location_assignment PIN_V11 -to clk
+set_location_assignment PIN_U10 -to signal
+set_location_assignment PIN_AG5 -to value
+set_location_assignment PIN_AD19 -to inverted
+set_location_assignment PIN_AD12 -to parity
+set_location_assignment PIN_W8 -to memory

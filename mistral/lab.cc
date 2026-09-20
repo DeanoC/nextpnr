@@ -1087,7 +1087,9 @@ uint64_t Arch::compute_lut_mask(uint32_t lab, uint8_t alm)
         CellInfo *lut = luts[i];
         if (!lut)
             continue;
-        if (!is_comb_cell(lut->type) && lut->type != id_MISTRAL_MLAB)
+        // FF DATAIN routethroughs are inserted after placement as MISTRAL_BUF.
+        // They still require a LUT truth table, including folded pin inversion.
+        if (!is_comb_cell(lut->type) && !lut->type.in(id_MISTRAL_BUF, id_MISTRAL_MLAB))
             continue;
         int offset = ((i == 1) && !alm_data.l6_mode) ? 32 : 0;
         bool arith = lut->combInfo.is_carry;
