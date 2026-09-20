@@ -95,7 +95,16 @@ void set_instance_assignment_cmd(Context *ctx, const option_map_t &options, cons
 
 void set_global_assignment_cmd(Context *ctx, const option_map_t &options, const std::vector<std::string> &pos_args)
 {
-    // TODO
+    const std::string &name = options.at("name").at(0);
+    const std::string &value = pos_args.at(0);
+    if (name == "FES_RESERVED_BEL") {
+        ctx->note_reserved_bel(value);
+        return;
+    }
+    if (name == "FES_RESERVED_RECT") {
+        ctx->note_reserved_rect(value);
+        return;
+    }
 }
 
 static const std::vector<QsfCommand> commands = {

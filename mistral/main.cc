@@ -50,6 +50,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("qsf", po::value<std::string>(), "path to QSF constraints file");
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
     specific.add_options()("compress-rbf", "generate compressed bitstream");
+    specific.add_options()("fes-scaffold", "lock loaded shell BEL+routing to STRENGTH_USER");
+    specific.add_options()("fes-cart", po::value<std::string>(), "merge unbound cart JSON into the reserved socket");
 
     return specific;
 }
@@ -86,11 +88,23 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
+    if (vm.count("router"))
+        ctx->settings[ctx->id("router")] = vm["router"].as<std::string>();
     if (vm.count("qsf")) {
         std::string filename = vm["qsf"].as<std::string>();
         auto in = open_ifstream_and_log_error(filename, "input QSF file");
         ctx->read_qsf(in);
     }
+    if (vm.count("fes-cart")) {
+        log_info("FES merging cart JSON...\n");
+        ctx->merge_fes_cart(vm["fes-cart"].as<std::string>());
+        log_info("FES packing unbound cart cells...\n");
+        ctx->pack_unbound_cells();
+        log_info("FES unbound pack complete.\n");
+    }
+    const bool routed = ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "route";
+    if (vm.count("fes-scaffold") || routed)
+        ctx->lock_fes_scaffold();
 }
 
 int main(int argc, char *argv[])

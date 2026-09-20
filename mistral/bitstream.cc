@@ -799,7 +799,7 @@ struct MistralBitgen
             return false;
 
         bool is_lutram =
-                (luts[0] && luts[0]->combInfo.mlab_group != -1) || (luts[1] && luts[1]->combInfo.mlab_group != -1);
+                (luts[0] && luts[0]->type == id_MISTRAL_MLAB) || (luts[1] && luts[1]->type == id_MISTRAL_MLAB);
 
         auto pos = alm_data.lut_bels[0].pos;
         if (is_lutram) {

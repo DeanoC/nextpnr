@@ -10,6 +10,7 @@ set(SOURCES
     delay.cc
     dsp.h
     dsp.cc
+    fes_slot.cc
     globals.cc
     io.cc
     lab.cc
