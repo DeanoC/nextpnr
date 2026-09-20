@@ -25,7 +25,12 @@ def main():
         .ACLR(1'b1), .ENA(1'b1), .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
     MISTRAL_FF plug_rdata_ff_0 (.CLK(clk_a), .DATAIN(plug_rdata_d), .Q(data),
         .ACLR(1'b1), .ENA(1'b1), .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
-    assign qa = plug_addr;
+    wire [9:0] shell_data;
+    MISTRAL_M10K #(.CFG_ABITS(10), .CFG_DBITS(10), .CFG_ASYNC_READ(1)) shell_memory (
+        .CLK1(clk_a), .A1ADDR(10'b0), .A1DATA(10'b0), .A1EN(address),
+        .B1ADDR(10'b0), .B1DATA(shell_data), .B1EN(1'b1),
+        .ACLR0(1'b0), .ACLR1(1'b0));
+    assign qa = plug_addr ^ shell_data[0];
 endmodule
 ''')
     cart = output / "cart.v"
@@ -117,6 +122,37 @@ endmodule
     del cart_cells["writable"]["connections"]["CLK2"]
     (output / "missing-clock-cart.json").write_text(json.dumps(cart_source))
     merge("missing-cart-clock", name, expected="requires one declared socket clock input", cart_name="missing-clock-cart")
+    # A routed shell carries packed physical pins, unlike the pack-only
+    # fixture above. Re-entering normal RAM setup would reinterpret cleared
+    # hard pins, while logical sink traversal used to throw dict::at().
+    with (output / "shell-route.log").open("w") as log:
+        subprocess.run([str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7",
+                        "--qsf", str(qsf), "--json", str(raw), "--router", "router2",
+                        "--write", str(output / "routed-shell.json")],
+                       stdout=log, stderr=subprocess.STDOUT, check=True)
+    routed = json.loads((output / "routed-shell.json").read_text())["modules"]["top"]
+    bit = routed["cells"]["plug_addr_ff_0"]["connections"]["CLK"]
+    clock = next(key for key, net in routed["netnames"].items() if net["bits"] == bit)
+    merged = merge("routed-merge", clock, shell_name="routed-shell")
+    def same_connections(cell, ports=None):
+        before, after = routed["cells"][cell], merged["cells"][cell]
+        for port, bits in before["connections"].items():
+            if not bits or (ports is not None and port not in ports):
+                continue
+            assert len(bits) == len(after["connections"][port]), (cell, port)
+            for index, bit in enumerate(bits):
+                aliases = [(key, position) for key, net in routed["netnames"].items()
+                           for position, value in enumerate(net["bits"]) if value == bit]
+                assert any(key in merged["netnames"] and
+                           merged["netnames"][key]["bits"][position] == after["connections"][port][index]
+                           for key, position in aliases), (cell, port, index)
+    for cell in ("shell_memory", "second_domain", "plug_addr_ff_0"):
+        assert merged["cells"][cell]["parameters"] == routed["cells"][cell]["parameters"], cell
+        assert merged["cells"][cell]["attributes"] == routed["cells"][cell]["attributes"], cell
+        same_connections(cell)
+    same_connections("plug_rdata_ff_0", {"SCLR", "ACLR", "ENA"})
+    for constant in ("$PACKER_GND_NET", "$PACKER_VCC_NET"):
+        assert merged["netnames"][constant]["attributes"]["ROUTING"] == routed["netnames"][constant]["attributes"]["ROUTING"]
     # The original one-clock diagnostic retains implicit clock selection.
     design["cells"]["second_domain"]["connections"]["CLK"] = design["cells"]["plug_addr_ff_0"]["connections"]["CLK"]
     (output / "single.json").write_text(json.dumps(source))

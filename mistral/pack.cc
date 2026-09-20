@@ -239,7 +239,7 @@ struct MistralPacker
         }
     }
 
-    void ensure_m10k_control_ports()
+    void ensure_m10k_control_ports(bool unbound_only = false)
     {
         // Yosys only emits the clear ports when the source primitive uses
         // them.  Materialise both physical clear inputs before constant
@@ -247,6 +247,8 @@ struct MistralPacker
         // as an inactive clear rather than being left at the M10K default.
         for (auto &entry : ctx->cells) {
             CellInfo *cell = entry.second.get();
+            if (unbound_only && cell->bel != BelId())
+                continue;
             if (!cell->type.in(id_MISTRAL_M10K, id_MISTRAL_M10K_TDP))
                 continue;
             for (IdString control : {id_ACLR0, id_ACLR1})
@@ -1673,11 +1675,13 @@ struct MistralPacker
                 ctx->idf(rb == 40 && bit < 20 ? "DATAAOUT[%d]" : "DATABOUT[%d]", bit % 20)};
     }
 
-    void setup_m10ks()
+    void setup_m10ks(bool unbound_only = false)
     {
         // Normalize TDP cells before the per-cell setup below.
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
+            if (unbound_only && ci->bel != BelId())
+                continue;
             if (ci->type == id_MISTRAL_M10K_TDP) {
                 ci->type = id_MISTRAL_M10K;
                 ci->params[id_CFG_TDP] = 1;
@@ -1794,6 +1798,8 @@ struct MistralPacker
 
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
+            if (unbound_only && ci->bel != BelId())
+                continue;
             if (ci->type != id_MISTRAL_M10K)
                 continue;
             bool tdp = bool_or_default(ci->params, id_CFG_TDP, false);
@@ -2752,9 +2758,9 @@ struct MistralPacker
         } else {
             init_constant_nets();
         }
-        ensure_m10k_control_ports();
+        ensure_m10k_control_ports(true);
         pack_constants_unbound();
-        setup_m10ks();
+        setup_m10ks(true);
     }
 };
 }; // namespace

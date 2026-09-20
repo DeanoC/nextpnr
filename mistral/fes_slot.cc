@@ -187,8 +187,16 @@ void fes_trim_net_orphans(Context *ctx, NetInfo *net)
     if (src != WireId())
         used.insert(src);
     for (auto usr : net->users) {
-        for (auto dst : ctx->getNetinfoSinkWires(net, usr)) {
-            WireId cursor = dst;
+        // Imported routed shells have physical BEL bindings before the
+        // scaffold restores logical pin mappings. Inspect those bindings
+        // directly; querying logical sink wires here can address a packed
+        // port that no longer exists on the physical BEL.
+        if (usr.cell == nullptr || usr.cell->bel == BelId())
+            continue;
+        for (IdString pin : ctx->getBelPins(usr.cell->bel)) {
+            WireId cursor = ctx->getBelPinWire(usr.cell->bel, pin);
+            if (cursor == WireId() || ctx->getBoundWireNet(cursor) != net)
+                continue;
             int guard = 0;
             while (cursor != WireId() && net->wires.count(cursor) && guard++ < 100000) {
                 used.insert(cursor);

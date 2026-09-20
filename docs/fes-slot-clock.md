@@ -36,3 +36,10 @@ python3 mistral/tests/fes_slot_clock.py --yosys /path/to/yosys \
 
 This regression validates merge and packing. It does not claim timing closure,
 CRAM overlay equivalence or hardware acceptance for a consumer shell.
+
+The merge regression also routes a shell containing RAM before importing the
+cart. Imported physical BEL pins are used when detaching a vacant return sink;
+logical pin maps are not yet restored at that point. Cart packing skips bound
+shell M10Ks, preserving their already packed control modes. The regression
+compares retained shell cell parameters, BEL attributes, connections through
+stable net aliases, and shared constant routing before and after merge.
