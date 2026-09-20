@@ -51,7 +51,7 @@ struct ALMInfo
     bool carry_mode = false;
 
     // Which CLK/ENA and ACLR is chosen for each half
-    std::array<int, 2> clk_ena_idx, aclr_idx;
+    std::array<int, 2> clk_ena_idx{}, aclr_idx{};
 
     // For keeping track of how many inputs are currently being used, for the LAB routeability check
     int unique_input_count = 0;
@@ -67,7 +67,7 @@ struct LABInfo
     std::array<WireId, 2> aclr_wires;
     WireId sclr_wire, sload_wire;
     // TODO: LAB configuration (control set etc)
-    std::array<bool, 2> aclr_used;
+    std::array<bool, 2> aclr_used{};
 };
 
 struct PinInfo
@@ -348,6 +348,7 @@ struct Arch : BaseArch<ArchRanges>
     bool fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const;
     void fes_rip_reserved_shell_pips();
     void lock_fes_scaffold();
+    void save_fes_pin_maps();
     void merge_fes_cart(const std::string &filename);
     bool pack_unbound_cells();
 

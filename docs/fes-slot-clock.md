@@ -43,3 +43,26 @@ logical pin maps are not yet restored at that point. Cart packing skips bound
 shell M10Ks, preserving their already packed control modes. The regression
 compares retained shell cell parameters, BEL attributes, connections through
 stable net aliases, and shared constant routing before and after merge.
+
+Routed JSON now carries each placed cell's `FES_PINMAP_V1` attribute: canonical
+JSON encoded as lowercase hexadecimal, with an explicit entry count and a
+`pins` object mapping logical names to arrays containing the folded pin state
+and physical BEL pin names. The scaffold restores these exact maps, including
+unused RAM lanes and hard constants that cannot be inferred from routed nets.
+It rejects malformed, incomplete or unsupported metadata before placement.
+Physical pins are checked against their logical direction, including legitimate
+bidirectional I/O pads.
+
+The module's `FES_LABSTATE_V1` attribute uses the same encoding for the device
+identity and ordered LAB geometry. Each LAB preserves its two clear-use flags
+and ten ALMs' LUT6/carry modes, clock/enable selectors and clear selectors.
+Counts, coordinates and selector ranges must match the target device exactly.
+Cart cells cannot share a LAB with frozen shell cells because those modes and
+control selectors are shared hardware. A routed shell without either snapshot
+must be rebuilt; the packed, non-scaffold merge path remains available.
+
+The routed regression also restores the shell as a locked scaffold, places and
+routes the cart, and checks frozen BEL and pin-map preservation. A shell with
+LUT6 logic and an inverted FF enable must emit byte-identical RBF when restored
+without a cart. These compiler
+checks do not replace a consumer's CRAM-boundary and timing checks.

@@ -280,6 +280,22 @@ void Arch::note_reserved_rect(const std::string &spec)
 
 bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_invalid) const
 {
+    if (fes_cell_is_slot(cell) && bel_data(bel).type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB, id_MISTRAL_FF)) {
+        // A LAB shares modes and control selectors. Frozen LABs must not gain
+        // new cart cells, because their existing configuration is immutable.
+        const auto &lab = labs.at(bel_data(bel).lab_data.lab);
+        for (const auto &alm : lab.alms) {
+            for (BelId other : {alm.lut_bels[0], alm.lut_bels[1], alm.ff_bels[0], alm.ff_bels[1],
+                                alm.ff_bels[2], alm.ff_bels[3]}) {
+                const CellInfo *occupant = getBoundBelCell(other);
+                if (occupant && !fes_cell_is_slot(occupant) && occupant->belStrength >= STRENGTH_LOCKED) {
+                    if (explain_invalid)
+                        log_info("FES slot cell %s cannot share a frozen LAB.\n", nameOf(cell));
+                    return false;
+                }
+            }
+        }
+    }
     if (fes_reserved_bels.empty() || cell == nullptr)
         return true;
     const bool reserved = fes_reserved_bels.count(bel);
@@ -619,7 +635,7 @@ void Arch::assignArchInfo()
     std::vector<BelId> placed;
     for (auto &cell : cells) {
         CellInfo *ci = cell.second.get();
-        if (is_comb_cell(ci->type) || ci->type == id_MISTRAL_MLAB)
+        if (is_comb_cell(ci->type) || ci->type.in(id_MISTRAL_MLAB, id_MISTRAL_BUF))
             assign_comb_info(ci);
         else if (ci->type == id_MISTRAL_FF)
             assign_ff_info(ci);
@@ -771,6 +787,7 @@ bool Arch::route()
                      clock.second.achieved);
     }
     getCtx()->attrs[id_step] = std::string("route");
+    save_fes_pin_maps();
     archInfoToAttributes();
     return result;
 }

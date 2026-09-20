@@ -2,6 +2,7 @@
 """Exercise real FES cart merge on a shell with independent clock domains."""
 
 import argparse
+import copy
 import json
 from pathlib import Path
 import subprocess
@@ -22,7 +23,7 @@ def main():
     MISTRAL_FF plug_addr_ff_0 (.CLK(clk_a), .DATAIN(address), .Q(plug_addr),
         .ACLR(1'b1), .ENA(1'b1), .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
     MISTRAL_FF second_domain (.CLK(clk_b), .DATAIN(address), .Q(qb),
-        .ACLR(1'b1), .ENA(1'b1), .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
+        .ACLR(1'b1), .ENA(~address), .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
     MISTRAL_FF plug_rdata_ff_0 (.CLK(clk_a), .DATAIN(plug_rdata_d), .Q(data),
         .ACLR(1'b1), .ENA(1'b1), .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
     wire [9:0] shell_data;
@@ -30,7 +31,13 @@ def main():
         .CLK1(clk_a), .A1ADDR(10'b0), .A1DATA(10'b0), .A1EN(address),
         .B1ADDR(10'b0), .B1DATA(shell_data), .B1EN(1'b1),
         .ACLR0(1'b0), .ACLR1(1'b0));
-    assign qa = plug_addr ^ shell_data[0];
+    reg [7:0] arithmetic = 8'd0;
+    always @(posedge clk_a) arithmetic <= arithmetic + 8'd1;
+    wire lut6_result;
+    (* keep *) MISTRAL_ALUT6 #(.LUT(64'h6996966996696996)) six_input (
+        .A(arithmetic[0]), .B(arithmetic[1]), .C(arithmetic[2]),
+        .D(arithmetic[3]), .E(arithmetic[4]), .F(arithmetic[5]), .Q(lut6_result));
+    assign qa = plug_addr ^ shell_data[0] ^ arithmetic[7] ^ lut6_result;
 endmodule
 ''')
     cart = output / "cart.v"
@@ -128,9 +135,21 @@ endmodule
     with (output / "shell-route.log").open("w") as log:
         subprocess.run([str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7",
                         "--qsf", str(qsf), "--json", str(raw), "--router", "router2",
-                        "--write", str(output / "routed-shell.json")],
+                        "--write", str(output / "routed-shell.json"),
+                        "--rbf", str(output / "shell.rbf"), "--compress-rbf"],
                        stdout=log, stderr=subprocess.STDOUT, check=True)
     routed = json.loads((output / "routed-shell.json").read_text())["modules"]["top"]
+    assert routed['cells']['six_input']['type'] == 'MISTRAL_ALUT6'
+    inverted = json.loads(bytes.fromhex(routed['cells']['second_domain']['attributes']['FES_PINMAP_V1']).decode())['pins']
+    assert inverted['ENA'][0] == 3, inverted
+    with (output / 'shell-restore.log').open('w') as log:
+        subprocess.run([str(args.nextpnr.resolve()), '--device', '5CSEBA6U23I7',
+                        '--json', str(output / 'routed-shell.json'), '--fes-scaffold',
+                        '--no-pack', '--no-place', '--router', 'router2',
+                        '--rbf', str(output / 'shell-restored.rbf'), '--compress-rbf'],
+                       stdout=log, stderr=subprocess.STDOUT, check=True)
+    assert 'ERROR:' not in (output / 'shell-restore.log').read_text()
+    assert (output / 'shell.rbf').read_bytes() == (output / 'shell-restored.rbf').read_bytes(), 'restored shell RBF changed'
     bit = routed["cells"]["plug_addr_ff_0"]["connections"]["CLK"]
     clock = next(key for key, net in routed["netnames"].items() if net["bits"] == bit)
     merged = merge("routed-merge", clock, shell_name="routed-shell")
@@ -153,11 +172,131 @@ endmodule
     same_connections("plug_rdata_ff_0", {"SCLR", "ACLR", "ENA"})
     for constant in ("$PACKER_GND_NET", "$PACKER_VCC_NET"):
         assert merged["netnames"][constant]["attributes"]["ROUTING"] == routed["netnames"][constant]["attributes"]["ROUTING"]
+    # Exercise actual scaffold locking, placement and final router consistency.
+    # Arithmetic SO shares a physical wire with a WA4 input alias: restoring
+    # both as output pins previously made getNetinfoSourceWire assert.
+    assert any(c['type'] == 'MISTRAL_ALUT_ARITH' for c in routed['cells'].values())
+    with (output / 'scaffold-place.log').open('w') as log:
+        subprocess.run([str(args.nextpnr.resolve()), '--device', '5CSEBA6U23I7',
+                        '--json', str(output / 'routed-shell.json'),
+                        '--fes-cart', str(output / 'cart.json'),
+                        '--fes-slot-clock', clock, '--fes-scaffold', '--no-pack', '--router', 'router2', '--seed', '2',
+                        '--write', str(output / 'scaffold-placed.json'),
+                        '--rbf', str(output / 'scaffold-composed.rbf'), '--compress-rbf'],
+                       stdout=log, stderr=subprocess.STDOUT, check=True)
+    routing_log = (output / 'scaffold-place.log').read_text()
+    assert 'ERROR:' not in routing_log, routing_log
+    assert 'Routing complete.' in routing_log and 'overused=0 overuse=0 archfail=0' in routing_log, routing_log
+    assert 'Program finished normally.' in routing_log, routing_log
+    assert (output / 'scaffold-composed.rbf').stat().st_size > 40408
+    assert (output / 'scaffold-placed.json').is_file()
+    placed = json.loads((output / 'scaffold-placed.json').read_text())['modules']['top']
+    for cell, before in routed['cells'].items():
+        if 'NEXTPNR_BEL' in before.get('attributes', {}):
+            assert placed['cells'][cell]['attributes']['NEXTPNR_BEL'] == before['attributes']['NEXTPNR_BEL'], cell
+    def lab_location(cell):
+        bel = cell.get('attributes', {}).get('NEXTPNR_BEL', '')
+        if bel.startswith(('MISTRAL_COMB.', 'MISTRAL_MCOMB.', 'MISTRAL_FF.')):
+            return tuple(bel.split('.')[1:3])
+        return None
+    frozen_labs = {lab_location(c) for c in routed['cells'].values()} - {None}
+    cart_labs = {lab_location(c) for name, c in placed['cells'].items()
+                 if name.startswith('fes_cart$')} - {None}
+    assert frozen_labs and cart_labs and not frozen_labs.intersection(cart_labs), (frozen_labs, cart_labs)
+    def lab_states(module):
+        payload = json.loads(bytes.fromhex(module['attributes']['FES_LABSTATE_V1']).decode())
+        return {(str(row[0]), str(row[1])): row for row in payload['labs']}
+    before_states, after_states = lab_states(routed), lab_states(placed)
+    for location in frozen_labs:
+        assert before_states[location] == after_states[location], location
+
+    # Saved maps are part of the frozen-route contract, including physical
+    # padding lanes and folded signal states which routing alone cannot infer.
+    folded_states = set()
+    for cell, before in routed['cells'].items():
+        if 'NEXTPNR_BEL' not in before.get('attributes', {}):
+            continue
+        saved = before['attributes']['FES_PINMAP_V1']
+        payload = json.loads(bytes.fromhex(saved).decode())
+        assert payload['count'] == len(payload['pins']), cell
+        folded_states.update(v[0] for v in payload['pins'].values() if len(v) == 1)
+        assert placed['cells'][cell]['attributes']['FES_PINMAP_V1'] == saved, cell
+    assert {1, 2}.issubset(folded_states), folded_states
+    ram_map = json.loads(bytes.fromhex(routed['cells']['shell_memory']['attributes']['FES_PINMAP_V1']).decode())['pins']
+    assert ram_map['B1DATA[9]'][1:], ram_map['B1DATA[9]']
+    unused = routed['cells']['shell_memory']['connections']['B1DATA'][9]
+    assert not any(unused in bits for c in routed['cells'].values()
+                   for port, bits in c['connections'].items()
+                   if c['port_directions'][port] == 'input'), unused
+    arithmetic = next(name for name, cell in routed['cells'].items()
+                      if cell['type'] == 'MISTRAL_ALUT_ARITH' and cell['connections'].get('SO'))
+    for corruption in ('malformed', 'missing-output', 'wrong-direction', 'duplicate-pin', 'unsupported-version', 'invalid-hex', 'missing-folded', 'empty-inverted'):
+        bad = copy.deepcopy(json.loads((output / 'routed-shell.json').read_text()))
+        attrs = bad['modules']['top']['cells'][arithmetic]['attributes']
+        payload = json.loads(bytes.fromhex(attrs['FES_PINMAP_V1']).decode())
+        pinmap = payload['pins']
+        if corruption == 'malformed':
+            attrs['FES_PINMAP_V1'] = b'{'.hex()
+        elif corruption == 'invalid-hex':
+            attrs['FES_PINMAP_V1'] = 'xx'
+        elif corruption == 'unsupported-version':
+            attrs['FES_PINMAP_V2'] = attrs.pop('FES_PINMAP_V1')
+        else:
+            assert pinmap['SO'][1:]
+            if corruption == 'missing-output':
+                del pinmap['SO']
+                payload['count'] = len(pinmap)  # Exercise logical completeness, not just count.
+            elif corruption == 'missing-folded':
+                folded = next(k for k,v in pinmap.items() if len(v) == 1 and v[0] != 0)
+                del pinmap[folded]  # Retain count to detect truncated folded state.
+            elif corruption == 'empty-inverted':
+                pinmap['SO'] = [3]
+            elif corruption == 'wrong-direction':
+                pinmap['SO'] = [0, 'WA4']
+            else:
+                pinmap['SO'].append(pinmap['SO'][1])
+            attrs['FES_PINMAP_V1'] = json.dumps(payload, sort_keys=True).encode().hex()
+        path = output / (corruption + '-scaffold.json')
+        path.write_text(json.dumps(bad))
+        result = subprocess.run([str(args.nextpnr.resolve()), '--device', '5CSEBA6U23I7',
+                                 '--json', str(path), '--fes-scaffold', '--no-pack', '--no-place', '--no-route'],
+                                capture_output=True, text=True)
+        text = result.stdout + result.stderr
+        (output / (corruption + '-scaffold.log')).write_text(text)
+        assert result.returncode != 0 and 'frozen' in text.lower() and 'pin' in text.lower(), (corruption, text)
+    for corruption in ('missing', 'malformed', 'geometry', 'selector', 'version', 'device', 'truncated'):
+        bad = copy.deepcopy(json.loads((output / 'routed-shell.json').read_text()))
+        attrs = bad['modules']['top']['attributes']
+        payload = json.loads(bytes.fromhex(attrs['FES_LABSTATE_V1']).decode())
+        if corruption == 'missing':
+            del attrs['FES_LABSTATE_V1']
+        elif corruption == 'malformed':
+            attrs['FES_LABSTATE_V1'] = b'{'.hex()
+        elif corruption == 'version':
+            attrs['FES_LABSTATE_V2'] = attrs.pop('FES_LABSTATE_V1')
+        else:
+            if corruption == 'geometry':
+                payload['labs'][0][0] += 1
+            elif corruption == 'selector':
+                payload['labs'][0][3][4] = 3
+            elif corruption == 'device':
+                payload['device'] = 'wrong-device'
+            else:
+                payload['labs'][0][3].pop()
+            attrs['FES_LABSTATE_V1'] = json.dumps(payload, sort_keys=True).encode().hex()
+        path = output / ('lab-' + corruption + '.json')
+        path.write_text(json.dumps(bad))
+        result = subprocess.run([str(args.nextpnr.resolve()), '--device', '5CSEBA6U23I7',
+                                 '--json', str(path), '--fes-scaffold', '--no-pack', '--no-place', '--no-route'],
+                                capture_output=True, text=True)
+        text = result.stdout + result.stderr
+        (output / ('lab-' + corruption + '.log')).write_text(text)
+        assert result.returncode != 0 and 'frozen' in text.lower() and 'lab' in text.lower(), (corruption, text)
     # The original one-clock diagnostic retains implicit clock selection.
     design["cells"]["second_domain"]["connections"]["CLK"] = design["cells"]["plug_addr_ff_0"]["connections"]["CLK"]
     (output / "single.json").write_text(json.dumps(source))
     merge("single", shell_name="single")
-    print("FES explicit clock, missing clock, ambiguous shell and single-clock fallback: PASS")
+    print("FES clock selection, inverted-control byte-identical replay, full RAM cart route/RBF, exact frozen LAB/maps and fifteen metadata rejection cases: PASS")
 
 
 if __name__ == "__main__":
