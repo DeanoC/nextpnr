@@ -70,10 +70,10 @@ endmodule
                         "--write", str(output / "shell.json")],
                        stdout=log, stderr=subprocess.STDOUT, check=True)
 
-    def merge(name, clock=None, expected=None, shell_name="shell"):
+    def merge(name, clock=None, expected=None, shell_name="shell", cart_name="cart"):
         command = [str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7",
                    "--json", str(output / (shell_name + ".json")),
-                   "--fes-cart", str(output / "cart.json"),
+                   "--fes-cart", str(output / (cart_name + ".json")),
                    "--no-pack", "--no-place", "--no-route",
                    "--write", str(output / (name + ".json"))]
         if clock is not None:
@@ -105,6 +105,18 @@ endmodule
         assert cells["fes_cart$writable"]["connections"]["B1WE"] == ground
         assert cells["fes_cart$writable"]["connections"]["B1EN"] == supply
         assert cells["fes_cart$writable"]["connections"]["A1BE"] == supply * 2
+    cart_source = json.loads((output / "cart.json").read_text())
+    cart_cells = cart_source["modules"]["cart"]["cells"]
+    # An unsupported divided clock must fail, not become a full-rate clock.
+    cart_cells["writable"]["connections"]["CLK2"] = cart_cells["state_ff"]["connections"]["Q"]
+    (output / "derived-cart.json").write_text(json.dumps(cart_source))
+    merge("derived", name, expected="does not use the declared socket clock", cart_name="derived-cart")
+    cart_cells["writable"]["connections"]["CLK2"] = ["0"]
+    (output / "constant-clock-cart.json").write_text(json.dumps(cart_source))
+    merge("constant-clock", name, expected="does not use the declared socket clock", cart_name="constant-clock-cart")
+    del cart_cells["writable"]["connections"]["CLK2"]
+    (output / "missing-clock-cart.json").write_text(json.dumps(cart_source))
+    merge("missing-cart-clock", name, expected="requires one declared socket clock input", cart_name="missing-clock-cart")
     # The original one-clock diagnostic retains implicit clock selection.
     design["cells"]["second_domain"]["connections"]["CLK"] = design["cells"]["plug_addr_ff_0"]["connections"]["CLK"]
     (output / "single.json").write_text(json.dumps(source))

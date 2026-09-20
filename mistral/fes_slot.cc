@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iterator>
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -422,6 +423,7 @@ void Arch::merge_fes_cart(const std::string &filename)
     };
 
     int mapped_ib = 0, missed_ib = 0, mapped_ob = 0;
+    std::set<int> socket_clock_bits;
     const Json &cells = mod["cells"];
     if (cells.is_object()) {
         for (const auto &item : cells.object_items()) {
@@ -438,9 +440,10 @@ void Arch::merge_fes_cart(const std::string &filename)
                     if (top == top_bits.end())
                         continue;
                     NetInfo *shell = nullptr;
-                    if (top->second.first == "FPGA_CLK1_50")
+                    if (top->second.first == "FPGA_CLK1_50") {
                         shell = shell_clock_net(ctx);
-                    else if (top->second.first == "plug_addr")
+                        socket_clock_bits.insert(out_id);
+                    } else if (top->second.first == "plug_addr")
                         shell = find_plug_addr_bit(ctx, top->second.second);
                     if (shell != nullptr) {
                         bit_nets[out_id] = shell;
@@ -470,6 +473,26 @@ void Arch::merge_fes_cart(const std::string &filename)
             }
         }
     }
+
+    // Synthesis may insert transparent clock buffers. Trace only those from
+    // the declared cart clock input; a divider, gate or constant is a distinct
+    // clock domain and must not be silently replaced by the shell clock.
+    bool changed;
+    do {
+        changed = false;
+        for (const auto &item : cells.object_items()) {
+            const std::string type = item.second["type"].string_value();
+            if (type != "MISTRAL_CLKBUF" && type != "MISTRAL_BUF")
+                continue;
+            const Json &conns = item.second["connections"];
+            const auto &input = conns["A"].array_items();
+            const auto &output = conns["Q"].array_items();
+            int from, to;
+            if (input.size() == 1 && output.size() == 1 && fes_json_signal(input[0], from) &&
+                fes_json_signal(output[0], to) && socket_clock_bits.count(from))
+                changed |= socket_clock_bits.insert(to).second;
+        }
+    } while (changed);
 
     int added = 0;
     if (cells.is_object()) {
@@ -501,6 +524,15 @@ void Arch::merge_fes_cart(const std::string &filename)
 
             const Json &dirs = src["port_directions"];
             const Json &conns = src["connections"];
+            const std::vector<std::string> required_clocks =
+                    type == id_MISTRAL_FF ? std::vector<std::string>{"CLK"}
+                    : type == id_MISTRAL_M10K ? std::vector<std::string>{"CLK1"}
+                    : type == id_MISTRAL_M10K_TDP ? std::vector<std::string>{"CLK1", "CLK2"}
+                                                : std::vector<std::string>{};
+            for (const auto &port : required_clocks)
+                if (conns[port].array_items().size() != 1 || dirs[port].string_value() != "input")
+                    log_error("FES cart '%s.%s' requires one declared socket clock input.\n",
+                              item.first.c_str(), port.c_str());
             if (conns.is_object()) {
                 for (const auto &conn : conns.object_items()) {
                     const auto &bits = conn.second.array_items();
@@ -522,6 +554,14 @@ void Arch::merge_fes_cart(const std::string &filename)
                             dst->addInput(pid);
                         char constant = 0;
                         int signal = 0;
+                        const bool clock_port =
+                                (type == id_MISTRAL_FF && pid == id_CLK) ||
+                                (type.in(id_MISTRAL_M10K, id_MISTRAL_M10K_TDP) && pid.in(id_CLK1, id_CLK2));
+                        if (clock_port &&
+                            (!fes_json_signal(bits[i], signal) || !socket_clock_bits.count(signal)))
+                            log_error("FES cart '%s.%s' does not use the declared socket clock; "
+                                      "derived, gated and constant cart clocks are unsupported.\n",
+                                      item.first.c_str(), pname.c_str());
                         if (fes_json_const(bits[i], constant)) {
                             if (ptype != PORT_IN)
                                 log_error("FES cart cell '%s' has a constant output port.\n", item.first.c_str());
