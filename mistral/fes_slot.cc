@@ -510,6 +510,54 @@ bool Arch::fes_pip_in_socket(PipId pip) const
     return loc.x >= fes_rect_x0 && loc.x <= fes_rect_x1 && loc.y >= fes_rect_y0 && loc.y <= fes_rect_y1;
 }
 
+void Arch::note_fes_cram_region(const std::string &spec)
+{
+#ifndef MISTRAL_ROUTING_MUX_CRAM_BITS
+    log_error("Physical CRAM routing fence requires Mistral routing-mux coordinates.\n");
+#else
+    int x0, y0, x1, y1;
+    char extra;
+    if (sscanf(spec.c_str(), "%d,%d,%d,%d%c", &x0, &y0, &x1, &y1, &extra) != 4 || x0 < 0 || y0 < 0 ||
+        x1 <= x0 || y1 <= y0 || uint32_t(x1) > cyclonev->get_cram_sx() || uint32_t(y1) > cyclonev->get_cram_sy())
+        log_error("Invalid FES CRAM region; expected half-open x0,y0,x1,y1.\n");
+    fes_cram_region = {x0, y0, x1, y1};
+    fes_has_cram_region = true;
+    std::vector<std::pair<uint32_t, uint32_t>> bits;
+    for (auto node : cyclonev->rnodes()) {
+        if (!cyclonev->rnode_mux_cram_bits(node.id(), bits))
+            log_error("Missing routing mux physical coordinates.\n");
+        bool inside = true;
+        for (const auto &bit : bits) {
+            if (bit.first < uint32_t(x0) || bit.first >= uint32_t(x1) || bit.second < uint32_t(y0) ||
+                bit.second >= uint32_t(y1)) {
+                inside = false;
+                break;
+            }
+        }
+        if (inside)
+            fes_cram_allowed_muxes.insert(node.id());
+    }
+    // Snapshot before cart merge can detach any original return-path stubs.
+    // Exact old selections remain legal; a different source at an outside mux
+    // is forbidden even for a mixed shell/cart constant net.
+    for (const auto &item : getCtx()->nets)
+        for (const auto &wire : item.second->wires)
+            if (wire.second.pip != PipId())
+                fes_frozen_pips.insert(wire.second.pip);
+    log_info("FES physical CRAM fence admits %zu muxes and preserves %zu frozen pips.\n",
+             fes_cram_allowed_muxes.size(), fes_frozen_pips.size());
+#endif
+}
+
+bool Arch::fes_pip_preserves_cram(PipId pip) const
+{
+    // Synthetic BEL edges are not routing muxes: write_routing skips them.
+    // Their cell/control configuration is governed by frozen physical state
+    // and the placement fence, and the producer checks the final CRAM bytes.
+    return !fes_has_cram_region || WireId(pip.src).is_nextpnr_created() || WireId(pip.dst).is_nextpnr_created() ||
+           fes_frozen_pips.count(pip) || fes_cram_allowed_muxes.count(pip.dst);
+}
+
 bool Arch::fes_pip_in_plug_halo(PipId pip) const
 {
     if (!fes_has_reserved_rect)

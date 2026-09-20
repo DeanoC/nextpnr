@@ -344,6 +344,8 @@ struct Arch : BaseArch<ArchRanges>
     bool fes_cell_is_slot(const CellInfo *cell) const;
     bool fes_net_touches_slot(const NetInfo *net) const;
     bool fes_pip_in_socket(PipId pip) const;
+    void note_fes_cram_region(const std::string &spec);
+    bool fes_pip_preserves_cram(PipId pip) const;
     bool fes_pip_in_plug_halo(PipId pip) const;
     bool fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const;
     void fes_rip_reserved_shell_pips();
@@ -422,12 +424,16 @@ struct Arch : BaseArch<ArchRanges>
         // Check reserved routes
         if (is_pip_blocked(pip))
             return false;
+        if (!fes_pip_preserves_cram(pip))
+            return false;
         return BaseArch::checkPipAvail(pip);
     }
 
     bool checkPipAvailForNet(PipId pip, const NetInfo *net) const override
     {
         if (is_pip_blocked(pip))
+            return false;
+        if (!fes_pip_preserves_cram(pip))
             return false;
         if (fes_fence_active && fes_has_reserved_rect && net != nullptr) {
             const bool slot_driven = fes_cell_is_slot(net->driver.cell);
@@ -600,6 +606,10 @@ struct Arch : BaseArch<ArchRanges>
     bool fes_has_reserved_rect = false;
     bool fes_fence_active = false;
     int fes_rect_x0 = 0, fes_rect_y0 = 0, fes_rect_x1 = -1, fes_rect_y1 = -1;
+    bool fes_has_cram_region = false;
+    std::array<int, 4> fes_cram_region = {};
+    pool<PipId> fes_frozen_pips;
+    pool<CycloneV::rnode_t> fes_cram_allowed_muxes;
 
     // -------------------------------------------------
 

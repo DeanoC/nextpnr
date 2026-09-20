@@ -2761,6 +2761,34 @@ struct MistralPacker
         ensure_m10k_control_ports(true);
         pack_constants_unbound();
         setup_m10ks(true);
+        if (ctx->fes_has_cram_region) {
+            // Extending distant shell constant trees can require programming
+            // muxes outside the socket. After folding and RAM control setup,
+            // drive only the remaining cart consumers from local slot LUTs.
+            for (int value = 0; value < 2; ++value) {
+                NetInfo *original = value ? vcc_net : gnd_net;
+                std::vector<PortRef> users;
+                for (const auto &user : original->users)
+                    if (ctx->fes_cell_is_slot(user.cell))
+                        users.push_back(user);
+                if (users.empty())
+                    continue;
+                IdString driver_name = ctx->idf("fes_cart$local_%s_DRV", value ? "VCC" : "GND");
+                IdString net_name = ctx->idf("fes_cart$local_%s_NET", value ? "VCC" : "GND");
+                if (ctx->cells.count(driver_name) || ctx->nets.count(net_name))
+                    log_error("Cart collides with reserved local constant names.\n");
+                CellInfo *driver = ctx->createCell(driver_name, id_MISTRAL_CONST);
+                driver->attrs[ctx->id("FES_SLOT")] = 1;
+                driver->params[id_LUT] = value;
+                driver->addOutput(id_Q);
+                NetInfo *local = ctx->createNet(net_name);
+                driver->connectPort(id_Q, local);
+                for (const auto &user : users) {
+                    user.cell->disconnectPort(user.port);
+                    user.cell->connectPort(user.port, local);
+                }
+            }
+        }
     }
 };
 }; // namespace

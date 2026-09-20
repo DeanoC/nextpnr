@@ -66,3 +66,29 @@ routes the cart, and checks frozen BEL and pin-map preservation. A shell with
 LUT6 logic and an inverted FF enable must emit byte-identical RBF when restored
 without a cart. These compiler
 checks do not replace a consumer's CRAM-boundary and timing checks.
+
+`--fes-cram-region x0,y0,x1,y1` fences new routing in an already routed
+scaffold by the actual routing mux configuration bits, with exclusive upper
+bounds. It requires a Mistral library exposing `rnode_mux_cram_bits`; older
+libraries reject the option. Bounds must fit the device CRAM geometry. Tile
+coordinates alone are insufficient because long-wire muxes may be programmed
+outside their nominal destination tile.
+
+The original scaffold's exact pip selections remain available. Every other
+physical mux must have its entire footprint inside the supplied region,
+including additions to shared shell/cart ground and supply nets. Synthetic BEL
+edges are skipped exactly as in bitstream routing emission; they have no routing
+mux bits, and their cell configuration remains governed by the placement fence
+and frozen physical snapshots. Before emitting RBF, the compiler checks all
+routed pips again. Consumers must still compare the complete emitted CRAM and
+header against their sealed shell; this routing check does not cover every
+possible cell or device setting.
+
+For a cart with a physical CRAM region, unbound packing gives remaining constant
+consumers local slot `MISTRAL_CONST` drivers after control folding and RAM setup.
+The frozen shell's constant drivers, users and routes remain intact. This avoids
+depending on new branches from a distant shell constant tree outside the region.
+
+The regression replays the unchanged shell with a one-bit region and requires
+identical bytes, proving existing outside routing is retained. Invalid bounds
+and use without a routed scaffold must reject before compilation.

@@ -145,11 +145,23 @@ endmodule
     with (output / 'shell-restore.log').open('w') as log:
         subprocess.run([str(args.nextpnr.resolve()), '--device', '5CSEBA6U23I7',
                         '--json', str(output / 'routed-shell.json'), '--fes-scaffold',
+                        '--fes-cram-region', '0,0,1,1',
                         '--no-pack', '--no-place', '--router', 'router2',
                         '--rbf', str(output / 'shell-restored.rbf'), '--compress-rbf'],
                        stdout=log, stderr=subprocess.STDOUT, check=True)
     assert 'ERROR:' not in (output / 'shell-restore.log').read_text()
     assert (output / 'shell.rbf').read_bytes() == (output / 'shell-restored.rbf').read_bytes(), 'restored shell RBF changed'
+    for index, region in enumerate(('1,0,1,1', '0,0,999999,1', '0,0,1,1,2', '-1,0,1,1')):
+        result = subprocess.run([str(args.nextpnr.resolve()), '--device', '5CSEBA6U23I7',
+                                 '--json', str(output / 'routed-shell.json'),
+                                 '--fes-cram-region', region, '--no-pack', '--no-place', '--no-route'],
+                                capture_output=True, text=True)
+        (output / f'invalid-cram-region-{index}.log').write_text(result.stdout + result.stderr)
+        assert result.returncode != 0 and 'Invalid FES CRAM region' in result.stdout + result.stderr
+    result = subprocess.run([str(args.nextpnr.resolve()), '--device', '5CSEBA6U23I7',
+                             '--json', str(output / 'shell.json'), '--fes-cram-region', '0,0,1,1',
+                             '--no-pack', '--no-place', '--no-route'], capture_output=True, text=True)
+    assert result.returncode != 0 and 'requires an already routed scaffold' in result.stdout + result.stderr
     bit = routed["cells"]["plug_addr_ff_0"]["connections"]["CLK"]
     clock = next(key for key, net in routed["netnames"].items() if net["bits"] == bit)
     merged = merge("routed-merge", clock, shell_name="routed-shell")
@@ -181,6 +193,7 @@ endmodule
                         '--json', str(output / 'routed-shell.json'),
                         '--fes-cart', str(output / 'cart.json'),
                         '--fes-slot-clock', clock, '--fes-scaffold', '--no-pack', '--router', 'router2', '--seed', '2',
+                        '--fes-cram-region', '0,0,7605,7024',
                         '--write', str(output / 'scaffold-placed.json'),
                         '--rbf', str(output / 'scaffold-composed.rbf'), '--compress-rbf'],
                        stdout=log, stderr=subprocess.STDOUT, check=True)
@@ -191,6 +204,15 @@ endmodule
     assert (output / 'scaffold-composed.rbf').stat().st_size > 40408
     assert (output / 'scaffold-placed.json').is_file()
     placed = json.loads((output / 'scaffold-placed.json').read_text())['modules']['top']
+    for constant, value in (('GND', 0), ('VCC', 1)):
+        cell = placed['cells'][f'fes_cart$local_{constant}_DRV']
+        assert cell['type'] == 'MISTRAL_CONST' and int(cell['parameters']['LUT'], 2) == value
+        assert int(cell['attributes']['FES_SLOT'], 2) == 1
+        local_bits = placed['netnames'][f'fes_cart$local_{constant}_NET']['bits']
+        assert cell['connections']['Q'] == local_bits
+        for name, other in placed['cells'].items():
+            if not name.startswith('fes_cart$'):
+                assert all(not set(bits).intersection(local_bits) for bits in other['connections'].values()), name
     for cell, before in routed['cells'].items():
         if 'NEXTPNR_BEL' in before.get('attributes', {}):
             assert placed['cells'][cell]['attributes']['NEXTPNR_BEL'] == before['attributes']['NEXTPNR_BEL'], cell
