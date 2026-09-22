@@ -501,6 +501,7 @@ struct Arch : BaseArch<ArchRanges>
     void create_control(int x, int y);                 // globals.cc
     void create_hps_mpu_general_purpose(int x, int y); // globals.cc
     void create_hps_peripheral_i2c(int x, int y);      // globals.cc
+    void create_hps_fpga2sdram(int x, int y);          // globals.cc
 
     // -------------------------------------------------
 
