@@ -49,6 +49,17 @@ int main()
     assert(fifty_two->m_low_preset == 6 && fifty_two->m_phase_preset == 2);
     assert(select(65)->m == 52 && select(65)->n == 5 && select(65)->c == 8);
     assert(select(20)->c == 15 && select(100)->c == 3);
+    auto fast_dual = select_dual_hz(130000000, 130000000);
+    assert(fast_dual);
+    assert(fast_dual->feedback.m == 26 && fast_dual->feedback.n == 2);
+    assert(fast_dual->feedback.c == 5 && fast_dual->c1 == 5);
+    assert(fast_dual->feedback.bandwidth == 7 && fast_dual->feedback.charge_pump == 1);
+    assert(!select_dual_hz(130000000, 100000000));
+    assert(!select_dual_hz(130000000, 130000000, 25));
+    assert(!select_dual_hz(130000000, 130000000, 50, 40, 50));
+    assert(!select_dual_hz(129000000, 129000000));
+    assert(parse_output_hz("130.0 MHz") == 130000000);
+    assert(!parse_output_hz("130.1 MHz"));
     for (int invalid : {-1, 0, 7, 99, 101, 300}) assert(!select(invalid));
     for (auto text : {"20 MHz", "20.0 MHz", "20.000 MHz"}) assert(parse_mhz(text) == 20);
     for (auto text : {"", "0 MHz", "101 MHz", "20.1 MHz", "20MHz", "20 MHz junk", "-20 MHz",

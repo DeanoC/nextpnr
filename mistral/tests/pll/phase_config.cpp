@@ -37,6 +37,10 @@ int main()
     assert(!select_phase("10000 ps", 100000000));
     assert(!select_phase("20000 ps", 50000000));
     assert(!select_phase("5000 ps", 25000000));
+    auto ram130 = select_phase("6538 ps", 130000000);
+    assert(ram130 && ram130->shift_ps == 6538 && ram130->c_preset == 5 && ram130->c_phase_preset == 2);
+    assert(!select_phase("6538 ps", 100000000));
+    assert(!select_phase("2692 ps", 130000000));
     for (int64_t hz : {16000000, 40000000}) {
         auto aligned = select_phase("0 ps", hz);
         assert(aligned && aligned->shift_ps == 0 && aligned->c_preset == 1 && aligned->c_phase_preset == 0);

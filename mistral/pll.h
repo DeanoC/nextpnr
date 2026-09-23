@@ -56,6 +56,9 @@ inline std::optional<PhaseConfig> select_phase(const std::string &text, int64_t 
         if (text == "2500 ps") return PhaseConfig{2500, 1, 6};
         if (text == "5000 ps") return PhaseConfig{5000, 2, 4};
         if (text == "7500 ps") return PhaseConfig{7500, 3, 2};
+    } else if (output_hz == 130000000) {
+        // Quartus 17.0.2 oracle: 50 MHz reference, 650 MHz VCO, C6/C7=5.
+        if (text == "6538 ps") return PhaseConfig{6538, 5, 2};
     }
     return std::nullopt;
 }
@@ -82,7 +85,7 @@ inline int64_t parse_output_hz(const std::string &text)
     if (fraction.size() > 6) return 0;
     while (fraction.size() < 6) fraction += '0';
     int64_t hz = int64_t(std::stoi(match[1].str())) * 1000000 + std::stoi(fraction);
-    return hz >= 1000000 && hz <= 100000000 ? hz : 0;
+    return hz >= 1000000 && hz <= 130000000 ? hz : 0;
 }
 
 inline Profile make_profile(int vco_mhz, int m, int n, int bandwidth, int charge_pump,
@@ -181,6 +184,10 @@ struct DualConfig
 
 inline std::optional<DualConfig> select_dual_hz(int64_t hz0, int64_t hz1, int reference_mhz = 50, int duty0 = 50, int duty1 = 50)
 {
+    // The narrow 130 MHz profile is checked against a Quartus dual-output
+    // oracle; other outputs above 100 MHz remain outside the selector.
+    if (hz0 == 130000000 && hz1 == 130000000 && reference_mhz == 50 && duty0 == 50 && duty1 == 50)
+        return DualConfig{Config{26, 2, 5, 7, 1, 1, 0}, 5};
     if (!valid_reference(reference_mhz) || hz0 < 1000000 || hz0 > 100000000 || hz1 < 1000000 || hz1 > 100000000)
         return std::nullopt;
     // Both counters must share one checked feedback/analog configuration.
