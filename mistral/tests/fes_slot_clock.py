@@ -204,6 +204,8 @@ endmodule
     assert (output / 'scaffold-composed.rbf').stat().st_size > 40408
     assert (output / 'scaffold-placed.json').is_file()
     placed = json.loads((output / 'scaffold-placed.json').read_text())['modules']['top']
+    route_through = placed['cells']['fes_cart$state_ff$ROUTETHRU']
+    assert int(route_through['attributes']['FES_SLOT'], 2) == 1, route_through
     for constant, value in (('GND', 0), ('VCC', 1)):
         cell = placed['cells'][f'fes_cart$local_{constant}_DRV']
         assert cell['type'] == 'MISTRAL_CONST' and int(cell['parameters']['LUT'], 2) == value

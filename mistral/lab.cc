@@ -960,6 +960,12 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
             if (ff->belStrength >= STRENGTH_LOCKED)
                 continue;
             CellInfo *rt_lut = createCell(idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
+            // The route-through becomes the FF's DATAIN sink. Preserve the
+            // socket boundary marker so FES routing still recognizes it as a
+            // cart endpoint when checking pips inside the socket.
+            auto slot = ff->attrs.find(id("FES_SLOT"));
+            if (slot != ff->attrs.end())
+                rt_lut->attrs[id("FES_SLOT")] = slot->second;
             rt_lut->addInput(id_A);
             rt_lut->addOutput(id_Q);
             // Disconnect the original data input to the FF, and connect it to the route-thru LUT instead
