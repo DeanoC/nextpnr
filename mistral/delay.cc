@@ -19,6 +19,8 @@
 #include "nextpnr.h"
 #include "util.h"
 
+#include <cstdio>
+
 NEXTPNR_NAMESPACE_BEGIN
 
 namespace {
@@ -511,6 +513,12 @@ bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort
 
 DelayQuad Arch::getPipDelay(PipId pip) const
 {
+    DelayQuad table = getPipDelayTable(pip);
+    return pip_delay_calibrated ? getPipDelayCalibrated(pip, table) : table;
+}
+
+DelayQuad Arch::getPipDelayTable(PipId pip) const
+{
     WireId src = getPipSrcWire(pip), dst = getPipDstWire(pip);
 
     if (src.is_nextpnr_created() || dst.is_nextpnr_created())
@@ -560,7 +568,19 @@ bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, Del
 {
     if (!this->bitstream_configured)
         return false;
+    if (analogue_cache_valid) {
+        auto fnd = analogue_arc_cache.find(&sink);
+        if (fnd != analogue_arc_cache.end()) {
+            delay = fnd->second.delay;
+            return fnd->second.ok;
+        }
+    }
+    return analogue_arc_delay(net_info, sink, delay, nullptr);
+}
 
+bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay,
+                              std::vector<AnalogueHop> *hops) const
+{
     WireId src_wire = getCtx()->getNetinfoSourceWire(net_info);
     WireId dst_wire = getCtx()->getNetinfoSinkWire(net_info, sink, 0);
     NPNR_ASSERT(src_wire != WireId());
@@ -609,6 +629,9 @@ bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, Del
         // no analogue model for that tap; retain the estimated arc instead.
         if (pll_ref_select.count(pip))
             return false;
+
+        if (hops)
+            hops->push_back(AnalogueHop{pip, getPipDelayTable(pip).maxDelay(), 0, 0});
 
         if (src.is_nextpnr_created())
             continue;
@@ -666,6 +689,8 @@ bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, Del
 
             output_delay_sum[edge].mi += output_delays[edge].mi;
             output_delay_sum[edge].mx += output_delays[edge].mx;
+            if (hops)
+                (edge ? hops->back().fall : hops->back().rise) = delay_t(output_delays[edge].mx * 1e12);
         }
 
         if (inverting == mistral::CycloneV::INV_YES || inverting == mistral::CycloneV::INV_PROGRAMMABLE)
@@ -700,4 +725,42 @@ delay_t Arch::estimateDelay(WireId src, WireId dst) const
     return 75 * x_diff + 200 * y_diff;
 }
 
+// Diagnostic: write every routed arc's per-hop delay-table and analogue
+// delays after the bitstream has been configured.
+void Arch::dump_analogue_arcs(const std::string &path) const
+{
+    FILE *f = fopen(path.c_str(), "w");
+    if (!f)
+        log_error("cannot open analogue arc dump '%s'\n", path.c_str());
+    fprintf(f, "net\tuser\thop\tsrc_type\tsrc_x\tsrc_y\tdst_type\tdst_x\tdst_y\ttable_ps\trise_ps\tfall_ps\n");
+    std::vector<AnalogueHop> hops;
+    for (auto &net : nets) {
+        const NetInfo *ni = net.second.get();
+        if (ni->driver.cell == nullptr || ni->wires.empty() || ni->is_global)
+            continue;
+        for (auto item : const_cast<NetInfo *>(ni)->users.enumerate()) {
+            const PortRef &usr = item.value;
+            auto usr_idx = item.index;
+            hops.clear();
+            DelayQuad d;
+            if (!analogue_arc_delay(ni, usr, d, &hops))
+                continue;
+            for (size_t h = 0; h < hops.size(); h++) {
+                WireId s = getPipSrcWire(hops[h].pip), t = getPipDstWire(hops[h].pip);
+                auto tn = [&](WireId w) -> const char * {
+                    return w.is_nextpnr_created() ? "NPNR" : CycloneV::rnode_type_names[CycloneV::rn2t(w.node)];
+                };
+                fprintf(f, "%s\t%d\t%zu\t%s\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%d\n", ni->name.c_str(getCtx()),
+                        usr_idx.idx(), h, tn(s), s.is_nextpnr_created() ? -1 : int(CycloneV::rn2x(s.node)),
+                        s.is_nextpnr_created() ? -1 : int(CycloneV::rn2y(s.node)), tn(t),
+                        t.is_nextpnr_created() ? -1 : int(CycloneV::rn2x(t.node)),
+                        t.is_nextpnr_created() ? -1 : int(CycloneV::rn2y(t.node)), int(hops[h].table),
+                        int(hops[h].rise), int(hops[h].fall));
+            }
+        }
+    }
+    fclose(f);
+}
+
 NEXTPNR_NAMESPACE_END
+

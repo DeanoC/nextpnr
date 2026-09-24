@@ -20,7 +20,9 @@
 #ifndef MISTRAL_ARCH_H
 #define MISTRAL_ARCH_H
 
+#include <array>
 #include <set>
+#include <unordered_map>
 #include <sstream>
 
 #include "base_arch.h"
@@ -465,7 +467,42 @@ struct Arch : BaseArch<ArchRanges>
     bool getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort,
                       DelayQuad &delay) const override;                                                      // delay.cc
     DelayQuad getPipDelay(PipId pip) const override;                                                         // delay.cc
+    // The per-type table the routers use until analogue_repair() calibrates it.
+    DelayQuad getPipDelayTable(PipId pip) const;
+    DelayQuad getPipDelayCalibrated(PipId pip, const DelayQuad &table) const; // analogue.cc
     bool getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay) const override; // delay.cc
+    struct AnalogueHop
+    {
+        PipId pip;
+        delay_t table, rise, fall;
+    };
+    // Mistral analogue delay of one routed arc; optionally records each pip.
+    bool analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay,
+                            std::vector<AnalogueHop> *hops) const;
+    void dump_analogue_arcs(const std::string &path) const;
+
+    // Analogue signoff repair after the GPU router (analogue.cc)
+    struct TypeCalibration
+    {
+        double table_ps = 0, analogue_ps = 0;
+        int64_t hops = 0;
+    };
+    bool pip_delay_calibrated = false;
+    float pip_delay_prior = 1.0f;
+    dict<PipId, delay_t> pip_delay_observed;
+    std::array<TypeCalibration, 256> pip_type_calibration;
+    // Analogue delay of every routed arc, computed in parallel once the
+    // bitstream is configured; observe also records per-pip delays.
+    struct AnalogueArc
+    {
+        DelayQuad delay;
+        bool ok;
+    };
+    std::unordered_map<const PortRef *, AnalogueArc> analogue_arc_cache;
+    bool analogue_cache_valid = false;
+    void compute_analogue_arcs(bool observe);
+    bool analogue_repair();
+    void configure_bitstream(bool observe = false); // bitstream.cc
 
     // -------------------------------------------------
 
