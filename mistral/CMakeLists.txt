@@ -1,4 +1,5 @@
 set(SOURCES
+    analogue.cc
     arch.cc
     archdefs.cc
     archdefs.h

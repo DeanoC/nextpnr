@@ -60,6 +60,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `repairRounds`, `repairSlack`, `repairBand`, `repairImproveRounds` | 10, 0 ps, 300 ps, 4 | timing repair (below) |
 | `repairDisplace`, `repairDisplaceMargin` | true, 0 ps | a stuck repair may displace frozen arcs with at least this much more slack |
 | `repairCongWeight` | 1.0 | present-congestion weight used when re-routing a same-band peer group (0 disables). History cost is ignored in that pass, so an occupied wire costs `(1 + occ * weight)` times delay. |
+| `analogueRounds`, `analogueSlack`, `analogueRipSlack`, `analoguePrior` | 3, 0 ps, 300 ps, 1.25 | Mistral analogue signoff repair (below); `analogueRounds=0` disables it |
 | `cpuLaneNets` | 0 | batches of at most this many nets run on the host backend (0: never) |
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
@@ -138,6 +139,25 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 7. **Binding.** The trees are bound into the Arch with `bindWire`/`bindPip`;
    anything the Arch rejects is negotiated again. router1 then runs as the
    final legality check exactly as after router2.
+8. **Analogue signoff repair (Mistral).** The table in `mistral/delay.cc`
+   has one delay per wire type, but signoff uses Mistral's analogue model,
+   whose delay depends on the physical line and tap, the configured load
+   and the input slope. On the FES ColecoVision core the table
+   underestimates a routed arc by 140 ps on average and by more than 1 ns
+   at the 99th percentile (H3/H6 lines near the M10K columns reach 500-700
+   ps against a 226/275 ps table entry), so routes that pass the table
+   miss signoff. After routing, `Arch::route` configures the bitstream and
+   times the design with the analogue model (arcs are simulated in parallel
+   and cached, which also speeds up the final signoff). If a clock has less
+   than `analogueSlack` slack, every routed pip's analogue delay is
+   recorded; `getPipDelay` then returns the recorded delay, or for an
+   unobserved pip the table scaled by the observed per-type ratio times
+   `analoguePrior` (so repairs prefer wires of known delay). Nets with an
+   arc below `analogueRipSlack` analogue slack are ripped up and the GPU
+   router runs again with `repairSlack` set to the same margin; the other
+   nets stay bound and their wires are reserved for them. This repeats for
+   up to `analogueRounds` rounds and the routing with the best analogue
+   slack is kept. A design that already meets signoff is unchanged.
 
 ### Device side (`common/route/gpu/gpuroute_kernel.cuh`)
 

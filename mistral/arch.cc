@@ -658,6 +658,8 @@ bool Arch::route()
         }
     } else if (router == "gpu") {
         result = gpurouter(getCtx(), GpuRouterCfg(getCtx()));
+        if (result)
+            result = analogue_repair();
     } else {
         log_error("Mistral architecture does not support router '%s'\n", router.c_str());
     }

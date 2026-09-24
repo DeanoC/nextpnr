@@ -979,10 +979,17 @@ struct MistralBitgen
 };
 } // namespace
 
-void Arch::build_bitstream()
+void Arch::configure_bitstream(bool observe)
 {
+    analogue_cache_valid = false;
     MistralBitgen gen(getCtx());
     gen.run();
+    compute_analogue_arcs(observe);
+}
+
+void Arch::build_bitstream()
+{
+    configure_bitstream();
 
     // This is a hack to run timing analysis yet again after the bitstream is
     // configured in Mistral, because the analogue simulator won't work until
@@ -993,6 +1000,9 @@ void Arch::build_bitstream()
     log_info("Running signoff timing analysis...\n");
 
     timing_analysis(getCtx(), true, true, true, true, true);
+
+    if (const char *dump = getenv("NEXTPNR_MISTRAL_ARC_DUMP"))
+        dump_analogue_arcs(dump);
 }
 
 NEXTPNR_NAMESPACE_END

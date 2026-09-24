@@ -280,10 +280,14 @@ struct GpuRouter
             tw.count = 0;
             nd.wires[int32_t(i)] = tw;
             occ[i] = 1;
-            if (iter->second.strength == STRENGTH_PLACER)
-                reserved[i] = bound->udata;
-            else if (iter->second.strength > STRENGTH_PLACER)
+            if (iter->second.strength > STRENGTH_PLACER)
                 wflags[i] |= gpuroute::WIRE_UNAVAILABLE;
+            else
+                // Routing already bound (placer constraints, or the nets an
+                // incremental re-route leaves in place) belongs to its net;
+                // another net must not negotiate for it and then be frozen
+                // there by timing repair, as the bound net never moves.
+                reserved[i] = bound->udata;
         }
         log_info("    flattened %zu wires and %lld pips in %.2fs\n", n, (long long)m, secs_since(t0));
     }
