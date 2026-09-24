@@ -2025,6 +2025,21 @@ struct GpuRouter
             bind_and_check_all();
             if (failed_nets.empty())
                 break;
+            // update_congestion() clears failed_nets after each re-route. When
+            // there is no congestion, negotiate() therefore returns without
+            // reaching its own maxIter check, even if Arch rejects the same
+            // net again at the next binding pass.
+            if (iter > cfg.max_iter) {
+                std::string names;
+                for (int n : failed_nets) {
+                    if (!names.empty())
+                        names += ", ";
+                    names += ctx->nameOf(nets_by_udata.at(n));
+                }
+                log_error("GPU router architecture bind did not converge after %d routing iterations "
+                          "(rejected nets: %s).\n",
+                          cfg.max_iter, names.c_str());
+            }
             log_info("    %zu nets rejected by the architecture, re-routing\n", failed_nets.size());
             for (auto cn : failed_nets)
                 route_queue.push_back(cn);
