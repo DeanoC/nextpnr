@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iterator>
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -34,6 +35,41 @@ using json11::Json;
 NEXTPNR_NAMESPACE_BEGIN
 
 namespace {
+
+std::string fes_encode_snapshot(const Json &payload)
+{
+    std::string encoded;
+    static const char hex[] = "0123456789abcdef";
+    for (unsigned char ch : payload.dump()) {
+        encoded += hex[ch >> 4];
+        encoded += hex[ch & 15];
+    }
+    return encoded;
+}
+
+Json fes_decode_snapshot(const Property &saved, const char *description)
+{
+    if (!saved.is_string)
+        log_error("Invalid frozen %s encoding.\n", description);
+    const std::string encoded = saved.as_string();
+    std::string decoded;
+    if (encoded.size() % 2 != 0)
+        log_error("Invalid frozen %s encoding.\n", description);
+    auto nibble = [&](char ch) {
+        if (ch >= '0' && ch <= '9')
+            return ch - '0';
+        if (ch >= 'a' && ch <= 'f')
+            return ch - 'a' + 10;
+        log_error("Invalid frozen %s encoding.\n", description);
+    };
+    for (size_t i = 0; i < encoded.size(); i += 2)
+        decoded += char((nibble(encoded[i]) << 4) | nibble(encoded[i + 1]));
+    std::string error;
+    Json payload = Json::parse(decoded, error);
+    if (!error.empty() || payload.dump() != decoded)
+        log_error("Invalid frozen %s payload.\n", description);
+    return payload;
+}
 
 bool fes_skip_cart_cell(IdString type)
 {
@@ -66,6 +102,17 @@ NetInfo *find_plug_addr_bit(Context *ctx, int index)
 
 NetInfo *shell_clock_net(Context *ctx)
 {
+    const IdString selection = ctx->id("fes/slot_clock");
+    if (ctx->settings.count(selection)) {
+        const std::string name = ctx->settings.at(selection).as_string();
+        NetInfo *clock = find_named_net(ctx, name);
+        if (clock == nullptr || clock->driver.cell == nullptr)
+            log_error("FES slot clock '%s' is not a driven shell net.\n", name.c_str());
+        if (ctx->fes_cell_is_slot(clock->driver.cell))
+            log_error("FES slot clock '%s' is driven by the cart, not the shell.\n", name.c_str());
+        return clock;
+    }
+    NetInfo *clock = nullptr;
     for (auto &item : ctx->cells) {
         CellInfo *ci = item.second.get();
         if (ci->type != id_MISTRAL_FF)
@@ -73,10 +120,18 @@ NetInfo *shell_clock_net(Context *ctx)
         if (ci->attrs.count(ctx->id("FES_SLOT")) && ci->attrs.at(ctx->id("FES_SLOT")).as_bool())
             continue;
         NetInfo *clk = ci->getPort(id_CLK);
-        if (clk != nullptr)
-            return clk;
+        if (clk != nullptr) {
+            if (clock != nullptr && clock != clk)
+                log_error("FES shell has multiple clocks; select the socket clock with --fes-slot-clock.\n");
+            clock = clk;
+        }
     }
-    return find_named_net(ctx, "FPGA_CLK1_50");
+    if (clock != nullptr)
+        return clock;
+    clock = find_named_net(ctx, "FPGA_CLK1_50");
+    if (clock == nullptr || clock->driver.cell == nullptr)
+        log_error("FES shell has no driven socket clock; use --fes-slot-clock.\n");
+    return clock;
 }
 
 CellInfo *find_rdata_ff(Context *ctx, const std::string &port)
@@ -162,13 +217,27 @@ void fes_trim_net_orphans(Context *ctx, NetInfo *net)
 {
     if (net == nullptr || net->wires.empty())
         return;
+    if (net->users.empty()) {
+        // Detaching the vacant return FF can strand its route-through source.
+        // With no remaining sink, even a locked source wire is an orphan.
+        fes_rip_net_routing(ctx, net);
+        return;
+    }
     pool<WireId> used;
     WireId src = ctx->getNetinfoSourceWire(net);
     if (src != WireId())
         used.insert(src);
     for (auto usr : net->users) {
-        for (auto dst : ctx->getNetinfoSinkWires(net, usr)) {
-            WireId cursor = dst;
+        // Imported routed shells have physical BEL bindings before the
+        // scaffold restores logical pin mappings. Inspect those bindings
+        // directly; querying logical sink wires here can address a packed
+        // port that no longer exists on the physical BEL.
+        if (usr.cell == nullptr || usr.cell->bel == BelId())
+            continue;
+        for (IdString pin : ctx->getBelPins(usr.cell->bel)) {
+            WireId cursor = ctx->getBelPinWire(usr.cell->bel, pin);
+            if (cursor == WireId() || ctx->getBoundWireNet(cursor) != net)
+                continue;
             int guard = 0;
             while (cursor != WireId() && net->wires.count(cursor) && guard++ < 100000) {
                 used.insert(cursor);
@@ -245,9 +314,83 @@ void Arch::fes_rip_reserved_shell_pips()
     log_info("FES ripped %d reserved-tile pips from shell nets.\n", ripped);
 }
 
+void Arch::save_fes_pin_maps()
+{
+    // Routing does not describe unused memory lanes or folded hard constants.
+    // Preserve the complete physical mapping alongside the frozen netlist.
+    for (auto &item : getCtx()->cells) {
+        CellInfo *ci = item.second.get();
+        if (ci->bel == BelId())
+            continue;
+        Json::object ports;
+        for (const auto &pin : ci->pin_data) {
+            Json::array data{int(pin.second.state)};
+            for (IdString physical : pin.second.bel_pins)
+                data.emplace_back(physical.str(getCtx()));
+            ports[pin.first.str(getCtx())] = data;
+        }
+        // The generic JSON writer does not escape quotes in attributes.
+        // Hex keeps this architecture-specific payload unambiguous there.
+        Json payload = Json::object{{"count", int(ports.size())}, {"pins", ports}};
+        ci->attrs[id("FES_PINMAP_V1")] = fes_encode_snapshot(payload);
+    }
+    Json::array physical_labs;
+    for (const auto &lab : labs) {
+        Loc loc = getBelLocation(lab.alms[0].lut_bels[0]);
+        Json::array state{int(lab.aclr_used[0]), int(lab.aclr_used[1])};
+        for (const auto &alm : lab.alms) {
+            for (int value : {int(alm.l6_mode), int(alm.carry_mode), alm.clk_ena_idx[0], alm.clk_ena_idx[1],
+                              alm.aclr_idx[0], alm.aclr_idx[1]})
+                state.emplace_back(value);
+        }
+        physical_labs.emplace_back(Json::array{loc.x, loc.y, int(lab.is_mlab), state});
+    }
+    getCtx()->attrs[id("FES_LABSTATE_V1")] =
+            fes_encode_snapshot(Json::object{{"device", args.device}, {"labs", physical_labs}});
+}
+
 void Arch::lock_fes_scaffold()
 {
     Context *ctx = getCtx();
+    for (const auto &attr : ctx->attrs) {
+        const std::string key = attr.first.str(ctx);
+        if (key.compare(0, 13, "FES_LABSTATE_") == 0 && key != "FES_LABSTATE_V1")
+            log_error("Unsupported frozen LAB-state version.\n");
+    }
+    auto lab_snapshot = ctx->attrs.find(id("FES_LABSTATE_V1"));
+    if (lab_snapshot == ctx->attrs.end())
+        log_error("Missing frozen LAB state; rebuild the shell with physical snapshot metadata.\n");
+    Json lab_payload = fes_decode_snapshot(lab_snapshot->second, "LAB state");
+    if (!lab_payload.is_object() || lab_payload.object_items().size() != 2 ||
+        !lab_payload["device"].is_string() || lab_payload["device"].string_value() != args.device ||
+        !lab_payload["labs"].is_array() || lab_payload["labs"].array_items().size() != labs.size())
+        log_error("Invalid frozen LAB-state device or geometry.\n");
+    for (size_t index = 0; index < labs.size(); ++index) {
+        auto &lab = labs[index];
+        const auto &entry = lab_payload["labs"][index];
+        Loc loc = getBelLocation(lab.alms[0].lut_bels[0]);
+        if (!entry.is_array() || entry.array_items().size() != 4 || entry[0].number_value() != loc.x ||
+            entry[1].number_value() != loc.y || entry[2].number_value() != int(lab.is_mlab) ||
+            !entry[0].is_number() || !entry[1].is_number() || !entry[2].is_number() ||
+            !entry[3].is_array() || entry[3].array_items().size() != 62)
+            log_error("Invalid frozen LAB-state geometry at index %zu.\n", index);
+        const auto &state = entry[3].array_items();
+        for (size_t offset = 0; offset < state.size(); ++offset) {
+            const int max_value = offset >= 2 && ((offset - 2) % 6 == 2 || (offset - 2) % 6 == 3) ? 2 : 1;
+            if (!state[offset].is_number() || state[offset].number_value() != state[offset].int_value() ||
+                state[offset].int_value() < 0 || state[offset].int_value() > max_value)
+                log_error("Invalid frozen LAB-state field at index %zu.%zu.\n", index, offset);
+        }
+        lab.aclr_used = {bool(state[0].int_value()), bool(state[1].int_value())};
+        for (size_t alm_index = 0; alm_index < 10; ++alm_index) {
+            auto &alm = lab.alms[alm_index];
+            size_t start = 2 + 6 * alm_index;
+            alm.l6_mode = state[start].int_value();
+            alm.carry_mode = state[start + 1].int_value();
+            alm.clk_ena_idx = {state[start + 2].int_value(), state[start + 3].int_value()};
+            alm.aclr_idx = {state[start + 4].int_value(), state[start + 5].int_value()};
+        }
+    }
     // Rip is optional; mixed USER/WEAK trees make GPU router1 check abort.
     // fes_rip_reserved_shell_pips();
     if (fes_has_reserved_rect) {
@@ -272,20 +415,69 @@ void Arch::lock_fes_scaffold()
             continue;
         ci->belStrength = STRENGTH_LOCKED;
         ++locked_cells;
-        for (auto &port : ci->ports) {
-            NetInfo *net = port.second.net;
-            if (net == nullptr)
-                continue;
-            std::vector<IdString> found;
-            for (IdString bp : getBelPins(ci->bel)) {
-                WireId w = getBelPinWire(ci->bel, bp);
-                if (w != WireId() && getBoundWireNet(w) == net)
-                    found.push_back(bp);
-            }
-            if (!found.empty())
-                ci->pin_data[port.first].bel_pins = std::move(found);
+        for (const auto &attr : ci->attrs) {
+            const std::string key = attr.first.str(ctx);
+            if (key.compare(0, 11, "FES_PINMAP_") == 0 && key != "FES_PINMAP_V1")
+                log_error("Unsupported frozen pin-map version for %s.\n", ctx->nameOf(ci));
         }
+        auto saved = ci->attrs.find(id("FES_PINMAP_V1"));
+        if (saved != ci->attrs.end()) {
+            Json payload = fes_decode_snapshot(saved->second, "pin-map");
+            const Json &ports = payload["pins"];
+            if (!payload.is_object() || payload.object_items().size() != 2 ||
+                !ports.is_object() || !payload["count"].is_number() ||
+                payload["count"].number_value() != double(ports.object_items().size()))
+                log_error("Invalid frozen pin map for %s.\n", ctx->nameOf(ci));
+            for (const auto &port : ci->ports) {
+                if (port.second.net != nullptr && !ports.object_items().count(port.first.str(ctx)))
+                    log_error("Incomplete frozen pin map for %s.%s.\n", ctx->nameOf(ci), port.first.c_str(ctx));
+            }
+            ci->pin_data.clear();
+            for (const auto &entry : ports.object_items()) {
+                const auto &data = entry.second.array_items();
+                if (!entry.second.is_array() || data.empty() || !data[0].is_number() ||
+                    data[0].number_value() != data[0].int_value() || data[0].int_value() < PIN_SIG ||
+                    data[0].int_value() > PIN_INV)
+                    log_error("Invalid frozen pin state for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
+                auto &pin = ci->pin_data[id(entry.first)];
+                pin.state = CellPinState(data[0].int_value());
+                std::set<IdString> seen;
+                for (size_t i = 1; i < data.size(); ++i) {
+                    if (!data[i].is_string() || !bel_data(ci->bel).pins.count(id(data[i].string_value())))
+                        log_error("Invalid frozen physical pin for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
+                    auto logical = ci->ports.find(id(entry.first));
+                    PortType direction = getBelPinType(ci->bel, id(data[i].string_value()));
+                    if (logical != ci->ports.end() && direction != PORT_INOUT && direction != logical->second.type)
+                        log_error("Wrong frozen pin direction for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
+                    if (!seen.insert(id(data[i].string_value())).second)
+                        log_error("Duplicate frozen physical pin for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
+                    pin.bel_pins.push_back(id(data[i].string_value()));
+                }
+                auto logical = ci->ports.find(id(entry.first));
+                if (logical != ci->ports.end() && logical->second.net != nullptr && pin.bel_pins.empty() &&
+                    logical->second.net->driver.cell != nullptr && (pin.state == PIN_SIG || pin.state == PIN_INV))
+                    log_error("Empty frozen signal pin map for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
+            }
+            continue;
+        }
+        log_error("Missing frozen pin map for %s; rebuild the shell with physical snapshot metadata.\n",
+                  ctx->nameOf(ci));
     }
+    // Control inversion and LUT annotations were initially derived before
+    // restoring folded state. Recompute them without default pin remapping.
+    std::vector<BelId> restored;
+    for (auto &item : ctx->cells) {
+        CellInfo *ci = item.second.get();
+        if (ci->bel == BelId() || fes_cell_is_slot(ci))
+            continue;
+        if (is_comb_cell(ci->type) || ci->type.in(id_MISTRAL_MLAB, id_MISTRAL_BUF))
+            assign_comb_info(ci);
+        else if (ci->type == id_MISTRAL_FF)
+            assign_ff_info(ci);
+        restored.push_back(ci->bel);
+    }
+    for (BelId bel : restored)
+        update_bel(bel);
     int locked = 0;
     for (auto &item : ctx->nets) {
         NetInfo *net = item.second.get();
@@ -316,6 +508,54 @@ bool Arch::fes_pip_in_socket(PipId pip) const
         return false;
     Loc loc = getPipLocation(pip);
     return loc.x >= fes_rect_x0 && loc.x <= fes_rect_x1 && loc.y >= fes_rect_y0 && loc.y <= fes_rect_y1;
+}
+
+void Arch::note_fes_cram_region(const std::string &spec)
+{
+#ifndef MISTRAL_ROUTING_MUX_CRAM_BITS
+    log_error("Physical CRAM routing fence requires Mistral routing-mux coordinates.\n");
+#else
+    int x0, y0, x1, y1;
+    char extra;
+    if (sscanf(spec.c_str(), "%d,%d,%d,%d%c", &x0, &y0, &x1, &y1, &extra) != 4 || x0 < 0 || y0 < 0 ||
+        x1 <= x0 || y1 <= y0 || uint32_t(x1) > cyclonev->get_cram_sx() || uint32_t(y1) > cyclonev->get_cram_sy())
+        log_error("Invalid FES CRAM region; expected half-open x0,y0,x1,y1.\n");
+    fes_cram_region = {x0, y0, x1, y1};
+    fes_has_cram_region = true;
+    std::vector<std::pair<uint32_t, uint32_t>> bits;
+    for (auto node : cyclonev->rnodes()) {
+        if (!cyclonev->rnode_mux_cram_bits(node.id(), bits))
+            log_error("Missing routing mux physical coordinates.\n");
+        bool inside = true;
+        for (const auto &bit : bits) {
+            if (bit.first < uint32_t(x0) || bit.first >= uint32_t(x1) || bit.second < uint32_t(y0) ||
+                bit.second >= uint32_t(y1)) {
+                inside = false;
+                break;
+            }
+        }
+        if (inside)
+            fes_cram_allowed_muxes.insert(node.id());
+    }
+    // Snapshot before cart merge can detach any original return-path stubs.
+    // Exact old selections remain legal; a different source at an outside mux
+    // is forbidden even for a mixed shell/cart constant net.
+    for (const auto &item : getCtx()->nets)
+        for (const auto &wire : item.second->wires)
+            if (wire.second.pip != PipId())
+                fes_frozen_pips.insert(wire.second.pip);
+    log_info("FES physical CRAM fence admits %zu muxes and preserves %zu frozen pips.\n",
+             fes_cram_allowed_muxes.size(), fes_frozen_pips.size());
+#endif
+}
+
+bool Arch::fes_pip_preserves_cram(PipId pip) const
+{
+    // Synthetic BEL edges are not routing muxes: write_routing skips them.
+    // Their cell/control configuration is governed by frozen physical state
+    // and the placement fence, and the producer checks the final CRAM bytes.
+    return !fes_has_cram_region || WireId(pip.src).is_nextpnr_created() || WireId(pip.dst).is_nextpnr_created() ||
+           fes_frozen_pips.count(pip) || fes_cram_allowed_muxes.count(pip.dst);
 }
 
 bool Arch::fes_pip_in_plug_halo(PipId pip) const
@@ -403,6 +643,7 @@ void Arch::merge_fes_cart(const std::string &filename)
     };
 
     int mapped_ib = 0, missed_ib = 0, mapped_ob = 0;
+    std::set<int> socket_clock_bits;
     const Json &cells = mod["cells"];
     if (cells.is_object()) {
         for (const auto &item : cells.object_items()) {
@@ -419,9 +660,10 @@ void Arch::merge_fes_cart(const std::string &filename)
                     if (top == top_bits.end())
                         continue;
                     NetInfo *shell = nullptr;
-                    if (top->second.first == "FPGA_CLK1_50")
+                    if (top->second.first == "FPGA_CLK1_50") {
                         shell = shell_clock_net(ctx);
-                    else if (top->second.first == "plug_addr")
+                        socket_clock_bits.insert(out_id);
+                    } else if (top->second.first == "plug_addr")
                         shell = find_plug_addr_bit(ctx, top->second.second);
                     if (shell != nullptr) {
                         bit_nets[out_id] = shell;
@@ -451,6 +693,26 @@ void Arch::merge_fes_cart(const std::string &filename)
             }
         }
     }
+
+    // Synthesis may insert transparent clock buffers. Trace only those from
+    // the declared cart clock input; a divider, gate or constant is a distinct
+    // clock domain and must not be silently replaced by the shell clock.
+    bool changed;
+    do {
+        changed = false;
+        for (const auto &item : cells.object_items()) {
+            const std::string type = item.second["type"].string_value();
+            if (type != "MISTRAL_CLKBUF" && type != "MISTRAL_BUF")
+                continue;
+            const Json &conns = item.second["connections"];
+            const auto &input = conns["A"].array_items();
+            const auto &output = conns["Q"].array_items();
+            int from, to;
+            if (input.size() == 1 && output.size() == 1 && fes_json_signal(input[0], from) &&
+                fes_json_signal(output[0], to) && socket_clock_bits.count(from))
+                changed |= socket_clock_bits.insert(to).second;
+        }
+    } while (changed);
 
     int added = 0;
     if (cells.is_object()) {
@@ -482,6 +744,15 @@ void Arch::merge_fes_cart(const std::string &filename)
 
             const Json &dirs = src["port_directions"];
             const Json &conns = src["connections"];
+            const std::vector<std::string> required_clocks =
+                    type == id_MISTRAL_FF ? std::vector<std::string>{"CLK"}
+                    : type == id_MISTRAL_M10K ? std::vector<std::string>{"CLK1"}
+                    : type == id_MISTRAL_M10K_TDP ? std::vector<std::string>{"CLK1", "CLK2"}
+                                                : std::vector<std::string>{};
+            for (const auto &port : required_clocks)
+                if (conns[port].array_items().size() != 1 || dirs[port].string_value() != "input")
+                    log_error("FES cart '%s.%s' requires one declared socket clock input.\n",
+                              item.first.c_str(), port.c_str());
             if (conns.is_object()) {
                 for (const auto &conn : conns.object_items()) {
                     const auto &bits = conn.second.array_items();
@@ -503,8 +774,26 @@ void Arch::merge_fes_cart(const std::string &filename)
                             dst->addInput(pid);
                         char constant = 0;
                         int signal = 0;
-                        if (fes_json_const(bits[i], constant))
+                        const bool clock_port =
+                                (type == id_MISTRAL_FF && pid == id_CLK) ||
+                                (type.in(id_MISTRAL_M10K, id_MISTRAL_M10K_TDP) && pid.in(id_CLK1, id_CLK2));
+                        if (clock_port &&
+                            (!fes_json_signal(bits[i], signal) || !socket_clock_bits.count(signal)))
+                            log_error("FES cart '%s.%s' does not use the declared socket clock; "
+                                      "derived, gated and constant cart clocks are unsupported.\n",
+                                      item.first.c_str(), pname.c_str());
+                        if (fes_json_const(bits[i], constant)) {
+                            if (ptype != PORT_IN)
+                                log_error("FES cart cell '%s' has a constant output port.\n", item.first.c_str());
+                            if (!ctx->nets.count(ctx->id("$PACKER_GND_NET")) ||
+                                !ctx->nets.count(ctx->id("$PACKER_VCC_NET")))
+                                log_error("FES cart merge requires a packed shell with constant nets.\n");
+                            // Let the existing unbound packer choose the hard
+                            // constant mux or a routed shell constant. Dropping
+                            // this value would apply the pin's default instead.
+                            dst->pin_data[pid].state = constant == '1' ? PIN_1 : PIN_0;
                             continue;
+                        }
                         if (!fes_json_signal(bits[i], signal))
                             continue;
                         NetInfo *mapped = intern_bit_net(signal);
@@ -524,17 +813,27 @@ void Arch::merge_fes_cart(const std::string &filename)
     if (clk != nullptr) {
         for (auto &item : ctx->cells) {
             CellInfo *ci = item.second.get();
-            if (ci->type != id_MISTRAL_M10K || !fes_cell_is_slot(ci))
+            if (!ci->type.in(id_MISTRAL_M10K, id_MISTRAL_M10K_TDP, id_MISTRAL_FF) || !fes_cell_is_slot(ci))
                 continue;
-            NetInfo *existing = ci->getPort(id_CLK1);
-            if (existing == clk)
-                continue;
-            if (existing != nullptr)
-                ci->disconnectPort(id_CLK1);
-            if (!ci->ports.count(id_CLK1))
-                ci->addInput(id_CLK1);
-            ci->pin_data[id_CLK1].state = PIN_SIG;
-            ci->connectPort(id_CLK1, clk);
+            // FES sockets have one declared clock. Synthesis inserts clock
+            // buffers which are removed at the cart boundary; reconnect all
+            // supported sequential cells, including writable true-dual RAM.
+            const std::vector<IdString> ports = ci->type == id_MISTRAL_FF
+                                                      ? std::vector<IdString>{id_CLK}
+                                                      : ci->type == id_MISTRAL_M10K_TDP
+                                                                ? std::vector<IdString>{id_CLK1, id_CLK2}
+                                                                : std::vector<IdString>{id_CLK1};
+            for (IdString port : ports) {
+                NetInfo *existing = ci->getPort(port);
+                if (existing == clk)
+                    continue;
+                if (existing != nullptr)
+                    ci->disconnectPort(port);
+                if (!ci->ports.count(port))
+                    ci->addInput(port);
+                ci->pin_data[port].state = PIN_SIG;
+                ci->connectPort(port, clk);
+            }
         }
     }
     assignArchInfo();

@@ -52,6 +52,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("compress-rbf", "generate compressed bitstream");
     specific.add_options()("fes-scaffold", "lock loaded shell BEL+routing to STRENGTH_USER");
     specific.add_options()("fes-cart", po::value<std::string>(), "merge unbound cart JSON into the reserved socket");
+    specific.add_options()("fes-slot-clock", po::value<std::string>(), "exact shell clock net for FES cart cells");
+    specific.add_options()("fes-cram-region", po::value<std::string>(), "half-open CRAM x0,y0,x1,y1 region for new scaffold routing");
 
     return specific;
 }
@@ -60,6 +62,11 @@ void MistralCommandHandler::customBitstream(Context *ctx)
 {
     if (vm.count("rbf")) {
         std::string filename = vm["rbf"].as<std::string>();
+        for (const auto &item : ctx->nets)
+            for (const auto &wire : item.second->wires)
+                if (wire.second.pip != PipId() && !ctx->fes_pip_preserves_cram(wire.second.pip))
+                    log_error("Routed pip %s violates frozen CRAM region.\n",
+                              ctx->getPipName(wire.second.pip).str(ctx).c_str());
         ctx->build_bitstream();
         std::vector<uint8_t> data;
         ctx->cyclonev->rbf_save(data);
@@ -88,6 +95,14 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
+    const bool routed = ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "route";
+    if (vm.count("fes-cram-region")) {
+        if (!routed)
+            log_error("FES CRAM region requires an already routed scaffold.\n");
+        ctx->note_fes_cram_region(vm["fes-cram-region"].as<std::string>());
+    }
+    if (vm.count("fes-slot-clock"))
+        ctx->settings[ctx->id("fes/slot_clock")] = vm["fes-slot-clock"].as<std::string>();
     if (vm.count("router"))
         ctx->settings[ctx->id("router")] = vm["router"].as<std::string>();
     if (vm.count("qsf")) {
@@ -102,7 +117,6 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         ctx->pack_unbound_cells();
         log_info("FES unbound pack complete.\n");
     }
-    const bool routed = ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "route";
     if (vm.count("fes-scaffold") || routed)
         ctx->lock_fes_scaffold();
 }

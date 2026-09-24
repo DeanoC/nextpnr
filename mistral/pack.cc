@@ -239,7 +239,7 @@ struct MistralPacker
         }
     }
 
-    void ensure_m10k_control_ports()
+    void ensure_m10k_control_ports(bool unbound_only = false)
     {
         // Yosys only emits the clear ports when the source primitive uses
         // them.  Materialise both physical clear inputs before constant
@@ -247,6 +247,8 @@ struct MistralPacker
         // as an inactive clear rather than being left at the M10K default.
         for (auto &entry : ctx->cells) {
             CellInfo *cell = entry.second.get();
+            if (unbound_only && cell->bel != BelId())
+                continue;
             if (!cell->type.in(id_MISTRAL_M10K, id_MISTRAL_M10K_TDP))
                 continue;
             for (IdString control : {id_ACLR0, id_ACLR1})
@@ -1673,11 +1675,13 @@ struct MistralPacker
                 ctx->idf(rb == 40 && bit < 20 ? "DATAAOUT[%d]" : "DATABOUT[%d]", bit % 20)};
     }
 
-    void setup_m10ks()
+    void setup_m10ks(bool unbound_only = false)
     {
         // Normalize TDP cells before the per-cell setup below.
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
+            if (unbound_only && ci->bel != BelId())
+                continue;
             if (ci->type == id_MISTRAL_M10K_TDP) {
                 ci->type = id_MISTRAL_M10K;
                 ci->params[id_CFG_TDP] = 1;
@@ -1794,6 +1798,8 @@ struct MistralPacker
 
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
+            if (unbound_only && ci->bel != BelId())
+                continue;
             if (ci->type != id_MISTRAL_M10K)
                 continue;
             bool tdp = bool_or_default(ci->params, id_CFG_TDP, false);
@@ -2752,9 +2758,37 @@ struct MistralPacker
         } else {
             init_constant_nets();
         }
-        ensure_m10k_control_ports();
+        ensure_m10k_control_ports(true);
         pack_constants_unbound();
-        setup_m10ks();
+        setup_m10ks(true);
+        if (ctx->fes_has_cram_region) {
+            // Extending distant shell constant trees can require programming
+            // muxes outside the socket. After folding and RAM control setup,
+            // drive only the remaining cart consumers from local slot LUTs.
+            for (int value = 0; value < 2; ++value) {
+                NetInfo *original = value ? vcc_net : gnd_net;
+                std::vector<PortRef> users;
+                for (const auto &user : original->users)
+                    if (ctx->fes_cell_is_slot(user.cell))
+                        users.push_back(user);
+                if (users.empty())
+                    continue;
+                IdString driver_name = ctx->idf("fes_cart$local_%s_DRV", value ? "VCC" : "GND");
+                IdString net_name = ctx->idf("fes_cart$local_%s_NET", value ? "VCC" : "GND");
+                if (ctx->cells.count(driver_name) || ctx->nets.count(net_name))
+                    log_error("Cart collides with reserved local constant names.\n");
+                CellInfo *driver = ctx->createCell(driver_name, id_MISTRAL_CONST);
+                driver->attrs[ctx->id("FES_SLOT")] = 1;
+                driver->params[id_LUT] = value;
+                driver->addOutput(id_Q);
+                NetInfo *local = ctx->createNet(net_name);
+                driver->connectPort(id_Q, local);
+                for (const auto &user : users) {
+                    user.cell->disconnectPort(user.port);
+                    user.cell->connectPort(user.port, local);
+                }
+            }
+        }
     }
 };
 }; // namespace
