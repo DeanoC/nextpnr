@@ -36,6 +36,23 @@ struct GpuRouterCfg
     int bb_margin_x, bb_margin_y;
     // Congestion cost schedule (same meaning as router2)
     float init_curr_cong_weight, hist_cong_weight, curr_cong_mult;
+    // If the negotiated-congestion loop's overused-wire count sets no new
+    // minimum for this many iterations, the present-congestion weight grows
+    // congestion_stall_boost times faster until it does. A handful of nets
+    // stuck swapping the same local wire (e.g. two cells placed with a
+    // shared LAB-internal conflict) can otherwise cycle for a very long
+    // time under the plain additive schedule; this only ever accelerates
+    // convergence and never gives up on its own (max_iter still bounds the
+    // loop).
+    int congestion_stall_iters;
+    float congestion_stall_boost;
+    // Ceiling on the compounded boost multiplier. A genuine hard conflict
+    // (a net with no legal alternative route at all, e.g. it is competing
+    // with a reserved/frozen wire) does not respond to any amount of
+    // present-congestion cost, so letting the multiplier compound without
+    // bound just produces absurd weights and log noise; max_iter is the
+    // real backstop for that case.
+    float congestion_stall_boost_max;
     // Weight of the A* estimate; > 1 trades optimality for speed
     float estimate_weight;
     // Bias towards the net centroid, as a fraction of the base cost
