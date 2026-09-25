@@ -65,6 +65,8 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `analogueRounds`, `analogueSlack`, `analogueRipSlack`, `analoguePrior` | 3, 0 ps, 300 ps, 1.25 | Mistral analogue signoff repair (below); `analogueRounds=0` disables it |
 | `analogueCandidates`, `analogueCandidateRounds`, `analogueCandidateArcs` | 4, 2, 200 | analogue-scored candidate selection (below): routes generated per failing sink, passes before each full re-route, failing sinks tried per pass; `analogueCandidates=0` disables it |
 | `analogueCandidateGain`, `analogueCandidateFanout`, `analogueCandidatePrior` | 20 ps, 64, 1.0 | a candidate must raise the net's worst sink slack by this much to be kept; nets with more sinks are left alone; delay prior for unobserved pips while searching candidates |
+| `analogueRipNets` | 64 | nets ripped per re-route round, worst analogue slack first (0: every net with an arc below `analogueRipSlack`) |
+| `analogueRevert`, `analogueRevertMargin`, `analogueRestoreMargin` | true, 20 ps, 1000 ps | after a re-route, give nets whose worst sink got slower by the margin their old route back where possible; abandon a round this far below the best routing and restore that instead |
 | `candidateMargin`, `candidateUnbounded`, `candidateExpandK` | 8, true, = `expandK` | candidate searches use the net's bounding box widened by this many tiles; whether the two primary candidates may fall back to the search without a box; frontier entries expanded per step (they run one net at a time, so 2048 makes a pass about a third faster, with different routes) |
 | `cpuLaneNets` | 0 | batches of at most this many nets run on the host backend (0: never) |
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
@@ -155,9 +157,13 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    while that WNS improves. If a round does not improve and the WNS still
    fails the request, one reversed-order retry is attempted from the best
    snapshot; the best state is restored if a later round made it worse.
-7. **Binding.** The trees are bound into the Arch with `bindWire`/`bindPip`;
-   anything the Arch rejects is negotiated again. router1 then runs as the
-   final legality check exactly as after router2.
+7. **Binding.** Every net's router-made routing is unbound, then the trees
+   are bound into the Arch with `bindWire`/`bindPip`; anything the Arch
+   rejects is negotiated and timing-repaired again. (Unbinding and binding
+   one net at a time, as before, refused the wires a net had legitimately
+   taken from a net the negotiation moved but whose turn had not come, and
+   the re-route of the refused net then ended on a detour.) router1 then
+   runs as the final legality check exactly as after router2.
 8. **Analogue signoff repair (Mistral).** The table in `mistral/delay.cc`
    has one delay per wire type, but signoff uses Mistral's analogue model,
    whose delay depends on the physical line and tap, the configured load
@@ -202,7 +208,13 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    has and repeats are dropped. The candidate router is a
    `GpuRouter` set up from what the Arch has bound (every other net's wires
    are reserved for it), so a candidate is legal against the rest of the
-   design. Each candidate is bound in the Arch, the analogue simulator's
+   design. All sinks of a pass are searched together, one variant per
+   launch, so the searches fill the device (a pass on the ZX81 takes about
+   5 s where one net at a time took 15-50 s); the wires a variant must
+   avoid are passed to the kernel as blocked seeds of that task alone, so
+   one net's avoidance does not constrain another's search in the same
+   launch. Candidates of different nets may compete for a free wire; the
+   loser is refused when it is bound and counted in the log. Each candidate is bound in the Arch, the analogue simulator's
    routing muxes are updated for the changed pips, and *every* sink of the
    net is simulated, because a new branch changes the load on shared
    upstream segments; the score is the net's worst estimated sink slack
@@ -213,11 +225,27 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    each followed by a full analogue re-time, before each re-route; a pass
    that changes nothing goes straight on to the re-route.
 
-   libmistral declares but does not implement `rnode_unlink`, so a mux the
-   net no longer drives is parked on an input no net drives with
-   `rnode_link`; that removes it from the load of the wire the net left.
-   This state is only ever simulated, the bitstream is rebuilt from scratch
-   before it is written.
+   With a libmistral that defines `MISTRAL_RNODE_UNLINK` (DeanoC/mistral
+   `feat/rnode-unlink` implements the long-declared `rnode_unlink`), a mux
+   the net no longer drives is returned to its default. The pinned library
+   lacks it, so there the mux is parked on an input no net drives with
+   `rnode_link`, which likewise takes it off the load of the wire the net
+   left; on the ZX81 both give the same candidate decisions. This state is
+   only ever simulated, the bitstream is rebuilt from scratch before it is
+   written.
+
+   A re-route rips at most `analogueRipNets` nets, the worst by analogue
+   slack (0: every net with an arc below `analogueRipSlack`); a few dozen
+   perturb the routes the next candidate passes choose from at a fraction
+   of the cost of several hundred, and on the ZX81 both reach the same
+   slack. After a re-route the nets whose worst sink got slower by
+   `analogueRevertMargin` are given their old route back where the wires
+   are still free (`analogueRevert`), and a round that ends
+   `analogueRestoreMargin` below the best routing so far is abandoned and
+   the best routing restored before the next round. Both are safety nets:
+   re-route rounds used to land 3-6 ns below the state they started from,
+   which turned out to be the final binding refusing wires (below), and
+   with that fixed neither triggers often.
 
 ### Device side (`common/route/gpu/gpuroute_kernel.cuh`)
 
@@ -362,17 +390,19 @@ time is the whole run including placement and bitstream generation.
 | M10K fixture (1) | 50 MHz | 468.16 | 441.50 | 4.5 s / 5.2 s |
 | FES Pong (1) | core.game.clk (74.25) | 86.75 | 86.75 | 6.2 s / 6.4 s |
 | FES ColecoVision (1) | clk_sys (52) / pixel_clk (74.25) | 53.03 / 77.77 (check 51.28 fail, passed in round 2) | 57.48 / 77.77 (passes at the check) | 24.4 s / 21.9 s |
-| FES ZX81 (1) | clk_sys (52) | 45.37 fail (best round) | **52.72 pass** (round 7) | 48 s / 270 s |
-| FES ZX81 (2) | clk_sys (52) | 49.31 fail (best round) | **52.22 pass** (round 5) | 34 s / 219 s |
-| FES ZX81 (3) | clk_sys (52) | 48.50 fail (best round) | 48.68 fail (best round) | 41 s / 246 s |
+| FES ZX81 (1) | clk_sys (52) | 45.37 fail (best round) | 48.35 fail (−1.45 ns) | 48 s / 147 s |
+| FES ZX81 (2) | clk_sys (52) | 49.31 fail (best round) | **52.09 pass** (round 6) | 34 s / 102 s |
+| FES ZX81 (3) | clk_sys (52) | 48.50 fail (best round) | 48.56 fail (−1.36 ns) | 41 s / 166 s |
 
 On the ZX81 the candidate passes do the closing (seed 1: −2.75 → −1.94 →
-−1.14 ns in two passes, then after a full re-route made it −4.29 ns, two
-passes recovered to −0.77 ns, and so on to +0.26 ns); the full re-route
-rounds mostly diversify the routes the next passes choose from. A pass
-takes 10-50 s on this design, almost all of it in the one-net-at-a-time
-candidate searches; the analogue simulation of the candidates is well
-under a second. The ColecoVision now passes at the first analogue check
+−1.56 ns in two passes of about 5 s each, seed 2: −1.10 → −0.35 → +0.03 ns
+across the re-routes); the re-route rounds diversify the routes the next
+passes choose from. The numbers above are the defaults after the binding
+fix; before it, runs that were wrecked by a refused binding and then
+recovered by the passes sometimes closed seed 1 (52.72 MHz) and sometimes
+ended at 48 MHz, which is the spread to expect from a heuristic flow, not
+a property of the defaults. The analogue simulation of the candidates is
+well under a second per pass. The ColecoVision now passes at the first analogue check
 because of the delay-table entries measured with `--arc-dump` (see
 `getPipDelayTable`), before any repair. `qor.py` on the ZX81 seed 1
 reproduces the checksum across two GPU runs and reports the router2 flow
@@ -398,16 +428,15 @@ box; that is a placement problem, not one more route search.
   times per attempt, bounded by the wire count.
 - The graph is flattened on every run. Caching the CSR on disk keyed by the
   device would remove most of the fixed setup cost for small designs.
-- Candidate searches run one net at a time on a single thread block; a
-  pass on the ZX81 spends 10-50 s searching for a fraction of a second of
-  simulation. Batching the same variant of many sinks into one launch
-  would use the device and cut that by an order of magnitude.
-- libmistral's `rnode_unlink` is declared but not implemented; the
-  candidate pass parks freed muxes on an unused input instead. A real
-  unlink in the mistral fork would make the simulated state exact.
-- The full re-route round is often destructive (a round can lose 3 ns
-  that the following candidate passes then win back); a re-route limited
-  to the failing paths' nets and their neighbours would waste less.
+- The full re-route round is a lottery: it explores, but often lands
+  3-6 ns below the state it started from, and the nets it hurts mostly
+  cannot get their old wires back. The candidate passes plateau after two
+  or three rounds on a given state (no sink has a better single-arc
+  alternative), so the next gain needs moves the passes do not make yet:
+  rebuilding a whole net's tree with a different sink order, or joint
+  candidates for all nets of the worst path.
+- `analogue_candidate_pass` handles one sink per net per pass; a net with
+  several failing sinks needs several passes.
 - Pong remains about 4 % behind router1 on the documented seed-1 fixture.
   Repair decisions use the design WNS, including frozen sinks, so freeze-first
   cannot hide a failing critical path. A reversed-order retry still runs when
