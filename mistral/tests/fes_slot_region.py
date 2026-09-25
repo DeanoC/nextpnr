@@ -93,6 +93,22 @@ endmodule
     sa_shell["modules"]["top"]["settings"]["placer"] = "sa"
     (output / "routed-shell-sa.json").write_text(json.dumps(sa_shell))
 
+    # A legacy FES_RESERVED_BEL declared before the default (unnamed, region
+    # "cart") FES_RESERVED_RECT it falls inside must not fail as a "region
+    # already declared" duplicate: both target the same region and are meant
+    # to compose, in either declaration order.
+    bel_then_rect_qsf = output / "bel-then-rect.qsf"
+    bel_then_rect_qsf.write_text(
+        qsf.read_text() +
+        'set_global_assignment -name FES_RESERVED_BEL "MISTRAL_FF.24.1.2"\n'
+        f'set_global_assignment -name FES_RESERVED_RECT "{RECT}"\n')
+    result = subprocess.run([nextpnr, "--device", "5CSEBA6U23I7", "--json", str(output / "routed-shell.json"),
+                              "--qsf", str(bel_then_rect_qsf), "--fes-scaffold", "--no-pack", "--no-place",
+                              "--no-route"],
+                             capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "already declared" not in result.stdout + result.stderr, result.stdout + result.stderr
+
     def place(name, cart, shell_json="routed-shell.json", timeout=600):
         command = [nextpnr, "--device", "5CSEBA6U23I7", "--json", str(output / shell_json),
                    "--qsf", str(reserved_qsf), "--fes-cart", str(output / (cart + ".json")),
@@ -205,6 +221,107 @@ endmodule
     assert code != 0, text
     assert "has no matching FES_RESERVED_RECT" in text, text
     print("fes_slot_region: dual-region ok")
+
+    # A big card can claim several small declared regions at once via
+    # FES_RESERVED_RECT_GROUP: columns 33-36 are four one-column LAB/MLAB
+    # slots (no M10K, no frozen shell FFs there), grouped into "big".
+    group_qsf = output / "group.qsf"
+    group_qsf.write_text(
+        qsf.read_text() +
+        ''.join(f'set_global_assignment -name FES_RESERVED_RECT "s{i} {33 + i - 1} 1 {33 + i - 1} 3"\n'
+                for i in range(1, 5)) +
+        'set_global_assignment -name FES_RESERVED_RECT_GROUP "big s1 s2 s3 s4"\n')
+
+    def place_named(name, region, cart_json, qsf_path, timeout=300):
+        command = [nextpnr, "--device", "5CSEBA6U23I7", "--json", str(output / "routed-shell.json"),
+                   "--qsf", str(qsf_path), "--fes-cart", str(output / cart_json),
+                   "--fes-cart-region", region, "--fes-slot-clock", clock, "--fes-scaffold",
+                   "--no-pack", "--no-route", "--seed", "3", "--write", str(output / (name + ".json"))]
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        text = result.stdout + result.stderr
+        (output / (name + ".log")).write_text(text)
+        return result.returncode, text
+
+    # The six-SCLR-group cart needed 10 usable LABs against the original
+    # 24-28 socket; the four grouped columns give 12 usable LABs (no frozen
+    # occupant in this range), so it must fit as one region.
+    code, text = place_named("group-big", "big", "cart-fit.json", group_qsf)
+    assert code == 0, text
+    # "bels" here is every raw BEL (COMB+FF+...) in the four columns, not LAB
+    # tile count: 4 columns x 3 rows x 60 BELs/tile.
+    assert "FES reserved rect group 'big' absorbs 4 regions (720 bels)" in text, text
+    assert "FES slot region 'big' constrains" in text, text
+    assert_inside_rect("group-big", (33, 1, 36, 3))
+
+    # An absorbed sub-region is blocked from independent use, exactly like a
+    # big card physically covering its smaller neighbours' backplane slots.
+    code, text = place_named("group-absorbed", "s2", "cart-dual.json", group_qsf)
+    assert code != 0, text
+    assert "was absorbed into group 'big'" in text, text
+
+    def qsf_only(name, qsf_path, timeout=60):
+        command = [nextpnr, "--device", "5CSEBA6U23I7", "--json", str(output / "routed-shell.json"),
+                   "--qsf", str(qsf_path), "--fes-scaffold", "--no-pack", "--no-place", "--no-route"]
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        return result.returncode, result.stdout + result.stderr
+
+    # A loose FES_RESERVED_BEL under the default "cart" name must be folded
+    # into a same-named group instead of the name looking "already declared"
+    # (columns 30-31 are LAB, unused by any other case in this file).
+    cart_group_qsf = output / "cart-group.qsf"
+    cart_group_qsf.write_text(
+        qsf.read_text() +
+        'set_global_assignment -name FES_RESERVED_BEL "MISTRAL_FF.24.1.2"\n'
+        'set_global_assignment -name FES_RESERVED_RECT "s5 30 1 30 3"\n'
+        'set_global_assignment -name FES_RESERVED_RECT "s6 31 1 31 3"\n'
+        'set_global_assignment -name FES_RESERVED_RECT_GROUP "cart s5 s6"\n')
+    code, text = qsf_only("cart-group", cart_group_qsf)
+    assert code == 0, text
+    assert "already declared" not in text, text
+    assert "FES reserved rect group 'cart' absorbs 2 regions" in text, text
+
+    # Re-declaring an absorbed sub-region as an ordinary rect must name the
+    # group that consumed it, not just say "already declared".
+    redeclare_qsf = output / "redeclare.qsf"
+    redeclare_qsf.write_text(group_qsf.read_text() + 'set_global_assignment -name FES_RESERVED_RECT "s2 34 1 34 3"\n')
+    code, text = qsf_only("redeclare", redeclare_qsf)
+    assert code != 0, text
+    assert "was absorbed into group 'big'" in text, text
+
+    # A group member must be an actually-declared region, not just a name
+    # that happens to have loose FES_RESERVED_BEL content (column 37 is LAB,
+    # unused elsewhere in this file).
+    loose_member_qsf = output / "loose-member.qsf"
+    loose_member_qsf.write_text(
+        qsf.read_text() +
+        'set_global_assignment -name FES_RESERVED_BEL "MISTRAL_FF.28.1.2"\n'
+        'set_global_assignment -name FES_RESERVED_RECT "s7 37 1 37 3"\n'
+        'set_global_assignment -name FES_RESERVED_RECT_GROUP "big2 cart s7"\n')
+    code, text = qsf_only("loose-member", loose_member_qsf)
+    assert code != 0, text
+    assert "region 'cart' was never declared with FES_RESERVED_RECT" in text, text
+
+    # Nested groups retarget absorbed descendants to the outermost group:
+    # "inner" absorbs s8+s9, then "outer" absorbs inner+s10, so s8 must
+    # report "outer", not the no-longer-usable "inner" (columns 22, 23, 29
+    # are LAB, unused elsewhere in this file).
+    nested_qsf = output / "nested.qsf"
+    nested_qsf.write_text(
+        qsf.read_text() +
+        'set_global_assignment -name FES_RESERVED_RECT "s8 29 1 29 3"\n'
+        'set_global_assignment -name FES_RESERVED_RECT "s9 22 1 22 3"\n'
+        'set_global_assignment -name FES_RESERVED_RECT_GROUP "inner s8 s9"\n'
+        'set_global_assignment -name FES_RESERVED_RECT "s10 23 1 23 3"\n'
+        'set_global_assignment -name FES_RESERVED_RECT_GROUP "outer inner s10"\n')
+    code, text = qsf_only("nested", nested_qsf)
+    assert code == 0, text
+    redeclare_nested_qsf = output / "redeclare-nested.qsf"
+    redeclare_nested_qsf.write_text(nested_qsf.read_text() +
+                                     'set_global_assignment -name FES_RESERVED_RECT "s8 29 1 29 3"\n')
+    code, text = qsf_only("redeclare-nested", redeclare_nested_qsf)
+    assert code != 0, text
+    assert "was absorbed into group 'outer'" in text, text
+    print("fes_slot_region: group ok")
 
 
 if __name__ == "__main__":

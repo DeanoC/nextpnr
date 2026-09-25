@@ -342,6 +342,7 @@ struct Arch : BaseArch<ArchRanges>
     bool isBelLocationValid(BelId bel, bool explain_invalid = false) const override;
     void note_reserved_bel(const std::string &name);
     void note_reserved_rect(const std::string &spec);
+    void note_reserved_rect_group(const std::string &spec);
     bool fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_invalid = false) const;
     bool fes_cell_is_slot(const CellInfo *cell) const;
     IdString fes_cell_slot_region(const CellInfo *cell) const;
@@ -656,6 +657,16 @@ struct Arch : BaseArch<ArchRanges>
     std::vector<FesReservedRect> fes_reserved_rects;
     dict<BelId, IdString> fes_bel_region;
     dict<IdString, std::set<BelId>> fes_region_bels;
+    // Every region name ever declared (plain FES_RESERVED_RECT or
+    // FES_RESERVED_RECT_GROUP), kept even after a region is absorbed into a
+    // group so a stale reference gets a precise error instead of "unknown".
+    std::set<IdString> fes_declared_region_names;
+    // Sub-region name -> the group region name it was folded into. A big
+    // card can claim several small declared regions at once via
+    // FES_RESERVED_RECT_GROUP; the absorbed names stay blocked (fail closed
+    // if targeted directly), mirroring a large expansion card physically
+    // covering its smaller neighbours' backplane slots.
+    dict<IdString, IdString> fes_region_absorbed_by;
     // Region merge_fes_cart() most recently tagged cells with; pack_unbound_cells()
     // reads this so synthetic per-cart cells (local constant drivers) join the
     // same region as the cart that needs them.

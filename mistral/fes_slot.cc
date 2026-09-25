@@ -609,10 +609,18 @@ void Arch::merge_fes_cart(const std::string &filename, const std::string &region
     // A run with no FES_RESERVED_RECT at all has no placement fencing to
     // validate against (matches the pre-multi-region behaviour); once any
     // region is declared, an unknown --fes-cart-region is a real mistake.
-    if (fes_has_reserved_rect && !fes_region_bels.count(id(region)))
-        log_error("FES cart region '%s' has no matching FES_RESERVED_RECT; declare it with FES_RESERVED_RECT "
-                  "\"%s x0 y0 x1 y1\" before merging '%s'.\n",
-                  region.c_str(), region.c_str(), filename.c_str());
+    if (fes_has_reserved_rect) {
+        IdString region_id = id(region);
+        auto absorbed = fes_region_absorbed_by.find(region_id);
+        if (absorbed != fes_region_absorbed_by.end())
+            log_error("FES cart region '%s' was absorbed into group '%s' by FES_RESERVED_RECT_GROUP and is no "
+                      "longer independently available; merge '%s' against '%s' instead.\n",
+                      region.c_str(), absorbed->second.c_str(ctx), filename.c_str(), absorbed->second.c_str(ctx));
+        if (!fes_region_bels.count(region_id))
+            log_error("FES cart region '%s' has no matching FES_RESERVED_RECT; declare it with FES_RESERVED_RECT "
+                      "\"%s x0 y0 x1 y1\" before merging '%s'.\n",
+                      region.c_str(), region.c_str(), filename.c_str());
+    }
     fes_active_cart_region = region;
     log_info("FES parsing cart JSON '%s' into region '%s'...\n", filename.c_str(), region.c_str());
     std::ifstream in(filename);
