@@ -93,6 +93,22 @@ endmodule
     sa_shell["modules"]["top"]["settings"]["placer"] = "sa"
     (output / "routed-shell-sa.json").write_text(json.dumps(sa_shell))
 
+    # A legacy FES_RESERVED_BEL declared before the default (unnamed, region
+    # "cart") FES_RESERVED_RECT it falls inside must not fail as a "region
+    # already declared" duplicate: both target the same region and are meant
+    # to compose, in either declaration order.
+    bel_then_rect_qsf = output / "bel-then-rect.qsf"
+    bel_then_rect_qsf.write_text(
+        qsf.read_text() +
+        'set_global_assignment -name FES_RESERVED_BEL "MISTRAL_FF.24.1.2"\n'
+        f'set_global_assignment -name FES_RESERVED_RECT "{RECT}"\n')
+    result = subprocess.run([nextpnr, "--device", "5CSEBA6U23I7", "--json", str(output / "routed-shell.json"),
+                              "--qsf", str(bel_then_rect_qsf), "--fes-scaffold", "--no-pack", "--no-place",
+                              "--no-route"],
+                             capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "already declared" not in result.stdout + result.stderr, result.stdout + result.stderr
+
     def place(name, cart, shell_json="routed-shell.json", timeout=600):
         command = [nextpnr, "--device", "5CSEBA6U23I7", "--json", str(output / shell_json),
                    "--qsf", str(reserved_qsf), "--fes-cart", str(output / (cart + ".json")),

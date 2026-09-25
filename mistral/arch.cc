@@ -265,7 +265,11 @@ void Arch::note_reserved_bel(const std::string &name)
         log_error("FES_RESERVED_BEL '%s' overlaps region '%s'.\n", name.c_str(), existing->second.c_str(getCtx()));
     fes_bel_region[bel] = region_id;
     fes_region_bels[region_id].insert(bel);
-    fes_declared_region_names.insert(region_id);
+    // Deliberately not added to fes_declared_region_names: a BEL reservation
+    // augments whichever region owns "cart" (by default or via an explicit
+    // FES_RESERVED_RECT/_GROUP declared before or after it) rather than
+    // declaring a rectangle of its own, so it must not trip the "region name
+    // already declared" duplicate check in note_reserved_rect/_group.
     log_info("FES reserved BEL %s (region 'cart')\n", name.c_str());
 }
 
@@ -330,7 +334,9 @@ void Arch::note_reserved_rect_group(const std::string &spec)
                   spec.c_str());
     const std::string &group_name = tokens.front();
     IdString group_id = id(group_name);
-    if (fes_declared_region_names.count(group_id))
+    // fes_region_bels also catches a name that only ever received loose
+    // FES_RESERVED_BEL reservations (so never joined fes_declared_region_names).
+    if (fes_declared_region_names.count(group_id) || fes_region_bels.count(group_id))
         log_error("FES_RESERVED_RECT_GROUP '%s' region name '%s' is already declared.\n", spec.c_str(),
                   group_name.c_str());
     // A big card can claim several already-declared regions at once; every
