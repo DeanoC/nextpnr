@@ -348,6 +348,8 @@ struct Arch : BaseArch<ArchRanges>
     bool fes_pip_in_socket(PipId pip) const;
     void note_fes_cram_region(const std::string &spec);
     bool fes_pip_preserves_cram(PipId pip) const;
+    void fes_constrain_slot_region();
+    void fes_report_slot_capacity(const std::vector<CellInfo *> &slot_cells) const;
     bool fes_pip_in_plug_halo(PipId pip) const;
     bool fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const;
     void fes_rip_reserved_shell_pips();

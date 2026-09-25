@@ -1269,11 +1269,22 @@ struct MistralPacker
                         "uncharacterized; reported fabric Fmax does not establish interface timing closure.\n");
     }
 
-    void constrain_carries()
+    // A cart chain is built only from unbound slot cells; frozen shell
+    // arithmetic keeps its routed placement and must not join a cluster.
+    bool chain_cell_selected(const CellInfo *ci, bool unbound_only) const
+    {
+        if (ci->type != id_MISTRAL_ALUT_ARITH)
+            return false;
+        if (unbound_only && (ci->bel != BelId() || !ctx->fes_cell_is_slot(ci)))
+            return false;
+        return true;
+    }
+
+    void constrain_carries(bool unbound_only = false)
     {
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
-            if (ci->type != id_MISTRAL_ALUT_ARITH)
+            if (!chain_cell_selected(ci, unbound_only))
                 continue;
             const NetInfo *cin = ci->getPort(id_CI);
             if (cin != nullptr && cin->driver.cell != nullptr)
@@ -1319,7 +1330,7 @@ struct MistralPacker
         // Check we reached all the cells in the above pass
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
-            if (ci->type != id_MISTRAL_ALUT_ARITH)
+            if (!chain_cell_selected(ci, unbound_only))
                 continue;
             if (ci->cluster == ClusterId())
                 log_error("Failed to include arith cell '%s' in any chain (CI=%s)\n", ctx->nameOf(ci),
@@ -2749,6 +2760,45 @@ struct MistralPacker
         trim_design();
     }
 
+    // Pair each unbound slot FF with the slot LUT that drives its DATAIN, as
+    // Quartus packs them. In an ALM half whose LUT drives the FF no
+    // route-through LUT or E/F input is needed, which is the scarce
+    // resource inside a small reserved rectangle. The FF sits two BELs
+    // above its LUT (z+2): legal only when the LUT takes the first half of
+    // an ALM, so the legaliser skips the odd-z half automatically.
+    void pair_unbound_lut_ffs()
+    {
+        int paired = 0;
+        std::vector<CellInfo *> ffs;
+        for (auto &cell : ctx->cells) {
+            CellInfo *ci = cell.second.get();
+            if (ci->type == id_MISTRAL_FF && ci->bel == BelId() && ci->cluster == ClusterId() &&
+                ctx->fes_cell_is_slot(ci))
+                ffs.push_back(ci);
+        }
+        std::sort(ffs.begin(), ffs.end(), [](const CellInfo *a, const CellInfo *b) { return a->name < b->name; });
+        for (CellInfo *ff : ffs) {
+            const NetInfo *datain = ff->getPort(id_DATAIN);
+            if (datain == nullptr || datain->driver.cell == nullptr || datain->driver.port != id_Q)
+                continue;
+            CellInfo *lut = datain->driver.cell;
+            if (!ctx->is_comb_cell(lut->type) || lut->type.in(id_MISTRAL_ALUT_ARITH, id_MISTRAL_CONST))
+                continue;
+            if (lut->bel != BelId() || lut->cluster != ClusterId() || !ctx->fes_cell_is_slot(lut))
+                continue;
+            lut->cluster = lut->name;
+            ff->cluster = lut->name;
+            ff->constr_x = 0;
+            ff->constr_y = 0;
+            ff->constr_z = 2;
+            ff->constr_abs_z = false;
+            lut->constr_children.push_back(ff);
+            ++paired;
+        }
+        if (paired > 0)
+            log_info("FES paired %d cart flip-flops with their driving LUTs.\n", paired);
+    }
+
     void run_unbound()
     {
         if (ctx->cells.count(ctx->id("$PACKER_GND_DRV")) && ctx->nets.count(ctx->id("$PACKER_GND_NET")) &&
@@ -2761,6 +2811,10 @@ struct MistralPacker
         ensure_m10k_control_ports(true);
         pack_constants_unbound();
         setup_m10ks(true);
+        // Cart arithmetic needs the same dedicated carry adjacency as a
+        // full pack; loose ALUT_ARITH cells cannot route their CI/CO.
+        constrain_carries(true);
+        pair_unbound_lut_ffs();
         if (ctx->fes_has_cram_region) {
             // Extending distant shell constant trees can require programming
             // muxes outside the socket. After folding and RAM control setup,

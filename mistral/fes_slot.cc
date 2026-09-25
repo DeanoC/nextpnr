@@ -17,8 +17,10 @@
  *
  */
 
+#include <algorithm>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <set>
 #include <string>
@@ -853,6 +855,208 @@ void Arch::merge_fes_cart(const std::string &filename)
     }
     log_info("FES cart merged %d cells from '%s' (ib=%d ob=%d missed=%d).\n", added, filename.c_str(),
              mapped_ib, mapped_ob, missed_ib);
+}
+
+void Arch::fes_constrain_slot_region()
+{
+    Context *ctx = getCtx();
+    if (!fes_has_reserved_rect || fes_reserved_bels.empty())
+        return;
+    std::vector<CellInfo *> slot_cells;
+    for (auto &item : ctx->cells) {
+        CellInfo *ci = item.second.get();
+        if (!ci->isPseudo() && fes_cell_is_slot(ci))
+            slot_cells.push_back(ci);
+    }
+    if (slot_cells.empty())
+        return;
+    // The placers only search near a cell's analytic or random location.
+    // Without a Region they sample the whole chip, of which the socket is a
+    // tiny fraction, so legalisation degenerates into chip-wide random
+    // probing. fes_placement_allowed() remains the hard gate.
+    IdString name = id("$FES_SLOT");
+    if (!ctx->region.count(name)) {
+        std::unique_ptr<Region> region(new Region());
+        region->name = name;
+        region->constr_bels = true;
+        for (BelId bel : fes_reserved_bels)
+            region->bels.insert(bel);
+        ctx->region[name] = std::move(region);
+    }
+    Region *region = ctx->region.at(name).get();
+    for (CellInfo *ci : slot_cells)
+        ci->region = region;
+    log_info("FES slot region constrains %zu cart cells to %zu reserved BELs.\n", slot_cells.size(),
+             fes_reserved_bels.size());
+    fes_report_slot_capacity(slot_cells);
+}
+
+// Static capacity check of the cart against the usable part of the reserved
+// rectangle. Every bound here is necessary, not sufficient: a cart that
+// passes may still fail detailed legalisation, but a cart that fails cannot
+// be placed by any placer, so the run stops with the failing figure instead
+// of legalising for minutes.
+void Arch::fes_report_slot_capacity(const std::vector<CellInfo *> &slot_cells) const
+{
+    const Context *ctx = getCtx();
+    // Usable LABs: reserved, and not holding a frozen shell cell. A LAB with
+    // any locked non-slot occupant is excluded wholesale by
+    // fes_placement_allowed() because its control set is immutable.
+    int usable_labs = 0, frozen_labs = 0;
+    std::map<int, std::vector<int>> usable_rows;
+    for (const auto &lab : labs) {
+        BelId first = lab.alms[0].lut_bels[0];
+        if (!fes_reserved_bels.count(first))
+            continue;
+        bool frozen = false;
+        for (const auto &alm : lab.alms) {
+            for (BelId other : {alm.lut_bels[0], alm.lut_bels[1], alm.ff_bels[0], alm.ff_bels[1], alm.ff_bels[2],
+                                alm.ff_bels[3]}) {
+                const CellInfo *occupant = getBoundBelCell(other);
+                if (occupant && !fes_cell_is_slot(occupant) && occupant->belStrength >= STRENGTH_LOCKED)
+                    frozen = true;
+            }
+        }
+        if (frozen) {
+            ++frozen_labs;
+            continue;
+        }
+        ++usable_labs;
+        Loc loc = getBelLocation(first);
+        usable_rows[loc.x].push_back(loc.y);
+    }
+    int max_run = 0;
+    for (auto &column : usable_rows) {
+        std::sort(column.second.begin(), column.second.end());
+        int run = 0, prev = std::numeric_limits<int>::min();
+        for (int y : column.second) {
+            run = (y == prev + 1) ? run + 1 : 1;
+            prev = y;
+            max_run = std::max(max_run, run);
+        }
+    }
+    // Other reserved BELs (M10K, DSP, ...) that are free or already hold a slot cell.
+    dict<IdString, int> other_bels;
+    for (BelId bel : fes_reserved_bels) {
+        IdString type = getBelType(bel);
+        if (type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB, id_MISTRAL_FF))
+            continue;
+        const CellInfo *occupant = getBoundBelCell(bel);
+        if (occupant && !fes_cell_is_slot(occupant))
+            continue;
+        other_bels[getBelBucketForBel(bel)]++;
+    }
+
+    int comb_cells = 0, ff_cells = 0, chains = 0, chain_rows = 0, ff_fabric = 0;
+    int lut_inputs = 0, pairable_luts = 0, sdata_inputs = 0;
+    dict<IdString, int> other_cells;
+    bool clock_global = true;
+    // FF control-set lower bound. A LAB has one SCLR, one SLOAD, two ACLR and
+    // three ENA selectors, but ENA, SCLR, ACLR and a non-global CLK share four
+    // LAB DATAIN lines (lab.cc LabCtrlSetWorker), so a LAB with an SCLR keeps
+    // only two ENA lines (one if its clock is not global).
+    struct Group
+    {
+        int ffs = 0;
+        std::set<const NetInfo *> enas;
+    };
+    std::map<const NetInfo *, Group> sclr_groups;
+    for (CellInfo *ci : slot_cells) {
+        BelBucketId bucket = getBelBucketForCellType(ci->type);
+        if (bucket == id_MISTRAL_COMB) {
+            ++comb_cells;
+            // Same accounting as update_alm_input_count: used inputs less
+            // those shared with the previous carry cell.
+            lut_inputs += std::max(0, ci->combInfo.used_lut_input_count - ci->combInfo.chain_shared_input_count);
+            if (ci->type != id_MISTRAL_ALUT_ARITH && ci->type != id_MISTRAL_MLAB)
+                ++pairable_luts;
+        } else if (bucket == id_MISTRAL_FF) {
+            ++ff_cells;
+            const auto &cs = ci->ffInfo.ctrlset;
+            if (cs.clk.net != nullptr && !cs.clk.net->is_global)
+                clock_global = false;
+            Group &group = sclr_groups[cs.sclr.net];
+            ++group.ffs;
+            if (cs.ena.net != nullptr)
+                group.enas.insert(cs.ena.net);
+            // Needs a route-through LUT half or the E/F input unless it is
+            // paired with the LUT that drives it (pair_unbound_lut_ffs).
+            const NetInfo *datain = ci->getPort(id_DATAIN);
+            const CellInfo *driver = datain ? datain->driver.cell : nullptr;
+            const bool paired = driver != nullptr && ci->cluster != ClusterId() && ci->cluster == driver->name;
+            if (!paired)
+                ++ff_fabric;
+            if (ci->ffInfo.sdata)
+                ++sdata_inputs;
+        } else {
+            other_cells[bucket]++;
+        }
+        if (ci->type == id_MISTRAL_ALUT_ARITH && ci->cluster == ci->name && !ci->constr_children.empty()) {
+            ++chains;
+            int rows = 1;
+            for (const CellInfo *child : ci->constr_children)
+                rows = std::max(rows, 1 - child->constr_y);
+            chain_rows = std::max(chain_rows, rows);
+        }
+    }
+    const int ena_with_sclr = clock_global ? 2 : 1;
+    const int ena_without_sclr = clock_global ? 3 : 2;
+    int ctrl_labs = 0;
+    for (const auto &group : sclr_groups) {
+        const int slots = group.first != nullptr ? ena_with_sclr : ena_without_sclr;
+        const int by_count = (group.second.ffs + 19) / 20;
+        const int by_ena = (int(group.second.enas.size()) + slots - 1) / slots;
+        ctrl_labs += group.first != nullptr ? std::max(by_count, by_ena) : 0;
+    }
+    // FF BELs 1 and 3 of each ALM are rejected by is_alm_legal, so 20 per LAB.
+    const int comb_bels = 20 * usable_labs, ff_bels = 20 * usable_labs;
+    // check_lab_input_count admits 42 unique ALM inputs per LAB. Two LUTs in
+    // one ALM may share at most two inputs, so the best case shares two per
+    // pair of non-arithmetic LUTs; unpaired FF data and SDATA add one each.
+    const int min_lab_inputs = std::max(0, lut_inputs - 2 * (pairable_luts / 2)) + ff_fabric + sdata_inputs;
+    const int input_labs = (min_lab_inputs + 41) / 42;
+    log_info("FES slot capacity: %d usable LABs (%d frozen), longest vertical run %d.\n", usable_labs, frozen_labs,
+             max_run);
+    log_info("FES slot capacity: comb %d/%d, FF %d/%d (%d unpaired need a route-through or E/F input; %d free LUT "
+             "halves), carry chains %d (longest %d LAB rows).\n",
+             comb_cells, comb_bels, ff_cells, ff_bels, ff_fabric, comb_bels - comb_cells, chains, chain_rows);
+    log_info("FES slot capacity: %zu FF control-set groups by SCLR need at least %d LABs (clock %s, %d ENA per SCLR "
+             "LAB).\n",
+             sclr_groups.size(), ctrl_labs, clock_global ? "global" : "not global", ena_with_sclr);
+    log_info("FES slot capacity: LAB inputs need at least %d LABs at 42 unique inputs each (%d LUT inputs, best-case "
+             "%d shared, %d FF fabric inputs).\n",
+             input_labs, lut_inputs, 2 * (pairable_luts / 2), ff_fabric + sdata_inputs);
+    for (const auto &item : other_cells)
+        log_info("FES slot capacity: %s %d/%d.\n", item.first.c_str(ctx), item.second,
+                 other_bels.count(item.first) ? other_bels.at(item.first) : 0);
+
+    std::vector<std::string> failures;
+    if (comb_cells > comb_bels)
+        failures.push_back(stringf("%d combinational cells exceed %d usable COMB BELs", comb_cells, comb_bels));
+    if (ff_cells > ff_bels)
+        failures.push_back(stringf("%d flip-flops exceed %d usable FF BELs", ff_cells, ff_bels));
+    if (ctrl_labs > usable_labs)
+        failures.push_back(
+                stringf("FF control sets need at least %d LABs but %d are usable", ctrl_labs, usable_labs));
+    if (input_labs > usable_labs)
+        failures.push_back(stringf("LAB input bandwidth needs at least %d LABs but %d are usable", input_labs,
+                                   usable_labs));
+    if (chains > usable_labs)
+        failures.push_back(stringf("%d carry chains exceed %d usable LAB roots", chains, usable_labs));
+    if (chain_rows > max_run)
+        failures.push_back(stringf("a carry chain spans %d LAB rows but the longest usable column run is %d",
+                                   chain_rows, max_run));
+    for (const auto &item : other_cells) {
+        const int avail = other_bels.count(item.first) ? other_bels.at(item.first) : 0;
+        if (item.second > avail)
+            failures.push_back(stringf("%d %s cells exceed %d reserved BELs", item.second, item.first.c_str(ctx),
+                                       avail));
+    }
+    if (failures.empty())
+        return;
+    for (const auto &failure : failures)
+        log_nonfatal_error("FES slot capacity: %s.\n", failure.c_str());
+    log_error("FES cart does not fit the reserved rectangle; enlarge FES_RESERVED_RECT or reduce the cart.\n");
 }
 
 NEXTPNR_NAMESPACE_END

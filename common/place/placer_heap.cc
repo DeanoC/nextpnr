@@ -1102,6 +1102,11 @@ class HeAPPlacer
                 // Was now placed, ignore
                 if (ci->bel != BelId())
                     continue;
+                if (p->cfg.cellRipupLimit > 0 && ++legalise_count[ci->name] > p->cfg.cellRipupLimit)
+                    log_error("Placement legalisation re-placed cell '%s' of type '%s' %d times in one pass without "
+                              "converging; the design likely exceeds a local placement constraint (control sets, "
+                              "region capacity or LUT/FF pairing) rather than device utilisation.\n",
+                              ctx->nameOf(ci), ci->type.c_str(ctx), legalise_count[ci->name]);
                 std::chrono::high_resolution_clock::time_point ci_startt;
                 if (ctx->verbose)
                     ci_startt = std::chrono::high_resolution_clock::now();
@@ -1266,6 +1271,7 @@ class HeAPPlacer
         FastBels::FastBelsData *fb;
 
         int radius, iter, iter_at_radius, total_iters_for_cell, need_to_explore;
+        dict<IdString, int> legalise_count;
         bool placed;
         BelId bestBel;
         int best_inp_len;
@@ -2172,6 +2178,8 @@ PlacerHeapCfg::PlacerHeapCfg(Context *ctx)
     solverTolerance = 1e-5;
     placeAllAtOnce = false;
     chainRipup = false;
+
+    cellRipupLimit = ctx->setting<int>("placerHeap/cellRipupLimit", 0);
 
     int timeout_divisor = ctx->setting<int>("placerHeap/cellPlacementTimeout", 8);
     if (timeout_divisor > 0) {
