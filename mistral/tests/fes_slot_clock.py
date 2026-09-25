@@ -20,11 +20,11 @@ def main():
                                  output qa, output qb, output data);
     (* keep *) wire plug_addr;
     (* keep *) wire plug_rdata_d = 1'b0;
-    MISTRAL_FF plug_addr_ff_0 (.CLK(clk_a), .DATAIN(address), .Q(plug_addr),
+    (* BEL = "MISTRAL_FF.24.1.2" *) MISTRAL_FF plug_addr_ff_0 (.CLK(clk_a), .DATAIN(address), .Q(plug_addr),
         .ACLR(1'b1), .ENA(1'b1), .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
     MISTRAL_FF second_domain (.CLK(clk_b), .DATAIN(address), .Q(qb),
         .ACLR(1'b1), .ENA(~address), .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
-    MISTRAL_FF plug_rdata_ff_0 (.CLK(clk_a), .DATAIN(plug_rdata_d), .Q(data),
+    (* BEL = "MISTRAL_FF.28.1.2" *) MISTRAL_FF plug_rdata_ff_0 (.CLK(clk_a), .DATAIN(plug_rdata_d), .Q(data),
         .ACLR(1'b1), .ENA(1'b1), .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
     wire [9:0] shell_data;
     MISTRAL_M10K #(.CFG_ABITS(10), .CFG_DBITS(10), .CFG_ASYNC_READ(1)) shell_memory (
@@ -164,6 +164,67 @@ endmodule
     assert result.returncode != 0 and 'requires an already routed scaffold' in result.stdout + result.stderr
     bit = routed["cells"]["plug_addr_ff_0"]["connections"]["CLK"]
     clock = next(key for key, net in routed["netnames"].items() if net["bits"] == bit)
+    assert routed["cells"]["plug_addr_ff_0"]["attributes"]["NEXTPNR_BEL"] == "MISTRAL_FF.24.1.2"
+    assert routed["cells"]["plug_rdata_ff_0"]["attributes"]["NEXTPNR_BEL"] == "MISTRAL_FF.28.1.2"
+    reserved_qsf = output / "cart-reserved.qsf"
+    reserved_qsf.write_text(qsf.read_text() + 'set_global_assignment -name FES_RESERVED_RECT "24 1 28 11"\n')
+    with (output / "reserved-place.log").open("w") as log:
+        result = subprocess.run([str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7",
+                                 "--json", str(output / "routed-shell.json"),
+                                 "--qsf", str(reserved_qsf),
+                                 "--fes-cart", str(output / "cart.json"),
+                                 "--fes-slot-clock", clock, "--fes-scaffold", "--no-pack", "--no-route",
+                                 "--seed", "2", "--write", str(output / "reserved-placed.json")],
+                                stdout=log, stderr=subprocess.STDOUT)
+    assert result.returncode == 0, (output / "reserved-place.log").read_text()
+    reserved_placed = json.loads((output / "reserved-placed.json").read_text())["modules"]["top"]["cells"]
+    for name in ("plug_addr_ff_0", "plug_rdata_ff_0"):
+        assert reserved_placed[name]["attributes"]["NEXTPNR_BEL"] == routed["cells"][name]["attributes"]["NEXTPNR_BEL"]
+    reserved_module = json.loads((output / "reserved-placed.json").read_text())["modules"]["top"]
+    def routed_pips(encoded):
+        if not encoded or not encoded.strip():
+            return set()
+        fields = encoded.split(";")
+        assert len(fields) % 3 == 0, encoded
+        return {(fields[i], fields[i + 1]) for i in range(0, len(fields), 3)}
+    for name, net in routed["netnames"].items():
+        # Cart merge disconnects the placeholder ground sink, so its old
+        # constant-net route is the one deliberate exception.
+        if name != "$PACKER_GND_NET" and "ROUTING" in net.get("attributes", {}):
+            assert routed_pips(reserved_module["netnames"][name]["attributes"]["ROUTING"]) == \
+                routed_pips(net["attributes"]["ROUTING"]), name
+    for name, cell in reserved_placed.items():
+        if not name.startswith("fes_cart$"):
+            continue
+        bel = cell.get("attributes", {}).get("NEXTPNR_BEL", "")
+        if bel:
+            _, x, y, _ = bel.split(".")
+            assert 24 <= int(x) <= 28 and 1 <= int(y) <= 11, (name, bel)
+    # A newly introduced, unbound shell FF cannot take a reserved BEL.
+    # Reserve the whole chip in this rejection case so no legal site exists.
+    unconstrained = json.loads((output / "routed-shell.json").read_text())
+    new_cell = copy.deepcopy(unconstrained["modules"]["top"]["cells"]["plug_addr_ff_0"])
+    new_cell["attributes"] = {}
+    new_cell["connections"]["Q"] = [999999]
+    unconstrained["modules"]["top"]["cells"]["new_unconstrained_ff"] = new_cell
+    (output / "unconstrained-shell.json").write_text(json.dumps(unconstrained))
+    all_reserved_qsf = output / "all-reserved.qsf"
+    all_reserved_qsf.write_text(qsf.read_text() + 'set_global_assignment -name FES_RESERVED_RECT "0 0 100 100"\n')
+    result = subprocess.run([str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7",
+                             "--json", str(output / "unconstrained-shell.json"),
+                             "--qsf", str(all_reserved_qsf), "--fes-scaffold", "--no-pack", "--no-route"],
+                            capture_output=True, text=True)
+    assert result.returncode != 0 and "Unable to find legal placement for cell 'new_unconstrained_ff'" in result.stdout + result.stderr
+    outside_cart = json.loads((output / "cart.json").read_text())
+    outside_cart["modules"]["cart"]["cells"]["state_ff"]["attributes"]["BEL"] = "MISTRAL_FF.29.12.2"
+    (output / "cart-outside.json").write_text(json.dumps(outside_cart))
+    result = subprocess.run([str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7",
+                             "--json", str(output / "routed-shell.json"),
+                             "--qsf", str(reserved_qsf),
+                             "--fes-cart", str(output / "cart-outside.json"),
+                             "--fes-slot-clock", clock, "--fes-scaffold", "--no-pack", "--no-route"],
+                            capture_output=True, text=True)
+    assert result.returncode != 0 and "must stay in the reserved region" in result.stdout + result.stderr
     merged = merge("routed-merge", clock, shell_name="routed-shell")
     def same_connections(cell, ports=None):
         before, after = routed["cells"][cell], merged["cells"][cell]
