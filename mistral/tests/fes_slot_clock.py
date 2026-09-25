@@ -224,7 +224,7 @@ endmodule
                              "--fes-cart", str(output / "cart-outside.json"),
                              "--fes-slot-clock", clock, "--fes-scaffold", "--no-pack", "--no-route"],
                             capture_output=True, text=True)
-    assert result.returncode != 0 and "must stay in the reserved region" in result.stdout + result.stderr
+    assert result.returncode != 0 and "must stay in its own reserved region" in result.stdout + result.stderr
     merged = merge("routed-merge", clock, shell_name="routed-shell")
     def same_connections(cell, ports=None):
         before, after = routed["cells"][cell], merged["cells"][cell]
@@ -266,11 +266,14 @@ endmodule
     assert (output / 'scaffold-placed.json').is_file()
     placed = json.loads((output / 'scaffold-placed.json').read_text())['modules']['top']
     route_through = placed['cells']['fes_cart$state_ff$ROUTETHRU']
-    assert int(route_through['attributes']['FES_SLOT'], 2) == 1, route_through
+    # merge_fes_cart tags every cart cell with its target region name (the
+    # default region when --fes-cart-region is omitted, matching the legacy
+    # boolean FES_SLOT=1 cart marker written by cart-authoring recipes).
+    assert route_through['attributes']['FES_SLOT'] == 'cart', route_through
     for constant, value in (('GND', 0), ('VCC', 1)):
         cell = placed['cells'][f'fes_cart$local_{constant}_DRV']
         assert cell['type'] == 'MISTRAL_CONST' and int(cell['parameters']['LUT'], 2) == value
-        assert int(cell['attributes']['FES_SLOT'], 2) == 1
+        assert cell['attributes']['FES_SLOT'] == 'cart'
         local_bits = placed['netnames'][f'fes_cart$local_{constant}_NET']['bits']
         assert cell['connections']['Q'] == local_bits
         for name, other in placed['cells'].items():

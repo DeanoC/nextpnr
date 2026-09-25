@@ -2832,7 +2832,7 @@ struct MistralPacker
                 if (ctx->cells.count(driver_name) || ctx->nets.count(net_name))
                     log_error("Cart collides with reserved local constant names.\n");
                 CellInfo *driver = ctx->createCell(driver_name, id_MISTRAL_CONST);
-                driver->attrs[ctx->id("FES_SLOT")] = 1;
+                driver->attrs[ctx->id("FES_SLOT")] = Property(ctx->fes_active_cart_region);
                 driver->params[id_LUT] = value;
                 driver->addOutput(id_Q);
                 NetInfo *local = ctx->createNet(net_name);

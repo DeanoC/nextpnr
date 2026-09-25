@@ -126,9 +126,9 @@ endmodule
     synth("cart-fit", "cart", output / "cart-fit.v")
     code, text = place("fit-heap", "cart-fit")
     assert code == 0, text
-    assert "FES slot region constrains" in text, text
+    assert "FES slot region 'cart' constrains" in text, text
     assert "FES paired" in text, text
-    assert f"FES slot capacity: {USABLE_LABS} usable LABs (2 frozen)" in text, text
+    assert f"FES slot capacity (region 'cart'): {USABLE_LABS} usable LABs (2 frozen)" in text, text
     assert "carry chains 1 (longest 1 LAB rows)" in text, text
     assert_inside("fit-heap")
     # SA cannot keep cart clusters legal; it must refuse rather than emit an
@@ -143,7 +143,7 @@ endmodule
     code, text = place("ctrl", "cart-ctrl", timeout=300)
     assert code != 0, text
     assert "FF control sets need at least 14 LABs but 10 are usable" in text, text
-    assert "FES cart does not fit the reserved rectangle" in text, text
+    assert "FES cart does not fit region 'cart'" in text, text
     assert "Creating initial" not in text, text
 
     # A 64-cell carry chain needs four vertically adjacent LABs; three exist.
@@ -153,6 +153,58 @@ endmodule
     assert code != 0, text
     assert "a carry chain spans 4 LAB rows but the longest usable column run is 3" in text, text
     print("fes_slot_region: ok")
+
+    # Two disjoint named regions on one shell (for example a cartridge slot
+    # and an expansion slot present on the same core) must legalise
+    # independently, and a cart may never land on another region's BELs.
+    dual_qsf = output / "dual.qsf"
+    dual_qsf.write_text(qsf.read_text() +
+                         'set_global_assignment -name FES_RESERVED_RECT "porta 24 1 25 3"\n'
+                         'set_global_assignment -name FES_RESERVED_RECT "portb 27 1 28 3"\n')
+    (output / "cart-dual.v").write_text(cart_source(groups=2, adder=16))
+    synth("cart-dual", "cart", output / "cart-dual.v")
+
+    def place_region(name, region):
+        command = [nextpnr, "--device", "5CSEBA6U23I7", "--json", str(output / "routed-shell.json"),
+                   "--qsf", str(dual_qsf), "--fes-cart", str(output / "cart-dual.json"),
+                   "--fes-cart-region", region, "--fes-slot-clock", clock, "--fes-scaffold",
+                   "--no-pack", "--no-route", "--seed", "3", "--write", str(output / (name + ".json"))]
+        result = subprocess.run(command, capture_output=True, text=True, timeout=300)
+        text = result.stdout + result.stderr
+        (output / (name + ".log")).write_text(text)
+        return result.returncode, text
+
+    def assert_inside_rect(name, rect):
+        cells = json.loads((output / (name + ".json")).read_text())["modules"]["top"]["cells"]
+        x0, y0, x1, y1 = rect
+        placed = 0
+        for cell_name, cell in cells.items():
+            if not cell_name.startswith("fes_cart$"):
+                continue
+            bel = cell.get("attributes", {}).get("NEXTPNR_BEL", "")
+            if not bel:
+                continue
+            _, x, y, _ = bel.split(".")
+            assert x0 <= int(x) <= x1 and y0 <= int(y) <= y1, (name, cell_name, bel)
+            placed += 1
+        assert placed > 0, (name, placed)
+
+    code, text = place_region("dual-porta", "porta")
+    assert code == 0, text
+    assert "FES slot region 'porta' constrains" in text, text
+    assert_inside_rect("dual-porta", (24, 1, 25, 3))
+
+    code, text = place_region("dual-portb", "portb")
+    assert code == 0, text
+    assert "FES slot region 'portb' constrains" in text, text
+    assert_inside_rect("dual-portb", (27, 1, 28, 3))
+
+    # An unknown region name fails closed instead of silently landing
+    # anywhere on the device.
+    code, text = place_region("dual-unknown", "portc")
+    assert code != 0, text
+    assert "has no matching FES_RESERVED_RECT" in text, text
+    print("fes_slot_region: dual-region ok")
 
 
 if __name__ == "__main__":
