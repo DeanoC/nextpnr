@@ -287,6 +287,40 @@ endmodule
     code, text = qsf_only("redeclare", redeclare_qsf)
     assert code != 0, text
     assert "was absorbed into group 'big'" in text, text
+
+    # A group member must be an actually-declared region, not just a name
+    # that happens to have loose FES_RESERVED_BEL content (column 37 is LAB,
+    # unused elsewhere in this file).
+    loose_member_qsf = output / "loose-member.qsf"
+    loose_member_qsf.write_text(
+        qsf.read_text() +
+        'set_global_assignment -name FES_RESERVED_BEL "MISTRAL_FF.28.1.2"\n'
+        'set_global_assignment -name FES_RESERVED_RECT "s7 37 1 37 3"\n'
+        'set_global_assignment -name FES_RESERVED_RECT_GROUP "big2 cart s7"\n')
+    code, text = qsf_only("loose-member", loose_member_qsf)
+    assert code != 0, text
+    assert "region 'cart' was never declared with FES_RESERVED_RECT" in text, text
+
+    # Nested groups retarget absorbed descendants to the outermost group:
+    # "inner" absorbs s8+s9, then "outer" absorbs inner+s10, so s8 must
+    # report "outer", not the no-longer-usable "inner" (columns 22, 23, 29
+    # are LAB, unused elsewhere in this file).
+    nested_qsf = output / "nested.qsf"
+    nested_qsf.write_text(
+        qsf.read_text() +
+        'set_global_assignment -name FES_RESERVED_RECT "s8 29 1 29 3"\n'
+        'set_global_assignment -name FES_RESERVED_RECT "s9 22 1 22 3"\n'
+        'set_global_assignment -name FES_RESERVED_RECT_GROUP "inner s8 s9"\n'
+        'set_global_assignment -name FES_RESERVED_RECT "s10 23 1 23 3"\n'
+        'set_global_assignment -name FES_RESERVED_RECT_GROUP "outer inner s10"\n')
+    code, text = qsf_only("nested", nested_qsf)
+    assert code == 0, text
+    redeclare_nested_qsf = output / "redeclare-nested.qsf"
+    redeclare_nested_qsf.write_text(nested_qsf.read_text() +
+                                     'set_global_assignment -name FES_RESERVED_RECT "s8 29 1 29 3"\n')
+    code, text = qsf_only("redeclare-nested", redeclare_nested_qsf)
+    assert code != 0, text
+    assert "was absorbed into group 'outer'" in text, text
     print("fes_slot_region: group ok")
 
 

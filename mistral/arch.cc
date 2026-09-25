@@ -363,6 +363,14 @@ void Arch::note_reserved_rect_group(const std::string &spec)
                       spec.c_str(), tokens[i].c_str());
         if (!members.insert(member_id).second)
             log_error("FES_RESERVED_RECT_GROUP '%s' lists region '%s' twice.\n", spec.c_str(), tokens[i].c_str());
+        // A member must be a region actually declared with FES_RESERVED_RECT
+        // or FES_RESERVED_RECT_GROUP, not just a name that happens to have
+        // loose FES_RESERVED_BEL content (fes_region_bels alone isn't proof
+        // of declaration); the group's own name has separate, narrower
+        // fold-in handling above.
+        if (!fes_declared_region_names.count(member_id))
+            log_error("FES_RESERVED_RECT_GROUP '%s' region '%s' was never declared with FES_RESERVED_RECT.\n",
+                      spec.c_str(), tokens[i].c_str());
         auto absorbed = fes_region_absorbed_by.find(member_id);
         if (absorbed != fes_region_absorbed_by.end())
             log_error("FES_RESERVED_RECT_GROUP '%s' region '%s' was already absorbed into group '%s'.\n",
@@ -377,6 +385,15 @@ void Arch::note_reserved_rect_group(const std::string &spec)
     for (IdString member_id : members) {
         fes_region_absorbed_by[member_id] = group_id;
         fes_region_bels.erase(member_id);
+    }
+    // Nested groups: a member absorbed here may already have its own
+    // descendants pointing at it (e.g. "inner" absorbed "s1" earlier, and
+    // this group now absorbs "inner"). Retarget those so a stale lookup
+    // resolves straight to the outermost, still-usable group instead of a
+    // name that is itself no longer independently available.
+    for (auto &entry : fes_region_absorbed_by) {
+        if (members.count(entry.second))
+            entry.second = group_id;
     }
     for (BelId bel : merged)
         fes_bel_region[bel] = group_id;
