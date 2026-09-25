@@ -258,6 +258,35 @@ endmodule
     code, text = place_named("group-absorbed", "s2", "cart-dual.json", group_qsf)
     assert code != 0, text
     assert "was absorbed into group 'big'" in text, text
+
+    def qsf_only(name, qsf_path, timeout=60):
+        command = [nextpnr, "--device", "5CSEBA6U23I7", "--json", str(output / "routed-shell.json"),
+                   "--qsf", str(qsf_path), "--fes-scaffold", "--no-pack", "--no-place", "--no-route"]
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        return result.returncode, result.stdout + result.stderr
+
+    # A loose FES_RESERVED_BEL under the default "cart" name must be folded
+    # into a same-named group instead of the name looking "already declared"
+    # (columns 30-31 are LAB, unused by any other case in this file).
+    cart_group_qsf = output / "cart-group.qsf"
+    cart_group_qsf.write_text(
+        qsf.read_text() +
+        'set_global_assignment -name FES_RESERVED_BEL "MISTRAL_FF.24.1.2"\n'
+        'set_global_assignment -name FES_RESERVED_RECT "s5 30 1 30 3"\n'
+        'set_global_assignment -name FES_RESERVED_RECT "s6 31 1 31 3"\n'
+        'set_global_assignment -name FES_RESERVED_RECT_GROUP "cart s5 s6"\n')
+    code, text = qsf_only("cart-group", cart_group_qsf)
+    assert code == 0, text
+    assert "already declared" not in text, text
+    assert "FES reserved rect group 'cart' absorbs 2 regions" in text, text
+
+    # Re-declaring an absorbed sub-region as an ordinary rect must name the
+    # group that consumed it, not just say "already declared".
+    redeclare_qsf = output / "redeclare.qsf"
+    redeclare_qsf.write_text(group_qsf.read_text() + 'set_global_assignment -name FES_RESERVED_RECT "s2 34 1 34 3"\n')
+    code, text = qsf_only("redeclare", redeclare_qsf)
+    assert code != 0, text
+    assert "was absorbed into group 'big'" in text, text
     print("fes_slot_region: group ok")
 
 

@@ -301,6 +301,10 @@ void Arch::note_reserved_rect(const std::string &spec)
     if (x1 < x0 || y1 < y0)
         log_error("FES_RESERVED_RECT '%s' is empty.\n", spec.c_str());
     IdString region_id = id(name);
+    auto rect_absorbed = fes_region_absorbed_by.find(region_id);
+    if (rect_absorbed != fes_region_absorbed_by.end())
+        log_error("FES_RESERVED_RECT '%s' region name '%s' was absorbed into group '%s' by FES_RESERVED_RECT_GROUP.\n",
+                  spec.c_str(), name.c_str(), rect_absorbed->second.c_str(getCtx()));
     if (fes_declared_region_names.count(region_id))
         log_error("FES_RESERVED_RECT '%s' region name '%s' is already declared.\n", spec.c_str(), name.c_str());
     int count = 0;
@@ -334,9 +338,7 @@ void Arch::note_reserved_rect_group(const std::string &spec)
                   spec.c_str());
     const std::string &group_name = tokens.front();
     IdString group_id = id(group_name);
-    // fes_region_bels also catches a name that only ever received loose
-    // FES_RESERVED_BEL reservations (so never joined fes_declared_region_names).
-    if (fes_declared_region_names.count(group_id) || fes_region_bels.count(group_id))
+    if (fes_declared_region_names.count(group_id))
         log_error("FES_RESERVED_RECT_GROUP '%s' region name '%s' is already declared.\n", spec.c_str(),
                   group_name.c_str());
     // A big card can claim several already-declared regions at once; every
@@ -344,9 +346,21 @@ void Arch::note_reserved_rect_group(const std::string &spec)
     // blocked from independent use), mirroring a large expansion card
     // physically covering its smaller neighbours' backplane slots.
     std::set<IdString> members;
+    // A loose FES_RESERVED_BEL may already have tagged BELs under this exact
+    // name (most commonly the default "cart"), with no rectangle of its own
+    // and so no fes_declared_region_names entry to reject above; fold those
+    // BELs into the merged set instead of treating the name as taken, since
+    // a BEL reservation always augments whichever rectangle/group ends up
+    // owning that name.
     std::set<BelId> merged;
+    auto preexisting = fes_region_bels.find(group_id);
+    if (preexisting != fes_region_bels.end())
+        merged = preexisting->second;
     for (size_t i = 1; i < tokens.size(); ++i) {
         IdString member_id = id(tokens[i]);
+        if (member_id == group_id)
+            log_error("FES_RESERVED_RECT_GROUP '%s' cannot list its own group name '%s' as a member.\n",
+                      spec.c_str(), tokens[i].c_str());
         if (!members.insert(member_id).second)
             log_error("FES_RESERVED_RECT_GROUP '%s' lists region '%s' twice.\n", spec.c_str(), tokens[i].c_str());
         auto absorbed = fes_region_absorbed_by.find(member_id);
