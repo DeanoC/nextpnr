@@ -432,6 +432,13 @@ class SAPlacer
                 int nx = ctx->rng(max_x + 1), ny = ctx->rng(max_y + 1);
                 if (cfg.minBelsForGridPick >= 0 && type_cnt < cfg.minBelsForGridPick)
                     nx = ny = 0;
+                if (cell->region != nullptr && cell->region->constr_bels) {
+                    // Sample inside the region's bounding box; a small region
+                    // is otherwise almost never hit by a chip-wide pick.
+                    const auto &rb = region_bounds.at(cell->region->name);
+                    nx = rb.x0 + ctx->rng(rb.x1 - rb.x0 + 1);
+                    ny = rb.y0 + ctx->rng(rb.y1 - rb.y0 + 1);
+                }
                 if (nx >= int(bel_data->size()))
                     continue;
                 if (ny >= int(bel_data->at(nx).size()))

@@ -17,6 +17,9 @@
  */
 
 #include <algorithm>
+#include <array>
+#include <map>
+#include <memory>
 #include <sstream>
 
 #include "log.h"
@@ -687,9 +690,45 @@ bool Arch::place()
 
         cfg.beta = 0.5; // TODO: find a good value of beta for sensible ALM spreading
         cfg.criticalityExponent = 7;
+        if (fes_has_reserved_rect && getCtx()->region.count(id("$FES_SLOT"))) {
+            // A cart confined to a small rectangle can cycle evictions for
+            // a long time; report the cycling cell instead of running on.
+            cfg.cellRipupLimit = std::max(cfg.cellRipupLimit, 500);
+            // Legalise flip-flops LAB by LAB. HeAP's model admits one control
+            // set per LAB, so key it on the signals a Cyclone V LAB really
+            // has one of: clock (LabCtrlSetWorker allows one), synchronous
+            // clear and synchronous load. Enables and asynchronous clears
+            // have several LAB lines and are left to the full validity
+            // check, which still decides legality.
+            cfg.ff_bel_bucket = id_MISTRAL_FF;
+            cfg.ff_control_set_groups.assign(1, {});
+            for (int alm = 0; alm < 10; alm++)
+                for (int ff = 0; ff < 4; ff++)
+                    cfg.ff_control_set_groups.at(0).push_back(alm * 6 + 2 + ff);
+            cfg.ctrl_set_max_radius = std::vector<int>{12, 12, 12, 8, 6, 4};
+            // Deterministic ids keyed by net names, not pointers.
+            auto ids = std::make_shared<std::map<std::array<int, 6>, int32_t>>();
+            cfg.get_cell_control_set = [ids, this](Context *, const CellInfo *ci) -> int32_t {
+                // Frozen shell LABs legitimately mix enables under the full
+                // LAB rules; HeAP's one-set-per-LAB model must not see them.
+                if (ci->type != id_MISTRAL_FF || !fes_cell_is_slot(ci))
+                    return -1;
+                const auto &cs = ci->ffInfo.ctrlset;
+                auto sig = [](const ControlSig &s) { return s.net ? s.net->name.index : -1; };
+                std::array<int, 6> key{sig(cs.clk),  int(cs.clk.inverted),  sig(cs.sclr),
+                                       int(cs.sclr.inverted), sig(cs.sload), int(cs.sload.inverted)};
+                auto found = ids->find(key);
+                if (found == ids->end())
+                    found = ids->emplace(key, int32_t(ids->size())).first;
+                return found->second;
+            };
+        }
         if (!placer_heap(getCtx(), cfg))
             return false;
     } else if (placer == "sa") {
+        if (fes_has_reserved_rect && getCtx()->region.count(id("$FES_SLOT")))
+            log_error("The SA placer moves FES cart LUT/FF pairs and carry chains cell by cell and can end with an "
+                      "unrepaired cluster; use --placer heap for cart placement.\n");
         if (!placer1(getCtx(), Placer1Cfg(getCtx())))
             return false;
     } else {

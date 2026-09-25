@@ -119,6 +119,9 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     }
     if (vm.count("fes-scaffold") || routed)
         ctx->lock_fes_scaffold();
+    // After the scaffold is locked, frozen LABs are known; constrain cart
+    // cells to the reserved rectangle and report its capacity.
+    ctx->fes_constrain_slot_region();
 }
 
 int main(int argc, char *argv[])
