@@ -1401,6 +1401,11 @@ class HeAPPlacer
                     // Check it satisfies the region constraint if applicable
                     if (!target.first->testRegion(target.second))
                         goto fail;
+                    // Without a candidate group, the control-set table must
+                    // admit the member before bind_ctrl_set asserts on it
+                    if (ctrl_set_group == -1 && p->cell_ctrl_set.count(target.first->name) &&
+                        !p->test_ctrl_set(target.second, target.first->name))
+                        goto fail;
                     if (ctrl_set_group != -1 && ctx->getBelBucketForBel(target.second) == p->cfg.ff_bel_bucket &&
                         p->z_to_ctrl_set.at(ctx->getBelLocation(target.second).z) == ctrl_set_group)
                         ctrl_set_match = true;

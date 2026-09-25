@@ -694,10 +694,12 @@ bool Arch::place()
             // A cart confined to a small rectangle can cycle evictions for
             // a long time; report the cycling cell instead of running on.
             cfg.cellRipupLimit = std::max(cfg.cellRipupLimit, 500);
-            // Legalise flip-flops LAB by LAB: a Cyclone V LAB shares one
-            // control set across all forty FF BELs, so HeAP should search
-            // for a LAB already holding the same set before random probing.
-            // The full LAB validity check still decides legality.
+            // Legalise flip-flops LAB by LAB. HeAP's model admits one control
+            // set per LAB, so key it on the signals a Cyclone V LAB really
+            // has one of: clock (LabCtrlSetWorker allows one), synchronous
+            // clear and synchronous load. Enables and asynchronous clears
+            // have several LAB lines and are left to the full validity
+            // check, which still decides legality.
             cfg.ff_bel_bucket = id_MISTRAL_FF;
             cfg.ff_control_set_groups.assign(1, {});
             for (int alm = 0; alm < 10; alm++)
@@ -705,7 +707,7 @@ bool Arch::place()
                     cfg.ff_control_set_groups.at(0).push_back(alm * 6 + 2 + ff);
             cfg.ctrl_set_max_radius = std::vector<int>{12, 12, 12, 8, 6, 4};
             // Deterministic ids keyed by net names, not pointers.
-            auto ids = std::make_shared<std::map<std::array<int, 10>, int32_t>>();
+            auto ids = std::make_shared<std::map<std::array<int, 6>, int32_t>>();
             cfg.get_cell_control_set = [ids, this](Context *, const CellInfo *ci) -> int32_t {
                 // Frozen shell LABs legitimately mix enables under the full
                 // LAB rules; HeAP's one-set-per-LAB model must not see them.
@@ -713,9 +715,8 @@ bool Arch::place()
                     return -1;
                 const auto &cs = ci->ffInfo.ctrlset;
                 auto sig = [](const ControlSig &s) { return s.net ? s.net->name.index : -1; };
-                std::array<int, 10> key{sig(cs.clk),  int(cs.clk.inverted),  sig(cs.ena),   int(cs.ena.inverted),
-                                        sig(cs.aclr), int(cs.aclr.inverted), sig(cs.sclr),  int(cs.sclr.inverted),
-                                        sig(cs.sload), int(cs.sload.inverted)};
+                std::array<int, 6> key{sig(cs.clk),  int(cs.clk.inverted),  sig(cs.sclr),
+                                       int(cs.sclr.inverted), sig(cs.sload), int(cs.sload.inverted)};
                 auto found = ids->find(key);
                 if (found == ids->end())
                     found = ids->emplace(key, int32_t(ids->size())).first;

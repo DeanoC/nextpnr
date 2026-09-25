@@ -22,10 +22,11 @@ After the scaffold is locked, `--fes-cart` placement now:
    pairs each cart flip-flop with the slot LUT that drives its `DATAIN`. A
    paired FF sits in its LUT's ALM half and needs no route-through LUT or E/F
    input, the scarce resource inside a small rectangle.
-3. Enables HeAP's control-set aware legalisation for the run: a Cyclone V LAB
-   shares one control set across its forty FF BELs, so the legaliser first
-   looks for a LAB already holding the same set. The full LAB validity check
-   still decides legality.
+3. Enables HeAP's control-set aware legalisation for the run, keyed on the
+   signals a Cyclone V LAB has exactly one of (clock, synchronous clear,
+   synchronous load), so the legaliser first looks for a LAB already holding
+   the same set. Enables and asynchronous clears have several LAB lines and
+   are left to the full LAB validity check, which still decides legality.
 4. Fails fast when the same cell is re-legalised more than 500 times in one
    pass (`placerHeap/cellRipupLimit`), naming that cell.
 5. Prints a `FES slot capacity` report before placement and stops with the
