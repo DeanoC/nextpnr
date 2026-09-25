@@ -105,6 +105,10 @@ void set_global_assignment_cmd(Context *ctx, const option_map_t &options, const 
         ctx->note_reserved_rect(value);
         return;
     }
+    if (name == "FES_RESERVED_RECT_GROUP") {
+        ctx->note_reserved_rect_group(value);
+        return;
+    }
 }
 
 static const std::vector<QsfCommand> commands = {

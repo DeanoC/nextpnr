@@ -206,6 +206,44 @@ endmodule
     assert "has no matching FES_RESERVED_RECT" in text, text
     print("fes_slot_region: dual-region ok")
 
+    # A big card can claim several small declared regions at once via
+    # FES_RESERVED_RECT_GROUP: columns 33-36 are four one-column LAB/MLAB
+    # slots (no M10K, no frozen shell FFs there), grouped into "big".
+    group_qsf = output / "group.qsf"
+    group_qsf.write_text(
+        qsf.read_text() +
+        ''.join(f'set_global_assignment -name FES_RESERVED_RECT "s{i} {33 + i - 1} 1 {33 + i - 1} 3"\n'
+                for i in range(1, 5)) +
+        'set_global_assignment -name FES_RESERVED_RECT_GROUP "big s1 s2 s3 s4"\n')
+
+    def place_named(name, region, cart_json, qsf_path, timeout=300):
+        command = [nextpnr, "--device", "5CSEBA6U23I7", "--json", str(output / "routed-shell.json"),
+                   "--qsf", str(qsf_path), "--fes-cart", str(output / cart_json),
+                   "--fes-cart-region", region, "--fes-slot-clock", clock, "--fes-scaffold",
+                   "--no-pack", "--no-route", "--seed", "3", "--write", str(output / (name + ".json"))]
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        text = result.stdout + result.stderr
+        (output / (name + ".log")).write_text(text)
+        return result.returncode, text
+
+    # The six-SCLR-group cart needed 10 usable LABs against the original
+    # 24-28 socket; the four grouped columns give 12 usable LABs (no frozen
+    # occupant in this range), so it must fit as one region.
+    code, text = place_named("group-big", "big", "cart-fit.json", group_qsf)
+    assert code == 0, text
+    # "bels" here is every raw BEL (COMB+FF+...) in the four columns, not LAB
+    # tile count: 4 columns x 3 rows x 60 BELs/tile.
+    assert "FES reserved rect group 'big' absorbs 4 regions (720 bels)" in text, text
+    assert "FES slot region 'big' constrains" in text, text
+    assert_inside_rect("group-big", (33, 1, 36, 3))
+
+    # An absorbed sub-region is blocked from independent use, exactly like a
+    # big card physically covering its smaller neighbours' backplane slots.
+    code, text = place_named("group-absorbed", "s2", "cart-dual.json", group_qsf)
+    assert code != 0, text
+    assert "was absorbed into group 'big'" in text, text
+    print("fes_slot_region: group ok")
+
 
 if __name__ == "__main__":
     main()

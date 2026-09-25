@@ -256,11 +256,16 @@ void Arch::note_reserved_bel(const std::string &name)
     // FES_RESERVED_BEL has no region syntax of its own; it joins the default
     // "cart" region, matching the legacy boolean FES_SLOT=1 cart tag.
     IdString region_id = id("cart");
+    auto absorbed = fes_region_absorbed_by.find(region_id);
+    if (absorbed != fes_region_absorbed_by.end())
+        log_error("FES_RESERVED_BEL '%s' targets region 'cart', already absorbed into group '%s'.\n", name.c_str(),
+                  absorbed->second.c_str(getCtx()));
     auto existing = fes_bel_region.find(bel);
     if (existing != fes_bel_region.end() && existing->second != region_id)
         log_error("FES_RESERVED_BEL '%s' overlaps region '%s'.\n", name.c_str(), existing->second.c_str(getCtx()));
     fes_bel_region[bel] = region_id;
     fes_region_bels[region_id].insert(bel);
+    fes_declared_region_names.insert(region_id);
     log_info("FES reserved BEL %s (region 'cart')\n", name.c_str());
 }
 
@@ -291,10 +296,9 @@ void Arch::note_reserved_rect(const std::string &spec)
         log_error("FES_RESERVED_RECT '%s' must be 'x0 y0 x1 y1' or 'name x0 y0 x1 y1'.\n", spec.c_str());
     if (x1 < x0 || y1 < y0)
         log_error("FES_RESERVED_RECT '%s' is empty.\n", spec.c_str());
-    for (const auto &existing : fes_reserved_rects)
-        if (existing.name == name)
-            log_error("FES_RESERVED_RECT '%s' declares region '%s' twice.\n", spec.c_str(), name.c_str());
     IdString region_id = id(name);
+    if (fes_declared_region_names.count(region_id))
+        log_error("FES_RESERVED_RECT '%s' region name '%s' is already declared.\n", spec.c_str(), name.c_str());
     int count = 0;
     for (BelId bel : getBels()) {
         Loc loc = getBelLocation(bel);
@@ -310,7 +314,57 @@ void Arch::note_reserved_rect(const std::string &spec)
     }
     fes_reserved_rects.push_back(FesReservedRect{name, x0, y0, x1, y1});
     fes_has_reserved_rect = true;
+    fes_declared_region_names.insert(region_id);
     log_info("FES reserved rect '%s' %d %d %d %d (%d bels)\n", name.c_str(), x0, y0, x1, y1, count);
+}
+
+void Arch::note_reserved_rect_group(const std::string &spec)
+{
+    std::istringstream in(spec);
+    std::vector<std::string> tokens;
+    for (std::string tok; in >> tok;)
+        tokens.push_back(tok);
+    if (tokens.size() < 3)
+        log_error("FES_RESERVED_RECT_GROUP '%s' must be 'name region1 region2 [region3 ...]' (at least two source "
+                  "regions).\n",
+                  spec.c_str());
+    const std::string &group_name = tokens.front();
+    IdString group_id = id(group_name);
+    if (fes_declared_region_names.count(group_id))
+        log_error("FES_RESERVED_RECT_GROUP '%s' region name '%s' is already declared.\n", spec.c_str(),
+                  group_name.c_str());
+    // A big card can claim several already-declared regions at once; every
+    // member is fully absorbed (its BELs move to the group, and its name is
+    // blocked from independent use), mirroring a large expansion card
+    // physically covering its smaller neighbours' backplane slots.
+    std::set<IdString> members;
+    std::set<BelId> merged;
+    for (size_t i = 1; i < tokens.size(); ++i) {
+        IdString member_id = id(tokens[i]);
+        if (!members.insert(member_id).second)
+            log_error("FES_RESERVED_RECT_GROUP '%s' lists region '%s' twice.\n", spec.c_str(), tokens[i].c_str());
+        auto absorbed = fes_region_absorbed_by.find(member_id);
+        if (absorbed != fes_region_absorbed_by.end())
+            log_error("FES_RESERVED_RECT_GROUP '%s' region '%s' was already absorbed into group '%s'.\n",
+                      spec.c_str(), tokens[i].c_str(), absorbed->second.c_str(getCtx()));
+        auto bels = fes_region_bels.find(member_id);
+        if (bels == fes_region_bels.end())
+            log_error("FES_RESERVED_RECT_GROUP '%s' region '%s' was never declared with FES_RESERVED_RECT.\n",
+                      spec.c_str(), tokens[i].c_str());
+        for (BelId bel : bels->second)
+            merged.insert(bel);
+    }
+    for (IdString member_id : members) {
+        fes_region_absorbed_by[member_id] = group_id;
+        fes_region_bels.erase(member_id);
+    }
+    for (BelId bel : merged)
+        fes_bel_region[bel] = group_id;
+    fes_region_bels[group_id] = std::move(merged);
+    fes_declared_region_names.insert(group_id);
+    log_info("FES reserved rect group '%s' absorbs %zu regions (%zu bels); they are no longer independently "
+             "available.\n",
+             group_name.c_str(), members.size(), fes_region_bels.at(group_id).size());
 }
 
 IdString Arch::fes_cell_slot_region(const CellInfo *cell) const
