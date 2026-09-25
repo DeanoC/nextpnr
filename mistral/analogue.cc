@@ -234,12 +234,16 @@ void Arch::analogue_relink(const std::vector<PipId> &removed, const std::vector<
     for (auto p : removed) {
         if (now.count(p) || WireId(p.src).is_nextpnr_created() || WireId(p.dst).is_nextpnr_created())
             continue;
-        // libmistral declares but does not implement rnode_unlink(), so a
-        // routing mux cannot be returned to its default; select an input no
-        // net drives instead, which takes the mux off the load of the wire
-        // this net no longer uses. The bitstream is rebuilt from scratch
-        // before it is written, so this state is only ever simulated.
         WireId dst(p.dst);
+#ifdef MISTRAL_RNODE_UNLINK
+        cyclonev->rnode_unlink(dst.node);
+#else
+        // The pinned libmistral declares but does not implement
+        // rnode_unlink(), so a routing mux cannot be returned to its
+        // default; select an input no net drives instead, which takes the
+        // mux off the load of the wire this net no longer uses. The
+        // bitstream is rebuilt from scratch before it is written, so this
+        // state is only ever simulated.
         for (PipId up : getPipsUphill(dst)) {
             WireId s = getPipSrcWire(up);
             if (s.node == p.src || s.is_nextpnr_created() || getBoundWireNet(s) != nullptr)
@@ -247,6 +251,7 @@ void Arch::analogue_relink(const std::vector<PipId> &removed, const std::vector<
             cyclonev->rnode_link(s.node, dst.node);
             break;
         }
+#endif
     }
     for (auto p : added) {
         if (was.count(p) || WireId(p.src).is_nextpnr_created() || WireId(p.dst).is_nextpnr_created())
@@ -322,8 +327,19 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target)
     float total_gain = 0.0f;
     double search_secs = 0.0, eval_secs = 0.0;
     const int nthreads = std::max(1, std::min(int(std::thread::hardware_concurrency()), 32));
-    for (auto &it : items) {
+    // All sinks are searched together so the device is busy
+    auto ts = std::chrono::steady_clock::now();
+    std::vector<GpuCandidateRouter::Sink> sinks;
+    for (auto &it : items)
+        sinks.push_back(GpuCandidateRouter::Sink{it.ni, it.user});
+    auto all_cands = cr.candidates(sinks, count);
+    search_secs += std::chrono::duration<double>(std::chrono::steady_clock::now() - ts).count();
+    for (size_t idx = 0; idx < items.size(); idx++) {
+        auto &it = items[idx];
         NetInfo *ni = it.ni;
+        auto &cands = all_cands[idx];
+        if (cands.empty())
+            continue;
         // Analogue delay and slack of every sink before the change; a sink
         // without an observation or a constraint does not take part
         std::vector<const PortRef *> users;
@@ -345,12 +361,7 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target)
         }
         if (score_old == std::numeric_limits<float>::max())
             continue;
-        auto ts = std::chrono::steady_clock::now();
-        auto cands = cr.candidates(ni, it.user, count);
-        search_secs += std::chrono::duration<double>(std::chrono::steady_clock::now() - ts).count();
         generated += int(cands.size());
-        if (cands.empty())
-            continue;
         tried++;
         const auto old = snapshot_net(ni);
         dict<WireId, PlaceStrength> old_strength;
@@ -458,6 +469,22 @@ bool Arch::analogue_repair()
     // Candidate-selection passes before each full re-route (0 disables)
     const int cand_rounds = ctx->setting<int>("gpurouter/analogueCandidateRounds", 2);
     const bool candidates = ctx->setting<int>("gpurouter/analogueCandidates", 4) > 0;
+    // After a full re-route, put back the old route of every re-routed net
+    // whose worst sink got slower by more than this (ps), where its old
+    // wires are still free
+    const bool revert = ctx->setting<bool>("gpurouter/analogueRevert", true);
+    const float revert_margin = ctx->setting<float>("gpurouter/analogueRevertMargin", 20.0f);
+    // A round that lands this far (ps) below the best routing so far is
+    // abandoned: the best routing is restored before the next round, so a
+    // re-route that wrecked the design is not the base of the next tries
+    // (the next re-route differs anyway, the route order is shuffled)
+    const float restore_margin = ctx->setting<float>("gpurouter/analogueRestoreMargin", 1000.0f);
+    // At most this many nets (the worst by analogue slack) are ripped per
+    // re-route (0: every net with an arc below analogueRipSlack). A
+    // re-route of several hundred nets regularly loses nanoseconds; one of
+    // a few dozen perturbs the routes the next candidate passes choose
+    // from without wrecking the rest.
+    const int rip_max = ctx->setting<int>("gpurouter/analogueRipNets", 64);
     // Stop once every clock has at least this much analogue slack (ps).
     const float target = ctx->setting<float>("gpurouter/analogueSlack", 0.0f);
     // Re-route every net with an arc whose analogue slack is below this (ps).
@@ -497,6 +524,13 @@ bool Arch::analogue_repair()
         if (current > best.slack) {
             best = save_routing(ctx);
             best.slack = current;
+        } else if (current < best.slack - restore_margin) {
+            log_info("    %.3f ns below the best routing so far; restoring it (%.3f ns) before the next round\n",
+                     (best.slack - current) / 1000.0f, best.slack / 1000.0f);
+            restore_routing(ctx, best);
+            bitstream_configured = false;
+            current_timed = false;
+            continue;
         }
 
         auto t1 = std::chrono::steady_clock::now();
@@ -510,29 +544,61 @@ bool Arch::analogue_repair()
                 continue; // re-time the new routing before deciding on a full re-route
             }
         }
-        pool<IdString> rip;
+        std::vector<std::pair<float, IdString>> worst; // slack, net
         for (auto &net : nets) {
             NetInfo *ni = net.second.get();
             if (ni->driver.cell == nullptr || ni->is_global || ni->wires.empty())
                 continue;
+            float net_slack = std::numeric_limits<float>::max();
             for (auto &usr : ni->users) {
                 delay_t sl = tmg.get_setup_slack(CellPortKey(usr));
-                if (sl != std::numeric_limits<delay_t>::max() && sl != std::numeric_limits<delay_t>::lowest() &&
-                    sl < rip_slack) {
-                    rip.insert(net.first);
-                    break;
-                }
+                if (sl != std::numeric_limits<delay_t>::max() && sl != std::numeric_limits<delay_t>::lowest())
+                    net_slack = std::min(net_slack, float(sl));
             }
+            if (net_slack < rip_slack)
+                worst.emplace_back(net_slack, net.first);
         }
+        std::stable_sort(worst.begin(), worst.end(), [&](const auto &a, const auto &b) {
+            if (a.first != b.first)
+                return a.first < b.first;
+            return a.second.str(ctx) < b.second.str(ctx);
+        });
+        if (rip_max > 0 && int(worst.size()) > rip_max)
+            worst.resize(rip_max);
+        pool<IdString> rip;
+        for (auto &w : worst)
+            rip.insert(w.second);
         bitstream_configured = false;
         if (rip.empty())
             break;
         log_info("    re-routing %zu nets with arcs below %.3f ns analogue slack (%zu pips observed in %.2fs)\n",
                  rip.size(), rip_slack / 1000.0f, pip_delay_observed.size(), secs_since(t1));
+        // What the ripped nets had, to give back what the re-route makes worse
+        struct Ripped
+        {
+            std::vector<SavedRouting::Entry> entries;
+            std::vector<float> slack;
+            std::vector<delay_t> delay;
+            std::vector<bool> ok;
+        };
+        dict<IdString, Ripped> ripped;
         for (auto n : rip) {
+            NetInfo *ni = nets.at(n).get();
+            Ripped r;
+            r.entries = snapshot_net(ni);
+            for (auto &usr : ni->users) {
+                float sl = tmg.get_setup_slack(CellPortKey(usr));
+                auto fnd = analogue_arc_cache.find(&usr);
+                bool ok = fnd != analogue_arc_cache.end() && fnd->second.ok &&
+                          sl != std::numeric_limits<float>::lowest() && sl != std::numeric_limits<float>::max();
+                r.slack.push_back(sl);
+                r.delay.push_back(ok ? fnd->second.delay.maxDelay() : 0);
+                r.ok.push_back(ok);
+            }
+            ripped[n] = std::move(r);
             // The observations of everything that stays routed remain valid
             // for the router's timing; drop the ones of the nets it moves
-            for (auto &usr : nets.at(n)->users)
+            for (auto &usr : ni->users)
                 analogue_arc_cache.erase(&usr);
             ctx->ripupNet(n);
         }
@@ -554,6 +620,55 @@ bool Arch::analogue_repair()
             settings.erase(repair_slack_key);
         if (!result)
             break;
+        if (revert) {
+            // A full re-route optimises the calibrated table and can leave
+            // many nets slower under the analogue model than they were;
+            // give those their old routes back where the wires are free,
+            // worst regression first, and keep the ones it improved
+            auto t2 = std::chrono::steady_clock::now();
+            configure_bitstream();
+            std::vector<std::pair<float, IdString>> order;
+            for (auto &r : ripped) {
+                NetInfo *ni = nets.at(r.first).get();
+                float before = std::numeric_limits<float>::max(), after = before;
+                size_t i = 0;
+                for (auto &usr : ni->users) {
+                    if (r.second.ok.at(i)) {
+                        auto fnd = analogue_arc_cache.find(&usr);
+                        delay_t d = (fnd != analogue_arc_cache.end() && fnd->second.ok) ? fnd->second.delay.maxDelay()
+                                                                                        : r.second.delay[i];
+                        before = std::min(before, r.second.slack[i]);
+                        after = std::min(after, r.second.slack[i] + float(r.second.delay[i] - d));
+                    }
+                    i++;
+                }
+                if (before != std::numeric_limits<float>::max() && after < before - revert_margin)
+                    order.emplace_back(after - before, r.first);
+            }
+            std::stable_sort(order.begin(), order.end(), [&](const auto &a, const auto &b) {
+                if (a.first != b.first)
+                    return a.first < b.first;
+                return a.second.str(ctx) < b.second.str(ctx);
+            });
+            int reverted = 0, taken = 0;
+            float regained = 0.0f;
+            for (auto &o : order) {
+                NetInfo *ni = nets.at(o.second).get();
+                auto current = snapshot_net(ni);
+                if (bind_net(ctx, ni, ripped.at(o.second).entries)) {
+                    reverted++;
+                    regained -= o.first;
+                } else {
+                    bool restored = bind_net(ctx, ni, current);
+                    NPNR_ASSERT(restored);
+                    taken++;
+                }
+            }
+            bitstream_configured = false;
+            log_info("    re-route made %zu of %zu nets slower at their worst sink; gave %d their old route back "
+                     "(%.3f ns of sink slack), %d could not have it (wires taken), %.2fs\n",
+                     order.size(), ripped.size(), reverted, regained / 1000.0f, taken, secs_since(t2));
+        }
     }
     bitstream_configured = false;
     analogue_cache_valid = false;

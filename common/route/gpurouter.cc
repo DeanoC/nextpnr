@@ -95,6 +95,10 @@ struct GpuRouter
     bool reserve_bound_routing = false;
     // Candidate generation in progress (larger expansion steps)
     bool candidate_mode = false;
+    // Wires a net's next search may not enter, passed to the backend as
+    // blocked seeds (present in the table, never relaxed into or expanded),
+    // so they bind only that net's search, not the other tasks of a launch
+    dict<int, std::vector<int32_t>> task_blocked;
 
     void mark_dirty(int32_t w)
     {
@@ -959,6 +963,14 @@ struct GpuRouter
                 // nothing clean to attach to: allow the source itself
                 seed_delay[td.tree_off + int32_t(std::distance(nd.wires.begin(), nd.wires.find(nd.src)))] = 0.0f;
             }
+            auto tb = task_blocked.find(t.net);
+            if (tb != task_blocked.end())
+                for (int32_t w : tb->second)
+                    if (!nd.wires.count(w)) {
+                        seeds.push_back(w);
+                        seed_load.push_back(0.0f);
+                        seed_delay.push_back(-1.0f);
+                    }
             td.tree_cnt = int32_t(seeds.size()) - td.tree_off;
             td.arc_off = int32_t(ads.size());
             pool<int32_t> sinks_seen;
@@ -1259,6 +1271,10 @@ struct GpuRouter
     {
         ctx->check();
         bool success = true;
+        // Unbind every net's router-made routing before binding any: a net
+        // the negotiation moved off a wire still holds it in the Arch until
+        // its own turn, and the net that legitimately took the wire would
+        // be refused, ripped up and re-routed onto a detour.
         std::vector<WireId> net_wires;
         for (auto net : nets_by_udata) {
             net_wires.clear();
@@ -1267,6 +1283,8 @@ struct GpuRouter
                     net_wires.push_back(w.first);
             for (auto w : net_wires)
                 ctx->unbindWire(w);
+        }
+        for (auto net : nets_by_udata) {
             for (auto usr : net->users.enumerate()) {
                 auto &nd = nets.at(net->udata);
                 for (size_t phys_pin = 0; phys_pin < nd.arcs.at(usr.index.idx()).size(); phys_pin++) {
@@ -2203,165 +2221,205 @@ struct GpuRouter
         flush_state();
     }
 
-    // Up to `count` different pure-delay routes for user `user` of `net`;
-    // see GpuCandidateRouter::candidates(). The net's tree is restored
-    // afterwards so the router state still matches the Arch.
-    std::vector<GpuRouteTree> route_candidates(int net, int user, int count)
+    // Candidate generation for one sink of one net; see
+    // GpuCandidateRouter::candidates(). Every sink of a batch is searched
+    // in the same launches, so the searches fill the device instead of
+    // running one thread block at a time.
+    struct CandidateJob
     {
-        std::vector<GpuRouteTree> out;
-        auto &nd = nets.at(net);
-        if (nd.src < 0 || user < 0 || user >= int(nd.arcs.size()) || count <= 0)
-            return out;
+        int net = -1, user = -1;
         std::vector<std::pair<int, int>> arcs;
-        for (size_t j = 0; j < nd.arcs.at(user).size(); j++)
-            arcs.emplace_back(user, int(j));
-        if (arcs.empty())
-            return out;
-        const NetData saved = nd;
-        for (auto &a : arcs)
-            ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
-        const NetData base = nd;
-        flush_state();
+        NetData saved, base;
+        BoundingBox wide;
+        std::vector<int32_t> old_long; // multi-tile wires of the old route, most upstream first
+        pool<int32_t> avoid;           // new wires of earlier candidates to steer away from
+        std::vector<std::vector<int32_t>> seen;
+        std::vector<int32_t> blocked; // wires this variant may not use
+        int cumulative = 0;           // cumulative-avoid variants run so far
+        bool cumulative_done = false, active = false, routing = false, is_cumulative = false;
+        size_t avoid_before = 0;
+        std::vector<GpuRouteTree> out;
+    };
 
-        // Wires temporarily reserved for a net index no net has, so the
-        // search cannot use them (with what they were reserved for before:
-        // every wire the net had bound is reserved for it here)
-        const int32_t block = int32_t(nets.size());
-        std::vector<std::pair<int32_t, int32_t>> blocked;
-        // The multi-tile wires the arc used before, most upstream first:
-        // one candidate per wire avoids just that wire
-        std::vector<int32_t> old_long;
-        for (auto &w : saved.wires)
-            if (!base.wires.count(w.first) && wlong[w.first])
-                old_long.push_back(w.first);
-        std::sort(old_long.begin(), old_long.end(), [&](int32_t a, int32_t b) {
-            return saved.wires.at(a).delay < saved.wires.at(b).delay;
-        });
-        if (int(old_long.size()) > count)
-            old_long.resize(count);
-        // Candidates search a box wider than the net's own, since an
-        // alternative to a route that had to leave the box is often
-        // outside it too; only the two primary variants may fall back to
-        // the search without a box, which covers the whole device and is
-        // far too slow for every avoidance variant
-        BoundingBox wide = saved.bb;
-        wide.x0 = std::max(wide.x0 - cfg.candidate_margin, 0);
-        wide.y0 = std::max(wide.y0 - cfg.candidate_margin, 0);
-        wide.x1 = std::min(wide.x1 + cfg.candidate_margin, ctx->getGridDimX());
-        wide.y1 = std::min(wide.y1 + cfg.candidate_margin, ctx->getGridDimY());
-        auto route_variant = [&](bool allow_unbounded) {
-            nd.bb = wide;
-            HostTask t;
-            t.net = net;
-            t.arcs = arcs;
-            std::vector<HostTask> one{t};
-            std::vector<HostTask> retry = route_tasks(one, true, false);
-            if (!retry.empty())
-                retry = route_tasks(retry, true, true);
-            if (!retry.empty() && allow_unbounded)
-                retry = route_tasks(retry, false, true);
-            bool complete = retry.empty();
-            for (auto &a : arcs)
-                complete &= nd.arcs.at(a.first).at(a.second).routed;
-            return complete;
-        };
-        pool<int32_t> avoid; // new wires of earlier candidates to steer away from
-        std::vector<int32_t> current;
-        for (auto &w : saved.wires)
-            current.push_back(w.first);
-        std::sort(current.begin(), current.end());
-        std::vector<std::vector<int32_t>> seen{current};
+    std::vector<std::vector<GpuRouteTree>> route_candidates(const std::vector<std::pair<int, int>> &sinks, int count)
+    {
+        std::vector<CandidateJob> jobs(sinks.size());
+        std::vector<std::vector<GpuRouteTree>> result(sinks.size());
+        if (count <= 0)
+            return result;
+        pool<int> seen_nets;
+        int active = 0;
+        for (size_t i = 0; i < sinks.size(); i++) {
+            auto &job = jobs[i];
+            int net = sinks[i].first, user = sinks[i].second;
+            auto &nd = nets.at(net);
+            if (nd.src < 0 || user < 0 || user >= int(nd.arcs.size()) || !seen_nets.insert(net).second)
+                continue; // one sink per net per batch
+            for (size_t j = 0; j < nd.arcs.at(user).size(); j++)
+                job.arcs.emplace_back(user, int(j));
+            if (job.arcs.empty())
+                continue;
+            job.net = net;
+            job.user = user;
+            job.saved = nd;
+            for (auto &a : job.arcs)
+                ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
+            job.base = nd;
+            for (auto &w : job.saved.wires)
+                if (!job.base.wires.count(w.first) && wlong[w.first])
+                    job.old_long.push_back(w.first);
+            std::sort(job.old_long.begin(), job.old_long.end(), [&](int32_t a, int32_t b) {
+                return job.saved.wires.at(a).delay < job.saved.wires.at(b).delay;
+            });
+            if (int(job.old_long.size()) > count)
+                job.old_long.resize(count);
+            // Candidates search a box wider than the net's own, since an
+            // alternative to a route that had to leave the box is often
+            // outside it too
+            job.wide = job.saved.bb;
+            job.wide.x0 = std::max(job.wide.x0 - cfg.candidate_margin, 0);
+            job.wide.y0 = std::max(job.wide.y0 - cfg.candidate_margin, 0);
+            job.wide.x1 = std::min(job.wide.x1 + cfg.candidate_margin, ctx->getGridDimX());
+            job.wide.y1 = std::min(job.wide.y1 + cfg.candidate_margin, ctx->getGridDimY());
+            std::vector<int32_t> current;
+            for (auto &w : job.saved.wires)
+                current.push_back(w.first);
+            std::sort(current.begin(), current.end());
+            job.seen.push_back(std::move(current));
+            job.active = true;
+            active++;
+        }
+        flush_state();
         repair_mode = true;
         candidate_mode = true;
         // Variants: 0 attach anywhere, 1 from the source only, then avoid
         // every multi-tile wire of the candidates so far while that finds
         // new routes, then avoid each multi-tile wire of the old route in
-        // turn
-        const int single = int(old_long.size());
-        int cumulative = 0; // cumulative-avoid variants run so far
-        bool cumulative_done = false;
-        for (int variant = 0; int(out.size()) < count && variant < 2 + single + count; variant++) {
-            const size_t avoid_before = avoid.size();
-            restore_net(net, base);
-            for (auto &b : blocked) {
-                reserved[b.first] = b.second;
-                mark_dirty(b.first);
-            }
-            blocked.clear();
-            auto block_wire = [&](int32_t w) {
-                if ((reserved[w] == -1 || reserved[w] == net) && !base.wires.count(w)) {
-                    blocked.emplace_back(w, reserved[w]);
-                    reserved[w] = block;
-                    mark_dirty(w);
-                }
-            };
-            bool is_cumulative = false;
-            if (variant >= 2 && !cumulative_done) {
-                is_cumulative = true;
-                cumulative++;
-                for (int32_t w : avoid)
-                    block_wire(w);
-                if (blocked.empty())
-                    cumulative_done = true; // nothing left to diversify on
-            }
-            if (variant >= 2 && !is_cumulative) {
-                int k = variant - 2 - cumulative;
-                if (k >= single)
-                    break;
-                block_wire(old_long[k]);
-                if (blocked.empty())
+        // turn. Only the two primary variants may fall back to the search
+        // without a box, which covers the whole device.
+        for (int variant = 0; active > 0 && variant < 2 + 2 * count; variant++) {
+            std::vector<HostTask> tasks;
+            std::vector<size_t> task_job;
+            for (size_t i = 0; i < jobs.size(); i++) {
+                auto &job = jobs[i];
+                job.routing = false;
+                if (!job.active)
                     continue;
+                if (int(job.out.size()) >= count) {
+                    job.active = false;
+                    active--;
+                    continue;
+                }
+                auto &nd = nets.at(job.net);
+                job.avoid_before = job.avoid.size();
+                restore_net(job.net, job.base);
+                nd.bb = job.wide;
+                job.blocked.clear();
+                auto block_wire = [&](int32_t w) {
+                    if (!job.base.wires.count(w))
+                        job.blocked.push_back(w);
+                };
+                job.is_cumulative = false;
+                if (variant >= 2 && !job.cumulative_done) {
+                    job.is_cumulative = true;
+                    job.cumulative++;
+                    for (int32_t w : job.avoid)
+                        block_wire(w);
+                    if (job.blocked.empty())
+                        job.cumulative_done = true; // nothing left to diversify on
+                }
+                if (variant >= 2 && !job.is_cumulative) {
+                    int k = variant - 2 - job.cumulative;
+                    if (k >= int(job.old_long.size())) {
+                        job.active = false;
+                        active--;
+                        continue;
+                    }
+                    block_wire(job.old_long[k]);
+                    if (job.blocked.empty())
+                        continue;
+                }
+                HostTask t;
+                t.net = job.net;
+                t.arcs = job.arcs;
+                tasks.push_back(std::move(t));
+                task_job.push_back(i);
+                job.routing = true;
+                task_blocked[job.net] = job.blocked;
             }
             flush_state();
+            if (tasks.empty())
+                continue;
             attach_source_only = (variant == 1);
-            bool complete = route_variant(cfg.candidate_unbounded && variant < 2);
+            std::vector<HostTask> retry = route_tasks(tasks, true, false);
+            flush_state();
+            if (!retry.empty())
+                retry = route_tasks(retry, true, true);
+            flush_state();
+            if (!retry.empty() && cfg.candidate_unbounded && variant < 2)
+                retry = route_tasks(retry, false, true);
+            flush_state();
             attach_source_only = false;
-            if (!complete) {
-                if (is_cumulative)
-                    cumulative_done = true; // avoiding everything so far leaves no route
-                continue;
-            }
-            std::vector<int32_t> wires;
-            bool any_long = false;
-            for (auto &w : nd.wires) {
-                wires.push_back(w.first);
-                if (!base.wires.count(w.first) && wlong[w.first]) {
-                    avoid.insert(w.first);
-                    any_long = true;
+            pool<int> failed;
+            for (auto &r : retry)
+                failed.insert(r.net);
+            for (size_t i : task_job) {
+                auto &job = jobs[i];
+                auto &nd = nets.at(job.net);
+                bool complete = !failed.count(job.net);
+                for (auto &a : job.arcs)
+                    complete &= nd.arcs.at(a.first).at(a.second).routed;
+                if (!complete) {
+                    if (job.is_cumulative)
+                        job.cumulative_done = true; // avoiding everything so far leaves no route
+                    continue;
                 }
-            }
-            if (!any_long) // a purely local route: avoid all of its new wires next time
+                std::vector<int32_t> wires;
+                bool any_long = false;
+                for (auto &w : nd.wires) {
+                    wires.push_back(w.first);
+                    if (!job.base.wires.count(w.first) && wlong[w.first]) {
+                        job.avoid.insert(w.first);
+                        any_long = true;
+                    }
+                }
+                if (!any_long) // a purely local route: avoid all of its new wires next time
+                    for (auto &w : nd.wires)
+                        if (!job.base.wires.count(w.first))
+                            job.avoid.insert(w.first);
+                std::sort(wires.begin(), wires.end());
+                bool dup = false;
+                for (auto &sw : job.seen)
+                    dup |= (sw == wires);
+                if (dup) {
+                    // the route it already has, or one found before; the next
+                    // cumulative variant only differs if there is more to avoid
+                    if (job.is_cumulative && job.avoid.size() == job.avoid_before)
+                        job.cumulative_done = true;
+                    continue;
+                }
+                job.seen.push_back(std::move(wires));
+                GpuRouteTree t;
+                t.variant = variant;
                 for (auto &w : nd.wires)
-                    if (!base.wires.count(w.first))
-                        avoid.insert(w.first);
-            std::sort(wires.begin(), wires.end());
-            bool dup = false;
-            for (auto &s : seen)
-                dup |= (s == wires);
-            if (dup) {
-                // the route it already has, or one found before; the next
-                // cumulative variant only differs if there is more to avoid
-                if (is_cumulative && avoid.size() == avoid_before)
-                    cumulative_done = true;
-                continue;
+                    t.wires.emplace_back(idx_to_wire.at(w.first), w.second.pip);
+                for (auto &a : job.arcs)
+                    t.route_delay = std::max(t.route_delay, get_route_delay(nd, nd.arcs.at(a.first).at(a.second)));
+                job.out.push_back(std::move(t));
             }
-            seen.push_back(std::move(wires));
-            GpuRouteTree t;
-            t.variant = variant;
-            for (auto &w : nd.wires)
-                t.wires.emplace_back(idx_to_wire.at(w.first), w.second.pip);
-            for (auto &a : arcs)
-                t.route_delay = std::max(t.route_delay, get_route_delay(nd, nd.arcs.at(a.first).at(a.second)));
-            out.push_back(std::move(t));
         }
         repair_mode = false;
         candidate_mode = false;
-        for (auto &b : blocked) {
-            reserved[b.first] = b.second;
-            mark_dirty(b.first);
+        task_blocked.clear();
+        for (size_t i = 0; i < jobs.size(); i++) {
+            auto &job = jobs[i];
+            if (job.net < 0)
+                continue;
+            restore_net(job.net, job.saved);
+            result[i] = std::move(job.out);
         }
-        restore_net(net, saved);
-        return out;
+        flush_state();
+        return result;
     }
 
     // ------------------------------------------------------------------
@@ -2407,6 +2465,10 @@ struct GpuRouter
             for (auto cn : failed_nets)
                 route_queue.push_back(cn);
             negotiate();
+            // The re-routed nets took congestion-costed routes after the
+            // repair; repair them too, or a critical one ends on a detour
+            if (timing_driven && cfg.repair_rounds > 0)
+                timing_repair();
         }
 
         const auto &st = backend->stats();
@@ -2449,9 +2511,12 @@ GpuCandidateRouter::GpuCandidateRouter(Context *ctx, const GpuRouterCfg &cfg) : 
 
 GpuCandidateRouter::~GpuCandidateRouter() {}
 
-std::vector<GpuRouteTree> GpuCandidateRouter::candidates(NetInfo *net, store_index<PortRef> user, int count)
+std::vector<std::vector<GpuRouteTree>> GpuCandidateRouter::candidates(const std::vector<Sink> &sinks, int count)
 {
-    return impl->rt.route_candidates(net->udata, user.idx(), count);
+    std::vector<std::pair<int, int>> idx;
+    for (auto &s : sinks)
+        idx.emplace_back(s.net->udata, s.user.idx());
+    return impl->rt.route_candidates(idx, count);
 }
 
 void GpuCandidateRouter::resync(NetInfo *net) { impl->rt.reload_net_from_arch(net->udata); }

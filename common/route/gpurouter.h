@@ -153,15 +153,23 @@ class GpuCandidateRouter
   public:
     GpuCandidateRouter(Context *ctx, const GpuRouterCfg &cfg);
     ~GpuCandidateRouter();
-    // Up to `count` distinct trees that re-route user `user` of `net` at
-    // pure delay, in this order: 0 attaches anywhere on the existing tree
-    // (the router's own choice), 1 routes from the source only, then ones
+    struct Sink
+    {
+        NetInfo *net;
+        store_index<PortRef> user;
+    };
+    // For each sink, up to `count` distinct trees that re-route it at pure
+    // delay, in this order: 0 attaches anywhere on the existing tree (the
+    // router's own choice), 1 routes from the source only, then ones
     // avoiding the multi-tile wires of every earlier candidate while that
     // still finds new routes, then one that avoids each multi-tile wire of
-    // the route the arc has now. Searches stay inside the net's bounding
-    // box. The route the net already has and repeats are left out. The
-    // net's routing in the Arch is left unchanged.
-    std::vector<GpuRouteTree> candidates(NetInfo *net, store_index<PortRef> user, int count);
+    // the route the arc has now. The sinks are searched together, one
+    // variant per launch; a second sink of the same net gets no candidates
+    // in this call. The route the net already has and repeats are left
+    // out. The nets' routing in the Arch is left unchanged; candidates of
+    // different nets may compete for the same free wire, which the caller
+    // sees when it binds them.
+    std::vector<std::vector<GpuRouteTree>> candidates(const std::vector<Sink> &sinks, int count);
     // The caller rebound `net` in the Arch; reload its tree from there.
     void resync(NetInfo *net);
 
