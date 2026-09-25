@@ -637,9 +637,11 @@ struct Arch : BaseArch<ArchRanges>
     void read_qsf(std::istream &in); // qsf.cc
 
     // Static expansion slot: HeAP may not place unconstrained cells on these
-    // BELs. Cells with a matching BEL attribute or FES_SLOT=1 may use them,
-    // and FES_SLOT cells may not leave the reserved set.
+    // BELs. Explicit BEL cells, FES_SLOT cells and cells locked by the
+    // scaffold reload at their original BEL may use them. Slot cells may not
+    // leave the reserved set.
     std::set<BelId> fes_reserved_bels;
+    std::unordered_map<const CellInfo *, BelId> fes_frozen_cells;
     bool fes_has_reserved_rect = false;
     bool fes_fence_active = false;
     int fes_rect_x0 = 0, fes_rect_y0 = 0, fes_rect_x1 = -1, fes_rect_y1 = -1;

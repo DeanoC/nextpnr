@@ -414,6 +414,7 @@ void Arch::lock_fes_scaffold()
         if (ci->bel == BelId() || fes_cell_is_slot(ci))
             continue;
         ci->belStrength = STRENGTH_LOCKED;
+        fes_frozen_cells.emplace(ci, ci->bel);
         ++locked_cells;
         for (const auto &attr : ci->attrs) {
             const std::string key = attr.first.str(ctx);

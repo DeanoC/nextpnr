@@ -306,7 +306,13 @@ bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_i
         const std::string name = locked.is_string ? locked.as_string() : locked.to_string();
         bel_locked = (name == getBelName(bel).str(getCtx()));
     }
-    if (reserved && !(slot_cell || bel_locked)) {
+    // Routed scaffold cells have NEXTPNR_BEL rather than BEL. The lock step
+    // records their original sites; placement strength alone is insufficient
+    // because placement can strengthen a newly bound, unconstrained cell.
+    auto frozen = fes_frozen_cells.find(cell);
+    const bool frozen_here = frozen != fes_frozen_cells.end() && frozen->second == bel && cell->bel == bel &&
+                             cell->belStrength >= STRENGTH_LOCKED;
+    if (reserved && !(slot_cell || bel_locked || frozen_here)) {
         if (explain_invalid)
             log_info("FES reserved BEL %s rejects unconstrained cell %s.\n", getBelName(bel).str(getCtx()).c_str(),
                      nameOf(cell));
