@@ -33,6 +33,8 @@
 
 NEXTPNR_NAMESPACE_BEGIN
 
+struct TimingAnalyser;
+
 struct ArchArgs
 {
     std::string device;
@@ -506,6 +508,13 @@ struct Arch : BaseArch<ArchRanges>
     bool analogue_cache_valid = false;
     void compute_analogue_arcs(bool observe);
     bool analogue_repair();
+    // Analogue-scored route selection: several GPU candidate routes per
+    // failing sink, evaluated with the analogue model, best one kept.
+    bool analogue_candidate_pass(TimingAnalyser &tmg, float target);
+    // Keep the analogue simulator's routing-mux state in step with a net
+    // whose routing changed: removed pips are parked on an unused input,
+    // added pips linked.
+    void analogue_relink(const std::vector<PipId> &removed, const std::vector<PipId> &added);
     void configure_bitstream(bool observe = false); // bitstream.cc
 
     // -------------------------------------------------

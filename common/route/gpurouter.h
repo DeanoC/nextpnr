@@ -22,7 +22,9 @@
 #ifndef GPUROUTER_H
 #define GPUROUTER_H
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #include "nextpnr.h"
 
@@ -55,6 +57,10 @@ struct GpuRouterCfg
     float congestion_stall_boost_max;
     // Weight of the A* estimate; > 1 trades optimality for speed
     float estimate_weight;
+    // The same for the pure-delay searches of timing repair and candidate
+    // generation, which are few and are what critical arcs end up with;
+    // defaults to estimate_weight
+    float repair_estimate_weight;
     // Bias towards the net centroid, as a fraction of the base cost
     float bias_cost_factor;
     // A sink may attach anywhere on the net's existing tree; the attach
@@ -92,6 +98,15 @@ struct GpuRouterCfg
     float repair_cong_weight;
     // Batches of at most this many nets run on the host backend (0 = never)
     int cpu_lane_nets;
+    // Candidate generation (GpuCandidateRouter): tiles added to the net's
+    // bounding box, and whether the two primary variants may fall back to
+    // the search without a box
+    int candidate_margin;
+    bool candidate_unbounded;
+    // Frontier entries expanded per step in candidate searches (default
+    // expand_k): they run one net at a time, so a larger step means fewer
+    // sequential steps at some cost in path quality
+    int candidate_expand_k;
     // Frontier entries expanded per parallel step: at least expand_k and at
     // least frontier_size / expand_div (expand_k = 1, expand_div = 0 is A*)
     int expand_k, expand_div;
@@ -115,6 +130,45 @@ struct GpuRouterCfg
 // Returns true when the whole design routed (and, as with router2, after the
 // result has been checked by router1).
 bool gpurouter(Context *ctx, const GpuRouterCfg &cfg);
+
+// An alternative routing tree for one net produced by GpuCandidateRouter:
+// every wire the net uses with the pip that drives it (PipId() for the
+// source and for wires bound without a pip).
+struct GpuRouteTree
+{
+    std::vector<std::pair<WireId, PipId>> wires;
+    int variant = 0;         // diversity rule that produced it (see candidates())
+    delay_t route_delay = 0; // delay-table route delay of the re-routed sink
+};
+
+// Produces several materially different pure-delay routes for one sink of an
+// already-routed net while every other net stays where the Arch has bound
+// it, so that an architecture with a more accurate delay model than the
+// per-pip table (Mistral's analogue model) can choose between them instead
+// of accepting the single route the scalar search prefers. The routing graph
+// is flattened from the current Arch bindings when the object is created;
+// resync() reloads one net after the caller has rebound it.
+class GpuCandidateRouter
+{
+  public:
+    GpuCandidateRouter(Context *ctx, const GpuRouterCfg &cfg);
+    ~GpuCandidateRouter();
+    // Up to `count` distinct trees that re-route user `user` of `net` at
+    // pure delay, in this order: 0 attaches anywhere on the existing tree
+    // (the router's own choice), 1 routes from the source only, then ones
+    // avoiding the multi-tile wires of every earlier candidate while that
+    // still finds new routes, then one that avoids each multi-tile wire of
+    // the route the arc has now. Searches stay inside the net's bounding
+    // box. The route the net already has and repeats are left out. The
+    // net's routing in the Arch is left unchanged.
+    std::vector<GpuRouteTree> candidates(NetInfo *net, store_index<PortRef> user, int count);
+    // The caller rebound `net` in the Arch; reload its tree from there.
+    void resync(NetInfo *net);
+
+  private:
+    struct Impl;
+    std::unique_ptr<Impl> impl;
+};
 
 NEXTPNR_NAMESPACE_END
 
