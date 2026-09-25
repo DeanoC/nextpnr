@@ -119,7 +119,7 @@ NetInfo *shell_clock_net(Context *ctx)
         CellInfo *ci = item.second.get();
         if (ci->type != id_MISTRAL_FF)
             continue;
-        if (ci->attrs.count(ctx->id("FES_SLOT")) && ci->attrs.at(ctx->id("FES_SLOT")).as_bool())
+        if (ctx->fes_cell_is_slot(ci))
             continue;
         NetInfo *clk = ci->getPort(id_CLK);
         if (clk != nullptr) {
@@ -288,12 +288,7 @@ NetInfo *rdata_sink_net(Context *ctx, int index)
 
 } // namespace
 
-bool Arch::fes_cell_is_slot(const CellInfo *cell) const
-{
-    if (cell == nullptr || !cell->attrs.count(id("FES_SLOT")))
-        return false;
-    return cell->attrs.at(id("FES_SLOT")).as_bool();
-}
+bool Arch::fes_cell_is_slot(const CellInfo *cell) const { return fes_cell_slot_region(cell) != IdString(); }
 
 void Arch::fes_rip_reserved_shell_pips()
 {
@@ -398,13 +393,11 @@ void Arch::lock_fes_scaffold()
     if (fes_has_reserved_rect) {
         int m10ks = 0;
         for (BelId bel : getBels()) {
-            if (getBelType(bel) != id_MISTRAL_M10K)
-                continue;
-            Loc loc = getBelLocation(bel);
-            if (loc.x < fes_rect_x0 || loc.x > fes_rect_x1 || loc.y < fes_rect_y0 || loc.y > fes_rect_y1)
+            if (getBelType(bel) != id_MISTRAL_M10K || !fes_bel_region.count(bel))
                 continue;
             if (m10ks < 16)
-                log_info("FES reserved M10K %s\n", getBelName(bel).str(getCtx()).c_str());
+                log_info("FES reserved M10K %s (region '%s')\n", getBelName(bel).str(getCtx()).c_str(),
+                         fes_bel_region.at(bel).c_str(getCtx()));
             ++m10ks;
         }
         log_info("FES reserved M10K count %d\n", m10ks);
@@ -510,7 +503,11 @@ bool Arch::fes_pip_in_socket(PipId pip) const
     if (!fes_has_reserved_rect)
         return false;
     Loc loc = getPipLocation(pip);
-    return loc.x >= fes_rect_x0 && loc.x <= fes_rect_x1 && loc.y >= fes_rect_y0 && loc.y <= fes_rect_y1;
+    for (const auto &rect : fes_reserved_rects) {
+        if (loc.x >= rect.x0 && loc.x <= rect.x1 && loc.y >= rect.y0 && loc.y <= rect.y1)
+            return true;
+    }
+    return false;
 }
 
 void Arch::note_fes_cram_region(const std::string &spec)
@@ -566,8 +563,11 @@ bool Arch::fes_pip_in_plug_halo(PipId pip) const
     if (!fes_has_reserved_rect)
         return false;
     Loc loc = getPipLocation(pip);
-    return loc.x >= fes_rect_x0 - 6 && loc.x <= fes_rect_x1 + 6 && loc.y >= fes_rect_y0 - 6 &&
-           loc.y <= fes_rect_y1 + 6;
+    for (const auto &rect : fes_reserved_rects) {
+        if (loc.x >= rect.x0 - 6 && loc.x <= rect.x1 + 6 && loc.y >= rect.y0 - 6 && loc.y <= rect.y1 + 6)
+            return true;
+    }
+    return false;
 }
 
 bool Arch::fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const
@@ -603,10 +603,18 @@ bool Arch::fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const
     return false;
 }
 
-void Arch::merge_fes_cart(const std::string &filename)
+void Arch::merge_fes_cart(const std::string &filename, const std::string &region)
 {
     Context *ctx = getCtx();
-    log_info("FES parsing cart JSON '%s'...\n", filename.c_str());
+    // A run with no FES_RESERVED_RECT at all has no placement fencing to
+    // validate against (matches the pre-multi-region behaviour); once any
+    // region is declared, an unknown --fes-cart-region is a real mistake.
+    if (fes_has_reserved_rect && !fes_region_bels.count(id(region)))
+        log_error("FES cart region '%s' has no matching FES_RESERVED_RECT; declare it with FES_RESERVED_RECT "
+                  "\"%s x0 y0 x1 y1\" before merging '%s'.\n",
+                  region.c_str(), region.c_str(), filename.c_str());
+    fes_active_cart_region = region;
+    log_info("FES parsing cart JSON '%s' into region '%s'...\n", filename.c_str(), region.c_str());
     std::ifstream in(filename);
     if (!in)
         log_error("Failed to open FES cart JSON '%s'.\n", filename.c_str());
@@ -743,7 +751,7 @@ void Arch::merge_fes_cart(const std::string &filename)
                     dst->attrs[ctx->id(attr.first)] = fes_parse_property(attr.second);
                 }
             }
-            dst->attrs[id("FES_SLOT")] = Property(1);
+            dst->attrs[id("FES_SLOT")] = Property(region);
 
             const Json &dirs = src["port_directions"];
             const Json &conns = src["connections"];
@@ -860,35 +868,52 @@ void Arch::merge_fes_cart(const std::string &filename)
 void Arch::fes_constrain_slot_region()
 {
     Context *ctx = getCtx();
-    if (!fes_has_reserved_rect || fes_reserved_bels.empty())
+    if (!fes_has_reserved_rect || fes_bel_region.empty())
         return;
-    std::vector<CellInfo *> slot_cells;
+    // Bucket every FES_SLOT cell by its declared region name. Two carts
+    // merged onto two disjoint FES_RESERVED_RECT regions (for example a
+    // cartridge slot and an expansion slot on the same shell) each get their
+    // own Region and capacity report; fes_placement_allowed() is the hard
+    // gate that keeps a region's cells off another region's BELs.
+    dict<IdString, std::vector<CellInfo *>> by_region;
     for (auto &item : ctx->cells) {
         CellInfo *ci = item.second.get();
-        if (!ci->isPseudo() && fes_cell_is_slot(ci))
-            slot_cells.push_back(ci);
+        if (ci->isPseudo())
+            continue;
+        IdString region_name = fes_cell_slot_region(ci);
+        if (region_name != IdString())
+            by_region[region_name].push_back(ci);
     }
-    if (slot_cells.empty())
+    if (by_region.empty())
         return;
     // The placers only search near a cell's analytic or random location.
-    // Without a Region they sample the whole chip, of which the socket is a
+    // Without a Region they sample the whole chip, of which a socket is a
     // tiny fraction, so legalisation degenerates into chip-wide random
     // probing. fes_placement_allowed() remains the hard gate.
-    IdString name = id("$FES_SLOT");
-    if (!ctx->region.count(name)) {
-        std::unique_ptr<Region> region(new Region());
-        region->name = name;
-        region->constr_bels = true;
-        for (BelId bel : fes_reserved_bels)
-            region->bels.insert(bel);
-        ctx->region[name] = std::move(region);
+    for (auto &entry : by_region) {
+        IdString region_name = entry.first;
+        std::vector<CellInfo *> &slot_cells = entry.second;
+        if (!fes_region_bels.count(region_name))
+            log_error("FES cart cell(s) claim undeclared FES_SLOT region '%s'; declare it with FES_RESERVED_RECT "
+                      "\"%s x0 y0 x1 y1\".\n",
+                      region_name.c_str(ctx), region_name.c_str(ctx));
+        IdString region_id = id("$FES_SLOT_" + region_name.str(ctx));
+        if (!ctx->region.count(region_id)) {
+            std::unique_ptr<Region> region(new Region());
+            region->name = region_id;
+            region->constr_bels = true;
+            for (BelId bel : fes_region_bels.at(region_name))
+                region->bels.insert(bel);
+            ctx->region[region_id] = std::move(region);
+        }
+        Region *region = ctx->region.at(region_id).get();
+        for (CellInfo *ci : slot_cells)
+            ci->region = region;
+        log_info("FES slot region '%s' constrains %zu cart cells to %zu reserved BELs.\n", region_name.c_str(ctx),
+                 slot_cells.size(), fes_region_bels.at(region_name).size());
+        fes_any_slot_region_active = true;
+        fes_report_slot_capacity(region_name, slot_cells);
     }
-    Region *region = ctx->region.at(name).get();
-    for (CellInfo *ci : slot_cells)
-        ci->region = region;
-    log_info("FES slot region constrains %zu cart cells to %zu reserved BELs.\n", slot_cells.size(),
-             fes_reserved_bels.size());
-    fes_report_slot_capacity(slot_cells);
 }
 
 // Static capacity check of the cart against the usable part of the reserved
@@ -896,17 +921,18 @@ void Arch::fes_constrain_slot_region()
 // passes may still fail detailed legalisation, but a cart that fails cannot
 // be placed by any placer, so the run stops with the failing figure instead
 // of legalising for minutes.
-void Arch::fes_report_slot_capacity(const std::vector<CellInfo *> &slot_cells) const
+void Arch::fes_report_slot_capacity(IdString region_name, const std::vector<CellInfo *> &slot_cells) const
 {
     const Context *ctx = getCtx();
-    // Usable LABs: reserved, and not holding a frozen shell cell. A LAB with
-    // any locked non-slot occupant is excluded wholesale by
+    const auto &region_bels = fes_region_bels.at(region_name);
+    // Usable LABs: reserved to this region, and not holding a frozen shell
+    // cell. A LAB with any locked non-slot occupant is excluded wholesale by
     // fes_placement_allowed() because its control set is immutable.
     int usable_labs = 0, frozen_labs = 0;
     std::map<int, std::vector<int>> usable_rows;
     for (const auto &lab : labs) {
         BelId first = lab.alms[0].lut_bels[0];
-        if (!fes_reserved_bels.count(first))
+        if (!region_bels.count(first))
             continue;
         bool frozen = false;
         for (const auto &alm : lab.alms) {
@@ -935,14 +961,15 @@ void Arch::fes_report_slot_capacity(const std::vector<CellInfo *> &slot_cells) c
             max_run = std::max(max_run, run);
         }
     }
-    // Other reserved BELs (M10K, DSP, ...) that are free or already hold a slot cell.
+    // Other reserved BELs (M10K, DSP, ...) that are free or already hold a
+    // slot cell of this same region.
     dict<IdString, int> other_bels;
-    for (BelId bel : fes_reserved_bels) {
+    for (BelId bel : region_bels) {
         IdString type = getBelType(bel);
         if (type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB, id_MISTRAL_FF))
             continue;
         const CellInfo *occupant = getBoundBelCell(bel);
-        if (occupant && !fes_cell_is_slot(occupant))
+        if (occupant && fes_cell_slot_region(occupant) != region_name)
             continue;
         other_bels[getBelBucketForBel(bel)]++;
     }
@@ -1021,8 +1048,8 @@ void Arch::fes_report_slot_capacity(const std::vector<CellInfo *> &slot_cells) c
     // pair of non-arithmetic LUTs; unpaired FF data and SDATA add one each.
     const int min_lab_inputs = std::max(0, lut_inputs - 2 * (pairable_luts / 2)) + ff_fabric + sdata_inputs;
     const int input_labs = (min_lab_inputs + 41) / 42;
-    log_info("FES slot capacity: %d usable LABs (%d frozen), longest vertical run %d.\n", usable_labs, frozen_labs,
-             max_run);
+    log_info("FES slot capacity (region '%s'): %d usable LABs (%d frozen), longest vertical run %d.\n",
+             region_name.c_str(ctx), usable_labs, frozen_labs, max_run);
     log_info("FES slot capacity: comb %d/%d, FF %d/%d (%d unpaired need a route-through or E/F input; %d free LUT "
              "halves), carry chains %d (longest %d LAB rows).\n",
              comb_cells, comb_bels, ff_cells, ff_bels, ff_fabric, comb_bels - comb_cells, chains, chain_rows);
@@ -1061,8 +1088,9 @@ void Arch::fes_report_slot_capacity(const std::vector<CellInfo *> &slot_cells) c
     if (failures.empty())
         return;
     for (const auto &failure : failures)
-        log_nonfatal_error("FES slot capacity: %s.\n", failure.c_str());
-    log_error("FES cart does not fit the reserved rectangle; enlarge FES_RESERVED_RECT or reduce the cart.\n");
+        log_nonfatal_error("FES slot capacity (region '%s'): %s.\n", region_name.c_str(ctx), failure.c_str());
+    log_error("FES cart does not fit region '%s'; enlarge its FES_RESERVED_RECT or reduce the cart.\n",
+              region_name.c_str(ctx));
 }
 
 NEXTPNR_NAMESPACE_END

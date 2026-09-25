@@ -344,18 +344,19 @@ struct Arch : BaseArch<ArchRanges>
     void note_reserved_rect(const std::string &spec);
     bool fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_invalid = false) const;
     bool fes_cell_is_slot(const CellInfo *cell) const;
+    IdString fes_cell_slot_region(const CellInfo *cell) const;
     bool fes_net_touches_slot(const NetInfo *net) const;
     bool fes_pip_in_socket(PipId pip) const;
     void note_fes_cram_region(const std::string &spec);
     bool fes_pip_preserves_cram(PipId pip) const;
     void fes_constrain_slot_region();
-    void fes_report_slot_capacity(const std::vector<CellInfo *> &slot_cells) const;
+    void fes_report_slot_capacity(IdString region_name, const std::vector<CellInfo *> &slot_cells) const;
     bool fes_pip_in_plug_halo(PipId pip) const;
     bool fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const;
     void fes_rip_reserved_shell_pips();
     void lock_fes_scaffold();
     void save_fes_pin_maps();
-    void merge_fes_cart(const std::string &filename);
+    void merge_fes_cart(const std::string &filename, const std::string &region);
     bool pack_unbound_cells();
 
     void bindBel(BelId bel, CellInfo *cell, PlaceStrength strength) override
@@ -638,15 +639,31 @@ struct Arch : BaseArch<ArchRanges>
     dict<IdString, dict<IdString, Property>> io_attr;
     void read_qsf(std::istream &in); // qsf.cc
 
-    // Static expansion slot: HeAP may not place unconstrained cells on these
-    // BELs. Explicit BEL cells, FES_SLOT cells and cells locked by the
-    // scaffold reload at their original BEL may use them. Slot cells may not
-    // leave the reserved set.
-    std::set<BelId> fes_reserved_bels;
+    // Static expansion slot(s): HeAP may not place unconstrained cells on
+    // these BELs. Explicit BEL cells, FES_SLOT cells tagged for the owning
+    // region and cells locked by the scaffold reload at their original BEL
+    // may use them. A slot cell may not leave its own reserved region, and
+    // reserved regions may not overlap each other (note_reserved_rect fails
+    // closed on overlap). Each declared FES_RESERVED_RECT carries a name
+    // (default "cart" when the QSF spec omits one, for single-socket cores);
+    // a cart merged with merge_fes_cart() is tagged with the region its
+    // cells must legalise into.
+    struct FesReservedRect
+    {
+        std::string name;
+        int x0, y0, x1, y1;
+    };
+    std::vector<FesReservedRect> fes_reserved_rects;
+    dict<BelId, IdString> fes_bel_region;
+    dict<IdString, std::set<BelId>> fes_region_bels;
+    // Region merge_fes_cart() most recently tagged cells with; pack_unbound_cells()
+    // reads this so synthetic per-cart cells (local constant drivers) join the
+    // same region as the cart that needs them.
+    std::string fes_active_cart_region = "cart";
     std::unordered_map<const CellInfo *, BelId> fes_frozen_cells;
     bool fes_has_reserved_rect = false;
+    bool fes_any_slot_region_active = false;
     bool fes_fence_active = false;
-    int fes_rect_x0 = 0, fes_rect_y0 = 0, fes_rect_x1 = -1, fes_rect_y1 = -1;
     bool fes_has_cram_region = false;
     std::array<int, 4> fes_cram_region = {};
     pool<PipId> fes_frozen_pips;

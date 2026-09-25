@@ -52,6 +52,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("compress-rbf", "generate compressed bitstream");
     specific.add_options()("fes-scaffold", "lock loaded shell BEL+routing to STRENGTH_USER");
     specific.add_options()("fes-cart", po::value<std::string>(), "merge unbound cart JSON into the reserved socket");
+    specific.add_options()("fes-cart-region", po::value<std::string>(),
+                            "name of the FES_RESERVED_RECT region this --fes-cart targets (default: cart)");
     specific.add_options()("fes-slot-clock", po::value<std::string>(), "exact shell clock net for FES cart cells");
     specific.add_options()("fes-cram-region", po::value<std::string>(), "half-open CRAM x0,y0,x1,y1 region for new scaffold routing");
 
@@ -111,11 +113,14 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         ctx->read_qsf(in);
     }
     if (vm.count("fes-cart")) {
+        std::string region = vm.count("fes-cart-region") ? vm["fes-cart-region"].as<std::string>() : "cart";
         log_info("FES merging cart JSON...\n");
-        ctx->merge_fes_cart(vm["fes-cart"].as<std::string>());
+        ctx->merge_fes_cart(vm["fes-cart"].as<std::string>(), region);
         log_info("FES packing unbound cart cells...\n");
         ctx->pack_unbound_cells();
         log_info("FES unbound pack complete.\n");
+    } else if (vm.count("fes-cart-region")) {
+        log_error("--fes-cart-region requires --fes-cart.\n");
     }
     if (vm.count("fes-scaffold") || routed)
         ctx->lock_fes_scaffold();

@@ -253,32 +253,77 @@ void Arch::note_reserved_bel(const std::string &name)
     BelId bel = getCtx()->getBelByNameStr(name);
     if (bel == BelId())
         log_error("FES_RESERVED_BEL '%s' is not a device BEL.\n", name.c_str());
-    fes_reserved_bels.insert(bel);
-    log_info("FES reserved BEL %s\n", name.c_str());
+    // FES_RESERVED_BEL has no region syntax of its own; it joins the default
+    // "cart" region, matching the legacy boolean FES_SLOT=1 cart tag.
+    IdString region_id = id("cart");
+    auto existing = fes_bel_region.find(bel);
+    if (existing != fes_bel_region.end() && existing->second != region_id)
+        log_error("FES_RESERVED_BEL '%s' overlaps region '%s'.\n", name.c_str(), existing->second.c_str(getCtx()));
+    fes_bel_region[bel] = region_id;
+    fes_region_bels[region_id].insert(bel);
+    log_info("FES reserved BEL %s (region 'cart')\n", name.c_str());
 }
 
 void Arch::note_reserved_rect(const std::string &spec)
 {
     std::istringstream in(spec);
+    std::vector<std::string> tokens;
+    for (std::string tok; in >> tok;)
+        tokens.push_back(tok);
+    std::string name = "cart";
     int x0, y0, x1, y1;
-    if (!(in >> x0 >> y0 >> x1 >> y1))
-        log_error("FES_RESERVED_RECT '%s' must be 'x0 y0 x1 y1'.\n", spec.c_str());
+    bool numeric_first = false;
+    if (!tokens.empty()) {
+        std::istringstream probe(tokens.front());
+        int ignored;
+        numeric_first = bool(probe >> ignored) && probe.eof();
+    }
+    std::istringstream fields;
+    if (tokens.size() == 5 && !numeric_first) {
+        name = tokens.front();
+        fields.str(tokens.at(1) + " " + tokens.at(2) + " " + tokens.at(3) + " " + tokens.at(4));
+    } else if (tokens.size() == 4 && numeric_first) {
+        fields.str(tokens.at(0) + " " + tokens.at(1) + " " + tokens.at(2) + " " + tokens.at(3));
+    } else {
+        log_error("FES_RESERVED_RECT '%s' must be 'x0 y0 x1 y1' or 'name x0 y0 x1 y1'.\n", spec.c_str());
+    }
+    if (!(fields >> x0 >> y0 >> x1 >> y1))
+        log_error("FES_RESERVED_RECT '%s' must be 'x0 y0 x1 y1' or 'name x0 y0 x1 y1'.\n", spec.c_str());
     if (x1 < x0 || y1 < y0)
         log_error("FES_RESERVED_RECT '%s' is empty.\n", spec.c_str());
+    for (const auto &existing : fes_reserved_rects)
+        if (existing.name == name)
+            log_error("FES_RESERVED_RECT '%s' declares region '%s' twice.\n", spec.c_str(), name.c_str());
+    IdString region_id = id(name);
     int count = 0;
     for (BelId bel : getBels()) {
         Loc loc = getBelLocation(bel);
         if (loc.x < x0 || loc.x > x1 || loc.y < y0 || loc.y > y1)
             continue;
-        fes_reserved_bels.insert(bel);
+        auto existing = fes_bel_region.find(bel);
+        if (existing != fes_bel_region.end() && existing->second != region_id)
+            log_error("FES_RESERVED_RECT '%s' region '%s' overlaps region '%s' at BEL %s.\n", spec.c_str(),
+                      name.c_str(), existing->second.c_str(getCtx()), getBelName(bel).str(getCtx()).c_str());
+        fes_bel_region[bel] = region_id;
+        fes_region_bels[region_id].insert(bel);
         ++count;
     }
-    fes_rect_x0 = x0;
-    fes_rect_y0 = y0;
-    fes_rect_x1 = x1;
-    fes_rect_y1 = y1;
+    fes_reserved_rects.push_back(FesReservedRect{name, x0, y0, x1, y1});
     fes_has_reserved_rect = true;
-    log_info("FES reserved rect %d %d %d %d (%d bels)\n", x0, y0, x1, y1, count);
+    log_info("FES reserved rect '%s' %d %d %d %d (%d bels)\n", name.c_str(), x0, y0, x1, y1, count);
+}
+
+IdString Arch::fes_cell_slot_region(const CellInfo *cell) const
+{
+    if (cell == nullptr || !cell->attrs.count(id("FES_SLOT")))
+        return IdString();
+    const Property &prop = cell->attrs.at(id("FES_SLOT"));
+    // Legacy carts tag cells with the bare boolean FES_SLOT=1; treat that as
+    // the default "cart" region so existing single-socket QSF/cart recipes
+    // keep working unchanged.
+    if (prop.is_string)
+        return prop.as_string().empty() ? IdString() : id(prop.as_string());
+    return prop.as_bool() ? id("cart") : IdString();
 }
 
 bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_invalid) const
@@ -299,10 +344,13 @@ bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_i
             }
         }
     }
-    if (fes_reserved_bels.empty() || cell == nullptr)
+    if (fes_bel_region.empty() || cell == nullptr)
         return true;
-    const bool reserved = fes_reserved_bels.count(bel);
-    const bool slot_cell = cell->attrs.count(id("FES_SLOT")) && cell->attrs.at(id("FES_SLOT")).as_bool();
+    auto region_it = fes_bel_region.find(bel);
+    const bool reserved = region_it != fes_bel_region.end();
+    const IdString cell_region = fes_cell_slot_region(cell);
+    const bool slot_cell = cell_region != IdString();
+    const bool in_own_region = reserved && slot_cell && region_it->second == cell_region;
     bool bel_locked = false;
     if (cell->attrs.count(id("BEL"))) {
         const Property &locked = cell->attrs.at(id("BEL"));
@@ -315,16 +363,17 @@ bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_i
     auto frozen = fes_frozen_cells.find(cell);
     const bool frozen_here = frozen != fes_frozen_cells.end() && frozen->second == bel && cell->bel == bel &&
                              cell->belStrength >= STRENGTH_LOCKED;
-    if (reserved && !(slot_cell || bel_locked || frozen_here)) {
+    if (reserved && !(in_own_region || bel_locked || frozen_here)) {
         if (explain_invalid)
-            log_info("FES reserved BEL %s rejects unconstrained cell %s.\n", getBelName(bel).str(getCtx()).c_str(),
-                     nameOf(cell));
+            log_info("FES reserved BEL %s (region '%s') rejects cell %s%s.\n", getBelName(bel).str(getCtx()).c_str(),
+                     region_it->second.c_str(getCtx()), nameOf(cell),
+                     slot_cell ? stringf(" (region '%s')", cell_region.c_str(getCtx())).c_str() : " (unconstrained)");
         return false;
     }
-    if (slot_cell && !reserved) {
+    if (slot_cell && !in_own_region) {
         if (explain_invalid)
-            log_info("FES slot cell %s must stay in the reserved region (tried %s).\n", nameOf(cell),
-                     getBelName(bel).str(getCtx()).c_str());
+            log_info("FES slot cell %s must stay in its own reserved region '%s' (tried %s).\n", nameOf(cell),
+                     cell_region.c_str(getCtx()), getBelName(bel).str(getCtx()).c_str());
         return false;
     }
     return true;
@@ -690,7 +739,7 @@ bool Arch::place()
 
         cfg.beta = 0.5; // TODO: find a good value of beta for sensible ALM spreading
         cfg.criticalityExponent = 7;
-        if (fes_has_reserved_rect && getCtx()->region.count(id("$FES_SLOT"))) {
+        if (fes_any_slot_region_active) {
             // A cart confined to a small rectangle can cycle evictions for
             // a long time; report the cycling cell instead of running on.
             cfg.cellRipupLimit = std::max(cfg.cellRipupLimit, 500);
@@ -726,7 +775,7 @@ bool Arch::place()
         if (!placer_heap(getCtx(), cfg))
             return false;
     } else if (placer == "sa") {
-        if (fes_has_reserved_rect && getCtx()->region.count(id("$FES_SLOT")))
+        if (fes_any_slot_region_active)
             log_error("The SA placer moves FES cart LUT/FF pairs and carry chains cell by cell and can end with an "
                       "unrepaired cluster; use --placer heap for cart placement.\n");
         if (!placer1(getCtx(), Placer1Cfg(getCtx())))
