@@ -301,7 +301,7 @@ void Arch::note_reserved_rect(const std::string &spec)
         if (loc.x < x0 || loc.x > x1 || loc.y < y0 || loc.y > y1)
             continue;
         auto existing = fes_bel_region.find(bel);
-        if (existing != fes_bel_region.end())
+        if (existing != fes_bel_region.end() && existing->second != region_id)
             log_error("FES_RESERVED_RECT '%s' region '%s' overlaps region '%s' at BEL %s.\n", spec.c_str(),
                       name.c_str(), existing->second.c_str(getCtx()), getBelName(bel).str(getCtx()).c_str());
         fes_bel_region[bel] = region_id;
