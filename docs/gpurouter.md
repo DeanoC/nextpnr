@@ -52,6 +52,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | --- | --- | --- |
 | `bbMargin/x`, `bbMargin/y` | 3 | net bounding-box padding, tiles |
 | `initCurrCongWeight`, `histCongWeight`, `currCongWeightMult` | 0.5, 1.0, 2.0 | congestion schedule (router2 values) |
+| `congestionStallIters`, `congestionStallBoost` | 20, 1.5 | if the overused-wire count sets no new minimum for this many iterations, `currCongWeightMult` is scaled by this factor (compounding every further `congestionStallIters` iterations with no improvement) until a new minimum is reached |
 | `estimateWeight` | 1.25 | A* heuristic weight |
 | `biasCostFactor` | 0.25 | pull towards the net centroid |
 | `seedDelayWeight`, `seedDelayFloor` | 1.0, 0.0 | a sink attaches to a tree wire at cost `weight·(floor + (1−floor)·crit)·upstream delay` |
@@ -99,7 +100,13 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    other's present congestion. History and present-congestion weights
    follow router2 (`hist += overuse·histCongWeight`,
    `curr_cong_weight += currCongWeightMult` per iteration, bounding boxes
-   expand every third failure).
+   expand every third failure). If the overused-wire count sets no new
+   minimum for `congestionStallIters` iterations, `currCongWeightMult` is
+   scaled by `congestionStallBoost` (compounding every further
+   `congestionStallIters` iterations of no improvement) until a new minimum
+   is reached, so a small number of nets stuck swapping the same wire do
+   not stall the whole design for a very long time under the plain
+   additive schedule.
 5. **Lanes.** A batch first runs in the *small* lane (many concurrent nets,
    2^16-entry hash tables). Arcs whose search outgrows that scratch retry in
    the *large* lane (few concurrent nets, 2^22 entries, enough for the whole

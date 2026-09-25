@@ -1223,6 +1223,8 @@ struct GpuRouter
     }
 
     int iter = 1;
+    int best_overused = std::numeric_limits<int>::max(), overused_stall = 0;
+    float cong_stall_boost = 1.0f;
 
     // Negotiated-congestion loop over the nets in route_queue until no wire
     // is overused (and, with --tmg-ripup, no arc fails slack)
@@ -1288,6 +1290,19 @@ struct GpuRouter
             update_congestion();
             flush_state();
 
+            if (overused_wires > 0) {
+                if (overused_wires < best_overused) {
+                    best_overused = overused_wires;
+                    overused_stall = 0;
+                    cong_stall_boost = 1.0f;
+                } else if (++overused_stall % cfg.congestion_stall_iters == 0) {
+                    cong_stall_boost *= cfg.congestion_stall_boost;
+                    log_info("    congestion has not improved from %d overused wires in %d iterations; "
+                             "accelerating present-congestion growth (x%.2f)\n",
+                             best_overused, overused_stall, cong_stall_boost);
+                }
+            }
+
             int tmgfail = 0;
             if (timing_driven)
                 tmg.run(false);
@@ -1346,7 +1361,7 @@ struct GpuRouter
             }
             ++iter;
             if (curr_cong_weight < 1e9)
-                curr_cong_weight += cfg.curr_cong_mult;
+                curr_cong_weight += cfg.curr_cong_mult * cong_stall_boost;
             if (!failed_nets.empty() && (iter % 100) == 0) {
                 int shown = 0;
                 for (size_t w = 0; w < occ.size() && shown < 5; w++) {
@@ -2082,6 +2097,8 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     init_curr_cong_weight = ctx->setting<float>("gpurouter/initCurrCongWeight", 0.5f);
     hist_cong_weight = ctx->setting<float>("gpurouter/histCongWeight", 1.0f);
     curr_cong_mult = ctx->setting<float>("gpurouter/currCongWeightMult", 2.0f);
+    congestion_stall_iters = ctx->setting<int>("gpurouter/congestionStallIters", 20);
+    congestion_stall_boost = ctx->setting<float>("gpurouter/congestionStallBoost", 1.5f);
     estimate_weight = ctx->setting<float>("gpurouter/estimateWeight", 1.25f);
     bias_cost_factor = ctx->setting<float>("gpurouter/biasCostFactor", 0.25f);
     seed_delay_weight = ctx->setting<float>("gpurouter/seedDelayWeight", 1.0f);
