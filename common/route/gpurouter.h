@@ -46,6 +46,13 @@ struct GpuRouterCfg
     // loop).
     int congestion_stall_iters;
     float congestion_stall_boost;
+    // Ceiling on the compounded boost multiplier. A genuine hard conflict
+    // (a net with no legal alternative route at all, e.g. it is competing
+    // with a reserved/frozen wire) does not respond to any amount of
+    // present-congestion cost, so letting the multiplier compound without
+    // bound just produces absurd weights and log noise; max_iter is the
+    // real backstop for that case.
+    float congestion_stall_boost_max;
     // Weight of the A* estimate; > 1 trades optimality for speed
     float estimate_weight;
     // Bias towards the net centroid, as a fraction of the base cost

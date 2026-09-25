@@ -1295,8 +1295,10 @@ struct GpuRouter
                     best_overused = overused_wires;
                     overused_stall = 0;
                     cong_stall_boost = 1.0f;
-                } else if (++overused_stall % cfg.congestion_stall_iters == 0) {
-                    cong_stall_boost *= cfg.congestion_stall_boost;
+                } else if (++overused_stall % cfg.congestion_stall_iters == 0 &&
+                           cong_stall_boost < cfg.congestion_stall_boost_max) {
+                    cong_stall_boost = std::min(cong_stall_boost * cfg.congestion_stall_boost,
+                                                cfg.congestion_stall_boost_max);
                     log_info("    congestion has not improved from %d overused wires in %d iterations; "
                              "accelerating present-congestion growth (x%.2f)\n",
                              best_overused, overused_stall, cong_stall_boost);
@@ -2099,6 +2101,7 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     curr_cong_mult = ctx->setting<float>("gpurouter/currCongWeightMult", 2.0f);
     congestion_stall_iters = ctx->setting<int>("gpurouter/congestionStallIters", 20);
     congestion_stall_boost = ctx->setting<float>("gpurouter/congestionStallBoost", 1.5f);
+    congestion_stall_boost_max = ctx->setting<float>("gpurouter/congestionStallBoostMax", 50.0f);
     estimate_weight = ctx->setting<float>("gpurouter/estimateWeight", 1.25f);
     bias_cost_factor = ctx->setting<float>("gpurouter/biasCostFactor", 0.25f);
     seed_delay_weight = ctx->setting<float>("gpurouter/seedDelayWeight", 1.0f);

@@ -52,7 +52,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | --- | --- | --- |
 | `bbMargin/x`, `bbMargin/y` | 3 | net bounding-box padding, tiles |
 | `initCurrCongWeight`, `histCongWeight`, `currCongWeightMult` | 0.5, 1.0, 2.0 | congestion schedule (router2 values) |
-| `congestionStallIters`, `congestionStallBoost` | 20, 1.5 | if the overused-wire count sets no new minimum for this many iterations, `currCongWeightMult` is scaled by this factor (compounding every further `congestionStallIters` iterations with no improvement) until a new minimum is reached |
+| `congestionStallIters`, `congestionStallBoost`, `congestionStallBoostMax` | 20, 1.5, 50 | if the overused-wire count sets no new minimum for this many iterations, `currCongWeightMult` is scaled by this factor (compounding every further `congestionStallIters` iterations with no improvement, capped at `congestionStallBoostMax`) until a new minimum is reached. A genuine hard conflict (no legal alternative route at all) does not respond to any cost weight; `maxIter` remains the backstop for that case |
 | `estimateWeight` | 1.25 | A* heuristic weight |
 | `biasCostFactor` | 0.25 | pull towards the net centroid |
 | `seedDelayWeight`, `seedDelayFloor` | 1.0, 0.0 | a sink attaches to a tree wire at cost `weight·(floor + (1−floor)·crit)·upstream delay` |
