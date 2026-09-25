@@ -1290,19 +1290,23 @@ struct GpuRouter
             update_congestion();
             flush_state();
 
-            if (overused_wires > 0) {
-                if (overused_wires < best_overused) {
-                    best_overused = overused_wires;
-                    overused_stall = 0;
-                    cong_stall_boost = 1.0f;
-                } else if (++overused_stall % cfg.congestion_stall_iters == 0 &&
-                           cong_stall_boost < cfg.congestion_stall_boost_max) {
-                    cong_stall_boost = std::min(cong_stall_boost * cfg.congestion_stall_boost,
-                                                cfg.congestion_stall_boost_max);
-                    log_info("    congestion has not improved from %d overused wires in %d iterations; "
-                             "accelerating present-congestion growth (x%.2f)\n",
-                             best_overused, overused_stall, cong_stall_boost);
-                }
+            if (overused_wires < best_overused) {
+                // Zero counts as an improvement too: with --tmg-ripup, a
+                // clean iteration does not end the loop (slack-failing nets
+                // can still be re-added), so a stale boost from an earlier
+                // plateau must not keep accelerating a schedule that already
+                // recovered.
+                best_overused = overused_wires;
+                overused_stall = 0;
+                cong_stall_boost = 1.0f;
+            } else if (overused_wires > 0 && cfg.congestion_stall_iters > 0 &&
+                       ++overused_stall % cfg.congestion_stall_iters == 0 &&
+                       cong_stall_boost < cfg.congestion_stall_boost_max) {
+                cong_stall_boost = std::min(cong_stall_boost * cfg.congestion_stall_boost,
+                                            cfg.congestion_stall_boost_max);
+                log_info("    congestion has not improved from %d overused wires in %d iterations; "
+                         "accelerating present-congestion growth (x%.2f)\n",
+                         best_overused, overused_stall, cong_stall_boost);
             }
 
             int tmgfail = 0;
