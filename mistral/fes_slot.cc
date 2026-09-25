@@ -977,7 +977,11 @@ void Arch::fes_report_slot_capacity(const std::vector<CellInfo *> &slot_cells) c
                 clock_global = false;
             Group &group = sclr_groups[cs.sclr.net];
             ++group.ffs;
-            if (cs.ena.net != nullptr)
+            // An enable equal to the LAB's SCLR or (non-global) clock signal
+            // shares that DATAIN line in LabCtrlSetWorker and costs no slot.
+            const bool shares_sclr = cs.ena == cs.sclr;
+            const bool shares_clk = cs.clk.net != nullptr && !cs.clk.net->is_global && cs.ena == cs.clk;
+            if (cs.ena.net != nullptr && !shares_sclr && !shares_clk)
                 group.enas.insert(cs.ena.net);
             // Needs a route-through LUT half or the E/F input unless it is
             // paired with the LUT that drives it (pair_unbound_lut_ffs).
@@ -991,7 +995,9 @@ void Arch::fes_report_slot_capacity(const std::vector<CellInfo *> &slot_cells) c
         } else {
             other_cells[bucket]++;
         }
-        if (ci->type == id_MISTRAL_ALUT_ARITH && ci->cluster == ci->name && !ci->constr_children.empty()) {
+        // Every chain root, including a one-cell chain, is pinned to z=0 of
+        // some LAB by constrain_carries and so consumes a LAB root.
+        if (ci->type == id_MISTRAL_ALUT_ARITH && ci->cluster == ci->name) {
             ++chains;
             int rows = 1;
             for (const CellInfo *child : ci->constr_children)
