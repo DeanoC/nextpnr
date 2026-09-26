@@ -69,6 +69,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `analogueRevert`, `analogueRevertMargin`, `analogueRestoreMargin` | true, 20 ps, 1000 ps | after a re-route, give nets whose worst sink got slower by the margin their old route back where possible; abandon a round this far below the best routing and restore that instead |
 | `candidateMargin`, `candidateUnbounded`, `candidateExpandK` | 8, true, = `expandK` | candidate searches use the net's bounding box widened by this many tiles; whether the two primary candidates may fall back to the search without a box; frontier entries expanded per step (they run one net at a time, so 2048 makes a pass about a third faster, with different routes) |
 | `cpuLaneNets` | 0 | batches of at most this many nets run on the host backend (0: never) |
+| `repairVerify`, `repairVerifyArcs` | false, 300 | diagnostic: re-run the first arc of the first N bounded pure-delay repair tasks as an exact Dijkstra on the host and report how often and by how much the K-best weighted-A* search misses the minimum-delay route (slow: seconds per search; candidate searches are not verified) |
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
 | `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 4, 22 | device scratch: concurrent nets and log2 table size per lane |
@@ -415,6 +416,45 @@ reproduces the checksum across two GPU runs and reports the router2 flow
 shows the limit: its critical path has 14 ns of routing over some twenty
 hops and few of its sinks have a materially different route inside their
 box; that is a placement problem, not one more route search.
+
+### Is the search leaving delay on the table?
+
+`repairVerify` re-runs the first arc of the first 300 bounded pure-delay
+repair tasks of a run as an exact Dijkstra on the host, from the same
+tree, state and box, and compares the costs (only a task's first arc is
+comparable: later arcs are seeded from the paths chosen before them,
+which differ between the two searches). On the FES ZX81 (seed 1) 7 of
+300 (2.3 %) K-best weighted-A* routes were longer than the minimum-delay
+route, by 141 ps on average and 259 ps at most, in the first route; in
+the three analogue re-route rounds of the same run (calibrated table,
+122-126 searches each) 0.8-4.9 % were longer, mean 143-469 ps, worst
+1.17 ns. The search is close to exact under the scalar table, so a
+better lookahead or heuristic weight would not change results; what the
+router optimises (the table against the analogue model) matters, not
+how well. `repairEstimateWeight=1.0` is the knob to try if a design
+shows more.
+
+### Calibration experiments
+
+The analogue arc dumps suggest the per-hop error grows by 15-30 ps per
+extra branch a wire drives, which `loadPenalty` (ns charged per existing
+branch when a sink attaches to a loaded tree wire) and `pipAdder` (ns
+added to every pip) can approximate in the search cost. Measured on the
+FES ZX81 (seeds 1-3), ColecoVision and Pong against the defaults, final
+analogue slack in ns:
+
+| Setting | ZX81 1 | ZX81 2 | ZX81 3 | Coleco | Pong |
+| --- | --- | --- | --- | --- | --- |
+| defaults | −0.26 | +0.27 | −1.36 | +0.61 | +1.94 |
+| `loadPenalty=0.02` | −0.22 | +0.17 | −1.21 | +0.65 | +1.94 |
+| `loadPenalty=0.04` | −0.68 | +0.01 | −1.24 | +0.65 | +1.84 |
+| `pipAdder=0.05` | −0.29 | −0.08 | −1.48 | +0.23 | +2.05 |
+
+The first route does move (seed 1's initial analogue check improves from
+−2.75 ns to −1.63 ns with `loadPenalty=0.04`), but after candidate
+selection the results are within the seed-to-seed spread, so the
+defaults stay at 0. A per-type, per-load delay table used by the timing
+analysis itself, rather than a search-cost approximation, remains open.
 
 ## Limitations and future work
 

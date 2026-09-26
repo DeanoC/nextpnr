@@ -230,13 +230,28 @@ class CpuBackend : public Backend
                     // pass 3: split into this step's expansion set and the rest
                     near.clear();
                     far.clear();
-                    for (const Pile &e : far2) {
-                        const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
-                        if (f < thr)
-                            near.push_back(e);
-                        else
-                            far.push_back(e);
-                    }
+                    if (p.exact) {
+                        // exactly one entry: the lowest f, then the lowest wire
+                        size_t best = 0;
+                        float bestf = INF;
+                        for (size_t i = 0; i < far2.size(); i++) {
+                            const Pile &e = far2[i];
+                            const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
+                            if (f < bestf || (f == bestf && e.wire < far2[best].wire)) {
+                                bestf = f;
+                                best = i;
+                            }
+                        }
+                        for (size_t i = 0; i < far2.size(); i++)
+                            (i == best ? near : far).push_back(far2[i]);
+                    } else
+                        for (const Pile &e : far2) {
+                            const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
+                            if (f < thr)
+                                near.push_back(e);
+                            else
+                                far.push_back(e);
+                        }
                     prune = have_best ? best_g : INF;
 
                     // phase A: relax against the step-start table
