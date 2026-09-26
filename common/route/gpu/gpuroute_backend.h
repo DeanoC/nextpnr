@@ -86,6 +86,8 @@ struct RouteParams
     int ignore_soft = 0;   // treat other nets' soft reservations as free (repair displacement)
     int ignore_hist = 0;   // drop history cost (peer-group present-congestion only)
     int max_probe = 512;   // hash table probe limit
+    int exact = 0;         // CPU backend only: expand exactly the lowest-f entry per step (plain
+                           // Dijkstra/A*, a reference for the K-best search); the device ignores it
 };
 
 // One net to route. Arcs [arc_off, arc_off + arc_cnt) are routed in order;

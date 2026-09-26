@@ -64,6 +64,9 @@ struct GpuRouter
     TimingAnalyser tmg;
     std::unique_ptr<gpuroute::Backend> backend;     // device (or CPU fallback)
     std::unique_ptr<gpuroute::Backend> cpu_backend; // CPU lane for tiny batches, if distinct
+    std::unique_ptr<gpuroute::Backend> verify_backend; // exact reference for repair searches (diagnostic)
+    int64_t verify_arcs = 0, verify_worse = 0, verify_better = 0, verify_unref = 0;
+    double verify_excess = 0.0, verify_max = 0.0, verify_secs = 0.0;
 
     bool timing_driven = false, timing_driven_ripup = false;
     float curr_cong_weight = 0.5f, hist_cong_weight = 1.0f;
@@ -863,6 +866,8 @@ struct GpuRouter
         backend->update_wire_state(dirty_wires.size(), dirty_wires.data(), o.data(), h.data(), r.data());
         if (cpu_backend)
             cpu_backend->update_wire_state(dirty_wires.size(), dirty_wires.data(), o.data(), h.data(), r.data());
+        if (verify_backend)
+            verify_backend->update_wire_state(dirty_wires.size(), dirty_wires.data(), o.data(), h.data(), r.data());
         dirty_wires.clear();
     }
 
@@ -1018,6 +1023,37 @@ struct GpuRouter
         backend_for(tasks.size())->route(make_params(use_bb), tds, ads, seeds, seed_delay, seed_load, large_lane,
                                          results, paths);
         gpu_time += secs_since(t0);
+        if (verify_backend && repair_mode && !repair_cong && use_bb &&
+            verify_arcs + verify_unref < int64_t(cfg.repair_verify_arcs)) {
+            // The same searches as plain Dijkstra on the same costs, state
+            // and box (large-lane table so it cannot overflow)
+            gpuroute::RouteParams vp = make_params(use_bb);
+            vp.est_weight = 0.0f;
+            vp.expand_k = 1;
+            vp.expand_div = 0;
+            vp.exact = 1;
+            std::vector<gpuroute::ArcResult> vres;
+            std::vector<gpuroute::PathEntry> vpaths;
+            auto tv = Clock::now();
+            verify_backend->route(vp, tds, ads, seeds, seed_delay, seed_load, true, vres, vpaths);
+            verify_secs += secs_since(tv);
+            for (size_t k = 0; k < results.size(); k++) {
+                if (results[k].status != gpuroute::ARC_OK)
+                    continue;
+                if (vres[k].status != gpuroute::ARC_OK) {
+                    verify_unref++;
+                    continue;
+                }
+                verify_arcs++;
+                double d = double(results[k].cost) - double(vres[k].cost);
+                if (d > 1e-4) {
+                    verify_worse++;
+                    verify_excess += d;
+                    verify_max = std::max(verify_max, d);
+                } else if (d < -1e-4)
+                    verify_better++;
+            }
+        }
 
         std::vector<HostTask> retry;
         for (size_t ti = 0; ti < tasks.size(); ti++) {
@@ -2134,6 +2170,8 @@ struct GpuRouter
             log_info("    GPU devices: %s\n", gpuroute::describe_devices().c_str());
         if (cfg.cpu_lane_nets > 0 && std::string(backend->name()) != "cpu-reference")
             cpu_backend = gpuroute::create_cpu_backend();
+        if (cfg.repair_verify)
+            verify_backend = gpuroute::create_cpu_backend();
 
         log_info("Setting up routing resources...\n");
         setup_net_indices();
@@ -2160,6 +2198,9 @@ struct GpuRouter
         if (cpu_backend &&
             !cpu_backend->init(gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, err))
             log_error("GPU router CPU lane initialisation failed: %s\n", err.c_str());
+        if (verify_backend &&
+            !verify_backend->init(gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, err))
+            log_error("GPU router verification backend initialisation failed: %s\n", err.c_str());
         log_info("    backend %s ready in %.2fs (estimate %.3f ns/x, %.3f ns/y)\n", backend->name(), secs_since(tup),
                  est_x, est_y);
         // The backend snapshot already contains the setup-time state
@@ -2573,6 +2614,14 @@ struct GpuRouter
             log_info("    CPU lane: %lld batches, %lld arcs, %lld wires expanded, %.2fs\n", (long long)cs.launches,
                      (long long)cs.arcs_routed, (long long)cs.wires_expanded, cs.route_seconds);
         }
+        if (verify_backend)
+            log_info("    repair search check: %lld bounded pure-delay searches compared with exact Dijkstra in "
+                     "%.1fs: %lld (%.1f%%) longer than the minimum-delay route, mean excess %.1f ps, max %.1f ps; "
+                     "%lld shorter (should be 0); %lld the reference could not route\n",
+                     (long long)verify_arcs, verify_secs, (long long)verify_worse,
+                     verify_arcs ? 100.0 * double(verify_worse) / double(verify_arcs) : 0.0,
+                     verify_worse ? 1000.0 * verify_excess / double(verify_worse) : 0.0, 1000.0 * verify_max,
+                     (long long)verify_better, (long long)verify_unref);
 
         log_info("Running router1 to check that route is legal...\n");
         lock.unlock();
@@ -2638,6 +2687,8 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     repair_displace_margin = ctx->setting<float>("gpurouter/repairDisplaceMargin", 0.0f);
     repair_cong_weight = ctx->setting<float>("gpurouter/repairCongWeight", 1.0f);
     cpu_lane_nets = ctx->setting<int>("gpurouter/cpuLaneNets", 0);
+    repair_verify = ctx->setting<bool>("gpurouter/repairVerify", false);
+    repair_verify_arcs = ctx->setting<int>("gpurouter/repairVerifyArcs", 300);
     candidate_margin = ctx->setting<int>("gpurouter/candidateMargin", 8);
     candidate_unbounded = ctx->setting<bool>("gpurouter/candidateUnbounded", true);
     crit_exponent = ctx->setting<float>("gpurouter/critExponent", 2.0f);
