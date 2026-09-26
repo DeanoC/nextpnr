@@ -43,17 +43,20 @@ struct GpuRouterCfg
     // congestion_stall_boost times faster until it does. A handful of nets
     // stuck swapping the same local wire (e.g. two cells placed with a
     // shared LAB-internal conflict) can otherwise cycle for a very long
-    // time under the plain additive schedule; this only ever accelerates
-    // convergence and never gives up on its own (max_iter still bounds the
-    // loop).
+    // time under the plain additive schedule. This only accelerates
+    // convergence. A small plateau that remains once the boost is at its
+    // ceiling is handed to the soft-reservation escape in the negotiation
+    // loop; max_iter still bounds every other case.
     int congestion_stall_iters;
     float congestion_stall_boost;
     // Ceiling on the compounded boost multiplier. A genuine hard conflict
     // (a net with no legal alternative route at all, e.g. it is competing
     // with a reserved/frozen wire) does not respond to any amount of
     // present-congestion cost, so letting the multiplier compound without
-    // bound just produces absurd weights and log noise; max_iter is the
-    // real backstop for that case.
+    // bound just produces absurd weights and log noise. Once the multiplier
+    // is at this ceiling, a handful of still-overused wires are routed
+    // again with soft timing-repair reservations ignored; a plateau that
+    // still does not move stops the run instead of waiting for max_iter.
     float congestion_stall_boost_max;
     // Weight of the A* estimate; > 1 trades optimality for speed
     float estimate_weight;

@@ -1229,7 +1229,10 @@ struct GpuRouter
         return out;
     }
 
-    void update_congestion()
+    // Occupancy totals and the set of nets that still share a wire. Does
+    // not touch history: callers that are only re-reading the trees after
+    // a plateau escape must not charge those wires twice in one iteration.
+    void recount_overuse()
     {
         total_wire_use = 0;
         overused_wires = 0;
@@ -1247,10 +1250,19 @@ struct GpuRouter
             if (occ[w] > 1) {
                 ++overused_wires;
                 total_overuse += occ[w] - 1;
-                if (curr_cong_weight > 0) {
-                    hist[w] = std::min(1e9f, hist[w] + (occ[w] - 1) * hist_cong_weight);
-                    mark_dirty(int32_t(w));
-                }
+            }
+        }
+    }
+
+    void update_congestion()
+    {
+        recount_overuse();
+        if (curr_cong_weight > 0) {
+            for (size_t w = 0; w < occ.size(); w++) {
+                if (occ[w] <= 1)
+                    continue;
+                hist[w] = std::min(1e9f, hist[w] + (occ[w] - 1) * hist_cong_weight);
+                mark_dirty(int32_t(w));
             }
         }
         for (int n : failed_nets) {
@@ -1361,12 +1373,28 @@ struct GpuRouter
 
     int iter = 1;
     int best_overused = std::numeric_limits<int>::max(), overused_stall = 0;
+    // How many times this run has already unfrozen timing-repair arcs to
+    // break a saturated small plateau. Stays non-zero until overuse hits
+    // zero so the fast congestion schedule is not thrown away on the
+    // partial improvement that follows an escape.
+    int plateau_escapes = 0;
+    // Iterations spent at four or fewer overused wires since the last time
+    // the count was higher. A negotiation that sits there is not making
+    // progress even when an earlier zero is still the recorded minimum.
+    int tiny_overuse_iters = 0;
     float cong_stall_boost = 1.0f;
 
     // Negotiated-congestion loop over the nets in route_queue until no wire
-    // is overused (and, with --tmg-ripup, no arc fails slack)
-    void negotiate()
+    // is overused (and, with --tmg-ripup, no arc fails slack). Returns
+    // false when a one- or two-wire plateau survives a soft-reservation
+    // escape; the caller either aborts or puts a known-legal routing back.
+    bool negotiate()
     {
+        // Each call is a fresh attempt (initial routing, or re-negotiation
+        // after timing repair). An escape budget left over from a previous
+        // attempt would fail this one on its first saturated plateau.
+        plateau_escapes = 0;
+        tiny_overuse_iters = 0;
         do {
             auto istart = Clock::now();
             gpu_time = 0.0;
@@ -1432,16 +1460,29 @@ struct GpuRouter
                 // clean iteration does not end the loop (slack-failing nets
                 // can still be re-added), so a stale boost from an earlier
                 // plateau must not keep accelerating a schedule that already
-                // recovered.
+                // recovered. After a soft-reservation escape the schedule
+                // stays fast until overuse actually reaches zero: the next
+                // iteration's drop from the re-baseline is not a recovery.
                 best_overused = overused_wires;
                 overused_stall = 0;
-                cong_stall_boost = 1.0f;
+                if (overused_wires == 0)
+                    plateau_escapes = 0;
+                if (plateau_escapes == 0)
+                    cong_stall_boost = 1.0f;
             } else if (overused_wires > 0 && cfg.congestion_stall_iters > 0 &&
                        ++overused_stall % cfg.congestion_stall_iters == 0) {
                 // Frozen arcs are never ripped up, so an overused wire whose
                 // users are all frozen cannot be resolved by any cost;
                 // thaw all but the most critical of them first
                 int thawed = thaw_frozen_conflicts();
+                // A single frozen arc on an overused wire is never ripped, and
+                // the net sharing it with a movable arc is re-routed forever
+                // onto that wire. Only do this once the plateau is already
+                // small: during a large descent the same stall counter is
+                // running against an earlier zero and must not discard the
+                // repair.
+                if (thawed == 0 && overused_wires <= 8)
+                    thawed = thaw_sole_frozen_blockers();
                 if (thawed > 0)
                     log_info("    congestion has not improved from %d overused wires in %d iterations; "
                              "unfroze %d repaired arcs sharing overused wires\n",
@@ -1452,7 +1493,36 @@ struct GpuRouter
                     log_info("    congestion has not improved from %d overused wires in %d iterations; "
                              "accelerating present-congestion growth (x%.2f)\n",
                              best_overused, overused_stall, cong_stall_boost);
+                } else if (overused_wires <= 8 && int(failed_nets.size()) <= 8) {
+                    // Present-congestion cost is already growing as fast as
+                    // it is allowed to, and the overused wires are not held
+                    // by frozen arcs. Timing repair can still have soft-
+                    // reserved every alternate, so the stuck nets keep the
+                    // only unreserved path and share it. Route them one at
+                    // a time with those reservations ignored.
+                    if (plateau_escapes >= 1)
+                        return give_up_plateau("still congested after releasing timing-repair reservations");
+                    if (!escape_soft_plateau())
+                        return false;
                 }
+            }
+
+            // A handful of overused wires that survive a short run of
+            // iterations are the SMS seed-3 stall: the count flickers
+            // between 2 and 4, timing repair has frozen the alternates, and
+            // waiting out the boost ceiling burns the whole attempt. Try
+            // the soft-reservation escape once, then hand the decision
+            // back to the caller.
+            if (overused_wires > 4)
+                tiny_overuse_iters = 0;
+            else if (overused_wires > 0)
+                ++tiny_overuse_iters;
+            else
+                tiny_overuse_iters = 0;
+            if (tiny_overuse_iters >= 30 && overused_wires > 0) {
+                if (!escape_soft_plateau())
+                    return false;
+                tiny_overuse_iters = 0;
             }
 
             int tmgfail = 0;
@@ -1514,33 +1584,13 @@ struct GpuRouter
             ++iter;
             if (curr_cong_weight < 1e9)
                 curr_cong_weight += cfg.curr_cong_mult * cong_stall_boost;
-            if (!failed_nets.empty() && (iter % 100) == 0) {
-                int shown = 0;
-                for (size_t w = 0; w < occ.size() && shown < 5; w++) {
-                    if (occ[w] <= 1)
-                        continue;
-                    std::string users;
-                    for (int n : failed_nets) {
-                        auto &nd = nets.at(n);
-                        auto fnd = nd.wires.find(int32_t(w));
-                        if (fnd == nd.wires.end())
-                            continue;
-                        bool frozen = false;
-                        for (auto &arcs : nd.arcs)
-                            for (auto &ad : arcs)
-                                frozen |= ad.frozen;
-                        users += stringf(" %s(count=%d%s)", ctx->nameOf(nets_by_udata.at(n)), fnd->second.count,
-                                         frozen ? ",frozen" : "");
-                    }
-                    log_info("        stalled: wire %s occ=%d reserved=%d used by%s\n", ctx->nameOfWire(idx_to_wire[w]),
-                             occ[w], reserved[w], users.c_str());
-                    shown++;
-                }
-            }
+            if (!failed_nets.empty() && (iter % 100) == 0)
+                log_overused_wires();
             if (iter > cfg.max_iter && !failed_nets.empty())
                 log_error("GPU router did not converge after %d iterations (%d overused wires).\n", cfg.max_iter,
                           overused_wires);
         } while (!failed_nets.empty());
+        return true;
     }
 
     // Unfreeze the frozen arcs that share an overused wire, keeping the
@@ -1594,6 +1644,180 @@ struct GpuRouter
         if (thawed > 0)
             flush_state();
         return thawed;
+    }
+
+    // Unfreeze every frozen arc that uses an overused wire when it is the
+    // only frozen user of that wire. thaw_frozen_conflicts keeps the most
+    // critical of two frozen arcs; it does not move a frozen arc that is
+    // blocking one ordinary net, which is the plateau left after timing
+    // repair on the SMS seed-3 placement.
+    int thaw_sole_frozen_blockers()
+    {
+        pool<int> touched;
+        int thawed = 0;
+        for (int n : failed_nets) {
+            NetInfo *ni = nets_by_udata.at(n);
+            auto &nd = nets.at(n);
+            for (auto usr : ni->users.enumerate()) {
+                auto &arcs = nd.arcs.at(usr.index.idx());
+                for (size_t j = 0; j < arcs.size(); j++) {
+                    if (!arcs[j].frozen || !arcs[j].routed)
+                        continue;
+                    bool blocked = false;
+                    int32_t cursor = arcs[j].sink;
+                    while (true) {
+                        if (occ[cursor] > 1)
+                            blocked = true;
+                        auto fnd = nd.wires.find(cursor);
+                        if (fnd == nd.wires.end() || fnd->second.parent == -1 || cursor == nd.src)
+                            break;
+                        cursor = fnd->second.parent;
+                    }
+                    if (!blocked)
+                        continue;
+                    arcs[j].frozen = false;
+                    touched.insert(n);
+                    thawed++;
+                }
+            }
+        }
+        for (int n : touched)
+            rebuild_soft_reservations(n);
+        if (thawed > 0)
+            flush_state();
+        return thawed;
+    }
+
+    void log_overused_wires()
+    {
+        int shown = 0;
+        for (size_t w = 0; w < occ.size() && shown < 5; w++) {
+            if (occ[w] <= 1)
+                continue;
+            std::string users;
+            for (int n : failed_nets) {
+                auto &nd = nets.at(n);
+                auto fnd = nd.wires.find(int32_t(w));
+                if (fnd == nd.wires.end())
+                    continue;
+                bool frozen = false;
+                for (auto &arcs : nd.arcs)
+                    for (auto &ad : arcs)
+                        frozen |= ad.frozen;
+                users += stringf(" %s(count=%d%s)", ctx->nameOf(nets_by_udata.at(n)), fnd->second.count,
+                                 frozen ? ",frozen" : "");
+            }
+            log_info("        stalled: wire %s occ=%d reserved=%d used by%s\n", ctx->nameOfWire(idx_to_wire[w]), occ[w],
+                     reserved[w], users.c_str());
+            shown++;
+        }
+    }
+
+    bool give_up_plateau(const char *why)
+    {
+        log_overused_wires();
+        log_info("    congestion plateau (%d overused wires, %zu nets): %s\n", overused_wires, failed_nets.size(),
+                 why);
+        return false;
+    }
+
+    // One attempt to route the stuck nets around soft timing-repair
+    // reservations. Returns false when wires are still overused afterwards;
+    // the caller restores a legal routing or aborts.
+    bool escape_soft_plateau()
+    {
+        int before = overused_wires;
+        int opened = release_soft_plateau();
+        ++plateau_escapes;
+        if (overused_wires == 0) {
+            plateau_escapes = 0;
+            cong_stall_boost = 1.0f;
+            best_overused = 0;
+            overused_stall = 0;
+            tiny_overuse_iters = 0;
+            log_info("    congestion plateau at %d overused wires cleared by ignoring soft reservations "
+                     "(unfroze %d timing-repair arcs)\n",
+                     before, opened);
+            return true;
+        }
+        log_info("    congestion plateau at %d overused wires did not clear (unfroze %d, %d remain)\n", before, opened,
+                 overused_wires);
+        log_overused_wires();
+        return false;
+    }
+
+    // Re-route the stuck nets one at a time, ignoring soft timing-repair
+    // reservations, and unfreeze every frozen arc whose wire the new path
+    // uses. Returns how many arcs were unfrozen. The nets are ripped and
+    // routed sequentially so each one sees the wires the previous one took;
+    // a parallel batch would put them all back on the cheap shared wire.
+    int release_soft_plateau()
+    {
+        std::vector<int> stuck(failed_nets.begin(), failed_nets.end());
+        std::sort(stuck.begin(), stuck.end());
+        std::vector<int> rerouted;
+        int opened = 0;
+        pool<int> touched;
+        ignore_soft = true;
+        for (int n : stuck) {
+            NetInfo *ni = nets_by_udata.at(n);
+            auto &nd = nets.at(n);
+            HostTask t;
+            t.net = n;
+            for (auto usr : ni->users.enumerate()) {
+                auto &arcs = nd.arcs.at(usr.index.idx());
+                for (size_t j = 0; j < arcs.size(); j++) {
+                    if (arcs[j].frozen || arcs[j].pre_routed)
+                        continue;
+                    if (check_arc_routing(nd, arcs[j]))
+                        continue;
+                    ripup_arc(nd, arcs[j]);
+                    t.arcs.emplace_back(usr.index.idx(), int(j));
+                }
+            }
+            if (t.arcs.empty())
+                continue;
+            flush_state();
+            std::vector<HostTask> retry = route_tasks(std::vector<HostTask>{t}, true, false);
+            flush_state();
+            if (!retry.empty())
+                retry = route_tasks(retry, true, true);
+            flush_state();
+            if (!retry.empty())
+                retry = route_tasks(retry, false, true);
+            flush_state();
+            if (!retry.empty()) {
+                ignore_soft = false;
+                auto &a = retry.front().arcs.front();
+                log_error("Failed to route arc %d.%d of net '%s' off a congestion plateau (status %d, reason %d, "
+                          "%d wires expanded).\n",
+                          a.first, a.second, ctx->nameOf(ni), last_fail_status, last_fail_reason, last_fail_expanded);
+            }
+            rerouted.push_back(n);
+            for (auto &a : t.arcs) {
+                for (auto &v : list_soft_blockers(n, a)) {
+                    auto &ad = nets.at(v.first).arcs.at(v.second.first).at(v.second.second);
+                    if (!ad.frozen)
+                        continue;
+                    ad.frozen = false;
+                    touched.insert(v.first);
+                    opened++;
+                }
+            }
+        }
+        ignore_soft = false;
+        for (int o : touched)
+            rebuild_soft_reservations(o);
+        if (!touched.empty())
+            flush_state();
+        // This iteration already published delays for the pre-escape trees.
+        // With --tmg-ripup the slack check below uses those delays, so a net
+        // whose path just moved has to be refreshed or a new route is judged
+        // by the one it replaced.
+        if (!rerouted.empty())
+            update_route_delays(rerouted);
+        recount_overuse();
+        return opened;
     }
 
     // Reserve every wire on the arc's path for its net (soft) and freeze it
@@ -2157,7 +2381,13 @@ struct GpuRouter
                 route_queue.push_back(cn);
             std::sort(route_queue.begin(), route_queue.end());
             route_queue.erase(std::unique(route_queue.begin(), route_queue.end()), route_queue.end());
-            negotiate();
+            if (!negotiate()) {
+                log_info("    timing repair stopped on a congestion plateau; restoring the pre-repair routing\n");
+                restore_snapshot();
+                failed_nets.clear();
+                route_queue.clear();
+                break;
+            }
         }
         if (displaced_total > 0)
             log_info("    timing repair displaced %d frozen arcs with more slack\n", displaced_total);
@@ -2594,7 +2824,10 @@ struct GpuRouter
         log_info("Running main router loop...\n");
         if (timing_driven)
             tmg.run(true);
-        negotiate();
+        if (!negotiate()) {
+            log_warning("GPU router did not converge (%d overused wires).\n", overused_wires);
+            return false;
+        }
         if (timing_driven && cfg.repair_rounds > 0)
             timing_repair();
         // Bind into the Arch; anything the Arch rejects is negotiated again
@@ -2620,7 +2853,11 @@ struct GpuRouter
             log_info("    %zu nets rejected by the architecture, re-routing\n", failed_nets.size());
             for (auto cn : failed_nets)
                 route_queue.push_back(cn);
-            negotiate();
+            if (!negotiate()) {
+                log_warning("GPU router did not converge after an architecture bind rejection (%d overused wires).\n",
+                            overused_wires);
+                return false;
+            }
             // The re-routed nets took congestion-costed routes after the
             // repair; repair them too, or a critical one ends on a detour
             if (timing_driven && cfg.repair_rounds > 0)
