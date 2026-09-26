@@ -69,7 +69,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `analogueRevert`, `analogueRevertMargin`, `analogueRestoreMargin` | true, 20 ps, 1000 ps | after a re-route, give nets whose worst sink got slower by the margin their old route back where possible; abandon a round this far below the best routing and restore that instead |
 | `candidateMargin`, `candidateUnbounded`, `candidateExpandK` | 8, true, = `expandK` | candidate searches use the net's bounding box widened by this many tiles; whether the two primary candidates may fall back to the search without a box; frontier entries expanded per step (they run one net at a time, so 2048 makes a pass about a third faster, with different routes) |
 | `cpuLaneNets` | 0 | batches of at most this many nets run on the host backend (0: never) |
-| `repairVerify`, `repairVerifyArcs` | false, 300 | diagnostic: re-run the first N bounded pure-delay repair searches as an exact Dijkstra on the host and report how often and by how much the K-best weighted-A* search misses the minimum-delay route (slow: seconds per search) |
+| `repairVerify`, `repairVerifyArcs` | false, 300 | diagnostic: re-run the first arc of the first N bounded pure-delay repair tasks as an exact Dijkstra on the host and report how often and by how much the K-best weighted-A* search misses the minimum-delay route (slow: seconds per search; candidate searches are not verified) |
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
 | `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 4, 22 | device scratch: concurrent nets and log2 table size per lane |
@@ -419,13 +419,16 @@ box; that is a placement problem, not one more route search.
 
 ### Is the search leaving delay on the table?
 
-`repairVerify` re-runs the first 300 bounded pure-delay repair searches
-of a run as an exact Dijkstra on the host and compares the costs. On the
-FES ZX81 (seed 1) 11 of 300 (3.7 %) K-best weighted-A* routes were
-longer than the minimum-delay route, by 82 ps on average and 200 ps at
-most. The search is close to exact under the scalar table, so a better
-lookahead or heuristic weight would not change results; what the router
-optimises (the table against the analogue model) matters, not how well.
+`repairVerify` re-runs the first arc of the first 300 bounded pure-delay
+repair tasks of a run as an exact Dijkstra on the host, from the same
+tree, state and box, and compares the costs (only a task's first arc is
+comparable: later arcs are seeded from the paths chosen before them,
+which differ between the two searches). On the FES ZX81 (seed 1) 7 of
+300 (2.3 %) K-best weighted-A* routes were longer than the minimum-delay
+route, by 141 ps on average and 259 ps at most. The search is close to
+exact under the scalar table, so a better lookahead or heuristic weight
+would not change results; what the router optimises (the table against
+the analogue model) matters, not how well.
 
 ### Calibration experiments
 

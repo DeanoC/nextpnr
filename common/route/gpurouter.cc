@@ -1023,35 +1023,49 @@ struct GpuRouter
         backend_for(tasks.size())->route(make_params(use_bb), tds, ads, seeds, seed_delay, seed_load, large_lane,
                                          results, paths);
         gpu_time += secs_since(t0);
-        if (verify_backend && repair_mode && !repair_cong && use_bb &&
-            verify_arcs + verify_unref < int64_t(cfg.repair_verify_arcs)) {
-            // The same searches as plain Dijkstra on the same costs, state
-            // and box (large-lane table so it cannot overflow)
-            gpuroute::RouteParams vp = make_params(use_bb);
-            vp.est_weight = 0.0f;
-            vp.expand_k = 1;
-            vp.expand_div = 0;
-            vp.exact = 1;
-            std::vector<gpuroute::ArcResult> vres;
-            std::vector<gpuroute::PathEntry> vpaths;
-            auto tv = Clock::now();
-            verify_backend->route(vp, tds, ads, seeds, seed_delay, seed_load, true, vres, vpaths);
-            verify_secs += secs_since(tv);
-            for (size_t k = 0; k < results.size(); k++) {
-                if (results[k].status != gpuroute::ARC_OK)
+        if (verify_backend && repair_mode && !repair_cong && !candidate_mode && use_bb) {
+            // The first arc of each task as plain Dijkstra on the same costs,
+            // state and box (large-lane table so it cannot overflow). Only
+            // the first arc is comparable: later arcs of a task are seeded
+            // from the paths the search before them chose, which differ
+            // between the two searches. At most the remaining allowance.
+            std::vector<gpuroute::TaskDesc> vtds;
+            for (auto &td : tds) {
+                if (int64_t(vtds.size()) + verify_arcs + verify_unref >= int64_t(cfg.repair_verify_arcs))
+                    break;
+                if (td.arc_cnt < 1)
                     continue;
-                if (vres[k].status != gpuroute::ARC_OK) {
-                    verify_unref++;
-                    continue;
+                vtds.push_back(td);
+                vtds.back().arc_cnt = 1;
+            }
+            if (!vtds.empty()) {
+                gpuroute::RouteParams vp = make_params(use_bb);
+                vp.est_weight = 0.0f;
+                vp.expand_k = 1;
+                vp.expand_div = 0;
+                vp.exact = 1;
+                std::vector<gpuroute::ArcResult> vres;
+                std::vector<gpuroute::PathEntry> vpaths;
+                auto tv = Clock::now();
+                verify_backend->route(vp, vtds, ads, seeds, seed_delay, seed_load, true, vres, vpaths);
+                verify_secs += secs_since(tv);
+                for (auto &td : vtds) {
+                    const size_t k = td.arc_off;
+                    if (results[k].status != gpuroute::ARC_OK)
+                        continue;
+                    if (vres[k].status != gpuroute::ARC_OK) {
+                        verify_unref++;
+                        continue;
+                    }
+                    verify_arcs++;
+                    double d = double(results[k].cost) - double(vres[k].cost);
+                    if (d > 1e-4) {
+                        verify_worse++;
+                        verify_excess += d;
+                        verify_max = std::max(verify_max, d);
+                    } else if (d < -1e-4)
+                        verify_better++;
                 }
-                verify_arcs++;
-                double d = double(results[k].cost) - double(vres[k].cost);
-                if (d > 1e-4) {
-                    verify_worse++;
-                    verify_excess += d;
-                    verify_max = std::max(verify_max, d);
-                } else if (d < -1e-4)
-                    verify_better++;
             }
         }
 
@@ -2615,9 +2629,9 @@ struct GpuRouter
                      (long long)cs.arcs_routed, (long long)cs.wires_expanded, cs.route_seconds);
         }
         if (verify_backend)
-            log_info("    repair search check: %lld bounded pure-delay searches compared with exact Dijkstra in "
-                     "%.1fs: %lld (%.1f%%) longer than the minimum-delay route, mean excess %.1f ps, max %.1f ps; "
-                     "%lld shorter (should be 0); %lld the reference could not route\n",
+            log_info("    repair search check: %lld bounded pure-delay searches (first arc of a repair task) compared "
+                     "with exact Dijkstra in %.1fs: %lld (%.1f%%) longer than the minimum-delay route, mean excess "
+                     "%.1f ps, max %.1f ps; %lld shorter (should be 0); %lld the reference could not route\n",
                      (long long)verify_arcs, verify_secs, (long long)verify_worse,
                      verify_arcs ? 100.0 * double(verify_worse) / double(verify_arcs) : 0.0,
                      verify_worse ? 1000.0 * verify_excess / double(verify_worse) : 0.0, 1000.0 * verify_max,

@@ -102,7 +102,7 @@ struct GpuRouterCfg
     // Dijkstra on the host and report how often and by how much the K-best
     // weighted-A* search misses the minimum-delay route
     bool repair_verify;
-    int repair_verify_arcs; // searches to compare (the exact search is slow)
+    int repair_verify_arcs; // searches to compare, first arc of a task each (the exact search is slow)
     // Candidate generation (GpuCandidateRouter): tiles added to the net's
     // bounding box, and whether the two primary variants may fall back to
     // the search without a box
