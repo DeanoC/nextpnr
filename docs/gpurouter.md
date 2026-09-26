@@ -425,10 +425,14 @@ tree, state and box, and compares the costs (only a task's first arc is
 comparable: later arcs are seeded from the paths chosen before them,
 which differ between the two searches). On the FES ZX81 (seed 1) 7 of
 300 (2.3 %) K-best weighted-A* routes were longer than the minimum-delay
-route, by 141 ps on average and 259 ps at most. The search is close to
-exact under the scalar table, so a better lookahead or heuristic weight
-would not change results; what the router optimises (the table against
-the analogue model) matters, not how well.
+route, by 141 ps on average and 259 ps at most, in the first route; in
+the three analogue re-route rounds of the same run (calibrated table,
+122-126 searches each) 0.8-4.9 % were longer, mean 143-469 ps, worst
+1.17 ns. The search is close to exact under the scalar table, so a
+better lookahead or heuristic weight would not change results; what the
+router optimises (the table against the analogue model) matters, not
+how well. `repairEstimateWeight=1.0` is the knob to try if a design
+shows more.
 
 ### Calibration experiments
 

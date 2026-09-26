@@ -65,7 +65,7 @@ struct GpuRouter
     std::unique_ptr<gpuroute::Backend> backend;     // device (or CPU fallback)
     std::unique_ptr<gpuroute::Backend> cpu_backend; // CPU lane for tiny batches, if distinct
     std::unique_ptr<gpuroute::Backend> verify_backend; // exact reference for repair searches (diagnostic)
-    int64_t verify_arcs = 0, verify_worse = 0, verify_better = 0, verify_unref = 0;
+    int64_t verify_launched = 0, verify_arcs = 0, verify_worse = 0, verify_better = 0, verify_unref = 0;
     double verify_excess = 0.0, verify_max = 0.0, verify_secs = 0.0;
 
     bool timing_driven = false, timing_driven_ripup = false;
@@ -1031,7 +1031,9 @@ struct GpuRouter
             // between the two searches. At most the remaining allowance.
             std::vector<gpuroute::TaskDesc> vtds;
             for (auto &td : tds) {
-                if (int64_t(vtds.size()) + verify_arcs + verify_unref >= int64_t(cfg.repair_verify_arcs))
+                // every exact search launched counts, compared or not: a
+                // task whose approximate search failed is retried later
+                if (int64_t(vtds.size()) + verify_launched >= int64_t(cfg.repair_verify_arcs))
                     break;
                 if (td.arc_cnt < 1)
                     continue;
@@ -1049,6 +1051,7 @@ struct GpuRouter
                 auto tv = Clock::now();
                 verify_backend->route(vp, vtds, ads, seeds, seed_delay, seed_load, true, vres, vpaths);
                 verify_secs += secs_since(tv);
+                verify_launched += int64_t(vtds.size());
                 for (auto &td : vtds) {
                     const size_t k = td.arc_off;
                     if (results[k].status != gpuroute::ARC_OK)
@@ -2629,10 +2632,11 @@ struct GpuRouter
                      (long long)cs.arcs_routed, (long long)cs.wires_expanded, cs.route_seconds);
         }
         if (verify_backend)
-            log_info("    repair search check: %lld bounded pure-delay searches (first arc of a repair task) compared "
-                     "with exact Dijkstra in %.1fs: %lld (%.1f%%) longer than the minimum-delay route, mean excess "
-                     "%.1f ps, max %.1f ps; %lld shorter (should be 0); %lld the reference could not route\n",
-                     (long long)verify_arcs, verify_secs, (long long)verify_worse,
+            log_info("    repair search check: %lld exact searches run, %lld bounded pure-delay searches (first arc of "
+                     "a repair task) compared with exact Dijkstra in %.1fs: %lld (%.1f%%) longer than the "
+                     "minimum-delay route, mean excess %.1f ps, max %.1f ps; %lld shorter (should be 0); %lld the "
+                     "reference could not route\n",
+                     (long long)verify_launched, (long long)verify_arcs, verify_secs, (long long)verify_worse,
                      verify_arcs ? 100.0 * double(verify_worse) / double(verify_arcs) : 0.0,
                      verify_worse ? 1000.0 * verify_excess / double(verify_worse) : 0.0, 1000.0 * verify_max,
                      (long long)verify_better, (long long)verify_unref);
