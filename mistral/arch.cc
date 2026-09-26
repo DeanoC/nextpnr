@@ -96,27 +96,27 @@ void IdString::initialize_arch(const BaseCtx *ctx)
 #undef X
 }
 
-CycloneV::rnode_t Arch::find_rnode(CycloneV::block_type_t bt, int x, int y, CycloneV::port_type_t port, int bi,
+CycloneV::rnode_coords Arch::find_rnode(CycloneV::block_type_t bt, int x, int y, CycloneV::port_type_t port, int bi,
                                    int pi) const
 {
-    auto pn1 = CycloneV::pnode(bt, x, y, port, bi, pi);
+    auto pn1 = CycloneV::pnode_coords{bt, x, y, port, bi, pi};
     auto rn1 = cyclonev->pnode_to_rnode(pn1);
-    if (rn1)
-        return rn1;
+    if (rn1 != 0xffffffff)
+        return cyclonev->ri2rc(rn1);
 
     if (bt == CycloneV::GPIO) {
         auto pn2 = cyclonev->p2p_to(pn1);
-        if (!pn2) {
+        if (pn2 == CycloneV::pnode_coords{}) {
             auto pnv = cyclonev->p2p_from(pn1);
             if (!pnv.empty())
                 pn2 = pnv[0];
         }
         auto pn3 = cyclonev->hmc_get_bypass(pn2);
         auto rn2 = cyclonev->pnode_to_rnode(pn3);
-        return rn2;
+        return rn2 == 0xffffffff ? CycloneV::rnode_coords{} : cyclonev->ri2rc(rn2);
     }
 
-    return 0;
+    return CycloneV::rnode_coords{};
 }
 
 WireId Arch::get_port(CycloneV::block_type_t bt, int x, int y, int bi, CycloneV::port_type_t port, int pi) const
@@ -125,7 +125,7 @@ WireId Arch::get_port(CycloneV::block_type_t bt, int x, int y, int bi, CycloneV:
     if (rn)
         return WireId(rn);
 
-    log_error("Trying to connect unknown node %s\n", CycloneV::pn2s(CycloneV::pnode(bt, x, y, port, bi, pi)).c_str());
+    log_error("Trying to connect unknown node %s\n", CycloneV::pnode_coords{bt, x, y, port, bi, pi}.to_string().c_str());
 }
 
 bool Arch::has_port(CycloneV::block_type_t bt, int x, int y, int bi, CycloneV::port_type_t port, int pi) const
@@ -156,46 +156,62 @@ Arch::Arch(ArchArgs args)
     bels_by_tile.resize(cyclonev->get_tile_sx() * cyclonev->get_tile_sy());
 
     for (auto lab_pos : cyclonev->lab_get_pos())
-        create_lab(CycloneV::pos2x(lab_pos), CycloneV::pos2y(lab_pos), /*is_mlab=*/false);
+        create_lab(lab_pos.x(), lab_pos.y(), /*is_mlab=*/false);
 
     for (auto mlab_pos : cyclonev->mlab_get_pos())
-        create_lab(CycloneV::pos2x(mlab_pos), CycloneV::pos2y(mlab_pos), /*is_mlab=*/true);
+        create_lab(mlab_pos.x(), mlab_pos.y(), /*is_mlab=*/true);
 
     for (auto gpio_pos : cyclonev->gpio_get_pos())
-        create_gpio(CycloneV::pos2x(gpio_pos), CycloneV::pos2y(gpio_pos));
+        create_gpio(gpio_pos.x(), gpio_pos.y());
 
     for (auto cmuxh_pos : cyclonev->cmuxh_get_pos())
-        create_clkbuf(CycloneV::pos2x(cmuxh_pos), CycloneV::pos2y(cmuxh_pos));
+        create_clkbuf(cmuxh_pos.x(), cmuxh_pos.y());
 
-    create_control(CycloneV::pos2x(cyclonev->ctrl_get_pos()[0]), CycloneV::pos2y(cyclonev->ctrl_get_pos()[0]));
+    create_control(cyclonev->ctrl_get_pos()[0].x(), cyclonev->ctrl_get_pos()[0].y());
 
     auto hps_pos = cyclonev->hps_get_pos();
     if (!hps_pos.empty()) {
-        create_hps_mpu_general_purpose(CycloneV::pos2x(hps_pos[CycloneV::I_HPS_MPU_GENERAL_PURPOSE]),
-                                       CycloneV::pos2y(hps_pos[CycloneV::I_HPS_MPU_GENERAL_PURPOSE]));
+        create_hps_mpu_general_purpose(hps_pos[CycloneV::I_HPS_MPU_GENERAL_PURPOSE].x(),
+                                       hps_pos[CycloneV::I_HPS_MPU_GENERAL_PURPOSE].y());
         for (int index = 0; index < 4; index++) {
             auto pos = hps_pos[CycloneV::I_HPS_PERIPHERAL_I2C + index];
-            create_hps_peripheral_i2c(CycloneV::pos2x(pos), CycloneV::pos2y(pos));
+            create_hps_peripheral_i2c(pos.x(), pos.y());
         }
         auto f2sdram = hps_pos[CycloneV::I_HPS_FPGA2SDRAM];
         create_hps_fpga2sdram(CycloneV::pos2x(f2sdram), CycloneV::pos2y(f2sdram));
     }
 
     for (auto m10k_pos : cyclonev->m10k_get_pos())
-        create_m10k(CycloneV::pos2x(m10k_pos), CycloneV::pos2y(m10k_pos));
+        create_m10k(m10k_pos.x(), m10k_pos.y());
 
     for (auto dsp_pos : cyclonev->dsp_get_pos())
-        create_dsp(CycloneV::pos2x(dsp_pos), CycloneV::pos2y(dsp_pos));
+        create_dsp(dsp_pos.x(), dsp_pos.y());
 
     create_plls();
 
     // This import takes about 5s, perhaps long term we can speed it up, e.g. defer to Mistral more...
     log_info("Initialising routing graph...\n");
     int pip_count = 0;
-    for (const auto &rnode : cyclonev->rnodes()) {
-        WireId dst_wire(rnode.id());
-        for (const auto &src : rnode.sources()) {
-            WireId src_wire(src);
+    // Sources are stored as node indices; resolve them through one flat
+    // table rather than an object lookup per pip (27 M of them), and walk
+    // the node objects in memory order rather than index order, which
+    // the library does not keep aligned
+    const uint32_t rnode_count = cyclonev->rnode_index_count();
+    std::vector<CycloneV::rnode_coords> ri2rc(rnode_count);
+    std::vector<const CycloneV::rnode_object *> objects;
+    objects.reserve(rnode_count);
+    for (uint32_t ri = 0; ri < rnode_count; ri++) {
+        const auto *rnode = cyclonev->ri2ro(ri);
+        if (rnode == nullptr)
+            continue;
+        ri2rc[ri] = rnode->rc();
+        objects.push_back(rnode);
+    }
+    std::sort(objects.begin(), objects.end());
+    for (const auto *rnode : objects) {
+        WireId dst_wire(rnode->rc());
+        for (const auto *src = rnode->sources_begin(); src != rnode->sources_end(); ++src) {
+            WireId src_wire(ri2rc.at(*src));
             wires[dst_wire].wires_uphill.push_back(src_wire);
             wires[src_wire].wires_downhill.push_back(dst_wire);
             ++pip_count;
@@ -231,13 +247,13 @@ BelId Arch::getBelByName(IdStringList name) const
     const auto &bels = bels_by_tile.at(pos2idx(x, y));
     if (z < 0 || z >= int(bels.size()) || bels.at(z).type != name[0])
         return BelId();
-    return BelId(CycloneV::xy2pos(x, y), z);
+    return BelId(CycloneV::xycoords{x, y}, z);
 }
 
 IdStringList Arch::getBelName(BelId bel) const
 {
-    int x = CycloneV::pos2x(bel.pos);
-    int y = CycloneV::pos2y(bel.pos);
+    int x = bel.pos.x();
+    int y = bel.pos.y();
     int z = bel.z & 0xFF;
 
     std::array<IdString, 4> ids{
@@ -511,7 +527,7 @@ bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
         // The mode-specific BELs are alternate views of one physical DSP
         // tile. Three M9 lanes may share a tile, while a wide multiplier owns
         // the tile and cannot coexist with another mode.
-        for (BelId other : getBelsByTile(CycloneV::pos2x(bel.pos), CycloneV::pos2y(bel.pos))) {
+        for (BelId other : getBelsByTile(bel.pos.x(), bel.pos.y())) {
             if (other == bel)
                 continue;
             const auto &other_data = bel_data(other);
@@ -571,7 +587,7 @@ WireId Arch::getWireByName(IdStringList name) const
     int x = id2int.at(name[1]);
     int y = id2int.at(name[2]);
     int z = id2int.at(name[3]);
-    return WireId(CycloneV::rnode(ty, x, y, z));
+    return WireId(CycloneV::rnode_coords{ty, x, y, z});
 }
 
 IdStringList Arch::getWireName(WireId wire) const
@@ -580,17 +596,17 @@ IdStringList Arch::getWireName(WireId wire) const
         // non-mistral wires
         std::array<IdString, 4> ids{
                 id_WIRE,
-                int2id.at(CycloneV::rn2x(wire.node)),
-                int2id.at(CycloneV::rn2y(wire.node)),
+                int2id.at(wire.node.x()),
+                int2id.at(wire.node.y()),
                 wires.at(wire).name_override,
         };
         return IdStringList(ids);
     } else {
         std::array<IdString, 4> ids{
-                rn_t2id.at(CycloneV::rn2t(wire.node)),
-                int2id.at(CycloneV::rn2x(wire.node)),
-                int2id.at(CycloneV::rn2y(wire.node)),
-                int2id.at(CycloneV::rn2z(wire.node)),
+                rn_t2id.at(wire.node.t()),
+                int2id.at(wire.node.x()),
+                int2id.at(wire.node.y()),
+                int2id.at(wire.node.z()),
         };
         return IdStringList(ids);
     }
@@ -616,7 +632,7 @@ std::vector<BelId> Arch::getBelsByTile(int x, int y) const
     std::vector<BelId> bels;
     if (x >= 0 && x < cyclonev->get_tile_sx() && y >= 0 && y < cyclonev->get_tile_sy()) {
         for (size_t i = 0; i < bels_by_tile.at(pos2idx(x, y)).size(); i++)
-            bels.push_back(BelId(CycloneV::xy2pos(x, y), i));
+            bels.push_back(BelId(CycloneV::xycoords{x, y}, i));
     }
 
     return bels;
@@ -676,7 +692,7 @@ BelId Arch::bel_by_block_idx(int x, int y, IdString type, int block_index) const
     for (size_t i = 0; i < bels.size(); i++) {
         auto &bel_data = bels.at(i);
         if (bel_data.type == type && bel_data.block_index == block_index)
-            return BelId(CycloneV::xy2pos(x, y), i);
+            return BelId(CycloneV::xycoords{x, y}, i);
     }
     return BelId();
 }
@@ -684,7 +700,7 @@ BelId Arch::bel_by_block_idx(int x, int y, IdString type, int block_index) const
 BelId Arch::add_bel(int x, int y, IdString name, IdString type)
 {
     auto &bels = bels_by_tile.at(pos2idx(x, y));
-    BelId id = BelId(CycloneV::xy2pos(x, y), bels.size());
+    BelId id = BelId(CycloneV::xycoords{x, y}, bels.size());
     all_bels.push_back(id);
     bels.emplace_back();
     auto &bel = bels.back();
@@ -712,7 +728,7 @@ WireId Arch::add_wire(int x, int y, IdString name, uint64_t flags)
         // Determine a unique ID for the wire
         int z = 0;
         WireId id;
-        while (wires.count(id = WireId(CycloneV::rnode(CycloneV::rnode_type_t((z >> 10) + 128), x, y, (z & 0x3FF)))))
+        while (wires.count(id = WireId(CycloneV::rnode_coords{CycloneV::rnode_type_t((z >> 10) + 128), x, y, (z & 0x3FF)})))
             z++;
         wires[id].name_override = name;
         wires[id].flags = flags;
@@ -802,10 +818,10 @@ void Arch::assignArchInfo()
 BoundingBox Arch::getRouteBoundingBox(WireId src, WireId dst) const
 {
     BoundingBox bounds;
-    int src_x = CycloneV::rn2x(src.node);
-    int src_y = CycloneV::rn2y(src.node);
-    int dst_x = CycloneV::rn2x(dst.node);
-    int dst_y = CycloneV::rn2y(dst.node);
+    int src_x = src.node.x();
+    int src_y = src.node.y();
+    int dst_x = dst.node.x();
+    int dst_y = dst.node.y();
     bounds.x0 = std::min(src_x, dst_x);
     bounds.y0 = std::min(src_y, dst_y);
     bounds.x1 = std::max(src_x, dst_x);

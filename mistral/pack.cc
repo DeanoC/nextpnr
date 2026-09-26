@@ -483,7 +483,7 @@ struct MistralPacker
                 fail("require a noninverted clock source");
             auto loc = ctx->getBelLocation(io->bel);
             int bi = ctx->bel_data(io->bel).block_index;
-            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode(CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1));
+            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1});
             if (!dqs || !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKOUT, 0))
                 fail("selected pad has no supported SDR register/clock path");
             if (!ctx->is_clkbuf_cell(clock->driver.cell->type)) {
@@ -567,7 +567,7 @@ struct MistralPacker
                 fail("require a noninverted clock source");
             auto loc = ctx->getBelLocation(ib->bel);
             int bi = ctx->bel_data(ib->bel).block_index;
-            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode(CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1));
+            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1});
             if (!dqs || !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKIN, 0) ||
                 !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::DATAIN, 3))
                 fail("selected pad has no supported SDR input register/clock path");
@@ -917,7 +917,7 @@ struct MistralPacker
                 fail("require a noninverted clock source");
             auto loc = ctx->getBelLocation(ib->bel);
             int bi = ctx->bel_data(ib->bel).block_index;
-            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode(CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1));
+            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1});
             if (!dqs || !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKIN, 0) ||
                 !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::DATAIN, 2) ||
                 !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::DATAIN, 3))
@@ -1027,7 +1027,7 @@ struct MistralPacker
             CellInfo *io = sink.cell;
             auto loc = ctx->getBelLocation(io->bel);
             int bi = ctx->bel_data(io->bel).block_index;
-            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode(CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1));
+            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1});
             if (!dqs || !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKOUT, 0) ||
                 !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::DATAOUT, 1))
                 fail("selected pad has no supported DDR register/clock path");
@@ -1213,7 +1213,7 @@ struct MistralPacker
 
             auto loc = ctx->getBelLocation(io->bel);
             int bi = ctx->bel_data(io->bel).block_index;
-            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode(CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1));
+            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1});
             if (!dqs || !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKOUT, 0) ||
                 !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKIN, 0) ||
                 !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::DATAOUT, 1) ||

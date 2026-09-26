@@ -523,8 +523,12 @@ void Arch::note_fes_cram_region(const std::string &spec)
     fes_cram_region = {x0, y0, x1, y1};
     fes_has_cram_region = true;
     std::vector<std::pair<uint32_t, uint32_t>> bits;
-    for (auto node : cyclonev->rnodes()) {
-        if (!cyclonev->rnode_mux_cram_bits(node.id(), bits))
+    for (uint32_t ri = 0; ri < cyclonev->rnode_index_count(); ri++) {
+        const auto *ro = cyclonev->ri2ro(ri);
+        if (ro == nullptr)
+            continue;
+        const auto node = ro->rc();
+        if (!cyclonev->rnode_mux_cram_bits(node, bits))
             log_error("Missing routing mux physical coordinates.\n");
         bool inside = true;
         for (const auto &bit : bits) {
@@ -535,7 +539,7 @@ void Arch::note_fes_cram_region(const std::string &spec)
             }
         }
         if (inside)
-            fes_cram_allowed_muxes.insert(node.id());
+            fes_cram_allowed_muxes.insert(node);
     }
     // Snapshot before cart merge can detach any original return-path stubs.
     // Exact old selections remain legal; a different source at an outside mux

@@ -218,11 +218,17 @@ struct GpuRouter
             tmp.push_back(Tmp{w, int16_t((b.x0 + b.x1) / 2), int16_t((b.y0 + b.y1) / 2),
                               uint8_t(b.x0 != b.x1 || b.y0 != b.y1)});
         }
-        // Tile-major numbering keeps the wires of a region close in memory
+        // Tile-major numbering keeps the wires of a region close in memory;
+        // ties are broken by the wire's own hash rather than the order the
+        // Arch enumerates wires in, so the numbering (and the search's
+        // tie-breaking, hence the routing) does not change with the order
+        // a chip database happens to list its nodes in
         std::stable_sort(tmp.begin(), tmp.end(), [](const Tmp &a, const Tmp &b) {
             if (a.y != b.y)
                 return a.y < b.y;
-            return a.x < b.x;
+            if (a.x != b.x)
+                return a.x < b.x;
+            return a.w.hash() < b.w.hash();
         });
         const size_t n = tmp.size();
         idx_to_wire.resize(n);
