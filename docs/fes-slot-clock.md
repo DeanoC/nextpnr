@@ -79,8 +79,14 @@ physical mux must have its entire footprint inside the supplied region,
 including additions to shared shell/cart ground and supply nets. Synthetic BEL
 edges are skipped exactly as in bitstream routing emission; they have no routing
 mux bits, and their cell configuration remains governed by the placement fence
-and frozen physical snapshots. Before emitting RBF, the compiler checks all
-routed pips again. Consumers must still compare the complete emitted CRAM and
+and frozen physical snapshots. Frozen muxes with any configuration bit outside
+the region retain their original selections and net owners, together with their
+upstream paths. These paths use `STRENGTH_LOCKED`, so orphan cleanup in router1
+(also used for GPU-router legality checking) cannot remove them when a vacant
+response input is detached. Obsolete branches entirely inside the region can
+still be trimmed. Detaching a protected physical sink fails explicitly.
+Before emitting RBF, the compiler checks both surviving protected selections
+and all routed pips. Consumers must still compare the complete emitted CRAM and
 header against their sealed shell; this routing check does not cover every
 possible cell or device setting.
 
@@ -92,3 +98,20 @@ depending on new branches from a distant shell constant tree outside the region.
 The regression replays the unchanged shell with a one-bit region and requires
 identical bytes, proving existing outside routing is retained. Invalid bounds
 and use without a routed scaffold must reject before compilation.
+
+With `BUILD_TESTS=ON`, `nextpnr-mistral-test` covers protected orphan ancestry,
+unfenced and whole-chip cleanup, and rejection of removed/replaced selections
+or changed ownership. Routed-design checks accept connected locked physical
+stubs and sinkless trees, while rejecting unlocked, disconnected, or undriven
+routing. The retained FES #237 shell/cart fixture can also be
+replayed without a GPU:
+
+```
+python3 mistral/tests/fes_frozen_cram.py --nextpnr /path/to/nextpnr-mistral \
+  --fixture /path/to/copied-fixture --output /tmp/fes-frozen-cram
+```
+
+The fixture contains `shell/routed.json`, `shell/socket.qsf`, `cart/cart.json`
+and `cart/clocks.sdc`. This runs the complete cart route and checks that the
+shell ground branch `WM.18.1.0 -> H14.19.1.0`, controlling CRAM `(1647,132)`,
+survives while its obsolete in-slot continuation is removed.
