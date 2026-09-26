@@ -724,13 +724,24 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
 
 delay_t Arch::predictDelay(BelId src_bel, IdString src_pin, BelId dst_bel, IdString dst_pin) const
 {
-    NPNR_UNUSED(src_pin);
-    NPNR_UNUSED(dst_pin);
+    // Placement-time arc prediction, calibrated against routed pip-table delays. Leaving a LAB costs about
+    // 0.65 ns along a row and about 0.9 ns once the arc changes row; further distance adds comparatively
+    // little because long wires cover it. A distance-only model makes short multi-LAB chains look nearly
+    // free, so the placer spreads deep logic across neighbouring LABs. Carry/share chains and a LUT feeding
+    // its own ALM's flip-flop use dedicated connections.
+    if (dst_pin == id_CI || dst_pin == id_SHAREIN)
+        return 20;
     Loc src_loc = getBelLocation(src_bel);
     Loc dst_loc = getBelLocation(dst_bel);
     int x_diff = std::abs(dst_loc.x - src_loc.x);
     int y_diff = std::abs(dst_loc.y - src_loc.y);
-    return 75 * x_diff + 200 * y_diff;
+    if (x_diff == 0 && y_diff == 0) {
+        if (src_pin == id_COMBOUT && dst_pin == id_DATAIN && getBelType(dst_bel) == id_MISTRAL_FF &&
+            bel_data(src_bel).lab_data.alm == bel_data(dst_bel).lab_data.alm)
+            return 20;
+        return 300;
+    }
+    return 650 + (y_diff ? 250 : 0) + 35 * x_diff + 100 * y_diff;
 }
 
 delay_t Arch::estimateDelay(WireId src, WireId dst) const
