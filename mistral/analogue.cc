@@ -149,7 +149,7 @@ DelayQuad Arch::getPipDelayCalibrated(PipId pip, const DelayQuad &table) const
     WireId src = getPipSrcWire(pip);
     if (src.is_nextpnr_created())
         return table;
-    const auto &cal = pip_type_calibration.at(CycloneV::rn2t(src.node));
+    const auto &cal = pip_type_calibration.at(src.node.t());
     if (cal.table_ps <= 0)
         return table;
     // Table entries of 0 or 20 ps are placeholders; use the observed mean.
@@ -216,7 +216,7 @@ void Arch::compute_analogue_arcs(bool observe)
         WireId src = getPipSrcWire(obs.first);
         if (src.is_nextpnr_created())
             continue;
-        auto &cal = pip_type_calibration.at(CycloneV::rn2t(src.node));
+        auto &cal = pip_type_calibration.at(src.node.t());
         cal.table_ps += getPipDelayTable(obs.first).maxDelay();
         cal.analogue_ps += obs.second;
         cal.hops++;
@@ -236,7 +236,7 @@ void Arch::analogue_relink(const std::vector<PipId> &removed, const std::vector<
             continue;
         WireId dst(p.dst);
 #ifdef MISTRAL_RNODE_UNLINK
-        cyclonev->rnode_unlink(dst.node);
+        cyclonev->rnode_unlink(cyclonev->rc2ri(dst.node));
 #else
         // The pinned libmistral declares but does not implement
         // rnode_unlink(), so a routing mux cannot be returned to its
@@ -248,7 +248,7 @@ void Arch::analogue_relink(const std::vector<PipId> &removed, const std::vector<
             WireId s = getPipSrcWire(up);
             if (s.node == p.src || s.is_nextpnr_created() || getBoundWireNet(s) != nullptr)
                 continue;
-            cyclonev->rnode_link(s.node, dst.node);
+            cyclonev->rnode_link(cyclonev->rc2ri(s.node), cyclonev->rc2ri(dst.node));
             break;
         }
 #endif
@@ -256,7 +256,7 @@ void Arch::analogue_relink(const std::vector<PipId> &removed, const std::vector<
     for (auto p : added) {
         if (was.count(p) || WireId(p.src).is_nextpnr_created() || WireId(p.dst).is_nextpnr_created())
             continue;
-        cyclonev->rnode_link(p.src, p.dst);
+        cyclonev->rnode_link(cyclonev->rc2ri(p.src), cyclonev->rc2ri(p.dst));
     }
 }
 

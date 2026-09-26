@@ -17,3 +17,18 @@ Prepare upstream PRs on separate branches based on current YosysHQ/nextpnr
 Do not target upstream with the entire accumulated Cyclone V branch.
 Shared timing fixes were prepared first; backend features can follow in
 focused changes once their implementation and validation are suitable.
+
+## Mistral library revision
+
+`mistral-stable` builds against the DeanoC/mistral `master` line with the
+rnode_index routing API (`rnode_coords` / `pnode_coords` / `xycoords`
+labels, `rnode_index` handles, `rc2ri`/`ri2rc`), master `7ed06e21` or
+later: that revision implements `rnode_unlink` (`MISTRAL_RNODE_UNLINK`)
+and carries the timing target-position and pnode/rnode lookup fixes the
+index conversion needed (DeanoC/mistral#10). The arch CI pins it.
+Revisions before the index conversion (`18db248` and earlier, the
+`rnode_t` API) no longer build. `WireId`/`PipId` carry `rnode_coords`, the
+same packed type/x/y/z label as before, so nextpnr-created wires (type
+>= 128), wire names and hashing are unchanged; the index is looked up
+where the library wants one (timing, inversion, mux linking).
+

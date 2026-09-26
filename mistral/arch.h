@@ -315,7 +315,7 @@ struct Arch : BaseArch<ArchRanges>
     std::vector<BelId> getBelsByTile(int x, int y) const override;
     Loc getBelLocation(BelId bel) const override
     {
-        return Loc(CycloneV::pos2x(bel.pos), CycloneV::pos2y(bel.pos), bel.z);
+        return Loc(bel.pos.x(), bel.pos.y(), bel.z);
     }
     BelId getBelByLocation(Loc loc) const override
     {
@@ -326,7 +326,7 @@ struct Arch : BaseArch<ArchRanges>
         auto &bels = bels_by_tile.at(pos2idx(loc.x, loc.y));
         if (loc.z < 0 || loc.z >= int(bels.size()))
             return BelId();
-        return BelId(CycloneV::xy2pos(loc.x, loc.y), loc.z);
+        return BelId(CycloneV::xycoords(loc.x, loc.y), loc.z);
     }
     IdString getBelType(BelId bel) const override; // arch.cc
     WireId getBelPinWire(BelId bel, IdString pin) const override
@@ -403,7 +403,7 @@ struct Arch : BaseArch<ArchRanges>
 
     PipId getPipByName(IdStringList name) const override;
     AllPipRange getPips() const override { return AllPipRange(wires); }
-    Loc getPipLocation(PipId pip) const override { return Loc(CycloneV::rn2x(pip.dst), CycloneV::rn2y(pip.dst), 0); }
+    Loc getPipLocation(PipId pip) const override { return Loc(pip.dst.x(), pip.dst.y(), 0); }
     IdStringList getPipName(PipId pip) const override;
     WireId getPipSrcWire(PipId pip) const override { return WireId(pip.src); };
     WireId getPipDstWire(PipId pip) const override { return WireId(pip.dst); };
@@ -542,7 +542,7 @@ struct Arch : BaseArch<ArchRanges>
 
     void add_bel_pin(BelId bel, IdString pin, PortType dir, WireId wire);
 
-    CycloneV::rnode_t find_rnode(CycloneV::block_type_t bt, int x, int y, CycloneV::port_type_t port, int bi = -1,
+    CycloneV::rnode_coords find_rnode(CycloneV::block_type_t bt, int x, int y, CycloneV::port_type_t port, int bi = -1,
                                  int pi = -1) const;
     WireId get_port(CycloneV::block_type_t bt, int x, int y, int bi, CycloneV::port_type_t port, int pi = -1) const;
     bool has_port(CycloneV::block_type_t bt, int x, int y, int bi, CycloneV::port_type_t port, int pi = -1) const;
@@ -628,7 +628,7 @@ struct Arch : BaseArch<ArchRanges>
         return y * cyclonev->get_tile_sx() + x;
     }
 
-    size_t pos2idx(CycloneV::pos_t pos) const { return pos2idx(CycloneV::pos2x(pos), CycloneV::pos2y(pos)); }
+    size_t pos2idx(CycloneV::xycoords pos) const { return pos2idx(pos.x(), pos.y()); }
 
     BelInfo &bel_data(BelId bel) { return bels_by_tile.at(pos2idx(bel.pos)).at(bel.z); }
     const BelInfo &bel_data(BelId bel) const { return bels_by_tile.at(pos2idx(bel.pos)).at(bel.z); }
@@ -688,7 +688,7 @@ struct Arch : BaseArch<ArchRanges>
     bool fes_has_cram_region = false;
     std::array<int, 4> fes_cram_region = {};
     pool<PipId> fes_frozen_pips;
-    pool<CycloneV::rnode_t> fes_cram_allowed_muxes;
+    pool<CycloneV::rnode_coords> fes_cram_allowed_muxes;
 
     // -------------------------------------------------
 

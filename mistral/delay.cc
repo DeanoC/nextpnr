@@ -525,7 +525,7 @@ DelayQuad Arch::getPipDelayTable(PipId pip) const
         return DelayQuad{20};
 
     // This is guesswork based on average of (interconnect delay / number of pips)
-    auto src_type = CycloneV::rn2t(src.node);
+    auto src_type = src.node.t();
 
     switch (src_type) {
     // Measured with the analogue model on the FES ZX81, ColecoVision and
@@ -606,7 +606,7 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
     mistral::AnalogSim::wave input_wave[2], output_wave[2];
     mistral::AnalogSim::time_interval output_delays[2];
     mistral::AnalogSim::time_interval output_delay_sum[2];
-    std::vector<std::pair<mistral::CycloneV::rnode_t, int>> outputs;
+    std::vector<std::pair<mistral::CycloneV::rnode_index, int>> outputs;
     auto temp = mistral::CycloneV::T_100;
     auto est = mistral::CycloneV::EST_SLOW;
 
@@ -653,13 +653,15 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         if (src.is_nextpnr_created())
             continue;
 
-        if (dst.is_nextpnr_created())
-            dst.node = 0;
+        // A nextpnr-created destination (bel pin) never appears among the
+        // circuit outputs; the nodes that drive one have no analogue circuit
+        const CycloneV::rnode_index src_ri = cyclonev->rc2ri(src.node);
+        const CycloneV::rnode_index dst_ri = dst.is_nextpnr_created() ? 0xffffffff : cyclonev->rc2ri(dst.node);
 
-        auto mode = cyclonev->rnode_timing_get_mode(src.node);
+        auto mode = cyclonev->rnode_timing_get_mode(src_ri);
         NPNR_ASSERT(mode != mistral::CycloneV::RTM_UNSUPPORTED);
 
-        auto inverting = cyclonev->rnode_is_inverting(src.node);
+        auto inverting = cyclonev->rnode_is_inverting(src_ri);
 
         if (mode == mistral::CycloneV::RTM_P2P) {
             if (inverting == mistral::CycloneV::INV_YES || inverting == mistral::CycloneV::INV_PROGRAMMABLE)
@@ -674,10 +676,10 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         }
 
         if (input_wave[0].empty()) {
-            cyclonev->rnode_timing_build_input_wave(src.node, temp, CycloneV::DELAY_MAX,
+            cyclonev->rnode_timing_build_input_wave(src_ri, temp, CycloneV::DELAY_MAX,
                                                     inverted ? mistral::CycloneV::RF_FALL : mistral::CycloneV::RF_RISE,
                                                     est, input_wave[0]);
-            cyclonev->rnode_timing_build_input_wave(src.node, temp, CycloneV::DELAY_MAX,
+            cyclonev->rnode_timing_build_input_wave(src_ri, temp, CycloneV::DELAY_MAX,
                                                     inverted ? mistral::CycloneV::RF_RISE : mistral::CycloneV::RF_FALL,
                                                     est, input_wave[1]);
             if (input_wave[mistral::CycloneV::RF_RISE].empty() || input_wave[mistral::CycloneV::RF_FALL].empty())
@@ -690,13 +692,13 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
                                           : mistral::CycloneV::RF_RISE;
             mistral::AnalogSim sim;
             int input = -1;
-            std::vector<std::pair<mistral::CycloneV::rnode_t, int>> outputs;
-            cyclonev->rnode_timing_build_circuit(src.node, temp, CycloneV::DELAY_MAX, actual_edge, sim, input, outputs);
+            std::vector<std::pair<mistral::CycloneV::rnode_index, int>> outputs;
+            cyclonev->rnode_timing_build_circuit(src_ri, temp, CycloneV::DELAY_MAX, actual_edge, sim, input, outputs);
 
             sim.set_input_wave(input, input_wave[edge]);
             auto o = std::find_if(
                     outputs.begin(), outputs.end(),
-                    [&](std::pair<mistral::CycloneV::rnode_t, int> output) { return output.first == dst.node; });
+                    [&](std::pair<mistral::CycloneV::rnode_index, int> output) { return output.first == dst_ri; });
             NPNR_ASSERT(o != outputs.end());
 
             output_wave[edge].clear();
@@ -733,10 +735,10 @@ delay_t Arch::predictDelay(BelId src_bel, IdString src_pin, BelId dst_bel, IdStr
 
 delay_t Arch::estimateDelay(WireId src, WireId dst) const
 {
-    int x0 = CycloneV::rn2x(src.node);
-    int y0 = CycloneV::rn2y(src.node);
-    int x1 = CycloneV::rn2x(dst.node);
-    int y1 = CycloneV::rn2y(dst.node);
+    int x0 = src.node.x();
+    int y0 = src.node.y();
+    int x1 = dst.node.x();
+    int y1 = dst.node.y();
     int x_diff = std::abs(x1 - x0);
     int y_diff = std::abs(y1 - y0);
     return 75 * x_diff + 200 * y_diff;
@@ -765,13 +767,13 @@ void Arch::dump_analogue_arcs(const std::string &path) const
             for (size_t h = 0; h < hops.size(); h++) {
                 WireId s = getPipSrcWire(hops[h].pip), t = getPipDstWire(hops[h].pip);
                 auto tn = [&](WireId w) -> const char * {
-                    return w.is_nextpnr_created() ? "NPNR" : CycloneV::rnode_type_names[CycloneV::rn2t(w.node)];
+                    return w.is_nextpnr_created() ? "NPNR" : CycloneV::rnode_type_names[w.node.t()];
                 };
                 fprintf(f, "%s\t%d\t%zu\t%s\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%d\n", ni->name.c_str(getCtx()),
-                        usr_idx.idx(), h, tn(s), s.is_nextpnr_created() ? -1 : int(CycloneV::rn2x(s.node)),
-                        s.is_nextpnr_created() ? -1 : int(CycloneV::rn2y(s.node)), tn(t),
-                        t.is_nextpnr_created() ? -1 : int(CycloneV::rn2x(t.node)),
-                        t.is_nextpnr_created() ? -1 : int(CycloneV::rn2y(t.node)), int(hops[h].table),
+                        usr_idx.idx(), h, tn(s), s.is_nextpnr_created() ? -1 : int(s.node.x()),
+                        s.is_nextpnr_created() ? -1 : int(s.node.y()), tn(t),
+                        t.is_nextpnr_created() ? -1 : int(t.node.x()),
+                        t.is_nextpnr_created() ? -1 : int(t.node.y()), int(hops[h].table),
                         int(hops[h].rise), int(hops[h].fall));
             }
         }
