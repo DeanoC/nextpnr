@@ -2408,18 +2408,19 @@ struct GpuRouter
                 job.out.push_back(std::move(t));
             }
         }
-        // Whole-tree variants for nets with several sinks: greedy sink-by-
-        // sink routing leaves the critical sink attached to a tree built
-        // for the others, so rebuild every sink with the failing one first
-        // (100), and once as a star with every sink routed from the source
-        // (101), which is electrically clean at the cost of more wires.
+        // Whole-tree variants for nets with several sinks that still have
+        // room within `count`: greedy sink-by-sink routing leaves the
+        // critical sink attached to a tree built for the others, so rebuild
+        // every sink with the failing one first (100), and once as a star
+        // with every sink routed from the source (101), which is
+        // electrically clean at the cost of more wires.
         task_blocked.clear();
         for (int tree = 0; tree < 2; tree++) {
             std::vector<HostTask> tasks;
             std::vector<size_t> task_job;
             for (size_t i = 0; i < jobs.size(); i++) {
                 auto &job = jobs[i];
-                if (job.net < 0)
+                if (job.net < 0 || int(job.out.size()) >= count)
                     continue;
                 NetInfo *ni = nets_by_udata.at(job.net);
                 auto &nd = nets.at(job.net);

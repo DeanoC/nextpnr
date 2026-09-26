@@ -163,9 +163,10 @@ class GpuCandidateRouter
     // router's own choice), 1 routes from the source only, then ones
     // avoiding the multi-tile wires of every earlier candidate while that
     // still finds new routes, then one that avoids each multi-tile wire of
-    // the route the arc has now. Nets with several sinks also get whole-tree
-    // candidates (variant 100: every sink rebuilt, the failing one first;
-    // 101: a star, every sink from the source). The sinks are searched
+    // the route the arc has now, and, while still below `count`, for a net
+    // with several sinks whole-tree candidates (variant 100: every sink
+    // rebuilt, the failing one first; 101: a star, every sink from the
+    // source). The sinks are searched
     // together, one variant per launch; a second sink of the same net gets
     // no candidates in this call. The route the net already has and repeats are left
     // out. The nets' routing in the Arch is left unchanged; candidates of

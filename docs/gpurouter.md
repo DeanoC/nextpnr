@@ -209,7 +209,8 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    others after it by slack, and a star with every sink routed from the
    source (greedy sink-by-sink routing leaves the critical sink attached
    to a tree built for the others; the star is electrically clean at the
-   cost of wires). The route the net already has and repeats are dropped. The candidate router is a
+   cost of wires), while the sink is still below `analogueCandidates`.
+   The route the net already has and repeats are dropped. The candidate router is a
    `GpuRouter` set up from what the Arch has bound (every other net's wires
    are reserved for it), so a candidate is legal against the rest of the
    design. All sinks of a pass are searched together, one variant per
@@ -230,8 +231,8 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    that changes nothing goes straight on to the re-route.
 
    With a libmistral that defines `MISTRAL_RNODE_UNLINK` (DeanoC/mistral
-   `feat/rnode-unlink` implements the long-declared `rnode_unlink`), a mux
-   the net no longer drives is returned to its default. The pinned library
+   master since 2c28969d implements the long-declared `rnode_unlink`), a
+   mux the net no longer drives is returned to its default. The pinned library
    lacks it, so there the mux is parked on an input no net drives with
    `rnode_link`, which likewise takes it off the load of the wire the net
    left; on the ZX81 both give the same candidate decisions. This state is
