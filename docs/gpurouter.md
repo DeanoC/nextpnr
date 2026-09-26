@@ -121,10 +121,21 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    an overused wire are unfrozen, all but the most critical per wire: a
    frozen arc is never ripped up, so two of them on one wire (which the
    peer-group and displacement passes can leave behind) would otherwise
-   stall until `maxIter`. Likewise an arc that finds no route at all, even
+   stall until `maxIter`. Once the overused set is already small, a frozen
+   arc that is the only frozen user of an overused wire is unfrozen too:
+   otherwise the movable net is ripped and put back on that wire forever.
+   Likewise an arc that finds no route at all, even
    without a bounding box, is routed once more ignoring soft reservations
    and the frozen arcs it then displaces are unfrozen whatever their
-   slack, instead of the run failing.
+   slack, instead of the run failing. When four or fewer wires have stayed
+   overused for 30 iterations, or the boost is already at its ceiling on a
+   plateau of at most eight wires, the stuck nets are routed one at a time
+   with soft reservations ignored. Frozen arcs on a path that avoids the
+   overuse are unfrozen, whatever their slack. If that does not clear the
+   wires, a re-negotiation started by timing repair restores the legal
+   pre-repair routing and stops, instead of running on to `maxIter`. The
+   initial negotiation still fails the run, because there is no earlier
+   legal routing to restore.
 5. **Lanes.** A batch first runs in the *small* lane (many concurrent nets,
    2^16-entry hash tables). Arcs whose search outgrows that scratch retry in
    the *large* lane (few concurrent nets, 2^22 entries, enough for the whole

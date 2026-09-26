@@ -23,6 +23,7 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
+    TEST_SOURCES tests/fes_cram.cc
     MAIN_SOURCE  main.cc
 )
 

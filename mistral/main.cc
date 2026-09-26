@@ -64,11 +64,7 @@ void MistralCommandHandler::customBitstream(Context *ctx)
 {
     if (vm.count("rbf")) {
         std::string filename = vm["rbf"].as<std::string>();
-        for (const auto &item : ctx->nets)
-            for (const auto &wire : item.second->wires)
-                if (wire.second.pip != PipId() && !ctx->fes_pip_preserves_cram(wire.second.pip))
-                    log_error("Routed pip %s violates frozen CRAM region.\n",
-                              ctx->getPipName(wire.second.pip).str(ctx).c_str());
+        ctx->fes_validate_cram_routing();
         ctx->build_bitstream();
         std::vector<uint8_t> data;
         ctx->cyclonev->rbf_save(data);

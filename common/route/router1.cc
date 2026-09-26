@@ -351,7 +351,11 @@ struct Router1
 
             for (auto &it : net_info->wires) {
                 WireId w = it.first;
-                log_assert(valid_wires_for_net.count(w));
+                // setup() deliberately retains LOCKED physical routing even
+                // when it has no logical sink (for example a frozen scaffold
+                // branch). Only removable routing must belong to an arc.
+                if (it.second.strength < STRENGTH_LOCKED)
+                    log_assert(valid_wires_for_net.count(w));
             }
         }
 
@@ -1320,8 +1324,14 @@ bool Context::checkRoutedDesign() const
         if (net_info->users.empty()) {
             if (ctx->debug)
                 log("  net without sinks\n");
-            log_assert(net_info->wires.empty());
-            continue;
+            if (net_info->wires.empty())
+                continue;
+            // Locked physical routes may remain even after their last logical
+            // sink is removed. They must still form a connected, driven tree.
+            for (const auto &wire : net_info->wires) {
+                if (wire.second.strength < STRENGTH_LOCKED)
+                    return false;
+            }
         }
 
         bool found_unrouted = false;
@@ -1339,6 +1349,7 @@ bool Context::checkRoutedDesign() const
         for (auto &it : net_info->wires) {
             WireId w = it.first;
             PipId p = it.second.pip;
+            db.emplace(w, std::make_unique<ExtraWireInfo>());
 
             if (p != PipId()) {
                 log_assert(ctx->getPipDstWire(p) == w);
@@ -1350,6 +1361,8 @@ bool Context::checkRoutedDesign() const
         if (net_info->constant_value == IdString()) {
             if (src_wire == WireId()) {
                 log_assert(net_info->driver.cell == nullptr);
+                if (!net_info->wires.empty())
+                    return false;
                 if (ctx->debug)
                     log("  undriven and unrouted\n");
                 continue;
@@ -1401,7 +1414,9 @@ bool Context::checkRoutedDesign() const
                 } else {
                     if (ctx->debug)
                         log("  %*s=> stub\n", 2 * num, "");
-                    found_stub = true;
+                    auto bound = net_info->wires.find(w);
+                    if (bound == net_info->wires.end() || bound->second.strength < STRENGTH_LOCKED)
+                        found_stub = true;
                 }
             }
         };
