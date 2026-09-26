@@ -1755,6 +1755,7 @@ struct GpuRouter
     {
         std::vector<int> stuck(failed_nets.begin(), failed_nets.end());
         std::sort(stuck.begin(), stuck.end());
+        std::vector<int> rerouted;
         int opened = 0;
         pool<int> touched;
         ignore_soft = true;
@@ -1792,6 +1793,7 @@ struct GpuRouter
                           "%d wires expanded).\n",
                           a.first, a.second, ctx->nameOf(ni), last_fail_status, last_fail_reason, last_fail_expanded);
             }
+            rerouted.push_back(n);
             for (auto &a : t.arcs) {
                 for (auto &v : list_soft_blockers(n, a)) {
                     auto &ad = nets.at(v.first).arcs.at(v.second.first).at(v.second.second);
@@ -1808,6 +1810,12 @@ struct GpuRouter
             rebuild_soft_reservations(o);
         if (!touched.empty())
             flush_state();
+        // This iteration already published delays for the pre-escape trees.
+        // With --tmg-ripup the slack check below uses those delays, so a net
+        // whose path just moved has to be refreshed or a new route is judged
+        // by the one it replaced.
+        if (!rerouted.empty())
+            update_route_delays(rerouted);
         recount_overuse();
         return opened;
     }
