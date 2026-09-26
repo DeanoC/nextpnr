@@ -219,7 +219,7 @@ std::unique_ptr<CellInfo> GowinPacker::alu_add_cin_block(Context *ctx, CellInfo 
     cin_ci->connectPort(id_I2, ctx->nets.at(ctx->id("$PACKER_VCC")).get());
     cin_ci->addInput(id_I0);
     cin_ci->connectPort(id_I0, cin_net);
-    cin_ci->setParam(id_RAW_ALU_LUT, 0x505a); // 0101_0000_0101_1010 -> ignore I1 and I3, out carry = I0
+    cin_ci->setParam(id_RAW_ALU_LUT, 0x000a); // 0000_0000_0000_1010 -> ignore I1, I3 and CIN, out carry = I0
     cin_ci->setParam(id_CIN_NETTYPE, Property("LOGIC"));
     return cin_ci;
 }
@@ -393,7 +393,7 @@ void GowinPacker::pack_alus(void)
                         ci->constr_z = alu_chain_len % 6;
                     }
                     // optimize only MODE=2 for now
-                    if (ci->params.at(id_ALU_MODE).as_int64() == 2) {
+                    if (ci->attrs.count(id_RAW_ALU_LUT) == 0 && ci->params.at(id_ALU_MODE).as_int64() == 2) {
                         optimize_alu_lut(ci, 2);
                     }
                     // XXX I2 is pin C which must be set to 1 for all ALU modes except MUL

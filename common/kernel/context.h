@@ -54,8 +54,12 @@ struct Context : Arch, DeterministicRNG
 
     // provided by router1.cc
     bool checkRoutedDesign() const;
-    bool getActualRouteDelay(WireId src_wire, WireId dst_wire, delay_t *delay = nullptr,
-                             dict<WireId, PipId> *route = nullptr, bool useEstimate = true);
+
+    // --------------------------------------------------------------
+
+    // Look up the IO cell a pin constraint refers to. Handles removing the [0] if need be, because a
+    // 1-bit vector and a scalar are equivalent in the JSON.
+    CellInfo *getCellForPinConstraint(const std::string &name);
 
     // --------------------------------------------------------------
     // Dispatch to the Arch API or pseudo-cell API accordingly

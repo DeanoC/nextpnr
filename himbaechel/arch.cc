@@ -416,7 +416,7 @@ const std::vector<std::string> Arch::availableRouters = {"default", "router1", "
 
 void Arch::set_fast_pip_delays(bool fast_mode)
 {
-    if (fast_mode && !fast_pip_delays) {
+    if (!fast_mode && fast_pip_delays) {
         // Have to rebuild these structures
         drive_res.clear();
         load_cap.clear();
