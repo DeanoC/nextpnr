@@ -204,8 +204,12 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    router's own choice (attach anywhere on the tree), a route from the
    source only, then ones avoiding every multi-tile wire of the earlier
    candidates while that still finds new routes, then one avoiding each
-   multi-tile wire of the route the arc has now; the route the net already
-   has and repeats are dropped. The candidate router is a
+   multi-tile wire of the route the arc has now; for a net with several
+   sinks also the whole tree rebuilt with the failing sink first and the
+   others after it by slack, and a star with every sink routed from the
+   source (greedy sink-by-sink routing leaves the critical sink attached
+   to a tree built for the others; the star is electrically clean at the
+   cost of wires). The route the net already has and repeats are dropped. The candidate router is a
    `GpuRouter` set up from what the Arch has bound (every other net's wires
    are reserved for it), so a candidate is legal against the rest of the
    design. All sinks of a pass are searched together, one variant per

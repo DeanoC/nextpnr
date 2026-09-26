@@ -2408,9 +2408,100 @@ struct GpuRouter
                 job.out.push_back(std::move(t));
             }
         }
+        // Whole-tree variants for nets with several sinks: greedy sink-by-
+        // sink routing leaves the critical sink attached to a tree built
+        // for the others, so rebuild every sink with the failing one first
+        // (100), and once as a star with every sink routed from the source
+        // (101), which is electrically clean at the cost of more wires.
+        task_blocked.clear();
+        for (int tree = 0; tree < 2; tree++) {
+            std::vector<HostTask> tasks;
+            std::vector<size_t> task_job;
+            for (size_t i = 0; i < jobs.size(); i++) {
+                auto &job = jobs[i];
+                if (job.net < 0)
+                    continue;
+                NetInfo *ni = nets_by_udata.at(job.net);
+                auto &nd = nets.at(job.net);
+                if (ni->users.entries() < 2)
+                    continue;
+                restore_net(job.net, job.saved);
+                nd.bb = job.wide;
+                // failing sink first, then the others by slack
+                std::vector<std::pair<float, int>> order;
+                for (auto usr : ni->users.enumerate()) {
+                    if (usr.index.idx() == job.user)
+                        continue;
+                    order.emplace_back(timing_driven ? tmg.get_setup_slack(CellPortKey(usr.value)) : 0.0f,
+                                       usr.index.idx());
+                }
+                std::stable_sort(order.begin(), order.end());
+                HostTask t;
+                t.net = job.net;
+                auto add_user = [&](int u) {
+                    for (size_t j = 0; j < nd.arcs.at(u).size(); j++) {
+                        auto &ad = nd.arcs.at(u).at(j);
+                        if (ad.pre_routed && !ad.routed)
+                            continue;
+                        ripup_arc(nd, ad);
+                        t.arcs.emplace_back(u, int(j));
+                    }
+                };
+                add_user(job.user);
+                for (auto &o : order)
+                    add_user(o.second);
+                if (t.arcs.size() < 2)
+                    continue;
+                tasks.push_back(std::move(t));
+                task_job.push_back(i);
+            }
+            flush_state();
+            if (tasks.empty())
+                continue;
+            attach_source_only = (tree == 1);
+            std::vector<HostTask> retry = route_tasks(tasks, true, false);
+            flush_state();
+            if (!retry.empty())
+                retry = route_tasks(retry, true, true);
+            flush_state();
+            if (!retry.empty() && cfg.candidate_unbounded)
+                retry = route_tasks(retry, false, true);
+            flush_state();
+            attach_source_only = false;
+            pool<int> failed;
+            for (auto &r : retry)
+                failed.insert(r.net);
+            for (size_t k = 0; k < task_job.size(); k++) {
+                auto &job = jobs[task_job[k]];
+                auto &nd = nets.at(job.net);
+                if (failed.count(job.net))
+                    continue;
+                bool complete = true;
+                for (auto &a : tasks[k].arcs)
+                    complete &= nd.arcs.at(a.first).at(a.second).routed;
+                if (!complete)
+                    continue;
+                std::vector<int32_t> wires;
+                for (auto &w : nd.wires)
+                    wires.push_back(w.first);
+                std::sort(wires.begin(), wires.end());
+                bool dup = false;
+                for (auto &sw : job.seen)
+                    dup |= (sw == wires);
+                if (dup)
+                    continue;
+                job.seen.push_back(std::move(wires));
+                GpuRouteTree t;
+                t.variant = 100 + tree;
+                for (auto &w : nd.wires)
+                    t.wires.emplace_back(idx_to_wire.at(w.first), w.second.pip);
+                for (auto &a : job.arcs)
+                    t.route_delay = std::max(t.route_delay, get_route_delay(nd, nd.arcs.at(a.first).at(a.second)));
+                job.out.push_back(std::move(t));
+            }
+        }
         repair_mode = false;
         candidate_mode = false;
-        task_blocked.clear();
         for (size_t i = 0; i < jobs.size(); i++) {
             auto &job = jobs[i];
             if (job.net < 0)
