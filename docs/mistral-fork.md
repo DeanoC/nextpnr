@@ -1,16 +1,18 @@
 # Mistral fork branches
 
-`mistral-stable` is the integration branch for the Cyclone V DSP/PLL compiler
-work. Feature PRs in DeanoC/nextpnr target this branch. It was renamed from
-`feat/mistral-cyclonev-dsp-bel` after PR #10, without changing its history.
-The branch is the accumulated development line; individual features retain
-the validation limits documented in their tests.
+`main` is the integration branch for the Cyclone V compiler work in
+DeanoC/nextpnr: feature PRs target `main`. Until 2026-09-26 that line was
+called `mistral-stable` (renamed from `feat/mistral-cyclonev-dsp-bel` after
+PR #10); it was merged into `main` and deleted, so every commit the FES
+toolchain lock has ever pinned remains reachable from `main`. The branch is
+the accumulated development line; individual features retain the
+validation limits documented in their tests.
 
-`main` remains the upstream reference. The integration line started at the
-locked upstream commit `7d4f72c0aabc15da932748a54e82a6ff7b41921e`; it does not
-silently follow upstream changes. Toolchain consumers select immutable commit
-hashes, not branch names. Updating misteross locks or FES pins is a separate
-integration change after review and the appropriate validation.
+The integration line started at the locked upstream commit
+`7d4f72c0aabc15da932748a54e82a6ff7b41921e`; it does not silently follow
+upstream YosysHQ/nextpnr changes. Toolchain consumers select immutable
+commit hashes, not branch names. Updating misteross locks or FES pins is a
+separate integration change after review and the appropriate validation.
 
 Prepare upstream PRs on separate branches based on current YosysHQ/nextpnr
 `main`, carrying only the relevant change and a reproducible regression.
@@ -20,7 +22,7 @@ focused changes once their implementation and validation are suitable.
 
 ## Mistral library revision
 
-`mistral-stable` builds against the DeanoC/mistral `master` line with the
+`main` builds against the DeanoC/mistral `master` line with the
 rnode_index routing API (`rnode_coords` / `pnode_coords` / `xycoords`
 labels, `rnode_index` handles, `rc2ri`/`ri2rc`), master `7ed06e21` or
 later: that revision implements `rnode_unlink` (`MISTRAL_RNODE_UNLINK`)
