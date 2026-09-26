@@ -235,8 +235,9 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    that changes nothing goes straight on to the re-route.
 
    With a libmistral that defines `MISTRAL_RNODE_UNLINK` (DeanoC/mistral
-   master since 2c28969d implements the long-declared `rnode_unlink`), a
-   mux the net no longer drives is returned to its default. The pinned library
+   master since 2c28969d implements the long-declared `rnode_unlink`;
+   `mistral-stable` now requires 7ed06e21 or later), a mux the net no
+   longer drives is returned to its default. The pinned library
    lacks it, so there the mux is parked on an input no net drives with
    `rnode_link`, which likewise takes it off the load of the wire the net
    left; on the ZX81 both give the same candidate decisions. This state is
