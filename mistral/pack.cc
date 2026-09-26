@@ -2501,11 +2501,12 @@ struct MistralPacker
                 if (freq1 == ci->params.end() || !freq1->second.is_string)
                     log_error("PLL '%s': explicit output_clock_frequency1 is required.\n", ctx->nameOf(ci));
                 output1_hz = mistral_pll::parse_output_hz(freq1->second.as_string());
-                if (shifted && (fractional || (output_hz != 25000000 && output_hz != 50000000 && output_hz != 100000000) ||
+                if (shifted && (fractional || (output_hz != 25000000 && output_hz != 50000000 &&
+                                                output_hz != 100000000 && output_hz != 130000000) ||
                                 output1_hz != output_hz || (output_hz != 25000000 && reference_mhz != 50) ||
                                 duty0 != 50 || duty1 != 50))
                     log_error("PLL '%s': phase profile requires equal integer 25 MHz outputs with a checked reference, "
-                              "or 50/100 MHz outputs with a 50 MHz reference, and 50 percent duty.\n",
+                              "or 50/100/130 MHz outputs with a 50 MHz reference, and 50 percent duty.\n",
                               ctx->nameOf(ci));
                 auto dual = fractional ? mistral_pll::select_fractional_dual(output_hz, output1_hz, reference_mhz) :
                                          mistral_pll::select_dual_hz(output_hz, output1_hz, reference_mhz, duty0, duty1);
@@ -2513,7 +2514,7 @@ struct MistralPacker
                     log_error("PLL '%s': fractional-N dual selector requires a 50 MHz reference and exact shared-VCO output counters in the bounded 400-500 MHz window.\n",
                               ctx->nameOf(ci));
                 if (!dual)
-                    log_error("PLL '%s': unsupported dual PLL frequencies/duties; require exact decimal MHz from 1 to 100 with exact dividers from one checked 300/320/400/520 MHz tuple.\n", ctx->nameOf(ci));
+                    log_error("PLL '%s': unsupported dual PLL frequencies/duties; require a checked 1-100 MHz tuple or the 130/130 MHz profile.\n", ctx->nameOf(ci));
                 config = dual->feedback;
                 c1 = dual->c1;
                 if (!ci->getPort(ctx->id("outclk[0]")) || ci->ports.count(id_outclk))
