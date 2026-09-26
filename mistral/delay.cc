@@ -736,9 +736,12 @@ delay_t Arch::predictDelay(BelId src_bel, IdString src_pin, BelId dst_bel, IdStr
     int x_diff = std::abs(dst_loc.x - src_loc.x);
     int y_diff = std::abs(dst_loc.y - src_loc.y);
     if (x_diff == 0 && y_diff == 0) {
-        if (src_pin == id_COMBOUT && dst_pin == id_DATAIN && getBelType(dst_bel) == id_MISTRAL_FF &&
-            bel_data(src_bel).lab_data.alm == bel_data(dst_bel).lab_data.alm)
-            return 20;
+        // Only LUT i reaches FFs 2i and 2i+1 directly; the other half's FFs need the E/F input.
+        if (src_pin == id_COMBOUT && dst_pin == id_DATAIN && getBelType(dst_bel) == id_MISTRAL_FF) {
+            const auto &src = bel_data(src_bel).lab_data, &dst = bel_data(dst_bel).lab_data;
+            if (src.alm == dst.alm && src.idx == dst.idx / 2)
+                return 20;
+        }
         return 300;
     }
     return 650 + (y_diff ? 250 : 0) + 35 * x_diff + 100 * y_diff;
