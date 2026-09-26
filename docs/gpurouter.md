@@ -79,7 +79,10 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 
 ### Host side (`common/route/gpurouter.cc`)
 
-1. **Graph flattening.** All wires are numbered tile-major and the pips are
+1. **Graph flattening.** All wires are numbered tile-major (ties within a
+   tile by the wire's own hash, not by the order the Arch enumerates
+   wires, so the numbering and the search's tie-breaking do not change
+   with the order a chip database lists its nodes in) and the pips are
    stored as a CSR adjacency list with a per-pip base cost
    (`getPipDelay + getWireDelay + epsilon`, in ns; negative when the
    architecture forbids the pip). Each wire carries its notional location,

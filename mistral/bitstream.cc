@@ -55,13 +55,13 @@ struct MistralBitgen
     Context *ctx;
     CycloneV *cv;
 
-    using rnode_t = CycloneV::rnode_t;
-    using pnode_t = CycloneV::pnode_t;
-    using pos_t = CycloneV::pos_t;
+    using rnode_coords = CycloneV::rnode_coords;
+    using pnode_coords = CycloneV::pnode_coords;
+    using xycoords = CycloneV::xycoords;
     using block_type_t = CycloneV::block_type_t;
     using port_type_t = CycloneV::port_type_t;
 
-    void set_lab_clock_inversion(block_type_t block, pos_t pos, CycloneV::bmux_type_t mux)
+    void set_lab_clock_inversion(block_type_t block, xycoords pos, CycloneV::bmux_type_t mux)
     {
 #ifndef MISTRAL_CORRECT_LAB_CLOCK_MUXES
         log_error("Inverted LAB/MLAB clocks require Mistral with corrected CLKx_INV/CLKx_SEL tables. "
@@ -70,12 +70,12 @@ struct MistralBitgen
         NPNR_ASSERT(cv->bmux_b_set(block, pos, mux, 0, true));
     }
 
-    rnode_t find_rnode(block_type_t bt, pos_t pos, port_type_t port, int bi = -1, int pi = -1) const
+    rnode_coords find_rnode(block_type_t bt, xycoords pos, port_type_t port, int bi = -1, int pi = -1) const
     {
-        auto pn1 = CycloneV::pnode(bt, pos, port, bi, pi);
+        auto pn1 = CycloneV::pnode_coords{bt, pos, port, bi, pi};
         auto rn1 = cv->pnode_to_rnode(pn1);
-        if (rn1)
-            return rn1;
+        if (rn1 != 0xffffffff)
+            return cv->ri2rc(rn1);
 
         if (bt == CycloneV::GPIO) {
             auto pn2 = cv->p2p_to(pn1);
@@ -86,10 +86,10 @@ struct MistralBitgen
             }
             auto pn3 = cv->hmc_get_bypass(pn2);
             auto rn2 = cv->pnode_to_rnode(pn3);
-            return rn2;
+            return rn2 == 0xffffffff ? CycloneV::rnode_coords{} : cv->ri2rc(rn2);
         }
 
-        return 0;
+        return CycloneV::rnode_coords{};
     }
 
     void options()
@@ -114,14 +114,14 @@ struct MistralBitgen
                 // specially
                 if (src.is_nextpnr_created() || dst.is_nextpnr_created())
                     continue;
-                cv->rnode_link(src.node, dst.node);
+                cv->rnode_link(cv->rc2ri(src.node), cv->rc2ri(dst.node));
             }
         }
     }
 
     void write_dsp_block(int x, int y)
     {
-        auto pos = CycloneV::xy2pos(x, y);
+        auto pos = CycloneV::xycoords{x, y};
 
         struct DspBinding
         {
@@ -348,7 +348,7 @@ struct MistralBitgen
                           (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
         bool is_input = (ci->type.in(id_MISTRAL_IB, id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR) ||
                          (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr));
-        auto pos = CycloneV::xy2pos(x, y);
+        auto pos = CycloneV::xycoords{x, y};
         // TODO: configurable pull, IO standard, etc
         cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_WEAK_PULLUP, bi, false);
         if (is_output) {
@@ -360,56 +360,57 @@ struct MistralBitgen
                 cv->bmux_m_set(CycloneV::GPIO, pos, CycloneV::IOCSR_STD, bi, CycloneV::DIS);
 
             // Output gpios must also bypass things in the associated dqs
-            auto dqs = cv->p2p_to(CycloneV::pnode(CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1));
-            if (dqs && ci->type.in(id_MISTRAL_DDROUT, id_MISTRAL_DDRBIDIR)) {
-                auto dp = CycloneV::pn2p(dqs);
-                int lane = CycloneV::pn2bi(dqs);
+            auto dqs = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
+            const bool has_dqs = dqs != CycloneV::pnode_coords{};
+            if (has_dqs && ci->type.in(id_MISTRAL_DDROUT, id_MISTRAL_DDRBIDIR)) {
+                auto dp = dqs.p();
+                int lane = dqs.bi();
                 NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_MODE_SEL, lane, CycloneV::DDR));
                 NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_OUTPUT_SEL, lane, CycloneV::SEL_SDR_DELAY));
                 NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RBOE_LVL_FR_CLK_EN, lane, true));
                 if (ci->getPort(id_D_H) != nullptr) {
                     // Fabric data is already driven on the two dedicated
                     // lanes; leave both data paths non-inverted.
-                    NPNR_ASSERT(cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 0), false));
-                    NPNR_ASSERT(cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 1), false));
+                    NPNR_ASSERT(cv->inv_set(cv->rc2ri(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 0)), false));
+                    NPNR_ASSERT(cv->inv_set(cv->rc2ri(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 1)), false));
                 } else {
                     bool high = bool_or_default(ci->params, id_DDR_HIGH, true);
-                    cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 0), !high);
-                    cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 1), high);
+                    cv->inv_set(cv->rc2ri(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 0)), !high);
+                    cv->inv_set(cv->rc2ri(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 1)), high);
                 }
-            } else if (dqs && ci->type == id_MISTRAL_SDROUT) {
-                auto dp = CycloneV::pn2p(dqs);
-                int lane = CycloneV::pn2bi(dqs);
+            } else if (has_dqs && ci->type == id_MISTRAL_SDROUT) {
+                auto dp = dqs.p();
+                int lane = dqs.bi();
                 NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_OUTPUT_SEL, lane, CycloneV::SEL_SDR));
                 NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::OEREG_HR_CLK_EN, lane, true));
                 NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RBOE_LVL_FR_CLK_EN, lane, true));
                 NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::RB_T9_SEL_EREG_CFF_DELAY, lane, 0x1f));
                 NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::RB_T9_SEL_OREG_DFF_DELAY, lane, 0x1f));
-            } else if (dqs) {
-                cv->bmux_m_set(CycloneV::DQS16, CycloneV::pn2p(dqs), CycloneV::INPUT_REG4_SEL, CycloneV::pn2bi(dqs),
+            } else if (has_dqs) {
+                cv->bmux_m_set(CycloneV::DQS16, dqs.p(), CycloneV::INPUT_REG4_SEL, dqs.bi(),
                                CycloneV::SEL_LOCKED_DPA);
-                cv->bmux_r_set(CycloneV::DQS16, CycloneV::pn2p(dqs), CycloneV::RB_T9_SEL_EREG_CFF_DELAY,
-                               CycloneV::pn2bi(dqs), 0x1f);
+                cv->bmux_r_set(CycloneV::DQS16, dqs.p(), CycloneV::RB_T9_SEL_EREG_CFF_DELAY,
+                               dqs.bi(), 0x1f);
             }
         }
         if (ci->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR)) {
-            auto dqs = cv->p2p_to(CycloneV::pnode(CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1));
+            auto dqs = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
             NPNR_ASSERT(dqs);
-            auto dp = CycloneV::pn2p(dqs);
-            int lane = CycloneV::pn2bi(dqs);
+            auto dp = dqs.p();
+            int lane = dqs.bi();
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RB_FIFO_WCLK_EN, lane, true));
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RB_FIFO_WCLK_INV, lane, true));
         }
         // There seem to be two mirrored OEIN inversion bits for constant OE for inputs/outputs. This might be to
         // prevent a single bitflip from turning inputs to outputs and messing up other devices on the boards, notably
         // ECP5 does similar. OEIN.0 inverted for outputs; OEIN.1 for inputs
-        cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::OEIN, bi, 0), is_output);
-        cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::OEIN, bi, 1), !is_output);
+        cv->inv_set(cv->rc2ri(find_rnode(CycloneV::GPIO, pos, CycloneV::OEIN, bi, 0)), is_output);
+        cv->inv_set(cv->rc2ri(find_rnode(CycloneV::GPIO, pos, CycloneV::OEIN, bi, 1)), !is_output);
     }
 
     void write_clkbuf_cell(CellInfo *ci, int x, int y, int bi)
     {
-        auto pos = CycloneV::xy2pos(x, y);
+        auto pos = CycloneV::xycoords{x, y};
         auto net = ci->getPort(id_A);
         auto input = ctx->getBelPinWire(ci->bel, id_A);
         int select = 0x1b;
@@ -431,7 +432,7 @@ struct MistralBitgen
 
     void write_pll_cell(CellInfo *ci, int x, int y)
     {
-        auto pos = CycloneV::xy2pos(x, y);
+        auto pos = CycloneV::xycoords{x, y};
         auto raw = [&](CycloneV::bmux_type_t mux, uint64_t value, int index = 0) {
             NPNR_ASSERT(cv->bmux_r_set(CycloneV::FPLL, pos, mux, index, value));
         };
@@ -554,19 +555,19 @@ struct MistralBitgen
         flag(CycloneV::FPLL_ENABLE, true);
         // Quartus uses the default (non-inverted) routing bit for active-high
         // fabric rst. Only the unconnected, folded-low case needs inversion.
-        NPNR_ASSERT(cv->inv_set(find_rnode(CycloneV::FPLL, pos, CycloneV::NRESET0),
+        NPNR_ASSERT(cv->inv_set(cv->rc2ri(find_rnode(CycloneV::FPLL, pos, CycloneV::NRESET0)),
                                ci->getPort(id_rst) == nullptr));
         // The fixed 5CSEBA6U23I7/V11 profile also requires the unused
         // auxiliary bandgap at (0,73) powered down. This is outside the
         // selected FPLL's PRAM: omitting it gives no lock and no output on
         // hardware despite identical settings at (0,14). See the PLL test.
-        NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, CycloneV::xy2pos(0, 73),
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, CycloneV::xycoords{0, 73},
                                   CycloneV::PL_AUX_BG_POWERDOWN, 0, true));
     }
 
     void write_m10k_cell(CellInfo *ci, int x, int y, int bi)
     {
-        auto pos = CycloneV::xy2pos(x, y);
+        auto pos = CycloneV::xycoords{x, y};
 
         // Notes:
         // DATA_FLOW_THRU is probably transparent reads.
@@ -780,7 +781,7 @@ struct MistralBitgen
                 write_pll_cell(ci, loc.x, loc.y);
         }
         for (auto dsp_pos : cv->dsp_get_pos())
-            write_dsp_block(CycloneV::pos2x(dsp_pos), CycloneV::pos2y(dsp_pos));
+            write_dsp_block(dsp_pos.x(), dsp_pos.y());
     }
 
     bool write_alm(uint32_t lab, uint8_t alm)
@@ -832,8 +833,8 @@ struct MistralBitgen
         const std::array<CycloneV::port_type_t, 6> mux_port{CycloneV::FFT0, CycloneV::FFT1, CycloneV::FFT1L,
                                                             CycloneV::FFB0, CycloneV::FFB1, CycloneV::FFB1L};
         for (int i = 0; i < 6; i++) {
-            if (ctx->wires_connected(alm_data.comb_out[i / 3], ctx->get_port(block_type, CycloneV::pos2x(pos),
-                                                                             CycloneV::pos2y(pos), alm, mux_port[i])))
+            if (ctx->wires_connected(alm_data.comb_out[i / 3], ctx->get_port(block_type, pos.x(),
+                                                                             pos.y(), alm, mux_port[i])))
                 cv->bmux_m_set(block_type, pos, mux_settings[i], alm, CycloneV::NLUT);
         }
 
@@ -950,7 +951,7 @@ struct MistralBitgen
         for (int i = 0; i < 3; i++) {
             // Check for fabric->clock routing
             if (ctx->wires_connected(
-                        ctx->get_port(block_type, CycloneV::pos2x(pos), CycloneV::pos2y(pos), -1, CycloneV::DATAIN, 0),
+                        ctx->get_port(block_type, pos.x(), pos.y(), -1, CycloneV::DATAIN, 0),
                         lab_data.clk_wires[i]))
                 cv->bmux_m_set(block_type, pos, CycloneV::CLKA_SEL, 0, CycloneV::DIN0);
         }
