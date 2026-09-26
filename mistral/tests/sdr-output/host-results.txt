@@ -1,0 +1,19 @@
+Classification: host-only; no hardware programmed or waveform measured
+Base: eefa26d3 (mistral-stable after dedicated DDR output and Pong fixes)
+Build: nextpnr-mistral from this worktree, Release, Mistral 78ba2a580ae2523403d4f4f91891a6b11d7b6aba
+
+direct: packed MISTRAL_SDROUT, decoded SDR settings, RBF sha256 c6b25096733390ff0326b4a6231c8a45f5c7f71d08354705b95c69fb3b7ba85f, raw bytes 1952832
+zero: packed MISTRAL_SDROUT with constant-zero data, RBF sha256 4f29bea908859f461857943f88d526f3136b28ae49c9200602540ccf4b003e4e, raw bytes 1952830
+one: packed MISTRAL_SDROUT with constant-one data, RBF sha256 c6d11711fe6b4b4ab5c72d5ea42d3cebca3c55ba224f2a8644bdcbf7a3a90e60, raw bytes 1952809
+disabled: FAST_OUTPUT_REGISTER OFF preserved MISTRAL_FF, RBF sha256 3e5335dc822f30408262893820542e004a67f9ea1421a2c92a3cd716d7a6d684, raw bytes 1952877
+
+Rejected: dynamic enable, active clear, synchronous load, constant clock,
+unsupported parameter, inverted clock, Q fanout, set_input_delay and
+set_output_delay.
+
+Quartus oracle: one I/O register, zero fabric registers. GPIO output timing is
+uncharacterized by the Mistral database; no Fmax or external-interface claim
+is made for this fixture.
+
+Ordinary GPIO regression with the pre-change and current binaries produced
+identical RBF bytes, sha256 763f179912e933dcbf70976da0b8221d04c35211b3b9e6512f3787c621f46cc1.

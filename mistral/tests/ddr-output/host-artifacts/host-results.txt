@@ -1,0 +1,6 @@
+PASS: direct one DDR output, clock route, polarity, oracle settings and RBF
+PASS: nine invalid DDR requests rejected
+PASS: inverted one DDR output, clock route, polarity, oracle settings and RBF
+PASS: minimal one DDR output, clock route, polarity, oracle settings and RBF
+PASS: pll7425 one DDR output, clock route, polarity, oracle settings and RBF
+PASS: pll-minimal one DDR output, clock route, polarity, oracle settings and RBF

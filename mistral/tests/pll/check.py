@@ -63,14 +63,19 @@ def main():
                                    ("duty", "duty_cycle0", format(40, "032b")),
                                    ("count", "number_of_clocks", format(5, "032b"))):
         invalid = copy.deepcopy(design)
-        invalid["modules"]["top"]["cells"]["pll"]["parameters"][parameter] = value
+        pll = invalid["modules"]["top"]["cells"]["pll"]
+        pll["parameters"][parameter] = value
+        if name == "fractional":
+            # 25 MHz output is now a valid generic fractional rate; use the
+            # unsupported reference to exercise the fractional-only guard.
+            pll["parameters"]["reference_clock_frequency"] = "25.0 MHz"
         path = out / f"invalid-{name}.json"
         path.write_text(json.dumps(invalid))
         log = run(command + ["--json", str(path)], out / f"invalid-{name}.log", success=False)
         expected = {"frequency": "unsupported PLL output frequency",
                     "count": "number_of_clocks must",
                     "duty": "unsupported PLL output frequency/duty",
-                    "fractional": "fractional-N profile requires"}.get(name, "unsupported parameter")
+                    "fractional": "fractional-N selector requires"}.get(name, "unsupported parameter")
         assert expected in log, log
     for name in ("reset", "fanout", "port"):
         invalid = copy.deepcopy(design)

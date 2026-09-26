@@ -1,0 +1,42 @@
+{
+  "tool": "Quartus Prime Lite 17.0.2 Build 602",
+  "device": "5CSEBA6U23I7",
+  "pins": {
+    "clock": "V11",
+    "ddr_out": "W15"
+  },
+  "primitive": {
+    "name": "altddio_out",
+    "width": 1,
+    "datain_h": "payload[0]",
+    "datain_l": "payload[1]"
+  },
+  "physical_mapping": {
+    "dqs": "DQS16.089.008",
+    "lane": 9,
+    "datain_l": "GPIO.089.008.1:DATAOUT.0",
+    "datain_h": "GPIO.089.008.1:DATAOUT.1",
+    "outclock": "GPIO.089.008.1:CLKOUT.0"
+  },
+  "routes": [
+    "GPIO.089.008.1:DATAOUT.0",
+    "GPIO.089.008.1:DATAOUT.1",
+    "GPIO.089.008.1:CLKOUT.0"
+  ],
+  "settings": {
+    "OUTREG_MODE_SEL.9": "DDR",
+    "OUTREG_OUTPUT_SEL.9": "SEL_SDR_DELAY",
+    "RBOE_LVL_FR_CLK_EN.9": "1"
+  },
+  "quartus_fit": {
+    "logic_alms": "2 / 41910",
+    "total_registers": 4,
+    "total_pins": "2 / 314",
+    "ddr_output_circuitry": "1 / 400",
+    "total_dsp_blocks": "0 / 112",
+    "total_plls": "0 / 6"
+  },
+  "rbf_sha256": "07f223f12fe67fa0f3c996a682412b73b03582637dacb847435564e80e3ccf3f",
+  "rbf_bytes": 1952724,
+  "rbf_gzip_sha256": "b3d07e9a832039e8bbd4a8edf40751c8d1d485d0dfdb12f823538aa41bf7cad4"
+}

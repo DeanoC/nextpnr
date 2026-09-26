@@ -17,6 +17,15 @@ at least one write are undefined, including when clocks are shared. There is
 no priority between writers. Keep such accesses separated in the design;
 ordinary RTL scheduling does not model the hardware collision window.
 
+The JSON contract can be made explicit with `CFG_RDW_MODE_A` and
+`CFG_RDW_MODE_B` (`NEW_DATA_NO_NBE_READ` by default) and
+`CFG_RDW_MODE_MIXED` (`DONT_CARE` by default). See
+[read-during-write contracts](README-read-during-write.md). These settings do
+not add a Mistral table field: Cyclone V has no independent collision mux, and
+Quartus emits the same physical write-through configuration for the accepted
+contracts. Unsupported `OLD_DATA` and `NEW_DATA_WITH_NBE_READ` requests fail
+packing instead of being dropped.
+
 ## Physical mapping
 
 | Logical signal | Mistral port |

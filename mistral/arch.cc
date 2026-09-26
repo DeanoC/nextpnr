@@ -17,6 +17,10 @@
  */
 
 #include <algorithm>
+#include <array>
+#include <map>
+#include <memory>
+#include <sstream>
 
 #include "log.h"
 #include "nextpnr.h"
@@ -25,6 +29,7 @@
 #include "placer_heap.h"
 #include "router1.h"
 #include "router2.h"
+#include "gpurouter.h"
 #include "timing.h"
 #include "util.h"
 
@@ -36,6 +41,8 @@ NEXTPNR_NAMESPACE_BEGIN
 using namespace mistral;
 
 namespace {
+
+constexpr float router2_retry_margin = 1.10f;
 
 bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool def = false)
 {
@@ -56,7 +63,9 @@ bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool d
 bool dsp_shared_config_equal(const CellInfo *a, const CellInfo *b)
 {
     if (dsp_bool_param(a->params, id_A_SIGNED, true) != dsp_bool_param(b->params, id_A_SIGNED, true) ||
-        dsp_bool_param(a->params, id_B_SIGNED, true) != dsp_bool_param(b->params, id_B_SIGNED, true))
+        dsp_bool_param(a->params, id_B_SIGNED, true) != dsp_bool_param(b->params, id_B_SIGNED, true) ||
+        dsp_bool_param(a->params, id_C_SIGNED, true) != dsp_bool_param(b->params, id_C_SIGNED, true) ||
+        dsp_bool_param(a->params, id_D_SIGNED, true) != dsp_bool_param(b->params, id_D_SIGNED, true))
         return false;
     for (IdString key : {id_INREG_CTRL_AX, id_INREG_CTRL_AY, id_INREG_CTRL_AZ, id_INREG_CTRL_BX,
                          id_INREG_CTRL_BY, id_INREG_CTRL_BZ, id_OREG_CTRL, id_PREADDER_EN, id_PREADDER_SUB,
@@ -168,6 +177,8 @@ Arch::Arch(ArchArgs args)
             auto pos = hps_pos[CycloneV::I_HPS_PERIPHERAL_I2C + index];
             create_hps_peripheral_i2c(CycloneV::pos2x(pos), CycloneV::pos2y(pos));
         }
+        auto f2sdram = hps_pos[CycloneV::I_HPS_FPGA2SDRAM];
+        create_hps_fpga2sdram(CycloneV::pos2x(f2sdram), CycloneV::pos2y(f2sdram));
     }
 
     for (auto m10k_pos : cyclonev->m10k_get_pos())
@@ -239,10 +250,264 @@ IdStringList Arch::getBelName(BelId bel) const
     return IdStringList(ids);
 }
 
+void Arch::note_reserved_bel(const std::string &name)
+{
+    BelId bel = getCtx()->getBelByNameStr(name);
+    if (bel == BelId())
+        log_error("FES_RESERVED_BEL '%s' is not a device BEL.\n", name.c_str());
+    // FES_RESERVED_BEL has no region syntax of its own; it joins the default
+    // "cart" region, matching the legacy boolean FES_SLOT=1 cart tag.
+    IdString region_id = id("cart");
+    auto absorbed = fes_region_absorbed_by.find(region_id);
+    if (absorbed != fes_region_absorbed_by.end())
+        log_error("FES_RESERVED_BEL '%s' targets region 'cart', already absorbed into group '%s'.\n", name.c_str(),
+                  absorbed->second.c_str(getCtx()));
+    auto existing = fes_bel_region.find(bel);
+    if (existing != fes_bel_region.end() && existing->second != region_id)
+        log_error("FES_RESERVED_BEL '%s' overlaps region '%s'.\n", name.c_str(), existing->second.c_str(getCtx()));
+    fes_bel_region[bel] = region_id;
+    fes_region_bels[region_id].insert(bel);
+    // Deliberately not added to fes_declared_region_names: a BEL reservation
+    // augments whichever region owns "cart" (by default or via an explicit
+    // FES_RESERVED_RECT/_GROUP declared before or after it) rather than
+    // declaring a rectangle of its own, so it must not trip the "region name
+    // already declared" duplicate check in note_reserved_rect/_group.
+    log_info("FES reserved BEL %s (region 'cart')\n", name.c_str());
+}
+
+void Arch::note_reserved_rect(const std::string &spec)
+{
+    std::istringstream in(spec);
+    std::vector<std::string> tokens;
+    for (std::string tok; in >> tok;)
+        tokens.push_back(tok);
+    std::string name = "cart";
+    int x0, y0, x1, y1;
+    bool numeric_first = false;
+    if (!tokens.empty()) {
+        std::istringstream probe(tokens.front());
+        int ignored;
+        numeric_first = bool(probe >> ignored) && probe.eof();
+    }
+    std::istringstream fields;
+    if (tokens.size() == 5 && !numeric_first) {
+        name = tokens.front();
+        fields.str(tokens.at(1) + " " + tokens.at(2) + " " + tokens.at(3) + " " + tokens.at(4));
+    } else if (tokens.size() == 4 && numeric_first) {
+        fields.str(tokens.at(0) + " " + tokens.at(1) + " " + tokens.at(2) + " " + tokens.at(3));
+    } else {
+        log_error("FES_RESERVED_RECT '%s' must be 'x0 y0 x1 y1' or 'name x0 y0 x1 y1'.\n", spec.c_str());
+    }
+    if (!(fields >> x0 >> y0 >> x1 >> y1))
+        log_error("FES_RESERVED_RECT '%s' must be 'x0 y0 x1 y1' or 'name x0 y0 x1 y1'.\n", spec.c_str());
+    if (x1 < x0 || y1 < y0)
+        log_error("FES_RESERVED_RECT '%s' is empty.\n", spec.c_str());
+    IdString region_id = id(name);
+    auto rect_absorbed = fes_region_absorbed_by.find(region_id);
+    if (rect_absorbed != fes_region_absorbed_by.end())
+        log_error("FES_RESERVED_RECT '%s' region name '%s' was absorbed into group '%s' by FES_RESERVED_RECT_GROUP.\n",
+                  spec.c_str(), name.c_str(), rect_absorbed->second.c_str(getCtx()));
+    if (fes_declared_region_names.count(region_id))
+        log_error("FES_RESERVED_RECT '%s' region name '%s' is already declared.\n", spec.c_str(), name.c_str());
+    int count = 0;
+    for (BelId bel : getBels()) {
+        Loc loc = getBelLocation(bel);
+        if (loc.x < x0 || loc.x > x1 || loc.y < y0 || loc.y > y1)
+            continue;
+        auto existing = fes_bel_region.find(bel);
+        if (existing != fes_bel_region.end() && existing->second != region_id)
+            log_error("FES_RESERVED_RECT '%s' region '%s' overlaps region '%s' at BEL %s.\n", spec.c_str(),
+                      name.c_str(), existing->second.c_str(getCtx()), getBelName(bel).str(getCtx()).c_str());
+        fes_bel_region[bel] = region_id;
+        fes_region_bels[region_id].insert(bel);
+        ++count;
+    }
+    fes_reserved_rects.push_back(FesReservedRect{name, x0, y0, x1, y1});
+    fes_has_reserved_rect = true;
+    fes_declared_region_names.insert(region_id);
+    log_info("FES reserved rect '%s' %d %d %d %d (%d bels)\n", name.c_str(), x0, y0, x1, y1, count);
+}
+
+void Arch::note_reserved_rect_group(const std::string &spec)
+{
+    std::istringstream in(spec);
+    std::vector<std::string> tokens;
+    for (std::string tok; in >> tok;)
+        tokens.push_back(tok);
+    if (tokens.size() < 3)
+        log_error("FES_RESERVED_RECT_GROUP '%s' must be 'name region1 region2 [region3 ...]' (at least two source "
+                  "regions).\n",
+                  spec.c_str());
+    const std::string &group_name = tokens.front();
+    IdString group_id = id(group_name);
+    if (fes_declared_region_names.count(group_id))
+        log_error("FES_RESERVED_RECT_GROUP '%s' region name '%s' is already declared.\n", spec.c_str(),
+                  group_name.c_str());
+    // A big card can claim several already-declared regions at once; every
+    // member is fully absorbed (its BELs move to the group, and its name is
+    // blocked from independent use), mirroring a large expansion card
+    // physically covering its smaller neighbours' backplane slots.
+    std::set<IdString> members;
+    // A loose FES_RESERVED_BEL may already have tagged BELs under this exact
+    // name (most commonly the default "cart"), with no rectangle of its own
+    // and so no fes_declared_region_names entry to reject above; fold those
+    // BELs into the merged set instead of treating the name as taken, since
+    // a BEL reservation always augments whichever rectangle/group ends up
+    // owning that name.
+    std::set<BelId> merged;
+    auto preexisting = fes_region_bels.find(group_id);
+    if (preexisting != fes_region_bels.end())
+        merged = preexisting->second;
+    for (size_t i = 1; i < tokens.size(); ++i) {
+        IdString member_id = id(tokens[i]);
+        if (member_id == group_id)
+            log_error("FES_RESERVED_RECT_GROUP '%s' cannot list its own group name '%s' as a member.\n",
+                      spec.c_str(), tokens[i].c_str());
+        if (!members.insert(member_id).second)
+            log_error("FES_RESERVED_RECT_GROUP '%s' lists region '%s' twice.\n", spec.c_str(), tokens[i].c_str());
+        // A member must be a region actually declared with FES_RESERVED_RECT
+        // or FES_RESERVED_RECT_GROUP, not just a name that happens to have
+        // loose FES_RESERVED_BEL content (fes_region_bels alone isn't proof
+        // of declaration); the group's own name has separate, narrower
+        // fold-in handling above.
+        if (!fes_declared_region_names.count(member_id))
+            log_error("FES_RESERVED_RECT_GROUP '%s' region '%s' was never declared with FES_RESERVED_RECT.\n",
+                      spec.c_str(), tokens[i].c_str());
+        auto absorbed = fes_region_absorbed_by.find(member_id);
+        if (absorbed != fes_region_absorbed_by.end())
+            log_error("FES_RESERVED_RECT_GROUP '%s' region '%s' was already absorbed into group '%s'.\n",
+                      spec.c_str(), tokens[i].c_str(), absorbed->second.c_str(getCtx()));
+        auto bels = fes_region_bels.find(member_id);
+        if (bels == fes_region_bels.end())
+            log_error("FES_RESERVED_RECT_GROUP '%s' region '%s' was never declared with FES_RESERVED_RECT.\n",
+                      spec.c_str(), tokens[i].c_str());
+        for (BelId bel : bels->second)
+            merged.insert(bel);
+    }
+    for (IdString member_id : members) {
+        fes_region_absorbed_by[member_id] = group_id;
+        fes_region_bels.erase(member_id);
+    }
+    // Nested groups: a member absorbed here may already have its own
+    // descendants pointing at it (e.g. "inner" absorbed "s1" earlier, and
+    // this group now absorbs "inner"). Retarget those so a stale lookup
+    // resolves straight to the outermost, still-usable group instead of a
+    // name that is itself no longer independently available.
+    for (auto &entry : fes_region_absorbed_by) {
+        if (members.count(entry.second))
+            entry.second = group_id;
+    }
+    for (BelId bel : merged)
+        fes_bel_region[bel] = group_id;
+    fes_region_bels[group_id] = std::move(merged);
+    fes_declared_region_names.insert(group_id);
+    log_info("FES reserved rect group '%s' absorbs %zu regions (%zu bels); they are no longer independently "
+             "available.\n",
+             group_name.c_str(), members.size(), fes_region_bels.at(group_id).size());
+}
+
+IdString Arch::fes_cell_slot_region(const CellInfo *cell) const
+{
+    if (cell == nullptr || !cell->attrs.count(id("FES_SLOT")))
+        return IdString();
+    const Property &prop = cell->attrs.at(id("FES_SLOT"));
+    // Legacy carts tag cells with the bare boolean FES_SLOT=1; treat that as
+    // the default "cart" region so existing single-socket QSF/cart recipes
+    // keep working unchanged.
+    if (prop.is_string)
+        return prop.as_string().empty() ? IdString() : id(prop.as_string());
+    return prop.as_bool() ? id("cart") : IdString();
+}
+
+bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_invalid) const
+{
+    if (fes_cell_is_slot(cell) && bel_data(bel).type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB, id_MISTRAL_FF)) {
+        // A LAB shares modes and control selectors. Frozen LABs must not gain
+        // new cart cells, because their existing configuration is immutable.
+        const auto &lab = labs.at(bel_data(bel).lab_data.lab);
+        for (const auto &alm : lab.alms) {
+            for (BelId other : {alm.lut_bels[0], alm.lut_bels[1], alm.ff_bels[0], alm.ff_bels[1],
+                                alm.ff_bels[2], alm.ff_bels[3]}) {
+                const CellInfo *occupant = getBoundBelCell(other);
+                if (occupant && !fes_cell_is_slot(occupant) && occupant->belStrength >= STRENGTH_LOCKED) {
+                    if (explain_invalid)
+                        log_info("FES slot cell %s cannot share a frozen LAB.\n", nameOf(cell));
+                    return false;
+                }
+            }
+        }
+    }
+    if (fes_bel_region.empty() || cell == nullptr)
+        return true;
+    auto region_it = fes_bel_region.find(bel);
+    const bool reserved = region_it != fes_bel_region.end();
+    const IdString cell_region = fes_cell_slot_region(cell);
+    const bool slot_cell = cell_region != IdString();
+    const bool in_own_region = reserved && slot_cell && region_it->second == cell_region;
+    bool bel_locked = false;
+    if (cell->attrs.count(id("BEL"))) {
+        const Property &locked = cell->attrs.at(id("BEL"));
+        const std::string name = locked.is_string ? locked.as_string() : locked.to_string();
+        bel_locked = (name == getBelName(bel).str(getCtx()));
+    }
+    // Routed scaffold cells have NEXTPNR_BEL rather than BEL. The lock step
+    // records their original sites; placement strength alone is insufficient
+    // because placement can strengthen a newly bound, unconstrained cell.
+    auto frozen = fes_frozen_cells.find(cell);
+    const bool frozen_here = frozen != fes_frozen_cells.end() && frozen->second == bel && cell->bel == bel &&
+                             cell->belStrength >= STRENGTH_LOCKED;
+    if (reserved && !(in_own_region || bel_locked || frozen_here)) {
+        if (explain_invalid)
+            log_info("FES reserved BEL %s (region '%s') rejects cell %s%s.\n", getBelName(bel).str(getCtx()).c_str(),
+                     region_it->second.c_str(getCtx()), nameOf(cell),
+                     slot_cell ? stringf(" (region '%s')", cell_region.c_str(getCtx())).c_str() : " (unconstrained)");
+        return false;
+    }
+    if (slot_cell && !in_own_region) {
+        if (explain_invalid)
+            log_info("FES slot cell %s must stay in its own reserved region '%s' (tried %s).\n", nameOf(cell),
+                     cell_region.c_str(getCtx()), getBelName(bel).str(getCtx()).c_str());
+        return false;
+    }
+    return true;
+}
+
 bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
 {
     auto &data = bel_data(bel);
-    if (data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27) && data.bound) {
+    if (data.bound && !fes_placement_allowed(bel, data.bound, explain_invalid))
+        return false;
+    if (data.type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB, id_MISTRAL_FF)) {
+        bool any_locked = false;
+        auto occupant_ok = [&](BelId other) {
+            CellInfo *cell = getBoundBelCell(other);
+            if (cell == nullptr)
+                return true;
+            if (cell->belStrength < STRENGTH_LOCKED)
+                return false;
+            any_locked = true;
+            return true;
+        };
+        const auto &alm_data = labs.at(data.lab_data.lab).alms.at(data.lab_data.alm);
+        if (occupant_ok(alm_data.lut_bels[0]) && occupant_ok(alm_data.lut_bels[1]) && occupant_ok(alm_data.ff_bels[0]) &&
+            occupant_ok(alm_data.ff_bels[1]) && occupant_ok(alm_data.ff_bels[2]) && occupant_ok(alm_data.ff_bels[3]) &&
+            any_locked)
+            return true;
+        if (data.bound == nullptr) {
+            const auto &lab_data = labs.at(data.lab_data.lab);
+            for (const auto &alm : lab_data.alms) {
+                for (BelId other : {alm.lut_bels[0], alm.lut_bels[1], alm.ff_bels[0], alm.ff_bels[1], alm.ff_bels[2],
+                                    alm.ff_bels[3]}) {
+                    CellInfo *cell = getBoundBelCell(other);
+                    if (cell != nullptr && cell->belStrength >= STRENGTH_LOCKED)
+                        return true;
+                }
+            }
+        }
+    }
+    if (data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                     id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) &&
+        data.bound) {
         // The mode-specific BELs are alternate views of one physical DSP
         // tile. Three M9 lanes may share a tile, while a wide multiplier owns
         // the tile and cannot coexist with another mode.
@@ -250,7 +515,9 @@ bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
             if (other == bel)
                 continue;
             const auto &other_data = bel_data(other);
-            if (!other_data.bound || !other_data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27))
+            if (!other_data.bound ||
+                !other_data.type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                                    id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED))
                 continue;
             if (other_data.type != data.type) {
                 if (explain_invalid)
@@ -503,25 +770,33 @@ void Arch::assign_default_pinmap(CellInfo *cell)
         return; // M10Ks always have a custom pinmap
     for (auto &port : cell->ports) {
         auto &pinmap = cell->pin_data[port.first].bel_pins;
+        if ((is_comb_cell(cell->type) || cell->type.in(id_MISTRAL_BUF, id_MISTRAL_MLAB)) &&
+            comb_pinmap.count(port.first)) {
+            pinmap = {comb_pinmap.at(port.first)};
+            continue;
+        }
         if (!pinmap.empty())
             continue; // already mapped
-        if (is_comb_cell(cell->type) && comb_pinmap.count(port.first))
-            pinmap.push_back(comb_pinmap.at(port.first)); // default comb mapping for placer purposes
-        else
-            pinmap.push_back(port.first); // default: assume bel pin named the same as cell pin
+        pinmap.push_back(port.first); // default: assume bel pin named the same as cell pin
     }
 }
 
 void Arch::assignArchInfo()
 {
+    std::vector<BelId> placed;
     for (auto &cell : cells) {
         CellInfo *ci = cell.second.get();
-        if (is_comb_cell(ci->type) || ci->type == id_MISTRAL_MLAB)
+        if (is_comb_cell(ci->type) || ci->type.in(id_MISTRAL_MLAB, id_MISTRAL_BUF))
             assign_comb_info(ci);
         else if (ci->type == id_MISTRAL_FF)
             assign_ff_info(ci);
         assign_default_pinmap(ci);
+        if (ci->bel != BelId())
+            placed.push_back(ci->bel);
     }
+    // bindBel during JSON reload ran before combInfo existed; recount now.
+    for (BelId bel : placed)
+        update_bel(bel);
 }
 
 BoundingBox Arch::getRouteBoundingBox(WireId src, WireId dst) const
@@ -557,9 +832,45 @@ bool Arch::place()
 
         cfg.beta = 0.5; // TODO: find a good value of beta for sensible ALM spreading
         cfg.criticalityExponent = 7;
+        if (fes_any_slot_region_active) {
+            // A cart confined to a small rectangle can cycle evictions for
+            // a long time; report the cycling cell instead of running on.
+            cfg.cellRipupLimit = std::max(cfg.cellRipupLimit, 500);
+            // Legalise flip-flops LAB by LAB. HeAP's model admits one control
+            // set per LAB, so key it on the signals a Cyclone V LAB really
+            // has one of: clock (LabCtrlSetWorker allows one), synchronous
+            // clear and synchronous load. Enables and asynchronous clears
+            // have several LAB lines and are left to the full validity
+            // check, which still decides legality.
+            cfg.ff_bel_bucket = id_MISTRAL_FF;
+            cfg.ff_control_set_groups.assign(1, {});
+            for (int alm = 0; alm < 10; alm++)
+                for (int ff = 0; ff < 4; ff++)
+                    cfg.ff_control_set_groups.at(0).push_back(alm * 6 + 2 + ff);
+            cfg.ctrl_set_max_radius = std::vector<int>{12, 12, 12, 8, 6, 4};
+            // Deterministic ids keyed by net names, not pointers.
+            auto ids = std::make_shared<std::map<std::array<int, 6>, int32_t>>();
+            cfg.get_cell_control_set = [ids, this](Context *, const CellInfo *ci) -> int32_t {
+                // Frozen shell LABs legitimately mix enables under the full
+                // LAB rules; HeAP's one-set-per-LAB model must not see them.
+                if (ci->type != id_MISTRAL_FF || !fes_cell_is_slot(ci))
+                    return -1;
+                const auto &cs = ci->ffInfo.ctrlset;
+                auto sig = [](const ControlSig &s) { return s.net ? s.net->name.index : -1; };
+                std::array<int, 6> key{sig(cs.clk),  int(cs.clk.inverted),  sig(cs.sclr),
+                                       int(cs.sclr.inverted), sig(cs.sload), int(cs.sload.inverted)};
+                auto found = ids->find(key);
+                if (found == ids->end())
+                    found = ids->emplace(key, int32_t(ids->size())).first;
+                return found->second;
+            };
+        }
         if (!placer_heap(getCtx(), cfg))
             return false;
     } else if (placer == "sa") {
+        if (fes_any_slot_region_active)
+            log_error("The SA placer moves FES cart LUT/FF pairs and carry chains cell by cell and can end with an "
+                      "unrepaired cluster; use --placer heap for cart placement.\n");
         if (!placer1(getCtx(), Placer1Cfg(getCtx())))
             return false;
     } else {
@@ -582,12 +893,90 @@ bool Arch::route()
     if (router == "router1") {
         result = router1(getCtx(), Router1Cfg(getCtx()));
     } else if (router == "router2") {
-        router2(getCtx(), Router2Cfg(getCtx()));
+        int pll_count = 0;
+        int m10k_count = 0;
+        for (const auto &cell : getCtx()->cells) {
+            if (cell.second->type == id_altera_pll)
+                ++pll_count;
+            else if (cell.second->type == id_MISTRAL_M10K)
+                ++m10k_count;
+        }
+        const bool multi_pll_m10k = pll_count >= 2 && m10k_count > 0;
+
+        // Router2's final legality check invokes router1, whose normal
+        // timing report treats a pre-bitstream estimate miss as an error.
+        // A dense multi-clock design may intentionally take the retry below,
+        // so keep that diagnostic non-fatal while the first pass is running.
+        const IdString timing_allow_fail = id("timing/allowFail");
+        const auto old_timing_allow_fail = settings.find(timing_allow_fail);
+        const bool had_timing_allow_fail = old_timing_allow_fail != settings.end();
+        Property saved_timing_allow_fail;
+        if (had_timing_allow_fail)
+            saved_timing_allow_fail = old_timing_allow_fail->second;
+        auto restore_timing_allow_fail = [&]() {
+            if (!multi_pll_m10k)
+                return;
+            if (had_timing_allow_fail)
+                settings[timing_allow_fail] = saved_timing_allow_fail;
+            else
+                settings.erase(timing_allow_fail);
+        };
+        if (multi_pll_m10k)
+            settings[timing_allow_fail] = true;
+        try {
+            router2(getCtx(), Router2Cfg(getCtx()));
+        } catch (...) {
+            restore_timing_allow_fail();
+            throw;
+        }
+        restore_timing_allow_fail();
         result = true;
+
+        // Router2 is fast and normally provides the best result.  Dense
+        // designs combining multiple PLLs with M10Ks are more sensitive to
+        // its placement-dependent timing estimate, though.  Give those
+        // designs a slower router1 retry when the first route has little
+        // timing margin.  This keeps router2 as the default for ordinary
+        // designs while avoiding a marginal route that can fail analogue
+        // signoff after bitstream generation.
+        if (multi_pll_m10k) {
+            TimingAnalyser timing(getCtx());
+            timing.setup(false, false, true);
+            bool marginal = false;
+            for (const auto &clock : timing.get_timing_result().clock_fmax) {
+                if (clock.second.achieved < clock.second.constraint * router2_retry_margin) {
+                    marginal = true;
+                    break;
+                }
+            }
+            if (marginal) {
+                log_info("Router2 timing margin is small for a multi-PLL M10K design; retrying with router1.\n");
+                for (const auto &net : getCtx()->nets) {
+                    if (!net.second->is_global)
+                        getCtx()->ripupNet(net.first);
+                }
+                result = router1(getCtx(), Router1Cfg(getCtx()));
+            }
+        }
+    } else if (router == "gpu") {
+        result = gpurouter(getCtx(), GpuRouterCfg(getCtx()));
+        if (result)
+            result = analogue_repair();
     } else {
         log_error("Mistral architecture does not support router '%s'\n", router.c_str());
     }
+    {
+        // The routers optimise nextpnr's per-pip delay table; the final report
+        // after bitstream generation uses Mistral's analogue model. Log the
+        // table-model view so the two can be compared.
+        TimingAnalyser timing(getCtx());
+        timing.setup(false, false, true);
+        for (const auto &clock : timing.get_timing_result().clock_fmax)
+            log_info("Routed Fmax (pip delay table) for clock '%s': %.2f MHz\n", clock.first.c_str(getCtx()),
+                     clock.second.achieved);
+    }
     getCtx()->attrs[id_step] = std::string("route");
+    save_fes_pin_maps();
     archInfoToAttributes();
     return result;
 }
@@ -597,6 +986,6 @@ const std::string Arch::defaultPlacer = "heap";
 const std::vector<std::string> Arch::availablePlacers = {"sa", "heap"};
 
 const std::string Arch::defaultRouter = "router2";
-const std::vector<std::string> Arch::availableRouters = {"router1", "router2"};
+const std::vector<std::string> Arch::availableRouters = {"router1", "router2", "gpu"};
 
 NEXTPNR_NAMESPACE_END

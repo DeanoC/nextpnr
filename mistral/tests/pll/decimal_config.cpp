@@ -14,7 +14,7 @@ int main()
     assert(!parse_output_hz("999999999999999999999999999999999 MHz"));
     for (int ref : {25, 50, 100}) {
         for (int c = 3; c <= 400; ++c)
-            for (int vco : {300, 320, 400}) {
+            for (int vco : {300, 320, 400, 520}) {
                 if (int64_t(vco) * 1000000 % c) continue;
                 int64_t hz = int64_t(vco) * 1000000 / c;
                 if (hz < 1000000 || hz > 100000000) continue;

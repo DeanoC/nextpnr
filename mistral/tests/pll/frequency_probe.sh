@@ -3,7 +3,7 @@
 # This script neither programs hardware nor manages its lifecycle.
 set -eu
 frequency=${1:-}
-case "$frequency" in 20|40|100) ;; *) echo "usage: sh frequency_probe.sh {20|40|100}" >&2; exit 2 ;; esac
+case "$frequency" in 20|40|52|100) ;; *) echo "usage: sh frequency_probe.sh {20|40|52|100}" >&2; exit 2 ;; esac
 # Count = output MHz * 2^20 / (50 * 256), with one-count endpoint tolerance.
 minimum=$((frequency * 4096 / 50 - 1))
 maximum=$(((frequency * 4096 + 49) / 50 + 1))

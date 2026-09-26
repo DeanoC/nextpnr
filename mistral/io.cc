@@ -33,9 +33,22 @@ void Arch::create_gpio(int x, int y)
         if (has_port(CycloneV::GPIO, x, y, z, CycloneV::DATAOUT, 0)) {
             // FIXME: is the port index of zero always correct?
             add_bel_pin(bel, id_I, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::DATAOUT, 0));
+            add_bel_pin(bel, id_D_L, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::DATAOUT, 0));
             add_bel_pin(bel, id_OE, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::OEIN, 0));
             add_bel_pin(bel, id_O, PORT_OUT, get_port(CycloneV::GPIO, x, y, z, CycloneV::DATAIN, 0));
         }
+        if (has_port(CycloneV::GPIO, x, y, z, CycloneV::DATAOUT, 1))
+            add_bel_pin(bel, id_D_H, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::DATAOUT, 1));
+        if (has_port(CycloneV::GPIO, x, y, z, CycloneV::CLKOUT, 0))
+            add_bel_pin(bel, id_CLK, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::CLKOUT, 0));
+        if (has_port(CycloneV::GPIO, x, y, z, CycloneV::CLKIN, 0))
+            add_bel_pin(bel, id_CLKIN, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::CLKIN, 0));
+        if (has_port(CycloneV::GPIO, x, y, z, CycloneV::DATAIN, 3)) {
+            add_bel_pin(bel, id_Q, PORT_OUT, get_port(CycloneV::GPIO, x, y, z, CycloneV::DATAIN, 3));
+            add_bel_pin(bel, id_Q_H, PORT_OUT, get_port(CycloneV::GPIO, x, y, z, CycloneV::DATAIN, 3));
+        }
+        if (has_port(CycloneV::GPIO, x, y, z, CycloneV::DATAIN, 2))
+            add_bel_pin(bel, id_Q_L, PORT_OUT, get_port(CycloneV::GPIO, x, y, z, CycloneV::DATAIN, 2));
         bel_data(bel).block_index = z;
     }
 }
@@ -45,7 +58,12 @@ bool Arch::is_io_cell(IdString cell_type) const
     // Return true if a cell is an IO buffer cell type
     switch (cell_type.index) {
     case ID_MISTRAL_IB:
+    case ID_MISTRAL_SDRIN:
+    case ID_MISTRAL_DDRIN:
     case ID_MISTRAL_OB:
+    case ID_MISTRAL_SDROUT:
+    case ID_MISTRAL_DDROUT:
+    case ID_MISTRAL_DDRBIDIR:
     case ID_MISTRAL_IO:
         return true;
     default:

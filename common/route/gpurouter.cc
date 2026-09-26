@@ -1,0 +1,2730 @@
+/*
+ *  nextpnr -- Next Generation Place and Route
+ *
+ *  Copyright (C) 2026  Deano Calver
+ *
+ *  Permission to use, copy, modify, and/or distribute this software for any
+ *  purpose with or without fee is hereby granted, provided that the above
+ *  copyright notice and this permission notice appear in all copies.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ *  WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ *  MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ *  ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ *  GPU-accelerated connection-based negotiated-congestion router.
+ *
+ *  Host side: flattens the Arch routing graph, keeps the authoritative
+ *  per-net routing trees and per-wire congestion state, decides which
+ *  connections to rip up and re-route each iteration, groups the affected
+ *  nets into batches whose bounding boxes do not overlap, and hands each
+ *  batch to the device backend (common/route/gpu/). Paths coming back are
+ *  applied in a fixed order so the result does not depend on GPU scheduling.
+ *
+ *  The cost model (base delay * history * present congestion, criticality
+ *  weighting, centroid bias) and the congestion schedule follow router2 /
+ *  CRoute so that results are comparable, the difference being where and how
+ *  the shortest-path searches run. See docs/gpurouter.md.
+ */
+
+#include "gpurouter.h"
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <functional>
+#include <limits>
+#include <mutex>
+#include <set>
+#include <thread>
+#include <tuple>
+
+#include "gpu/gpuroute_backend.h"
+#include "log.h"
+#include "nextpnr.h"
+#include "nextpnr_assertions.h"
+#include "router1.h"
+#include "timing.h"
+#include "util.h"
+
+NEXTPNR_NAMESPACE_BEGIN
+
+namespace {
+
+using Clock = std::chrono::steady_clock;
+inline double secs_since(Clock::time_point t) { return std::chrono::duration<double>(Clock::now() - t).count(); }
+
+struct GpuRouter
+{
+    Context *ctx;
+    GpuRouterCfg cfg;
+    TimingAnalyser tmg;
+    std::unique_ptr<gpuroute::Backend> backend;     // device (or CPU fallback)
+    std::unique_ptr<gpuroute::Backend> cpu_backend; // CPU lane for tiny batches, if distinct
+    std::unique_ptr<gpuroute::Backend> verify_backend; // exact reference for repair searches (diagnostic)
+    int64_t verify_launched = 0, verify_arcs = 0, verify_worse = 0, verify_better = 0, verify_unref = 0;
+    double verify_excess = 0.0, verify_max = 0.0, verify_secs = 0.0;
+
+    bool timing_driven = false, timing_driven_ripup = false;
+    float curr_cong_weight = 0.5f, hist_cong_weight = 1.0f;
+
+    GpuRouter(Context *ctx, const GpuRouterCfg &cfg) : ctx(ctx), cfg(cfg), tmg(ctx)
+    {
+        tmg.setup_only = false;
+        tmg.with_clock_skew = true;
+        tmg.setup();
+    }
+
+    // ------------------------------------------------------------------
+    // Flattened routing graph
+
+    std::vector<WireId> idx_to_wire;
+    dict<WireId, int32_t> wire_to_idx;
+    std::vector<int32_t> out_off, out_dst;
+    std::vector<float> edge_cost;
+    std::vector<int16_t> wx, wy;
+    std::vector<int32_t> reserved;
+    std::vector<uint8_t> wflags;
+    std::vector<uint8_t> wlong; // wire spans more than one tile (candidate diversity)
+    std::vector<int32_t> occ;
+    std::vector<float> hist;
+
+    std::vector<int32_t> dirty_wires;
+    std::vector<uint8_t> dirty_mark;
+    // Reserve router-made routing found bound at setup for its net
+    bool reserve_bound_routing = false;
+    // Candidate generation in progress (larger expansion steps)
+    bool candidate_mode = false;
+    // Wires a net's next search may not enter, passed to the backend as
+    // blocked seeds (present in the table, never relaxed into or expanded),
+    // so they bind only that net's search, not the other tasks of a launch
+    dict<int, std::vector<int32_t>> task_blocked;
+
+    void mark_dirty(int32_t w)
+    {
+        if (!dirty_mark[w]) {
+            dirty_mark[w] = 1;
+            dirty_wires.push_back(w);
+        }
+    }
+
+    int32_t widx(WireId w) const
+    {
+        auto fnd = wire_to_idx.find(w);
+        NPNR_ASSERT(fnd != wire_to_idx.end());
+        return fnd->second;
+    }
+
+    // ------------------------------------------------------------------
+    // Per-net data
+
+    struct TreeWire
+    {
+        int32_t parent = -1; // driving wire, -1 for the source / a pre-bound root
+        PipId pip;           // pip parent -> wire
+        int32_t count = 0;   // arcs of this net using the wire
+        float delay = 0.0f;  // base delay from the source along the tree (ns)
+    };
+
+    struct ArcData
+    {
+        int32_t sink = -1;
+        BoundingBox bb;
+        bool routed = false, pre_routed = false;
+        bool frozen = false; // repaired for timing; its wires are reserved and it is never ripped up
+    };
+
+    struct NetData
+    {
+        int32_t src = -1;
+        dict<int32_t, TreeWire> wires;
+        std::vector<std::vector<ArcData>> arcs;
+        BoundingBox bb;
+        int cx = 0, cy = 0, hpwl = 1;
+        int fail_count = 0;
+        float max_crit = 0.0f;
+    };
+
+    std::vector<NetInfo *> nets_by_udata;
+    std::vector<NetData> nets;
+
+    int num_threads() const
+    {
+        int n = int(std::thread::hardware_concurrency());
+        if (n <= 0)
+            n = 4;
+        if (ctx->settings.count(ctx->id("threads")))
+            n = std::max(1, ctx->setting<int>("threads"));
+        return std::min(n, 32);
+    }
+
+    template <typename F> void parallel_chunks(size_t count, F fn)
+    {
+#ifdef NPNR_DISABLE_THREADS
+        // e.g. the WASI build: pthread_create() always fails there
+        fn(size_t(0), count);
+        return;
+#endif
+        int nt = std::min<size_t>(num_threads(), std::max<size_t>(1, count / 4096));
+        if (nt <= 1) {
+            fn(size_t(0), count);
+            return;
+        }
+        std::vector<std::thread> threads;
+        size_t chunk = (count + nt - 1) / nt;
+        for (int t = 0; t < nt; t++) {
+            size_t b = std::min(count, size_t(t) * chunk), e = std::min(count, size_t(t + 1) * chunk);
+            if (b >= e)
+                break;
+            threads.emplace_back([=]() { fn(b, e); });
+        }
+        for (auto &t : threads)
+            t.join();
+    }
+
+    // ------------------------------------------------------------------
+    // Setup
+
+    void setup_net_indices()
+    {
+        nets.resize(ctx->nets.size());
+        nets_by_udata.resize(ctx->nets.size());
+        size_t i = 0;
+        for (auto &net : ctx->nets) {
+            NetInfo *ni = net.second.get();
+            if (ni->constant_value != IdString())
+                log_error("The GPU router does not support constant-value nets (net '%s').\n", ctx->nameOf(ni));
+            ni->udata = int32_t(i);
+            nets_by_udata.at(i) = ni;
+            i++;
+        }
+    }
+
+    void setup_graph()
+    {
+        auto t0 = Clock::now();
+        struct Tmp
+        {
+            WireId w;
+            int16_t x, y;
+            uint8_t lng;
+        };
+        std::vector<Tmp> tmp;
+        for (auto w : ctx->getWires()) {
+            BoundingBox b = ctx->getRouteBoundingBox(w, w);
+            tmp.push_back(Tmp{w, int16_t((b.x0 + b.x1) / 2), int16_t((b.y0 + b.y1) / 2),
+                              uint8_t(b.x0 != b.x1 || b.y0 != b.y1)});
+        }
+        // Tile-major numbering keeps the wires of a region close in memory
+        std::stable_sort(tmp.begin(), tmp.end(), [](const Tmp &a, const Tmp &b) {
+            if (a.y != b.y)
+                return a.y < b.y;
+            return a.x < b.x;
+        });
+        const size_t n = tmp.size();
+        idx_to_wire.resize(n);
+        wx.resize(n);
+        wy.resize(n);
+        wlong.resize(n);
+        for (size_t i = 0; i < n; i++) {
+            idx_to_wire[i] = tmp[i].w;
+            wx[i] = tmp[i].x;
+            wy[i] = tmp[i].y;
+            wlong[i] = tmp[i].lng;
+            wire_to_idx[tmp[i].w] = int32_t(i);
+        }
+        tmp.clear();
+        tmp.shrink_to_fit();
+
+        // CSR adjacency. Counting and filling are independent per wire and
+        // only use const Arch queries, so they run on several threads.
+        out_off.assign(n + 1, 0);
+        parallel_chunks(n, [&](size_t b, size_t e) {
+            for (size_t i = b; i < e; i++) {
+                int32_t cnt = 0;
+                for (auto pip : ctx->getPipsDownhill(idx_to_wire[i])) {
+                    (void)pip;
+                    cnt++;
+                }
+                out_off[i + 1] = cnt;
+            }
+        });
+        for (size_t i = 0; i < n; i++)
+            out_off[i + 1] += out_off[i];
+        const int64_t m = out_off[n];
+        out_dst.resize(m);
+        edge_cost.resize(m);
+        const delay_t eps = ctx->getDelayEpsilon();
+        parallel_chunks(n, [&](size_t b, size_t e) {
+            for (size_t i = b; i < e; i++) {
+                int32_t k = out_off[i];
+                for (auto pip : ctx->getPipsDownhill(idx_to_wire[i])) {
+                    WireId dst = ctx->getPipDstWire(pip);
+                    out_dst[k] = widx(dst);
+                    float c = ctx->getDelayNS(ctx->getPipDelay(pip).maxDelay() + ctx->getWireDelay(dst).maxDelay() + eps);
+                    if (!ctx->checkPipAvail(pip) && ctx->getBoundPipNet(pip) == nullptr)
+                        c = -1.0f; // blocked by an architecture rule
+                    else if (c < 1e-6f)
+                        c = 1e-6f;
+                    edge_cost[k] = c;
+                    k++;
+                }
+            }
+        });
+
+        // Per-wire state, mirroring what is already bound in the Arch
+        reserved.assign(n, -1);
+        wflags.assign(n, 0);
+        occ.assign(n, 0);
+        hist.assign(n, 1.0f);
+        dirty_mark.assign(n, 0);
+        for (size_t i = 0; i < n; i++) {
+            WireId w = idx_to_wire[i];
+            NetInfo *bound = ctx->getBoundWireNet(w);
+            if (bound == nullptr)
+                continue;
+            auto iter = bound->wires.find(w);
+            if (iter == bound->wires.end())
+                continue;
+            auto &nd = nets.at(bound->udata);
+            TreeWire tw;
+            tw.pip = iter->second.pip;
+            tw.parent = (tw.pip == PipId()) ? -1 : widx(ctx->getPipSrcWire(tw.pip));
+            tw.count = 0;
+            nd.wires[int32_t(i)] = tw;
+            occ[i] = 1;
+            if (iter->second.strength > STRENGTH_PLACER)
+                wflags[i] |= gpuroute::WIRE_UNAVAILABLE;
+            else if (iter->second.strength >= STRENGTH_STRONG || reserve_bound_routing)
+                // Routing bound by placer constraints belongs to its net;
+                // another net must not negotiate for it and then be frozen
+                // there by timing repair, as the bound net never moves.
+                // Candidate generation also reserves the router's own
+                // routing of every other net so a candidate is legal.
+                reserved[i] = bound->udata;
+            // Otherwise this is routing an earlier pass made (the nets an
+            // analogue repair round keeps): it starts routed but is
+            // negotiated like everything else, because reserving it left
+            // the ripped nets with hard conflicts on local lines.
+        }
+        log_info("    flattened %zu wires and %lld pips in %.2fs\n", n, (long long)m, secs_since(t0));
+    }
+
+    void setup_nets()
+    {
+        for (size_t i = 0; i < nets.size(); i++) {
+            NetInfo *ni = nets_by_udata.at(i);
+            auto &nd = nets.at(i);
+            nd.arcs.resize(ni->users.capacity());
+            nd.bb.x0 = std::numeric_limits<int>::max();
+            nd.bb.x1 = std::numeric_limits<int>::min();
+            nd.bb.y0 = std::numeric_limits<int>::max();
+            nd.bb.y1 = std::numeric_limits<int>::min();
+            nd.cx = 0;
+            nd.cy = 0;
+            if (ni->driver.cell == nullptr)
+                continue;
+            Loc drv_loc = ni->driver.cell->getLocation();
+            nd.cx += drv_loc.x;
+            nd.cy += drv_loc.y;
+            WireId src_wire = ctx->getNetinfoSourceWire(ni);
+            for (auto usr : ni->users.enumerate()) {
+                for (auto &dst_wire : ctx->getNetinfoSinkWires(ni, usr.value)) {
+                    if (src_wire == WireId())
+                        log_error("No wire found for port %s on source cell %s.\n", ctx->nameOf(ni->driver.port),
+                                  ctx->nameOf(ni->driver.cell));
+                    if (dst_wire == WireId())
+                        log_error("No wire found for port %s on destination cell %s.\n", ctx->nameOf(usr.value.port),
+                                  ctx->nameOf(usr.value.cell));
+                    nd.arcs.at(usr.index.idx()).emplace_back();
+                    auto &ad = nd.arcs.at(usr.index.idx()).back();
+                    ad.sink = widx(dst_wire);
+                    ad.bb = ctx->getRouteBoundingBox(src_wire, dst_wire);
+                    nd.bb.x0 = std::min(nd.bb.x0, ad.bb.x0);
+                    nd.bb.x1 = std::max(nd.bb.x1, ad.bb.x1);
+                    nd.bb.y0 = std::min(nd.bb.y0, ad.bb.y0);
+                    nd.bb.y1 = std::max(nd.bb.y1, ad.bb.y1);
+                }
+                Loc usr_loc = usr.value.cell->getLocation();
+                nd.cx += usr_loc.x;
+                nd.cy += usr_loc.y;
+            }
+            if (src_wire != WireId()) {
+                nd.src = widx(src_wire);
+                if (!nd.wires.count(nd.src)) {
+                    TreeWire tw;
+                    tw.parent = -1;
+                    tw.count = 1;
+                    nd.wires[nd.src] = tw;
+                    occ[nd.src]++;
+                }
+            }
+            nd.hpwl = std::max(std::abs(nd.bb.y1 - nd.bb.y0) + std::abs(nd.bb.x1 - nd.bb.x0), 1);
+            nd.cx /= int(ni->users.entries() + 1);
+            nd.cy /= int(ni->users.entries() + 1);
+            nd.bb.x0 = std::max(nd.bb.x0 - cfg.bb_margin_x, 0);
+            nd.bb.y0 = std::max(nd.bb.y0 - cfg.bb_margin_y, 0);
+            nd.bb.x1 = std::min(nd.bb.x1 + cfg.bb_margin_x, ctx->getGridDimX());
+            nd.bb.y1 = std::min(nd.bb.y1 + cfg.bb_margin_y, ctx->getGridDimY());
+        }
+        // Pre-routed arcs (e.g. dedicated global clock routing)
+        for (size_t i = 0; i < nets.size(); i++) {
+            auto &nd = nets.at(i);
+            compute_tree_delays(nd);
+            for (auto &arcs : nd.arcs)
+                for (auto &ad : arcs)
+                    if (check_arc_routing(nd, ad))
+                        record_prerouted(nd, ad);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Tree bookkeeping
+
+    float pip_base_cost(PipId pip, int32_t wire) const
+    {
+        if (pip == PipId())
+            return 0.0f;
+        return ctx->getDelayNS(ctx->getPipDelay(pip).maxDelay() + ctx->getWireDelay(idx_to_wire[wire]).maxDelay() +
+                               ctx->getDelayEpsilon());
+    }
+
+    void bind_internal(NetData &nd, int32_t wire, int32_t parent, PipId pip)
+    {
+        auto fnd = nd.wires.find(wire);
+        if (fnd == nd.wires.end()) {
+            TreeWire tw;
+            tw.parent = parent;
+            tw.pip = pip;
+            tw.count = 1;
+            if (parent >= 0) {
+                auto pf = nd.wires.find(parent);
+                tw.delay = (pf == nd.wires.end() ? 0.0f : pf->second.delay) + pip_base_cost(pip, wire);
+            }
+            nd.wires[wire] = tw;
+            occ[wire]++;
+            mark_dirty(wire);
+        } else {
+            NPNR_ASSERT(fnd->second.parent == parent);
+            fnd->second.count++;
+        }
+    }
+
+    // Upstream delays of wires that were bound before the router ran
+    void compute_tree_delays(NetData &nd)
+    {
+        std::vector<int32_t> chain;
+        for (auto &w : nd.wires) {
+            chain.clear();
+            int32_t cursor = w.first;
+            while (true) {
+                auto fnd = nd.wires.find(cursor);
+                if (fnd == nd.wires.end() || fnd->second.parent == -1 || fnd->second.delay > 0.0f)
+                    break;
+                chain.push_back(cursor);
+                cursor = fnd->second.parent;
+            }
+            for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
+                auto &tw = nd.wires.at(*it);
+                auto pf = nd.wires.find(tw.parent);
+                tw.delay = (pf == nd.wires.end() ? 0.0f : pf->second.delay) + pip_base_cost(tw.pip, *it);
+            }
+        }
+    }
+
+    void unbind_internal(NetData &nd, int32_t wire)
+    {
+        auto fnd = nd.wires.find(wire);
+        NPNR_ASSERT(fnd != nd.wires.end());
+        if (--fnd->second.count <= 0) {
+            nd.wires.erase(fnd);
+            occ[wire]--;
+            mark_dirty(wire);
+        }
+    }
+
+    bool check_arc_routing(const NetData &nd, const ArcData &ad) const
+    {
+        if (nd.src < 0)
+            return false;
+        int32_t cursor = ad.sink;
+        while (true) {
+            auto fnd = nd.wires.find(cursor);
+            if (fnd == nd.wires.end())
+                return false;
+            if (occ[cursor] != 1)
+                return false;
+            if (fnd->second.parent == -1)
+                break;
+            cursor = fnd->second.parent;
+        }
+        return cursor == nd.src;
+    }
+
+    void record_prerouted(NetData &nd, ArcData &ad)
+    {
+        ad.routed = true;
+        ad.pre_routed = true;
+        int32_t cursor = ad.sink;
+        while (cursor != nd.src) {
+            TreeWire tw = nd.wires.at(cursor);
+            bind_internal(nd, cursor, tw.parent, tw.pip);
+            if (tw.parent == -1)
+                break;
+            cursor = tw.parent;
+        }
+    }
+
+    void ripup_arc(NetData &nd, ArcData &ad)
+    {
+        if (!ad.routed)
+            return;
+        int32_t cursor = ad.sink;
+        while (cursor != nd.src) {
+            auto fnd = nd.wires.find(cursor);
+            if (fnd == nd.wires.end())
+                break;
+            int32_t parent = fnd->second.parent;
+            unbind_internal(nd, cursor);
+            if (parent == -1)
+                break;
+            cursor = parent;
+        }
+        ad.routed = false;
+        ad.pre_routed = false;
+    }
+
+    void restore_net(int net, const NetData &saved)
+    {
+        auto &nd = nets.at(net);
+        while (!nd.wires.empty())
+            unbind_internal(nd, nd.wires.begin()->first);
+        nd = saved;
+        for (auto &w : nd.wires) {
+            occ[w.first]++;
+            mark_dirty(w.first);
+        }
+        flush_state();
+    }
+
+    // The pip behind CSR edge `edge`: the (edge - out_off[parent])-th downhill
+    // pip of the parent wire, in the same enumeration order the graph was
+    // built from, so parallel pips between one wire pair stay distinct.
+    PipId pip_for_edge(int32_t parent, int32_t wire, int32_t edge) const
+    {
+        WireId pw = idx_to_wire.at(parent), dw = idx_to_wire.at(wire);
+        if (edge >= out_off.at(parent) && edge < out_off.at(parent + 1)) {
+            int32_t k = edge - out_off.at(parent);
+            for (auto pip : ctx->getPipsDownhill(pw)) {
+                if (k-- == 0) {
+                    NPNR_ASSERT(ctx->getPipDstWire(pip) == dw);
+                    return pip;
+                }
+            }
+        }
+        log_error("Internal error: edge %d is not a pip from %s to %s.\n", edge, ctx->nameOfWire(pw),
+                  ctx->nameOfWire(dw));
+    }
+
+    void apply_path(NetData &nd, ArcData &ad, const gpuroute::PathEntry *entries, int len)
+    {
+        NPNR_ASSERT(len > 0);
+        // attach point first so upstream delays are known when binding
+        for (int k = len - 1; k >= 0; k--) {
+            int32_t w = entries[k].wire, parent = entries[k].parent;
+            NPNR_ASSERT(parent >= 0);
+            bind_internal(nd, w, parent, pip_for_edge(parent, w, entries[k].edge));
+        }
+        // The arc also uses the existing tree from the attach point up to
+        // the source; count it there too so shared wires survive rip-ups
+        // of sibling arcs.
+        int32_t cursor = entries[len - 1].parent;
+        while (true) {
+            auto fnd = nd.wires.find(cursor);
+            NPNR_ASSERT(fnd != nd.wires.end());
+            fnd->second.count++;
+            if (fnd->second.parent == -1 || cursor == nd.src)
+                break;
+            cursor = fnd->second.parent;
+        }
+        ad.routed = true;
+    }
+
+    delay_t get_route_delay(const NetData &nd, const ArcData &ad) const
+    {
+        if (nd.src < 0 || !nd.wires.count(ad.sink))
+            return 0;
+        delay_t delay = 0;
+        int32_t cursor = ad.sink;
+        while (true) {
+            delay += ctx->getWireDelay(idx_to_wire[cursor]).maxDelay();
+            auto fnd = nd.wires.find(cursor);
+            if (fnd == nd.wires.end())
+                break;
+            if (fnd->second.pip == PipId())
+                break;
+            delay += ctx->getPipDelay(fnd->second.pip).maxDelay();
+            cursor = fnd->second.parent;
+        }
+        return delay;
+    }
+
+    // ------------------------------------------------------------------
+    // Wire reservation (ported from router2): wires on a single path from a
+    // driver or to a sink can only ever be used by that net.
+
+    bool is_wire_unusable(WireId wire, const NetInfo *net, const pool<WireId> &sink_wires, int iter_count = 0)
+    {
+        if (iter_count > 7)
+            return false;
+        int32_t w = widx(wire);
+        if (reserved[w] != -1 && reserved[w] != net->udata)
+            return true;
+        if (sink_wires.count(wire))
+            return false;
+        for (auto p : ctx->getPipsDownhill(wire))
+            if (ctx->checkPipAvail(p))
+                if (!is_wire_unusable(ctx->getPipDstWire(p), net, sink_wires, iter_count + 1))
+                    return false;
+        return true;
+    }
+
+    bool is_wire_undriveable(WireId wire, const NetInfo *net, int iter_count = 0)
+    {
+        if (iter_count > 7)
+            return false;
+        int32_t w = widx(wire);
+        if (wflags[w] & gpuroute::WIRE_UNAVAILABLE)
+            return true;
+        if (reserved[w] != -1 && reserved[w] != net->udata)
+            return true;
+        for (auto bp : ctx->getWireBelPins(wire))
+            if ((net->driver.cell == nullptr || bp.bel == net->driver.cell->bel) &&
+                ctx->getBelPinType(bp.bel, bp.pin) != PORT_IN)
+                return false;
+        for (auto p : ctx->getPipsUphill(wire))
+            if (ctx->checkPipAvail(p))
+                if (!is_wire_undriveable(ctx->getPipSrcWire(p), net, iter_count + 1))
+                    return false;
+        return true;
+    }
+
+    bool reserve_driver_wires(NetInfo *net, const pool<WireId> &sink_wires)
+    {
+        bool did_something = false;
+        WireId src = ctx->getNetinfoSourceWire(net);
+        if (src == WireId() || sink_wires.count(src) || sink_wires.empty())
+            return false;
+        WireId cursor = src;
+        bool done = false;
+        while (!done) {
+            int32_t c = widx(cursor);
+            did_something |= (reserved[c] != net->udata);
+            if (reserved[c] != -1 && reserved[c] != net->udata)
+                log_error("attempting to reserve driver output path wire '%s' for nets '%s' and '%s'\n",
+                          ctx->nameOfWire(cursor), ctx->nameOf(nets_by_udata.at(reserved[c])), ctx->nameOf(net));
+            reserved[c] = net->udata;
+            WireId next_cursor;
+            for (auto dh : ctx->getPipsDownhill(cursor)) {
+                WireId w = ctx->getPipDstWire(dh);
+                if (is_wire_unusable(w, net, sink_wires))
+                    continue;
+                if (next_cursor != WireId() || sink_wires.count(w)) {
+                    done = true;
+                    break;
+                }
+                next_cursor = w;
+            }
+            if (next_cursor == WireId())
+                break;
+            cursor = next_cursor;
+        }
+        return did_something;
+    }
+
+    bool reserve_sink_wires(NetInfo *net, store_index<PortRef> i)
+    {
+        bool did_something = false;
+        WireId src = ctx->getNetinfoSourceWire(net);
+        auto &nd = nets.at(net->udata);
+        for (auto &ad : nd.arcs.at(i.idx())) {
+            if (ad.pre_routed)
+                continue;
+            WireId cursor = idx_to_wire[ad.sink];
+            bool done = false;
+            while (!done) {
+                int32_t c = widx(cursor);
+                did_something |= (reserved[c] != net->udata);
+                if (reserved[c] != -1 && reserved[c] != net->udata)
+                    log_error("attempting to reserve sink input path wire '%s' for nets '%s' and '%s'\n",
+                              ctx->nameOfWire(cursor), ctx->nameOf(nets_by_udata.at(reserved[c])), ctx->nameOf(net));
+                reserved[c] = net->udata;
+                if (cursor == src)
+                    break;
+                WireId next_cursor;
+                for (auto uh : ctx->getPipsUphill(cursor)) {
+                    WireId w = ctx->getPipSrcWire(uh);
+                    if (is_wire_undriveable(w, net))
+                        continue;
+                    if (next_cursor != WireId()) {
+                        done = true;
+                        break;
+                    }
+                    next_cursor = w;
+                }
+                if (next_cursor == WireId())
+                    break;
+                cursor = next_cursor;
+            }
+        }
+        return did_something;
+    }
+
+    void find_all_reserved_wires()
+    {
+        bool did_something;
+        do {
+            did_something = false;
+            for (auto net : nets_by_udata) {
+                auto &nd = nets.at(net->udata);
+                if (net->driver.cell == nullptr || nd.src < 0)
+                    continue;
+                pool<WireId> sink_wires;
+                bool all_pre_routed = true;
+                for (auto usr : net->users.enumerate()) {
+                    for (auto &sink : nd.arcs.at(usr.index.idx()))
+                        if (!sink.pre_routed)
+                            all_pre_routed = false;
+                    for (auto sink_wire : ctx->getNetinfoSinkWires(net, usr.value))
+                        sink_wires.insert(sink_wire);
+                }
+                if (all_pre_routed)
+                    continue;
+                did_something |= reserve_driver_wires(net, sink_wires);
+                for (auto usr : net->users.enumerate())
+                    did_something |= reserve_sink_wires(net, usr.index);
+            }
+        } while (did_something);
+    }
+
+    // ------------------------------------------------------------------
+    // Timing helpers
+
+    // Arcs that fail slack under timing-driven rip-up are treated as fully
+    // critical so they take the minimum-delay route and others move.
+    float arc_crit(NetInfo *net, store_index<PortRef> i)
+    {
+        if (!timing_driven)
+            return 0.0f;
+        if (arc_failed_slack(net, i))
+            return 1.0f;
+        return tmg.get_criticality(CellPortKey(net->users.at(i)));
+    }
+
+    float arc_crit_weight(NetInfo *net, store_index<PortRef> i)
+    {
+        if (!timing_driven)
+            return 1.0f;
+        float crit = arc_crit(net, i);
+        float w = cfg.crit_weight_mode == 0 ? 1.0f - std::pow(crit, 2) : std::pow(1.0f - crit, cfg.crit_exponent);
+        return std::max<float>(cfg.crit_weight_floor, w);
+    }
+
+    bool arc_failed_slack(NetInfo *net, store_index<PortRef> i)
+    {
+        return timing_driven_ripup && (tmg.get_setup_slack(CellPortKey(net->users.at(i))) < (2 * ctx->getDelayEpsilon()));
+    }
+
+    // Worst setup slack over every routed sink, including frozen repair arcs.
+    // Repair-round WNS used to ignore frozen sinks, so freeze-first could
+    // "improve" by hiding the critical path instead of speeding it up.
+    float design_wns()
+    {
+        float wns = std::numeric_limits<float>::max();
+        for (auto ni : nets_by_udata) {
+            if (ni->driver.cell == nullptr)
+                continue;
+            for (auto &usr : ni->users) {
+                float sl = tmg.get_setup_slack(CellPortKey(usr));
+                if (sl != std::numeric_limits<float>::lowest())
+                    wns = std::min(wns, sl);
+            }
+        }
+        return wns;
+    }
+
+    void refresh_timing()
+    {
+        std::vector<int> all;
+        all.reserve(nets.size());
+        for (size_t i = 0; i < nets.size(); i++)
+            all.push_back(int(i));
+        update_route_delays(all);
+        tmg.run(false);
+    }
+    int best_tmgfail = std::numeric_limits<int>::max(), tmgfail_stall = 0;
+
+    // Arcs the router found already routed (and never moves) keep the delay
+    // the Arch reports for them, which for Mistral is the analogue-model
+    // delay of the bound route when an analogue repair round observed it;
+    // everything the router routes itself is costed by the delay table.
+    void update_route_delays(const std::vector<int> &queue)
+    {
+        for (int n : queue) {
+            NetInfo *ni = nets_by_udata.at(n);
+            auto &nd = nets.at(n);
+            for (auto usr : ni->users.enumerate()) {
+                delay_t arc_delay = 0;
+                bool kept = !nd.arcs.at(usr.index.idx()).empty();
+                for (auto &ad : nd.arcs.at(usr.index.idx())) {
+                    kept &= ad.pre_routed;
+                    arc_delay = std::max(arc_delay, get_route_delay(nd, ad));
+                }
+                if (kept)
+                    arc_delay = ctx->getNetinfoRouteDelay(ni, usr.value);
+                tmg.set_route_delay(CellPortKey(usr.value), DelayPair(arc_delay));
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Estimate model: fit a*|dx| + b*|dy| to Arch::estimateDelay so the
+    // device heuristic matches the architecture without calling into it.
+
+    float est_x = 0.075f, est_y = 0.2f;
+
+    void fit_estimate()
+    {
+        if (idx_to_wire.size() < 2)
+            return;
+        DeterministicRNG rng;
+        rng.rngseed(0x5eed1234u);
+        double sxx = 0, sxy = 0, syy = 0, sxd = 0, syd = 0, sd = 0, sxy_sum = 0;
+        int samples = 0;
+        for (int i = 0; i < 4000; i++) {
+            int a = rng.rng(int(idx_to_wire.size())), b = rng.rng(int(idx_to_wire.size()));
+            double dx = std::abs(wx[a] - wx[b]), dy = std::abs(wy[a] - wy[b]);
+            if (dx + dy == 0)
+                continue;
+            double d = ctx->getDelayNS(ctx->estimateDelay(idx_to_wire[a], idx_to_wire[b]));
+            sxx += dx * dx;
+            sxy += dx * dy;
+            syy += dy * dy;
+            sxd += dx * d;
+            syd += dy * d;
+            sd += d;
+            sxy_sum += dx + dy;
+            samples++;
+        }
+        if (samples == 0)
+            return;
+        double det = sxx * syy - sxy * sxy;
+        if (std::abs(det) > 1e-9) {
+            double a = (sxd * syy - syd * sxy) / det;
+            double b = (sxx * syd - sxy * sxd) / det;
+            if (a >= 0 && b >= 0 && (a > 0 || b > 0)) {
+                est_x = float(a);
+                est_y = float(b);
+                return;
+            }
+        }
+        float avg = float(sd / std::max(1.0, sxy_sum));
+        est_x = est_y = avg;
+    }
+
+    // ------------------------------------------------------------------
+    // Routing iteration
+
+    struct HostTask
+    {
+        int net;
+        std::vector<std::pair<int, int>> arcs; // (user index, phys pin)
+        int path_scale = 1;                    // grows when a path did not fit its output region
+    };
+
+    std::vector<int> route_queue;
+    std::set<int> failed_nets;
+    int total_wire_use = 0, overused_wires = 0, total_overuse = 0, arch_fail = 0;
+    double gpu_time = 0.0;
+    int64_t last_arcs = 0, last_expanded = 0;
+
+    void flush_state()
+    {
+        if (dirty_wires.empty())
+            return;
+        std::vector<int32_t> o(dirty_wires.size()), r(dirty_wires.size());
+        std::vector<float> h(dirty_wires.size());
+        for (size_t i = 0; i < dirty_wires.size(); i++) {
+            o[i] = occ[dirty_wires[i]];
+            h[i] = hist[dirty_wires[i]];
+            r[i] = reserved[dirty_wires[i]];
+            dirty_mark[dirty_wires[i]] = 0;
+        }
+        backend->update_wire_state(dirty_wires.size(), dirty_wires.data(), o.data(), h.data(), r.data());
+        if (cpu_backend)
+            cpu_backend->update_wire_state(dirty_wires.size(), dirty_wires.data(), o.data(), h.data(), r.data());
+        if (verify_backend)
+            verify_backend->update_wire_state(dirty_wires.size(), dirty_wires.data(), o.data(), h.data(), r.data());
+        dirty_wires.clear();
+    }
+
+    // Tiny batches (the negotiation tail, one-net repairs) are cheaper on
+    // the host than as a one-block launch plus table clears on the device
+    gpuroute::Backend *backend_for(size_t ntasks)
+    {
+        if (cpu_backend && int(ntasks) <= cfg.cpu_lane_nets)
+            return cpu_backend.get();
+        return backend.get();
+    }
+
+    // Repair displacement: soft reservations of other nets are ignored
+    bool ignore_soft = false;
+
+    // Timing repair mode: pure delay, no congestion terms, no bias
+    bool repair_mode = false;
+    // Candidate generation: the sink may only attach at the net source
+    bool attach_source_only = false;
+    // Peer-group repair: pure delay plus a dedicated present-congestion
+    // weight so same-band nets share short wires instead of hard-reserving.
+    bool repair_cong = false;
+
+    gpuroute::RouteParams make_params(bool use_bb) const
+    {
+        gpuroute::RouteParams p;
+        p.est_x = est_x;
+        p.est_y = est_y;
+        p.est_weight = (repair_mode || repair_cong) ? cfg.repair_estimate_weight : cfg.estimate_weight;
+        p.curr_cong_weight = repair_cong ? cfg.repair_cong_weight : curr_cong_weight;
+        p.bias_factor = repair_mode ? 0.0f : cfg.bias_cost_factor;
+        p.seed_delay_weight = cfg.seed_delay_weight;
+        p.seed_delay_floor = cfg.seed_delay_floor;
+        p.load_penalty = cfg.load_penalty;
+        p.pip_adder = cfg.pip_adder;
+        p.expand_k = candidate_mode ? cfg.candidate_expand_k : cfg.expand_k;
+        p.expand_div = cfg.expand_div;
+        p.use_bb = use_bb ? 1 : 0;
+        p.ignore_soft = ignore_soft ? 1 : 0;
+        p.ignore_hist = repair_cong ? 1 : 0;
+        p.max_probe = 512;
+        return p;
+    }
+
+    // Route the given tasks in one backend call. Arcs that could not be
+    // routed are returned for a retry.
+    int last_fail_status = 0, last_fail_reason = 0, last_fail_expanded = 0;
+    std::vector<HostTask> route_tasks(const std::vector<HostTask> &tasks, bool use_bb, bool large_lane)
+    {
+        std::vector<gpuroute::TaskDesc> tds;
+        std::vector<gpuroute::ArcDesc> ads;
+        std::vector<int32_t> seeds;
+        std::vector<float> seed_delay, seed_load;
+        std::vector<std::vector<std::pair<int, int>>> arc_map(tasks.size());
+        dict<int32_t, int> children;
+        int path_cursor = 0;
+        for (size_t ti = 0; ti < tasks.size(); ti++) {
+            const HostTask &t = tasks[ti];
+            NetInfo *ni = nets_by_udata.at(t.net);
+            auto &nd = nets.at(t.net);
+            gpuroute::TaskDesc td;
+            td.net = t.net;
+            td.tree_off = int32_t(seeds.size());
+            children.clear();
+            for (auto &w : nd.wires)
+                if (w.second.parent >= 0)
+                    children[w.second.parent]++;
+            // In repair mode the new arc will be frozen together with its
+            // upstream tree, so it may only attach where that upstream path
+            // is free of wires reserved for other nets.
+            dict<int32_t, bool> clean;
+            std::function<bool(int32_t)> is_clean = [&](int32_t w) -> bool {
+                auto fnd = clean.find(w);
+                if (fnd != clean.end())
+                    return fnd->second;
+                bool ok = (reserved[w] == -1 || gpuroute::reserved_owner(reserved[w]) == t.net);
+                auto tw = nd.wires.find(w);
+                if (ok && tw != nd.wires.end() && tw->second.parent >= 0 && w != nd.src)
+                    ok = is_clean(tw->second.parent);
+                clean[w] = ok;
+                return ok;
+            };
+            int clean_count = 0;
+            for (auto &w : nd.wires) {
+                seeds.push_back(w.first);
+                auto ch = children.find(w.first);
+                seed_load.push_back(ch == children.end() ? 0.0f : float(ch->second));
+                if ((repair_mode && !is_clean(w.first)) || (attach_source_only && w.first != nd.src)) {
+                    // still part of the tree (keeps its driver) but not an
+                    // attach point and not passable in this search
+                    seed_delay.push_back(-1.0f);
+                } else {
+                    seed_delay.push_back(w.second.delay);
+                    clean_count++;
+                }
+            }
+            if (clean_count == 0) {
+                // nothing clean to attach to: allow the source itself
+                seed_delay[td.tree_off + int32_t(std::distance(nd.wires.begin(), nd.wires.find(nd.src)))] = 0.0f;
+            }
+            auto tb = task_blocked.find(t.net);
+            if (tb != task_blocked.end())
+                for (int32_t w : tb->second)
+                    if (!nd.wires.count(w)) {
+                        seeds.push_back(w);
+                        seed_load.push_back(0.0f);
+                        seed_delay.push_back(-1.0f);
+                    }
+            td.tree_cnt = int32_t(seeds.size()) - td.tree_off;
+            td.arc_off = int32_t(ads.size());
+            pool<int32_t> sinks_seen;
+            for (auto &a : t.arcs) {
+                auto &ad = nd.arcs.at(a.first).at(a.second);
+                // Already connected through another logical arc of this net
+                if (nd.wires.count(ad.sink) || sinks_seen.count(ad.sink))
+                    continue;
+                sinks_seen.insert(ad.sink);
+                gpuroute::ArcDesc d;
+                d.sink = ad.sink;
+                if (repair_cong)
+                    d.crit_weight = 1.0f;
+                else if (repair_mode)
+                    d.crit_weight = 0.0f;
+                else
+                    d.crit_weight = arc_crit_weight(ni, store_index<PortRef>(a.first));
+                d.crit = (repair_mode || repair_cong) ? 1.0f : arc_crit(ni, store_index<PortRef>(a.first));
+                ads.push_back(d);
+                arc_map[ti].push_back(a);
+            }
+            td.arc_cnt = int32_t(ads.size()) - td.arc_off;
+            td.path_off = path_cursor;
+            // Output region for the new wires of this task's arcs. A route
+            // that does not fit returns ARC_PATH_FULL and is retried with
+            // the region scaled up (bounded by the wire count, which no
+            // simple path can exceed).
+            int64_t cap = int64_t(96 * td.arc_cnt + 256) * t.path_scale;
+            cap = std::min<int64_t>(cap, int64_t(idx_to_wire.size()) * std::max(1, td.arc_cnt));
+            td.path_cap = int32_t(cap);
+            path_cursor += td.path_cap;
+            td.cx = nd.cx;
+            td.cy = nd.cy;
+            td.hpwl = std::max(nd.hpwl, 1);
+            td.fanout = std::max<int>(1, int(ni->users.entries()));
+            td.bb_x0 = int16_t(std::max(nd.bb.x0, 0));
+            td.bb_y0 = int16_t(std::max(nd.bb.y0, 0));
+            td.bb_x1 = int16_t(std::min(nd.bb.x1, ctx->getGridDimX()));
+            td.bb_y1 = int16_t(std::min(nd.bb.y1, ctx->getGridDimY()));
+            tds.push_back(td);
+        }
+        std::vector<gpuroute::ArcResult> results;
+        std::vector<gpuroute::PathEntry> paths;
+        auto t0 = Clock::now();
+        backend_for(tasks.size())->route(make_params(use_bb), tds, ads, seeds, seed_delay, seed_load, large_lane,
+                                         results, paths);
+        gpu_time += secs_since(t0);
+        if (verify_backend && repair_mode && !repair_cong && !candidate_mode && use_bb) {
+            // The first arc of each task as plain Dijkstra on the same costs,
+            // state and box (large-lane table so it cannot overflow). Only
+            // the first arc is comparable: later arcs of a task are seeded
+            // from the paths the search before them chose, which differ
+            // between the two searches. At most the remaining allowance.
+            std::vector<gpuroute::TaskDesc> vtds;
+            for (auto &td : tds) {
+                // every exact search launched counts, compared or not: a
+                // task whose approximate search failed is retried later
+                if (int64_t(vtds.size()) + verify_launched >= int64_t(cfg.repair_verify_arcs))
+                    break;
+                if (td.arc_cnt < 1)
+                    continue;
+                vtds.push_back(td);
+                vtds.back().arc_cnt = 1;
+            }
+            if (!vtds.empty()) {
+                gpuroute::RouteParams vp = make_params(use_bb);
+                vp.est_weight = 0.0f;
+                vp.expand_k = 1;
+                vp.expand_div = 0;
+                vp.exact = 1;
+                std::vector<gpuroute::ArcResult> vres;
+                std::vector<gpuroute::PathEntry> vpaths;
+                auto tv = Clock::now();
+                verify_backend->route(vp, vtds, ads, seeds, seed_delay, seed_load, true, vres, vpaths);
+                verify_secs += secs_since(tv);
+                verify_launched += int64_t(vtds.size());
+                for (auto &td : vtds) {
+                    const size_t k = td.arc_off;
+                    if (results[k].status != gpuroute::ARC_OK)
+                        continue;
+                    if (vres[k].status != gpuroute::ARC_OK) {
+                        verify_unref++;
+                        continue;
+                    }
+                    verify_arcs++;
+                    double d = double(results[k].cost) - double(vres[k].cost);
+                    if (d > 1e-4) {
+                        verify_worse++;
+                        verify_excess += d;
+                        verify_max = std::max(verify_max, d);
+                    } else if (d < -1e-4)
+                        verify_better++;
+                }
+            }
+        }
+
+        std::vector<HostTask> retry;
+        for (size_t ti = 0; ti < tasks.size(); ti++) {
+            const auto &td = tds[ti];
+            auto &nd = nets.at(td.net);
+            HostTask rt;
+            rt.net = td.net;
+            rt.path_scale = tasks[ti].path_scale;
+            for (int k = 0; k < td.arc_cnt; k++) {
+                const auto &r = results.at(td.arc_off + k);
+                if (r.status == gpuroute::ARC_PATH_FULL)
+                    rt.path_scale = std::min(tasks[ti].path_scale * 8, 1 << 20);
+                auto &ad = nd.arcs.at(arc_map[ti][k].first).at(arc_map[ti][k].second);
+                if (ctx->debug)
+                    log("    TRACE %s arc %d.%d status %d cost %.4f expanded %d steps %d len %d attach %d\n",
+                        ctx->nameOf(nets_by_udata.at(td.net)), arc_map[ti][k].first, arc_map[ti][k].second, r.status,
+                        r.cost, r.expanded, r.steps, r.path_len,
+                        r.path_len > 0 ? paths[r.path_off + r.path_len - 1].parent : -1);
+                if (r.status == gpuroute::ARC_OK) {
+                    apply_path(nd, ad, paths.data() + r.path_off, r.path_len);
+                } else {
+                    last_fail_status = r.status;
+                    last_fail_reason = r.reason;
+                    last_fail_expanded = r.expanded;
+                    if (ctx->debug)
+                        log_info("    arc %d.%d of net '%s' failed in the %s lane%s: status %d reason %d "
+                                 "(expanded %d in %d steps)\n",
+                                 arc_map[ti][k].first, arc_map[ti][k].second, ctx->nameOf(nets_by_udata.at(td.net)),
+                                 large_lane ? "large" : "small", use_bb ? "" : " without bounding box", r.status,
+                                 r.reason, r.expanded, r.steps);
+                    rt.arcs.push_back(arc_map[ti][k]);
+                }
+            }
+            if (!rt.arcs.empty())
+                retry.push_back(std::move(rt));
+        }
+        return retry;
+    }
+
+    void route_batch(const std::vector<HostTask> &tasks)
+    {
+        // Small lane with bounding boxes first; then the large lane, still
+        // bounded, for searches that outgrew the small scratch; and finally
+        // the large lane without a bounding box, as router2 does for arcs
+        // that find no path inside their box.
+        std::vector<HostTask> retry = route_tasks(tasks, true, false);
+        flush_state();
+        if (retry.empty())
+            return;
+        if (ctx->verbose)
+            log_info("    %zu nets retried in the large lane\n", retry.size());
+        retry = route_tasks(retry, true, true);
+        flush_state();
+        if (retry.empty())
+            return;
+        if (ctx->verbose)
+            log_info("    %zu nets retried without bounding box\n", retry.size());
+        std::vector<HostTask> failed = route_tasks(retry, false, true);
+        flush_state();
+        if (!failed.empty() && !repair_mode && !ignore_soft) {
+            // No path at all: the only wires that reach the sink are held
+            // by arcs timing repair froze. A route beats no route, so take
+            // them and unfreeze those arcs whatever their slack; the next
+            // iteration negotiates them again.
+            ignore_soft = true;
+            std::vector<HostTask> still = route_tasks(failed, false, true);
+            ignore_soft = false;
+            pool<std::pair<int, std::pair<int, int>>> still_unrouted;
+            for (auto &r : still)
+                for (auto &a : r.arcs)
+                    still_unrouted.insert({r.net, a});
+            pool<int> touched;
+            int thawed = 0;
+            for (auto &t : failed)
+                for (auto &a : t.arcs) {
+                    if (still_unrouted.count({t.net, a}))
+                        continue;
+                    for (auto &v : list_soft_blockers(t.net, a)) {
+                        auto &ad = nets.at(v.first).arcs.at(v.second.first).at(v.second.second);
+                        if (ad.frozen) {
+                            ad.frozen = false;
+                            touched.insert(v.first);
+                            thawed++;
+                        }
+                    }
+                }
+            for (int o : touched)
+                rebuild_soft_reservations(o);
+            flush_state();
+            if (thawed > 0)
+                log_info("    unfroze %d repaired arcs whose reservations left %zu nets without any route\n", thawed,
+                         failed.size() - still.size());
+            failed = still;
+        }
+        for (auto &t : failed) {
+            NetInfo *ni = nets_by_udata.at(t.net);
+            auto &nd = nets.at(t.net);
+            auto &a = t.arcs.front();
+            auto &ad = nd.arcs.at(a.first).at(a.second);
+            log_error("Failed to route arc %d.%d of net '%s', from %s to %s (status %d, reason %d, %d wires "
+                      "expanded).\n",
+                      a.first, a.second, ctx->nameOf(ni), ctx->nameOfWire(idx_to_wire[nd.src]),
+                      ctx->nameOfWire(idx_to_wire[ad.sink]), last_fail_status, last_fail_reason, last_fail_expanded);
+        }
+    }
+
+    // Group tasks into batches whose bounding boxes are disjoint, so that
+    // nets routed concurrently cannot compete for the same wires. Tasks that
+    // fit nowhere go into a final batch that tolerates overlap.
+    std::vector<std::vector<HostTask>> make_batches(std::vector<HostTask> &tasks)
+    {
+        const int K = std::max(1, cfg.max_batches);
+        const int W = ctx->getGridDimX() + 2, H = ctx->getGridDimY() + 2;
+        std::vector<std::vector<uint8_t>> used(std::max(0, K - 1), std::vector<uint8_t>(size_t(W) * H, 0));
+        std::vector<std::vector<HostTask>> batches(K);
+        auto clamp_bb = [&](const BoundingBox &bb, int &x0, int &y0, int &x1, int &y1) {
+            x0 = std::max(bb.x0, 0);
+            y0 = std::max(bb.y0, 0);
+            x1 = std::min(bb.x1, W - 1);
+            y1 = std::min(bb.y1, H - 1);
+        };
+        for (auto &t : tasks) {
+            int x0, y0, x1, y1;
+            clamp_bb(nets.at(t.net).bb, x0, y0, x1, y1);
+            bool placed = false;
+            for (int b = 0; b < K - 1 && !placed; b++) {
+                auto &grid = used[b];
+                bool clash = false;
+                for (int y = y0; y <= y1 && !clash; y++)
+                    for (int x = x0; x <= x1; x++)
+                        if (grid[size_t(y) * W + x]) {
+                            clash = true;
+                            break;
+                        }
+                if (clash)
+                    continue;
+                for (int y = y0; y <= y1; y++)
+                    for (int x = x0; x <= x1; x++)
+                        grid[size_t(y) * W + x] = 1;
+                batches[b].push_back(std::move(t));
+                placed = true;
+            }
+            if (!placed)
+                batches[K - 1].push_back(std::move(t));
+        }
+        std::vector<std::vector<HostTask>> out;
+        for (auto &b : batches)
+            if (!b.empty())
+                out.push_back(std::move(b));
+        return out;
+    }
+
+    void update_congestion()
+    {
+        total_wire_use = 0;
+        overused_wires = 0;
+        total_overuse = 0;
+        failed_nets.clear();
+        for (size_t i = 0; i < nets.size(); i++) {
+            auto &nd = nets.at(i);
+            for (auto &w : nd.wires) {
+                ++total_wire_use;
+                if (occ[w.first] > 1)
+                    failed_nets.insert(int(i));
+            }
+        }
+        for (size_t w = 0; w < occ.size(); w++) {
+            if (occ[w] > 1) {
+                ++overused_wires;
+                total_overuse += occ[w] - 1;
+                if (curr_cong_weight > 0) {
+                    hist[w] = std::min(1e9f, hist[w] + (occ[w] - 1) * hist_cong_weight);
+                    mark_dirty(int32_t(w));
+                }
+            }
+        }
+        for (int n : failed_nets) {
+            auto &nd = nets.at(n);
+            ++nd.fail_count;
+            if ((nd.fail_count % 3) == 0)
+                ctx->expandBoundingBox(nd.bb);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Final binding into the Arch (ported from router2)
+
+    bool bind_and_check(NetInfo *net, store_index<PortRef> usr_idx, int phys_pin)
+    {
+        bool success = true;
+        auto &nd = nets.at(net->udata);
+        auto &ad = nd.arcs.at(usr_idx.idx()).at(phys_pin);
+        auto &usr = net->users.at(usr_idx);
+        WireId src = ctx->getNetinfoSourceWire(net);
+        if (src == WireId())
+            return true;
+        WireId dst = ctx->getNetinfoSinkWire(net, usr, phys_pin);
+        if (dst == WireId())
+            return true;
+        if (!ad.routed) {
+            if ((src == dst) && ctx->getBoundWireNet(dst) != net)
+                ctx->bindWire(src, net, STRENGTH_WEAK);
+            return true;
+        }
+        int32_t cursor = ad.sink;
+        std::vector<PipId> to_bind;
+        while (cursor != nd.src) {
+            WireId cw = idx_to_wire[cursor];
+            if (!ctx->checkWireAvail(cw)) {
+                NetInfo *bound_net = ctx->getBoundWireNet(cw);
+                if (bound_net != net) {
+                    if (ctx->verbose)
+                        log_info("Failed to bind wire %s to net %s, bound to net %s\n", ctx->nameOfWire(cw),
+                                 net->name.c_str(ctx), bound_net ? bound_net->name.c_str(ctx) : "nullptr");
+                    success = false;
+                    break;
+                }
+            }
+            auto fnd = nd.wires.find(cursor);
+            if (fnd == nd.wires.end())
+                log_error("Internal error; incomplete route tree for arc %d of net %s.\n", usr_idx.idx(),
+                          ctx->nameOf(net));
+            PipId p = fnd->second.pip;
+            if (p == PipId())
+                log_error("Internal error; route tree of net %s has no pip driving %s.\n", ctx->nameOf(net),
+                          ctx->nameOfWire(cw));
+            if (ctx->checkPipAvailForNet(p, net)) {
+                if (ctx->getBoundPipNet(p) == nullptr)
+                    to_bind.push_back(p);
+            } else if (!ad.pre_routed || ctx->getBoundPipNet(p) != net) {
+                if (ctx->verbose)
+                    log_info("Failed to bind pip %s to net %s\n", ctx->nameOfPip(p), net->name.c_str(ctx));
+                success = false;
+                break;
+            }
+            cursor = fnd->second.parent;
+        }
+        if (success) {
+            if (ctx->getBoundWireNet(src) == nullptr)
+                ctx->bindWire(src, net, STRENGTH_WEAK);
+            for (auto tb : to_bind)
+                ctx->bindPip(tb, net, STRENGTH_WEAK);
+        } else {
+            ripup_arc(nd, ad);
+            failed_nets.insert(net->udata);
+        }
+        return success;
+    }
+
+    bool bind_and_check_all()
+    {
+        ctx->check();
+        bool success = true;
+        // Unbind every net's router-made routing before binding any: a net
+        // the negotiation moved off a wire still holds it in the Arch until
+        // its own turn, and the net that legitimately took the wire would
+        // be refused, ripped up and re-routed onto a detour.
+        std::vector<WireId> net_wires;
+        for (auto net : nets_by_udata) {
+            net_wires.clear();
+            for (auto &w : net->wires)
+                if (w.second.strength <= STRENGTH_STRONG)
+                    net_wires.push_back(w.first);
+            for (auto w : net_wires)
+                ctx->unbindWire(w);
+        }
+        for (auto net : nets_by_udata) {
+            for (auto usr : net->users.enumerate()) {
+                auto &nd = nets.at(net->udata);
+                for (size_t phys_pin = 0; phys_pin < nd.arcs.at(usr.index.idx()).size(); phys_pin++) {
+                    if (!bind_and_check(net, usr.index, int(phys_pin))) {
+                        ++arch_fail;
+                        success = false;
+                    }
+                }
+            }
+        }
+        ctx->check();
+        flush_state();
+        return success;
+    }
+
+    int iter = 1;
+    int best_overused = std::numeric_limits<int>::max(), overused_stall = 0;
+    float cong_stall_boost = 1.0f;
+
+    // Negotiated-congestion loop over the nets in route_queue until no wire
+    // is overused (and, with --tmg-ripup, no arc fails slack)
+    void negotiate()
+    {
+        do {
+            auto istart = Clock::now();
+            gpu_time = 0.0;
+            ctx->sorted_shuffle(route_queue);
+            if (timing_driven && int(route_queue.size()) >= 30) {
+                for (auto n : route_queue) {
+                    NetInfo *ni = nets_by_udata.at(n);
+                    auto &nd = nets.at(n);
+                    nd.max_crit = 0;
+                    for (auto &usr : ni->users)
+                        nd.max_crit = std::max(nd.max_crit, tmg.get_criticality(CellPortKey(usr)));
+                }
+                std::stable_sort(route_queue.begin(), route_queue.end(),
+                                 [&](int a, int b) { return nets.at(a).max_crit > nets.at(b).max_crit; });
+            }
+
+            // Rip up every arc that is unrouted, congested or (optionally)
+            // failing timing, and collect the work per net
+            std::vector<HostTask> tasks;
+            for (int n : route_queue) {
+                NetInfo *ni = nets_by_udata.at(n);
+                auto &nd = nets.at(n);
+                if (ni->driver.cell == nullptr || nd.src < 0)
+                    continue;
+                bool failed_slack = false;
+                for (auto usr : ni->users.enumerate())
+                    failed_slack |= arc_failed_slack(ni, usr.index);
+                HostTask t;
+                t.net = n;
+                for (auto usr : ni->users.enumerate()) {
+                    auto &arcs = nd.arcs.at(usr.index.idx());
+                    for (size_t j = 0; j < arcs.size(); j++) {
+                        if (arcs[j].frozen)
+                            continue;
+                        if (!failed_slack && check_arc_routing(nd, arcs[j]))
+                            continue;
+                        ripup_arc(nd, arcs[j]);
+                        t.arcs.emplace_back(usr.index.idx(), int(j));
+                    }
+                }
+                if (t.arcs.empty())
+                    continue;
+                std::stable_sort(t.arcs.begin(), t.arcs.end(), [&](const std::pair<int, int> &a,
+                                                                   const std::pair<int, int> &b) {
+                    return arc_crit(ni, store_index<PortRef>(a.first)) > arc_crit(ni, store_index<PortRef>(b.first));
+                });
+                tasks.push_back(std::move(t));
+            }
+            flush_state();
+
+            auto batches = make_batches(tasks);
+            size_t ntasks = tasks.size();
+            for (auto &b : batches)
+                route_batch(b);
+
+            update_route_delays(route_queue);
+            route_queue.clear();
+            update_congestion();
+            flush_state();
+
+            if (overused_wires < best_overused) {
+                // Zero counts as an improvement too: with --tmg-ripup, a
+                // clean iteration does not end the loop (slack-failing nets
+                // can still be re-added), so a stale boost from an earlier
+                // plateau must not keep accelerating a schedule that already
+                // recovered.
+                best_overused = overused_wires;
+                overused_stall = 0;
+                cong_stall_boost = 1.0f;
+            } else if (overused_wires > 0 && cfg.congestion_stall_iters > 0 &&
+                       ++overused_stall % cfg.congestion_stall_iters == 0) {
+                // Frozen arcs are never ripped up, so an overused wire whose
+                // users are all frozen cannot be resolved by any cost;
+                // thaw all but the most critical of them first
+                int thawed = thaw_frozen_conflicts();
+                if (thawed > 0)
+                    log_info("    congestion has not improved from %d overused wires in %d iterations; "
+                             "unfroze %d repaired arcs sharing overused wires\n",
+                             best_overused, overused_stall, thawed);
+                else if (cong_stall_boost < cfg.congestion_stall_boost_max) {
+                    cong_stall_boost = std::min(cong_stall_boost * cfg.congestion_stall_boost,
+                                                cfg.congestion_stall_boost_max);
+                    log_info("    congestion has not improved from %d overused wires in %d iterations; "
+                             "accelerating present-congestion growth (x%.2f)\n",
+                             best_overused, overused_stall, cong_stall_boost);
+                }
+            }
+
+            int tmgfail = 0;
+            if (timing_driven)
+                tmg.run(false);
+            if (timing_driven && cfg.perf_profile) {
+                float min_slack = std::numeric_limits<float>::max();
+                int neg = 0;
+                for (auto ni : nets_by_udata)
+                    for (auto &usr : ni->users) {
+                        float sl = tmg.get_setup_slack(CellPortKey(usr));
+                        min_slack = std::min(min_slack, sl);
+                        if (sl < 0)
+                            neg++;
+                    }
+                log_info("        min setup slack %.3f ns, %d arcs with negative slack\n",
+                         ctx->getDelayNS(delay_t(min_slack)), neg);
+            }
+            if (timing_driven_ripup && iter < 1500) {
+                for (size_t i = 0; i < nets_by_udata.size(); i++) {
+                    NetInfo *ni = nets_by_udata.at(i);
+                    for (auto usr : ni->users.enumerate()) {
+                        if (arc_failed_slack(ni, usr.index)) {
+                            failed_nets.insert(int(i));
+                            ++tmgfail;
+                        }
+                    }
+                }
+                // Stop ripping up for timing once it has stopped helping;
+                // the remaining arcs are already on their best routes. Only
+                // count iterations in which arcs actually failed slack.
+                if (tmgfail < best_tmgfail) {
+                    best_tmgfail = tmgfail;
+                    tmgfail_stall = 0;
+                } else if (tmgfail > 0 && ++tmgfail_stall >= cfg.tmg_ripup_patience) {
+                    log_info("    timing-driven rip-up made no progress for %d iterations; %d arcs still fail slack\n",
+                             cfg.tmg_ripup_patience, tmgfail);
+                    timing_driven_ripup = false;
+                    if (overused_wires == 0) {
+                        failed_nets.clear();
+                        tmgfail = 0;
+                    }
+                }
+            }
+            for (auto cn : failed_nets)
+                route_queue.push_back(cn);
+
+            log_info("    iter=%d wires=%d overused=%d overuse=%d tmgfail=%d nets=%zu batches=%zu archfail=%s\n", iter,
+                     total_wire_use, overused_wires, total_overuse, tmgfail, ntasks, batches.size(),
+                     (overused_wires > 0 || tmgfail > 0) ? "NA" : std::to_string(arch_fail).c_str());
+            if (cfg.perf_profile) {
+                const auto &bs = backend->stats();
+                log_info("        iteration %.3fs of which backend %.3fs; %lld arcs, %lld wires expanded\n",
+                         secs_since(istart), gpu_time, (long long)(bs.arcs_routed - last_arcs),
+                         (long long)(bs.wires_expanded - last_expanded));
+                last_arcs = bs.arcs_routed;
+                last_expanded = bs.wires_expanded;
+            }
+            ++iter;
+            if (curr_cong_weight < 1e9)
+                curr_cong_weight += cfg.curr_cong_mult * cong_stall_boost;
+            if (!failed_nets.empty() && (iter % 100) == 0) {
+                int shown = 0;
+                for (size_t w = 0; w < occ.size() && shown < 5; w++) {
+                    if (occ[w] <= 1)
+                        continue;
+                    std::string users;
+                    for (int n : failed_nets) {
+                        auto &nd = nets.at(n);
+                        auto fnd = nd.wires.find(int32_t(w));
+                        if (fnd == nd.wires.end())
+                            continue;
+                        bool frozen = false;
+                        for (auto &arcs : nd.arcs)
+                            for (auto &ad : arcs)
+                                frozen |= ad.frozen;
+                        users += stringf(" %s(count=%d%s)", ctx->nameOf(nets_by_udata.at(n)), fnd->second.count,
+                                         frozen ? ",frozen" : "");
+                    }
+                    log_info("        stalled: wire %s occ=%d reserved=%d used by%s\n", ctx->nameOfWire(idx_to_wire[w]),
+                             occ[w], reserved[w], users.c_str());
+                    shown++;
+                }
+            }
+            if (iter > cfg.max_iter && !failed_nets.empty())
+                log_error("GPU router did not converge after %d iterations (%d overused wires).\n", cfg.max_iter,
+                          overused_wires);
+        } while (!failed_nets.empty());
+    }
+
+    // Unfreeze the frozen arcs that share an overused wire, keeping the
+    // one with the least slack on each wire frozen. Returns the number
+    // unfrozen; the next iteration rips them up and negotiates them.
+    int thaw_frozen_conflicts()
+    {
+        // wire -> (slack, net, arc) of the frozen arcs using it
+        dict<int32_t, std::vector<std::tuple<float, int, std::pair<int, int>>>> users;
+        for (int n : failed_nets) {
+            NetInfo *ni = nets_by_udata.at(n);
+            auto &nd = nets.at(n);
+            for (auto usr : ni->users.enumerate()) {
+                auto &arcs = nd.arcs.at(usr.index.idx());
+                for (size_t j = 0; j < arcs.size(); j++) {
+                    if (!arcs[j].frozen || !arcs[j].routed)
+                        continue;
+                    float slack = timing_driven ? tmg.get_setup_slack(CellPortKey(usr.value)) : 0.0f;
+                    int32_t cursor = arcs[j].sink;
+                    while (true) {
+                        if (occ[cursor] > 1)
+                            users[cursor].emplace_back(slack, n, std::make_pair(usr.index.idx(), int(j)));
+                        auto fnd = nd.wires.find(cursor);
+                        if (fnd == nd.wires.end() || fnd->second.parent == -1 || cursor == nd.src)
+                            break;
+                        cursor = fnd->second.parent;
+                    }
+                }
+            }
+        }
+        pool<int> touched;
+        int thawed = 0;
+        for (auto &u : users) {
+            if (u.second.size() < 2)
+                continue;
+            std::stable_sort(u.second.begin(), u.second.end(),
+                             [](const auto &a, const auto &b) { return std::get<0>(a) < std::get<0>(b); });
+            for (size_t k = 1; k < u.second.size(); k++) {
+                int n = std::get<1>(u.second[k]);
+                auto arc = std::get<2>(u.second[k]);
+                auto &ad = nets.at(n).arcs.at(arc.first).at(arc.second);
+                if (!ad.frozen)
+                    continue;
+                ad.frozen = false;
+                touched.insert(n);
+                thawed++;
+            }
+        }
+        for (int n : touched)
+            rebuild_soft_reservations(n);
+        if (thawed > 0)
+            flush_state();
+        return thawed;
+    }
+
+    // Reserve every wire on the arc's path for its net (soft) and freeze it
+    void freeze_arc(int net, ArcData &ad)
+    {
+        auto &nd = nets.at(net);
+        int32_t cursor = ad.sink;
+        while (true) {
+            if (reserved[cursor] == -1) {
+                reserved[cursor] = net | gpuroute::RESERVED_SOFT;
+                mark_dirty(cursor);
+            }
+            auto fnd = nd.wires.find(cursor);
+            if (fnd == nd.wires.end() || fnd->second.parent == -1 || cursor == nd.src)
+                break;
+            cursor = fnd->second.parent;
+        }
+        ad.frozen = true;
+    }
+
+    bool arc_uses_wire(const NetData &nd, const ArcData &ad, int32_t wire) const
+    {
+        int32_t cursor = ad.sink;
+        while (true) {
+            if (cursor == wire)
+                return true;
+            auto fnd = nd.wires.find(cursor);
+            if (fnd == nd.wires.end() || fnd->second.parent == -1 || cursor == nd.src)
+                return false;
+            cursor = fnd->second.parent;
+        }
+    }
+
+    // Drop and rebuild the soft reservations of a net from its frozen arcs
+    void rebuild_soft_reservations(int net)
+    {
+        auto &nd = nets.at(net);
+        for (auto &w : nd.wires)
+            if (reserved[w.first] == (net | gpuroute::RESERVED_SOFT)) {
+                reserved[w.first] = -1;
+                mark_dirty(w.first);
+            }
+        for (auto &arcs : nd.arcs)
+            for (auto &ad : arcs)
+                if (ad.frozen)
+                    freeze_arc(net, ad);
+    }
+
+    // Frozen arcs of other nets that occupy wires of this currently-routed arc.
+    std::vector<std::pair<int, std::pair<int, int>>> list_soft_blockers(int net, std::pair<int, int> arc) const
+    {
+        std::vector<std::pair<int, std::pair<int, int>>> victims;
+        const auto &nd = nets.at(net);
+        const auto &ad = nd.arcs.at(arc.first).at(arc.second);
+        if (!ad.routed)
+            return victims;
+        pool<std::pair<int, std::pair<int, int>>> seen;
+        int32_t cursor = ad.sink;
+        while (true) {
+            int32_t r = reserved[cursor];
+            int owner = gpuroute::reserved_owner(r);
+            if (owner != -1 && owner != net && (r & gpuroute::RESERVED_SOFT)) {
+                NetInfo *oi = nets_by_udata.at(owner);
+                const auto &od = nets.at(owner);
+                for (auto usr : oi->users.enumerate()) {
+                    const auto &arcs = od.arcs.at(usr.index.idx());
+                    for (size_t j = 0; j < arcs.size(); j++) {
+                        if (!arcs[j].frozen || !arc_uses_wire(od, arcs[j], cursor))
+                            continue;
+                        auto key = std::make_pair(owner, std::make_pair(usr.index.idx(), int(j)));
+                        if (seen.insert(key).second)
+                            victims.push_back(key);
+                    }
+                }
+            } else if (owner != -1 && owner != net && !(r & gpuroute::RESERVED_SOFT)) {
+                // Hard reservation: treat as unresolvable by returning no
+                // displaceable set. Callers that need a hard-block signal
+                // see an empty list together with remaining reserved wires.
+            }
+            auto fnd = nd.wires.find(cursor);
+            if (fnd == nd.wires.end() || fnd->second.parent == -1 || cursor == nd.src)
+                break;
+            cursor = fnd->second.parent;
+        }
+        return victims;
+    }
+
+    // A repaired arc of `net` was routed through other nets' soft
+    // reservations. Unfreeze the frozen arcs holding them when they have at
+    // least as much slack as the repaired arc; otherwise give the route up.
+    void displace_for(int net, std::pair<int, int> arc)
+    {
+        NetInfo *ni = nets_by_udata.at(net);
+        auto &nd = nets.at(net);
+        auto &ad = nd.arcs.at(arc.first).at(arc.second);
+        float my_slack = tmg.get_setup_slack(CellPortKey(ni->users.at(store_index<PortRef>(arc.first))));
+        auto victims = list_soft_blockers(net, arc);
+        bool ok = true;
+        int32_t cursor = ad.sink;
+        while (ok) {
+            int32_t r = reserved[cursor];
+            int owner = gpuroute::reserved_owner(r);
+            if (owner != -1 && owner != net && !(r & gpuroute::RESERVED_SOFT)) {
+                ok = false;
+                break;
+            }
+            auto fnd = nd.wires.find(cursor);
+            if (fnd == nd.wires.end() || fnd->second.parent == -1 || cursor == nd.src)
+                break;
+            cursor = fnd->second.parent;
+        }
+        if (ok) {
+            for (auto &v : victims) {
+                NetInfo *oi = nets_by_udata.at(v.first);
+                float their_slack =
+                        tmg.get_setup_slack(CellPortKey(oi->users.at(store_index<PortRef>(v.second.first))));
+                if (their_slack < my_slack + cfg.repair_displace_margin) {
+                    ok = false;
+                    break;
+                }
+            }
+        }
+        if (!ok) {
+            ripup_arc(nd, ad); // leave it for the peer-group pass or negotiation
+            return;
+        }
+        pool<int> touched;
+        for (auto &v : victims) {
+            nets.at(v.first).arcs.at(v.second.first).at(v.second.second).frozen = false;
+            touched.insert(v.first);
+        }
+        for (int o : touched)
+            rebuild_soft_reservations(o);
+        displaced_total += int(victims.size());
+    }
+    int displaced_total = 0;
+
+    // Rip and re-route the given arcs of one net. Returns the still-unrouted ones.
+    std::vector<std::pair<int, int>> route_repair_net(int net, const std::vector<std::pair<int, int>> &arcs)
+    {
+        HostTask t;
+        t.net = net;
+        t.arcs = arcs;
+        auto &nd = nets.at(net);
+        for (auto &a : t.arcs)
+            ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
+        flush_state();
+        std::vector<HostTask> one{t};
+        std::vector<HostTask> retry = route_tasks(one, true, false);
+        if (!retry.empty())
+            retry = route_tasks(retry, false, true);
+        std::vector<std::pair<int, int>> unrouted;
+        for (auto &r : retry)
+            for (auto &a : r.arcs)
+                unrouted.push_back(a);
+        return unrouted;
+    }
+
+    struct FailedRepair
+    {
+        float slack = 0.0f;
+        int net = -1;
+        std::pair<int, int> arc;
+        std::vector<std::tuple<float, int, std::pair<int, int>>> blockers; // slack, net, arc
+    };
+
+    // Failed greedy repairs that share short wires with already-frozen peers
+    // in the same slack band are ripped together and re-routed at pure delay
+    // plus present congestion, then frozen. The first greedy freeze otherwise
+    // leaves those peers unroutable and the worst slack stuck. Blockers are
+    // those recorded while the greedy pass still had the ignore-soft path.
+    int repair_peer_groups(const std::vector<FailedRepair> &failed)
+    {
+        if (failed.empty() || cfg.repair_cong_weight <= 0.0f)
+            return 0;
+        const int n = int(nets.size());
+        std::vector<int> parent(n);
+        for (int i = 0; i < n; i++)
+            parent[i] = i;
+        std::function<int(int)> find = [&](int x) -> int {
+            if (parent[x] != x)
+                parent[x] = find(parent[x]);
+            return parent[x];
+        };
+        auto unite = [&](int a, int b) {
+            a = find(a);
+            b = find(b);
+            if (a != b)
+                parent[std::max(a, b)] = std::min(a, b);
+        };
+
+        int discovered = 0;
+        for (auto &f : failed) {
+            bool grouped = false;
+            for (auto &b : f.blockers) {
+                float their_slack = std::get<0>(b);
+                int owner = std::get<1>(b);
+                if (their_slack >= f.slack - cfg.repair_band) {
+                    unite(f.net, owner);
+                    grouped = true;
+                }
+            }
+            if (grouped)
+                discovered++;
+        }
+        if (discovered == 0) {
+            log_info("    timing repair peer-group: %zu failed arcs, none shared a same-band frozen path\n",
+                     failed.size());
+            return 0;
+        }
+
+        std::vector<int> count(n, 0);
+        for (int i = 0; i < n; i++)
+            count[find(i)]++;
+        float band_hi = std::numeric_limits<float>::lowest();
+        pool<std::pair<int, std::pair<int, int>>> failed_arcs;
+        for (auto &f : failed) {
+            band_hi = std::max(band_hi, f.slack);
+            failed_arcs.insert({f.net, f.arc});
+        }
+        band_hi += cfg.repair_band;
+
+        int repaired = 0;
+        repair_mode = true;
+        repair_cong = true;
+        for (int root = 0; root < n; root++) {
+            if (count[root] < 2)
+                continue;
+            std::vector<std::tuple<float, int, std::pair<int, int>>> members;
+            pool<std::pair<int, std::pair<int, int>>> seen;
+            auto add = [&](float slack, int net, std::pair<int, int> arc) {
+                if (seen.insert(std::make_pair(net, arc)).second)
+                    members.emplace_back(slack, net, arc);
+            };
+            for (int i = 0; i < n; i++) {
+                if (find(i) != root)
+                    continue;
+                NetInfo *ni = nets_by_udata.at(i);
+                auto &nd = nets.at(i);
+                if (ni == nullptr || ni->driver.cell == nullptr || nd.src < 0)
+                    continue;
+                for (auto usr : ni->users.enumerate()) {
+                    float slack = tmg.get_setup_slack(CellPortKey(usr.value));
+                    if (slack == std::numeric_limits<float>::lowest() || slack > band_hi)
+                        continue;
+                    auto &arcs = nd.arcs.at(usr.index.idx());
+                    for (size_t j = 0; j < arcs.size(); j++) {
+                        if (arcs[j].pre_routed)
+                            continue;
+                        // Include delay-only failures even after their legal
+                        // tree was restored, otherwise this pass only sees
+                        // frozen/unrouted peers and rips them alone.
+                        if (arcs[j].frozen || !arcs[j].routed ||
+                            failed_arcs.count({i, {usr.index.idx(), int(j)}}))
+                            add(slack, i, {usr.index.idx(), int(j)});
+                    }
+                }
+            }
+            if (members.size() < 2)
+                continue;
+            std::stable_sort(members.begin(), members.end(),
+                             [](const auto &a, const auto &b) { return std::get<0>(a) < std::get<0>(b); });
+            pool<int> touched;
+            for (auto &m : members) {
+                int net = std::get<1>(m);
+                auto arc = std::get<2>(m);
+                nets.at(net).arcs.at(arc.first).at(arc.second).frozen = false;
+                touched.insert(net);
+            }
+            for (int o : touched)
+                rebuild_soft_reservations(o);
+            dict<int, NetData> saved;
+            for (int o : touched)
+                saved[o] = nets.at(o);
+            for (auto &m : members) {
+                int net = std::get<1>(m);
+                auto arc = std::get<2>(m);
+                ripup_arc(nets.at(net), nets.at(net).arcs.at(arc.first).at(arc.second));
+            }
+            flush_state();
+            dict<int, std::vector<std::pair<int, int>>> by_net;
+            std::vector<int> net_order;
+            for (auto &m : members) {
+                int net = std::get<1>(m);
+                if (!by_net.count(net))
+                    net_order.push_back(net);
+                by_net[net].push_back(std::get<2>(m));
+            }
+            std::vector<std::pair<int, std::pair<int, int>>> routed;
+            pool<int> restored;
+            for (int net : net_order) {
+                auto unrouted = route_repair_net(net, by_net[net]);
+                pool<std::pair<int, int>> u;
+                for (auto &a : unrouted)
+                    u.insert(a);
+                bool any_failed = false;
+                for (auto &a : by_net[net]) {
+                    auto &ad = nets.at(net).arcs.at(a.first).at(a.second);
+                    if (u.count(a) || !ad.routed)
+                        any_failed = true;
+                }
+                if (any_failed) {
+                    restore_net(net, saved.at(net));
+                    restored.insert(net);
+                    continue;
+                }
+                for (auto &a : by_net[net])
+                    routed.push_back({net, a});
+            }
+            for (auto &r : routed) {
+                auto &ad = nets.at(r.first).arcs.at(r.second.first).at(r.second.second);
+                bool overlap = false;
+                int32_t cursor = ad.sink;
+                auto &nd = nets.at(r.first);
+                while (true) {
+                    if (occ[cursor] > 1) {
+                        overlap = true;
+                        break;
+                    }
+                    auto fnd = nd.wires.find(cursor);
+                    if (fnd == nd.wires.end() || fnd->second.parent == -1 || cursor == nd.src)
+                        break;
+                    cursor = fnd->second.parent;
+                }
+                if (overlap)
+                    continue;
+                freeze_arc(r.first, ad);
+                repaired++;
+            }
+            for (int o : touched)
+                route_queue.push_back(o);
+            flush_state();
+        }
+        repair_cong = false;
+        if (repaired > 0)
+            log_info("    timing repair re-routed %d peer-group arcs with occupancy\n", repaired);
+        return repaired;
+    }
+
+    // Arcs that still fail slack after negotiation are re-routed at pure
+    // delay with their tree costed by upstream delay, one net at a time so
+    // repaired arcs never compete, and their wires are reserved so the
+    // negotiation loop moves the displaced non-critical arcs instead.
+    void timing_repair()
+    {
+        int repaired_total = 0, improve_rounds = 0;
+        float best_wns = std::numeric_limits<float>::lowest();
+        bool reverse_repair = false;
+        // Snapshot of the best state seen, restored if a later round made
+        // the worst slack worse
+        struct Snapshot
+        {
+            std::vector<NetData> nets;
+            std::vector<int32_t> occ, reserved;
+            std::vector<float> hist;
+            float wns = std::numeric_limits<float>::lowest();
+        } best;
+        auto take_snapshot = [&](float wns) {
+            best.nets = nets;
+            best.occ = occ;
+            best.reserved = reserved;
+            best.hist = hist;
+            best.wns = wns;
+        };
+        auto restore_snapshot = [&]() {
+            nets = best.nets;
+            occ = best.occ;
+            reserved = best.reserved;
+            hist = best.hist;
+            for (size_t w = 0; w < occ.size(); w++)
+                mark_dirty(int32_t(w));
+            flush_state();
+            std::vector<int> all;
+            for (size_t i = 0; i < nets.size(); i++)
+                all.push_back(int(i));
+            update_route_delays(all);
+            tmg.run(false);
+        };
+        for (int round = 1; round <= cfg.repair_rounds; round++) {
+            refresh_timing();
+            float wns = design_wns();
+            if (wns == std::numeric_limits<float>::max())
+                break;
+            if (round > 1 && wns <= best_wns + 1.0f) {
+                log_info("    timing repair round %d: worst slack %.3f ns did not improve on %.3f ns\n", round,
+                         ctx->getDelayNS(delay_t(wns)), ctx->getDelayNS(delay_t(best_wns)));
+                if (wns < best.wns) {
+                    log_info("    restoring the routing of the best round\n");
+                    restore_snapshot();
+                    wns = best.wns;
+                }
+                if (best_wns >= cfg.repair_slack || reverse_repair) {
+                    log_info("    stopping%s\n", reverse_repair ? " after a reversed-order retry" : "");
+                    break;
+                }
+                reverse_repair = true;
+                log_info("    retrying with reversed repair order because worst slack still fails\n");
+            } else {
+                reverse_repair = false;
+                best_wns = std::max(best_wns, wns);
+                take_snapshot(wns);
+            }
+            // Repair everything failing, and while nothing fails, the arcs
+            // within repair_band of the worst slack (Fmax improvement) for a
+            // bounded number of rounds
+            float thresh = std::max(cfg.repair_slack, wns + cfg.repair_band);
+            if (wns < cfg.repair_slack)
+                thresh = std::max(thresh, cfg.repair_slack + cfg.repair_band);
+            if (wns >= cfg.repair_slack) {
+                if (cfg.repair_band <= 0.0f || ++improve_rounds > cfg.repair_improve_rounds) {
+                    log_info("    timing repair round %d: no arcs fail slack (worst %.3f ns)\n", round,
+                             ctx->getDelayNS(delay_t(wns)));
+                    break;
+                }
+            }
+            // (slack, net, (user, phys))
+            std::vector<std::tuple<float, int, std::pair<int, int>>> failing;
+            pool<int> unfrozen_nets;
+            int unfroze = 0;
+            const bool unfreeze_failing = wns < cfg.repair_slack;
+            for (size_t i = 0; i < nets_by_udata.size(); i++) {
+                NetInfo *ni = nets_by_udata.at(i);
+                auto &nd = nets.at(i);
+                if (ni->driver.cell == nullptr || nd.src < 0)
+                    continue;
+                for (auto usr : ni->users.enumerate()) {
+                    float slack = tmg.get_setup_slack(CellPortKey(usr.value));
+                    if (slack >= thresh || slack == std::numeric_limits<float>::lowest())
+                        continue;
+                    auto &arcs = nd.arcs.at(usr.index.idx());
+                    for (size_t j = 0; j < arcs.size(); j++) {
+                        if (arcs[j].pre_routed)
+                            continue;
+                        if (arcs[j].frozen) {
+                            // Keep a freeze that already meets the request;
+                            // only rip arcs whose slack still fails.
+                            if (!unfreeze_failing || slack >= cfg.repair_slack)
+                                continue;
+                            arcs[j].frozen = false;
+                            unfrozen_nets.insert(int(i));
+                            ++unfroze;
+                        }
+                        failing.emplace_back(slack, int(i), std::make_pair(usr.index.idx(), int(j)));
+                    }
+                }
+            }
+            for (int n : unfrozen_nets)
+                rebuild_soft_reservations(n);
+            if (unfroze > 0) {
+                flush_state();
+                log_info("    timing repair unfroze %d arcs that still fail slack\n", unfroze);
+            }
+            if (failing.empty()) {
+                log_info("    timing repair round %d: nothing left to repair\n", round);
+                break;
+            }
+            std::stable_sort(failing.begin(), failing.end(),
+                             [](const auto &a, const auto &b) { return std::get<0>(a) < std::get<0>(b); });
+            if (reverse_repair)
+                std::reverse(failing.begin(), failing.end());
+            // group by net, keeping the worst-slack-first order of nets
+            std::vector<HostTask> tasks;
+            dict<int, size_t> task_of;
+            for (auto &f : failing) {
+                int net = std::get<1>(f);
+                auto fnd = task_of.find(net);
+                if (fnd == task_of.end()) {
+                    task_of[net] = tasks.size();
+                    HostTask t;
+                    t.net = net;
+                    tasks.push_back(t);
+                    fnd = task_of.find(net);
+                }
+                tasks[fnd->second].arcs.push_back(std::get<2>(f));
+            }
+            int repaired = 0, failed_repairs = 0;
+            std::vector<FailedRepair> failed_records;
+            repair_mode = true;
+            for (auto &t : tasks) {
+                auto &nd = nets.at(t.net);
+                NetData saved = nd;
+                for (auto &a : t.arcs)
+                    ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
+                flush_state();
+                std::vector<HostTask> one{t};
+                std::vector<HostTask> retry = route_tasks(one, true, false);
+                if (!retry.empty())
+                    retry = route_tasks(retry, false, true);
+                dict<std::pair<int, int>, std::vector<std::tuple<float, int, std::pair<int, int>>>> soft_blockers;
+                if (!retry.empty() && cfg.repair_displace) {
+                    ignore_soft = true;
+                    std::vector<HostTask> still = route_tasks(retry, false, true);
+                    ignore_soft = false;
+                    pool<std::pair<int, int>> still_unrouted;
+                    for (auto &r : still)
+                        for (auto &a : r.arcs)
+                            still_unrouted.insert(a);
+                    for (auto &r : retry)
+                        for (auto &a : r.arcs)
+                            if (!still_unrouted.count(a)) {
+                                std::vector<std::tuple<float, int, std::pair<int, int>>> named;
+                                for (auto &b : list_soft_blockers(t.net, a)) {
+                                    NetInfo *oi = nets_by_udata.at(b.first);
+                                    float sl = tmg.get_setup_slack(
+                                            CellPortKey(oi->users.at(store_index<PortRef>(b.second.first))));
+                                    named.emplace_back(sl, b.first, b.second);
+                                }
+                                soft_blockers[a] = std::move(named);
+                                displace_for(t.net, a);
+                            }
+                    retry = still;
+                }
+                pool<std::pair<int, int>> unrouted;
+                for (auto &r : retry)
+                    for (auto &a : r.arcs)
+                        unrouted.insert(a);
+                NetInfo *ni = nets_by_udata.at(t.net);
+                bool any_failed = false;
+                for (auto &a : t.arcs) {
+                    auto &ad = nd.arcs.at(a.first).at(a.second);
+                    if (unrouted.count(a) || !ad.routed)
+                        any_failed = true;
+                }
+                if (any_failed) {
+                    // Delay-only search left the net illegal. Put the previous
+                    // legal tree back so re-negotiation does not abort.
+                    restore_net(t.net, saved);
+                    for (auto &a : t.arcs) {
+                        failed_repairs++;
+                        FailedRepair rec;
+                        rec.slack = tmg.get_setup_slack(CellPortKey(ni->users.at(store_index<PortRef>(a.first))));
+                        rec.net = t.net;
+                        rec.arc = a;
+                        auto fnd = soft_blockers.find(a);
+                        if (fnd != soft_blockers.end())
+                            rec.blockers = fnd->second;
+                        failed_records.push_back(std::move(rec));
+                    }
+                } else {
+                    for (auto &a : t.arcs) {
+                        freeze_arc(t.net, nd.arcs.at(a.first).at(a.second));
+                        repaired++;
+                    }
+                    flush_state();
+                }
+            }
+            if (failed_repairs > 0)
+                repaired += repair_peer_groups(failed_records);
+            repair_mode = false;
+            repaired_total += repaired;
+            log_info("    timing repair round %d: worst slack %.3f ns, %zu arcs below %.3f ns, %d re-routed at pure "
+                     "delay, %d not routable\n",
+                     round, ctx->getDelayNS(delay_t(wns)), failing.size(), ctx->getDelayNS(delay_t(thresh)), repaired,
+                     failed_repairs);
+            // Re-negotiate: the repaired nets (for delay bookkeeping) and
+            // every net now sharing a reserved wire
+            update_congestion();
+            for (auto &t : tasks)
+                route_queue.push_back(t.net);
+            for (auto cn : failed_nets)
+                route_queue.push_back(cn);
+            std::sort(route_queue.begin(), route_queue.end());
+            route_queue.erase(std::unique(route_queue.begin(), route_queue.end()), route_queue.end());
+            negotiate();
+        }
+        if (displaced_total > 0)
+            log_info("    timing repair displaced %d frozen arcs with more slack\n", displaced_total);
+        if (repaired_total > 0) {
+            refresh_timing();
+            float wns = design_wns();
+            if (best.wns != std::numeric_limits<float>::lowest() && wns < best.wns - 1.0f) {
+                log_info("    final worst slack %.3f ns is below the best round's %.3f ns; restoring it\n",
+                         ctx->getDelayNS(delay_t(wns)), ctx->getDelayNS(delay_t(best.wns)));
+                restore_snapshot();
+            }
+            log_info("    timing repair froze %d arcs (design WNS %.3f ns)\n", repaired_total,
+                     ctx->getDelayNS(delay_t(design_wns())));
+        }
+    }
+
+    // ------------------------------------------------------------------
+
+    // Backend, flattened graph, per-net trees, reservations and estimate
+    void setup_all()
+    {
+        std::string err;
+        if (cfg.cpu_backend) {
+            backend = gpuroute::create_cpu_backend();
+        } else {
+            backend = gpuroute::create_device_backend(cfg.device, err);
+            if (!backend) {
+                log_warning("GPU router: %s; falling back to the CPU reference backend.\n", err.c_str());
+                backend = gpuroute::create_cpu_backend();
+            }
+        }
+        if (!cfg.cpu_backend && gpuroute::device_backend_available() && ctx->verbose)
+            log_info("    GPU devices: %s\n", gpuroute::describe_devices().c_str());
+        if (cfg.cpu_lane_nets > 0 && std::string(backend->name()) != "cpu-reference")
+            cpu_backend = gpuroute::create_cpu_backend();
+        if (cfg.repair_verify)
+            verify_backend = gpuroute::create_cpu_backend();
+
+        log_info("Setting up routing resources...\n");
+        setup_net_indices();
+        setup_graph();
+        setup_nets();
+        find_all_reserved_wires();
+        fit_estimate();
+
+        gpuroute::GraphData gd;
+        gd.n_wires = int32_t(idx_to_wire.size());
+        gd.n_edges = int64_t(out_dst.size());
+        gd.out_off = out_off.data();
+        gd.out_dst = out_dst.data();
+        gd.edge_cost = edge_cost.data();
+        gd.wire_x = wx.data();
+        gd.wire_y = wy.data();
+        gd.wire_reserved = reserved.data();
+        gd.wire_flags = wflags.data();
+        gd.wire_occ = occ.data();
+        gd.wire_hist = hist.data();
+        auto tup = Clock::now();
+        if (!backend->init(gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, err))
+            log_error("GPU router backend initialisation failed: %s\n", err.c_str());
+        if (cpu_backend &&
+            !cpu_backend->init(gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, err))
+            log_error("GPU router CPU lane initialisation failed: %s\n", err.c_str());
+        if (verify_backend &&
+            !verify_backend->init(gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, err))
+            log_error("GPU router verification backend initialisation failed: %s\n", err.c_str());
+        log_info("    backend %s ready in %.2fs (estimate %.3f ns/x, %.3f ns/y)\n", backend->name(), secs_since(tup),
+                 est_x, est_y);
+        // The backend snapshot already contains the setup-time state
+        dirty_wires.clear();
+        std::fill(dirty_mark.begin(), dirty_mark.end(), 0);
+
+        curr_cong_weight = cfg.init_curr_cong_weight;
+        hist_cong_weight = cfg.hist_cong_weight;
+        timing_driven = ctx->setting<bool>("timing_driven");
+        if (ctx->settings.count(ctx->id("router/tmg_ripup")))
+            timing_driven_ripup = timing_driven && ctx->setting<bool>("router/tmg_ripup");
+    }
+
+    // ------------------------------------------------------------------
+    // Candidate generation (GpuCandidateRouter)
+
+    // Replace the tree of `net` with what the Arch has bound for it, as
+    // setup_graph()/setup_nets() do for every net at the start of a run.
+    void reload_net_from_arch(int net)
+    {
+        NetInfo *ni = nets_by_udata.at(net);
+        auto &nd = nets.at(net);
+        for (auto &w : nd.wires) {
+            occ[w.first]--;
+            if (reserved[w.first] == net)
+                reserved[w.first] = -1;
+            mark_dirty(w.first);
+        }
+        nd.wires.clear();
+        for (auto &arcs : nd.arcs)
+            for (auto &ad : arcs) {
+                ad.routed = false;
+                ad.pre_routed = false;
+            }
+        for (auto &w : ni->wires) {
+            int32_t i = widx(w.first);
+            TreeWire tw;
+            tw.pip = w.second.pip;
+            tw.parent = (tw.pip == PipId()) ? -1 : widx(ctx->getPipSrcWire(tw.pip));
+            nd.wires[i] = tw;
+            occ[i]++;
+            if (reserved[i] == -1)
+                reserved[i] = net;
+            mark_dirty(i);
+        }
+        if (nd.src >= 0 && !nd.wires.count(nd.src)) {
+            TreeWire tw;
+            tw.parent = -1;
+            tw.count = 1;
+            nd.wires[nd.src] = tw;
+            occ[nd.src]++;
+            mark_dirty(nd.src);
+        }
+        compute_tree_delays(nd);
+        for (auto &arcs : nd.arcs)
+            for (auto &ad : arcs)
+                if (check_arc_routing(nd, ad))
+                    record_prerouted(nd, ad);
+        flush_state();
+    }
+
+    // Candidate generation for one sink of one net; see
+    // GpuCandidateRouter::candidates(). Every sink of a batch is searched
+    // in the same launches, so the searches fill the device instead of
+    // running one thread block at a time.
+    struct CandidateJob
+    {
+        int net = -1, user = -1;
+        std::vector<std::pair<int, int>> arcs;
+        NetData saved, base;
+        BoundingBox wide;
+        std::vector<int32_t> old_long; // multi-tile wires of the old route, most upstream first
+        pool<int32_t> avoid;           // new wires of earlier candidates to steer away from
+        std::vector<std::vector<int32_t>> seen;
+        std::vector<int32_t> blocked; // wires this variant may not use
+        int cumulative = 0;           // cumulative-avoid variants run so far
+        bool cumulative_done = false, active = false, routing = false, is_cumulative = false;
+        size_t avoid_before = 0;
+        std::vector<GpuRouteTree> out;
+    };
+
+    std::vector<std::vector<GpuRouteTree>> route_candidates(const std::vector<std::pair<int, int>> &sinks, int count)
+    {
+        std::vector<CandidateJob> jobs(sinks.size());
+        std::vector<std::vector<GpuRouteTree>> result(sinks.size());
+        if (count <= 0)
+            return result;
+        pool<int> seen_nets;
+        int active = 0;
+        for (size_t i = 0; i < sinks.size(); i++) {
+            auto &job = jobs[i];
+            int net = sinks[i].first, user = sinks[i].second;
+            auto &nd = nets.at(net);
+            if (nd.src < 0 || user < 0 || user >= int(nd.arcs.size()) || !seen_nets.insert(net).second)
+                continue; // one sink per net per batch
+            for (size_t j = 0; j < nd.arcs.at(user).size(); j++)
+                job.arcs.emplace_back(user, int(j));
+            if (job.arcs.empty())
+                continue;
+            job.net = net;
+            job.user = user;
+            job.saved = nd;
+            for (auto &a : job.arcs)
+                ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
+            job.base = nd;
+            for (auto &w : job.saved.wires)
+                if (!job.base.wires.count(w.first) && wlong[w.first])
+                    job.old_long.push_back(w.first);
+            std::sort(job.old_long.begin(), job.old_long.end(), [&](int32_t a, int32_t b) {
+                return job.saved.wires.at(a).delay < job.saved.wires.at(b).delay;
+            });
+            if (int(job.old_long.size()) > count)
+                job.old_long.resize(count);
+            // Candidates search a box wider than the net's own, since an
+            // alternative to a route that had to leave the box is often
+            // outside it too
+            job.wide = job.saved.bb;
+            job.wide.x0 = std::max(job.wide.x0 - cfg.candidate_margin, 0);
+            job.wide.y0 = std::max(job.wide.y0 - cfg.candidate_margin, 0);
+            job.wide.x1 = std::min(job.wide.x1 + cfg.candidate_margin, ctx->getGridDimX());
+            job.wide.y1 = std::min(job.wide.y1 + cfg.candidate_margin, ctx->getGridDimY());
+            std::vector<int32_t> current;
+            for (auto &w : job.saved.wires)
+                current.push_back(w.first);
+            std::sort(current.begin(), current.end());
+            job.seen.push_back(std::move(current));
+            job.active = true;
+            active++;
+        }
+        flush_state();
+        repair_mode = true;
+        candidate_mode = true;
+        // Variants: 0 attach anywhere, 1 from the source only, then avoid
+        // every multi-tile wire of the candidates so far while that finds
+        // new routes, then avoid each multi-tile wire of the old route in
+        // turn. Only the two primary variants may fall back to the search
+        // without a box, which covers the whole device.
+        for (int variant = 0; active > 0 && variant < 2 + 2 * count; variant++) {
+            std::vector<HostTask> tasks;
+            std::vector<size_t> task_job;
+            for (size_t i = 0; i < jobs.size(); i++) {
+                auto &job = jobs[i];
+                job.routing = false;
+                if (!job.active)
+                    continue;
+                if (int(job.out.size()) >= count) {
+                    job.active = false;
+                    active--;
+                    continue;
+                }
+                auto &nd = nets.at(job.net);
+                job.avoid_before = job.avoid.size();
+                restore_net(job.net, job.base);
+                nd.bb = job.wide;
+                job.blocked.clear();
+                auto block_wire = [&](int32_t w) {
+                    if (!job.base.wires.count(w))
+                        job.blocked.push_back(w);
+                };
+                job.is_cumulative = false;
+                if (variant >= 2 && !job.cumulative_done) {
+                    job.is_cumulative = true;
+                    job.cumulative++;
+                    for (int32_t w : job.avoid)
+                        block_wire(w);
+                    if (job.blocked.empty())
+                        job.cumulative_done = true; // nothing left to diversify on
+                }
+                if (variant >= 2 && !job.is_cumulative) {
+                    int k = variant - 2 - job.cumulative;
+                    if (k >= int(job.old_long.size())) {
+                        job.active = false;
+                        active--;
+                        continue;
+                    }
+                    block_wire(job.old_long[k]);
+                    if (job.blocked.empty())
+                        continue;
+                }
+                HostTask t;
+                t.net = job.net;
+                t.arcs = job.arcs;
+                tasks.push_back(std::move(t));
+                task_job.push_back(i);
+                job.routing = true;
+                task_blocked[job.net] = job.blocked;
+            }
+            flush_state();
+            if (tasks.empty())
+                continue;
+            attach_source_only = (variant == 1);
+            std::vector<HostTask> retry = route_tasks(tasks, true, false);
+            flush_state();
+            if (!retry.empty())
+                retry = route_tasks(retry, true, true);
+            flush_state();
+            if (!retry.empty() && cfg.candidate_unbounded && variant < 2)
+                retry = route_tasks(retry, false, true);
+            flush_state();
+            attach_source_only = false;
+            pool<int> failed;
+            for (auto &r : retry)
+                failed.insert(r.net);
+            for (size_t i : task_job) {
+                auto &job = jobs[i];
+                auto &nd = nets.at(job.net);
+                bool complete = !failed.count(job.net);
+                for (auto &a : job.arcs)
+                    complete &= nd.arcs.at(a.first).at(a.second).routed;
+                if (!complete) {
+                    if (job.is_cumulative)
+                        job.cumulative_done = true; // avoiding everything so far leaves no route
+                    continue;
+                }
+                std::vector<int32_t> wires;
+                bool any_long = false;
+                for (auto &w : nd.wires) {
+                    wires.push_back(w.first);
+                    if (!job.base.wires.count(w.first) && wlong[w.first]) {
+                        job.avoid.insert(w.first);
+                        any_long = true;
+                    }
+                }
+                if (!any_long) // a purely local route: avoid all of its new wires next time
+                    for (auto &w : nd.wires)
+                        if (!job.base.wires.count(w.first))
+                            job.avoid.insert(w.first);
+                std::sort(wires.begin(), wires.end());
+                bool dup = false;
+                for (auto &sw : job.seen)
+                    dup |= (sw == wires);
+                if (dup) {
+                    // the route it already has, or one found before; the next
+                    // cumulative variant only differs if there is more to avoid
+                    if (job.is_cumulative && job.avoid.size() == job.avoid_before)
+                        job.cumulative_done = true;
+                    continue;
+                }
+                job.seen.push_back(std::move(wires));
+                GpuRouteTree t;
+                t.variant = variant;
+                for (auto &w : nd.wires)
+                    t.wires.emplace_back(idx_to_wire.at(w.first), w.second.pip);
+                for (auto &a : job.arcs)
+                    t.route_delay = std::max(t.route_delay, get_route_delay(nd, nd.arcs.at(a.first).at(a.second)));
+                job.out.push_back(std::move(t));
+            }
+        }
+        // Whole-tree variants for nets with several sinks that still have
+        // room within `count`: greedy sink-by-sink routing leaves the
+        // critical sink attached to a tree built for the others, so rebuild
+        // every sink with the failing one first (100), and once as a star
+        // with every sink routed from the source (101), which is
+        // electrically clean at the cost of more wires.
+        task_blocked.clear();
+        for (int tree = 0; tree < 2; tree++) {
+            std::vector<HostTask> tasks;
+            std::vector<size_t> task_job;
+            for (size_t i = 0; i < jobs.size(); i++) {
+                auto &job = jobs[i];
+                if (job.net < 0 || int(job.out.size()) >= count)
+                    continue;
+                NetInfo *ni = nets_by_udata.at(job.net);
+                auto &nd = nets.at(job.net);
+                if (ni->users.entries() < 2)
+                    continue;
+                restore_net(job.net, job.saved);
+                nd.bb = job.wide;
+                // failing sink first, then the others by slack
+                std::vector<std::pair<float, int>> order;
+                for (auto usr : ni->users.enumerate()) {
+                    if (usr.index.idx() == job.user)
+                        continue;
+                    order.emplace_back(timing_driven ? tmg.get_setup_slack(CellPortKey(usr.value)) : 0.0f,
+                                       usr.index.idx());
+                }
+                std::stable_sort(order.begin(), order.end());
+                HostTask t;
+                t.net = job.net;
+                auto add_user = [&](int u) {
+                    for (size_t j = 0; j < nd.arcs.at(u).size(); j++) {
+                        auto &ad = nd.arcs.at(u).at(j);
+                        if (ad.pre_routed && !ad.routed)
+                            continue;
+                        ripup_arc(nd, ad);
+                        t.arcs.emplace_back(u, int(j));
+                    }
+                };
+                add_user(job.user);
+                for (auto &o : order)
+                    add_user(o.second);
+                if (t.arcs.size() < 2)
+                    continue;
+                tasks.push_back(std::move(t));
+                task_job.push_back(i);
+            }
+            flush_state();
+            if (tasks.empty())
+                continue;
+            attach_source_only = (tree == 1);
+            std::vector<HostTask> retry = route_tasks(tasks, true, false);
+            flush_state();
+            if (!retry.empty())
+                retry = route_tasks(retry, true, true);
+            flush_state();
+            if (!retry.empty() && cfg.candidate_unbounded)
+                retry = route_tasks(retry, false, true);
+            flush_state();
+            attach_source_only = false;
+            pool<int> failed;
+            for (auto &r : retry)
+                failed.insert(r.net);
+            for (size_t k = 0; k < task_job.size(); k++) {
+                auto &job = jobs[task_job[k]];
+                auto &nd = nets.at(job.net);
+                if (failed.count(job.net))
+                    continue;
+                bool complete = true;
+                for (auto &a : tasks[k].arcs)
+                    complete &= nd.arcs.at(a.first).at(a.second).routed;
+                if (!complete)
+                    continue;
+                std::vector<int32_t> wires;
+                for (auto &w : nd.wires)
+                    wires.push_back(w.first);
+                std::sort(wires.begin(), wires.end());
+                bool dup = false;
+                for (auto &sw : job.seen)
+                    dup |= (sw == wires);
+                if (dup)
+                    continue;
+                job.seen.push_back(std::move(wires));
+                GpuRouteTree t;
+                t.variant = 100 + tree;
+                for (auto &w : nd.wires)
+                    t.wires.emplace_back(idx_to_wire.at(w.first), w.second.pip);
+                for (auto &a : job.arcs)
+                    t.route_delay = std::max(t.route_delay, get_route_delay(nd, nd.arcs.at(a.first).at(a.second)));
+                job.out.push_back(std::move(t));
+            }
+        }
+        repair_mode = false;
+        candidate_mode = false;
+        for (size_t i = 0; i < jobs.size(); i++) {
+            auto &job = jobs[i];
+            if (job.net < 0)
+                continue;
+            restore_net(job.net, job.saved);
+            result[i] = std::move(job.out);
+        }
+        flush_state();
+        return result;
+    }
+
+    // ------------------------------------------------------------------
+
+    bool operator()()
+    {
+        auto rstart = Clock::now();
+        log_info("Running the GPU router...\n");
+        setup_all();
+
+        std::unique_lock<Context> lock{*ctx};
+
+        for (size_t i = 0; i < nets_by_udata.size(); i++)
+            route_queue.push_back(int(i));
+
+        log_info("Running main router loop...\n");
+        if (timing_driven)
+            tmg.run(true);
+        negotiate();
+        if (timing_driven && cfg.repair_rounds > 0)
+            timing_repair();
+        // Bind into the Arch; anything the Arch rejects is negotiated again
+        while (true) {
+            bind_and_check_all();
+            if (failed_nets.empty())
+                break;
+            // update_congestion() clears failed_nets after each re-route. When
+            // there is no congestion, negotiate() therefore returns without
+            // reaching its own maxIter check, even if Arch rejects the same
+            // net again at the next binding pass.
+            if (iter > cfg.max_iter) {
+                std::string names;
+                for (int n : failed_nets) {
+                    if (!names.empty())
+                        names += ", ";
+                    names += ctx->nameOf(nets_by_udata.at(n));
+                }
+                log_error("GPU router architecture bind did not converge after %d routing iterations "
+                          "(rejected nets: %s).\n",
+                          cfg.max_iter, names.c_str());
+            }
+            log_info("    %zu nets rejected by the architecture, re-routing\n", failed_nets.size());
+            for (auto cn : failed_nets)
+                route_queue.push_back(cn);
+            negotiate();
+            // The re-routed nets took congestion-costed routes after the
+            // repair; repair them too, or a critical one ends on a detour
+            if (timing_driven && cfg.repair_rounds > 0)
+                timing_repair();
+        }
+
+        const auto &st = backend->stats();
+        log_info("GPU router time %.02fs (backend %s: %lld launches, %lld arcs, %lld wires expanded, %.2fs routing, "
+                 "%.2fs transfers)\n",
+                 secs_since(rstart), backend->name(), (long long)st.launches, (long long)st.arcs_routed,
+                 (long long)st.wires_expanded, st.route_seconds, st.transfer_seconds);
+        if (cpu_backend) {
+            const auto &cs = cpu_backend->stats();
+            log_info("    CPU lane: %lld batches, %lld arcs, %lld wires expanded, %.2fs\n", (long long)cs.launches,
+                     (long long)cs.arcs_routed, (long long)cs.wires_expanded, cs.route_seconds);
+        }
+        if (verify_backend)
+            log_info("    repair search check: %lld exact searches run, %lld bounded pure-delay searches (first arc of "
+                     "a repair task) compared with exact Dijkstra in %.1fs: %lld (%.1f%%) longer than the "
+                     "minimum-delay route, mean excess %.1f ps, max %.1f ps; %lld shorter (should be 0); %lld the "
+                     "reference could not route\n",
+                     (long long)verify_launched, (long long)verify_arcs, verify_secs, (long long)verify_worse,
+                     verify_arcs ? 100.0 * double(verify_worse) / double(verify_arcs) : 0.0,
+                     verify_worse ? 1000.0 * verify_excess / double(verify_worse) : 0.0, 1000.0 * verify_max,
+                     (long long)verify_better, (long long)verify_unref);
+
+        log_info("Running router1 to check that route is legal...\n");
+        lock.unlock();
+        return router1(ctx, Router1Cfg(ctx));
+    }
+};
+
+} // namespace
+
+bool gpurouter(Context *ctx, const GpuRouterCfg &cfg)
+{
+    GpuRouter rt(ctx, cfg);
+    return rt();
+}
+
+struct GpuCandidateRouter::Impl
+{
+    GpuRouter rt;
+    Impl(Context *ctx, const GpuRouterCfg &cfg) : rt(ctx, cfg) {}
+};
+
+GpuCandidateRouter::GpuCandidateRouter(Context *ctx, const GpuRouterCfg &cfg) : impl(new Impl(ctx, cfg))
+{
+    log_info("Setting up the GPU router for candidate routes...\n");
+    impl->rt.reserve_bound_routing = true;
+    impl->rt.setup_all();
+}
+
+GpuCandidateRouter::~GpuCandidateRouter() {}
+
+std::vector<std::vector<GpuRouteTree>> GpuCandidateRouter::candidates(const std::vector<Sink> &sinks, int count)
+{
+    std::vector<std::pair<int, int>> idx;
+    for (auto &s : sinks)
+        idx.emplace_back(s.net->udata, s.user.idx());
+    return impl->rt.route_candidates(idx, count);
+}
+
+void GpuCandidateRouter::resync(NetInfo *net) { impl->rt.reload_net_from_arch(net->udata); }
+
+GpuRouterCfg::GpuRouterCfg(Context *ctx)
+{
+    bb_margin_x = ctx->setting<int>("gpurouter/bbMargin/x", 3);
+    bb_margin_y = ctx->setting<int>("gpurouter/bbMargin/y", 3);
+    init_curr_cong_weight = ctx->setting<float>("gpurouter/initCurrCongWeight", 0.5f);
+    hist_cong_weight = ctx->setting<float>("gpurouter/histCongWeight", 1.0f);
+    curr_cong_mult = ctx->setting<float>("gpurouter/currCongWeightMult", 2.0f);
+    congestion_stall_iters = ctx->setting<int>("gpurouter/congestionStallIters", 20);
+    congestion_stall_boost = ctx->setting<float>("gpurouter/congestionStallBoost", 1.5f);
+    congestion_stall_boost_max = ctx->setting<float>("gpurouter/congestionStallBoostMax", 50.0f);
+    estimate_weight = ctx->setting<float>("gpurouter/estimateWeight", 1.25f);
+    repair_estimate_weight = ctx->setting<float>("gpurouter/repairEstimateWeight", estimate_weight);
+    bias_cost_factor = ctx->setting<float>("gpurouter/biasCostFactor", 0.25f);
+    seed_delay_weight = ctx->setting<float>("gpurouter/seedDelayWeight", 1.0f);
+    seed_delay_floor = ctx->setting<float>("gpurouter/seedDelayFloor", 0.0f);
+    crit_weight_floor = ctx->setting<float>("gpurouter/critWeightFloor", 0.05f);
+    crit_weight_mode = ctx->setting<int>("gpurouter/critWeightMode", 0);
+    repair_rounds = ctx->setting<int>("gpurouter/repairRounds", 10);
+    repair_slack = ctx->setting<float>("gpurouter/repairSlack", 0.0f);
+    repair_band = ctx->setting<float>("gpurouter/repairBand", 300.0f);
+    repair_improve_rounds = ctx->setting<int>("gpurouter/repairImproveRounds", 4);
+    repair_displace = ctx->setting<bool>("gpurouter/repairDisplace", true);
+    repair_displace_margin = ctx->setting<float>("gpurouter/repairDisplaceMargin", 0.0f);
+    repair_cong_weight = ctx->setting<float>("gpurouter/repairCongWeight", 1.0f);
+    cpu_lane_nets = ctx->setting<int>("gpurouter/cpuLaneNets", 0);
+    repair_verify = ctx->setting<bool>("gpurouter/repairVerify", false);
+    repair_verify_arcs = ctx->setting<int>("gpurouter/repairVerifyArcs", 300);
+    candidate_margin = ctx->setting<int>("gpurouter/candidateMargin", 8);
+    candidate_unbounded = ctx->setting<bool>("gpurouter/candidateUnbounded", true);
+    crit_exponent = ctx->setting<float>("gpurouter/critExponent", 2.0f);
+    load_penalty = ctx->setting<float>("gpurouter/loadPenalty", 0.0f);
+    pip_adder = ctx->setting<float>("gpurouter/pipAdder", 0.0f);
+    tmg_ripup_patience = ctx->setting<int>("gpurouter/tmgRipupPatience", 8);
+    expand_k = ctx->setting<int>("gpurouter/expandK", 256);
+    candidate_expand_k = ctx->setting<int>("gpurouter/candidateExpandK", expand_k);
+    expand_div = ctx->setting<int>("gpurouter/expandDiv", 0);
+    max_batches = ctx->setting<int>("gpurouter/maxBatches", 12);
+    small_slots = ctx->setting<int>("gpurouter/smallSlots", 384);
+    large_slots = ctx->setting<int>("gpurouter/largeSlots", 4);
+    small_bits = ctx->setting<int>("gpurouter/smallBits", 16);
+    large_bits = ctx->setting<int>("gpurouter/largeBits", 22);
+    device = ctx->setting<int>("gpurouter/device", -1);
+    cpu_backend = ctx->setting<bool>("gpurouter/cpu", false);
+    perf_profile = ctx->setting<bool>("gpurouter/perfProfile", false);
+    max_iter = ctx->setting<int>("gpurouter/maxIter", 2000);
+}
+
+NEXTPNR_NAMESPACE_END

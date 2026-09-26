@@ -110,6 +110,52 @@ def main():
             routed_cells[name], ground
         )
 
+    # Quartus carries the HPS hard-block location in an instance assignment,
+    # rather than in the primitive's RTL BEL attribute.  Exercise that path
+    # with the BEL attribute removed so the QSF is the only placement source.
+    qsf_location = output / "hps-location.qsf"
+    qsf_location.write_text(
+        (fixture / "pins.qsf").read_text()
+        + "set_instance_assignment -name HPS_LOCATION "
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111 -entity top -to hdmi_i2c\n"
+    )
+    qsf_design = copy.deepcopy(design)
+    qsf_i2c = next(cell for cell in qsf_design["modules"]["top"]["cells"].values()
+                   if cell["type"] == CELL_TYPE)
+    qsf_i2c["attributes"].pop("BEL", None)
+    qsf_path = output / "hps-location.json"
+    qsf_path.write_text(json.dumps(qsf_design))
+    qsf_routed = output / "hps-location-routed.json"
+    run(
+        [str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7",
+         "--qsf", str(qsf_location), "--json", str(qsf_path),
+         "--write", str(qsf_routed)],
+        output / "hps-location.log",
+    )
+    qsf_cells = json.loads(qsf_routed.read_text())["modules"]["top"]["cells"]
+    qsf_routed_i2c = next(cell for cell in qsf_cells.values() if cell["type"] == CELL_TYPE)
+    assert qsf_routed_i2c["attributes"]["NEXTPNR_BEL"] == BEL, qsf_routed_i2c
+
+    for label, location, expected in (
+        ("bad-format", "HPSINTERFACEPERIPHERALI2C_X52_Y60", "Unsupported HPS_LOCATION"),
+        ("bad-site", "HPSINTERFACEPERIPHERALI2C_X52_Y57_N110", "resolves to unsupported BEL"),
+    ):
+        invalid_qsf = output / f"hps-location-{label}.qsf"
+        invalid_qsf.write_text(
+            (fixture / "pins.qsf").read_text()
+            + "set_instance_assignment -name HPS_LOCATION "
+            + location
+            + " -entity top -to hdmi_i2c\n"
+        )
+        invalid_log = output / f"hps-location-{label}.log"
+        log = run(
+            [str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7",
+             "--qsf", str(invalid_qsf), "--json", str(qsf_path), "--no-route"],
+            invalid_log,
+            success=False,
+        )
+        assert expected in log, (label, log)
+
     routes = run(
         [str(args.mistral_cv.resolve()), "routes", "5CSEBA6U23I7", str(output / "top.rbf")],
         output / "routes.log",

@@ -130,6 +130,7 @@ struct MistralBitgen
             std::vector<int> b_groups;
             std::vector<int> z_groups;
             std::vector<int> c_groups;
+            std::vector<int> d_groups;
         };
 
         // A DSP tile has several logical BELs. Discover the bound cells from
@@ -137,7 +138,8 @@ struct MistralBitgen
         // configure the shared mode/sign controls once.
         std::vector<BelId> dsp_bels;
         for (BelId bel : ctx->getBelsByTile(x, y)) {
-            if (ctx->getBelType(bel).in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27) &&
+            if (ctx->getBelType(bel).in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                                        id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) &&
                 ctx->getBoundBelCell(bel) != nullptr)
                 dsp_bels.push_back(bel);
         }
@@ -165,19 +167,29 @@ struct MistralBitgen
                                     {preadder ? mistral_dsp_preadder_y_groups.at(bel.z) : lane.b_group},
                                     preadder ? std::vector<int>{mistral_dsp_preadder_z_groups.at(bel.z)}
                                               : std::vector<int>{},
+                                    {},
                                     {}});
             } else if (mode_type == id_MISTRAL_MUL18X18) {
                 bindings.push_back({cell,
                                     {mistral_dsp_18x18_a_groups.begin(), mistral_dsp_18x18_a_groups.end()},
                                     {mistral_dsp_18x18_b_groups.begin(), mistral_dsp_18x18_b_groups.end()},
                                     {},
-                                    {mistral_dsp_18x18_c_groups.begin(), mistral_dsp_18x18_c_groups.end()}});
+                                    {mistral_dsp_18x18_c_groups.begin(), mistral_dsp_18x18_c_groups.end()},
+                                    {}});
             } else if (mode_type == id_MISTRAL_MUL27X27) {
                 bindings.push_back({cell,
                                     {mistral_dsp_27x27_a_groups.begin(), mistral_dsp_27x27_a_groups.end()},
                                     {mistral_dsp_27x27_b_groups.begin(), mistral_dsp_27x27_b_groups.end()},
                                     {},
+                                    {},
                                     {}});
+            } else if (mode_type.in(id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED)) {
+                bindings.push_back({cell,
+                                    {mistral_dsp_18x19_a_groups.begin(), mistral_dsp_18x19_a_groups.end()},
+                                    {mistral_dsp_18x19_b_groups.begin(), mistral_dsp_18x19_b_groups.end()},
+                                    {},
+                                    {mistral_dsp_18x19_c_groups.begin(), mistral_dsp_18x19_c_groups.end()},
+                                    {mistral_dsp_18x19_d_groups.begin(), mistral_dsp_18x19_d_groups.end()}});
             }
         }
         if (bindings.empty())
@@ -190,6 +202,10 @@ struct MistralBitgen
             mode = CycloneV::M18X18P36;
         else if (mode_type == id_MISTRAL_MUL27X27)
             mode = CycloneV::M27X27;
+        else if (mode_type == id_MISTRAL_MUL18X19)
+            mode = CycloneV::M18X19;
+        else if (mode_type == id_MISTRAL_MUL18X19_COMBINED)
+            mode = CycloneV::M18X19_COMBINED;
         else
             NPNR_ASSERT_FALSE("unreachable DSP mode");
         NPNR_ASSERT(cv->bmux_m_set(CycloneV::DSP, pos, CycloneV::MODE, 0, mode));
@@ -197,6 +213,16 @@ struct MistralBitgen
                                   dsp_bool_param(bindings.front().cell->params, id_A_SIGNED, true)));
         NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AY_SIGNED, 0,
                                   dsp_bool_param(bindings.front().cell->params, id_B_SIGNED, true)));
+        if (mode_type.in(id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED)) {
+            NPNR_ASSERT(cv->bmux_b_set(
+                    CycloneV::DSP, pos, CycloneV::BX_SIGNED, 0,
+                    dsp_bool_param(bindings.front().cell->params, id_C_SIGNED,
+                                   dsp_bool_param(bindings.front().cell->params, id_A_SIGNED, true))));
+            NPNR_ASSERT(cv->bmux_b_set(
+                    CycloneV::DSP, pos, CycloneV::BY_SIGNED, 0,
+                    dsp_bool_param(bindings.front().cell->params, id_D_SIGNED,
+                                   dsp_bool_param(bindings.front().cell->params, id_B_SIGNED, true))));
+        }
 
         auto set_reg = [&](CycloneV::bmux_type_t mux, IdString key) {
             NPNR_ASSERT(cv->bmux_m_set(CycloneV::DSP, pos, mux, 0,
@@ -310,6 +336,7 @@ struct MistralBitgen
                 apply(binding.b_groups, 'B');
                 apply(binding.z_groups, 'Z');
                 apply(binding.c_groups, 'C');
+                apply(binding.d_groups, 'D');
             }
             NPNR_ASSERT(cv->bmux_r_set(CycloneV::DSP, pos, CycloneV::DATA_INV, group, inv));
         }
@@ -317,8 +344,10 @@ struct MistralBitgen
 
     void write_io_cell(CellInfo *ci, int x, int y, int bi)
     {
-        bool is_output = (ci->type == id_MISTRAL_OB || (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
-        bool is_input = (ci->type == id_MISTRAL_IB || (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr));
+        bool is_output = (ci->type.in(id_MISTRAL_OB, id_MISTRAL_DDROUT, id_MISTRAL_SDROUT, id_MISTRAL_DDRBIDIR) ||
+                          (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
+        bool is_input = (ci->type.in(id_MISTRAL_IB, id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR) ||
+                         (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr));
         auto pos = CycloneV::xy2pos(x, y);
         // TODO: configurable pull, IO standard, etc
         cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_WEAK_PULLUP, bi, false);
@@ -332,12 +361,44 @@ struct MistralBitgen
 
             // Output gpios must also bypass things in the associated dqs
             auto dqs = cv->p2p_to(CycloneV::pnode(CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1));
-            if (dqs) {
+            if (dqs && ci->type.in(id_MISTRAL_DDROUT, id_MISTRAL_DDRBIDIR)) {
+                auto dp = CycloneV::pn2p(dqs);
+                int lane = CycloneV::pn2bi(dqs);
+                NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_MODE_SEL, lane, CycloneV::DDR));
+                NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_OUTPUT_SEL, lane, CycloneV::SEL_SDR_DELAY));
+                NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RBOE_LVL_FR_CLK_EN, lane, true));
+                if (ci->getPort(id_D_H) != nullptr) {
+                    // Fabric data is already driven on the two dedicated
+                    // lanes; leave both data paths non-inverted.
+                    NPNR_ASSERT(cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 0), false));
+                    NPNR_ASSERT(cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 1), false));
+                } else {
+                    bool high = bool_or_default(ci->params, id_DDR_HIGH, true);
+                    cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 0), !high);
+                    cv->inv_set(find_rnode(CycloneV::GPIO, pos, CycloneV::DATAOUT, bi, 1), high);
+                }
+            } else if (dqs && ci->type == id_MISTRAL_SDROUT) {
+                auto dp = CycloneV::pn2p(dqs);
+                int lane = CycloneV::pn2bi(dqs);
+                NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_OUTPUT_SEL, lane, CycloneV::SEL_SDR));
+                NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::OEREG_HR_CLK_EN, lane, true));
+                NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RBOE_LVL_FR_CLK_EN, lane, true));
+                NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::RB_T9_SEL_EREG_CFF_DELAY, lane, 0x1f));
+                NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::RB_T9_SEL_OREG_DFF_DELAY, lane, 0x1f));
+            } else if (dqs) {
                 cv->bmux_m_set(CycloneV::DQS16, CycloneV::pn2p(dqs), CycloneV::INPUT_REG4_SEL, CycloneV::pn2bi(dqs),
                                CycloneV::SEL_LOCKED_DPA);
                 cv->bmux_r_set(CycloneV::DQS16, CycloneV::pn2p(dqs), CycloneV::RB_T9_SEL_EREG_CFF_DELAY,
                                CycloneV::pn2bi(dqs), 0x1f);
             }
+        }
+        if (ci->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR)) {
+            auto dqs = cv->p2p_to(CycloneV::pnode(CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1));
+            NPNR_ASSERT(dqs);
+            auto dp = CycloneV::pn2p(dqs);
+            int lane = CycloneV::pn2bi(dqs);
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RB_FIFO_WCLK_EN, lane, true));
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RB_FIFO_WCLK_INV, lane, true));
         }
         // There seem to be two mirrored OEIN inversion bits for constant OE for inputs/outputs. This might be to
         // prevent a single bitflip from turning inputs to outputs and messing up other devices on the boards, notably
@@ -453,6 +514,12 @@ struct MistralBitgen
         }
         raw(CycloneV::M_CNT_HI_DIV_SETTING, (config->m + 1) / 2);
         raw(CycloneV::M_CNT_LO_DIV_SETTING, config->m / 2);
+        // Fractional profiles may use an odd integer part of M. Quartus
+        // enables the even-duty correction for those divide values; keep the
+        // established even-M profiles at their default without emitting a
+        // redundant zero.
+        if (fractional && (config->m & 1))
+            flag(CycloneV::M_CNT_ODD_DIV_DUTY_EN, true);
         raw(CycloneV::N_CNT_HI_DIV_SETTING, fractional ? 0 : (config->n + 1) / 2);
         raw(CycloneV::N_CNT_LO_DIV_SETTING, fractional ? 0 : config->n / 2);
         if (fractional) {
@@ -509,13 +576,24 @@ struct MistralBitgen
         bool tdp = bool_or_default(ci->params, id_CFG_TDP, false);
         bool mixed = bool_or_default(ci->params, id_CFG_MIXED_WIDTH, false);
         int rdbits = mixed ? int_or_default(ci->params, id_CFG_RD_DBITS, dbits) : dbits;
+        bool output_reg_a = bool_or_default(ci->params, id_CFG_OUT_REG_A, false);
+        bool output_reg_b = bool_or_default(ci->params, id_CFG_OUT_REG_B, false);
+        // A 40-bit SDP B result is physically split across the A and B
+        // output halves. A partial registration would give the logical
+        // result two different latencies, so any request registers both
+        // halves.
+        if (!tdp && rdbits == 40 && (output_reg_a || output_reg_b)) {
+            output_reg_a = true;
+            output_reg_b = true;
+        }
         // Quartus clears data flow-through when either mixed port spans 40 bits.
         bool wide_mixed = mixed && (dbits == 40 || rdbits == 40);
         cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::A_DATA_FLOW_THRU, bi, !wide_mixed);
         cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::A_DATA_WIDTH, bi, dbits);
         cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::A_FAST_WRITE, bi,
                        !mixed && dbits == 40 ? CycloneV::SLOW : CycloneV::FAST);
-        cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::A_OUTPUT_SEL, bi, CycloneV::ASYNC);
+        cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::A_OUTPUT_SEL, bi,
+                       output_reg_a ? CycloneV::REG : CycloneV::ASYNC);
         cv->bmux_r_set(CycloneV::M10K, pos, CycloneV::A_SA_WREN_DELAY, bi, 1);
         cv->bmux_r_set(CycloneV::M10K, pos, CycloneV::A_SAEN_DELAY, bi, 2);
         cv->bmux_r_set(CycloneV::M10K, pos, CycloneV::A_WL_DELAY, bi, 2);
@@ -525,15 +603,71 @@ struct MistralBitgen
         cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::B_DATA_WIDTH, bi, rdbits);
         cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::B_FAST_WRITE, bi,
                        !mixed && dbits == 40 ? CycloneV::SLOW : CycloneV::FAST);
-        cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::B_OUTPUT_SEL, bi, CycloneV::ASYNC);
+        cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::B_OUTPUT_SEL, bi,
+                       output_reg_b ? CycloneV::REG : CycloneV::ASYNC);
         cv->bmux_r_set(CycloneV::M10K, pos, CycloneV::B_SA_WREN_DELAY, bi, 1);
         cv->bmux_r_set(CycloneV::M10K, pos, CycloneV::B_SAEN_DELAY, bi, 2);
         cv->bmux_r_set(CycloneV::M10K, pos, CycloneV::B_WL_DELAY, bi, 2);
         cv->bmux_r_set(CycloneV::M10K, pos, CycloneV::B_WR_TIMER_PULSE, bi, 0x0b);
 
-        bool dual_clock = bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false);
+        // A hard-tied unused read clock is folded by the packer and has no
+        // TCLK route. In that case retain the single-clock M10K selector
+        // defaults instead of programming the bottom clock mux to an absent
+        // CLKIN[1] source. A live CLK2 still selects the independent clock
+        // path below.
+        bool dual_clock = bool_or_default(ci->params, id_CFG_DUAL_CLOCK, false) &&
+                          ci->getPort(id_CLK2) != nullptr;
         bool byte_enable = bool_or_default(ci->params, id_CFG_BYTE_ENABLE, false);
+        bool async_read = bool_or_default(ci->params, id_CFG_ASYNC_READ, false);
+
+        // The two M10K clear inputs are shared by the address and output
+        // clear paths.  The logical primitive names match the physical
+        // ACLR[0:1] pins, while the clear muxes select which source feeds the
+        // top and bottom halves.  PIN_0 leaves the corresponding output clear
+        // disabled, PIN_1 enables it from the M10K's default-high input,
+        // PIN_INV preserves the logical inversion, and PIN_SIG is routed
+        // normally.
+        auto aclr_state = [&](IdString port) {
+            auto it = ci->pin_data.find(port);
+            return it == ci->pin_data.end() ? PIN_0 : it->second.state;
+        };
+        CellPinState aclr0 = aclr_state(id_ACLR0);
+        CellPinState aclr1 = aclr_state(id_ACLR1);
+        // The M10K has separate address-clear and output-clear enables. The
+        // mapped logical ports describe output clears; Cyclone V ignores
+        // address clears on the input-register modes used by these cells.
+        // Keep the physical clear source selectors aligned with the two
+        // logical inputs, and only turn on an output-clear register when its
+        // control is actually active. This preserves the existing async
+        // output path for cells that have no reset behavior.
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TOP_CLR_INV, bi,
+                                  aclr0 == PIN_INV));
+        NPNR_ASSERT(cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_CLR_INV, bi,
+                                  aclr1 == PIN_INV));
+        // A 40-bit SDP read spans both physical output halves, so the top
+        // output register participates in the clear path even though the
+        // logical cell is not true-dual-port.  Its source is ACLR0 (the
+        // default TOP_ADDCLR_SEL=0); TOP_OUTCLR_SEL=1 selects the output
+        // clear path rather than the address path.
+        if ((tdp || rdbits == 40) && aclr0 != PIN_0) {
+            if (rdbits == 40)
+                NPNR_ASSERT(cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_OUTCLR_SEL, bi, 1));
+            NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::A_OUTCLR_EN, bi, CycloneV::REG));
+            NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::A_OUTPUT_SEL, bi, CycloneV::REG));
+        }
+        if (aclr1 != PIN_0) {
+            NPNR_ASSERT(cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_OUTCLR_SEL, bi, 1));
+            NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::B_OUTCLR_EN, bi, CycloneV::REG));
+            NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::B_OUTPUT_SEL, bi, CycloneV::REG));
+        }
+        auto clock_state = [&](IdString port) {
+            auto it = ci->pin_data.find(port);
+            return it == ci->pin_data.end() ? PIN_SIG : it->second.state;
+        };
+        CellPinState clk1_state = clock_state(id_CLK1);
+        CellPinState clk2_state = clock_state(id_CLK2);
         cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_CLK_SEL, bi, 1);
+        cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TOP_CLK_INV, bi, clk1_state == PIN_INV);
         if (dual_clock) {
             // Quartus SDP input-clock mode: write CLKIN.0, read CLKIN.1.
             // In 40-bit mode both data input halves use the write clock.
@@ -547,9 +681,33 @@ struct MistralBitgen
                            dbits == 40 || wide_mixed ? 0 : 1);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_OUTCLK_SEL, bi, 1);
         }
+        if (async_read) {
+            // Quartus's flow-through simple-dual configurations select the
+            // bottom clock tree and program all three selectors for the
+            // second data half.  The logical write clock is fanned out to
+            // both CLKIN sinks by setup_m10ks(); without these settings the
+            // combinational B port can remain on the unused/default branch.
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CLK_SEL, bi, 1);
+            // The flow-through read data path also uses the top CE0 source.
+            // Native 10-bit ROM cells do not carry CFG_BYTE_ENABLE, so this
+            // selector must be programmed here rather than only in the
+            // byte-enabled/mixed-width branch below.
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_CE0_SEL, bi, 1);
+            // The packer materialises the omitted logical B1EN as a
+            // constant-high route on ENABLE[0]. Select that core/input path
+            // explicitly; relying on the site's default can leave a
+            // flow-through read disabled on some M10K locations.
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CORECLK_SEL, bi, 1);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_INCLK_SEL, bi, 1);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_CORECLK_SEL, bi, 1);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_INCLK_SEL, bi, 1);
+            cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_OUTCLK_SEL, bi, 1);
+        }
         if (byte_enable || mixed || tdp) {
-            // Byte-enabled SDP, mixed-width SDP and TDP select the write core enable
-            // lane in addition to positive WREN[0].
+            // Byte-enabled SDP, mixed-width SDP and TDP select the write core
+            // enable lane. Async reads use the explicit constant-high
+            // ENABLE[0] route selected above; synchronous modes retain the
+            // same core/input selector values used by the existing mapping.
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_CORECLK_SEL, bi, 1);
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_INCLK_SEL, bi, 1);
             cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TOP_W_INV, bi, false);
@@ -562,11 +720,16 @@ struct MistralBitgen
         }
         // The legacy unused bottom clock is inverted in narrow modes. CLK2
         // is a real rising-edge read clock and must not inherit that inversion.
-        cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_CLK_INV, bi, !dual_clock && dbits != 40);
+        cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_CLK_INV, bi,
+                       dual_clock ? clk2_state == PIN_INV : (async_read ? false : dbits != 40));
         cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_W_SEL, bi, byte_enable || mixed || tdp ? 0 : dbits != 40);
 
         if (tdp) {
             // Quartus BIDIR_DUAL_PORT with NEW_DATA_NO_NBE_READ on both ports.
+            // CFG_RDW_MODE_A/B and CFG_RDW_MODE_MIXED are normalized by the
+            // packer. Cyclone V has no independent collision mux, so the
+            // accepted DONT_CARE contract intentionally uses these same
+            // physical write-through settings.
             cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_INCLK_SEL, bi, 1);
             cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_W_INV, bi, false);
             if (mixed && dbits != rdbits) {
@@ -636,7 +799,7 @@ struct MistralBitgen
             return false;
 
         bool is_lutram =
-                (luts[0] && luts[0]->combInfo.mlab_group != -1) || (luts[1] && luts[1]->combInfo.mlab_group != -1);
+                (luts[0] && luts[0]->type == id_MISTRAL_MLAB) || (luts[1] && luts[1]->type == id_MISTRAL_MLAB);
 
         auto pos = alm_data.lut_bels[0].pos;
         if (is_lutram) {
@@ -816,10 +979,17 @@ struct MistralBitgen
 };
 } // namespace
 
-void Arch::build_bitstream()
+void Arch::configure_bitstream(bool observe)
 {
+    analogue_cache_valid = false;
     MistralBitgen gen(getCtx());
     gen.run();
+    compute_analogue_arcs(observe);
+}
+
+void Arch::build_bitstream()
+{
+    configure_bitstream();
 
     // This is a hack to run timing analysis yet again after the bitstream is
     // configured in Mistral, because the analogue simulator won't work until
@@ -830,6 +1000,9 @@ void Arch::build_bitstream()
     log_info("Running signoff timing analysis...\n");
 
     timing_analysis(getCtx(), true, true, true, true, true);
+
+    if (const char *dump = getenv("NEXTPNR_MISTRAL_ARC_DUMP"))
+        dump_analogue_arcs(dump);
 }
 
 NEXTPNR_NAMESPACE_END

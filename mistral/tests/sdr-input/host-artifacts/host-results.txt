@@ -1,0 +1,34 @@
+Host-only validation (no board programmed)
+
+Fixture: 5CSEBA6U23I7, DATA=Y15, FPGA_CLK1_50=V11, OBSERVED=W15
+Backend: nextpnr-mistral built from 2c9f9c5c plus the SDR input change
+Mistral database: 78ba2a580ae2523403d4f4f91891a6b11d7b6aba
+
+PASS: one SDR input register, GPIO DATAIN.3/CLKIN.0 and DQS FIFO clock settings
+PASS: SDR input opt-out and seven unsupported input/clock/control requests
+
+Routed utilization:
+  MISTRAL_IO used=3 available=472
+  MISTRAL_FF used=0 available=167640
+  MISTRAL_CLKENA used=1 available=8
+  MISTRAL_COMB used=2 available=83820
+  MISTRAL_MUL9X9 used=0 available=336
+  altera_pll used=0 available=6
+
+The timing report has no interior paths and therefore no Fmax entries. The
+input-register setup/hold and GPIO register clock-to-Q arcs are intentionally
+uncharacterized in this backend.
+
+Decompiled route/settings:
+  GPIO.064.000.0:DATAIN.3
+  GPIO.064.000.0:CLKIN.0
+  DQS16.060.000:RB_FIFO_WCLK_EN.0 1
+  DQS16.060.000:RB_FIFO_WCLK_INV.0 1
+
+Raw nextpnr RBF: 1952812 bytes
+Raw nextpnr RBF SHA-256: cfc0be7b3e849d45acfab7a1149a13e26f8b7b5a7c24a7c4301730e829a61567
+Gzip artifact SHA-256: 468b369b25022720f6c47f86591471d8a7d87929718693391a93bbe97d0496c8
+
+Ordinary GPIO regression (DDR-output host-artifacts/ordinary.v, base and
+changed nextpnr): byte-identical RBFs
+  SHA-256: 41c94ec67aae5bf6cb1a7226b4ec4650488ee8b84e1ccfef9d612cd697022cea

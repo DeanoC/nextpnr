@@ -1,4 +1,5 @@
 set(SOURCES
+    analogue.cc
     arch.cc
     archdefs.cc
     archdefs.h
@@ -10,6 +11,7 @@ set(SOURCES
     delay.cc
     dsp.h
     dsp.cc
+    fes_slot.cc
     globals.cc
     io.cc
     lab.cc

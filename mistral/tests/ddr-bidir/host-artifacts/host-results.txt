@@ -1,0 +1,39 @@
+Host-only validation (no board programmed)
+
+Fixture: 5CSEBA6U23I7, FPGA_CLK1_50=V11, DDR_IO=W15
+Base nextpnr: 3e314db00a620caf3cbe09ecac93a4910df5f01a (fork mistral-stable)
+Mistral database: 78ba2a580ae2523403d4f4f91891a6b11d7b6aba
+Yosys: 13b43f8c85ec430a33ee55d058fb4c32b42b6910-compatible intel_alm flow
+
+Baseline 3e314db rejects the same JSON with no BELs for `altddio_bidir`.
+PASS: one altddio_bidir packed as MISTRAL_DDRBIDIR and routed at 50 MHz
+PASS: constant-zero OE remains a routed constant and packs successfully
+PASS: ten invalid DDR bidirectional I/O requests rejected
+PASS: existing dedicated DDR input/output and SDR input/output regressions
+PASS: ordinary GPIO RBF byte-identical against the pre-change nextpnr binary
+  SHA-256: 41c94ec67aae5bf6cb1a7226b4ec4650488ee8b84e1ccfef9d612cd697022cea
+
+Packed cell: one MISTRAL_DDRBIDIR (represented by MISTRAL_IO used=2)
+MISTRAL_IO used=2 available=472
+MISTRAL_FF used=0 available=167640
+MISTRAL_COMB used=2 available=83820
+MISTRAL_CLKENA used=1 available=8
+MISTRAL_MUL9X9/MUL18X18/MUL27X27 used=0; altera_pll used=0
+cyclonev_hps_interface_mpu_general_purpose used=1
+Timing: FPGA_CLK1_50 constrained to 50.00 MHz; no interior Fmax paths
+  are present because bidirectional GPIO register and pad timing is
+  uncharacterized in the Mistral database.
+
+Decompiled route/settings:
+  GPIO.089.008.1:DATAOUT.0, DATAOUT.1
+  GPIO.089.008.1:DATAIN.0, DATAIN.2, DATAIN.3
+  GPIO.089.008.1:CLKOUT.0, CLKIN.0, OEIN.0
+  DQS16.089.008:OUTREG_MODE_SEL.9 DDR
+  DQS16.089.008:OUTREG_OUTPUT_SEL.9 SEL_SDR_DELAY
+  DQS16.089.008:RBOE_LVL_FR_CLK_EN.9 1
+  DQS16.089.008:RB_FIFO_WCLK_EN.9 1
+  DQS16.089.008:RB_FIFO_WCLK_INV.9 1
+
+Raw nextpnr RBF: 1953073 bytes
+Raw nextpnr RBF SHA-256: bef5d45bf2e9fb44f29ef22b1003a8bad3886b305296d3e9159803bfc9100cc2
+Gzip artifact SHA-256: eda2115e6c201a9afed738c6de056623d8e7c2190bf3eb9013c60bd6cd29e22c

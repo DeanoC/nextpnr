@@ -1,0 +1,10 @@
+set_location_assignment PIN_Y15 -to ALTI_IN
+set_location_assignment PIN_W15 -to ALTI_OUT
+set_location_assignment PIN_V16 -to ALTI_BIDIR
+set_location_assignment PIN_V11 -to ALTI_OE
+set_location_assignment PIN_AA15 -to BIDIR_DATA
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to ALTI_IN
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to ALTI_OUT
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to ALTI_BIDIR
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to ALTI_OE
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to BIDIR_DATA

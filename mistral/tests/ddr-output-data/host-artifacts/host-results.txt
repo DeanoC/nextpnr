@@ -1,0 +1,26 @@
+Host-only validation (no board programmed)
+Fixture: 5CSEBA6U23I7, FPGA_CLK1_50=V11, DDR_OUT=W15
+Base nextpnr: 9144784db9b4b85c1257be4d1943b9ac11ceb3e8 (fork mistral-stable)
+Mistral database: 78ba2a580ae2523403d4f4f91891a6b11d7b6aba
+Yosys: 13b43f8c85ec430a33ee55d058fb4c32b42b6910-compatible intel_alm flow
+
+PASS: fabric DDR data packed onto both DATAOUT lanes at 50 MHz
+PASS: ten invalid DDR output requests rejected
+PASS: existing constant DDR output, DDR input, SDR input/output and FF datain regressions
+PASS: ordinary GPIO RBF byte-identical against the pre-change DDR-input binary
+  SHA-256: 41c94ec67aae5bf6cb1a7226b4ec4650488ee8b84e1ccfef9d612cd697022cea
+
+Packed cell: one MISTRAL_DDROUT (represented by MISTRAL_IO used=2)
+MISTRAL_FF used=2 available=167640
+MISTRAL_CLKENA used=1 available=8
+MISTRAL_COMB used=5 available=83820
+MISTRAL_MUL9X9/MUL18X18/MUL27X27 used=0; altera_pll used=0
+Fmax: FPGA_CLK1_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q=419.463074 MHz (constraint 50.00 MHz)
+Output GPIO register setup/hold and clock-to-pad timing are uncharacterized; Fmax is fabric-only evidence.
+Baseline 9144784d rejected the same JSON with "fabric DDR data is not supported".
+
+Raw nextpnr RBF: 1952903 bytes
+Raw nextpnr RBF SHA-256: a4d158c068aebacd247f89355e3fac2b91fc0882131675b7c08dcb66902c29df
+Gzip artifact SHA-256: d3b2ab1fa22268c23ace4a75a7551384bcabb456f403f03b8604f6cd9cc55960
+Quartus oracle raw RBF SHA-256: 07f223f12fe67fa0f3c996a682412b73b03582637dacb847435564e80e3ccf3f
+Quartus oracle gzip SHA-256: b3d07e9a832039e8bbd4a8edf40751c8d1d485d0dfdb12f823538aa41bf7cad4

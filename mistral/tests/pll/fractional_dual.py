@@ -116,13 +116,14 @@ def main():
     assert "i FPLL.000.014:NRESET0 1" not in bt
     assert any(line.startswith("r ") and "FPLL.000.014:NRESET0" in line for line in bt.splitlines())
     for name, changes, expected in (
-        ("swapped-pair", {"output_clock_frequency0": "24.576 MHz", "output_clock_frequency1": "12.288 MHz"},
-         "fractional-N dual profile requires"),
-        ("bad-second", {"output_clock_frequency1": "24.0 MHz"}, "fractional-N dual profile requires"),
-        ("reference", {"reference_clock_frequency": "25.0 MHz"}, "fractional-N dual profile requires"),
+        ("unsupported-pair", {"output_clock_frequency1": "13.5 MHz"},
+         "fractional-N dual selector requires"),
+        ("bad-second", {"output_clock_frequency1": "24.0 MHz"}, "fractional-N dual selector requires"),
+        ("reference", {"reference_clock_frequency": "25.0 MHz"}, "fractional-N dual selector requires"),
         ("integer-mode", {"fractional_vco_multiplier": "false"}, "unsupported dual PLL frequencies"),
-        ("three-outputs", {"number_of_clocks": f"{3:032b}"}, "number_of_clocks must be 1 or 2"),
-        ("phase1", {"phase_shift1": "100 ps"}, "unsupported parameter"),
+        ("three-outputs", {"number_of_clocks": f"{3:032b}"}, "explicit output_clock_frequency2 is required"),
+        ("phase1", {"phase_shift1": "100 ps"},
+         "phase_shift1 must be zero or a checked phase shift"),
     ):
         invalid = copy.deepcopy(design)
         invalid["modules"]["top"]["cells"]["pll"]["parameters"].update(changes)

@@ -77,6 +77,49 @@ void Arch::create_dsp(int x, int y)
         add_bel_pin(mul27, idf("Y[%d]", bit), PORT_OUT,
                     get_port(CycloneV::DSP, x, y, -1, CycloneV::RESULT, mistral_dsp_27x27_result_port(bit)));
     add_control_pins(mul27);
+
+    auto add_18x19_operands = [&](BelId bel) {
+        for (int bit = 0; bit < 18; ++bit) {
+            add_bel_pin(bel, idf("A[%d]", bit), PORT_IN,
+                        get_port(CycloneV::DSP, x, y, mistral_dsp_18x19_a_groups.at(bit / 9),
+                                 CycloneV::DATAIN, bit % 9));
+            add_bel_pin(bel, idf("C[%d]", bit), PORT_IN,
+                        get_port(CycloneV::DSP, x, y, mistral_dsp_18x19_c_groups.at(bit / 9),
+                                 CycloneV::DATAIN, bit % 9));
+        }
+        for (int bit = 0; bit < 19; ++bit) {
+            if (bit < 18) {
+                add_bel_pin(bel, idf("B[%d]", bit), PORT_IN,
+                            get_port(CycloneV::DSP, x, y, mistral_dsp_18x19_b_groups.at(bit / 9),
+                                     CycloneV::DATAIN, bit % 9));
+                add_bel_pin(bel, idf("D[%d]", bit), PORT_IN,
+                            get_port(CycloneV::DSP, x, y, mistral_dsp_18x19_d_groups.at(bit / 9),
+                                     CycloneV::DATAIN, bit % 9));
+            } else {
+                add_bel_pin(bel, idf("B[%d]", bit), PORT_IN,
+                            get_port(CycloneV::DSP, x, y, -1, CycloneV::UNK_IN,
+                                     mistral_dsp_18x19_b_high_pi));
+                add_bel_pin(bel, idf("D[%d]", bit), PORT_IN,
+                            get_port(CycloneV::DSP, x, y, -1, CycloneV::UNK_IN,
+                                     mistral_dsp_18x19_d_high_pi));
+            }
+        }
+    };
+
+    BelId mul18x19 = add_bel(x, y, id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19);
+    add_18x19_operands(mul18x19);
+    for (int bit = 0; bit < 74; ++bit)
+        add_bel_pin(mul18x19, idf("Y[%d]", bit), PORT_OUT,
+                    get_port(CycloneV::DSP, x, y, -1, CycloneV::RESULT, bit));
+    add_control_pins(mul18x19);
+
+    BelId mul18x19_combined =
+            add_bel(x, y, id_MISTRAL_MUL18X19_COMBINED, id_MISTRAL_MUL18X19_COMBINED);
+    add_18x19_operands(mul18x19_combined);
+    for (int bit = 0; bit < 38; ++bit)
+        add_bel_pin(mul18x19_combined, idf("Y[%d]", bit), PORT_OUT,
+                    get_port(CycloneV::DSP, x, y, -1, CycloneV::RESULT, bit));
+    add_control_pins(mul18x19_combined);
 }
 
 NEXTPNR_NAMESPACE_END

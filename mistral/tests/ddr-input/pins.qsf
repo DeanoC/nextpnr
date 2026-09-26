@@ -1,0 +1,8 @@
+set_location_assignment PIN_V11 -to FPGA_CLK1_50
+set_location_assignment PIN_Y15 -to DATA
+set_location_assignment PIN_W15 -to OBSERVED_H
+set_location_assignment PIN_V16 -to OBSERVED_L
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to FPGA_CLK1_50
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to DATA
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to OBSERVED_H
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to OBSERVED_L

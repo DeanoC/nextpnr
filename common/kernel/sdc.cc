@@ -145,6 +145,24 @@ struct SDCParser
             ;
     }
 
+    // Tcl-based SDC files use a backslash followed by a newline to continue a
+    // command on the next line.  Treat the pair as whitespace when looking
+    // for the next argument.  Backslashes in ordinary strings remain
+    // handled by get_str below.
+    inline void skip_line_continuation()
+    {
+        while (true) {
+            skip_blank(false);
+            if (eof() || peek() != '\\' || pos + 1 >= int(buf.size()) ||
+                (buf.at(pos + 1) != '\n' && buf.at(pos + 1) != '\r'))
+                return;
+            get();
+            char newline = get();
+            if (newline == '\r' && !eof() && peek() == '\n')
+                get();
+        }
+    }
+
     // Return true if end of line (or file)
     inline bool skip_check_eol()
     {
@@ -170,7 +188,7 @@ struct SDCParser
     inline std::string get_str()
     {
         std::string s;
-        skip_blank(false);
+        skip_line_continuation();
         if (eof())
             return "";
 
@@ -194,7 +212,8 @@ struct SDCParser
             }
 
             char c = peek();
-            if (!in_quotes && !in_braces && !escaped && (std::isblank(c) || c == ']')) {
+            if (!in_quotes && !in_braces && !escaped &&
+                (std::isblank(c) || c == '\n' || c == '\r' || c == ']')) {
                 break;
             }
             get();
@@ -227,10 +246,16 @@ struct SDCParser
             return cmd_get_nets(arguments);
         else if (cmd == "get_pins")
             return cmd_get_pins(arguments);
+        else if (cmd == "get_clocks")
+            return cmd_get_clocks(arguments);
         else if (cmd == "create_clock")
             return cmd_create_clock(arguments);
         else if (cmd == "set_false_path")
             return cmd_set_false_path(arguments);
+        else if (cmd == "derive_pll_clocks" || cmd == "derive_clock_uncertainty")
+            return cmd_ignored(arguments);
+        else if (cmd == "set_clock_groups")
+            return cmd_ignored(arguments);
         else
             log_error("Unsupported SDC command '%s'\n", cmd.c_str());
     }
@@ -327,6 +352,26 @@ struct SDCParser
             }
         }
         return pins;
+    }
+
+    SdcValue cmd_get_clocks(const std::vector<SdcValue> &arguments)
+    {
+        // Clock names are created from the placed PLL cells and explicit
+        // create_clock constraints in nextpnr.  Keep Quartus clock selectors
+        // valid for compatibility commands without inventing a second clock
+        // namespace or changing timing analysis.
+        (void)arguments;
+        return std::vector<SdcEntity>{};
+    }
+
+    SdcValue cmd_ignored(const std::vector<SdcValue> &arguments)
+    {
+        // Quartus derives PLL clocks from the primitive during packing.  The
+        // uncertainty and clock-group commands carry no equivalent metadata
+        // in the current nextpnr timing model, so accepting them is a
+        // deliberate no-op that allows the same SDC to be shared.
+        (void)arguments;
+        return std::string{};
     }
 
     SdcValue cmd_create_clock(const std::vector<SdcValue> &arguments)

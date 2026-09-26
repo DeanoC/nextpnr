@@ -38,6 +38,14 @@ const dict<IdString, Arch::CellPinsData> Arch::cell_pins_db = {
          {{{id_CLK, PINSTYLE_CLK}, {id_ENA, PINSTYLE_CE}, {id_ACLR, PINSTYLE_RST},
            {id_ACCUMULATE, PINSTYLE_COMB}, {id_SUB, PINSTYLE_COMB}, {id_NEGATE, PINSTYLE_COMB},
            {id_LOADCONST, PINSTYLE_COMB}, {{}, PINSTYLE_COMB}}}},
+        {id_MISTRAL_MUL18X19,
+         {{{id_CLK, PINSTYLE_CLK}, {id_ENA, PINSTYLE_CE}, {id_ACLR, PINSTYLE_RST},
+           {id_ACCUMULATE, PINSTYLE_COMB}, {id_SUB, PINSTYLE_COMB}, {id_NEGATE, PINSTYLE_COMB},
+           {id_LOADCONST, PINSTYLE_COMB}, {{}, PINSTYLE_COMB}}}},
+        {id_MISTRAL_MUL18X19_COMBINED,
+         {{{id_CLK, PINSTYLE_CLK}, {id_ENA, PINSTYLE_CE}, {id_ACLR, PINSTYLE_RST},
+           {id_ACCUMULATE, PINSTYLE_COMB}, {id_SUB, PINSTYLE_COMB}, {id_NEGATE, PINSTYLE_COMB},
+           {id_LOADCONST, PINSTYLE_COMB}, {{}, PINSTYLE_COMB}}}},
         // For combinational cells, inversion and tieing can be implemented by manipulating the LUT function
         {id_MISTRAL_ALUT2, {{{}, PINSTYLE_COMB}}},
         {id_MISTRAL_ALUT3, {{{}, PINSTYLE_COMB}}},
@@ -62,7 +70,19 @@ const dict<IdString, Arch::CellPinsData> Arch::cell_pins_db = {
          {
                  {id_CLK1, PINSTYLE_CLK},
                  {id_A1EN, PINSTYLE_CE},
-         }}};
+         }},
+        // M10K clear inputs are active-high. Retain reset-style constant and
+        // inversion handling so omitted controls stay inactive without a
+        // fabric route, while constants and real nets remain distinguishable.
+        // A RAM clock may be tied off when the corresponding port is unused.
+        // Keep a hard constant off the TCLK fabric route, while real and
+        // inverted clocks continue to use their normal physical pin.
+        {id_MISTRAL_M10K,
+         {{{id_CLK1, PINSTYLE_CLK}, {id_CLK2, PINSTYLE_CLK},
+           {id_ACLR0, PINSTYLE_RST}, {id_ACLR1, PINSTYLE_RST}, {{}, PINSTYLE_NONE}}}},
+        {id_MISTRAL_M10K_TDP,
+         {{{id_CLK1, PINSTYLE_CLK}, {id_CLK2, PINSTYLE_CLK},
+           {id_ACLR0, PINSTYLE_RST}, {id_ACLR1, PINSTYLE_RST}, {{}, PINSTYLE_NONE}}}}};
 
 CellPinStyle Arch::get_cell_pin_style(const CellInfo *cell, IdString port) const
 {

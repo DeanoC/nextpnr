@@ -1102,6 +1102,11 @@ class HeAPPlacer
                 // Was now placed, ignore
                 if (ci->bel != BelId())
                     continue;
+                if (p->cfg.cellRipupLimit > 0 && ++legalise_count[ci->name] > p->cfg.cellRipupLimit)
+                    log_error("Placement legalisation re-placed cell '%s' of type '%s' %d times in one pass without "
+                              "converging; the design likely exceeds a local placement constraint (control sets, "
+                              "region capacity or LUT/FF pairing) rather than device utilisation.\n",
+                              ctx->nameOf(ci), ci->type.c_str(ctx), legalise_count[ci->name]);
                 std::chrono::high_resolution_clock::time_point ci_startt;
                 if (ctx->verbose)
                     ci_startt = std::chrono::high_resolution_clock::now();
@@ -1266,6 +1271,7 @@ class HeAPPlacer
         FastBels::FastBelsData *fb;
 
         int radius, iter, iter_at_radius, total_iters_for_cell, need_to_explore;
+        dict<IdString, int> legalise_count;
         bool placed;
         BelId bestBel;
         int best_inp_len;
@@ -1394,6 +1400,11 @@ class HeAPPlacer
                 for (auto &target : targets) {
                     // Check it satisfies the region constraint if applicable
                     if (!target.first->testRegion(target.second))
+                        goto fail;
+                    // Without a candidate group, the control-set table must
+                    // admit the member before bind_ctrl_set asserts on it
+                    if (ctrl_set_group == -1 && p->cell_ctrl_set.count(target.first->name) &&
+                        !p->test_ctrl_set(target.second, target.first->name))
                         goto fail;
                     if (ctrl_set_group != -1 && ctx->getBelBucketForBel(target.second) == p->cfg.ff_bel_bucket &&
                         p->z_to_ctrl_set.at(ctx->getBelLocation(target.second).z) == ctrl_set_group)
@@ -2172,6 +2183,8 @@ PlacerHeapCfg::PlacerHeapCfg(Context *ctx)
     solverTolerance = 1e-5;
     placeAllAtOnce = false;
     chainRipup = false;
+
+    cellRipupLimit = ctx->setting<int>("placerHeap/cellRipupLimit", 0);
 
     int timeout_divisor = ctx->setting<int>("placerHeap/cellPlacementTimeout", 8);
     if (timeout_divisor > 0) {

@@ -20,7 +20,9 @@
 #ifndef MISTRAL_ARCH_H
 #define MISTRAL_ARCH_H
 
+#include <array>
 #include <set>
+#include <unordered_map>
 #include <sstream>
 
 #include "base_arch.h"
@@ -30,6 +32,8 @@
 #include "cyclonev.h"
 
 NEXTPNR_NAMESPACE_BEGIN
+
+struct TimingAnalyser;
 
 struct ArchArgs
 {
@@ -51,7 +55,7 @@ struct ALMInfo
     bool carry_mode = false;
 
     // Which CLK/ENA and ACLR is chosen for each half
-    std::array<int, 2> clk_ena_idx, aclr_idx;
+    std::array<int, 2> clk_ena_idx{}, aclr_idx{};
 
     // For keeping track of how many inputs are currently being used, for the LAB routeability check
     int unique_input_count = 0;
@@ -67,7 +71,7 @@ struct LABInfo
     std::array<WireId, 2> aclr_wires;
     WireId sclr_wire, sload_wire;
     // TODO: LAB configuration (control set etc)
-    std::array<bool, 2> aclr_used;
+    std::array<bool, 2> aclr_used{};
 };
 
 struct PinInfo
@@ -338,6 +342,25 @@ struct Arch : BaseArch<ArchRanges>
     std::vector<IdString> getBelPins(BelId bel) const override;
 
     bool isBelLocationValid(BelId bel, bool explain_invalid = false) const override;
+    void note_reserved_bel(const std::string &name);
+    void note_reserved_rect(const std::string &spec);
+    void note_reserved_rect_group(const std::string &spec);
+    bool fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_invalid = false) const;
+    bool fes_cell_is_slot(const CellInfo *cell) const;
+    IdString fes_cell_slot_region(const CellInfo *cell) const;
+    bool fes_net_touches_slot(const NetInfo *net) const;
+    bool fes_pip_in_socket(PipId pip) const;
+    void note_fes_cram_region(const std::string &spec);
+    bool fes_pip_preserves_cram(PipId pip) const;
+    void fes_constrain_slot_region();
+    void fes_report_slot_capacity(IdString region_name, const std::vector<CellInfo *> &slot_cells) const;
+    bool fes_pip_in_plug_halo(PipId pip) const;
+    bool fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const;
+    void fes_rip_reserved_shell_pips();
+    void lock_fes_scaffold();
+    void save_fes_pin_maps();
+    void merge_fes_cart(const std::string &filename, const std::string &region);
+    bool pack_unbound_cells();
 
     void bindBel(BelId bel, CellInfo *cell, PlaceStrength strength) override
     {
@@ -409,6 +432,8 @@ struct Arch : BaseArch<ArchRanges>
         // Check reserved routes
         if (is_pip_blocked(pip))
             return false;
+        if (!fes_pip_preserves_cram(pip))
+            return false;
         return BaseArch::checkPipAvail(pip);
     }
 
@@ -416,6 +441,17 @@ struct Arch : BaseArch<ArchRanges>
     {
         if (is_pip_blocked(pip))
             return false;
+        if (!fes_pip_preserves_cram(pip))
+            return false;
+        if (fes_fence_active && fes_has_reserved_rect && net != nullptr) {
+            const bool slot_driven = fes_cell_is_slot(net->driver.cell);
+            const bool slot_user = fes_net_touches_slot(net);
+            const bool in_socket = fes_pip_in_socket(pip);
+            if (slot_driven && !fes_pip_in_plug_halo(pip) && !fes_pip_reaches_net_shell_tile(pip, net))
+                return false;
+            if (!slot_user && in_socket && BaseArch::checkPipAvail(pip))
+                return false;
+        }
         return BaseArch::checkPipAvailForNet(pip, net);
     }
 
@@ -437,7 +473,49 @@ struct Arch : BaseArch<ArchRanges>
     bool getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort,
                       DelayQuad &delay) const override;                                                      // delay.cc
     DelayQuad getPipDelay(PipId pip) const override;                                                         // delay.cc
+    // The per-type table the routers use until analogue_repair() calibrates it.
+    DelayQuad getPipDelayTable(PipId pip) const;
+    DelayQuad getPipDelayCalibrated(PipId pip, const DelayQuad &table) const; // analogue.cc
     bool getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay) const override; // delay.cc
+    struct AnalogueHop
+    {
+        PipId pip;
+        delay_t table, rise, fall;
+    };
+    // Mistral analogue delay of one routed arc; optionally records each pip.
+    bool analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay,
+                            std::vector<AnalogueHop> *hops) const;
+    void dump_analogue_arcs(const std::string &path) const;
+
+    // Analogue signoff repair after the GPU router (analogue.cc)
+    struct TypeCalibration
+    {
+        double table_ps = 0, analogue_ps = 0;
+        int64_t hops = 0;
+    };
+    bool pip_delay_calibrated = false;
+    float pip_delay_prior = 1.0f;
+    dict<PipId, delay_t> pip_delay_observed;
+    std::array<TypeCalibration, 256> pip_type_calibration;
+    // Analogue delay of every routed arc, computed in parallel once the
+    // bitstream is configured; observe also records per-pip delays.
+    struct AnalogueArc
+    {
+        DelayQuad delay;
+        bool ok;
+    };
+    std::unordered_map<const PortRef *, AnalogueArc> analogue_arc_cache;
+    bool analogue_cache_valid = false;
+    void compute_analogue_arcs(bool observe);
+    bool analogue_repair();
+    // Analogue-scored route selection: several GPU candidate routes per
+    // failing sink, evaluated with the analogue model, best one kept.
+    bool analogue_candidate_pass(TimingAnalyser &tmg, float target);
+    // Keep the analogue simulator's routing-mux state in step with a net
+    // whose routing changed: removed pips are parked on an unused input,
+    // added pips linked.
+    void analogue_relink(const std::vector<PipId> &removed, const std::vector<PipId> &added);
+    void configure_bitstream(bool observe = false); // bitstream.cc
 
     // -------------------------------------------------
 
@@ -480,6 +558,7 @@ struct Arch : BaseArch<ArchRanges>
     void create_control(int x, int y);                 // globals.cc
     void create_hps_mpu_general_purpose(int x, int y); // globals.cc
     void create_hps_peripheral_i2c(int x, int y);      // globals.cc
+    void create_hps_fpga2sdram(int x, int y);          // globals.cc
 
     // -------------------------------------------------
 
@@ -570,6 +649,46 @@ struct Arch : BaseArch<ArchRanges>
     // List of IO constraints, used by QSF parser
     dict<IdString, dict<IdString, Property>> io_attr;
     void read_qsf(std::istream &in); // qsf.cc
+
+    // Static expansion slot(s): HeAP may not place unconstrained cells on
+    // these BELs. Explicit BEL cells, FES_SLOT cells tagged for the owning
+    // region and cells locked by the scaffold reload at their original BEL
+    // may use them. A slot cell may not leave its own reserved region, and
+    // reserved regions may not overlap each other (note_reserved_rect fails
+    // closed on overlap). Each declared FES_RESERVED_RECT carries a name
+    // (default "cart" when the QSF spec omits one, for single-socket cores);
+    // a cart merged with merge_fes_cart() is tagged with the region its
+    // cells must legalise into.
+    struct FesReservedRect
+    {
+        std::string name;
+        int x0, y0, x1, y1;
+    };
+    std::vector<FesReservedRect> fes_reserved_rects;
+    dict<BelId, IdString> fes_bel_region;
+    dict<IdString, std::set<BelId>> fes_region_bels;
+    // Every region name ever declared (plain FES_RESERVED_RECT or
+    // FES_RESERVED_RECT_GROUP), kept even after a region is absorbed into a
+    // group so a stale reference gets a precise error instead of "unknown".
+    std::set<IdString> fes_declared_region_names;
+    // Sub-region name -> the group region name it was folded into. A big
+    // card can claim several small declared regions at once via
+    // FES_RESERVED_RECT_GROUP; the absorbed names stay blocked (fail closed
+    // if targeted directly), mirroring a large expansion card physically
+    // covering its smaller neighbours' backplane slots.
+    dict<IdString, IdString> fes_region_absorbed_by;
+    // Region merge_fes_cart() most recently tagged cells with; pack_unbound_cells()
+    // reads this so synthetic per-cart cells (local constant drivers) join the
+    // same region as the cart that needs them.
+    std::string fes_active_cart_region = "cart";
+    std::unordered_map<const CellInfo *, BelId> fes_frozen_cells;
+    bool fes_has_reserved_rect = false;
+    bool fes_any_slot_region_active = false;
+    bool fes_fence_active = false;
+    bool fes_has_cram_region = false;
+    std::array<int, 4> fes_cram_region = {};
+    pool<PipId> fes_frozen_pips;
+    pool<CycloneV::rnode_t> fes_cram_allowed_muxes;
 
     // -------------------------------------------------
 

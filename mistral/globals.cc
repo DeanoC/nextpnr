@@ -21,6 +21,7 @@
 #include "nextpnr.h"
 #include "util.h"
 
+#include <cstdio>
 #include <queue>
 
 NEXTPNR_NAMESPACE_BEGIN
@@ -117,6 +118,60 @@ void Arch::create_hps_peripheral_i2c(int x, int y)
                 get_port(CycloneV::HPS_PERIPHERAL_I2C, x, y, -1, CycloneV::OUT_CLK));
     add_bel_pin(i2c_bel, id("out_data"), PORT_OUT,
                 get_port(CycloneV::HPS_PERIPHERAL_I2C, x, y, -1, CycloneV::OUT_DATA));
+}
+
+void Arch::create_hps_fpga2sdram(int x, int y)
+{
+    BelId bel = add_bel(x, y, id_cyclonev_hps_interface_fpga2sdram, id_cyclonev_hps_interface_fpga2sdram);
+    auto add_bits = [&](const char *name, PortType dir, int bi, CycloneV::port_type_t port, int count) {
+        for (int bit = 0; bit < count; bit++)
+            add_bel_pin(bel, idf("%s[%d]", name, bit), dir, get_port(CycloneV::HPS_FPGA2SDRAM, x, y, bi, port, bit));
+    };
+    auto add_bit = [&](const char *name, PortType dir, int bi, CycloneV::port_type_t port) {
+        add_bel_pin(bel, id(name), dir, get_port(CycloneV::HPS_FPGA2SDRAM, x, y, bi, port));
+    };
+    add_bits("cfg_axi_mm_select", PORT_IN, -1, CycloneV::CFG_AXI_MM_SELECT, 6);
+    add_bits("cfg_cport_rfifo_map", PORT_IN, -1, CycloneV::CFG_CPORT_RFIFO_MAP, 18);
+    add_bits("cfg_cport_type", PORT_IN, -1, CycloneV::CFG_CPORT_TYPE, 12);
+    add_bits("cfg_cport_wfifo_map", PORT_IN, -1, CycloneV::CFG_CPORT_WFIFO_MAP, 18);
+    add_bits("cfg_port_width", PORT_IN, -1, CycloneV::CFG_PORT_WIDTH, 12);
+    add_bits("cfg_rfifo_cport_map", PORT_IN, -1, CycloneV::CFG_RFIFO_CPORT_MAP, 16);
+    add_bits("cfg_wfifo_cport_map", PORT_IN, -1, CycloneV::CFG_WFIFO_CPORT_MAP, 16);
+    char name[32];
+    for (int port = 0; port < 6; port++) {
+        std::snprintf(name, sizeof name, "cmd_data_%d", port);
+        add_bits(name, PORT_IN, port, CycloneV::CMD_DATA, 60);
+        std::snprintf(name, sizeof name, "cmd_port_clk_%d", port);
+        add_bit(name, PORT_IN, port, CycloneV::CMD_PORT_CLK);
+        std::snprintf(name, sizeof name, "cmd_ready_%d", port);
+        add_bit(name, PORT_OUT, port, CycloneV::CMD_READY);
+        std::snprintf(name, sizeof name, "cmd_valid_%d", port);
+        add_bit(name, PORT_IN, port, CycloneV::CMD_VALID);
+        std::snprintf(name, sizeof name, "wrack_data_%d", port);
+        add_bits(name, PORT_OUT, port, CycloneV::WRACK_DATA, 10);
+        std::snprintf(name, sizeof name, "wrack_ready_%d", port);
+        add_bit(name, PORT_IN, port, CycloneV::WRACK_READY);
+        std::snprintf(name, sizeof name, "wrack_valid_%d", port);
+        add_bit(name, PORT_OUT, port, CycloneV::WRACK_VALID);
+    }
+    for (int port = 0; port < 4; port++) {
+        std::snprintf(name, sizeof name, "rd_clk_%d", port);
+        add_bit(name, PORT_IN, port, CycloneV::RD_CLK);
+        std::snprintf(name, sizeof name, "rd_data_%d", port);
+        add_bits(name, PORT_OUT, port, CycloneV::RD_DATA, 80);
+        std::snprintf(name, sizeof name, "rd_ready_%d", port);
+        add_bit(name, PORT_IN, port, CycloneV::RD_READY);
+        std::snprintf(name, sizeof name, "rd_valid_%d", port);
+        add_bit(name, PORT_OUT, port, CycloneV::RD_VALID);
+        std::snprintf(name, sizeof name, "wr_clk_%d", port);
+        add_bit(name, PORT_IN, port, CycloneV::WR_CLK);
+        std::snprintf(name, sizeof name, "wr_data_%d", port);
+        add_bits(name, PORT_IN, port, CycloneV::WR_DATA, 90);
+        std::snprintf(name, sizeof name, "wr_ready_%d", port);
+        add_bit(name, PORT_OUT, port, CycloneV::WR_READY);
+        std::snprintf(name, sizeof name, "wr_valid_%d", port);
+        add_bit(name, PORT_IN, port, CycloneV::WR_VALID);
+    }
 }
 
 void Arch::create_control(int x, int y)

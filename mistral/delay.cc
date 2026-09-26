@@ -19,6 +19,8 @@
 #include "nextpnr.h"
 #include "util.h"
 
+#include <cstdio>
+
 NEXTPNR_NAMESPACE_BEGIN
 
 namespace {
@@ -52,6 +54,8 @@ IdString dsp_register_key(const CellInfo *cell, const std::string &port)
         return id_INREG_CTRL_AY;
     if (port.find("C[") == 0)
         return id_INREG_CTRL_BX;
+    if (port.find("D[") == 0)
+        return id_INREG_CTRL_BY;
     if (port.find("Z[") == 0)
         return id_INREG_CTRL_AZ;
     return IdString();
@@ -62,6 +66,33 @@ IdString dsp_register_key(const CellInfo *cell, const std::string &port)
 TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, int &clockInfoCount) const
 {
     clockInfoCount = 0;
+    if (cell->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN)) {
+        // The Mistral database has no characterized GPIO input-register
+        // setup/hold or register clock-to-Q model.
+        return port == id_CLK ? TMG_CLOCK_INPUT : TMG_IGNORE;
+    }
+    if (cell->type == id_MISTRAL_SDROUT) {
+        // No characterized GPIO register setup/hold or clock-to-pad arcs.
+        if (port == id_CLK) return TMG_CLOCK_INPUT;
+        return port == id_I ? TMG_ENDPOINT : TMG_IGNORE;
+    }
+    if (cell->type == id_MISTRAL_DDROUT) {
+        // No characterized GPIO register setup/hold or clock-to-pad arcs.
+        if (port == id_CLK)
+            return TMG_CLOCK_INPUT;
+        if (port.in(id_D_H, id_D_L))
+            return TMG_ENDPOINT;
+        return TMG_IGNORE;
+    }
+    if (cell->type == id_MISTRAL_DDRBIDIR) {
+        // The Mistral database has no characterized bidirectional GPIO
+        // register setup/hold, clock-to-pad, or clock-to-fabric arcs.
+        if (port.in(id_CLK, id_CLKIN))
+            return TMG_CLOCK_INPUT;
+        if (port.in(id_D_H, id_D_L, id_OE))
+            return TMG_ENDPOINT;
+        return TMG_IGNORE;
+    }
     if (cell->type == id_MISTRAL_CLKENA) {
         if (port == id_A)
             return TMG_CLOCK_INPUT;
@@ -86,11 +117,13 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         if (port == id_locked)
             return TMG_STARTPOINT;
     }
-    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27)) {
+    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                      id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED)) {
         const auto &name = port.str(this);
         if (port == id_CLK)
             return TMG_CLOCK_INPUT;
-        if (name.find("A[") == 0 || name.find("B[") == 0 || name.find("C[") == 0 || name.find("Z[") == 0) {
+        if (name.find("A[") == 0 || name.find("B[") == 0 || name.find("C[") == 0 ||
+            name.find("D[") == 0 || name.find("Z[") == 0) {
             IdString reg_key = dsp_register_key(cell, name);
             if (reg_key != IdString() && dsp_reg_param(cell->params, reg_key)) {
                 clockInfoCount = 1;
@@ -144,10 +177,20 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         }
     } else if (cell->type == id_MISTRAL_M10K) {
         const auto &name = port.str(this);
+        const bool async_read = bool_or_default(cell->params, id_CFG_ASYNC_READ, false) ||
+                                cell->getPort(id_B1EN) == nullptr;
         if (bool_or_default(cell->params, id_CFG_TDP, false)) {
             if (port.in(id_CLK1, id_CLK2))
                 return TMG_CLOCK_INPUT;
+            if (port.in(id_ACLR0, id_ACLR1))
+                return TMG_ENDPOINT;
+            if (port.in(id_ADDRSTALLA, id_ADDRSTALLB)) {
+                clockInfoCount = 1;
+                return TMG_REGISTER_INPUT;
+            }
             if (name.find("A1Q") == 0 || name.find("B1Q") == 0) {
+                if (async_read)
+                    return TMG_COMB_OUTPUT;
                 clockInfoCount = 1;
                 return TMG_REGISTER_OUTPUT;
             }
@@ -157,8 +200,33 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
             }
             return TMG_IGNORE;
         }
+        if (async_read) {
+            if (port.in(id_CLK1, id_CLK2))
+                return TMG_CLOCK_INPUT;
+            if (port.in(id_ACLR0, id_ACLR1))
+                return TMG_ENDPOINT;
+            if (port.in(id_ADDRSTALLA, id_ADDRSTALLB)) {
+                clockInfoCount = 1;
+                return TMG_REGISTER_INPUT;
+            }
+            if (port.in(id_A1DATA, id_A1EN, id_A1BE) || name.find("A1DATA[") == 0 ||
+                name.find("A1BE[") == 0 || name.find("A1ADDR") == 0) {
+                clockInfoCount = 1;
+                return TMG_REGISTER_INPUT;
+            }
+            if (name.find("B1ADDR") == 0)
+                return TMG_COMB_INPUT;
+            if (port == id_B1DATA || name.find("B1DATA[") == 0)
+                return TMG_COMB_OUTPUT;
+            return TMG_IGNORE;
+        }
         if (port.in(id_CLK1, id_CLK2)) {
             return TMG_CLOCK_INPUT;
+        } else if (port.in(id_ACLR0, id_ACLR1)) {
+            return TMG_ENDPOINT;
+        } else if (port.in(id_ADDRSTALLA, id_ADDRSTALLB)) {
+            clockInfoCount = 1;
+            return TMG_REGISTER_INPUT;
         } else if (port.in(id_A1DATA, id_A1EN, id_A1BE, id_B1EN) || name.find("A1DATA[") == 0 ||
                    name.find("A1BE[") == 0 ||
                    name.find("A1ADDR") == 0 || name.find("B1ADDR") == 0) {
@@ -175,11 +243,13 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
 TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port, int index) const
 {
     TimingClockingInfo timing{};
-    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27)) {
+    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                      id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED)) {
         timing.clock_port = id_CLK;
         timing.edge = RISING_EDGE;
         const auto &name = port.str(this);
-        if (name.find("A[") == 0 || name.find("B[") == 0 || name.find("C[") == 0 || name.find("Z[") == 0) {
+        if (name.find("A[") == 0 || name.find("B[") == 0 || name.find("C[") == 0 ||
+            name.find("D[") == 0 || name.find("Z[") == 0) {
             IdString reg_key = dsp_register_key(cell, name);
             if (reg_key != IdString() && dsp_reg_param(cell->params, reg_key)) {
                 timing.setup = DelayPair{125, 125};
@@ -216,10 +286,18 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
         return timing;
     } else if (cell->type == id_MISTRAL_M10K) {
         const auto &name = port.str(this);
+        const bool async_read = bool_or_default(cell->params, id_CFG_ASYNC_READ, false) ||
+                                cell->getPort(id_B1EN) == nullptr;
+        auto clock_edge = [&](IdString clock_port) {
+            auto clock_pin = cell->pin_data.find(clock_port);
+            return clock_pin != cell->pin_data.end() && clock_pin->second.state == PIN_INV ? FALLING_EDGE : RISING_EDGE;
+        };
         if (bool_or_default(cell->params, id_CFG_TDP, false)) {
             timing.clock_port = name.find("B1") == 0 ? id_CLK2 : id_CLK1;
-            timing.edge = RISING_EDGE;
-            if (name.find("A1Q") == 0 || name.find("B1Q") == 0) {
+            if (port == id_ADDRSTALLB)
+                timing.clock_port = id_CLK2;
+            timing.edge = clock_edge(timing.clock_port);
+            if ((name.find("A1Q") == 0 || name.find("B1Q") == 0) && !async_read) {
                 timing.clockToQ = DelayQuad{1004};
             } else {
                 timing.hold = DelayPair{42, 42};
@@ -234,10 +312,18 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
             }
             return timing;
         }
+        if (async_read && (name.find("B1ADDR") == 0 || port == id_B1DATA || name.find("B1DATA[") == 0))
+            return timing;
         bool read_port = port.in(id_B1DATA, id_B1EN) || name.find("B1DATA[") == 0 || name.find("B1ADDR") == 0;
         timing.clock_port = read_port && bool_or_default(cell->params, id_CFG_DUAL_CLOCK, false) ? id_CLK2 : id_CLK1;
-        timing.edge = RISING_EDGE;
-        if (port.str(this).find("A1ADDR") == 0 || port.str(this).find("B1ADDR") == 0) {
+        if (port == id_ADDRSTALLB && bool_or_default(cell->params, id_CFG_DUAL_CLOCK, false))
+            timing.clock_port = id_CLK2;
+        timing.edge = clock_edge(timing.clock_port);
+        if (port.in(id_ADDRSTALLA, id_ADDRSTALLB)) {
+            timing.setup = DelayPair{125, 125};
+            timing.hold = DelayPair{42, 42};
+            timing.clockToQ = DelayQuad{};
+        } else if (port.str(this).find("A1ADDR") == 0 || port.str(this).find("B1ADDR") == 0) {
             timing.setup = DelayPair{125, 125};
             timing.hold = DelayPair{42, 42};
             timing.clockToQ = DelayQuad{};
@@ -265,18 +351,25 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
 
 bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort, DelayQuad &delay) const
 {
-    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27) &&
+    if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
+                      id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) &&
         toPort.str(this).find("Y[") == 0) {
         // Cyclone V arcs from Yosys techlibs/intel_alm/common/dsp_sim.v.
         const auto &from_name = fromPort.str(this);
-        if (from_name.find("A[") == 0) {
+        if (from_name.find("A[") == 0 ||
+            (from_name.find("C[") == 0 && cell->type.in(id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED))) {
             delay = cell->type == id_MISTRAL_MUL18X18 ? DelayQuad{3180} :
-                    cell->type == id_MISTRAL_MUL27X27 ? DelayQuad{3732} : DelayQuad{2818};
+                    cell->type == id_MISTRAL_MUL27X27 ? DelayQuad{3732} :
+                    cell->type.in(id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) ? DelayQuad{3180} :
+                                                                                         DelayQuad{2818};
             return true;
         }
-        if (from_name.find("B[") == 0) {
+        if (from_name.find("B[") == 0 || from_name.find("D[") == 0 ||
+            (from_name.find("C[") == 0 && cell->type == id_MISTRAL_MUL18X18)) {
             delay = cell->type == id_MISTRAL_MUL18X18 ? DelayQuad{3982} :
-                    cell->type == id_MISTRAL_MUL27X27 ? DelayQuad{3928} : DelayQuad{3051};
+                    cell->type == id_MISTRAL_MUL27X27 ? DelayQuad{3928} :
+                    cell->type.in(id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) ? DelayQuad{3982} :
+                                                                                         DelayQuad{3051};
             return true;
         }
         // The 9x9 preadder feeds the multiplier through its Y operand. The
@@ -401,6 +494,18 @@ bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort
                 return true;
             }
         }
+    } else if (cell->type == id_MISTRAL_M10K &&
+               (bool_or_default(cell->params, id_CFG_ASYNC_READ, false) || cell->getPort(id_B1EN) == nullptr) &&
+               (((toPort == id_B1DATA || toPort.str(this).find("B1DATA[") == 0) &&
+                 fromPort.str(this).find("B1ADDR") == 0) ||
+                (bool_or_default(cell->params, id_CFG_TDP, false) &&
+                 (((toPort.str(this).find("A1Q") == 0) && fromPort.str(this).find("A1ADDR") == 0) ||
+                  ((toPort.str(this).find("B1Q") == 0) && fromPort.str(this).find("B1ADDR") == 0))))) {
+        // Mistral does not yet contain a characterized M10K address-to-data
+        // arc.  Use a conservative 1.5 ns estimate so an asynchronous read
+        // is visible to host timing without pretending to be silicon data.
+        delay = DelayQuad{1500};
+        return true;
     }
 
     return false;
@@ -408,15 +513,33 @@ bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort
 
 DelayQuad Arch::getPipDelay(PipId pip) const
 {
+    DelayQuad table = getPipDelayTable(pip);
+    return pip_delay_calibrated ? getPipDelayCalibrated(pip, table) : table;
+}
+
+DelayQuad Arch::getPipDelayTable(PipId pip) const
+{
     WireId src = getPipSrcWire(pip), dst = getPipDstWire(pip);
 
-    if (src.is_nextpnr_created() || dst.is_nextpnr_created())
+    if (src.is_nextpnr_created())
         return DelayQuad{20};
 
     // This is guesswork based on average of (interconnect delay / number of pips)
     auto src_type = CycloneV::rn2t(src.node);
 
     switch (src_type) {
+    // Measured with the analogue model on the FES ZX81, ColecoVision and
+    // Pong cores (mistral/tests/gpurouter/qor.py --arc-dump): these types
+    // had placeholder entries of 0 or 20 ps but simulate at 44-176 ps on
+    // every design, so each arc through them was 50-150 ps optimistic.
+    case CycloneV::rnode_type_t::GOUT:
+        return DelayQuad{175};
+    case CycloneV::rnode_type_t::LD:
+        return DelayQuad{105};
+    case CycloneV::rnode_type_t::TCLK:
+        return DelayQuad{45};
+    case CycloneV::rnode_type_t::XCLKB2A:
+        return DelayQuad{50};
     case CycloneV::rnode_type_t::SCLK:
         return DelayQuad{136, 136, 139, 139};
     case CycloneV::rnode_type_t::SCLKB1:
@@ -449,15 +572,32 @@ DelayQuad Arch::getPipDelay(PipId pip) const
     case CycloneV::rnode_type_t::TD:
         return DelayQuad{208, 208, 177, 177};
     default:
-        return DelayQuad{0};
+        return dst.is_nextpnr_created() ? DelayQuad{20} : DelayQuad{0};
     }
 }
 
 bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay) const
 {
+    // A cached observation stays valid while the arc's route is unchanged,
+    // also after the bitstream state has been dropped for re-routing: the
+    // analogue repair removes the entries of every net it rips up, so the
+    // router sees the analogue delay of the routes it keeps and the delay
+    // table only for the ones it moves.
+    if (analogue_cache_valid) {
+        auto fnd = analogue_arc_cache.find(&sink);
+        if (fnd != analogue_arc_cache.end()) {
+            delay = fnd->second.delay;
+            return fnd->second.ok;
+        }
+    }
     if (!this->bitstream_configured)
         return false;
+    return analogue_arc_delay(net_info, sink, delay, nullptr);
+}
 
+bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay,
+                              std::vector<AnalogueHop> *hops) const
+{
     WireId src_wire = getCtx()->getNetinfoSourceWire(net_info);
     WireId dst_wire = getCtx()->getNetinfoSinkWire(net_info, sink, 0);
     NPNR_ASSERT(src_wire != WireId());
@@ -506,6 +646,9 @@ bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, Del
         // no analogue model for that tap; retain the estimated arc instead.
         if (pll_ref_select.count(pip))
             return false;
+
+        if (hops)
+            hops->push_back(AnalogueHop{pip, getPipDelayTable(pip).maxDelay(), 0, 0});
 
         if (src.is_nextpnr_created())
             continue;
@@ -563,6 +706,8 @@ bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, Del
 
             output_delay_sum[edge].mi += output_delays[edge].mi;
             output_delay_sum[edge].mx += output_delays[edge].mx;
+            if (hops)
+                (edge ? hops->back().fall : hops->back().rise) = delay_t(output_delays[edge].mx * 1e12);
         }
 
         if (inverting == mistral::CycloneV::INV_YES || inverting == mistral::CycloneV::INV_PROGRAMMABLE)
@@ -597,4 +742,42 @@ delay_t Arch::estimateDelay(WireId src, WireId dst) const
     return 75 * x_diff + 200 * y_diff;
 }
 
+// Diagnostic: write every routed arc's per-hop delay-table and analogue
+// delays after the bitstream has been configured.
+void Arch::dump_analogue_arcs(const std::string &path) const
+{
+    FILE *f = fopen(path.c_str(), "w");
+    if (!f)
+        log_error("cannot open analogue arc dump '%s'\n", path.c_str());
+    fprintf(f, "net\tuser\thop\tsrc_type\tsrc_x\tsrc_y\tdst_type\tdst_x\tdst_y\ttable_ps\trise_ps\tfall_ps\n");
+    std::vector<AnalogueHop> hops;
+    for (auto &net : nets) {
+        const NetInfo *ni = net.second.get();
+        if (ni->driver.cell == nullptr || ni->wires.empty() || ni->is_global)
+            continue;
+        for (auto item : const_cast<NetInfo *>(ni)->users.enumerate()) {
+            const PortRef &usr = item.value;
+            auto usr_idx = item.index;
+            hops.clear();
+            DelayQuad d;
+            if (!analogue_arc_delay(ni, usr, d, &hops))
+                continue;
+            for (size_t h = 0; h < hops.size(); h++) {
+                WireId s = getPipSrcWire(hops[h].pip), t = getPipDstWire(hops[h].pip);
+                auto tn = [&](WireId w) -> const char * {
+                    return w.is_nextpnr_created() ? "NPNR" : CycloneV::rnode_type_names[CycloneV::rn2t(w.node)];
+                };
+                fprintf(f, "%s\t%d\t%zu\t%s\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%d\n", ni->name.c_str(getCtx()),
+                        usr_idx.idx(), h, tn(s), s.is_nextpnr_created() ? -1 : int(CycloneV::rn2x(s.node)),
+                        s.is_nextpnr_created() ? -1 : int(CycloneV::rn2y(s.node)), tn(t),
+                        t.is_nextpnr_created() ? -1 : int(CycloneV::rn2x(t.node)),
+                        t.is_nextpnr_created() ? -1 : int(CycloneV::rn2y(t.node)), int(hops[h].table),
+                        int(hops[h].rise), int(hops[h].fall));
+            }
+        }
+    }
+    fclose(f);
+}
+
 NEXTPNR_NAMESPACE_END
+

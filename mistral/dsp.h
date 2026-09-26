@@ -45,6 +45,17 @@ constexpr std::array<int, 2> mistral_dsp_18x18_a_groups{{0, 1}};
 constexpr std::array<int, 2> mistral_dsp_18x18_b_groups{{2, 3}};
 constexpr std::array<int, 4> mistral_dsp_18x18_c_groups{{8, 9, 6, 7}};
 
+// The native two-multiplier modes use AX/AY and BX/BY.  Groups are listed
+// from least-significant slice to most-significant slice.  The nineteenth bit
+// of each Y operand is on an otherwise unnamed GOUT endpoint; Mistral exposes
+// those endpoints as UNK_IN until the DSP port names are reverse engineered.
+constexpr std::array<int, 2> mistral_dsp_18x19_a_groups{{0, 1}};
+constexpr std::array<int, 2> mistral_dsp_18x19_b_groups{{2, 3}};
+constexpr std::array<int, 2> mistral_dsp_18x19_c_groups{{6, 7}};
+constexpr std::array<int, 2> mistral_dsp_18x19_d_groups{{8, 9}};
+constexpr int mistral_dsp_18x19_b_high_pi = 94; // upper DSP2 GOUT.30
+constexpr int mistral_dsp_18x19_d_high_pi = 30; // lower DSP GOUT.30
+
 // A 27x27 multiplier uses the same operand packing as the three 9x9 mode,
 // with one 54-bit result. RESULT port 36 is the physical hole between the
 // upper and lower 37-bit halves, so the last 18 logical bits start at 37.

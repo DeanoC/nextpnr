@@ -19,7 +19,8 @@ def diagnostics(args, design, name, out):
         ('read-geometry', {'CFG_RD_ABITS': 8}, None, 'mixed widths require'),
         ('single-clock', {'CFG_DUAL_CLOCK': 0}, None, 'both clocks'),
         ('missing-clock', {}, 'CLK1', 'both clocks'),
-        ('byte-mask', {'CFG_BYTE_ENABLE': 1}, None, 'byte enables are not supported'),
+        ('byte-mask', {'CFG_ABITS': 9, 'CFG_DBITS': 20, 'CFG_BYTE_ENABLE': 1}, None,
+         'mixed-width byte-enable mode requires connected'),
         ('missing-mode', {'CFG_MIXED_WIDTH': 0}, None, 'separate read geometry requires'),
     )
     for label, params, disconnect, message in cases:
