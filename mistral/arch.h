@@ -352,6 +352,9 @@ struct Arch : BaseArch<ArchRanges>
     bool fes_pip_in_socket(PipId pip) const;
     void note_fes_cram_region(const std::string &spec);
     bool fes_pip_preserves_cram(PipId pip) const;
+    void fes_trim_net_orphans(NetInfo *net);
+    void fes_lock_protected_routing();
+    void fes_validate_cram_routing() const;
     void fes_constrain_slot_region();
     void fes_report_slot_capacity(IdString region_name, const std::vector<CellInfo *> &slot_cells) const;
     bool fes_pip_in_plug_halo(PipId pip) const;
@@ -689,6 +692,9 @@ struct Arch : BaseArch<ArchRanges>
     std::array<int, 4> fes_cram_region = {};
     pool<PipId> fes_frozen_pips;
     pool<CycloneV::rnode_coords> fes_cram_allowed_muxes;
+    // Outside-region frozen muxes and the connected upstream paths needed
+    // to keep them driven. Each entry records the original pip and net owner.
+    dict<WireId, std::pair<PipId, IdString>> fes_protected_routing;
 
     // -------------------------------------------------
 

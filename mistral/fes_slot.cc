@@ -179,19 +179,6 @@ bool fes_json_signal(const Json &bit, int &id)
     return false;
 }
 
-void fes_rip_net_routing(Context *ctx, NetInfo *net)
-{
-    if (net == nullptr)
-        return;
-    while (!net->wires.empty()) {
-        auto it = net->wires.begin();
-        if (it->second.pip != PipId())
-            ctx->unbindPip(it->second.pip);
-        else
-            ctx->unbindWire(it->first);
-    }
-}
-
 void fes_unbind_port_wires(Context *ctx, CellInfo *cell, IdString port)
 {
     if (cell == nullptr || cell->bel == BelId())
@@ -210,25 +197,33 @@ void fes_unbind_port_wires(Context *ctx, CellInfo *cell, IdString port)
     }
     add(ctx->getBelPinWire(cell->bel, port));
     for (WireId w : wires) {
-        if (ctx->getBoundWireNet(w) == net)
+        if (ctx->getBoundWireNet(w) == net) {
+            if (ctx->fes_protected_routing.count(w))
+                log_error("Cannot detach protected frozen CRAM wire %s from %s.%s.\n", ctx->nameOfWire(w),
+                          ctx->nameOf(cell), port.c_str(ctx));
             ctx->unbindWire(w);
+        }
     }
 }
 
-void fes_trim_net_orphans(Context *ctx, NetInfo *net)
+} // namespace
+
+void Arch::fes_trim_net_orphans(NetInfo *net)
 {
+    Context *ctx = getCtx();
     if (net == nullptr || net->wires.empty())
         return;
-    if (net->users.empty()) {
-        // Detaching the vacant return FF can strand its route-through source.
-        // With no remaining sink, even a locked source wire is an orphan.
-        fes_rip_net_routing(ctx, net);
-        return;
-    }
     pool<WireId> used;
-    WireId src = ctx->getNetinfoSourceWire(net);
-    if (src != WireId())
-        used.insert(src);
+    // A mux outside the socket remains part of the physical shell even when
+    // its last logical sink is detached. The snapshot includes its ancestors.
+    for (const auto &wire : net->wires)
+        if (fes_protected_routing.count(wire.first))
+            used.insert(wire.first);
+    if (!net->users.empty()) {
+        WireId src = ctx->getNetinfoSourceWire(net);
+        if (src != WireId())
+            used.insert(src);
+    }
     for (auto usr : net->users) {
         // Imported routed shells have physical BEL bindings before the
         // scaffold restores logical pin mappings. Inspect those bindings
@@ -261,6 +256,8 @@ void fes_trim_net_orphans(Context *ctx, NetInfo *net)
     }
 }
 
+namespace {
+
 NetInfo *rdata_sink_net(Context *ctx, int index)
 {
     CellInfo *ff = find_rdata_ff(ctx, stringf("plug_rdata[%d]", index));
@@ -273,7 +270,7 @@ NetInfo *rdata_sink_net(Context *ctx, int index)
     fes_unbind_port_wires(ctx, ff, id_DATAIN);
     if (ff->getPort(id_DATAIN) != nullptr)
         ff->disconnectPort(id_DATAIN);
-    fes_trim_net_orphans(ctx, old);
+    ctx->fes_trim_net_orphans(old);
     IdString name = ctx->id(stringf("fes_rdata[%d]", index));
     int suffix = 0;
     while (ctx->nets.count(name))
@@ -482,6 +479,7 @@ void Arch::lock_fes_scaffold()
         ctx->lockNetRouting(item.first);
         ++locked;
     }
+    fes_lock_protected_routing();
     log_info("FES scaffold locked %d cells and routing on %d nets.\n", locked_cells, locked);
 }
 
@@ -544,13 +542,56 @@ void Arch::note_fes_cram_region(const std::string &spec)
     // Snapshot before cart merge can detach any original return-path stubs.
     // Exact old selections remain legal; a different source at an outside mux
     // is forbidden even for a mixed shell/cart constant net.
-    for (const auto &item : getCtx()->nets)
-        for (const auto &wire : item.second->wires)
-            if (wire.second.pip != PipId())
-                fes_frozen_pips.insert(wire.second.pip);
+    for (const auto &item : getCtx()->nets) {
+        const NetInfo *net = item.second.get();
+        for (const auto &wire : net->wires) {
+            PipId pip = wire.second.pip;
+            if (pip == PipId())
+                continue;
+            fes_frozen_pips.insert(pip);
+            if (WireId(pip.src).is_nextpnr_created() || WireId(pip.dst).is_nextpnr_created() ||
+                fes_cram_allowed_muxes.count(pip.dst))
+                continue;
+            WireId cursor = wire.first;
+            while (!fes_protected_routing.count(cursor)) {
+                auto upstream = net->wires.find(cursor);
+                if (upstream == net->wires.end())
+                    log_error("Incomplete frozen CRAM route at wire %s on net %s.\n",
+                              getCtx()->nameOfWire(cursor), getCtx()->nameOf(net));
+                PipId parent = upstream->second.pip;
+                fes_protected_routing[cursor] = std::make_pair(parent, item.first);
+                if (parent == PipId())
+                    break;
+                cursor = getPipSrcWire(parent);
+            }
+        }
+    }
     log_info("FES physical CRAM fence admits %zu muxes and preserves %zu frozen pips.\n",
              fes_cram_allowed_muxes.size(), fes_frozen_pips.size());
 #endif
+}
+
+void Arch::fes_lock_protected_routing()
+{
+    fes_validate_cram_routing();
+    for (const auto &entry : fes_protected_routing)
+        getCtx()->nets.at(entry.second.second)->wires.at(entry.first).strength = STRENGTH_LOCKED;
+}
+
+void Arch::fes_validate_cram_routing() const
+{
+    for (const auto &entry : fes_protected_routing) {
+        const NetInfo *net = getBoundWireNet(entry.first);
+        if (net == nullptr || net->name != entry.second.second || !net->wires.count(entry.first) ||
+            net->wires.at(entry.first).pip != entry.second.first)
+            log_error("Missing or changed frozen CRAM route at wire %s on net %s.\n",
+                      getCtx()->nameOfWire(entry.first), entry.second.second.c_str(getCtx()));
+    }
+    for (const auto &item : getCtx()->nets)
+        for (const auto &wire : item.second->wires)
+            if (wire.second.pip != PipId() && !fes_pip_preserves_cram(wire.second.pip))
+                log_error("Routed pip %s violates frozen CRAM region.\n",
+                          getPipName(wire.second.pip).str(getCtx()).c_str());
 }
 
 bool Arch::fes_pip_preserves_cram(PipId pip) const

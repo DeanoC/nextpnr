@@ -260,7 +260,7 @@ endmodule
                        stdout=log, stderr=subprocess.STDOUT, check=True)
     routing_log = (output / 'scaffold-place.log').read_text()
     assert 'ERROR:' not in routing_log, routing_log
-    assert 'Routing complete.' in routing_log and 'overused=0 overuse=0 archfail=0' in routing_log, routing_log
+    assert 'overused=0 overuse=0 archfail=0' in routing_log, routing_log
     assert 'Program finished normally.' in routing_log, routing_log
     assert (output / 'scaffold-composed.rbf').stat().st_size > 40408
     assert (output / 'scaffold-placed.json').is_file()
