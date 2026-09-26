@@ -2639,12 +2639,12 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     cpu_lane_nets = ctx->setting<int>("gpurouter/cpuLaneNets", 0);
     candidate_margin = ctx->setting<int>("gpurouter/candidateMargin", 8);
     candidate_unbounded = ctx->setting<bool>("gpurouter/candidateUnbounded", true);
-    candidate_expand_k = ctx->setting<int>("gpurouter/candidateExpandK", expand_k);
     crit_exponent = ctx->setting<float>("gpurouter/critExponent", 2.0f);
     load_penalty = ctx->setting<float>("gpurouter/loadPenalty", 0.0f);
     pip_adder = ctx->setting<float>("gpurouter/pipAdder", 0.0f);
     tmg_ripup_patience = ctx->setting<int>("gpurouter/tmgRipupPatience", 8);
     expand_k = ctx->setting<int>("gpurouter/expandK", 256);
+    candidate_expand_k = ctx->setting<int>("gpurouter/candidateExpandK", expand_k);
     expand_div = ctx->setting<int>("gpurouter/expandDiv", 0);
     max_batches = ctx->setting<int>("gpurouter/maxBatches", 12);
     small_slots = ctx->setting<int>("gpurouter/smallSlots", 384);

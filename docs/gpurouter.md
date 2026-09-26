@@ -394,14 +394,14 @@ time is the whole run including placement and bitstream generation.
 | M10K fixture (1) | 50 MHz | 468.16 | 441.50 | 4.5 s / 5.2 s |
 | FES Pong (1) | core.game.clk (74.25) | 86.75 | 86.75 | 6.2 s / 6.4 s |
 | FES ColecoVision (1) | clk_sys (52) / pixel_clk (74.25) | 53.03 / 77.77 (check 51.28 fail, passed in round 2) | 57.48 / 77.77 (passes at the check) | 24.4 s / 21.9 s |
-| FES ZX81 (1) | clk_sys (52) | 45.37 fail (best round) | 48.35 fail (−1.45 ns) | 48 s / 147 s |
-| FES ZX81 (2) | clk_sys (52) | 49.31 fail (best round) | **52.09 pass** (round 6) | 34 s / 102 s |
-| FES ZX81 (3) | clk_sys (52) | 48.50 fail (best round) | 48.56 fail (−1.36 ns) | 41 s / 166 s |
+| FES ZX81 (1) | clk_sys (52) | 45.37 fail (best round) | 51.39 fail (−0.23 ns) | 48 s / 85 s |
+| FES ZX81 (2) | clk_sys (52) | 49.31 fail (best round) | **52.37 pass** (round 6) | 34 s / 63 s |
+| FES ZX81 (3) | clk_sys (52) | 48.50 fail (best round) | 48.56 fail (−1.36 ns) | 41 s / 100 s |
 
-On the ZX81 the candidate passes do the closing (seed 1: −2.75 → −1.94 →
-−1.56 ns in two passes of about 5 s each, seed 2: −1.10 → −0.35 → +0.03 ns
-across the re-routes); the re-route rounds diversify the routes the next
-passes choose from. The numbers above are the defaults after the binding
+On the ZX81 the candidate passes do the closing (seed 1: −2.75 → −0.23
+ns over seven rounds of passes of about 2 s each, seed 2: −1.20 → +0.13
+ns); the re-route rounds diversify the routes the next passes choose
+from. The numbers above are the defaults after the binding
 fix; before it, runs that were wrecked by a refused binding and then
 recovered by the passes sometimes closed seed 1 (52.72 MHz) and sometimes
 ended at 48 MHz, which is the spread to expect from a heuristic flow, not
