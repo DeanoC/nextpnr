@@ -521,13 +521,25 @@ DelayQuad Arch::getPipDelayTable(PipId pip) const
 {
     WireId src = getPipSrcWire(pip), dst = getPipDstWire(pip);
 
-    if (src.is_nextpnr_created() || dst.is_nextpnr_created())
+    if (src.is_nextpnr_created())
         return DelayQuad{20};
 
     // This is guesswork based on average of (interconnect delay / number of pips)
     auto src_type = CycloneV::rn2t(src.node);
 
     switch (src_type) {
+    // Measured with the analogue model on the FES ZX81, ColecoVision and
+    // Pong cores (mistral/tests/gpurouter/qor.py --arc-dump): these types
+    // had placeholder entries of 0 or 20 ps but simulate at 44-176 ps on
+    // every design, so each arc through them was 50-150 ps optimistic.
+    case CycloneV::rnode_type_t::GOUT:
+        return DelayQuad{175};
+    case CycloneV::rnode_type_t::LD:
+        return DelayQuad{105};
+    case CycloneV::rnode_type_t::TCLK:
+        return DelayQuad{45};
+    case CycloneV::rnode_type_t::XCLKB2A:
+        return DelayQuad{50};
     case CycloneV::rnode_type_t::SCLK:
         return DelayQuad{136, 136, 139, 139};
     case CycloneV::rnode_type_t::SCLKB1:
@@ -560,14 +572,17 @@ DelayQuad Arch::getPipDelayTable(PipId pip) const
     case CycloneV::rnode_type_t::TD:
         return DelayQuad{208, 208, 177, 177};
     default:
-        return DelayQuad{0};
+        return dst.is_nextpnr_created() ? DelayQuad{20} : DelayQuad{0};
     }
 }
 
 bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay) const
 {
-    if (!this->bitstream_configured)
-        return false;
+    // A cached observation stays valid while the arc's route is unchanged,
+    // also after the bitstream state has been dropped for re-routing: the
+    // analogue repair removes the entries of every net it rips up, so the
+    // router sees the analogue delay of the routes it keeps and the delay
+    // table only for the ones it moves.
     if (analogue_cache_valid) {
         auto fnd = analogue_arc_cache.find(&sink);
         if (fnd != analogue_arc_cache.end()) {
@@ -575,6 +590,8 @@ bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, Del
             return fnd->second.ok;
         }
     }
+    if (!this->bitstream_configured)
+        return false;
     return analogue_arc_delay(net_info, sink, delay, nullptr);
 }
 
