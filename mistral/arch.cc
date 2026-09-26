@@ -178,7 +178,7 @@ Arch::Arch(ArchArgs args)
             create_hps_peripheral_i2c(pos.x(), pos.y());
         }
         auto f2sdram = hps_pos[CycloneV::I_HPS_FPGA2SDRAM];
-        create_hps_fpga2sdram(CycloneV::pos2x(f2sdram), CycloneV::pos2y(f2sdram));
+        create_hps_fpga2sdram(f2sdram.x(), f2sdram.y());
     }
 
     for (auto m10k_pos : cyclonev->m10k_get_pos())
