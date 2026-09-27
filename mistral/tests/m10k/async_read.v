@@ -1,16 +1,13 @@
-// Small M10K fixture for the asynchronous read-port contract.
-//
-// The direct primitive keeps this test independent of the pending Yosys
-// memory_libmap rule.  async_read.py removes B1EN and adds CFG_ASYNC_READ to
-// model the JSON that that rule will emit.  The backend preserves the omitted
-// B1EN constant-rden form used by Quartus.
+// Small M10K fixture for rejected async and accepted synchronous shapes.
+// unsupported_async.py edits synthesized JSON to test the unsupported
+// CFG_ASYNC_READ and omitted-B1EN spellings at each fixed width.
 module top #(
     parameter WIDTH = 20
 ) (
     input wire FPGA_CLK1_50,
     output wire [0:0] LED
 );
-    localparam ABITS = WIDTH == 40 ? 8 : 9;
+    localparam ABITS = WIDTH == 40 ? 8 : WIDTH == 20 ? 9 : 10;
     reg [ABITS-1:0] addr = 0;
     always @(posedge FPGA_CLK1_50)
         addr <= addr + 1'b1;

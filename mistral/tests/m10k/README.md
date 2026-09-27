@@ -68,7 +68,8 @@ For two independently enabled read/write ports, see
 For explicit read-during-write contracts and collision validation, see
 [M10K read-during-write contracts](README-read-during-write.md).
 
-For a combinational read port, see [asynchronous-read M10K](README-async-read.md).
+For why a combinational read cannot use Cyclone V M10K, see
+[the asynchronous-read contract](README-async-read.md).
 
 For an explicitly registered read output, see
 [registered M10K outputs](README-output-register.md).
