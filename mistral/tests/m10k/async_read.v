@@ -4,21 +4,24 @@
 // memory_libmap rule.  async_read.py removes B1EN and adds CFG_ASYNC_READ to
 // model the JSON that that rule will emit.  The backend preserves the omitted
 // B1EN constant-rden form used by Quartus.
-module top(
+module top #(
+    parameter WIDTH = 20
+) (
     input wire FPGA_CLK1_50,
     output wire [0:0] LED
 );
-    reg [8:0] addr = 9'b0;
+    localparam ABITS = WIDTH == 40 ? 8 : 9;
+    reg [ABITS-1:0] addr = 0;
     always @(posedge FPGA_CLK1_50)
-        addr <= addr + 9'd1;
+        addr <= addr + 1'b1;
 
-    wire [19:0] q;
+    wire [WIDTH-1:0] q;
     reg q_sample;
-    MISTRAL_M10K #(.CFG_ABITS(9), .CFG_DBITS(20)) ram(
+    MISTRAL_M10K #(.CFG_ABITS(ABITS), .CFG_DBITS(WIDTH)) ram(
         .CLK1(FPGA_CLK1_50),
-        .A1ADDR(9'b0),
-        .A1DATA(20'b0),
-        .A1EN(1'b1),
+        .A1ADDR({ABITS{1'b0}}),
+        .A1DATA({WIDTH{1'b0}}),
+        .A1EN(WIDTH == 40 ? 1'b0 : 1'b1),
         .B1ADDR(addr),
         .B1DATA(q),
         .B1EN(1'b1)

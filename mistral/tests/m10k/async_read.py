@@ -64,6 +64,45 @@ def main():
     name, cell = next((n, c) for n, c in cells.items() if c["type"] == CELL)
     assert cell["port_directions"].get("B1EN") == "input"
 
+    # A 256x40 async read was observed on a Cyclone V to return the prior
+    # address at 74.25 MHz. With its clock stopped, changing B1ADDR did not
+    # change B1DATA. Reject this known-bad shape before emitting an RBF.
+    wide_case = output / "async-40-rejected"
+    wide_case.mkdir(exist_ok=True)
+    wide_synth = wide_case / "synth.ys"
+    wide_synth.write_text(
+        f"read_verilog {source}\n"
+        "chparam -set WIDTH 40 top\n"
+        "synth_intel_alm -nolutram -nodsp -top top\n"
+        f"select -assert-count 1 t:{CELL}\n"
+        f"write_json {wide_case / 'base.json'}\n"
+    )
+    run([str(args.yosys.resolve()), "-Q", "-T", "-s", str(wide_synth)],
+        wide_case / "synth.log")
+    wide = json.loads((wide_case / "base.json").read_text())
+    wide_cell = next(c for c in wide["modules"]["top"]["cells"].values()
+                     if c["type"] == CELL)
+    for enable in ("explicit-high", "omitted"):
+        candidate = copy.deepcopy(wide)
+        candidate_cell = next(c for c in candidate["modules"]["top"]["cells"].values()
+                              if c["type"] == CELL)
+        candidate_cell["parameters"]["CFG_ASYNC_READ"] = f"{1:032b}"
+        if enable == "omitted":
+            candidate_cell["connections"].pop("B1EN", None)
+            candidate_cell["port_directions"].pop("B1EN", None)
+        enable_case = wide_case / enable
+        enable_case.mkdir(exist_ok=True)
+        wide_fixture = enable_case / "synth.json"
+        wide_fixture.write_text(json.dumps(candidate))
+        wide_result = subprocess.run(
+            [str(args.nextpnr.resolve()), "--device", DEVICE, "--freq", "50",
+             "--qsf", str(qsf), "--sdc", str(args.sdc.resolve()),
+             "--json", str(wide_fixture)], capture_output=True, text=True, timeout=120)
+        wide_log = wide_result.stdout + wide_result.stderr
+        (enable_case / "route.log").write_text(wide_log)
+        assert wide_result.returncode != 0, f"40-bit async M10K ({enable}) must fail closed"
+        assert "40-bit asynchronous M10K read is unsupported" in wide_log, wide_log
+
     # The locked M10K library cell predates the byte-enable mapper and has no
     # A1BE port.  Add the two always-enabled write lanes at the JSON boundary
     # so this regression covers the 20-bit byte-enable selector path used by
