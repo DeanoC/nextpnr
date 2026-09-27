@@ -42,6 +42,7 @@
 #include <thread>
 #include <tuple>
 
+#include "gpu/congestion_plateau.h"
 #include "gpu/gpuroute_backend.h"
 #include "log.h"
 #include "nextpnr.h"
@@ -1378,23 +1379,29 @@ struct GpuRouter
     // zero so the fast congestion schedule is not thrown away on the
     // partial improvement that follows an escape.
     int plateau_escapes = 0;
-    // Iterations spent at four or fewer overused wires since the last time
-    // the count was higher. A negotiation that sits there is not making
-    // progress even when an earlier zero is still the recorded minimum.
-    int tiny_overuse_iters = 0;
+    gpuroute::CongestionPlateau congestion_plateau;
     float cong_stall_boost = 1.0f;
 
     // Negotiated-congestion loop over the nets in route_queue until no wire
     // is overused (and, with --tmg-ripup, no arc fails slack). Returns
-    // false when a one- or two-wire plateau survives a soft-reservation
-    // escape; the caller either aborts or puts a known-legal routing back.
+    // false when an attempt that started with frozen repair arcs cannot
+    // escape a small plateau; initial routing keeps the normal max_iter
+    // budget and congestion growth even when only one conflict remains.
     bool negotiate()
     {
         // Each call is a fresh attempt (initial routing, or re-negotiation
         // after timing repair). An escape budget left over from a previous
         // attempt would fail this one on its first saturated plateau.
         plateau_escapes = 0;
-        tiny_overuse_iters = 0;
+        // Snapshot actual timing-repair state, not pre-routed globals or
+        // hard reservations. No arcs become frozen during negotiation, but
+        // thawing its last frozen arc must not discard the repair budget.
+        bool has_frozen_arcs = false;
+        for (const auto &nd : nets)
+            for (const auto &arcs : nd.arcs)
+                for (const auto &ad : arcs)
+                    has_frozen_arcs |= ad.frozen;
+        congestion_plateau.begin(has_frozen_arcs);
         do {
             auto istart = Clock::now();
             gpu_time = 0.0;
@@ -1493,7 +1500,7 @@ struct GpuRouter
                     log_info("    congestion has not improved from %d overused wires in %d iterations; "
                              "accelerating present-congestion growth (x%.2f)\n",
                              best_overused, overused_stall, cong_stall_boost);
-                } else if (overused_wires <= 8 && int(failed_nets.size()) <= 8) {
+                } else if (congestion_plateau.saturated(overused_wires, int(failed_nets.size()))) {
                     // Present-congestion cost is already growing as fast as
                     // it is allowed to, and the overused wires are not held
                     // by frozen arcs. Timing repair can still have soft-
@@ -1513,16 +1520,10 @@ struct GpuRouter
             // waiting out the boost ceiling burns the whole attempt. Try
             // the soft-reservation escape once, then hand the decision
             // back to the caller.
-            if (overused_wires > 4)
-                tiny_overuse_iters = 0;
-            else if (overused_wires > 0)
-                ++tiny_overuse_iters;
-            else
-                tiny_overuse_iters = 0;
-            if (tiny_overuse_iters >= 30 && overused_wires > 0) {
+            if (congestion_plateau.tiny(overused_wires)) {
                 if (!escape_soft_plateau())
                     return false;
-                tiny_overuse_iters = 0;
+                congestion_plateau.clear_tiny();
             }
 
             int tmgfail = 0;
@@ -1734,7 +1735,7 @@ struct GpuRouter
             cong_stall_boost = 1.0f;
             best_overused = 0;
             overused_stall = 0;
-            tiny_overuse_iters = 0;
+            congestion_plateau.clear_tiny();
             log_info("    congestion plateau at %d overused wires cleared by ignoring soft reservations "
                      "(unfroze %d timing-repair arcs)\n",
                      before, opened);

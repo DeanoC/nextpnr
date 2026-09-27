@@ -127,15 +127,23 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    Likewise an arc that finds no route at all, even
    without a bounding box, is routed once more ignoring soft reservations
    and the frozen arcs it then displaces are unfrozen whatever their
-   slack, instead of the run failing. When four or fewer wires have stayed
-   overused for 30 iterations, or the boost is already at its ceiling on a
-   plateau of at most eight wires, the stuck nets are routed one at a time
+   slack, instead of the run failing. For a negotiation attempt that began
+   with frozen timing-repair arcs, when four or fewer wires have stayed
+   overused for 30 consecutive iterations, or the boost is already at its
+   ceiling on a plateau of at most eight wires and eight nets, the stuck
+   nets are routed one at a time
    with soft reservations ignored. Frozen arcs on a path that avoids the
    overuse are unfrozen, whatever their slack. If that does not clear the
    wires, a re-negotiation started by timing repair restores the legal
    pre-repair routing and stops, instead of running on to `maxIter`. The
-   initial negotiation still fails the run, because there is no earlier
-   legal routing to restore.
+   initial negotiation has no frozen repair arcs and no earlier legal
+   routing to restore: it keeps the normal congestion growth and `maxIter`
+   budget instead of taking either early-exit shortcut. Hard reservations
+   and pre-routed globals do not enable those shortcuts. Eligibility is
+   captured at the start of each negotiation, so thawing the last repaired
+   arc during an attempt does not discard its repair stopping rule. The
+   thirty-iteration counter resets at zero overuse, above four overused
+   wires, after a successful escape, and at the start of each attempt.
 5. **Lanes.** A batch first runs in the *small* lane (many concurrent nets,
    2^16-entry hash tables). Arcs whose search outgrows that scratch retry in
    the *large* lane (few concurrent nets, 2^22 entries, enough for the whole
