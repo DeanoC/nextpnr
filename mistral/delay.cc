@@ -61,6 +61,70 @@ IdString dsp_register_key(const CellInfo *cell, const std::string &port)
     return IdString();
 }
 
+// cyclonev_hps_interface_fpga2sdram arcs (ps), referenced to the atom pins:
+// Quartus 17.0.2 TimeQuest, 5CSEBA6U23I7, Slow 1100mV 100C, worst bit of
+// each port (outputs: worst of two fits, their CELL delay depends on load).
+// TimeQuest times each pin through a CELL delay to or from an internal
+// f2sdram~FF node whose uTsu/uTh/uTco are zero, and clocks that node through
+// a CELL delay from the port's clock pin. Setup is the data CELL delay less
+// the clock one, hold the reverse, and clock-to-output the clock plus output
+// CELL delays, with a minimum of zero. Quartus also times a few ganged-port
+// controls (e.g. rd_valid_N) from the other ports' clocks; those arcs are
+// not modelled.
+struct F2sdramGroup
+{
+    const char *name;
+    const char *clock;
+    bool output;
+    int ports;
+    int max[6]; // setup, or maximum clock-to-output
+    int hold[6];
+};
+
+const F2sdramGroup f2sdram_groups[] = {
+        {"cmd_data", "cmd_port_clk", false, 6, {1423, 1392, 1466, 1378, 1388, 1459}, {292, 238, 353, 230, 189, 244}},
+        {"cmd_valid", "cmd_port_clk", false, 6, {1320, 1263, 1254, 1196, 1129, 1126}, {116, 20, 107, 2, 2, 2}},
+        {"wrack_ready", "cmd_port_clk", false, 6, {1136, 1138, 1148, 1192, 1292, 1327}, {2, 33, 285, 131, 175, 232}},
+        {"cmd_ready", "cmd_port_clk", true, 6, {1214, 1177, 1307, 1222, 1245, 1235}, {}},
+        {"wrack_data", "cmd_port_clk", true, 6, {1286, 1265, 1325, 1269, 1314, 1306}, {}},
+        {"wrack_valid", "cmd_port_clk", true, 6, {1304, 1314, 1349, 1274, 1338, 1311}, {}},
+        {"wr_data", "wr_clk", false, 4, {913, 1067, 513, 465}, {395, 323, 380, 311}},
+        {"wr_valid", "wr_clk", false, 4, {950, 965, 837, 1112}, {2, 2, 2, 2}},
+        {"wr_ready", "wr_clk", true, 4, {1178, 1185, 1218, 1170}, {}},
+        {"rd_ready", "rd_clk", false, 4, {1129, 1050, 1081, 1044}, {2, 2, 2, 2}},
+        {"rd_data", "rd_clk", true, 4, {1379, 1416, 1417, 1431}, {}},
+        {"rd_valid", "rd_clk", true, 4, {1294, 1286, 1306, 1239}, {}},
+};
+
+// The group and port of a registered pin "<group>_<port>[<bit>]"; nullptr
+// for the clock and cfg_* configuration pins.
+const F2sdramGroup *f2sdram_group(const std::string &name, int &index)
+{
+    size_t end = std::min(name.find('['), name.size());
+    size_t sep = name.rfind('_', end);
+    if (sep == std::string::npos || sep + 2 != end || name[sep + 1] < '0' || name[sep + 1] > '9')
+        return nullptr;
+    index = name[sep + 1] - '0';
+    for (const auto &group : f2sdram_groups)
+        if (index < group.ports && name.compare(0, sep, group.name) == 0)
+            return &group;
+    return nullptr;
+}
+
+bool f2sdram_clock_pin(const std::string &name)
+{
+    return name.find("cmd_port_clk_") == 0 || name.find("wr_clk_") == 0 || name.find("rd_clk_") == 0;
+}
+
+// Unused ports have their clock tied off. A constant is not a clock domain,
+// so the pins of such a port stay untimed.
+bool f2sdram_clocked(const CellInfo *cell, IdString clock)
+{
+    const NetInfo *net = cell->getPort(clock);
+    return net != nullptr && net->driver.cell != nullptr &&
+           !net->driver.cell->type.in(id_GND, id_VCC, id_MISTRAL_CONST);
+}
+
 } // namespace
 
 TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, int &clockInfoCount) const
@@ -116,6 +180,18 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
             return TMG_ENDPOINT;
         if (port == id_locked)
             return TMG_STARTPOINT;
+    }
+    if (cell->type == id_cyclonev_hps_interface_fpga2sdram) {
+        const auto &name = port.str(this);
+        int index;
+        const F2sdramGroup *group = f2sdram_group(name, index);
+        // cfg_* are static configuration inputs.
+        if (group == nullptr)
+            return f2sdram_clock_pin(name) ? TMG_CLOCK_INPUT : TMG_IGNORE;
+        if (!f2sdram_clocked(cell, idf("%s_%d", group->clock, index)))
+            return TMG_IGNORE;
+        clockInfoCount = 1;
+        return group->output ? TMG_REGISTER_OUTPUT : TMG_REGISTER_INPUT;
     }
     if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
                       id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED)) {
@@ -257,6 +333,19 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
             }
         } else if (name.find("Y[") == 0 && dsp_reg_param(cell->params, id_OREG_CTRL)) {
             timing.clockToQ = DelayQuad{1000};
+        }
+        return timing;
+    } else if (cell->type == id_cyclonev_hps_interface_fpga2sdram) {
+        int index;
+        const F2sdramGroup *group = f2sdram_group(port.str(this), index);
+        NPNR_ASSERT(group != nullptr);
+        timing.clock_port = idf("%s_%d", group->clock, index);
+        timing.edge = RISING_EDGE;
+        if (group->output) {
+            timing.clockToQ = DelayQuad{0, group->max[index]};
+        } else {
+            timing.setup = DelayPair{group->max[index], group->max[index]};
+            timing.hold = DelayPair{group->hold[index], group->hold[index]};
         }
         return timing;
     } else if (cell->type == id_MISTRAL_FF) {
