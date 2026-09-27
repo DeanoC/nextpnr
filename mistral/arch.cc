@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -39,6 +40,8 @@
 NEXTPNR_NAMESPACE_BEGIN
 
 using namespace mistral;
+
+void configure_hps_pin_geometry(Context *ctx, PlacerHeapCfg &cfg, const char *prefix);
 
 namespace {
 
@@ -840,8 +843,12 @@ bool Arch::place()
     if (enable_replication_budget && (placer != "heap" || fes_any_slot_region_active))
         log_error("Enable replication requires ordinary full-design HeAP placement.\n");
 
+    const char *hps_geometry_prefix=std::getenv("NEXTPNR_MISTRAL_HPS_PIN_GEOMETRY");
+    if (hps_geometry_prefix && *hps_geometry_prefix && (placer != "heap" || fes_any_slot_region_active))
+        log_error("HPS pin geometry diagnostic requires full-design HeAP placement.\n");
     if (placer == "heap") {
         PlacerHeapCfg cfg(getCtx());
+        configure_hps_pin_geometry(getCtx(),cfg,hps_geometry_prefix);
         cfg.ioBufTypes.insert(id_MISTRAL_IO);
         cfg.ioBufTypes.insert(id_MISTRAL_IB);
         cfg.ioBufTypes.insert(id_MISTRAL_OB);

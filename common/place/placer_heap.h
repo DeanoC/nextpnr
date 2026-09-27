@@ -64,6 +64,9 @@ struct PlacerHeapCfg
     // this is an optional callback to prioritise certain cells/clusters for legalisation
     std::function<float(Context *, CellInfo *)> get_cell_legalisation_weight = [](Context *, CellInfo *) { return 1; };
 
+    // Optional relative logical-pin geometry for analytical placement only.
+    std::function<Loc(const PortRef &)> get_port_offset;
+
     bool disableCtrlSet;
 
     /*

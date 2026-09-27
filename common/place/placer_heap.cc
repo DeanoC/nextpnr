@@ -49,6 +49,7 @@
 #include "parallel_refine.h"
 #include "place_common.h"
 #include "placer1.h"
+#include "heap_pin_offset.h"
 #include "timing.h"
 #include "util.h"
 
@@ -884,6 +885,12 @@ class HeAPPlacer
     {
         // Return the x or y position of a cell, depending on ydir
         auto cell_pos = [&](CellInfo *cell) { return yaxis ? cell_locs.at(cell->name).y : cell_locs.at(cell->name).x; };
+        auto pin_offset = [&](const PortRef &port) {
+            if (!cfg.get_port_offset) return 0;
+            Loc offset=cfg.get_port_offset(port);
+            return yaxis ? offset.y : offset.x;
+        };
+        auto pin_pos = [&](const PortRef &port) { return heap_pin_position(cell_pos(port.cell),pin_offset(port)); };
         auto legal_pos = [&](CellInfo *cell) {
             return yaxis ? cell_locs.at(cell->name).legal_y : cell_locs.at(cell->name).legal_x;
         };
@@ -902,7 +909,7 @@ class HeAPPlacer
             PortRef *lbport = nullptr, *ubport = nullptr;
             int lbpos = std::numeric_limits<int>::max(), ubpos = std::numeric_limits<int>::min();
             foreach_port(ni, [&](PortRef &port, store_index<PortRef> user_idx) {
-                int pos = cell_pos(port.cell);
+                int pos = pin_pos(port);
                 if (pos < lbpos) {
                     lbpos = pos;
                     lbport = &port;
@@ -920,11 +927,8 @@ class HeAPPlacer
                     return;
                 int row = eqn.cell->udata;
                 int v_pos = cell_pos(var.cell);
-                if (var.cell->udata != dont_solve) {
-                    es.add_coeff(row, var.cell->udata, weight);
-                } else {
-                    es.add_rhs(row, -v_pos * weight);
-                }
+                heap_stamp_port_term(es,row,int(var.cell->udata),var.cell->udata != dont_solve,
+                                     v_pos,pin_offset(var),weight);
                 if (var.cell->cluster != ClusterId()) {
                     Loc offset = ctx->getClusterOffset(var.cell);
                     es.add_rhs(row, -(yaxis ? offset.y : offset.x) * weight);
@@ -933,11 +937,11 @@ class HeAPPlacer
 
             // Add all relevant connections to the matrix
             foreach_port(ni, [&](PortRef &port, store_index<PortRef> user_idx) {
-                int this_pos = cell_pos(port.cell);
+                int this_pos = pin_pos(port);
                 auto process_arc = [&](PortRef *other) {
                     if (other == &port)
                         return;
-                    int o_pos = cell_pos(other->cell);
+                    int o_pos = pin_pos(*other);
                     double weight = 1.0 / (ni->users.entries() *
                                            std::max<double>(1, (yaxis ? cfg.hpwl_scale_y : cfg.hpwl_scale_x) *
                                                                        std::abs(o_pos - this_pos)));
@@ -1009,13 +1013,17 @@ class HeAPPlacer
             CellLocation &drvloc = cell_locs.at(ni->driver.cell->name);
             if (drvloc.global)
                 continue;
-            int xmin = drvloc.x, xmax = drvloc.x, ymin = drvloc.y, ymax = drvloc.y;
+            Loc driver_offset=cfg.get_port_offset ? cfg.get_port_offset(ni->driver) : Loc(0,0,0);
+            int dx=heap_pin_position(drvloc.x,driver_offset.x), dy=heap_pin_position(drvloc.y,driver_offset.y);
+            int xmin = dx, xmax = dx, ymin = dy, ymax = dy;
             for (auto &user : ni->users) {
                 CellLocation &usrloc = cell_locs.at(user.cell->name);
-                xmin = std::min(xmin, usrloc.x);
-                xmax = std::max(xmax, usrloc.x);
-                ymin = std::min(ymin, usrloc.y);
-                ymax = std::max(ymax, usrloc.y);
+                Loc offset=cfg.get_port_offset ? cfg.get_port_offset(user) : Loc(0,0,0);
+                int ux=heap_pin_position(usrloc.x,offset.x), uy=heap_pin_position(usrloc.y,offset.y);
+                xmin = std::min(xmin, ux);
+                xmax = std::max(xmax, ux);
+                ymin = std::min(ymin, uy);
+                ymax = std::max(ymax, uy);
             }
             hpwl += cfg.hpwl_scale_x * (xmax - xmin) + cfg.hpwl_scale_y * (ymax - ymin);
         }
