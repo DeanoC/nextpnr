@@ -538,6 +538,8 @@ struct Arch : BaseArch<ArchRanges>
     void assignArchInfo() override;
     bool pack() override;
     bool place() override;
+    int enable_replication_budget = 0; // Explicit opt-in; never inherited from JSON settings.
+    void replicate_enables(int budget);
     bool route() override;
 
     // -------------------------------------------------
