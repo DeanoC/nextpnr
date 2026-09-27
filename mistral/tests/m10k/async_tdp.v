@@ -1,6 +1,5 @@
-// Direct primitive fixture for a true-dual-port M10K with flow-through reads.
-// Each port may still write on its own clock; both addresses feed their read
-// outputs without a read clock edge.
+// Direct primitive fixture for testing rejection of true-dual-port
+// CFG_ASYNC_READ and acceptance of a synchronous variant.
 module top(
     input wire FPGA_CLK1_50,
     output wire [0:0] LED

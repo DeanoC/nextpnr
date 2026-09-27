@@ -14,8 +14,8 @@ independently. A simple dual-port cell has only a logical B read output, so
 across both physical output halves; any output-register request selects both
 halves so the logical word has one latency. `CFG_OUT_REG_A` is accepted for
 that 40-bit physical layout and has the same whole-word effect. Narrow
-simple-dual cells reject an A-side request. Asynchronous read mode rejects
-both parameters because it has no clocked output.
+simple-dual cells reject an A-side request. Asynchronous M10K reads are
+unsupported and rejected regardless of either output-register parameter.
 
 The implementation writes the Cyclone V M10K `A_OUTPUT_SEL` and
 `B_OUTPUT_SEL` fields. Existing output-clear handling may also select a

@@ -1814,6 +1814,16 @@ struct MistralPacker
             if (ci->type != id_MISTRAL_M10K)
                 continue;
             bool tdp = bool_or_default(ci->params, id_CFG_TDP, false);
+            // Cyclone V M10K has registered read-address inputs. Selecting
+            // an unregistered output only removes the output register; it
+            // cannot turn the memory into an asynchronous read. MLAB is the
+            // supported fabric memory for flow-through reads. Reject both
+            // explicit CFG_ASYNC_READ and the legacy omitted-B1EN spelling
+            // before either SDP, mixed-width, or TDP setup can emit an RBF.
+            if (bool_or_default(ci->params, id_CFG_ASYNC_READ, false) ||
+                (!tdp && ci->getPort(id_B1EN) == nullptr))
+                log_error("M10K '%s': Cyclone V M10K does not support asynchronous reads; use MLAB, logic, or a registered M10K read.\n",
+                          ctx->nameOf(ci));
             if (!tdp && (ci->params.count(id_CFG_RDW_MODE_A) || ci->params.count(id_CFG_RDW_MODE_B) ||
                          ci->params.count(id_CFG_RDW_MODE_MIXED)))
                 log_error("M10K '%s': read-during-write mode parameters require true dual-port mode (CFG_TDP=1).\n",
@@ -1846,14 +1856,6 @@ struct MistralPacker
             // primitives remain useful.
             bool user_b1en = ci->getPort(id_B1EN) != nullptr;
             bool async_read = bool_or_default(ci->params, id_CFG_ASYNC_READ, false) || !user_b1en;
-            // Issue DeanoC/fes#260: a 256x40 stream returned the previous
-            // address at 74.25 MHz. With the RAM clock stopped, changing the
-            // read address left its data unchanged. The current bitstream
-            // mapping therefore does not implement an asynchronous read for
-            // this geometry, even though its estimated timing arc passes.
-            if (async_read && abits == 8 && dbits == 40)
-                log_error("M10K '%s': 40-bit asynchronous M10K read is unsupported.\n",
-                          ctx->nameOf(ci));
             bool output_reg_a = bool_or_default(ci->params, id_CFG_OUT_REG_A, false);
             bool output_reg_b = bool_or_default(ci->params, id_CFG_OUT_REG_B, false);
             if (output_reg_a && dbits != 40)
