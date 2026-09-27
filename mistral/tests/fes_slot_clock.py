@@ -27,31 +27,33 @@ def main():
     (* BEL = "MISTRAL_FF.28.1.2" *) MISTRAL_FF plug_rdata_ff_0 (.CLK(clk_a), .DATAIN(plug_rdata_d), .Q(data),
         .ACLR(1'b1), .ENA(1'b1), .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
     wire [9:0] shell_data;
-    MISTRAL_M10K #(.CFG_ABITS(10), .CFG_DBITS(10), .CFG_ASYNC_READ(1)) shell_memory (
-        .CLK1(clk_a), .A1ADDR(10'b0), .A1DATA(10'b0), .A1EN(address),
+    MISTRAL_M10K #(.CFG_ABITS(10), .CFG_DBITS(10), .CFG_DUAL_CLOCK(1)) shell_memory (
+        .CLK1(clk_a), .CLK2(clk_a), .A1ADDR(10'b0), .A1DATA(10'b0), .A1EN(address),
         .B1ADDR(10'b0), .B1DATA(shell_data), .B1EN(1'b1),
         .ACLR0(1'b0), .ACLR1(1'b0));
-    reg [7:0] arithmetic = 8'd0;
-    always @(posedge clk_a) arithmetic <= arithmetic + 8'd1;
+    // Six counter bits exercise the carry chain and every LUT6 input.
+    reg [5:0] arithmetic = 6'd0;
+    always @(posedge clk_a) arithmetic <= arithmetic + 6'd1;
     wire lut6_result;
     (* keep *) MISTRAL_ALUT6 #(.LUT(64'h6996966996696996)) six_input (
         .A(arithmetic[0]), .B(arithmetic[1]), .C(arithmetic[2]),
         .D(arithmetic[3]), .E(arithmetic[4]), .F(arithmetic[5]), .Q(lut6_result));
-    assign qa = plug_addr ^ shell_data[0] ^ arithmetic[7] ^ lut6_result;
+    assign qa = plug_addr ^ shell_data[0] ^ arithmetic[5] ^ lut6_result;
 endmodule
 ''')
     cart = output / "cart.v"
     cart.write_text('''module cart(input FPGA_CLK1_50, input plug_addr,
                                   output plug_rdata);
     wire [9:0] data;
-    MISTRAL_M10K #(.CFG_ABITS(10), .CFG_DBITS(10), .CFG_ASYNC_READ(1)) memory (
-        .CLK1(FPGA_CLK1_50), .A1ADDR(10'b0), .A1DATA(10'b0), .A1EN(1'b0),
-        .B1ADDR({9'b0, plug_addr}), .B1DATA(data), .ACLR0(1'b0), .ACLR1(1'b0));
+    MISTRAL_M10K #(.CFG_ABITS(10), .CFG_DBITS(10), .CFG_DUAL_CLOCK(1)) memory (
+        .CLK1(FPGA_CLK1_50), .CLK2(FPGA_CLK1_50),
+        .A1ADDR(10'b0), .A1DATA(10'b0), .A1EN(1'b0),
+        .B1ADDR({9'b0, plug_addr}), .B1DATA(data), .B1EN(1'b1), .ACLR0(1'b0), .ACLR1(1'b0));
     wire [9:0] a_data, b_data;
     wire state;
     MISTRAL_FF state_ff (.CLK(FPGA_CLK1_50), .DATAIN(plug_addr), .Q(state),
         .ACLR(1'b1), .ENA(1'b1), .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
-    MISTRAL_M10K_TDP #(.CFG_ABITS(10), .CFG_DBITS(10), .CFG_ASYNC_READ(1)) writable (
+    MISTRAL_M10K_TDP #(.CFG_ABITS(10), .CFG_DBITS(10)) writable (
         .CLK1(FPGA_CLK1_50), .CLK2(FPGA_CLK1_50),
         .A1ADDR({9'b0, plug_addr}), .B1ADDR(10'b0),
         .A1DATA({9'b0, state}), .B1DATA(10'b0), .A1Q(a_data), .B1Q(b_data),
@@ -109,7 +111,7 @@ endmodule
         merged = merge("selected-" + clock_cell, name)
         cells = merged["cells"]
         assert cells["fes_cart$memory"]["connections"]["CLK1"] == cells[clock_cell]["connections"]["CLK"]
-        for cell, port in (("writable", "CLK1"), ("writable", "CLK2"), ("state_ff", "CLK")):
+        for cell, port in (("memory", "CLK2"), ("writable", "CLK1"), ("writable", "CLK2"), ("state_ff", "CLK")):
             assert cells["fes_cart$" + cell]["connections"][port] == cells[clock_cell]["connections"]["CLK"]
         ground = cells["$PACKER_GND_DRV"]["connections"]["Q"]
         supply = cells["$PACKER_VCC_DRV"]["connections"]["Q"]

@@ -143,7 +143,8 @@ def main():
     print("PASS: true dual-port A/B output registers", flush=True)
 
     # Keep malformed combinations explicit: an A output does not exist in a
-    # narrow SDP, and an asynchronous read cannot also be registered.
+    # narrow SDP, and requesting an output register cannot make an
+    # unsupported asynchronous M10K read valid.
     invalid_sdp = copy.deepcopy(base20)
     set_output_registers(invalid_sdp, name20, a=True)
     reject(args, output / "invalid-sdp-a", invalid_sdp,
@@ -155,7 +156,7 @@ def main():
     async_cell["port_directions"].pop("B1EN", None)
     set_output_registers(invalid_async, name20, b=True)
     reject(args, output / "invalid-async", invalid_async,
-           "CFG_ASYNC_READ cannot use CFG_OUT_REG_A/B")
+           "Cyclone V M10K does not support asynchronous reads")
     print("PASS: invalid output-register combinations rejected", flush=True)
 
 
