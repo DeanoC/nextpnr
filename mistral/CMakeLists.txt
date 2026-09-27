@@ -15,6 +15,7 @@ set(SOURCES
     fes_slot.cc
     globals.cc
     hps_pin_geometry.cc
+    hps_fixed_anchor.cc
     io.cc
     lab.cc
     m10k.cc
@@ -25,7 +26,7 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/fes_cram.cc tests/enable_replication/backend.cc tests/hps_pin_geometry.cc
+    TEST_SOURCES tests/fes_cram.cc tests/enable_replication/backend.cc tests/hps_pin_geometry.cc tests/hps_fixed_anchor.cc
     MAIN_SOURCE  main.cc
 )
 

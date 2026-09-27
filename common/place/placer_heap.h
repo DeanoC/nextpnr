@@ -67,6 +67,11 @@ struct PlacerHeapCfg
     // Optional relative logical-pin geometry for analytical placement only.
     std::function<Loc(const PortRef &)> get_port_offset;
 
+    // Optional diagnostic observation of one cell; no placement policy by default.
+    CellInfo *diagnostic_cell = nullptr;
+    std::function<void(const char *, Loc, bool, bool, bool, bool)> observe_diagnostic_cell;
+    std::function<void()> before_refine;
+
     bool disableCtrlSet;
 
     /*

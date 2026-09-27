@@ -182,6 +182,7 @@ class HeAPPlacer
         build_fast_bels();
         alloc_control_sets();
         seed_placement();
+        observe_diagnostic("seed", false);
         update_all_chains();
         wirelen_t hpwl = total_hpwl();
         log_info("Creating initial analytic placement for %d cells, random placement wirelen = %d.\n",
@@ -202,6 +203,7 @@ class HeAPPlacer
 
             update_all_chains();
 
+            observe_diagnostic("initial_solve", true);
             hpwl = total_hpwl();
             log_info("    at initial placer iter %d, wirelen = %d\n", i, int(hpwl));
         }
@@ -273,6 +275,7 @@ class HeAPPlacer
                 auto solve_endt = std::chrono::high_resolution_clock::now();
                 solve_time += std::chrono::duration<double>(solve_endt - solve_startt).count();
                 update_all_chains();
+                observe_diagnostic("solve", true);
                 solved_hpwl = total_hpwl();
 
                 update_all_chains();
@@ -288,10 +291,12 @@ class HeAPPlacer
 
                 // Run strict legalisation to find a valid bel for all cells
                 update_all_chains();
+                observe_diagnostic("spread", true);
                 spread_hpwl = total_hpwl();
                 legalise_placement_strict();
                 update_all_chains();
 
+                observe_diagnostic("legalise", true);
                 legal_hpwl = total_hpwl();
                 auto run_stopt = std::chrono::high_resolution_clock::now();
 
@@ -395,6 +400,9 @@ class HeAPPlacer
             }
         }
 
+        observe_diagnostic("before_refine", true);
+        if (cfg.before_refine) cfg.before_refine();
+        observe_diagnostic("refine_ready", true);
         ctx->check();
         lock.unlock();
 
@@ -415,10 +423,21 @@ class HeAPPlacer
             }
         }
 
+        observe_diagnostic("after_refine", false);
         return true;
     }
 
   private:
+    void observe_diagnostic(const char *phase, bool rows_known)
+    {
+        if (!cfg.observe_diagnostic_cell) return;
+        CellInfo *cell = cfg.diagnostic_cell;
+        NPNR_ASSERT(cell != nullptr);
+        const auto &xy = cell_locs.at(cell->name);
+        cfg.observe_diagnostic_cell(phase, Loc(xy.x, xy.y, 0),
+            std::find(place_cells.begin(), place_cells.end(), cell) != place_cells.end(),
+            rows_known, rows_known && cell->udata != dont_solve, xy.locked);
+    }
     Context *ctx;
     PlacerHeapCfg cfg;
 
@@ -850,6 +869,7 @@ class HeAPPlacer
         for (auto &cluster : cluster2cells)
             for (auto child : cluster.second)
                 child->udata = ctx->getClusterRootCell(cluster.first)->udata;
+        observe_diagnostic("rows", true);
         return row;
     }
 
