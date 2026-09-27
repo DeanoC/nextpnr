@@ -36,6 +36,9 @@ struct Router1Cfg
     delay_t netRipupPenalty;
     delay_t reuseBonus;
     delay_t estimatePrecision;
+    // Report a missed clock constraint as an error (a warning with
+    // --timing-allow-fail). Off when a later analysis is the timing gate.
+    bool timingGate;
 };
 
 extern bool router1(Context *ctx, const Router1Cfg &cfg);

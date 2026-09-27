@@ -34,6 +34,12 @@ struct GpuRouterCfg
 {
     GpuRouterCfg(Context *ctx);
 
+    // Whether the router1 legality check that ends the route reports a
+    // missed clock constraint as an error. An architecture that signs off
+    // with a later, different timing model turns it off, so a table-model
+    // miss that its repair then closes does not fail the run.
+    bool legality_timing_gate;
+
     // Padding added to net bounding boxes (tiles)
     int bb_margin_x, bb_margin_y;
     // Congestion cost schedule (same meaning as router2)
