@@ -154,8 +154,11 @@ def main():
         log = (out / "scaffold-route.log").read_text()
         print(f"scaffold place/route exit {code}; "
               f"{'finished normally' if 'Program finished normally.' in log else 'did not finish'}")
-        if code == 0:
-            routed = top_module(out / "scaffold-routed.json")
+        routed_path = out / "scaffold-routed.json"
+        if code != 0 or "Program finished normally." not in log or not routed_path.is_file():
+            failures.append(f"scaffold place/route failed (exit {code}); see {out / 'scaffold-route.log'}")
+        else:
+            routed = top_module(routed_path)
             failures += [f"routed {port}" for port in
                          check_clocks("routed", routed, routed["cells"]["plug_addr_ff_0"]["connections"]["CLK"])]
 
