@@ -837,6 +837,8 @@ BoundingBox Arch::getRouteBoundingBox(WireId src, WireId dst) const
 bool Arch::place()
 {
     std::string placer = str_or_default(settings, id_placer, defaultPlacer);
+    if (enable_replication_budget && (placer != "heap" || fes_any_slot_region_active))
+        log_error("Enable replication requires ordinary full-design HeAP placement.\n");
 
     if (placer == "heap") {
         PlacerHeapCfg cfg(getCtx());
@@ -895,6 +897,9 @@ bool Arch::place()
     } else {
         log_error("Mistral architecture does not support placer '%s'\n", placer.c_str());
     }
+
+    if (enable_replication_budget)
+        replicate_enables(enable_replication_budget);
 
     getCtx()->attrs[id_step] = std::string("place");
     archInfoToAttributes();
