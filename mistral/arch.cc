@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -39,6 +40,8 @@
 NEXTPNR_NAMESPACE_BEGIN
 
 using namespace mistral;
+
+void diagnostic_placed_composition(Context *ctx, const char *prefix, const char *mode);
 
 namespace {
 
@@ -900,6 +903,8 @@ bool Arch::place()
 
     if (enable_replication_budget)
         replicate_enables(enable_replication_budget);
+    diagnostic_placed_composition(getCtx(), std::getenv("NEXTPNR_MISTRAL_PLACED_COMPOSITION"),
+                                 std::getenv("NEXTPNR_MISTRAL_PLACED_COMPOSITION_MODE"));
 
     getCtx()->attrs[id_step] = std::string("place");
     archInfoToAttributes();

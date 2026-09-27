@@ -18,13 +18,14 @@ set(SOURCES
     lab.cc
     m10k.cc
     pack.cc
+    placed_composition.cc
     pins.cc
     qsf.cc
 )
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/fes_cram.cc tests/enable_replication/backend.cc
+    TEST_SOURCES tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_composition.cc
     MAIN_SOURCE  main.cc
 )
 
