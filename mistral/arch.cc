@@ -136,6 +136,11 @@ bool Arch::has_port(CycloneV::block_type_t bt, int x, int y, int bi, CycloneV::p
 Arch::Arch(ArchArgs args)
 {
     this->args = args;
+    // Set architecture defaults before generic command-line setup. Keeping
+    // these in settings also lets explicit options and programmatic callers
+    // override them without Arch::place silently replacing their values.
+    settings[id("placerHeap/beta")] = std::to_string(0.5);
+    settings[id("placerHeap/criticalityExponent")] = std::to_string(7);
     this->cyclonev = mistral::CycloneV::get_model(args.device);
     NPNR_ASSERT(this->cyclonev != nullptr);
 
@@ -846,8 +851,6 @@ bool Arch::place()
         cfg.hpwl_scale_x = 1;
         cfg.hpwl_scale_y = 2;
 
-        cfg.beta = 0.5; // TODO: find a good value of beta for sensible ALM spreading
-        cfg.criticalityExponent = 7;
         if (fes_any_slot_region_active) {
             // A cart confined to a small rectangle can cycle evictions for
             // a long time; report the cycling cell instead of running on.
