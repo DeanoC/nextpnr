@@ -629,7 +629,7 @@ bool Arch::analogue_repair()
         current_timed = false;
         try {
             GpuRouterCfg cfg(ctx);
-            cfg.legality_timing_gate = false;
+            cfg.legality_timing_gate = !signoff_after_route;
             result = gpurouter(ctx, cfg);
         } catch (log_execution_error_exception &) {
             // Keep the best legal routing rather than failing the design.
