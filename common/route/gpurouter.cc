@@ -1411,8 +1411,10 @@ struct GpuRouter
                                  [&](int a, int b) { return nets.at(a).max_crit > nets.at(b).max_crit; });
             }
 
-            // Rip up every arc that is unrouted, congested or (optionally)
-            // failing timing, and collect the work per net
+            // Select every unrouted, congested or (optionally) timing-failing
+            // arc against the same occupancy snapshot. Ripping up a selected
+            // arc while still checking other nets can make a shared wire look
+            // legal and leave one of its users out of this iteration.
             std::vector<HostTask> tasks;
             for (int n : route_queue) {
                 NetInfo *ni = nets_by_udata.at(n);
@@ -1431,7 +1433,6 @@ struct GpuRouter
                             continue;
                         if (!failed_slack && check_arc_routing(nd, arcs[j]))
                             continue;
-                        ripup_arc(nd, arcs[j]);
                         t.arcs.emplace_back(usr.index.idx(), int(j));
                     }
                 }
@@ -1442,6 +1443,11 @@ struct GpuRouter
                     return arc_crit(ni, store_index<PortRef>(a.first)) > arc_crit(ni, store_index<PortRef>(b.first));
                 });
                 tasks.push_back(std::move(t));
+            }
+            for (auto &t : tasks) {
+                auto &nd = nets.at(t.net);
+                for (auto &a : t.arcs)
+                    ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
             }
             flush_state();
 
