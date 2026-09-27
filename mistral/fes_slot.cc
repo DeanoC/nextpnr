@@ -777,8 +777,17 @@ void Arch::merge_fes_cart(const std::string &filename, const std::string &region
                 changed |= socket_clock_bits.insert(to).second;
         }
     } while (changed);
+    // The skipped buffers' outputs are the socket clock too. Map every traced
+    // bit onto the shell clock net, as for the input buffer above, so a clock
+    // pin of any primitive (not only those the reconnect below knows) never
+    // lands on a fresh cart net that nothing drives.
+    if (NetInfo *shell_clock = shell_clock_net(ctx)) {
+        for (int bit : socket_clock_bits)
+            bit_nets[bit] = shell_clock;
+    }
 
     int added = 0;
+    std::vector<CellInfo *> merged_cells;
     if (cells.is_object()) {
         for (const auto &item : cells.object_items()) {
             const Json &src = item.second;
@@ -791,6 +800,7 @@ void Arch::merge_fes_cart(const std::string &filename, const std::string &region
             while (ctx->cells.count(dst_name))
                 dst_name = ctx->id(stringf("fes_cart$%s$%d", item.first.c_str(), suffix++));
             CellInfo *dst = ctx->createCell(dst_name, type);
+            merged_cells.push_back(dst);
             const Json &params = src["parameters"];
             if (params.is_object()) {
                 for (const auto &param : params.object_items())
@@ -898,6 +908,19 @@ void Arch::merge_fes_cart(const std::string &filename, const std::string &region
                 ci->pin_data[port].state = PIN_SIG;
                 ci->connectPort(port, clk);
             }
+        }
+    }
+    // Every connected input of a merged cell must have a driver: an unmapped
+    // cart port, a skipped primitive or a missed clock pin would otherwise
+    // leave it floating, which placement, routing and timing all accept.
+    for (CellInfo *ci : merged_cells) {
+        for (auto &port : ci->ports) {
+            NetInfo *net = port.second.net;
+            if (port.second.type != PORT_IN || net == nullptr || net->driver.cell != nullptr)
+                continue;
+            log_error("FES cart cell '%s' pin '%s' is on net '%s', which nothing drives; every cart input "
+                      "must come from a socket port, the socket clock or another cart cell.\n",
+                      ci->name.c_str(ctx), port.first.c_str(ctx), net->name.c_str(ctx));
         }
     }
     assignArchInfo();

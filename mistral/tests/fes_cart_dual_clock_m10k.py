@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""FES cart merge must put both clocks of a dual-clock MISTRAL_M10K on the socket clock.
+"""FES cart merge must drive every cart input: the socket clock and undriven nets.
+
+Part 1: both clocks of a dual-clock MISTRAL_M10K must be on the socket clock.
 
 Yosys maps an ordinary inferred RAM (one clock, one write port, a registered
 read) to MISTRAL_M10K with CFG_DUAL_CLOCK=1 and CLK1 = CLK2 = the buffered
@@ -9,8 +11,12 @@ so the read clock is left on an undriven fes_cart$bitN net. Placement,
 routing, timing and the CRAM fence all pass; on hardware the read register
 never loads and every read returns zero (FES Apple II probe card, 2026-09-27).
 
-The script exits 0 when both clocks are reconnected and 1 while the defect
-reproduces. --merge-only skips the scaffold place/route phase.
+Part 2: a cart input that is not a socket port (here an extra top-level
+input) would reach its logic through a net nothing drives; the merge must
+reject it instead of placing and routing a floating input.
+
+The script exits 0 when both checks hold and 1 otherwise. --merge-only skips
+the scaffold place/route phase.
 """
 
 import argparse
@@ -44,6 +50,14 @@ CART = '''module cart(input FPGA_CLK1_50, input plug_addr, output plug_rdata);
         q <= memory[address];
     end
     assign plug_rdata = ^q;
+endmodule
+'''
+
+# A cart input that no socket port provides.
+UNMAPPED_CART = '''module cart(input FPGA_CLK1_50, input plug_addr, input stray, output plug_rdata);
+    reg q = 1'b0;
+    always @(posedge FPGA_CLK1_50) q <= plug_addr ^ stray;
+    assign plug_rdata = q;
 endmodule
 '''
 
@@ -94,7 +108,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     nextpnr = [args.nextpnr.resolve(), "--device", "5CSEBA6U23I7"]
 
-    for name, source, top in (("shell", SHELL, "top"), ("cart", CART, "cart")):
+    for name, source, top in (("shell", SHELL, "top"), ("cart", CART, "cart"), ("unmapped", UNMAPPED_CART, "cart")):
         (out / (name + ".v")).write_text(source)
         script = f"read_verilog {out / (name + '.v')}; synth_intel_alm -nolutram -nodsp -top {top}; " \
                  f"write_json {out / (name + '-synth.json')}"
@@ -145,10 +159,20 @@ def main():
             failures += [f"routed {port}" for port in
                          check_clocks("routed", routed, routed["cells"]["plug_addr_ff_0"]["connections"]["CLK"])]
 
+    code = run(nextpnr + ["--json", out / "shell.json", "--fes-cart", out / "unmapped-synth.json",
+                          "--fes-slot-clock", clock, "--no-pack", "--no-place", "--no-route",
+                          "--write", out / "unmapped-merged.json"], out / "unmapped-merge.log")
+    text = (out / "unmapped-merge.log").read_text()
+    if code != 0 and "which nothing drives" in text:
+        print("unmapped cart input: merge rejected it")
+    else:
+        print(f"unmapped cart input: merge exit {code} without the undriven-input error")
+        failures.append("unmapped cart input accepted")
+
     if failures:
-        print(f"FAIL: cart M10K clock pins not on the socket clock: {', '.join(failures)}")
+        print(f"FAIL: {', '.join(failures)}")
         return 1
-    print("PASS: both clocks of the dual-clock cart M10K are on the socket clock")
+    print("PASS: the dual-clock cart M10K is on the socket clock and an unmapped cart input is rejected")
     return 0
 
 
