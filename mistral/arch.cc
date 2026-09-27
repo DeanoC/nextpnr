@@ -18,11 +18,14 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdlib>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <sstream>
 
 #include "log.h"
+#include "jsonwrite.h"
 #include "nextpnr.h"
 
 #include "placer1.h"
@@ -894,6 +897,164 @@ bool Arch::place()
             return false;
     } else {
         log_error("Mistral architecture does not support placer '%s'\n", placer.c_str());
+    }
+
+    // Throwaway RAM-test experiment, deliberately not a general physical-synthesis pass.
+    // The absent environment variable is an exact no-op, including IdString allocation.
+    if (const char *prefix = std::getenv("NEXTPNR_MISTRAL_ENABLE_LOCALITY")) {
+        if (!*prefix || placer != "heap" || fes_any_slot_region_active)
+            log_error("Enable locality probe requires a snapshot prefix and ordinary HeAP placement.\n");
+        const IdString driver_name = id("hps_ddr.port1.slot_free_MISTRAL_ALUT3_B");
+        const IdString clone_name = id("hps_ddr.port1.slot_free_MISTRAL_ALUT3_B$LOCALITY_PROBE");
+        const IdString net_name = id("hps_ddr.port1.slot_free_MISTRAL_ALUT3_B$LOCALITY_PROBE$Q");
+        if (!cells.count(driver_name) || cells.count(clone_name) || nets.count(net_name))
+            log_error("Enable locality probe fixture mismatch.\n");
+        CellInfo *driver = cells.at(driver_name).get();
+        if (driver->type != id_MISTRAL_ALUT3 || driver->bel == BelId() ||
+            driver->cluster != ClusterId() || driver->region != nullptr ||
+            driver->params.at(id_LUT).as_int64() != 0x32)
+            log_error("Enable locality probe requires the original unclustered ALUT3 mask 0x32.\n");
+        NetInfo *old_net = driver->getPort(id_Q);
+        if (!old_net || old_net->users.entries() != 111)
+            log_error("Enable locality probe requires the 111-user port1 skid enable.\n");
+        auto selected_lab = [](Loc loc) {
+            return (loc.x == 34 && (loc.y == 22 || loc.y == 25)) || (loc.x == 35 && loc.y == 25);
+        };
+        std::vector<PortRef> moved;
+        std::set<std::pair<int, int>> selected_labs;
+        for (auto user : old_net->users) {
+            if (user.cell->type != id_MISTRAL_FF || user.port != id_ENA || user.cell->bel == BelId())
+                log_error("Enable locality probe found an unexpected enable user.\n");
+            Loc loc = getBelLocation(user.cell->bel);
+            if (selected_lab(loc)) {
+                moved.push_back(user);
+                selected_labs.emplace(loc.x, loc.y);
+            }
+        }
+        if (selected_labs.size() != 3 || moved.size() != 5)
+            log_error("Enable locality probe requires exactly five sinks in the three expected LAB groups.\n");
+        std::sort(moved.begin(), moved.end(), [](const PortRef &a, const PortRef &b) {
+            return a.cell->name < b.cell->name;
+        });
+        std::map<IdString, std::pair<BelId, PlaceStrength>> placements;
+        std::map<std::pair<IdString, IdString>, NetInfo *> connections;
+        for (auto &entry : cells) {
+            CellInfo *cell = entry.second.get();
+            placements.emplace(cell->name, std::make_pair(cell->bel, cell->belStrength));
+            for (auto &port : cell->ports)
+                connections.emplace(std::make_pair(cell->name, port.first), port.second.net);
+        }
+        auto snapshot = [&](const char *suffix) {
+            archInfoToAttributes();
+            std::string filename = std::string(prefix) + suffix;
+            std::ofstream output(filename);
+            if (!output || !write_json_file(output, filename, getCtx()))
+                log_error("Unable to write enable locality snapshot '%s'.\n", filename.c_str());
+            output.close();
+            if (!output)
+                log_error("Unable to finish enable locality snapshot '%s'.\n", filename.c_str());
+            // Ordinary JSON omits folded pin polarity. Record it separately for
+            // every port plus any retained architecture pin entry, before and
+            // after the edit, without changing serialization or routing state.
+            std::map<std::pair<std::string, std::string>, int> pin_states;
+            for (const auto &entry : cells) {
+                const CellInfo *cell = entry.second.get();
+                for (const auto &port : cell->ports)
+                    pin_states[{cell->name.str(getCtx()), port.first.str(getCtx())}] =
+                            int(cell->get_pin_state(port.first));
+                for (const auto &pin : cell->pin_data)
+                    pin_states[{cell->name.str(getCtx()), pin.first.str(getCtx())}] =
+                            int(cell->get_pin_state(pin.first));
+            }
+            std::ofstream pins(filename + ".pins.tsv");
+            pins << "cell\tport\tstate\n";
+            for (const auto &pin : pin_states)
+                pins << pin.first.first << '\t' << pin.first.second << '\t' << pin.second << '\n';
+            pins.close();
+            if (!pins)
+                log_error("Unable to write enable locality pin-state sidecar for '%s'.\n", filename.c_str());
+        };
+        snapshot(".before.json");
+        CellInfo *clone = createCell(clone_name, driver->type);
+        clone->params = driver->params;
+        clone->attrs = driver->attrs;
+        for (const char *attr : {"NEXTPNR_BEL", "BEL_STRENGTH", "FES_PINMAP_V1"})
+            clone->attrs.erase(id(attr));
+        clone->pin_data = driver->pin_data; // Preserve all folded input polarities.
+        for (IdString pin : {id_A, id_B, id_C}) {
+            if (!driver->getPort(pin) || !driver->getPort(pin)->driver.cell)
+                log_error("Enable locality probe input must be a driven signal.\n");
+            driver->copyPortTo(pin, clone, pin);
+            NPNR_ASSERT(clone->get_pin_state(pin) == driver->get_pin_state(pin));
+        }
+        NetInfo *new_net = createNet(net_name);
+        clone->addOutput(id_Q);
+        clone->connectPort(id_Q, new_net);
+        for (auto user : moved) {
+            user.cell->disconnectPort(user.port);
+            user.cell->connectPort(user.port, new_net);
+        }
+        assignArchInfo();
+        BelId best;
+        delay_t best_cost = std::numeric_limits<delay_t>::max();
+        delay_t best_input = 0, best_output = 0;
+        int legal_candidates = 0;
+        // Fixed, bounded neighbourhood covering the selected sink LABs.
+        for (int x = 30; x <= 39; ++x) {
+            for (int y = 19; y <= 29; ++y) {
+                for (BelId bel : getBelsByTile(x, y)) {
+                    if (!checkBelAvail(bel) || !isValidBelForCellType(clone->type, bel))
+                        continue;
+                    bindBel(bel, clone, STRENGTH_WEAK);
+                    if (isBelLocationValid(bel)) {
+                        ++legal_candidates;
+                        delay_t input = 0, output = 0;
+                        for (IdString pin : {id_A, id_B, id_C})
+                            input = std::max(input, getCtx()->predictArcDelay(clone->getPort(pin), {clone, pin}));
+                        for (auto user : new_net->users)
+                            output = std::max(output, getCtx()->predictArcDelay(new_net, user));
+                        delay_t cost = input + output;
+                        if (cost < best_cost) {
+                            best = bel;
+                            best_cost = cost;
+                            best_input = input;
+                            best_output = output;
+                        }
+                    }
+                    unbindBel(bel);
+                }
+            }
+        }
+        if (best == BelId())
+            log_error("Enable locality probe found no legal free LUT location.\n");
+        bindBel(best, clone, STRENGTH_WEAK);
+        assignArchInfo();
+        for (const auto &entry : placements) {
+            const CellInfo *cell = cells.at(entry.first).get();
+            NPNR_ASSERT(cell->bel == entry.second.first && cell->belStrength == entry.second.second);
+            if (!isBelLocationValid(cell->bel))
+                log_error("Enable locality probe made original placement '%s' illegal.\n", nameOf(cell));
+        }
+        NPNR_ASSERT(isBelLocationValid(best));
+        for (const auto &entry : connections) {
+            const CellInfo *cell = cells.at(entry.first.first).get();
+            NetInfo *expected = entry.second;
+            if (expected == old_net && entry.first.second == id_ENA && selected_lab(getBelLocation(cell->bel)))
+                expected = new_net;
+            NPNR_ASSERT(cell->getPort(entry.first.second) == expected);
+        }
+        NPNR_ASSERT(old_net->driver.cell == driver && old_net->driver.port == id_Q);
+        NPNR_ASSERT(new_net->driver.cell == clone && new_net->driver.port == id_Q);
+        NPNR_ASSERT(old_net->users.entries() + new_net->users.entries() == 111);
+        getCtx()->check();
+        log_info("LOCALITY_PROBE driver=%s original=%s clone=%s moved=%zu originals_unchanged=%zu "
+                 "legal_candidates=%d predicted_input=%dps predicted_output=%dps\n",
+                 nameOf(driver), nameOfBel(driver->bel), nameOfBel(best), moved.size(), placements.size(),
+                 legal_candidates, int(best_input), int(best_output));
+        for (auto user : moved)
+            log_info("LOCALITY_PROBE moved %s.%s at %s\n", nameOf(user.cell), user.port.c_str(getCtx()),
+                     nameOfBel(user.cell->bel));
+        snapshot(".after.json");
     }
 
     getCtx()->attrs[id_step] = std::string("place");
