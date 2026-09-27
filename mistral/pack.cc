@@ -1846,6 +1846,14 @@ struct MistralPacker
             // primitives remain useful.
             bool user_b1en = ci->getPort(id_B1EN) != nullptr;
             bool async_read = bool_or_default(ci->params, id_CFG_ASYNC_READ, false) || !user_b1en;
+            // Issue DeanoC/fes#260: a 256x40 stream returned the previous
+            // address at 74.25 MHz. With the RAM clock stopped, changing the
+            // read address left its data unchanged. The current bitstream
+            // mapping therefore does not implement an asynchronous read for
+            // this geometry, even though its estimated timing arc passes.
+            if (async_read && abits == 8 && dbits == 40)
+                log_error("M10K '%s': 40-bit asynchronous M10K read is unsupported.\n",
+                          ctx->nameOf(ci));
             bool output_reg_a = bool_or_default(ci->params, id_CFG_OUT_REG_A, false);
             bool output_reg_b = bool_or_default(ci->params, id_CFG_OUT_REG_B, false);
             if (output_reg_a && dbits != 40)
