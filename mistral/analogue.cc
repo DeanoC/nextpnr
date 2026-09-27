@@ -505,6 +505,12 @@ bool Arch::analogue_repair()
         return std::chrono::duration<double>(std::chrono::steady_clock::now() - t).count();
     };
     int reroutes = 0, cand_passes = 0;
+    // Set once the best routing has been put back: the next timing is its
+    // slack under the current calibration, which is the baseline from then on
+    bool restored = false;
+    // Every round is a timing, a candidate pass or a re-route; this bounds
+    // the loop even if a round neither improves nor re-routes
+    const int max_rounds = (rounds + 1) * (cand_rounds + 3);
     for (int round = 0;; round++) {
         auto t0 = std::chrono::steady_clock::now();
         configure_bitstream();
@@ -521,7 +527,18 @@ bool Arch::analogue_repair()
                  summary.c_str(), secs_since(t0));
         if (current >= target || reroutes >= rounds)
             break;
-        if (current > best.slack) {
+        if (round >= max_rounds) {
+            log_info("    stopping after %d rounds without reaching the target\n", round);
+            break;
+        }
+        if (restored) {
+            // The delay table behind arcs the analogue model cannot time
+            // is recalibrated from every observation, so the slack recorded
+            // for the best routing can be one it no longer has. Comparing
+            // with that would restore the same routing indefinitely.
+            restored = false;
+            best.slack = current;
+        } else if (current > best.slack) {
             best = save_routing(ctx);
             best.slack = current;
         } else if (current < best.slack - restore_margin) {
@@ -530,6 +547,7 @@ bool Arch::analogue_repair()
             restore_routing(ctx, best);
             bitstream_configured = false;
             current_timed = false;
+            restored = true;
             continue;
         }
 
@@ -610,7 +628,9 @@ bool Arch::analogue_repair()
             settings[repair_slack_key] = std::to_string(rip_slack);
         current_timed = false;
         try {
-            result = gpurouter(ctx, GpuRouterCfg(ctx));
+            GpuRouterCfg cfg(ctx);
+            cfg.legality_timing_gate = !signoff_after_route;
+            result = gpurouter(ctx, cfg);
         } catch (log_execution_error_exception &) {
             // Keep the best legal routing rather than failing the design.
             log_warning("analogue repair round %d could not route; keeping the best earlier round\n", round + 1);

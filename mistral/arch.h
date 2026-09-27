@@ -497,6 +497,10 @@ struct Arch : BaseArch<ArchRanges>
         int64_t hops = 0;
     };
     bool pip_delay_calibrated = false;
+    // Set when a bitstream is requested, so build_bitstream() will run the
+    // analogue signoff after routing and that is the timing gate. Without
+    // it the router's own table-model check has to stay the gate.
+    bool signoff_after_route = false;
     float pip_delay_prior = 1.0f;
     dict<PipId, delay_t> pip_delay_observed;
     std::array<TypeCalibration, 256> pip_type_calibration;

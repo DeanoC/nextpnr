@@ -2886,7 +2886,9 @@ struct GpuRouter
 
         log_info("Running router1 to check that route is legal...\n");
         lock.unlock();
-        return router1(ctx, Router1Cfg(ctx));
+        Router1Cfg legality(ctx);
+        legality.timingGate = cfg.legality_timing_gate;
+        return router1(ctx, legality);
     }
 };
 
@@ -2925,6 +2927,7 @@ void GpuCandidateRouter::resync(NetInfo *net) { impl->rt.reload_net_from_arch(ne
 
 GpuRouterCfg::GpuRouterCfg(Context *ctx)
 {
+    legality_timing_gate = true;
     bb_margin_x = ctx->setting<int>("gpurouter/bbMargin/x", 3);
     bb_margin_y = ctx->setting<int>("gpurouter/bbMargin/y", 3);
     init_curr_cong_weight = ctx->setting<float>("gpurouter/initCurrCongWeight", 0.5f);

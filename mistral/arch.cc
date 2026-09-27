@@ -975,7 +975,12 @@ bool Arch::route()
             }
         }
     } else if (router == "gpu") {
-        result = gpurouter(getCtx(), GpuRouterCfg(getCtx()));
+        // With a bitstream requested, the analogue signoff after bitstream
+        // generation is the timing gate and the router's table-model check
+        // only has to be legal; otherwise that check is the only gate.
+        GpuRouterCfg cfg(getCtx());
+        cfg.legality_timing_gate = !signoff_after_route;
+        result = gpurouter(getCtx(), cfg);
         if (result)
             result = analogue_repair();
     } else {
