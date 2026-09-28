@@ -1004,6 +1004,7 @@ void Arch::build_bitstream()
 
     if (const char *dump = getenv("NEXTPNR_MISTRAL_ARC_DUMP"))
         dump_analogue_arcs(dump);
+    dump_ready_timing(getenv("NEXTPNR_MISTRAL_READY_TRACE"));
 }
 
 NEXTPNR_NAMESPACE_END

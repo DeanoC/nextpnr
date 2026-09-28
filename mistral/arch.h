@@ -485,9 +485,27 @@ struct Arch : BaseArch<ArchRanges>
         PipId pip;
         delay_t table, rise, fall;
     };
+    struct AnalogueTraceHop
+    {
+        PipId pip;
+        int mode = -1;
+        size_t input_rise_samples = 0, input_fall_samples = 0;
+        const char *status = "not_attempted";
+        bool completed = false;
+    };
+    struct AnalogueTrace
+    {
+        const char *reason = "not_started";
+        int failure_hop = -1;
+        WireId source_wire;
+        bool route_complete = false;
+        std::vector<AnalogueTraceHop> hops;
+    };
+    const char *pip_delay_provenance(PipId pip) const;
+    void dump_ready_timing(const char *prefix) const;
     // Mistral analogue delay of one routed arc; optionally records each pip.
     bool analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay,
-                            std::vector<AnalogueHop> *hops) const;
+                            std::vector<AnalogueHop> *hops, AnalogueTrace *trace = nullptr) const;
     void dump_analogue_arcs(const std::string &path) const;
 
     // Analogue signoff repair after the GPU router (analogue.cc)

@@ -600,6 +600,18 @@ bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort
     return false;
 }
 
+const char *Arch::pip_delay_provenance(PipId pip) const
+{
+    if (!pip_delay_calibrated)
+        return "uncalibrated_table";
+    if (pip_delay_observed.count(pip))
+        return "observed_pip";
+    auto src = getPipSrcWire(pip);
+    if (src.is_nextpnr_created() || pip_type_calibration.at(src.node.t()).table_ps <= 0)
+        return "uncalibrated_table";
+    return getPipDelayTable(pip).maxDelay() <= 20 ? "per_type_placeholder" : "per_type_scaled";
+}
+
 DelayQuad Arch::getPipDelay(PipId pip) const
 {
     DelayQuad table = getPipDelayTable(pip);
@@ -685,9 +697,13 @@ bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, Del
 }
 
 bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay,
-                              std::vector<AnalogueHop> *hops) const
+                              std::vector<AnalogueHop> *hops, AnalogueTrace *trace) const
 {
+    if (trace)
+        *trace = AnalogueTrace();
     WireId src_wire = getCtx()->getNetinfoSourceWire(net_info);
+    if (trace)
+        trace->source_wire = src_wire;
     WireId dst_wire = getCtx()->getNetinfoSinkWire(net_info, sink, 0);
     NPNR_ASSERT(src_wire != WireId());
 
@@ -725,7 +741,18 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         cursor = getPipSrcWire(pip);
     }
 
+    if (trace) {
+        trace->route_complete = cursor == src_wire;
+        for (auto it = pips.rbegin(); it != pips.rend(); ++it) {
+            AnalogueTraceHop item;
+            item.pip = *it;
+            trace->hops.push_back(item);
+        }
+    }
+    int trace_index = -1;
     for (auto it = pips.rbegin(); it != pips.rend(); it++) {
+        ++trace_index;
+        AnalogueTraceHop *trace_hop = trace ? &trace->hops.at(trace_index) : nullptr;
         PipId pip = *it;
         auto src = getPipSrcWire(pip);
         auto dst = getPipDstWire(pip);
@@ -733,14 +760,25 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         // A dedicated GPIO -> FPLL edge represents the COMBOUT clock tap,
         // not a load on the GPIO's fabric DATAIN routing node. Mistral has
         // no analogue model for that tap; retain the estimated arc instead.
-        if (pll_ref_select.count(pip))
+        if (pll_ref_select.count(pip)) {
+            if (trace) {
+                trace->reason = "pll_ref_tap";
+                trace->failure_hop = trace_index;
+                trace_hop->status = "pll_ref_tap";
+            }
             return false;
+        }
 
         if (hops)
             hops->push_back(AnalogueHop{pip, getPipDelayTable(pip).maxDelay(), 0, 0});
 
-        if (src.is_nextpnr_created())
+        if (src.is_nextpnr_created()) {
+            if (trace_hop) {
+                trace_hop->status = "generated_source";
+                trace_hop->completed = true;
+            }
             continue;
+        }
 
         // A nextpnr-created destination (bel pin) never appears among the
         // circuit outputs; the nodes that drive one have no analogue circuit
@@ -748,17 +786,30 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         const CycloneV::rnode_index dst_ri = dst.is_nextpnr_created() ? 0xffffffff : cyclonev->rc2ri(dst.node);
 
         auto mode = cyclonev->rnode_timing_get_mode(src_ri);
+        if (trace_hop) {
+            trace_hop->mode = int(mode);
+            trace_hop->input_rise_samples = input_wave[0].size();
+            trace_hop->input_fall_samples = input_wave[1].size();
+        }
         NPNR_ASSERT(mode != mistral::CycloneV::RTM_UNSUPPORTED);
 
         auto inverting = cyclonev->rnode_is_inverting(src_ri);
 
         if (mode == mistral::CycloneV::RTM_P2P) {
+            if (trace_hop) {
+                trace_hop->status = "p2p";
+                trace_hop->completed = true;
+            }
             if (inverting == mistral::CycloneV::INV_YES || inverting == mistral::CycloneV::INV_PROGRAMMABLE)
                 inverted = !inverted;
             continue;
         }
 
         if (mode == mistral::CycloneV::RTM_NO_DELAY) {
+            if (trace_hop) {
+                trace_hop->status = "no_delay";
+                trace_hop->completed = true;
+            }
             if (inverting)
                 inverted = !inverted;
             continue;
@@ -771,8 +822,18 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
             cyclonev->rnode_timing_build_input_wave(src_ri, temp, CycloneV::DELAY_MAX,
                                                     inverted ? mistral::CycloneV::RF_RISE : mistral::CycloneV::RF_FALL,
                                                     est, input_wave[1]);
-            if (input_wave[mistral::CycloneV::RF_RISE].empty() || input_wave[mistral::CycloneV::RF_FALL].empty())
+            if (trace_hop) {
+                trace_hop->input_rise_samples = input_wave[0].size();
+                trace_hop->input_fall_samples = input_wave[1].size();
+            }
+            if (input_wave[mistral::CycloneV::RF_RISE].empty() || input_wave[mistral::CycloneV::RF_FALL].empty()) {
+                if (trace) {
+                    trace->reason = "empty_input_wave";
+                    trace->failure_hop = trace_index;
+                    trace_hop->status = "empty_input_wave";
+                }
                 return false;
+            }
         }
 
         for (int edge = 0; edge != 2; edge++) {
@@ -801,9 +862,15 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
                 (edge ? hops->back().fall : hops->back().rise) = delay_t(output_delays[edge].mx * 1e12);
         }
 
+        if (trace_hop) {
+            trace_hop->status = "simulated";
+            trace_hop->completed = true;
+        }
         if (inverting == mistral::CycloneV::INV_YES || inverting == mistral::CycloneV::INV_PROGRAMMABLE)
             inverted = !inverted;
     }
+    if (trace)
+        trace->reason = "success";
 
     delay = DelayQuad{delay_t(output_delay_sum[0].mi * 1e12), delay_t(output_delay_sum[0].mx * 1e12),
                       delay_t(output_delay_sum[1].mi * 1e12), delay_t(output_delay_sum[1].mx * 1e12)};
