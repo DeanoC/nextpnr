@@ -838,6 +838,7 @@ void diagnostic_placed_timeout(Context *, const char *);
 void diagnostic_retained_enable(Context *, const char *, bool);
 void diagnostic_timeout_refine(Context *, const char *, bool);
 void diagnostic_ready_cut(Context *, const char *, bool);
+void diagnostic_command_cut(Context *, const char *, bool);
 
 bool Arch::place()
 {
@@ -909,6 +910,7 @@ bool Arch::place()
     diagnostic_retained_enable(getCtx(), std::getenv("NEXTPNR_MISTRAL_RETAINED_ENABLE"), true);
     diagnostic_timeout_refine(getCtx(), std::getenv("NEXTPNR_MISTRAL_TIMEOUT_REFINE"), true);
     diagnostic_ready_cut(getCtx(), std::getenv("NEXTPNR_MISTRAL_READY_CUT"), true);
+    diagnostic_command_cut(getCtx(), std::getenv("NEXTPNR_MISTRAL_COMMAND_CUT"), true);
 
     getCtx()->attrs[id_step] = std::string("place");
     archInfoToAttributes();

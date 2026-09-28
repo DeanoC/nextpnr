@@ -14,6 +14,7 @@ set(SOURCES
     retained_enable.cc
     timeout_refine.cc
     ready_cut.cc
+    command_cut.cc
     dsp.h
     dsp.cc
     fes_slot.cc
