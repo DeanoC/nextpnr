@@ -13,6 +13,7 @@
 #include "log.h"
 #include "nextpnr.h"
 #include "ready_fallback_policy.h"
+#include "ready_shortest_backend.h"
 #include "timing.h"
 NEXTPNR_NAMESPACE_BEGIN
 namespace {
@@ -90,6 +91,9 @@ void Arch::ready_fallback_pass(const char *prefix)
 {
     if (!prefix || !*prefix)
         return;
+    const char *shortest_env = std::getenv("NEXTPNR_MISTRAL_READY_SHORTEST");
+    const bool exact = shortest_env && *shortest_env;
+    NPNR_ASSERT(!exact || std::string(shortest_env) == "1");
     auto ctx = getCtx();
     NPNR_ASSERT(bitstream_configured && analogue_cache_valid && pip_delay_calibrated);
     NetInfo *target = nullptr;
@@ -332,25 +336,37 @@ void Arch::ready_fallback_pass(const char *prefix)
     trials << "trial\tvariant\tbound\teligible\tcache_ok\tfinite\tclock_nonregressing\tworst_before_ps\tworst_after_"
               "ps\tgain_ps\treason\n";
     const auto original_settings = ctx->settings;
-    GpuRouterCfg cfg(ctx);
-    ctx->settings = original_settings;
-    const int count = 8;
+    std::unique_ptr<GpuRouterCfg> cfg;
+    if (!exact) {
+        cfg.reset(new GpuRouterCfg(ctx));
+        ctx->settings = original_settings;
+    }
+    const int count = exact ? 1 : 8;
     NPNR_ASSERT(prior == 1.25f);
     int chosen = -1, best_worst = before.worst;
     Tree best = original;
     size_t generated = 0;
     {
-        GpuCandidateRouter router(ctx, cfg);
-        ctx->settings = original_settings;
-        auto user = target->users.enumerate().begin();
-        std::vector<GpuCandidateRouter::Sink> sinks{{target, (*user).index}};
-        auto candidates = router.candidates(sinks, count);
-        ctx->settings = original_settings;
-        NPNR_ASSERT(candidates.size() == 1);
-        generated = candidates[0].size();
+        std::unique_ptr<GpuCandidateRouter> router;
+        std::vector<GpuRouteTree> candidates;
+        if (exact) {
+            const auto original_scalar = ctx->getNetinfoRouteDelay(target, *target->users.begin());
+            candidates = ready_shortest_candidate(ctx, target, source_wire, sink_wires[0], prefix);
+            // The currently bound route is an available path in this graph.
+            NPNR_ASSERT(candidates.size() == 1 && candidates[0].route_delay <= original_scalar);
+        } else {
+            router.reset(new GpuCandidateRouter(ctx, *cfg));
+            ctx->settings = original_settings;
+            auto user = target->users.enumerate().begin();
+            auto generated_sinks = router->candidates({{target, (*user).index}}, count);
+            ctx->settings = original_settings;
+            NPNR_ASSERT(generated_sinks.size() == 1);
+            candidates = std::move(generated_sinks[0]);
+        }
+        generated = candidates.size();
         invariant();
         for (size_t i = 0; i < generated; ++i) {
-            auto &candidate = candidates[0][i];
+            auto &candidate = candidates[i];
             Tree proposed;
             for (auto &w : candidate.wires)
                 NPNR_ASSERT(proposed.emplace(w.first, std::make_pair(w.second, STRENGTH_WEAK)).second);
@@ -377,6 +393,8 @@ void Arch::ready_fallback_pass(const char *prefix)
             complete(ctx, target);
             configure_bitstream(false);
             invariant();
+            if (exact)
+                NPNR_ASSERT(ctx->getNetinfoRouteDelay(target, *target->users.begin()) == candidate.route_delay);
             auto now = evaluate();
             bool guard = guards(stem + ".guards.tsv", now);
             bool clock_ok = clock_guard(i, now);
@@ -422,14 +440,16 @@ void Arch::ready_fallback_pass(const char *prefix)
     clocks.close();
     NPNR_ASSERT(trials && clocks);
     std::ofstream audit(std::string(prefix) + ".audit.json");
-    audit << "{\"selected_trial\":" << chosen << ",\"max_candidates\":8,\"generated\":" << generated
+    audit << "{\"selected_trial\":" << chosen << ",\"max_candidates\":" << count << ",\"search_mode\":\""
+          << (exact ? "exact_dijkstra" : "gpu_candidates") << "\",\"generated\":" << generated
           << ",\"endpoints\":224,\"interior_luts\":5,\"gain_threshold_ps\":20,\"worst_before_ps\":" << before.worst
           << ",\"worst_after_ps\":" << final.worst << ",\"source_wire\":\"" << nameOfWire(source_wire)
           << "\",\"sink_wire\":\"" << nameOfWire(sink_wires[0]) << "\",\"prior\":" << prior
-          << ",\"candidate_margin\":" << cfg.candidate_margin
-          << ",\"candidate_unbounded\":" << (cfg.candidate_unbounded ? "true" : "false")
-          << ",\"candidate_expand_k\":" << cfg.candidate_expand_k << ",\"before_invalid_bels\":" << baseline_invalid
-          << ",\"after_invalid_bels\":" << baseline_invalid << ",\"placement_check_vector_preserved\":true"
+          << ",\"candidate_margin\":" << (cfg ? cfg->candidate_margin : 0)
+          << ",\"candidate_unbounded\":" << (cfg && cfg->candidate_unbounded ? "true" : "false")
+          << ",\"candidate_expand_k\":" << (cfg ? cfg->candidate_expand_k : 0)
+          << ",\"before_invalid_bels\":" << baseline_invalid << ",\"after_invalid_bels\":" << baseline_invalid
+          << ",\"placement_check_vector_preserved\":true"
           << ",\"calibration_unchanged\":true,\"graph_preserved\":true,\"placements_preserved\":true,\"unrelated_"
              "routes_preserved\":true,\"unrelated_cache_preserved\":true,\"ready_cache_ok\":false,\"net_udata_"
              "restored\":true}\n";
