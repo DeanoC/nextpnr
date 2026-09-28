@@ -78,6 +78,20 @@ TEST(ReadyTimingTest, ActualHpsReadyInputWaveFailureIsExplained)
     EXPECT_NE(read(".hops.tsv").find("observed_pip"), std::string::npos);
     EXPECT_NE(read(".state.json").find("\"failed_recomputations\":1"), std::string::npos);
     EXPECT_EQ(ctx.pip_delay_observed.at(pip), 0);
+    // A failed cached override seeds Context's quad accumulator even though
+    // the scalar API uses the complete positive fallback sum.
+    ctx.pip_delay_observed[pip] = 123;
+    cal.analogue_ps = 123;
+    const auto &actual_user = *net->users.begin();
+    auto positive = ctx.getNetinfoRouteDelayQuad(net, actual_user);
+    EXPECT_EQ(positive.minDelay(), 0);
+    EXPECT_EQ(positive.maxDelay(), 123);
+    EXPECT_EQ(ctx.getNetinfoRouteDelay(net, actual_user), 123);
+    ctx.dump_ready_timing((prefix + ".positive").c_str());
+    EXPECT_EQ(ctx.pip_delay_observed.at(pip), 123);
+    if (!configured)
+        for (auto suffix : {".arcs.tsv", ".hops.tsv", ".observed.tsv", ".types.tsv", ".state.json"})
+            std::remove((prefix + ".positive" + suffix).c_str());
     if (!configured)
         for (auto suffix : {".arcs.tsv", ".hops.tsv", ".observed.tsv", ".types.tsv", ".state.json"})
             std::remove((prefix + suffix).c_str());

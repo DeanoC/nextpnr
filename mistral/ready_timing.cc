@@ -56,7 +56,8 @@ void Arch::dump_ready_timing(const char *prefix) const
     arcs << "arc_id\tnet\tsource_cell\tsource_port\tsink_cell\tsink_port\tuser_index\tsource_wire\tsink_wire\troute_"
             "complete\tcache_present\tcache_ok\trecomputed_ok\tfailure_reason\tfailure_hop\toverride_used\tcontext_"
             "scalar\tfallback_scalar";
-    for (auto label : {"context", "fallback", "source_wire_delay", "cached", "recomputed", "override"})
+    for (auto label :
+         {"context", "fallback", "source_wire_delay", "cached", "recomputed", "override", "context_reconstructed"})
         qheader(arcs, label);
     arcs << '\n';
     hops_file << "arc_id\thop\tpip_src\tpip_dst\ttype_id\tsrc_generated\tobserved_present\tobserved_"
@@ -149,21 +150,30 @@ void Arch::dump_ready_timing(const char *prefix) const
             DelayQuad cached_delay;
             if (cache_present)
                 cached_delay = cached->second.delay;
-            DelayQuad override_delay;
+            // Mirror Context's initial accumulator. A failed cached override
+            // currently writes its cached quad before returning false; preserve
+            // that seed in this diagnostic without changing the timing API.
+            DelayQuad override_delay(std::numeric_limits<delay_t>::max(), std::numeric_limits<delay_t>::lowest());
             bool override_used = getArcDelayOverride(net, sink, override_delay);
             auto actual = ctx->getNetinfoRouteDelayQuad(net, sink);
             auto scalar = ctx->getNetinfoRouteDelay(net, sink);
+            DelayQuad reconstructed = override_delay;
             if (override_used) {
-                NPNR_ASSERT(quad(actual) == quad(override_delay) && scalar == override_delay.maxDelay());
+                NPNR_ASSERT(scalar == override_delay.maxDelay());
             } else {
-                NPNR_ASSERT(quad(actual) == quad(fallback) && scalar == fallback_scalar);
+                reconstructed.rise.min_delay = std::min(reconstructed.rise.min_delay, fallback.rise.min_delay);
+                reconstructed.rise.max_delay = std::max(reconstructed.rise.max_delay, fallback.rise.max_delay);
+                reconstructed.fall.min_delay = std::min(reconstructed.fall.min_delay, fallback.fall.min_delay);
+                reconstructed.fall.max_delay = std::max(reconstructed.fall.max_delay, fallback.fall.max_delay);
+                NPNR_ASSERT(scalar == fallback_scalar);
             }
+            NPNR_ASSERT(quad(actual) == quad(reconstructed));
             arcs << arc_count << '\t' << net->name.str(ctx) << '\t' << net->driver.cell->name.str(ctx) << '\t'
                  << net->driver.port.str(ctx) << '\t' << sink.cell->name.str(ctx) << '\t' << sink.port.str(ctx) << '\t'
                  << u.second.second << '\t' << name(src) << '\t' << name(dst) << '\t' << complete << '\t'
                  << cache_present << '\t' << cache_ok << '\t' << ok << '\t' << trace.reason << '\t' << trace.failure_hop
                  << '\t' << override_used << '\t' << scalar << '\t' << fallback_scalar;
-            for (auto d : {actual, fallback, source_delay, cached_delay, recomputed, override_delay})
+            for (auto d : {actual, fallback, source_delay, cached_delay, recomputed, override_delay, reconstructed})
                 qwrite(arcs, d);
             arcs << '\n';
             std::map<PipId, AnalogueHop> by_pip;

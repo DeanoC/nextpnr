@@ -20,7 +20,7 @@ Outputs:
 - `.arcs.tsv`: source/sink identity and wires, route completeness, cache and
   recomputation status, failure location, selected override, Context scalar and
   quad delays, reconstructed fallback sums, source-wire delay, and cached and
-  recomputed analogue quads.
+  recomputed analogue quads, and the reconstructed Context quad.
 - `.hops.tsv`: full source-to-sink pip paths, static and actual pip delays,
   destination-wire delays, observed values, exact provenance branch and
   per-hop analogue progress. Generated sources use type_id=-1.
@@ -31,7 +31,13 @@ Outputs:
   and hexadecimal forms, coverage counts and read-only invariant results.
 
 Quad components are rise_min, rise_max, fall_min and fall_max in integer ps.
-Fallback scalar sums per-hop maxima; the quad sums corresponding components.
+Fallback scalar sums per-hop maxima; the raw fallback quad sums corresponding
+components. The Context quad can differ: a failed cached override writes its
+cached quad into the initial accumulator before returning false, and Context
+then merges fallback minima/maxima into that seed. A cached zero therefore
+clamps positive fallback minima to zero. The `override_*` columns retain the
+post-call accumulator seed and `context_reconstructed_*` records the exact
+existing merge. This diagnostic intentionally preserves that API behavior.
 They are reconstructed independently. Successful analogue overrides are checked
 against their selected cached/recomputed value, not incorrectly compared with a
 fallback sum. Analogue per-hop integer truncations need not sum to the final
