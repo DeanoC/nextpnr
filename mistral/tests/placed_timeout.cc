@@ -17,6 +17,7 @@ void diagnostic_retained_enable(Context *, const char *, bool);
 void diagnostic_timeout_refine(Context *, const char *, bool);
 void diagnostic_ready_cut(Context *, const char *, bool);
 void diagnostic_command_cut(Context *, const char *, bool);
+void diagnostic_ready_reuse(Context *, const char *);
 NEXTPNR_NAMESPACE_END
 USING_NEXTPNR_NAMESPACE
 TEST(PlacedTimeoutRegionTest, OldRootNeighborhoodsExpandOnlyRequestedDomain)
@@ -209,6 +210,15 @@ TEST(PlacedTimeoutTest, ActualSnapshotPreflight)
     diagnostic_timeout_refine(&ctx, std::getenv("MISTRAL_TIMEOUT_REFINE_TEST_PREFIX"), false);
     diagnostic_ready_cut(&ctx, std::getenv("MISTRAL_READY_CUT_TEST_PREFIX"), false);
     diagnostic_command_cut(&ctx, std::getenv("MISTRAL_COMMAND_CUT_TEST_PREFIX"), false);
+    const char *reuse = std::getenv("MISTRAL_READY_REUSE_TEST_PREFIX");
+    if (reuse && *reuse) {
+        // Test-only clock reconstruction for predicted timing. This import is
+        // not a route replay; the fresh production hook requires real clocks.
+        auto clock = ctx.cells.at(ctx.id("hps_ddr.port1.skid_burstcount_MISTRAL_FF_Q_5"))->getPort(id_CLK);
+        ASSERT_TRUE(clock);
+        ctx.addClock(clock->name, 130);
+        diagnostic_ready_reuse(&ctx, reuse);
+    }
     const char *cut = std::getenv("MISTRAL_READY_CUT_TEST_PREFIX");
     EXPECT_EQ(ctx.cells.size(), count + 35 + int(retained && *retained) + int(cut && *cut));
     for (auto &e : ctx.cells)
