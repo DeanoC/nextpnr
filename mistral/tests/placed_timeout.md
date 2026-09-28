@@ -16,6 +16,13 @@ New LUTs are placed topologically within Manhattan radius six of each channel's
 old two-root midpoint. Legal free BELs are ranked by worst predicted bound-input
 plus bound-output delay, then distance and BEL name. Future unplaced endpoints
 are omitted. This is a bounded heuristic, not calibrated route-delay prediction.
+`NEXTPNR_MISTRAL_PLACED_TIMEOUT_REGION=roots` expands only the candidate domain
+by adding radius-six neighborhoods around each old root. The original midpoint
+region remains included, and the score still uses the original midpoint
+distance as its tie-break. An absent or empty region retains the original mode;
+when the diagnostic prefix is disabled, even an invalid region is ignored.
+Sites and the manifest record the region mode and old-root distances/coordinates.
+
 No original cell is displaced. Failure aborts before routing; the hook does not
 provide transactional recovery for reuse of the same context.
 

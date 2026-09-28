@@ -2,6 +2,7 @@
  * Failure aborts before routing; this is not a production transactional pass.
  * SPDX-License-Identifier: ISC
  */
+#include <cstring>
 #include <fstream>
 #include <limits>
 #include <map>
@@ -10,6 +11,7 @@
 #include "jsonwrite.h"
 #include "log.h"
 #include "nextpnr.h"
+#include "placed_timeout_region.h"
 
 NEXTPNR_NAMESPACE_BEGIN
 namespace {
@@ -39,11 +41,18 @@ void diagnostic_placed_timeout(Context *ctx, const char *prefix)
 {
     if (!prefix || !*prefix)
         return; // No IDs or mutations in the default path.
+    const char *requested_region = std::getenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT_REGION");
+    const bool expand_roots = requested_region && *requested_region;
+    if (expand_roots && std::strcmp(requested_region, "roots") != 0)
+        log_error("Timeout diagnostic REGION must be empty or roots.\n");
+    const char *region_mode = expand_roots ? "roots" : "midpoint";
     auto pin = [&](int i) { return ctx->id(std::string(1, 'A' + i)); };
     auto type = [&](int width) { return ctx->id("MISTRAL_ALUT" + std::to_string(width)); };
     std::set<IdString> removed;
     std::vector<NetInfo *> root_nets;
     std::array<std::pair<int, int>, 3> centers{};
+    std::array<TimeoutRegion, 3> regions{};
+    std::array<int, 3> root_counts{};
     for (const auto &r : timeout_roots) {
         auto c = ctx->cells.at(ctx->id(r.name)).get();
         NPNR_ASSERT(c->type == type(r.width) && uint64_t(c->params.at(id_LUT).as_int64()) == r.mask);
@@ -56,12 +65,19 @@ void diagnostic_placed_timeout(Context *ctx, const char *prefix)
         root_nets.push_back(q);
         removed.insert(c->name);
         auto l = ctx->getBelLocation(c->bel);
+        NPNR_ASSERT(root_counts.at(r.channel) < 2);
+        regions.at(r.channel).roots.at(root_counts.at(r.channel)++) = {l.x, l.y};
         centers[r.channel].first += l.x;
         centers[r.channel].second += l.y;
     }
     for (auto &p : centers) {
         p.first /= 2;
         p.second /= 2;
+    }
+    for (int channel = 0; channel < 3; ++channel) {
+        NPNR_ASSERT(root_counts.at(channel) == 2);
+        regions.at(channel).midpoint = centers.at(channel);
+        regions.at(channel).expanded = expand_roots;
     }
     for (auto &e : ctx->nets)
         NPNR_ASSERT(e.second->wires.empty());
@@ -170,19 +186,20 @@ void diagnostic_placed_timeout(Context *ctx, const char *prefix)
     ctx->assignArchInfo();
     std::ofstream sites(std::string(prefix) + ".sites.tsv");
     sites << "cell\tbel\tchannel\tcenter_x\tcenter_y\tdistance\tpredicted_input_output_ps\tbound_inputs\tbound_"
-             "outputs\n";
+             "outputs\tregion_mode\troot0_distance\troot1_distance\n";
     // Only the new logic is placed. A topological order makes all new input
     // drivers available; future new output endpoints are excluded explicitly.
     for (const auto &p : timeout_cells) {
         auto c = additions.at(p.name);
         auto center = centers.at(p.channel);
+        const auto &region = regions.at(p.channel);
         BelId best_bel;
         std::tuple<int, int, std::string> best{std::numeric_limits<int>::max(), 99, ""};
         int best_inputs = 0, best_outputs = 0;
         for (auto trial : ctx->getBels()) {
             auto l = ctx->getBelLocation(trial);
             int dist = std::abs(l.x - center.first) + std::abs(l.y - center.second);
-            if (dist > 6 || protected_labs.count({l.x, l.y}) || !ctx->checkBelAvail(trial) ||
+            if (!region.contains(l.x, l.y) || protected_labs.count({l.x, l.y}) || !ctx->checkBelAvail(trial) ||
                 !ctx->isValidBelForCellType(c->type, trial))
                 continue;
             ctx->bindBel(trial, c, STRENGTH_WEAK);
@@ -211,11 +228,14 @@ void diagnostic_placed_timeout(Context *ctx, const char *prefix)
             ctx->unbindBel(trial);
         }
         if (best_bel == BelId())
-            log_error("Timeout diagnostic cannot legally place %s within radius6; abort before routing.\n", p.name);
+            log_error("Timeout diagnostic cannot legally place %s within %s region; abort before routing.\n", p.name,
+                      region_mode);
         ctx->bindBel(best_bel, c, STRENGTH_WEAK);
         sites << p.name << '\t' << ctx->nameOfBel(best_bel) << '\t' << p.channel << '\t' << center.first << '\t'
               << center.second << '\t' << std::get<1>(best) << '\t' << std::get<0>(best) << '\t' << best_inputs << '\t'
-              << best_outputs << '\n';
+              << best_outputs << '\t' << region_mode << '\t'
+              << region.root_distance(0, ctx->getBelLocation(best_bel).x, ctx->getBelLocation(best_bel).y) << '\t'
+              << region.root_distance(1, ctx->getBelLocation(best_bel).x, ctx->getBelLocation(best_bel).y) << '\n';
     }
     sites.close();
     if (!sites)
@@ -246,8 +266,18 @@ void diagnostic_placed_timeout(Context *ctx, const char *prefix)
     std::ofstream manifest(std::string(prefix) + ".manifest.json");
     manifest << "{\"payload_sha256\":\"" << payload_sha
              << "\",\"removed\":6,\"added\":41,\"preserved\":" << saved.size()
-             << ",\"search_radius\":6,\"strategy\":\"topological; fixed channel root midpoint; bound input/output "
-                "predicted max sum; no displacement\"}\n";
+             << ",\"search_radius\":6,\"region_mode\":\"" << region_mode
+             << "\",\"strategy\":\"topological; bound input/output predicted max sum; midpoint-distance tie; no "
+                "displacement\",\"root_coordinates\":[";
+    bool first_root = true;
+    for (const auto &region : regions)
+        for (const auto &root : region.roots) {
+            if (!first_root)
+                manifest << ',';
+            first_root = false;
+            manifest << '[' << root.first << ',' << root.second << ']';
+        }
+    manifest << "]}\n";
     manifest.close();
     if (!manifest)
         log_error("Cannot finish timeout manifest.\n");

@@ -5,18 +5,56 @@
 #include "gtest/gtest.h"
 #include "json_frontend.h"
 #include "nextpnr.h"
+#include "placed_timeout_region.h"
 NEXTPNR_NAMESPACE_BEGIN
 void diagnostic_placed_timeout(Context *, const char *);
 NEXTPNR_NAMESPACE_END
 USING_NEXTPNR_NAMESPACE
+TEST(PlacedTimeoutRegionTest, OldRootNeighborhoodsExpandOnlyRequestedDomain)
+{
+    TimeoutRegion region{{33, 21}, {{{27, 16}, {39, 26}}}, false};
+    EXPECT_FALSE(region.contains(27, 16));
+    EXPECT_FALSE(region.contains(39, 26));
+    EXPECT_TRUE(region.contains(33, 21));
+    EXPECT_TRUE(region.contains(39, 21));
+    EXPECT_FALSE(region.contains(40, 21));
+    region.expanded = true;
+    EXPECT_TRUE(region.contains(27, 16));
+    EXPECT_TRUE(region.contains(39, 26));
+    EXPECT_TRUE(region.contains(21, 16));
+    EXPECT_TRUE(region.contains(45, 26));
+    EXPECT_FALSE(region.contains(20, 16));
+    EXPECT_FALSE(region.contains(46, 26));
+    EXPECT_TRUE(region.contains(33, 21));
+    EXPECT_EQ(region.midpoint_distance(27, 16), 11);
+    EXPECT_EQ(region.midpoint_distance(39, 26), 11);
+}
+TEST(PlacedTimeoutRegionTest, ExpandedDomainIsExactUnion)
+{
+    TimeoutRegion region{{33, 21}, {{{27, 16}, {39, 26}}}, true};
+    for (int x = 15; x <= 50; ++x)
+        for (int y = 5; y <= 40; ++y) {
+            bool expected = std::abs(x - 33) + std::abs(y - 21) <= 6 || std::abs(x - 27) + std::abs(y - 16) <= 6 ||
+                            std::abs(x - 39) + std::abs(y - 26) <= 6;
+            EXPECT_EQ(region.contains(x, y), expected);
+        }
+}
 TEST(PlacedTimeoutTest, DisabledIsIdentifierNeutral)
 {
     ArchArgs args;
     args.device = "5CSEBA6U23I7";
     Context ctx(args);
     auto before = ctx.id("timeout-test-before");
+    const char *old_region = std::getenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT_REGION");
+    const std::string saved_region = old_region ? old_region : "";
+    bool had_region = old_region != nullptr;
+    setenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT_REGION", "invalid-but-prefix-disabled", 1);
     diagnostic_placed_timeout(&ctx, nullptr);
     diagnostic_placed_timeout(&ctx, "");
+    if (had_region)
+        setenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT_REGION", saved_region.c_str(), 1);
+    else
+        unsetenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT_REGION");
     auto after = ctx.id("timeout-test-after");
     EXPECT_EQ(after.index, before.index + 1);
     EXPECT_TRUE(ctx.cells.empty());
