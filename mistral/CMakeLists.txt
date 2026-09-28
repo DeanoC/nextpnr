@@ -11,6 +11,7 @@ set(SOURCES
     delay.cc
     enable_replication.cc
     placed_timeout.cc
+    retained_enable.cc
     dsp.h
     dsp.cc
     fes_slot.cc

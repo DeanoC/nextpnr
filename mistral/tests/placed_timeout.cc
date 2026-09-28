@@ -7,8 +7,10 @@
 #include "json_frontend.h"
 #include "nextpnr.h"
 #include "placed_timeout_region.h"
+#include "retained_enable_policy.h"
 NEXTPNR_NAMESPACE_BEGIN
 void diagnostic_placed_timeout(Context *, const char *);
+void diagnostic_retained_enable(Context *, const char *, bool);
 NEXTPNR_NAMESPACE_END
 USING_NEXTPNR_NAMESPACE
 TEST(PlacedTimeoutRegionTest, OldRootNeighborhoodsExpandOnlyRequestedDomain)
@@ -40,6 +42,24 @@ TEST(PlacedTimeoutRegionTest, ExpandedDomainIsExactUnion)
             EXPECT_EQ(region.contains(x, y), expected);
         }
 }
+TEST(RetainedEnablePolicyTest, ProtectedWholeGroupNeverMoves)
+{
+    std::vector<int> before{2000, 1900}, after{1000, 900};
+    EXPECT_EQ(retained_enable_policy::group_gain(true, before, after), 0);
+    EXPECT_EQ(retained_enable_policy::group_gain(false, before, after), 1000);
+    EXPECT_EQ(retained_enable_policy::group_gain(false, before, {1000, 1800}), 0);
+}
+TEST(RetainedEnablePolicyTest, PriorInputLoadsRemainDisjoint)
+{
+    EXPECT_TRUE(retained_enable_policy::disjoint(std::set<int>{1, 2}, std::set<int>{3, 4}));
+    EXPECT_FALSE(retained_enable_policy::disjoint(std::set<int>{1, 2}, std::set<int>{2, 4}));
+}
+TEST(RetainedEnablePolicyTest, ExistingCopyConsumesConfiguredBudget)
+{
+    EXPECT_TRUE(retained_enable_policy::budget_available(4, 1));
+    EXPECT_FALSE(retained_enable_policy::budget_available(1, 1));
+    EXPECT_FALSE(retained_enable_policy::budget_available(0, 0));
+}
 TEST(PlacedTimeoutTest, DisabledIsIdentifierNeutral)
 {
     ArchArgs args;
@@ -52,6 +72,8 @@ TEST(PlacedTimeoutTest, DisabledIsIdentifierNeutral)
     setenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT_REGION", "invalid-but-prefix-disabled", 1);
     diagnostic_placed_timeout(&ctx, nullptr);
     diagnostic_placed_timeout(&ctx, "");
+    diagnostic_retained_enable(&ctx, nullptr, false);
+    diagnostic_retained_enable(&ctx, "", false);
     if (had_region)
         setenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT_REGION", saved_region.c_str(), 1);
     else
@@ -170,6 +192,9 @@ TEST(PlacedTimeoutTest, ActualSnapshotPreflight)
     auto count = ctx.cells.size();
     diagnostic_placed_timeout(&ctx, prefix);
     EXPECT_EQ(ctx.cells.size(), count + 35);
+    const char *retained = std::getenv("MISTRAL_RETAINED_ENABLE_TEST_PREFIX");
+    diagnostic_retained_enable(&ctx, retained, false);
+    EXPECT_EQ(ctx.cells.size(), count + 35 + int(retained && *retained));
     for (auto &e : ctx.cells)
         if (e.second->bel != BelId())
             EXPECT_TRUE(ctx.isBelLocationValid(e.second->bel)) << e.first.str(&ctx);
