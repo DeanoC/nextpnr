@@ -18,6 +18,7 @@ void diagnostic_timeout_refine(Context *, const char *, bool);
 void diagnostic_ready_cut(Context *, const char *, bool);
 void diagnostic_command_cut(Context *, const char *, bool);
 void diagnostic_ready_reuse(Context *, const char *);
+void diagnostic_ready_locality(Context *, const char *, bool);
 NEXTPNR_NAMESPACE_END
 USING_NEXTPNR_NAMESPACE
 TEST(PlacedTimeoutRegionTest, OldRootNeighborhoodsExpandOnlyRequestedDomain)
@@ -218,6 +219,26 @@ TEST(PlacedTimeoutTest, ActualSnapshotPreflight)
         ASSERT_TRUE(clock);
         ctx.addClock(clock->name, 130);
         diagnostic_ready_reuse(&ctx, reuse);
+    }
+    const char *locality = std::getenv("MISTRAL_READY_LOCALITY_TEST_PREFIX");
+    if (locality && *locality) {
+        // Imported diagnostic only: restore the three measured clock constraints.
+        // This does not reconstruct every phase/packing field of a fresh context.
+        ctx.addClock(ctx.id("ram_clock.clocks[0]"), 130.0052032470703);
+        ctx.addClock(ctx.id("ram_clock.clocks[1]"), 130.0052032470703);
+        ctx.addClock(ctx.id("display.pixel_clk"), 74.25006866455078);
+        // pack.cc's shifted PLL profile relates both buffered outputs. Without
+        // these fields the capture->memory paths are incorrectly untimed in an
+        // imported snapshot, even when both frequencies have been restored.
+        ASSERT_EQ(pll->params.at(ctx.id("phase_shift0")).as_string(), "0 ps");
+        ASSERT_EQ(pll->params.at(ctx.id("phase_shift1")).as_string(), "6538 ps");
+        for (int i=0;i<2;++i) {
+            auto n=ctx.nets.at(ctx.idf("ram_clock.clocks[%d]",i)).get();
+            ASSERT_TRUE(n->clkconstr);
+            n->clkconstr->phase_group=pll->name;
+            n->clkconstr->phase_shift=ctx.getDelayFromNS((i?6538:0)/1000.0f);
+        }
+        diagnostic_ready_locality(&ctx, locality, true);
     }
     const char *cut = std::getenv("MISTRAL_READY_CUT_TEST_PREFIX");
     EXPECT_EQ(ctx.cells.size(), count + 35 + int(retained && *retained) + int(cut && *cut));
