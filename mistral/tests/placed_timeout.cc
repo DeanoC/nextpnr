@@ -7,12 +7,14 @@
 #include "json_frontend.h"
 #include "nextpnr.h"
 #include "placed_timeout_region.h"
+#include "ready_cut_policy.h"
 #include "retained_enable_policy.h"
 #include "timeout_refine_policy.h"
 NEXTPNR_NAMESPACE_BEGIN
 void diagnostic_placed_timeout(Context *, const char *);
 void diagnostic_retained_enable(Context *, const char *, bool);
 void diagnostic_timeout_refine(Context *, const char *, bool);
+void diagnostic_ready_cut(Context *, const char *, bool);
 NEXTPNR_NAMESPACE_END
 USING_NEXTPNR_NAMESPACE
 TEST(PlacedTimeoutRegionTest, OldRootNeighborhoodsExpandOnlyRequestedDomain)
@@ -78,6 +80,8 @@ TEST(PlacedTimeoutTest, DisabledIsIdentifierNeutral)
     diagnostic_retained_enable(&ctx, "", false);
     diagnostic_timeout_refine(&ctx, nullptr, false);
     diagnostic_timeout_refine(&ctx, "", false);
+    diagnostic_ready_cut(&ctx, nullptr, false);
+    diagnostic_ready_cut(&ctx, "", false);
     if (had_region)
         setenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT_REGION", saved_region.c_str(), 1);
     else
@@ -199,7 +203,9 @@ TEST(PlacedTimeoutTest, ActualSnapshotPreflight)
     const char *retained = std::getenv("MISTRAL_RETAINED_ENABLE_TEST_PREFIX");
     diagnostic_retained_enable(&ctx, retained, false);
     diagnostic_timeout_refine(&ctx, std::getenv("MISTRAL_TIMEOUT_REFINE_TEST_PREFIX"), false);
-    EXPECT_EQ(ctx.cells.size(), count + 35 + int(retained && *retained));
+    diagnostic_ready_cut(&ctx, std::getenv("MISTRAL_READY_CUT_TEST_PREFIX"), false);
+    const char *cut = std::getenv("MISTRAL_READY_CUT_TEST_PREFIX");
+    EXPECT_EQ(ctx.cells.size(), count + 35 + int(retained && *retained) + int(cut && *cut));
     for (auto &e : ctx.cells)
         if (e.second->bel != BelId())
             EXPECT_TRUE(ctx.isBelLocationValid(e.second->bel)) << e.first.str(&ctx);
@@ -213,4 +219,23 @@ TEST(TimeoutRefinePolicyTest, EveryEndpointAndWorstMustImprove)
     EXPECT_FALSE(timeout_refine_policy::improves({100, 200}, {100.5, 200}));
     EXPECT_FALSE(timeout_refine_policy::improves({}, {}));
     EXPECT_FALSE(timeout_refine_policy::improves({100}, {NAN}));
+}
+
+TEST(ReadyCutPolicyTest, AllArbitraryBoundaryAssignmentsMatchOriginalSevenLuts)
+{
+    auto lut = [](uint64_t mask, unsigned row) { return bool((mask >> row) & 1); };
+    for (unsigned row = 0; row < 1024; ++row) {
+        bool l = row & 1, r = row & 2, d = row & 4, w = row & 8, s = row & 16, f = row & 32, mr = row & 64,
+             mw = row & 128, ready = row & 256, owed = row & 512;
+        bool er = lut(1ull << 17, l | (d << 1) | (s << 2) | (f << 3) | (r << 4));
+        bool aw = lut(1ull << 5, l | (d << 1) | (w << 2) | (s << 3) | (f << 4));
+        bool filler = lut(0x20, owed | (s << 1) | (f << 2));
+        bool ew = lut(0xe, filler | (aw << 1));
+        bool valid = lut(0xe, mw | (mr << 1));
+        bool slot = lut(0xb, ready | (valid << 1));
+        bool old = lut(0x32, er | (slot << 1) | (ew << 2));
+        bool fc = lut(ready_cut_policy::from_core_mask, l | (d << 1) | (s << 2) | (f << 3) | (r << 4) | (w << 5));
+        bool next = lut(ready_cut_policy::root_mask, mr | (mw << 1) | (filler << 2) | (fc << 3) | (ready << 4));
+        EXPECT_EQ(old, next) << row;
+    }
 }
