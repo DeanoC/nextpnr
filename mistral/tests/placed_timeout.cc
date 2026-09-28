@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <map>
+#include <set>
 #include <sstream>
 #include "gtest/gtest.h"
 #include "json_frontend.h"
@@ -60,6 +61,73 @@ TEST(PlacedTimeoutTest, DisabledIsIdentifierNeutral)
     EXPECT_TRUE(ctx.cells.empty());
     EXPECT_TRUE(ctx.nets.empty());
 }
+// Test-only reconstruction of pack.cc constrain_carries(). The generic JSON
+// writer preserves BELs but omits cluster and relative-placement metadata.
+static void restore_snapshot_carries(Context &ctx, const std::string &prefix)
+{
+    std::set<IdString> visited;
+    int arithmetic_count = 0, chains = 0;
+    for (const auto &entry : ctx.cells) {
+        CellInfo *cell = entry.second.get();
+        if (cell->type != id_MISTRAL_ALUT_ARITH)
+            continue;
+        ++arithmetic_count;
+        ASSERT_EQ(cell->cluster, ClusterId());
+        ASSERT_TRUE(cell->constr_children.empty());
+    }
+    for (const auto &entry : ctx.cells) {
+        CellInfo *cell = entry.second.get();
+        if (cell->type != id_MISTRAL_ALUT_ARITH)
+            continue;
+        auto cin = cell->getPort(id_CI);
+        if (cin && cin->driver.cell)
+            continue;
+        std::vector<CellInfo *> chain;
+        CellInfo *cursor = cell;
+        while (true) {
+            ASSERT_EQ(cursor->type, id_MISTRAL_ALUT_ARITH);
+            ASSERT_TRUE(visited.insert(cursor->name).second);
+            chain.push_back(cursor);
+            auto co = cursor->getPort(id_CO);
+            if (!co || co->users.empty())
+                break;
+            ASSERT_EQ(co->users.entries(), 1);
+            auto user = *co->users.begin();
+            ASSERT_EQ(user.port, id_CI);
+            cursor = user.cell;
+        }
+        ++chains;
+        cell->constr_abs_z = true;
+        cell->constr_z = 0;
+        cell->cluster = cell->name;
+        ASSERT_NE(cell->bel, BelId());
+        auto base = ctx.getBelLocation(cell->bel);
+        for (int i = 0; i < int(chain.size()); ++i) {
+            auto c = chain.at(i);
+            if (i > 0) {
+                c->constr_x = 0;
+                c->constr_y = -(i / 20);
+                c->constr_z = ((i / 2) % 10) * 6 + (i % 2);
+                c->constr_abs_z = true;
+                c->cluster = cell->name;
+                cell->constr_children.push_back(c);
+            }
+            ASSERT_NE(c->bel, BelId());
+            auto actual = ctx.getBelLocation(c->bel);
+            ASSERT_EQ(actual.x, base.x);
+            ASSERT_EQ(actual.y, base.y - i / 20);
+            ASSERT_EQ(actual.z, ((i / 2) % 10) * 6 + (i % 2));
+        }
+    }
+    ASSERT_EQ(visited.size(), size_t(arithmetic_count));
+    ASSERT_GT(chains, 0);
+    std::ofstream evidence(prefix + ".carry-import.json");
+    evidence << "{\"arithmetic_cells\":" << arithmetic_count << ",\"carry_chains\":" << chains
+             << ",\"all_cells_covered\":true,\"all_relative_bels_match\":true,"
+                "\"scope\":\"Test-only reconstruction of constrain_carries cluster and relative-layout fields\"}\n";
+    evidence.close();
+    ASSERT_TRUE(evidence.good());
+}
 TEST(PlacedTimeoutTest, ActualSnapshotPreflight)
 {
     const char *path = std::getenv("MISTRAL_TIMEOUT_TEST_SNAPSHOT");
@@ -92,13 +160,14 @@ TEST(PlacedTimeoutTest, ActualSnapshotPreflight)
     ASSERT_EQ(second->driver.cell, nullptr);
     pll->addOutput(ctx.id("outclk[1]"));
     pll->connectPort(ctx.id("outclk[1]"), second);
+    const char *prefix = std::getenv("MISTRAL_TIMEOUT_TEST_PREFIX");
+    ASSERT_TRUE(prefix && *prefix);
+    ASSERT_NO_FATAL_FAILURE(restore_snapshot_carries(ctx, prefix));
     ctx.assignArchInfo();
     for (auto &e : ctx.cells)
         if (e.second->bel != BelId())
             ASSERT_TRUE(ctx.isBelLocationValid(e.second->bel)) << e.first.str(&ctx);
     auto count = ctx.cells.size();
-    const char *prefix = std::getenv("MISTRAL_TIMEOUT_TEST_PREFIX");
-    ASSERT_TRUE(prefix && *prefix);
     diagnostic_placed_timeout(&ctx, prefix);
     EXPECT_EQ(ctx.cells.size(), count + 35);
     for (auto &e : ctx.cells)
