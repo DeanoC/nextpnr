@@ -84,6 +84,16 @@ struct TimingAnalyser
     // model), but want to re-run STA with their own calculated delays
     void set_route_delay(CellPortKey port, DelayPair value);
 
+    // Read-only per-endpoint clock-domain evidence, with the period included
+    // in setup slack exactly as in get_setup_slack for timed domain pairs.
+    struct EndpointDomainSlack
+    {
+        ClockDomainKey launch, capture;
+        delay_t setup, hold;
+        bool timed;
+    };
+    std::vector<EndpointDomainSlack> get_endpoint_domain_slacks(CellPortKey port) const;
+
     float get_criticality(CellPortKey port) const { return ports.at(port).worst_crit; }
     float get_setup_slack(CellPortKey port) const { return ports.at(port).worst_setup_slack; }
     float get_domain_setup_slack(CellPortKey port) const

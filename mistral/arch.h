@@ -504,6 +504,7 @@ struct Arch : BaseArch<ArchRanges>
     };
     const char *pip_delay_provenance(PipId pip) const;
     void dump_ready_timing(const char *prefix) const;
+    void ready_fallback_pass(const char *prefix);
     // Mistral analogue delay of one routed arc; optionally records each pip.
     bool analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay,
                             std::vector<AnalogueHop> *hops, AnalogueTrace *trace = nullptr) const;

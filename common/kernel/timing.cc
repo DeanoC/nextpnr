@@ -818,6 +818,26 @@ void TimingAnalyser::compute_slack()
     }
 }
 
+std::vector<TimingAnalyser::EndpointDomainSlack> TimingAnalyser::get_endpoint_domain_slacks(CellPortKey port) const
+{
+    std::vector<EndpointDomainSlack> result;
+    for (const auto &entry : ports.at(port).domain_pairs) {
+        const auto &pair = domain_pairs.at(entry.first);
+        const auto &launch = domains.at(pair.key.launch).key;
+        const auto &capture = domains.at(pair.key.capture).key;
+        const bool timed = timed_clocks(ctx, launch.clock, capture.clock);
+        delay_t setup = std::numeric_limits<delay_t>::max();
+        if (timed && entry.second.setup_slack != std::numeric_limits<delay_t>::max() &&
+            entry.second.setup_slack != std::numeric_limits<delay_t>::lowest()) {
+            int64_t value = int64_t(pair.period.minDelay()) + entry.second.setup_slack;
+            if (value > std::numeric_limits<delay_t>::lowest() && value < std::numeric_limits<delay_t>::max())
+                setup = delay_t(value);
+        }
+        result.push_back({launch, capture, setup, entry.second.hold_slack, timed});
+    }
+    return result;
+}
+
 void TimingAnalyser::compute_criticality()
 {
     for (auto p : topological_order) {

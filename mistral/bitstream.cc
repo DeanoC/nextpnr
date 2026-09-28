@@ -991,6 +991,7 @@ void Arch::configure_bitstream(bool observe)
 void Arch::build_bitstream()
 {
     configure_bitstream();
+    ready_fallback_pass(getenv("NEXTPNR_MISTRAL_READY_FALLBACK"));
 
     // This is a hack to run timing analysis yet again after the bitstream is
     // configured in Mistral, because the analogue simulator won't work until
