@@ -17,6 +17,7 @@ set(SOURCES
     enable_replication.cc
     placed_timeout.cc
     retained_enable.cc
+    feedback_state_copy.cc
     timeout_refine.cc
     ready_cut.cc
     command_cut.cc
@@ -34,7 +35,7 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/ready_locality.cc tests/ready_reuse.cc tests/ready_shortest.cc tests/ready_fallback.cc tests/completed_observations.cc tests/ready_timing.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc
+    TEST_SOURCES tests/ready_locality.cc tests/ready_reuse.cc tests/ready_shortest.cc tests/ready_fallback.cc tests/completed_observations.cc tests/ready_timing.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/feedback_state_copy.cc
     MAIN_SOURCE  main.cc
 )
 
