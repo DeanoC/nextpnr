@@ -517,6 +517,8 @@ struct Arch : BaseArch<ArchRanges>
         int64_t hops = 0;
     };
     bool pip_delay_calibrated = false;
+    // Private, opt-in placement experiment. Read once before any placement.
+    bool hps_ready_pin_predict = false;
     // Set when a bitstream is requested, so build_bitstream() will run the
     // analogue signoff after routing and that is the timing gate. Without
     // it the router's own table-model check has to stay the gate.

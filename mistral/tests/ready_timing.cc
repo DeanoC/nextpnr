@@ -6,6 +6,38 @@
 #include "gtest/gtest.h"
 #include "nextpnr.h"
 USING_NEXTPNR_NAMESPACE
+TEST(ReadyTimingTest, HpsReadyPlacementPredictionUsesActualOutputPinWireWhenEnabled)
+{
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    const char *prior = std::getenv("NEXTPNR_MISTRAL_HPS_READY_PIN_PREDICT");
+    std::string saved = prior ? prior : "";
+    bool had_prior = prior != nullptr;
+    unsetenv("NEXTPNR_MISTRAL_HPS_READY_PIN_PREDICT");
+    Context baseline(args);
+    BelId source = baseline.getBelByLocation(Loc(52, 53, 0));
+    BelId sink = baseline.getBelByLocation(Loc(30, 26, 48));
+    ASSERT_NE(source, BelId());
+    ASSERT_NE(sink, BelId());
+    ASSERT_EQ(baseline.getBelType(source), baseline.id("cyclonev_hps_interface_fpga2sdram"));
+    WireId wire = baseline.getBelPinWire(source, baseline.id("cmd_ready_1"));
+    ASSERT_NE(wire, WireId());
+    EXPECT_EQ(wire.node.t(), CycloneV::GIN);
+    EXPECT_EQ(wire.node.x(), 51);
+    EXPECT_EQ(wire.node.y(), 64);
+    EXPECT_EQ(baseline.predictDelay(source, baseline.id("cmd_ready_1"), sink, baseline.id("A")), 4370);
+    setenv("NEXTPNR_MISTRAL_HPS_READY_PIN_PREDICT", "1", 1);
+    Context enabled(args);
+    EXPECT_EQ(enabled.predictDelay(source, enabled.id("cmd_ready_1"), sink, enabled.id("A")), 5435);
+    EXPECT_EQ(enabled.predictDelay(source, enabled.id("cmd_ready_2"), sink, enabled.id("A")), 4370);
+    setenv("NEXTPNR_MISTRAL_HPS_READY_PIN_PREDICT", "", 1);
+    Context empty(args);
+    EXPECT_EQ(empty.predictDelay(source, empty.id("cmd_ready_1"), sink, empty.id("A")), 4370);
+    if (had_prior)
+        setenv("NEXTPNR_MISTRAL_HPS_READY_PIN_PREDICT", saved.c_str(), 1);
+    else
+        unsetenv("NEXTPNR_MISTRAL_HPS_READY_PIN_PREDICT");
+}
 TEST(ReadyTimingTest, ActualHpsReadyInputWaveFailureIsExplained)
 {
     ArchArgs args;

@@ -900,6 +900,15 @@ delay_t Arch::predictDelay(BelId src_bel, IdString src_pin, BelId dst_bel, IdStr
         return 20;
     Loc src_loc = getBelLocation(src_bel);
     Loc dst_loc = getBelLocation(dst_bel);
+    if (hps_ready_pin_predict && src_pin == id("cmd_ready_1") &&
+        getBelType(src_bel) == id_cyclonev_hps_interface_fpga2sdram) {
+        // The HPS atom is at (52,53), but this output enters the fabric at
+        // GIN(51,64). Route from the physical source pin for this experiment.
+        WireId wire = getBelPinWire(src_bel, src_pin);
+        NPNR_ASSERT(wire != WireId() && wire.node.t() == CycloneV::GIN);
+        src_loc.x = wire.node.x();
+        src_loc.y = wire.node.y();
+    }
     int x_diff = std::abs(dst_loc.x - src_loc.x);
     int y_diff = std::abs(dst_loc.y - src_loc.y);
     if (x_diff == 0 && y_diff == 0) {
@@ -963,4 +972,3 @@ void Arch::dump_analogue_arcs(const std::string &path) const
 }
 
 NEXTPNR_NAMESPACE_END
-

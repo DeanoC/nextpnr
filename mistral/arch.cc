@@ -35,6 +35,7 @@
 
 #include "cyclonev.h"
 #include "dsp.h"
+#include <cstdlib>
 
 NEXTPNR_NAMESPACE_BEGIN
 
@@ -136,6 +137,12 @@ bool Arch::has_port(CycloneV::block_type_t bt, int x, int y, int bi, CycloneV::p
 Arch::Arch(ArchArgs args)
 {
     this->args = args;
+    const char *pin_predict = std::getenv("NEXTPNR_MISTRAL_HPS_READY_PIN_PREDICT");
+    if (pin_predict && *pin_predict) {
+        if (std::string(pin_predict) != "1")
+            log_error("NEXTPNR_MISTRAL_HPS_READY_PIN_PREDICT accepts only 1 or empty.\n");
+        hps_ready_pin_predict = true;
+    }
     // Set architecture defaults before generic command-line setup. Keeping
     // these in settings also lets explicit options and programmatic callers
     // override them without Arch::place silently replacing their values.
