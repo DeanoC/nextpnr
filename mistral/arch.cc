@@ -835,6 +835,7 @@ BoundingBox Arch::getRouteBoundingBox(WireId src, WireId dst) const
 }
 
 void diagnostic_placed_timeout(Context *, const char *);
+void diagnostic_retained_enable(Context *, const char *, bool);
 
 bool Arch::place()
 {
@@ -903,6 +904,7 @@ bool Arch::place()
     if (enable_replication_budget)
         replicate_enables(enable_replication_budget);
     diagnostic_placed_timeout(getCtx(), std::getenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT"));
+    diagnostic_retained_enable(getCtx(), std::getenv("NEXTPNR_MISTRAL_RETAINED_ENABLE"), true);
 
     getCtx()->attrs[id_step] = std::string("place");
     archInfoToAttributes();
