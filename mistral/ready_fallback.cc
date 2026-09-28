@@ -166,6 +166,56 @@ void Arch::ready_fallback_pass(const char *prefix)
     archInfoToAttributes();
     auto graph = json(ctx);
     auto original_pins = pins(ctx);
+    // This is a routed context. LAB route-through insertion rewires FF.DATAIN
+    // without refreshing placement's cached ffInfo.datain. Preserve and audit
+    // the baseline placement-check vector; do not repair that cache here.
+    using Validity = std::map<IdString, std::tuple<BelId, bool, std::string>>;
+    auto placement_validity = [&]() {
+        Validity result;
+        for (const auto &entry : cells) {
+            auto cell = entry.second.get();
+            if (cell->bel == BelId())
+                continue;
+            bool valid = isBelLocationValid(cell->bel, false);
+            std::string reason;
+            const auto &data = bel_data(cell->bel);
+            if (!valid && data.type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB, id_MISTRAL_FF)) {
+                if (!is_alm_legal(data.lab_data.lab, data.lab_data.alm))
+                    reason += "alm;";
+                if (!check_lab_input_count(data.lab_data.lab))
+                    reason += "lab_input_count;";
+                if (data.type == id_MISTRAL_FF && !is_lab_ctrlset_legal(data.lab_data.lab))
+                    reason += "lab_control_set;";
+                if (!check_mlab_groups(data.lab_data.lab))
+                    reason += "mlab_group;";
+            }
+            if (reason.empty())
+                reason = valid ? "valid" : "other";
+            result.emplace(entry.first, std::make_tuple(cell->bel, valid, reason));
+        }
+        return result;
+    };
+    const auto baseline_validity = placement_validity();
+    size_t baseline_invalid = 0;
+    for (const auto &entry : baseline_validity)
+        baseline_invalid += !std::get<1>(entry.second);
+    auto validity_evidence = [&](const char *suffix) {
+        auto current = placement_validity();
+        NPNR_ASSERT(current == baseline_validity);
+        std::ofstream f(std::string(prefix) + suffix);
+        f << "cell\tbel\tbefore_valid\tafter_valid\tbefore_reason\tafter_reason\n";
+        for (const auto &entry : baseline_validity) {
+            const auto &after = current.at(entry.first);
+            f << entry.first.str(ctx) << '\t' << getBelName(std::get<0>(entry.second)).str(ctx) << '\t'
+              << std::get<1>(entry.second) << '\t' << std::get<1>(after) << '\t' << std::get<2>(entry.second) << '\t'
+              << std::get<2>(after) << '\n';
+        }
+        f.close();
+        NPNR_ASSERT(f);
+    };
+    validity_evidence(".before.placement-validity.tsv");
+    log_info("Ready fallback baseline placement-check census: %zu of %zu bound cells report invalid in routed phase.\n",
+             baseline_invalid, baseline_validity.size());
     std::map<const PortRef *, std::pair<bool, Quad>> old_cache;
     for (auto &e : analogue_arc_cache)
         old_cache[e.first] = {e.second.ok, quad(e.second.delay)};
@@ -183,6 +233,7 @@ void Arch::ready_fallback_pass(const char *prefix)
             if (e.second.get() != target)
                 NPNR_ASSERT(tree(e.second.get()) == routes.at(e.first));
         NPNR_ASSERT(pins(ctx) == original_pins && json(ctx) == graph);
+        NPNR_ASSERT(placement_validity() == baseline_validity);
         NPNR_ASSERT(analogue_arc_cache.size() == old_cache.size());
         for (auto &e : analogue_arc_cache) {
             if (e.first->cell->getPort(e.first->port) == target)
@@ -273,6 +324,8 @@ void Arch::ready_fallback_pass(const char *prefix)
                    << now.constraint << '\n';
             ok &= ready_fallback_policy::clock_ok(c.second.achieved, now.achieved);
         }
+        clocks.flush();
+        NPNR_ASSERT(clocks);
         return ok;
     };
     std::ofstream trials(std::string(prefix) + ".candidates.tsv");
@@ -317,6 +370,8 @@ void Arch::ready_fallback_pass(const char *prefix)
                 invariant();
                 trials << i << '\t' << candidate.variant << "\t0\t0\t0\t0\t0\t" << before.worst
                        << "\t0\t0\tarch_unavailable\n";
+                trials.flush();
+                NPNR_ASSERT(trials);
                 continue;
             }
             complete(ctx, target);
@@ -334,6 +389,8 @@ void Arch::ready_fallback_pass(const char *prefix)
                        : !clock_ok ? "clock_regression"
                                    : "insufficient_gain")
                    << '\n';
+            trials.flush();
+            NPNR_ASSERT(trials);
             if (eligible && now.worst > best_worst) {
                 best_worst = now.worst;
                 chosen = i;
@@ -354,9 +411,7 @@ void Arch::ready_fallback_pass(const char *prefix)
     NPNR_ASSERT(guards(".guards.tsv", final) && clock_guard(-1, final));
     NPNR_ASSERT(final.worst == best_worst && (chosen < 0 || ready_fallback_policy::gain_ok(before.worst, final.worst)));
     ctx->check();
-    for (auto &c : cells)
-        if (c.second->bel != BelId())
-            NPNR_ASSERT(isBelLocationValid(c.second->bel, false));
+    validity_evidence(".placement-validity.tsv");
     // ROUTING is serialized from attributes, so refresh only after all invariants
     // compared against the original graph. Final --write must describe this tree.
     archInfoToAttributes();
@@ -373,7 +428,8 @@ void Arch::ready_fallback_pass(const char *prefix)
           << "\",\"sink_wire\":\"" << nameOfWire(sink_wires[0]) << "\",\"prior\":" << prior
           << ",\"candidate_margin\":" << cfg.candidate_margin
           << ",\"candidate_unbounded\":" << (cfg.candidate_unbounded ? "true" : "false")
-          << ",\"candidate_expand_k\":" << cfg.candidate_expand_k
+          << ",\"candidate_expand_k\":" << cfg.candidate_expand_k << ",\"before_invalid_bels\":" << baseline_invalid
+          << ",\"after_invalid_bels\":" << baseline_invalid << ",\"placement_check_vector_preserved\":true"
           << ",\"calibration_unchanged\":true,\"graph_preserved\":true,\"placements_preserved\":true,\"unrelated_"
              "routes_preserved\":true,\"unrelated_cache_preserved\":true,\"ready_cache_ok\":false,\"net_udata_"
              "restored\":true}\n";

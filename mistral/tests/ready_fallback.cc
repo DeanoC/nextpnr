@@ -135,3 +135,60 @@ TEST(ReadyFallbackTest, CpuCandidatesReserveUnrelatedRoutingAndLeaveArchUnchange
     // generation itself must leave all architecture wire bindings untouched.
     EXPECT_EQ(ctx.getBoundWireNet(alternative), nullptr);
 }
+TEST(ReadyFallbackTest, RouteThroughInsertionLeavesPlacementCacheFromEarlierPhase)
+{
+    ArchArgs a;
+    a.device = "5CSEBA6U23I7";
+    Context ctx(a);
+    ctx.createNet(ctx.id("$PACKER_GND_NET"));
+    ctx.createNet(ctx.id("$PACKER_VCC_NET"));
+    auto clock = ctx.createNet(ctx.id("clock"));
+    auto datain = ctx.createNet(ctx.id("fabric_data"));
+    auto ff = ctx.createCell(ctx.id("phase_ff"), id_MISTRAL_FF);
+    for (auto pin : {id_CLK, id_ENA, id_ACLR, id_SCLR, id_SLOAD, id_SDATA, id_DATAIN})
+        ff->addInput(pin);
+    ff->addOutput(id_Q);
+    ff->connectPort(id_CLK, clock);
+    ff->connectPort(id_DATAIN, datain);
+    ff->pin_data[id_ENA].state = PIN_1;
+    ff->pin_data[id_ACLR].state = PIN_1;
+    ff->pin_data[id_SCLR].state = PIN_0;
+    ff->pin_data[id_SLOAD].state = PIN_0;
+    auto lut = ctx.createCell(ctx.id("opposite_lut"), id_MISTRAL_ALUT4);
+    lut->params[id_LUT] = 0x1234;
+    for (auto pin : {id_A, id_B, id_C, id_D}) {
+        lut->addInput(pin);
+        lut->connectPort(pin, ctx.createNet(ctx.idf("input_%s", pin.c_str(&ctx))));
+    }
+    lut->addOutput(id_Q);
+    lut->connectPort(id_Q, ctx.createNet(ctx.id("lut_output")));
+    ctx.assignArchInfo();
+    BelId ff_bel, lut_bel;
+    for (auto bel : ctx.getBelsByTile(30, 20)) {
+        auto z = ctx.getBelLocation(bel).z;
+        if (z == 2 && ctx.getBelType(bel) == id_MISTRAL_FF)
+            ff_bel = bel;
+        if (z == 1 && ctx.isValidBelForCellType(lut->type, bel))
+            lut_bel = bel;
+    }
+    ASSERT_NE(ff_bel, BelId());
+    ASSERT_NE(lut_bel, BelId());
+    ctx.bindBel(ff_bel, ff, STRENGTH_WEAK);
+    ctx.bindBel(lut_bel, lut, STRENGTH_WEAK);
+    ASSERT_TRUE(ctx.isBelLocationValid(ff_bel));
+    ASSERT_EQ(ff->ffInfo.datain, datain);
+    auto data = ctx.bel_data(ff_bel).lab_data;
+    ctx.reassign_alm_inputs(data.lab, data.alm);
+    auto inserted = ctx.cells.at(ctx.id("phase_ff$ROUTETHRU")).get();
+    ASSERT_EQ(ff->getPort(id_DATAIN), inserted->getPort(id_Q));
+    ASSERT_EQ(inserted->getPort(id_A), datain);
+    EXPECT_EQ(ff->ffInfo.datain, datain);
+    EXPECT_NE(ff->ffInfo.datain, ff->getPort(id_DATAIN));
+    EXPECT_FALSE(ctx.isBelLocationValid(ff_bel));
+    EXPECT_FALSE(ctx.is_alm_legal(data.lab, data.alm));
+    // Test-only refresh isolates the cause. The final route diagnostic must
+    // preserve the live cached metadata and compare its baseline census.
+    ctx.assign_ff_info(ff);
+    ctx.update_bel(ff_bel);
+    EXPECT_TRUE(ctx.isBelLocationValid(ff_bel));
+}

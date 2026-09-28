@@ -38,3 +38,16 @@ physical acceptance. The fresh full flow must establish exact baseline bytes,
 complete independent route/state proofs, legality and final timing. Imported
 routed JSON is not a substitute: scaffold loading locks strengths and does not
 reconstruct the complete calibrated model and clock context.
+
+
+The final diagnostic compares the complete per-cell/BEL placement-check vector
+against its routed baseline after every trial, restore and final selection.
+It does not require all placement checks to be true after routing: LAB route-through
+insertion rewires FF.DATAIN while leaving the earlier ffInfo.datain
+cache untouched. A real backend fixture demonstrates this phase difference and
+isolates the cause with a test-only cache refresh. The diagnostic does not refresh
+live placement caches or change packing. Before/final placement-validity TSVs
+record every bound cell, its result and available component failure reasons;
+the audit records equal invalid counts. This census is separate from target
+route availability/connectivity and exact graph/pin/BEL preservation checks.
+Trial and clock rows are flushed immediately so an aborted run retains evidence.
