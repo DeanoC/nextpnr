@@ -834,6 +834,8 @@ BoundingBox Arch::getRouteBoundingBox(WireId src, WireId dst) const
     return bounds;
 }
 
+void diagnostic_placed_timeout(Context *, const char *);
+
 bool Arch::place()
 {
     std::string placer = str_or_default(settings, id_placer, defaultPlacer);
@@ -900,6 +902,7 @@ bool Arch::place()
 
     if (enable_replication_budget)
         replicate_enables(enable_replication_budget);
+    diagnostic_placed_timeout(getCtx(), std::getenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT"));
 
     getCtx()->attrs[id_step] = std::string("place");
     archInfoToAttributes();

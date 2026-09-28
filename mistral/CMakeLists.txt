@@ -10,6 +10,7 @@ set(SOURCES
     constids.inc
     delay.cc
     enable_replication.cc
+    placed_timeout.cc
     dsp.h
     dsp.cc
     fes_slot.cc
@@ -24,7 +25,7 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/fes_cram.cc tests/enable_replication/backend.cc
+    TEST_SOURCES tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc
     MAIN_SOURCE  main.cc
 )
 
