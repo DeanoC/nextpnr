@@ -8,9 +8,11 @@
 #include "nextpnr.h"
 #include "placed_timeout_region.h"
 #include "retained_enable_policy.h"
+#include "timeout_refine_policy.h"
 NEXTPNR_NAMESPACE_BEGIN
 void diagnostic_placed_timeout(Context *, const char *);
 void diagnostic_retained_enable(Context *, const char *, bool);
+void diagnostic_timeout_refine(Context *, const char *, bool);
 NEXTPNR_NAMESPACE_END
 USING_NEXTPNR_NAMESPACE
 TEST(PlacedTimeoutRegionTest, OldRootNeighborhoodsExpandOnlyRequestedDomain)
@@ -74,6 +76,8 @@ TEST(PlacedTimeoutTest, DisabledIsIdentifierNeutral)
     diagnostic_placed_timeout(&ctx, "");
     diagnostic_retained_enable(&ctx, nullptr, false);
     diagnostic_retained_enable(&ctx, "", false);
+    diagnostic_timeout_refine(&ctx, nullptr, false);
+    diagnostic_timeout_refine(&ctx, "", false);
     if (had_region)
         setenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT_REGION", saved_region.c_str(), 1);
     else
@@ -194,8 +198,19 @@ TEST(PlacedTimeoutTest, ActualSnapshotPreflight)
     EXPECT_EQ(ctx.cells.size(), count + 35);
     const char *retained = std::getenv("MISTRAL_RETAINED_ENABLE_TEST_PREFIX");
     diagnostic_retained_enable(&ctx, retained, false);
+    diagnostic_timeout_refine(&ctx, std::getenv("MISTRAL_TIMEOUT_REFINE_TEST_PREFIX"), false);
     EXPECT_EQ(ctx.cells.size(), count + 35 + int(retained && *retained));
     for (auto &e : ctx.cells)
         if (e.second->bel != BelId())
             EXPECT_TRUE(ctx.isBelLocationValid(e.second->bel)) << e.first.str(&ctx);
+}
+
+TEST(TimeoutRefinePolicyTest, EveryEndpointAndWorstMustImprove)
+{
+    EXPECT_TRUE(timeout_refine_policy::improves({100, 200}, {101, 200}));
+    EXPECT_FALSE(timeout_refine_policy::improves({100, 200}, {101, 199}));
+    EXPECT_FALSE(timeout_refine_policy::improves({100, 200}, {100, 201}));
+    EXPECT_FALSE(timeout_refine_policy::improves({100, 200}, {100.5, 200}));
+    EXPECT_FALSE(timeout_refine_policy::improves({}, {}));
+    EXPECT_FALSE(timeout_refine_policy::improves({100}, {NAN}));
 }
