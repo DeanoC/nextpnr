@@ -47,9 +47,7 @@ TEST(ReadyTimingTest, ActualHpsReadyInputWaveFailureIsExplained)
     EXPECT_FALSE(trace.hops[0].completed);
     EXPECT_EQ(trace.hops[0].input_rise_samples, 0);
     EXPECT_EQ(trace.hops[0].input_fall_samples, 0);
-    ASSERT_EQ(hops.size(), 1);
-    EXPECT_EQ(hops[0].rise, 0);
-    EXPECT_EQ(hops[0].fall, 0);
+    EXPECT_TRUE(hops.empty());
     // Exercise the complete exporter on the real first-hop failure without a
     // full route/bitgen fixture. This source fails before circuit simulation.
     ctx.bitstream_configured = true;
@@ -57,6 +55,8 @@ TEST(ReadyTimingTest, ActualHpsReadyInputWaveFailureIsExplained)
     for (auto &user : net->users)
         ctx.analogue_arc_cache.emplace(&user, Arch::AnalogueArc{DelayQuad(), false});
     auto pip = PipId(src.node, dst.node);
+    // Artificial legacy seed tests exporter behavior; the collector no longer
+    // creates this entry from the unfinished hop.
     ctx.pip_delay_observed[pip] = 0;
     ctx.pip_delay_calibrated = true;
     auto &cal = ctx.pip_type_calibration[CycloneV::GIN];

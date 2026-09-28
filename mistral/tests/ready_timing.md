@@ -12,8 +12,9 @@ It records the failure reason and hop, mode, source/sink pip wires, rise/fall
 input-wave sample counts, and whether each hop completed. Generated, P2P and
 NO_DELAY zero-delay hops are distinguished from an unfinished empty-input-wave
 hop and later unattempted hops. Existing return values, assertions, numerical
-calculations, routing and calibration are unchanged. The existing accumulation
-of observations from failed jobs is intentionally retained.
+calculations, routing and calibration are unchanged. Failed jobs can contribute valid completed prefixes to observations. Unfinished
+hops are excluded; completed generated, P2P and NO_DELAY zero observations remain
+valid. The state manifest explicitly records this completed-only contract.
 
 Outputs:
 

@@ -30,7 +30,7 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/ready_timing.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc
+    TEST_SOURCES tests/completed_observations.cc tests/ready_timing.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc
     MAIN_SOURCE  main.cc
 )
 

@@ -769,14 +769,19 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
             return false;
         }
 
+        // An unfinished hop is not a zero-delay observation. Retain completed
+        // prefixes even when a later hop cannot be simulated.
+        AnalogueHop hop{pip, 0, 0, 0};
         if (hops)
-            hops->push_back(AnalogueHop{pip, getPipDelayTable(pip).maxDelay(), 0, 0});
+            hop.table = getPipDelayTable(pip).maxDelay();
 
         if (src.is_nextpnr_created()) {
             if (trace_hop) {
                 trace_hop->status = "generated_source";
                 trace_hop->completed = true;
             }
+            if (hops)
+                hops->push_back(hop);
             continue;
         }
 
@@ -800,6 +805,8 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
                 trace_hop->status = "p2p";
                 trace_hop->completed = true;
             }
+            if (hops)
+                hops->push_back(hop);
             if (inverting == mistral::CycloneV::INV_YES || inverting == mistral::CycloneV::INV_PROGRAMMABLE)
                 inverted = !inverted;
             continue;
@@ -810,6 +817,8 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
                 trace_hop->status = "no_delay";
                 trace_hop->completed = true;
             }
+            if (hops)
+                hops->push_back(hop);
             if (inverting)
                 inverted = !inverted;
             continue;
@@ -859,9 +868,11 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
             output_delay_sum[edge].mi += output_delays[edge].mi;
             output_delay_sum[edge].mx += output_delays[edge].mx;
             if (hops)
-                (edge ? hops->back().fall : hops->back().rise) = delay_t(output_delays[edge].mx * 1e12);
+                (edge ? hop.fall : hop.rise) = delay_t(output_delays[edge].mx * 1e12);
         }
 
+        if (hops)
+            hops->push_back(hop);
         if (trace_hop) {
             trace_hop->status = "simulated";
             trace_hop->completed = true;

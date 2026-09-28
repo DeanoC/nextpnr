@@ -250,7 +250,7 @@ void Arch::dump_ready_timing(const char *prefix) const
           << ",\"complete_paths\":" << complete_count << ",\"observed_pips\":" << pip_delay_observed.size()
           << ",\"calibration_types\":256,\"calibration_unchanged\":true,\"cache_unchanged\":true,\"routes_unchanged\":"
              "true,\"placements_unchanged\":true,\"context_checksum_unchanged\":true,\"wire_delays_zero_contract\":"
-             "true,\"failed_jobs_may_contribute_partial_hops\":true}\n";
+             "true,\"failed_jobs_may_contribute_partial_hops\":true,\"observations_completed_hops_only\":true}\n";
     state.close();
     if (!state)
         log_error("Cannot write ready timing state.\n");
