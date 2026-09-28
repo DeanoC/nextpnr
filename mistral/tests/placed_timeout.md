@@ -31,8 +31,17 @@ provide transactional recovery for reuse of the same context.
 `MISTRAL_TIMEOUT_TEST_SNAPSHOT` to the qualified baseline replication-after JSON
 with its `.pins.tsv`, and `MISTRAL_TIMEOUT_TEST_PREFIX` to the evidence prefix.
 The test restores effective pin states and one known packed PLL output lost by
-JSON scalar/index collision. This is diagnostic import, not supported route
-replay; the fresh in-process run remains authoritative.
+JSON scalar/index collision. It also reconstructs carry clusters and relative
+constraints using the same CI/CO chain algorithm as `pack.cc::constrain_carries`,
+checking unique coverage and every saved BEL against that relative layout.
+The `.carry-import.json` sidecar records this reconstruction.
+
+Earlier preflights omitted carry cluster metadata: JSON stores BELs but omits
+clusters, so those imports admitted sites in carry-occupied LABs that the fresh
+run correctly excluded. Their artifacts remain historical limited preflights.
+Corrected preflights use separate prefixes and must be compared against actual
+fresh-run sites. This is diagnostic import, not supported route replay; the
+fresh in-process run remains authoritative.
 
 The generated include corresponds to payload SHA
 `74b9712ebcf19a5a51bd1f48210732054a2d29d7d5c406622e9d195893985713`.
