@@ -6,7 +6,7 @@
 #include "ready_shortest_backend.h"
 NEXTPNR_NAMESPACE_BEGIN
 std::vector<GpuRouteTree> ready_shortest_candidate(Context *ctx, NetInfo *target, WireId source, WireId sink,
-                                                   const char *prefix)
+                                                   const char *prefix, bool relaxed)
 {
     // Fence availability can depend on whether a target pip is currently bound.
     // This diagnostic requires a static graph through target ripup/rebinding.
@@ -37,15 +37,17 @@ std::vector<GpuRouteTree> ready_shortest_candidate(Context *ctx, NetInfo *target
                     auto dst = ctx->getPipDstWire(pip);
                     auto owner = ctx->getBoundWireNet(dst), pip_owner = ctx->getBoundPipNet(pip);
                     bool foreign = owner && owner != target;
-                    bool allowed = !foreign && ctx->checkPipAvailForNet(pip, target);
+                    // Relax ownership only; static architecture restrictions still apply.
+                    bool allowed = relaxed ? !ctx->is_pip_blocked(pip) && ctx->fes_pip_preserves_cram(pip)
+                                           : !foreign && ctx->checkPipAvailForNet(pip, target);
                     auto pd = ctx->getPipDelay(pip).maxDelay(), wd = ctx->getWireDelay(dst).maxDelay();
                     NPNR_ASSERT(pd >= 0 && wd >= 0);
                     edges.push_back({entry.first, int64_t(pd) + wd, allowed});
                     ef << id << '\t' << entry.first << '\t' << ctx->nameOfWire(dst) << '\t' << pd << '\t' << wd << '\t'
                        << allowed << '\t'
-                       << (allowed   ? ""
-                           : foreign ? "other_wire"
-                                     : "pip_unavailable")
+                       << (allowed               ? ""
+                           : !relaxed && foreign ? "other_wire"
+                                                 : "pip_unavailable")
                        << '\t' << (owner ? owner->name.str(ctx) : "") << '\t'
                        << (pip_owner ? pip_owner->name.str(ctx) : "") << '\n';
                     ++edge_count;
@@ -65,10 +67,9 @@ std::vector<GpuRouteTree> ready_shortest_candidate(Context *ctx, NetInfo *target
     nf.close();
     NPNR_ASSERT(nf);
     std::ofstream jf(std::string(prefix) + ".shortest.json");
-    jf << "{\"algorithm\":\"dijkstra\",\"queue_order\":\"distance,node_id\",\"stop\":\"sink_pop\",\"graph\":\"fixed_"
-          "occupancy\","
-       << "\"source_id\":" << source.node.v << ",\"sink_id\":" << sink.node.v
-       << ",\"source_wire_delay_ps\":" << ctx->getWireDelay(source).maxDelay()
+    jf << "{\"algorithm\":\"dijkstra\",\"queue_order\":\"distance,node_id\",\"stop\":\"sink_pop\",\"graph\":\""
+       << (relaxed ? "occupancy_relaxed" : "fixed_occupancy") << "\",\"source_id\":" << source.node.v
+       << ",\"sink_id\":" << sink.node.v << ",\"source_wire_delay_ps\":" << ctx->getWireDelay(source).maxDelay()
        << ",\"reachable\":" << (result.reachable ? "true" : "false") << ",\"distance_ps\":" << result.distance
        << ",\"settled\":" << result.settled << ",\"expanded\":" << result.expanded << ",\"edges\":" << edge_count
        << "}\n";
@@ -78,7 +79,7 @@ std::vector<GpuRouteTree> ready_shortest_candidate(Context *ctx, NetInfo *target
         return {};
     NPNR_ASSERT(result.distance <= std::numeric_limits<delay_t>::max());
     GpuRouteTree tree;
-    tree.variant = 200;
+    tree.variant = relaxed ? 201 : 200;
     tree.route_delay = result.distance;
     uint32_t current = sink.node.v;
     while (current != source.node.v) {
@@ -89,6 +90,21 @@ std::vector<GpuRouteTree> ready_shortest_candidate(Context *ctx, NetInfo *target
     }
     tree.wires.emplace_back(source, PipId());
     std::reverse(tree.wires.begin(), tree.wires.end());
+    if (relaxed) {
+        std::ofstream blockers(std::string(prefix) + ".shortest-blockers.tsv");
+        blockers << "wire\tpip_src\twire_owner\tpip_owner\n";
+        for (const auto &step : tree.wires) {
+            auto owner = ctx->getBoundWireNet(step.first);
+            auto pip_owner = step.second == PipId() ? nullptr : ctx->getBoundPipNet(step.second);
+            if ((owner && owner != target) || (pip_owner && pip_owner != target))
+                blockers << ctx->nameOfWire(step.first) << '\t'
+                         << (step.second == PipId() ? "" : ctx->nameOfWire(ctx->getPipSrcWire(step.second))) << '\t'
+                         << (owner ? owner->name.str(ctx) : "") << '\t' << (pip_owner ? pip_owner->name.str(ctx) : "")
+                         << '\n';
+        }
+        blockers.close();
+        NPNR_ASSERT(blockers);
+    }
     return {tree};
 }
 NEXTPNR_NAMESPACE_END

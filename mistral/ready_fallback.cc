@@ -94,6 +94,9 @@ void Arch::ready_fallback_pass(const char *prefix)
     const char *shortest_env = std::getenv("NEXTPNR_MISTRAL_READY_SHORTEST");
     const bool exact = shortest_env && *shortest_env;
     NPNR_ASSERT(!exact || std::string(shortest_env) == "1");
+    const char *relaxed_env = std::getenv("NEXTPNR_MISTRAL_READY_RELAXED");
+    const bool relaxed = relaxed_env && *relaxed_env;
+    NPNR_ASSERT(!relaxed || (exact && std::string(relaxed_env) == "1"));
     auto ctx = getCtx();
     NPNR_ASSERT(bitstream_configured && analogue_cache_valid && pip_delay_calibrated);
     NetInfo *target = nullptr;
@@ -234,13 +237,13 @@ void Arch::ready_fallback_pass(const char *prefix)
         for (auto &e : cells)
             NPNR_ASSERT(std::make_pair(e.second->bel, e.second->belStrength) == bels.at(e.first));
         for (auto &e : nets)
-            if (e.second.get() != target)
+            if (relaxed || e.second.get() != target)
                 NPNR_ASSERT(tree(e.second.get()) == routes.at(e.first));
         NPNR_ASSERT(pins(ctx) == original_pins && json(ctx) == graph);
         NPNR_ASSERT(placement_validity() == baseline_validity);
         NPNR_ASSERT(analogue_arc_cache.size() == old_cache.size());
         for (auto &e : analogue_arc_cache) {
-            if (e.first->cell->getPort(e.first->port) == target)
+            if (!relaxed && e.first->cell->getPort(e.first->port) == target)
                 NPNR_ASSERT(!e.second.ok);
             else
                 NPNR_ASSERT(std::make_pair(e.second.ok, quad(e.second.delay)) == old_cache.at(e.first));
@@ -290,12 +293,13 @@ void Arch::ready_fallback_pass(const char *prefix)
         f.write(reinterpret_cast<const char *>(bytes.data()), bytes.size());
         f.close();
         NPNR_ASSERT(f);
+        return bytes;
     };
     const auto before = evaluate();
     NPNR_ASSERT(before.finite);
     invariant();
     snapshot(".before.json");
-    rbf(".before.rbf");
+    const auto before_rbf = rbf(".before.rbf");
     dump_ready_timing((std::string(prefix) + ".before.trace").c_str());
     auto guards = [&](const std::string &suffix, const Evaluation &e) {
         std::ofstream f(std::string(prefix) + suffix);
@@ -351,7 +355,7 @@ void Arch::ready_fallback_pass(const char *prefix)
         std::vector<GpuRouteTree> candidates;
         if (exact) {
             const auto original_scalar = ctx->getNetinfoRouteDelay(target, *target->users.begin());
-            candidates = ready_shortest_candidate(ctx, target, source_wire, sink_wires[0], prefix);
+            candidates = ready_shortest_candidate(ctx, target, source_wire, sink_wires[0], prefix, relaxed);
             // The currently bound route is an available path in this graph.
             NPNR_ASSERT(candidates.size() == 1 && candidates[0].route_delay <= original_scalar);
         } else {
@@ -379,6 +383,16 @@ void Arch::ready_fallback_pass(const char *prefix)
                    << int(w.second.second) << '\n';
             tf.close();
             NPNR_ASSERT(tf);
+            if (relaxed) {
+                // This hypothetical path can cross other nets. Never bind it or
+                // evaluate its timing; report only its frozen scalar lower bound.
+                invariant();
+                trials << i << '\t' << candidate.variant << "\t0\t0\t0\t0\t0\t" << before.worst
+                       << "\t0\t0\trelaxed_unbound\n";
+                trials.flush();
+                NPNR_ASSERT(trials);
+                continue;
+            }
             bool bound = bind_tree(ctx, target, proposed);
             if (!bound) {
                 NPNR_ASSERT(bind_tree(ctx, target, original));
@@ -419,13 +433,28 @@ void Arch::ready_fallback_pass(const char *prefix)
             invariant();
         }
     }
-    for (auto &e : nets)
-        e.second->udata = udata.at(e.first);
-    NPNR_ASSERT(bind_tree(ctx, target, best));
+    for (auto &e : nets) {
+        if (relaxed)
+            NPNR_ASSERT(e.second->udata == udata.at(e.first));
+        else
+            e.second->udata = udata.at(e.first);
+    }
+    if (!relaxed)
+        NPNR_ASSERT(bind_tree(ctx, target, best));
     complete(ctx, target);
-    configure_bitstream(false);
+    if (!relaxed)
+        configure_bitstream(false);
     invariant();
     auto final = evaluate();
+    if (relaxed) {
+        invariant();
+        NPNR_ASSERT(ctx->settings == original_settings && chosen == -1);
+        for (size_t i = 0; i < before.endpoints.size(); ++i)
+            NPNR_ASSERT(before.endpoints[i].setup == final.endpoints[i].setup &&
+                        before.endpoints[i].hold == final.endpoints[i].hold);
+        for (auto &clock : before.clocks)
+            NPNR_ASSERT(clock.second.achieved == final.clocks.at(clock.first).achieved);
+    }
     NPNR_ASSERT(guards(".guards.tsv", final) && clock_guard(-1, final));
     NPNR_ASSERT(final.worst == best_worst && (chosen < 0 || ready_fallback_policy::gain_ok(before.worst, final.worst)));
     ctx->check();
@@ -434,14 +463,18 @@ void Arch::ready_fallback_pass(const char *prefix)
     // compared against the original graph. Final --write must describe this tree.
     archInfoToAttributes();
     snapshot(".after.json");
-    rbf(".after.rbf");
+    const auto after_rbf = rbf(".after.rbf");
+    NPNR_ASSERT(!relaxed || before_rbf == after_rbf);
     dump_ready_timing((std::string(prefix) + ".after.trace").c_str());
     trials.close();
     clocks.close();
     NPNR_ASSERT(trials && clocks);
     std::ofstream audit(std::string(prefix) + ".audit.json");
     audit << "{\"selected_trial\":" << chosen << ",\"max_candidates\":" << count << ",\"search_mode\":\""
-          << (exact ? "exact_dijkstra" : "gpu_candidates") << "\",\"generated\":" << generated
+          << (relaxed ? "relaxed_dijkstra"
+              : exact ? "exact_dijkstra"
+                      : "gpu_candidates")
+          << "\",\"generated\":" << generated << ",\"read_only\":" << (relaxed ? "true" : "false")
           << ",\"endpoints\":224,\"interior_luts\":5,\"gain_threshold_ps\":20,\"worst_before_ps\":" << before.worst
           << ",\"worst_after_ps\":" << final.worst << ",\"source_wire\":\"" << nameOfWire(source_wire)
           << "\",\"sink_wire\":\"" << nameOfWire(sink_wires[0]) << "\",\"prior\":" << prior

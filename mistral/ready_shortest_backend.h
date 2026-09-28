@@ -4,6 +4,6 @@
 #include "nextpnr.h"
 NEXTPNR_NAMESPACE_BEGIN
 std::vector<GpuRouteTree> ready_shortest_candidate(Context *ctx, NetInfo *target, WireId source, WireId sink,
-                                                   const char *prefix);
+                                                   const char *prefix, bool relaxed = false);
 NEXTPNR_NAMESPACE_END
 #endif

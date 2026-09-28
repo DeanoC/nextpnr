@@ -102,6 +102,10 @@ TEST(ReadyShortestTest, DisabledPrefixIgnoresModeBeforeIdentifierAllocation)
     const char *old = std::getenv("NEXTPNR_MISTRAL_READY_SHORTEST");
     std::string saved = old ? old : "";
     bool existed = old;
+    const char *old_relaxed = std::getenv("NEXTPNR_MISTRAL_READY_RELAXED");
+    std::string saved_relaxed = old_relaxed ? old_relaxed : "";
+    bool relaxed_existed = old_relaxed;
+    setenv("NEXTPNR_MISTRAL_READY_RELAXED", "invalid-relaxed-mode-ignored", 1);
     setenv("NEXTPNR_MISTRAL_READY_SHORTEST", "invalid-mode-ignored", 1);
     auto before = ctx.id("before-mode-only");
     ctx.ready_fallback_pass(nullptr);
@@ -111,4 +115,61 @@ TEST(ReadyShortestTest, DisabledPrefixIgnoresModeBeforeIdentifierAllocation)
         setenv("NEXTPNR_MISTRAL_READY_SHORTEST", saved.c_str(), 1);
     else
         unsetenv("NEXTPNR_MISTRAL_READY_SHORTEST");
+    if (relaxed_existed)
+        setenv("NEXTPNR_MISTRAL_READY_RELAXED", saved_relaxed.c_str(), 1);
+    else
+        unsetenv("NEXTPNR_MISTRAL_READY_RELAXED");
+}
+
+TEST(ReadyShortestTest, RelaxedOccupancyRetainsStaticReservationAndEveryBinding)
+{
+    ArchArgs a;
+    a.device = "5CSEBA6U23I7";
+    Context ctx(a);
+    auto target = ctx.createNet(ctx.id("relaxed-target")), other = ctx.createNet(ctx.id("relaxed-other"));
+    auto src = ctx.add_wire(1, 1, ctx.id("src")), old = ctx.add_wire(2, 1, ctx.id("old"));
+    auto occupied = ctx.add_wire(2, 2, ctx.id("occupied")), reserved = ctx.add_wire(2, 3, ctx.id("reserved"));
+    auto gate = ctx.add_wire(1, 3, ctx.id("reservation-source")), dst = ctx.add_wire(3, 1, ctx.id("dst"));
+    auto p0 = ctx.add_pip(src, old), p1 = ctx.add_pip(old, dst);
+    auto q0 = ctx.add_pip(src, occupied), q1 = ctx.add_pip(occupied, dst);
+    auto r0 = ctx.add_pip(src, reserved), r1 = ctx.add_pip(reserved, dst);
+    ctx.add_pip(gate, reserved);
+    auto &reserved_info = ctx.wires.at(reserved);
+    auto found = std::find(reserved_info.wires_uphill.begin(), reserved_info.wires_uphill.end(), gate);
+    ASSERT_NE(found, reserved_info.wires_uphill.end());
+    reserved_info.flags |= WireInfo::RESERVED_ROUTE | (found - reserved_info.wires_uphill.begin());
+    ASSERT_TRUE(ctx.is_pip_blocked(r0));
+    ctx.pip_delay_calibrated = true;
+    for (auto p : {p0, p1})
+        ctx.pip_delay_observed[p] = 20;
+    ctx.pip_delay_observed[q0] = 3;
+    ctx.pip_delay_observed[q1] = 4;
+    ctx.pip_delay_observed[r0] = 0;
+    ctx.pip_delay_observed[r1] = 0;
+    ctx.bindWire(src, target, STRENGTH_WEAK);
+    ctx.bindPip(p0, target, STRENGTH_WEAK);
+    ctx.bindPip(p1, target, STRENGTH_WEAK);
+    // Foreign destination and pip ownership: bindPip deliberately establishes
+    // this collector fixture without a logical source; it is not a legal FPGA.
+    ctx.bindPip(q0, other, STRENGTH_WEAK);
+    ASSERT_EQ(ctx.getBoundPipNet(q0), other);
+    auto observed = ctx.pip_delay_observed;
+    auto exact = ready_shortest_candidate(&ctx, target, src, dst, "/tmp/mistral-ready-relaxed-fixed");
+    ASSERT_EQ(exact.size(), 1);
+    EXPECT_EQ(exact[0].route_delay, 40);
+    auto relaxed = ready_shortest_candidate(&ctx, target, src, dst, "/tmp/mistral-ready-relaxed-test", true);
+    ASSERT_EQ(relaxed.size(), 1);
+    EXPECT_EQ(relaxed[0].route_delay, 7);
+    EXPECT_EQ(relaxed[0].variant, 201);
+    ASSERT_EQ(relaxed[0].wires.size(), 3);
+    EXPECT_EQ(relaxed[0].wires[1].first, occupied);
+    EXPECT_EQ(ctx.getBoundWireNet(occupied), other);
+    EXPECT_EQ(ctx.getBoundPipNet(q0), other);
+    EXPECT_EQ(ctx.getBoundPipNet(p0), target);
+    EXPECT_EQ(ctx.getBoundPipNet(p1), target);
+    EXPECT_EQ(ctx.getBoundWireNet(reserved), nullptr);
+    EXPECT_EQ(ctx.getBoundPipNet(r0), nullptr);
+    EXPECT_EQ(ctx.pip_delay_observed, observed);
+    EXPECT_EQ(target->wires.size(), 3);
+    EXPECT_EQ(other->wires.size(), 1);
 }

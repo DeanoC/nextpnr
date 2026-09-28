@@ -30,3 +30,18 @@ blocked shortcut, zero cycles, deterministic ties, unreachable sink, negative
 and overflowing costs), actual calibrated backend resource exclusion and route
 binding/restoration, and disabled-prefix identifier neutrality. Its generated
 wire graph is a backend API fixture, not a physical FPGA acceptance test.
+
+Adding `NEXTPNR_MISTRAL_READY_RELAXED=1` selects a read-only occupancy-relaxed
+search (variant 201). It requires shortest mode and the fallback prefix. Only
+foreign wire/pip ownership is ignored; reserved-route and CRAM restrictions
+remain enforced. The certificate retains actual owners, and a separate
+`shortest-blockers.tsv` lists foreign resources on the hypothetical path.
+
+This mode never binds the hypothetical path, rebinds the original, or triggers
+bitstream reconfiguration. The full route/cache/placement state and final RBF
+must remain identical, as must all 224 endpoint setup/hold values and every
+clock's Fmax. Its distance is a lower bound for a less constrained routing graph,
+not a routable implementation or a measured timing improvement. The backend
+fixture verifies a foreign wire/pip shortcut while a cheaper statically reserved
+alternative remains unavailable; the ordinary fixed-occupancy search is checked
+in the same fixture.
