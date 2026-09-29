@@ -889,9 +889,10 @@ struct MistralBitgen
             } else {
                 cv->bmux_b_set(block_type, pos, en_en[ce_idx], 0, false);
             }
-            // ACLR
+            // ACLR. TCLR_SEL/BCLR_SEL are numeric, so a bool write does not land.
             int aclr_idx = alm_data.aclr_idx[i / 2];
-            cv->bmux_b_set(block_type, pos, clr_sel[i / 2], alm, aclr_idx == 1);
+            if (aclr_idx == 1)
+                NPNR_ASSERT(cv->bmux_n_set(block_type, pos, clr_sel[i / 2], alm, 1));
             if (ff->ffInfo.ctrlset.aclr.inverted)
                 cv->bmux_b_set(block_type, pos, aclr_inv[aclr_idx], 0, true);
             // SCLR
@@ -941,12 +942,29 @@ struct MistralBitgen
         auto block_type = ctx->labs.at(lab).is_mlab ? CycloneV::MLAB : CycloneV::LAB;
 
         const std::array<CycloneV::bmux_type_t, 2> aclr_inp{CycloneV::ACLR0_SEL, CycloneV::ACLR1_SEL};
+        const std::array<CycloneV::bmux_type_t, 2> aclr_dedicated{CycloneV::ACLR0, CycloneV::ACLR1};
+        // Quartus points an unused slot 0 at the dedicated ACLR0 line. Slot 1
+        // stays at its DATAIN default unless an open flop actually selects it,
+        // in which case the dedicated ACLR1 line is the inactive clear.
+        bool open_on_slot[2] = {false, false};
+        for (uint8_t alm = 0; alm < 10; alm++) {
+            const auto &alm_data = lab_data.alms.at(alm);
+            for (int half = 0; half < 2; half++) {
+                for (int j = 0; j < 2; j++) {
+                    CellInfo *ff = ctx->getBoundBelCell(alm_data.ff_bels.at(half * 2 + j));
+                    if (ff == nullptr || ff->ffInfo.ctrlset.aclr.net != nullptr)
+                        continue;
+                    int slot = alm_data.aclr_idx[half];
+                    if (slot >= 0 && slot < 2)
+                        open_on_slot[slot] = true;
+                }
+            }
+        }
         for (int i = 0; i < 2; i++) {
-            // Quartus seems to set unused ACLRs to ACLR0
             if (lab_data.aclr_used[i])
                 cv->bmux_m_set(block_type, pos, aclr_inp[i], 0, (i == 1) ? CycloneV::DIN2 : CycloneV::DIN3);
-            else if (i == 0)
-                cv->bmux_m_set(block_type, pos, aclr_inp[i], 0, CycloneV::ACLR0);
+            else if (i == 0 || open_on_slot[i])
+                cv->bmux_m_set(block_type, pos, aclr_inp[i], 0, aclr_dedicated[i]);
         }
         for (int i = 0; i < 3; i++) {
             // Check for fabric->clock routing

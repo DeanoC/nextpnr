@@ -641,6 +641,7 @@ struct LabCtrlSetWorker
     {
         // Strictly speaking the constraint is up to 2 unique CLK and 3 CLK+ENA pairs. For now we simplify this to 1 CLK
         // and 3 ENA though.
+        bool open_aclr = false;
         for (uint8_t alm = 0; alm < 10; alm++) {
             for (uint8_t i = 0; i < 4; i++) {
                 const CellInfo *ff = arch->getBoundBelCell(arch->labs.at(lab).alms.at(alm).ff_bels.at(i));
@@ -656,6 +657,8 @@ struct LabCtrlSetWorker
                     return false;
                 if (!check_assign_sig(ena, ff->ffInfo.ctrlset.ena))
                     return false;
+                if (ff->ffInfo.ctrlset.aclr.net == nullptr)
+                    open_aclr = true;
             }
         }
         // Check for overuse of the shared, LAB-wide datain signals
@@ -688,6 +691,10 @@ struct LabCtrlSetWorker
             // Failed to find any free ENA-capable DATAIN
             return false;
         }
+        // An open ACLR pin still follows the half's clear slot. Both slots
+        // already carrying a clear leaves that flop on a live reset.
+        if (open_aclr && aclr[0].net != nullptr && aclr[1].net != nullptr)
+            return false;
         return true;
     }
 };
@@ -792,6 +799,39 @@ void Arch::assign_control_sets(uint32_t lab)
                     alm_data.aclr_idx[i / 2] = j;
                     break;
                 }
+            }
+        }
+    }
+    // An open ACLR pin still follows BCLR_SEL/TCLR_SEL, which default to
+    // slot 0. An unused slot's SEL defaults to a DATAIN, live whenever
+    // another flop uses that slot. Park every open half on a free slot.
+    // Both slots in use is rejected by is_lab_ctrlset_legal.
+    int inactive_aclr = -1;
+    for (int j = 0; j < 2; j++) {
+        if (!lab_data.aclr_used[j]) {
+            inactive_aclr = j;
+            break;
+        }
+    }
+    if (inactive_aclr >= 0) {
+        for (uint8_t alm = 0; alm < 10; alm++) {
+            auto &alm_data = lab_data.alms.at(alm);
+            for (int half = 0; half < 2; half++) {
+                bool open = false;
+                bool driven = false;
+                bool placed = false;
+                for (int j = 0; j < 2; j++) {
+                    const CellInfo *ff = getBoundBelCell(alm_data.ff_bels.at(half * 2 + j));
+                    if (ff == nullptr)
+                        continue;
+                    placed = true;
+                    if (ff->ffInfo.ctrlset.aclr.net == nullptr)
+                        open = true;
+                    else
+                        driven = true;
+                }
+                if (placed && open && !driven && lab_data.aclr_used[alm_data.aclr_idx[half]])
+                    alm_data.aclr_idx[half] = inactive_aclr;
             }
         }
     }
