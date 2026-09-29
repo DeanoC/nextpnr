@@ -82,7 +82,7 @@ bool Arch::balance_reduction(const std::string &root_name)
         }
         return true;
     };
-    if (!visit(visit, root) || cone.size() != 4) return false;
+    if (!visit(visit, root) || (cone.size() != 3 && cone.size() != 4)) return false;
     std::sort(cone.begin(), cone.end(), [&](CellInfo *a, CellInfo *b) { return a->name.str(ctx) < b->name.str(ctx); });
     std::map<NetInfo *, int> signals;
     std::vector<NetInfo *> by_signal;
@@ -139,7 +139,7 @@ bool Arch::balance_reduction(const std::string &root_name)
     });
     std::vector<CellInfo *> children;
     for (CellInfo *cell : cone) if (cell != root) children.push_back(cell);
-    const int sizes[] = {6, 6, 4};
+    const std::vector<int> sizes = cone.size() == 3 ? std::vector<int>{6, 5} : std::vector<int>{6, 6, 4};
     int offset = 0;
     auto rewrite = [&](CellInfo *cell, int width, uint64_t mask, const std::vector<NetInfo *> &inputs) {
         for (int i = 0; i < lut_width(cell->type); ++i) {
@@ -161,7 +161,7 @@ bool Arch::balance_reduction(const std::string &root_name)
             cell->pin_data[pin_names[i]].state = PIN_SIG;
         }
     };
-    for (int group = 0; group < 3; ++group) {
+    for (size_t group = 0; group < sizes.size(); ++group) {
         std::vector<NetInfo *> inputs;
         unsigned row = 0;
         for (int i = 0; i < sizes[group]; ++i) {
@@ -172,8 +172,13 @@ bool Arch::balance_reduction(const std::string &root_name)
         rewrite(children[group], sizes[group], uint64_t(1) << row, inputs);
         offset += sizes[group];
     }
-    rewrite(root, 3, 0x80, {children[0]->getPort(id_Q), children[1]->getPort(id_Q), children[2]->getPort(id_Q)});
-    log_info("Balanced four-LUT reduction at '%s' into 6+6+4 inputs.\n", root_name.c_str());
+    std::vector<NetInfo *> root_inputs;
+    for (CellInfo *child : children) root_inputs.push_back(child->getPort(id_Q));
+    rewrite(root, int(children.size()), uint64_t(1) << ((1u << children.size()) - 1), root_inputs);
+    if (cone.size() == 3)
+        log_info("Balanced three-LUT reduction at '%s' into 6+5 inputs.\n", root_name.c_str());
+    else
+        log_info("Balanced four-LUT reduction at '%s' into 6+6+4 inputs.\n", root_name.c_str());
     return true;
 }
 NEXTPNR_NAMESPACE_END

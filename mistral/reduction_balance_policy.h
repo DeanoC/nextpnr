@@ -23,13 +23,14 @@ struct Reduction {
     std::vector<Literal> literals;
 };
 
-// Only accept an irredundant conjunction of sixteen distinct external literals.
+// Only accept irredundant conjunctions of eleven literals in three LUTs or
+// sixteen literals in four LUTs. Both can use the same cells in two levels.
 // Each LUT must encode a unique input assignment for the output polarity needed
 // by its parent. This deliberately excludes general Boolean factoring.
 inline Reduction recognize(const std::vector<Node> &network, int root)
 {
     Reduction result;
-    if (network.size() != 4) return result;
+    if (network.size() != 3 && network.size() != 4) return result;
     std::map<int, const Node *> nodes;
     for (const auto &node : network)
         if (!nodes.emplace(node.output, &node).second || node.output < 0 || node.inputs.empty() ||
@@ -61,7 +62,8 @@ inline Reduction recognize(const std::vector<Node> &network, int root)
         }
         return true;
     };
-    if (!descend(descend, root, true) || visited.size() != 4 || literals.size() != 16)
+    const size_t expected_literals = network.size() == 3 ? 11 : 16;
+    if (!descend(descend, root, true) || visited.size() != network.size() || literals.size() != expected_literals)
         return result;
     for (const auto &entry : nodes) result.outputs.push_back(entry.first);
     for (const auto &entry : literals) result.literals.push_back({entry.first, entry.second});

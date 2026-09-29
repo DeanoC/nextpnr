@@ -35,12 +35,27 @@ def design(exposed_child=False):
                                 "netnames": {"errors": {"bits": inputs}, "out": {"bits": [21]}}}}}
 
 
+def add_eleven_cone(fixture):
+    top = fixture["modules"]["top"]
+    inputs = list(range(32, 43))
+    top["cells"].update({
+        "eleven_leaf": lut(4, 1 << 15, inputs[:4], 43),
+        "eleven_inner": lut(5, 1 << 31, inputs[4:8] + [43], 44),
+        "eleven_root": lut(4, 1 << 15, inputs[8:] + [44], 45),
+    })
+    top["ports"].update({"renamed_inputs": {"direction": "input", "bits": inputs},
+                         "renamed_output": {"direction": "output", "bits": [45]}})
+    top["netnames"].update({"renamed_inputs": {"bits": inputs}, "renamed_output": {"bits": [45]}})
+
+
 class ReductionBalanceCliTest(unittest.TestCase):
     def run_design(self, exposed_child=False, root="root", output_attribute=None, root_table=None,
-                   clock_net=None, step=None, mode=None):
+                   clock_net=None, step=None, mode=None, eleven=False):
         with tempfile.TemporaryDirectory(prefix="reduction-balance-") as directory:
             folder = Path(directory)
             fixture = design(exposed_child)
+            if eleven:
+                add_eleven_cone(fixture)
             if step is not None:
                 fixture["modules"]["top"]["attributes"]["step"] = step
             if output_attribute is not None:
@@ -60,7 +75,8 @@ class ReductionBalanceCliTest(unittest.TestCase):
             command = [BINARY, "--device", "5CSEBA6U23I7", "--json", str(folder / "input.json"),
                        "--no-pack", "--no-place", "--no-route", "--write", str(folder / "output.json")]
             if root is not None:
-                command += ["--balance-reduction-root", root]
+                for selected in ([root] if isinstance(root, str) else root):
+                    command += ["--balance-reduction-root", selected]
             if mode is not None:
                 command += [mode]
                 if mode == "--fes-cart":
@@ -79,6 +95,19 @@ class ReductionBalanceCliTest(unittest.TestCase):
             self.assertEqual(cells[name]["type"], kind)
         self.assertEqual(int(cells["root"]["parameters"]["LUT"], 2), 0x80)
 
+    def test_eleven_literal_cone_and_repeatable_root_selection(self):
+        for roots in (["eleven_root"], ["root", "eleven_root"], ["eleven_root", "root"]):
+            with self.subTest(roots=roots):
+                code, log, output = self.run_design(root=roots, eleven=True)
+                self.assertEqual(code, 0, log)
+                cells = output["modules"]["top"]["cells"]
+                self.assertEqual(cells["eleven_root"]["type"], "MISTRAL_ALUT2")
+                self.assertEqual(cells["eleven_inner"]["type"], "MISTRAL_ALUT6")
+                self.assertEqual(cells["eleven_leaf"]["type"], "MISTRAL_ALUT5")
+                self.assertEqual(int(cells["eleven_root"]["parameters"]["LUT"], 2), 0x8)
+                self.assertEqual(cells["root"]["type"],
+                                 "MISTRAL_ALUT3" if "root" in roots else "MISTRAL_ALUT5")
+
     def test_rejects_intermediate_output_with_an_external_user(self):
         code, log, output = self.run_design(exposed_child=True)
         self.assertNotEqual(code, 0, log)
@@ -89,6 +118,13 @@ class ReductionBalanceCliTest(unittest.TestCase):
         code, log, output = self.run_design(root="absent")
         self.assertNotEqual(code, 0, log)
         self.assertIsNone(output)
+
+    def test_repeated_selection_failure_writes_no_partial_output(self):
+        for roots in (["root", "absent"], ["absent", "root"]):
+            with self.subTest(roots=roots):
+                code, log, output = self.run_design(root=roots)
+                self.assertNotEqual(code, 0, log)
+                self.assertIsNone(output)
 
     def test_rejects_protected_root_output(self):
         for attribute in ("keep", "dont_touch"):
