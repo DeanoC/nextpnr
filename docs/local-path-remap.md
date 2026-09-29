@@ -22,7 +22,11 @@ one adjacent tile with identical z coordinates.
 
 Frozen, kept, region-constrained and clustered cells, occupied memory/arithmetic
 LABs, top-level boundary nets and clock nets are excluded. Ordinary internal nets
-sourced by hard blocks can supply the copy. The pass considers at most eight
+sourced by hard blocks can supply the copy. Composed inputs may also feed an
+unfrozen modeled hard-block data input with a connected constrained clock, provided
+that endpoint has a timed setup path and its individual predicted slack does not
+worsen. Untimed data, clock and I/O consumers remain excluded; translated FF
+outputs retain the stricter ordinary-consumer-only rule. The pass considers at most eight
 reported cones, empty LUT sites within a three-tile Manhattan radius, and twelve
 ranked tile/translation variants per cone. Ranking is deterministic. Qualification
 requires complete occupied-BEL legality, at least 250 ps improvement of the selected

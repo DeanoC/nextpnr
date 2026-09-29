@@ -6,6 +6,7 @@
 #include "enable_replication_policy.h"
 #include "local_remap_policy.h"
 #include <cmath>
+#include <limits>
 #include <map>
 #include <set>
 #include <tuple>
@@ -61,7 +62,7 @@ bool Arch::remap_critical(const std::string &report, int selection)
             protected_labs.insert(lab(c.second.get()));
     std::set<NetInfo *> boundary;
     for (auto &p : ctx->ports) if (p.second.net) boundary.insert(p.second.net);
-    auto ordinary_net = [&](NetInfo *n) {
+    auto ordinary_net = [&](NetInfo *n, bool allow_timed_data = false) {
         if (!n || !n->driver.cell || n->is_global || n->clkconstr || n->region || !n->wires.empty() ||
             n->constant_value != IdString() || boundary.count(n) || n->attrs.count(id("keep")) ||
             n->attrs.count(id("dont_touch"))) return false;
@@ -69,8 +70,16 @@ bool Arch::remap_critical(const std::string &report, int selection)
         // Hard-block sources remain allowed; these are checks on consumers.
         for (auto user : n->users) {
             int clocks = 0;
-            if (!(width(user.cell->type) || user.cell->type == id_MISTRAL_FF) ||
-                getPortTimingClass(user.cell, user.port, clocks) == TMG_CLOCK_INPUT) return false;
+            auto kind = getPortTimingClass(user.cell, user.port, clocks);
+            if (kind == TMG_CLOCK_INPUT) return false;
+            if (width(user.cell->type) || user.cell->type == id_MISTRAL_FF) continue;
+            if (!allow_timed_data || kind != TMG_REGISTER_INPUT || clocks <= 0 || !movable(user.cell) ||
+                getBelPinsForCellPin(user.cell, user.port).empty()) return false;
+            for (int i = 0; i < clocks; ++i) {
+                auto info = getPortClockingInfo(user.cell, user.port, i);
+                auto clock = user.cell->getPort(info.clock_port);
+                if (!clock || !clock->clkconstr || clock->clkconstr->period.minDelay() <= 0) return false;
+            }
         }
         return true;
     };
@@ -153,7 +162,7 @@ bool Arch::remap_critical(const std::string &report, int selection)
                     if (n) eligible = false;
                     result.push_back({state == PIN_0 ? policy::ZERO : policy::ONE, false}); continue;
                 }
-                if ((state != PIN_SIG && state != PIN_INV) || !ordinary_net(n) || n == old_net ||
+                if ((state != PIN_SIG && state != PIN_INV) || !ordinary_net(n, true) || n == old_net ||
                     (upstream && n == mid)) { eligible = false; continue; }
                 if (n == mid) { result.push_back({policy::INTERMEDIATE, state == PIN_INV}); continue; }
                 auto it = std::find(inputs.begin(), inputs.end(), n);
@@ -177,6 +186,18 @@ bool Arch::remap_critical(const std::string &report, int selection)
         if (cells.count(cname) || nets.count(nname) || net_aliases.count(nname)) continue;
         TimingAnalyser before(ctx); before.setup(false, false, true);
         auto old_hold = holds(before);
+        auto timed_slack = [](float value) {
+            // TimingAnalyser uses INT_MAX, not infinity, for an untimed endpoint.
+            return std::isfinite(value) && value < float(std::numeric_limits<delay_t>::max());
+        };
+        std::map<std::pair<IdString, IdString>, float> boundary_slacks;
+        for (auto input : inputs) for (auto user : input->users) {
+            if (width(user.cell->type) || user.cell->type == id_MISTRAL_FF) continue;
+            float slack = before.get_setup_slack(CellPortKey(user));
+            if (!timed_slack(slack)) eligible = false;
+            boundary_slacks[{user.cell->name, user.port}] = slack;
+        }
+        if (!eligible) continue;
         float old_slack = std::numeric_limits<float>::max();
         for (auto c : group) old_slack = std::min(old_slack, before.get_setup_slack(CellPortKey(c->name, id_ENA)));
         int count = std::max(2, int(composition.signals.size()));
@@ -272,10 +293,15 @@ bool Arch::remap_critical(const std::string &report, int selection)
                 auto &now = after.get_timing_result().clock_fmax;
                 if (!now.count(clock.first) || now.at(clock.first).achieved + 1e-4 < clock.second.achieved) clocks = false;
             }
+            bool boundaries = true;
+            for (auto &endpoint : boundary_slacks) {
+                float now = after.get_setup_slack(CellPortKey(endpoint.first.first, endpoint.first.second));
+                if (!timed_slack(now) || now < endpoint.second) boundaries = false;
+            }
             bool hold = enable_replication_policy::hold_nonregressing(old_hold, holds(after));
-            log_info("Local remap trial inner=%s outer=%s lab=%d,%d bel=%s shift=%d,%d gain=%.0fps clocks=%d hold=%d\n",
-                nameOf(inner),nameOf(outer),center.first,center.second,nameOfBel(t.bel),t.dx,t.dy,slack-old_slack,int(clocks),int(hold));
-            if (!std::isfinite(slack) || !std::isfinite(old_slack) || slack < old_slack+250 || !clocks || !hold) continue;
+            log_info("Local remap trial inner=%s outer=%s lab=%d,%d bel=%s shift=%d,%d gain=%.0fps clocks=%d hold=%d boundaries=%d\n",
+                nameOf(inner),nameOf(outer),center.first,center.second,nameOfBel(t.bel),t.dx,t.dy,slack-old_slack,int(clocks),int(hold),int(boundaries));
+            if (!timed_slack(slack) || !timed_slack(old_slack) || slack < old_slack+250 || !clocks || !hold || !boundaries) continue;
             log_info("Local remap candidate %d: %s + %s -> %s, %zu ENA users, predicted gain %.0fps.\n",
                 qualified,nameOf(inner),nameOf(outer),nameOfBel(t.bel),group.size(),slack-old_slack);
             if (selection == qualified++) { keep = true; break; }

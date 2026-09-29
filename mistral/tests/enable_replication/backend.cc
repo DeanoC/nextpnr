@@ -103,6 +103,16 @@ class EnableReplicationTest : public ::testing::Test
            "to":{"cell":"near_a","port":"ENA","loc":[30,20]}}
         ]}]})";
     }
+    void drive_clock(NetInfo *net)
+    {
+        auto source = ctx->createCell(ctx->idf("%s$source", net->name.c_str(ctx.get())), id_MISTRAL_CLKBUF);
+        source->addInput(id_A); source->addOutput(id_Q); source->connectPort(id_Q, net);
+        ctx->assignArchInfo();
+        for (auto bel : ctx->getBels()) if (ctx->checkBelAvail(bel) && ctx->isValidBelForCellType(source->type, bel)) {
+            ctx->bindBel(bel, source, STRENGTH_LOCKED); return;
+        }
+        FAIL() << "No clock source BEL";
+    }
     CellInfo *clone() { auto i = ctx->cells.find(ctx->id("enable_logic$enable_replica")); return i == ctx->cells.end() ? nullptr : i->second.get(); }
 };
 
@@ -379,4 +389,55 @@ TEST_F(EnableReplicationTest, LocalRemapKeepsBoundarySourceRegistersFixed)
     }
     EXPECT_GT(trials, 0);
     ctx->check();
+}
+
+TEST_F(EnableReplicationTest, LocalRemapAllowsGuardedTimedHardDataLoad)
+{
+    auto report = remap_report();
+    drive_clock(clock);
+    auto hard = ctx->createCell(ctx->id("timed_boundary"), id_cyclonev_hps_interface_fpga2sdram);
+    IdString pin = ctx->id("cmd_valid_0"), cp = ctx->id("cmd_port_clk_0");
+    hard->addInput(pin); hard->connectPort(pin, source_a->getPort(id_Q));
+    hard->addInput(cp); hard->connectPort(cp, clock);
+    ctx->assignArchInfo();
+    for (auto bel : ctx->getBels()) if (ctx->isValidBelForCellType(hard->type, bel)) {
+        ctx->bindBel(bel, hard, STRENGTH_WEAK); break;
+    }
+    auto bel = hard->bel; auto net = hard->getPort(pin);
+    TimingAnalyser before(ctx.get()); before.setup(false, false, true);
+    float slack = before.get_setup_slack(CellPortKey(hard->name, pin));
+    hard->attrs[ctx->id("dont_touch")] = 1;
+    EXPECT_FALSE(ctx->remap_critical(report, 0));
+    hard->attrs.erase(ctx->id("dont_touch"));
+    ASSERT_TRUE(ctx->remap_critical(report, 0));
+    EXPECT_EQ(hard->bel, bel); EXPECT_EQ(hard->getPort(pin), net);
+    TimingAnalyser after(ctx.get()); after.setup(false, false, true);
+    EXPECT_GE(after.get_setup_slack(CellPortKey(hard->name, pin)), slack);
+}
+
+TEST_F(EnableReplicationTest, LocalRemapRejectsUnrelatedHardCaptureClock)
+{
+    auto report = remap_report();
+    auto other = ctx->createNet(ctx->id("unrelated_clock"));
+    other->is_global = true;
+    other->clkconstr = std::make_unique<ClockConstraint>();
+    other->clkconstr->period = DelayPair(1000);
+    other->clkconstr->high = other->clkconstr->low = DelayPair(500);
+    drive_clock(other);
+    auto hard = ctx->createCell(ctx->id("untimed_boundary"), id_cyclonev_hps_interface_fpga2sdram);
+    IdString pin = ctx->id("cmd_valid_0"), cp = ctx->id("cmd_port_clk_0");
+    hard->addInput(pin); hard->connectPort(pin, source_a->getPort(id_Q));
+    hard->addInput(cp); hard->connectPort(cp, other);
+    ctx->assignArchInfo();
+    for (auto bel : ctx->getBels()) if (ctx->isValidBelForCellType(hard->type, bel)) {
+        ctx->bindBel(bel, hard, STRENGTH_WEAK); break;
+    }
+    int clock_count = 0;
+    ASSERT_EQ(ctx->getPortTimingClass(hard, pin, clock_count), TMG_REGISTER_INPUT);
+    ASSERT_EQ(clock_count, 1);
+    TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
+    EXPECT_EQ(timing.get_setup_slack(CellPortKey(hard->name, pin)), float(std::numeric_limits<delay_t>::max()));
+    auto count = ctx->cells.size();
+    EXPECT_FALSE(ctx->remap_critical(report, 0));
+    EXPECT_EQ(ctx->cells.size(), count);
 }
