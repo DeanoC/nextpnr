@@ -8,7 +8,9 @@ router. This experiment is disabled by default and is not a timing-closure guara
 
 Use identical synthesized input, device, constraints, seed and placement options
 for both runs. Relevant report cells, ports, routing edges and tile locations must
-match the live design; stale relevant paths are errors. The report is a selection
+match the live design; stale relevant paths are errors. Remapping rejects
+`--pack-only`, `--no-place`, and a non-HeAP effective placer, including a placer
+setting loaded from JSON that overrides the command line. The report is a selection
 hint, not a design-equivalence certificate or a saved Context. No pin or PLL state
 is imported from JSON.
 

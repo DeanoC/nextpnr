@@ -119,7 +119,7 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     if ((vm.count("remap-candidate") || vm.count("remap-groups")) && !vm.count("remap-critical"))
         log_error("--remap-candidate and --remap-groups require --remap-critical.\n");
     if (vm.count("remap-critical")) {
-        if (vm.count("no-place") || vm.count("fes-cart") || vm.count("fes-scaffold") ||
+        if (vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") || vm.count("fes-scaffold") ||
             (vm.count("placer") && vm["placer"].as<std::string>() != "heap"))
             log_error("Local remap requires fresh ordinary HeAP placement.\n");
         auto in = open_ifstream_and_log_error(vm["remap-critical"].as<std::string>(), "local-remap timing report");

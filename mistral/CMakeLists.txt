@@ -31,6 +31,12 @@ add_nextpnr_architecture(${family}
     MAIN_SOURCE  main.cc
 )
 
+if (BUILD_TESTS)
+    add_test(NAME nextpnr-${family}-local-remap-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/local_remap_cli.py
+                $<TARGET_FILE:nextpnr-${family}> -v)
+endif()
+
 set(MISTRAL_ROOT "" CACHE STRING "Mistral install path")
 set(MISTRAL_DONT_INSTALL ON)
 

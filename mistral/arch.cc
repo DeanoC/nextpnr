@@ -840,6 +840,9 @@ void diagnostic_retained_enable(Context *, const char *, bool);
 bool Arch::place()
 {
     std::string placer = str_or_default(settings, id_placer, defaultPlacer);
+    // JSON settings and pre-place hooks can override the command-line placer.
+    if (!local_remap_report.empty() && (placer != "heap" || fes_any_slot_region_active))
+        log_error("Local remap requires ordinary full-design HeAP placement.\n");
     if (enable_replication_budget && (placer != "heap" || fes_any_slot_region_active))
         log_error("Enable replication requires ordinary full-design HeAP placement.\n");
 
