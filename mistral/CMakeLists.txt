@@ -10,6 +10,7 @@ set(SOURCES
     constids.inc
     delay.cc
     local_remap.cc
+    capture_locality.cc
     reduction_balance.cc
     enable_replication.cc
     placed_timeout.cc

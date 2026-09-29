@@ -7,6 +7,82 @@
 
 USING_NEXTPNR_NAMESPACE
 
+NEXTPNR_NAMESPACE_BEGIN
+int capture_locality(Context *, const std::string &, int, int);
+NEXTPNR_NAMESPACE_END
+
+TEST(CaptureLocality, RenamedPipelineMovesWithoutRewiringAndHonorsProtection)
+{
+    ArchArgs args; args.device = "5CSEBA6U23I7";
+    auto ctx = std::make_unique<Context>(args);
+    ctx->settings[ctx->id("target_freq")] = 130e6;
+    auto *clock = ctx->createNet(ctx->id("arbitrary_clock"));
+    clock->is_global = true;
+    clock->clkconstr = std::make_unique<ClockConstraint>();
+    clock->clkconstr->period = DelayPair(7692);
+    clock->clkconstr->high = clock->clkconstr->low = DelayPair(3846);
+    auto *clock_driver = ctx->createCell(ctx->id("arbitrary_clock_driver"), id_MISTRAL_CLKBUF);
+    clock_driver->addOutput(id_Q); clock_driver->connectPort(id_Q,clock);
+    ctx->createNet(ctx->id("$PACKER_GND_NET"));
+    ctx->createNet(ctx->id("$PACKER_VCC_NET"));
+    auto *hard = ctx->createCell(ctx->id("renamed_fixed_source"), id_cyclonev_hps_interface_fpga2sdram);
+    auto clock_port = ctx->id("rd_clk_0"), data_port = ctx->id("rd_data_0[0]");
+    hard->addInput(clock_port); hard->connectPort(clock_port,clock);
+    hard->addOutput(data_port);
+    auto *input = ctx->createNet(ctx->id("renamed_data")); hard->connectPort(data_port,input);
+    auto ff = [&](const char *name, NetInfo *data) {
+        auto *cell = ctx->createCell(ctx->id(name),id_MISTRAL_FF);
+        for (IdString pin : {id_CLK,id_ENA,id_ACLR,id_SCLR,id_SLOAD,id_SDATA,id_DATAIN}) cell->addInput(pin);
+        cell->pin_data[id_ENA].state = PIN_1;
+        cell->pin_data[id_ACLR].state = PIN_1;
+        cell->pin_data[id_SCLR].state = PIN_0;
+        cell->pin_data[id_SLOAD].state = PIN_0;
+        cell->connectPort(id_CLK,clock); cell->connectPort(id_DATAIN,data);
+        cell->addOutput(id_Q); cell->connectPort(id_Q,ctx->createNet(ctx->idf("%s$out",name)));
+        return cell;
+    };
+    auto *capture = ff("renamed_capture",input), *downstream = ff("renamed_consumer",capture->getPort(id_Q));
+    auto other_clock_port = ctx->id("rd_clk_1"), other_data_port = ctx->id("rd_data_1[0]");
+    hard->addInput(other_clock_port); hard->connectPort(other_clock_port,clock);
+    hard->addOutput(other_data_port);
+    auto *other_input = ctx->createNet(ctx->id("unselected_channel_data")); hard->connectPort(other_data_port,other_input);
+    auto *other_capture = ff("unselected_channel_capture",other_input);
+    auto *other_downstream = ff("unselected_channel_consumer",other_capture->getPort(id_Q));
+    ctx->assignArchInfo();
+    bool bound = false;
+    for (auto bel : ctx->getBels()) if (ctx->getBelType(bel) == hard->type) { ctx->bindBel(bel,hard,STRENGTH_WEAK); bound = true; break; }
+    ASSERT_TRUE(bound);
+    ctx->bindBel(ctx->getBelByLocation(Loc(25,23,2)),capture,STRENGTH_WEAK);
+    ctx->bindBel(ctx->getBelByLocation(Loc(25,17,2)),downstream,STRENGTH_WEAK);
+    ctx->bindBel(ctx->getBelByLocation(Loc(27,23,2)),other_capture,STRENGTH_WEAK);
+    ctx->bindBel(ctx->getBelByLocation(Loc(27,17,2)),other_downstream,STRENGTH_WEAK);
+    auto other_old = other_capture->bel;
+    ASSERT_TRUE(ctx->isBelLocationValid(capture->bel));
+    auto old = capture->bel;
+    auto input_slot = capture->ports.at(id_DATAIN).user_idx, output_slot = downstream->ports.at(id_DATAIN).user_idx;
+    std::string report = "{\"critical_paths\":[{\"max_delay\":7.692,\"path\":["
+        "{\"type\":\"routing\",\"delay\":10.0,\"net\":\"renamed_data\",\"from\":{\"cell\":\"renamed_fixed_source\",\"port\":\"rd_data_0[0]\"}},"
+        "{\"type\":\"setup\",\"delay\":-0.196,\"to\":{\"cell\":\"renamed_capture\",\"port\":\"DATAIN\",\"loc\":[25,23]}}]}]}";
+    capture->attrs[ctx->id("keep")] = 1;
+    EXPECT_EQ(capture_locality(ctx.get(),report,1,24),0);
+    EXPECT_EQ(capture->bel,old);
+    capture->attrs.erase(ctx->id("keep"));
+    auto *observer = ctx->createCell(ctx->id("implicit_clock_observer"),id_MISTRAL_FF);
+    observer->addInput(id_CLK); observer->connectPort(id_CLK,capture->getPort(id_Q));
+    EXPECT_EQ(capture_locality(ctx.get(),report,64,24),0);
+    observer->disconnectPort(id_CLK); ctx->cells.erase(observer->name);
+    EXPECT_EQ(capture_locality(ctx.get(),report,64,24),1);
+    EXPECT_EQ(other_capture->bel,other_old);
+    EXPECT_NE(capture->bel,old);
+    EXPECT_EQ(capture->getPort(id_DATAIN),input);
+    EXPECT_EQ(capture->ports.at(id_DATAIN).user_idx,input_slot);
+    EXPECT_EQ(downstream->ports.at(id_DATAIN).user_idx,output_slot);
+    EXPECT_EQ(downstream->getPort(id_DATAIN),capture->getPort(id_Q));
+    EXPECT_TRUE(ctx->isBelLocationValid(capture->bel));
+    EXPECT_EQ(ctx->cells.size(),6u);
+    ctx->check();
+}
+
 using namespace local_remap_policy;
 
 TEST(LocalRemapComposition, ExhaustiveTwoInputTablesAndInvertedIntermediate)

@@ -834,6 +834,7 @@ BoundingBox Arch::getRouteBoundingBox(WireId src, WireId dst) const
     return bounds;
 }
 
+void diagnostic_capture_locality(Context *, const char *);
 void diagnostic_placed_timeout(Context *, const char *);
 void diagnostic_retained_enable(Context *, const char *, bool);
 
@@ -913,6 +914,7 @@ bool Arch::place()
         local_remap_selection >= 0)
         log_error("Requested local-remap candidate was not qualified; routing was not started.\n");
 
+    diagnostic_capture_locality(getCtx(), std::getenv("NEXTPNR_MISTRAL_CAPTURE_LOCALITY"));
     getCtx()->attrs[id_step] = std::string("place");
     archInfoToAttributes();
     return true;
