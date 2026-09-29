@@ -906,6 +906,10 @@ bool Arch::place()
     diagnostic_placed_timeout(getCtx(), std::getenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT"));
     diagnostic_retained_enable(getCtx(), std::getenv("NEXTPNR_MISTRAL_RETAINED_ENABLE"), true);
 
+    if (!local_remap_report.empty() && !remap_critical(local_remap_report, local_remap_selection) &&
+        local_remap_selection >= 0)
+        log_error("Requested local-remap candidate was not qualified; routing was not started.\n");
+
     getCtx()->attrs[id_step] = std::string("place");
     archInfoToAttributes();
     return true;

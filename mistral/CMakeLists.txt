@@ -9,6 +9,7 @@ set(SOURCES
     bitstream.cc
     constids.inc
     delay.cc
+    local_remap.cc
     enable_replication.cc
     placed_timeout.cc
     retained_enable.cc
@@ -26,7 +27,7 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/completed_observations.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc
+    TEST_SOURCES tests/completed_observations.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc
     MAIN_SOURCE  main.cc
 )
 
