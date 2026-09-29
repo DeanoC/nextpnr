@@ -471,6 +471,15 @@ void Arch::lock_fes_scaffold()
     }
     for (BelId bel : restored)
         update_bel(bel);
+    // lab_pre_route skips these locked LABs, so a V1 snapshot from before
+    // open flops were parked would otherwise keep the stale ACLR index.
+    int parked = 0;
+    for (uint32_t lab = 0; lab < labs.size(); ++lab)
+        parked += park_open_aclr(lab);
+    if (parked != 0) {
+        log_info("FES parked %d open flip-flop halves on an unused LAB clear.\n", parked);
+        save_fes_pin_maps();
+    }
     int locked = 0;
     for (auto &item : ctx->nets) {
         NetInfo *net = item.second.get();

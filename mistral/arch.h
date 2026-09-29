@@ -587,6 +587,7 @@ struct Arch : BaseArch<ArchRanges>
 
     void lab_pre_route();                                   // lab.cc
     void assign_control_sets(uint32_t lab);                 // lab.cc
+    int park_open_aclr(uint32_t lab);                          // lab.cc
     void reassign_alm_inputs(uint32_t lab, uint8_t alm);    // lab.cc
     void update_alm_input_count(uint32_t lab, uint8_t alm); // lab.cc
 
