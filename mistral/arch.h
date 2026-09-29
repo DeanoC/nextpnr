@@ -480,6 +480,7 @@ struct Arch : BaseArch<ArchRanges>
     DelayQuad getPipDelayTable(PipId pip) const;
     DelayQuad getPipDelayCalibrated(PipId pip, const DelayQuad &table) const; // analogue.cc
     bool getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay) const override; // delay.cc
+    // Observation records contain completed hops only, including valid zero delays.
     struct AnalogueHop
     {
         PipId pip;
@@ -538,6 +539,8 @@ struct Arch : BaseArch<ArchRanges>
     void assignArchInfo() override;
     bool pack() override;
     bool place() override;
+    int enable_replication_budget = 0; // Explicit opt-in; never inherited from JSON settings.
+    void replicate_enables(int budget);
     bool route() override;
 
     // -------------------------------------------------

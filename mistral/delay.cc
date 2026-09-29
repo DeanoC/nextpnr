@@ -736,11 +736,17 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         if (pll_ref_select.count(pip))
             return false;
 
+        // An unfinished hop is not a zero-delay observation. Retain completed
+        // prefixes even when a later hop cannot be simulated.
+        AnalogueHop hop{pip, 0, 0, 0};
         if (hops)
-            hops->push_back(AnalogueHop{pip, getPipDelayTable(pip).maxDelay(), 0, 0});
+            hop.table = getPipDelayTable(pip).maxDelay();
 
-        if (src.is_nextpnr_created())
+        if (src.is_nextpnr_created()) {
+            if (hops)
+                hops->push_back(hop);
             continue;
+        }
 
         // A nextpnr-created destination (bel pin) never appears among the
         // circuit outputs; the nodes that drive one have no analogue circuit
@@ -753,12 +759,16 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         auto inverting = cyclonev->rnode_is_inverting(src_ri);
 
         if (mode == mistral::CycloneV::RTM_P2P) {
+            if (hops)
+                hops->push_back(hop);
             if (inverting == mistral::CycloneV::INV_YES || inverting == mistral::CycloneV::INV_PROGRAMMABLE)
                 inverted = !inverted;
             continue;
         }
 
         if (mode == mistral::CycloneV::RTM_NO_DELAY) {
+            if (hops)
+                hops->push_back(hop);
             if (inverting)
                 inverted = !inverted;
             continue;
@@ -798,9 +808,11 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
             output_delay_sum[edge].mi += output_delays[edge].mi;
             output_delay_sum[edge].mx += output_delays[edge].mx;
             if (hops)
-                (edge ? hops->back().fall : hops->back().rise) = delay_t(output_delays[edge].mx * 1e12);
+                (edge ? hop.fall : hop.rise) = delay_t(output_delays[edge].mx * 1e12);
         }
 
+        if (hops)
+            hops->push_back(hop);
         if (inverting == mistral::CycloneV::INV_YES || inverting == mistral::CycloneV::INV_PROGRAMMABLE)
             inverted = !inverted;
     }
@@ -885,4 +897,3 @@ void Arch::dump_analogue_arcs(const std::string &path) const
 }
 
 NEXTPNR_NAMESPACE_END
-

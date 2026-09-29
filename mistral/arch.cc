@@ -136,6 +136,11 @@ bool Arch::has_port(CycloneV::block_type_t bt, int x, int y, int bi, CycloneV::p
 Arch::Arch(ArchArgs args)
 {
     this->args = args;
+    // Set architecture defaults before generic command-line setup. Keeping
+    // these in settings also lets explicit options and programmatic callers
+    // override them without Arch::place silently replacing their values.
+    settings[id("placerHeap/beta")] = std::to_string(0.5);
+    settings[id("placerHeap/criticalityExponent")] = std::to_string(7);
     this->cyclonev = mistral::CycloneV::get_model(args.device);
     NPNR_ASSERT(this->cyclonev != nullptr);
 
@@ -829,9 +834,14 @@ BoundingBox Arch::getRouteBoundingBox(WireId src, WireId dst) const
     return bounds;
 }
 
+void diagnostic_placed_timeout(Context *, const char *);
+void diagnostic_retained_enable(Context *, const char *, bool);
+
 bool Arch::place()
 {
     std::string placer = str_or_default(settings, id_placer, defaultPlacer);
+    if (enable_replication_budget && (placer != "heap" || fes_any_slot_region_active))
+        log_error("Enable replication requires ordinary full-design HeAP placement.\n");
 
     if (placer == "heap") {
         PlacerHeapCfg cfg(getCtx());
@@ -846,8 +856,6 @@ bool Arch::place()
         cfg.hpwl_scale_x = 1;
         cfg.hpwl_scale_y = 2;
 
-        cfg.beta = 0.5; // TODO: find a good value of beta for sensible ALM spreading
-        cfg.criticalityExponent = 7;
         if (fes_any_slot_region_active) {
             // A cart confined to a small rectangle can cycle evictions for
             // a long time; report the cycling cell instead of running on.
@@ -892,6 +900,11 @@ bool Arch::place()
     } else {
         log_error("Mistral architecture does not support placer '%s'\n", placer.c_str());
     }
+
+    if (enable_replication_budget)
+        replicate_enables(enable_replication_budget);
+    diagnostic_placed_timeout(getCtx(), std::getenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT"));
+    diagnostic_retained_enable(getCtx(), std::getenv("NEXTPNR_MISTRAL_RETAINED_ENABLE"), true);
 
     getCtx()->attrs[id_step] = std::string("place");
     archInfoToAttributes();

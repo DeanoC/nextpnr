@@ -24,6 +24,7 @@
 #include "jsonwrite.h"
 #include "log.h"
 #include "timing.h"
+#include "enable_replication_policy.h"
 
 USING_NEXTPNR_NAMESPACE
 
@@ -57,6 +58,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("fes-slot-clock", po::value<std::string>(), "exact shell clock net for FES cart cells");
     specific.add_options()("fes-cram-region", po::value<std::string>(), "half-open CRAM x0,y0,x1,y1 region for new scaffold routing");
 
+    specific.add_options()("replicate-enables", po::value<int>(),
+                           "replicate timing-critical LUT enables after placement (budget 0..8, default 0)");
     return specific;
 }
 
@@ -94,6 +97,19 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
+    // JSON provenance never enables a pass, including an explicit zero budget.
+    // Avoid interning a new identifier before placement when no old key exists.
+    ctx->enable_replication_budget = 0;
+    IdString stale_replication_setting;
+    for (const auto &setting : ctx->settings)
+        if (setting.first.str(ctx) == "mistral/replicateEnables") { stale_replication_setting = setting.first; break; }
+    if (stale_replication_setting != IdString()) ctx->settings.erase(stale_replication_setting);
+    if (vm.count("replicate-enables")) {
+        int budget = vm["replicate-enables"].as<int>();
+        if (!enable_replication_policy::valid_budget(budget))
+            log_error("--replicate-enables must be between 0 and 8.\n");
+        ctx->enable_replication_budget = budget;
+    }
     const bool routed = ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "route";
     if (vm.count("fes-cram-region")) {
         if (!routed)
