@@ -710,25 +710,14 @@ bool Arch::is_lab_ctrlset_legal(uint32_t lab) const
 void Arch::lab_pre_route()
 {
     log_info("Preparing LABs for routing...\n");
+    // A BEL lock fixes the site. It must not skip LUT pin legalisation or
+    // flip-flop route-through: the cart LUT would stay on the default comb
+    // pinmap, and a locked flip-flop with no LUT would keep its data on the
+    // fabric pin chosen at placement.
     for (uint32_t lab = 0; lab < labs.size(); lab++) {
-        bool frozen = false;
-        for (uint8_t alm = 0; alm < 10 && !frozen; alm++) {
-            const auto &alm_data = labs.at(lab).alms.at(alm);
-            for (BelId bel : {alm_data.lut_bels[0], alm_data.lut_bels[1], alm_data.ff_bels[0], alm_data.ff_bels[1],
-                              alm_data.ff_bels[2], alm_data.ff_bels[3]}) {
-                CellInfo *cell = getBoundBelCell(bel);
-                if (cell != nullptr && cell->belStrength >= STRENGTH_LOCKED) {
-                    frozen = true;
-                    break;
-                }
-            }
-        }
-        if (frozen)
-            continue;
         assign_control_sets(lab);
-        for (uint8_t alm = 0; alm < 10; alm++) {
+        for (uint8_t alm = 0; alm < 10; alm++)
             reassign_alm_inputs(lab, alm);
-        }
     }
 }
 
@@ -802,8 +791,8 @@ void Arch::assign_control_sets(uint32_t lab)
             }
         }
     }
-    // Same rule as a restored FES_LABSTATE_V1 shell. Frozen LABs skip
-    // this function, so the scaffold lock parks them itself.
+    // Park open flops on a full route. --fes-scaffold reloads with
+    // --no-route, so lock_fes_scaffold parks a stale V1 ACLR index itself.
     park_open_aclr(lab);
 }
 
@@ -1016,8 +1005,8 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
             CellInfo *ff = ffs[i * 2 + j];
             if (!ff || !ff->ffInfo.datain || alm_data.l6_mode || alm_data.carry_mode)
                 continue;
-            if (ff->belStrength >= STRENGTH_LOCKED)
-                continue;
+            // A user BEL lock keeps this flip-flop at its site. Its data
+            // pin still needs a route-through when the half has no LUT.
             CellInfo *rt_lut = createCell(idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
             // The route-through becomes the FF's DATAIN sink. Preserve the
             // socket boundary marker so FES routing still recognizes it as a

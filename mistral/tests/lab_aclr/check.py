@@ -90,7 +90,7 @@ def main():
     name, _, x, y, _ = flop
 
     # A shell routed before this park stored the open half on slot 0.
-    # --fes-scaffold restores that V1 index and skips lab_pre_route.
+    # --fes-scaffold --no-route restores that V1 index without lab_pre_route.
     document = json.loads((out / "routed.json").read_text())
     payload, row = lab_row(document, x, y)
     state = row[3]
