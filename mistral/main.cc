@@ -60,6 +60,9 @@ po::options_description MistralCommandHandler::getArchOptions()
 
     specific.add_options()("replicate-enables", po::value<int>(),
                            "replicate timing-critical LUT enables after placement (budget 0..8, default 0)");
+    specific.add_options()("remap-critical", po::value<std::string>(), "prior routed timing report for local LUT remapping");
+    specific.add_options()("remap-candidate", po::value<int>(), "qualified local-remap candidate index (default: list only)");
+    specific.add_options()("remap-groups", po::value<int>(), "maximum whole LAB enable groups per remap (1..8, default 1)");
     return specific;
 }
 
@@ -109,6 +112,24 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         if (!enable_replication_policy::valid_budget(budget))
             log_error("--replicate-enables must be between 0 and 8.\n");
         ctx->enable_replication_budget = budget;
+    }
+    ctx->local_remap_report.clear();
+    ctx->local_remap_selection = -1;
+    ctx->local_remap_groups = 1;
+    if ((vm.count("remap-candidate") || vm.count("remap-groups")) && !vm.count("remap-critical"))
+        log_error("--remap-candidate and --remap-groups require --remap-critical.\n");
+    if (vm.count("remap-critical")) {
+        if (vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") || vm.count("fes-scaffold") ||
+            (vm.count("placer") && vm["placer"].as<std::string>() != "heap"))
+            log_error("Local remap requires fresh ordinary HeAP placement.\n");
+        auto in = open_ifstream_and_log_error(vm["remap-critical"].as<std::string>(), "local-remap timing report");
+        ctx->local_remap_report.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        if (ctx->local_remap_report.empty()) log_error("Empty local-remap timing report.\n");
+        if (vm.count("remap-candidate")) ctx->local_remap_selection = vm["remap-candidate"].as<int>();
+        if (ctx->local_remap_selection < -1) log_error("Invalid local-remap candidate index.\n");
+        if (vm.count("remap-groups")) ctx->local_remap_groups = vm["remap-groups"].as<int>();
+        if (ctx->local_remap_groups < 1 || ctx->local_remap_groups > 8)
+            log_error("--remap-groups must be between 1 and 8.\n");
     }
     const bool routed = ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "route";
     if (vm.count("fes-cram-region")) {

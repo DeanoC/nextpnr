@@ -77,6 +77,42 @@ class EnableReplicationTest : public ::testing::Test
         }
         FAIL() << "No legal fixture BEL for " << cell->name.str(ctx.get()) << " at " << x << "," << y;
     }
+    std::string remap_report(bool stale = false)
+    {
+        auto inner = ctx->createCell(ctx->id("pre_enable"), id_MISTRAL_ALUT2);
+        inner->params[id_LUT] = 0x8;
+        inner->addInput(id_A); inner->addInput(id_B); inner->addOutput(id_Q);
+        inner->connectPort(id_A, source_a->getPort(id_Q));
+        inner->pin_data[id_B].state = PIN_1;
+        auto net = ctx->createNet(ctx->id("intermediate"));
+        inner->connectPort(id_Q, net);
+        driver->disconnectPort(id_A); driver->connectPort(id_A, net);
+        ctx->assignArchInfo(); place(inner, 24, 20);
+        return std::string(R"({"critical_paths":[{"max_delay":1,"path":[
+          {"type":"routing","delay":2,"net":"intermediate",
+           "from":{"cell":"pre_enable","port":"Q","loc":[24,20]},
+           "to":{"cell":"enable_logic","port":"A","loc":[24,20]}},
+          {"type":"logic","delay":0.4,
+           "from":{"cell":"enable_logic","port":"A","loc":[24,20]},
+           "to":{"cell":"enable_logic","port":"Q","loc":[24,20]}},
+          {"type":"routing","delay":2,"net":"enable",
+           "from":{"cell":"enable_logic","port":"Q","loc":[24,20]},
+           "to":{"cell":"near_a","port":"ENA","loc":[)") + (stale ? "31" : "30") + R"(,20]}},
+          {"type":"setup","delay":0,
+           "from":{"cell":"near_a","port":"ENA","loc":[30,20]},
+           "to":{"cell":"near_a","port":"ENA","loc":[30,20]}}
+        ]}]})";
+    }
+    void drive_clock(NetInfo *net)
+    {
+        auto source = ctx->createCell(ctx->idf("%s$source", net->name.c_str(ctx.get())), id_MISTRAL_CLKBUF);
+        source->addInput(id_A); source->addOutput(id_Q); source->connectPort(id_Q, net);
+        ctx->assignArchInfo();
+        for (auto bel : ctx->getBels()) if (ctx->checkBelAvail(bel) && ctx->isValidBelForCellType(source->type, bel)) {
+            ctx->bindBel(bel, source, STRENGTH_LOCKED); return;
+        }
+        FAIL() << "No clock source BEL";
+    }
     CellInfo *clone() { auto i = ctx->cells.find(ctx->id("enable_logic$enable_replica")); return i == ctx->cells.end() ? nullptr : i->second.get(); }
 };
 
@@ -207,4 +243,247 @@ TEST_F(EnableReplicationTest, SharedClockInputNetExcluded)
     ASSERT_NE(clock_user->bel, BelId());
     ctx->replicate_enables(1);
     EXPECT_EQ(clone(), nullptr);
+}
+
+TEST_F(EnableReplicationTest, LocalRemapListsWithoutMutation)
+{
+    auto report = remap_report();
+    std::map<IdString, BelId> bels;
+    std::map<std::pair<IdString, IdString>, std::pair<NetInfo *, int>> ports;
+    for (auto &c : ctx->cells) {
+        bels[c.first] = c.second->bel;
+        for (auto &p : c.second->ports) ports[{c.first, p.first}] = {p.second.net, p.second.user_idx.idx()};
+    }
+    auto nc = ctx->cells.size(), nn = ctx->nets.size(), na = ctx->net_aliases.size();
+    EXPECT_FALSE(ctx->remap_critical(report, -1));
+    EXPECT_EQ(ctx->cells.size(), nc); EXPECT_EQ(ctx->nets.size(), nn); EXPECT_EQ(ctx->net_aliases.size(), na);
+    for (auto &c : bels) EXPECT_EQ(ctx->cells.at(c.first)->bel, c.second);
+    for (auto &p : ports) {
+        auto actual = ctx->cells.at(p.first.first)->ports.at(p.first.second);
+        EXPECT_EQ(actual.net, p.second.first); EXPECT_EQ(actual.user_idx.idx(), p.second.second);
+    }
+    ctx->check();
+}
+
+TEST_F(EnableReplicationTest, LocalRemapPreservesWholeGroupAndSideUsers)
+{
+    auto report = remap_report();
+    ASSERT_TRUE(ctx->remap_critical(report, 0));
+    auto net = near_a->getPort(id_ENA);
+    ASSERT_NE(net, enable);
+    EXPECT_EQ(near_b->getPort(id_ENA), net);
+    EXPECT_EQ(near_b->get_pin_state(id_ENA), PIN_INV);
+    EXPECT_EQ(remote->getPort(id_ENA), enable);
+    EXPECT_EQ(driver->getPort(id_A)->name, ctx->id("intermediate"));
+    EXPECT_EQ(net->driver.cell->type, id_MISTRAL_ALUT2);
+    EXPECT_TRUE(ctx->isBelLocationValid(net->driver.cell->bel));
+    ctx->check();
+}
+
+TEST_F(EnableReplicationTest, LocalRemapRejectsStaleReportAndProtectedGroup)
+{
+    auto report = remap_report(true);
+    auto nc = ctx->cells.size(), nn = ctx->nets.size();
+    EXPECT_THROW(ctx->remap_critical(report, 0), log_execution_error_exception);
+    EXPECT_EQ(ctx->cells.size(), nc); EXPECT_EQ(ctx->nets.size(), nn);
+    auto at = report.find("31,20"); report.replace(at, 5, "30,20");
+    near_b->attrs[ctx->id("dont_touch")] = 1;
+    EXPECT_FALSE(ctx->remap_critical(report, 0));
+    EXPECT_EQ(ctx->cells.size(), nc); EXPECT_EQ(ctx->nets.size(), nn);
+}
+
+TEST_F(EnableReplicationTest, LocalRemapMovementPreservesRegisterState)
+{
+    auto report = remap_report();
+    std::ostringstream evidence;
+    log_streams.emplace_back(&evidence, LogLevel::INFO_MSG);
+    ctx->remap_critical(report, -1);
+    log_streams.pop_back();
+    std::istringstream lines(evidence.str());
+    std::string line;
+    bool moving = false;
+    int selected = -1;
+    while (std::getline(lines, line)) {
+        if (line.find("Local remap trial ") != std::string::npos)
+            moving = line.find("shift=0,0 ") == std::string::npos;
+        auto at = line.find("Local remap candidate ");
+        if (moving && at != std::string::npos) { selected = std::stoi(line.substr(at + 22)); break; }
+    }
+    ASSERT_GE(selected, 0) << evidence.str();
+    auto before = ctx->getBelLocation(near_a->bel);
+    auto old_bel = near_b->bel;
+    auto old_params = near_b->params;
+    ASSERT_TRUE(ctx->remap_critical(report, selected));
+    auto after = ctx->getBelLocation(near_a->bel);
+    EXPECT_EQ(std::abs(after.x-before.x) + std::abs(after.y-before.y), 1);
+    EXPECT_EQ(after.z, before.z);
+    EXPECT_EQ(ctx->getBelLocation(near_b->bel).z, ctx->getBelLocation(old_bel).z);
+    EXPECT_EQ(near_b->params, old_params);
+    EXPECT_EQ(near_b->get_pin_state(id_ENA), PIN_INV);
+    EXPECT_EQ(near_b->getPort(id_CLK), clock);
+    for (auto &c : ctx->cells) EXPECT_TRUE(ctx->isBelLocationValid(c.second->bel));
+}
+
+TEST_F(EnableReplicationTest, LocalRemapInvalidIndexRestoresUserSlots)
+{
+    auto report = remap_report();
+    auto saved = near_a->ports.at(id_ENA).user_idx;
+    auto loads = source_a->getPort(id_Q)->users.entries();
+    EXPECT_FALSE(ctx->remap_critical(report, 9999));
+    EXPECT_EQ(near_a->getPort(id_ENA), enable);
+    EXPECT_EQ(near_a->ports.at(id_ENA).user_idx, saved);
+    EXPECT_EQ(source_a->getPort(id_Q)->users.entries(), loads);
+    // Repeating the same attempt also catches dangling aliases/free-list damage.
+    EXPECT_FALSE(ctx->remap_critical(report, 9999));
+    EXPECT_EQ(near_a->ports.at(id_ENA).user_idx, saved);
+    ctx->check();
+}
+
+TEST_F(EnableReplicationTest, LocalRemapSharedClockInputExcluded)
+{
+    auto report = remap_report();
+    CellInfo *clock_user = ff("clock_user", nullptr);
+    clock_user->disconnectPort(id_CLK);
+    clock_user->connectPort(id_CLK, source_a->getPort(id_Q));
+    ctx->assignArchInfo(); place(clock_user, 15, 20);
+    auto count = ctx->cells.size();
+    EXPECT_FALSE(ctx->remap_critical(report, 0));
+    EXPECT_EQ(ctx->cells.size(), count);
+    EXPECT_EQ(near_a->getPort(id_ENA), enable);
+}
+
+TEST_F(EnableReplicationTest, LocalRemapSharedHardInputExcluded)
+{
+    auto report = remap_report();
+    auto hard = ctx->createCell(ctx->id("hard_boundary"), id_cyclonev_hps_interface_fpga2sdram);
+    IdString pin = ctx->id("cmd_data_0[0]");
+    hard->addInput(pin); hard->connectPort(pin, source_a->getPort(id_Q));
+    ctx->assignArchInfo();
+    for (auto bel : ctx->getBels()) if (ctx->isValidBelForCellType(hard->type, bel)) {
+        ctx->bindBel(bel, hard, STRENGTH_WEAK); break;
+    }
+    auto count = ctx->cells.size();
+    EXPECT_FALSE(ctx->remap_critical(report, 0));
+    EXPECT_EQ(ctx->cells.size(), count);
+}
+
+TEST_F(EnableReplicationTest, LocalRemapKeepsBoundarySourceRegistersFixed)
+{
+    auto report = remap_report();
+    auto hard = ctx->createCell(ctx->id("hard_boundary"), id_cyclonev_hps_interface_fpga2sdram);
+    IdString pin = ctx->id("cmd_data_0[0]");
+    hard->addInput(pin); hard->connectPort(pin, near_a->getPort(id_Q));
+    ctx->assignArchInfo();
+    for (auto bel : ctx->getBels()) if (ctx->isValidBelForCellType(hard->type, bel)) {
+        ctx->bindBel(bel, hard, STRENGTH_WEAK); break;
+    }
+    std::ostringstream evidence;
+    log_streams.emplace_back(&evidence, LogLevel::INFO_MSG);
+    ctx->remap_critical(report, -1);
+    log_streams.pop_back();
+    std::istringstream lines(evidence.str()); std::string line;
+    int trials = 0;
+    while (std::getline(lines, line)) if (line.find("Local remap trial ") != std::string::npos) {
+        EXPECT_NE(line.find("shift=0,0 "), std::string::npos) << line;
+        ++trials;
+    }
+    EXPECT_GT(trials, 0);
+    ctx->check();
+}
+
+TEST_F(EnableReplicationTest, LocalRemapAllowsGuardedTimedHardDataLoad)
+{
+    auto report = remap_report();
+    drive_clock(clock);
+    auto hard = ctx->createCell(ctx->id("timed_boundary"), id_cyclonev_hps_interface_fpga2sdram);
+    IdString pin = ctx->id("cmd_valid_0"), cp = ctx->id("cmd_port_clk_0");
+    hard->addInput(pin); hard->connectPort(pin, source_a->getPort(id_Q));
+    hard->addInput(cp); hard->connectPort(cp, clock);
+    ctx->assignArchInfo();
+    for (auto bel : ctx->getBels()) if (ctx->isValidBelForCellType(hard->type, bel)) {
+        ctx->bindBel(bel, hard, STRENGTH_WEAK); break;
+    }
+    auto bel = hard->bel; auto net = hard->getPort(pin);
+    TimingAnalyser before(ctx.get()); before.setup(false, false, true);
+    float slack = before.get_setup_slack(CellPortKey(hard->name, pin));
+    hard->attrs[ctx->id("dont_touch")] = 1;
+    EXPECT_FALSE(ctx->remap_critical(report, 0));
+    hard->attrs.erase(ctx->id("dont_touch"));
+    ASSERT_TRUE(ctx->remap_critical(report, 0));
+    EXPECT_EQ(hard->bel, bel); EXPECT_EQ(hard->getPort(pin), net);
+    TimingAnalyser after(ctx.get()); after.setup(false, false, true);
+    EXPECT_GE(after.get_setup_slack(CellPortKey(hard->name, pin)), slack);
+}
+
+TEST_F(EnableReplicationTest, LocalRemapRejectsUnrelatedHardCaptureClock)
+{
+    auto report = remap_report();
+    auto other = ctx->createNet(ctx->id("unrelated_clock"));
+    other->is_global = true;
+    other->clkconstr = std::make_unique<ClockConstraint>();
+    other->clkconstr->period = DelayPair(1000);
+    other->clkconstr->high = other->clkconstr->low = DelayPair(500);
+    drive_clock(other);
+    auto hard = ctx->createCell(ctx->id("untimed_boundary"), id_cyclonev_hps_interface_fpga2sdram);
+    IdString pin = ctx->id("cmd_valid_0"), cp = ctx->id("cmd_port_clk_0");
+    hard->addInput(pin); hard->connectPort(pin, source_a->getPort(id_Q));
+    hard->addInput(cp); hard->connectPort(cp, other);
+    ctx->assignArchInfo();
+    for (auto bel : ctx->getBels()) if (ctx->isValidBelForCellType(hard->type, bel)) {
+        ctx->bindBel(bel, hard, STRENGTH_WEAK); break;
+    }
+    int clock_count = 0;
+    ASSERT_EQ(ctx->getPortTimingClass(hard, pin, clock_count), TMG_REGISTER_INPUT);
+    ASSERT_EQ(clock_count, 1);
+    TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
+    EXPECT_EQ(timing.get_setup_slack(CellPortKey(hard->name, pin)), float(std::numeric_limits<delay_t>::max()));
+    auto count = ctx->cells.size();
+    EXPECT_FALSE(ctx->remap_critical(report, 0));
+    EXPECT_EQ(ctx->cells.size(), count);
+}
+
+TEST_F(EnableReplicationTest, LocalRemapExpandsOnlyWholeImprovingGroups)
+{
+    auto report = remap_report();
+    auto extra_a = ff("extra_a", enable), extra_b = ff("extra_b", enable);
+    extra_b->pin_data[id_ENA].state = PIN_INV;
+    ctx->assignArchInfo(); place(extra_a, 30, 21); place(extra_b, 30, 21);
+    auto a_bel = extra_a->bel, b_bel = extra_b->bel;
+    auto remote_index = remote->ports.at(id_ENA).user_idx;
+    ASSERT_TRUE(ctx->remap_critical(report, 0, 2));
+    auto net = near_a->getPort(id_ENA);
+    EXPECT_NE(net, enable);
+    EXPECT_EQ(near_b->getPort(id_ENA), net);
+    EXPECT_EQ(extra_a->getPort(id_ENA), net);
+    EXPECT_EQ(extra_b->getPort(id_ENA), net);
+    EXPECT_EQ(extra_b->get_pin_state(id_ENA), PIN_INV);
+    EXPECT_EQ(extra_a->bel, a_bel); EXPECT_EQ(extra_b->bel, b_bel);
+    EXPECT_EQ(remote->getPort(id_ENA), enable);
+    EXPECT_EQ(remote->ports.at(id_ENA).user_idx, remote_index);
+    for (auto &c : ctx->cells) EXPECT_TRUE(ctx->isBelLocationValid(c.second->bel));
+    ctx->check();
+}
+
+TEST_F(EnableReplicationTest, LocalRemapExpandedProbeRestoresAllIndexedUsers)
+{
+    auto report = remap_report();
+    auto extra_a = ff("extra_a", enable), extra_b = ff("extra_b", enable);
+    ctx->assignArchInfo(); place(extra_a, 30, 21); place(extra_b, 30, 21);
+    std::map<std::pair<IdString, IdString>, std::pair<NetInfo *, int>> ports;
+    std::map<IdString, BelId> bels;
+    for (auto &c : ctx->cells) {
+        bels[c.first] = c.second->bel;
+        for (auto &p : c.second->ports) ports[{c.first,p.first}] = {p.second.net,p.second.user_idx.idx()};
+    }
+    auto count = ctx->cells.size();
+    EXPECT_FALSE(ctx->remap_critical(report, -1, 8));
+    EXPECT_EQ(ctx->cells.size(), count);
+    for (auto &p : ports) {
+        auto actual = ctx->cells.at(p.first.first)->ports.at(p.first.second);
+        EXPECT_EQ(actual.net, p.second.first); EXPECT_EQ(actual.user_idx.idx(), p.second.second);
+    }
+    for (auto &c : bels) EXPECT_EQ(ctx->cells.at(c.first)->bel, c.second);
+    ctx->check();
+    EXPECT_THROW(ctx->remap_critical(report, 0, 0), log_execution_error_exception);
+    EXPECT_THROW(ctx->remap_critical(report, 0, 9), log_execution_error_exception);
 }

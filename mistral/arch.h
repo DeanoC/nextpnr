@@ -541,6 +541,10 @@ struct Arch : BaseArch<ArchRanges>
     bool place() override;
     int enable_replication_budget = 0; // Explicit opt-in; never inherited from JSON settings.
     void replicate_enables(int budget);
+    std::string local_remap_report; // CLI only, never read from serialized settings.
+    int local_remap_selection = -1;
+    int local_remap_groups = 1;
+    bool remap_critical(const std::string &report, int selection, int group_budget = 1);
     bool route() override;
 
     // -------------------------------------------------
