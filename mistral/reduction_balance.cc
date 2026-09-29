@@ -2,6 +2,7 @@
 #include "nextpnr.h"
 #include "log.h"
 #include "reduction_balance_policy.h"
+#include "reduction_balance_plan.h"
 #include <algorithm>
 #include <map>
 #include <set>
@@ -38,11 +39,10 @@ std::pair<std::string, int> bus_index(const std::string &name)
 }
 }
 
-bool Arch::balance_reduction(const std::string &root_name)
+bool plan_reduction(Context *ctx, const std::string &root_name, bool placed, ReductionBalancePlan &plan)
 {
-    Context *ctx = getCtx();
-    auto root_it = cells.find(id(root_name));
-    if (root_it == cells.end()) return false;
+    auto root_it = ctx->cells.find(ctx->id(root_name));
+    if (root_it == ctx->cells.end()) return false;
     CellInfo *root = root_it->second.get();
     std::vector<CellInfo *> cone;
     std::set<CellInfo *> seen;
@@ -62,14 +62,15 @@ bool Arch::balance_reduction(const std::string &root_name)
         // constraint. Exclude clock consumers using the architecture's port model.
         for (const auto &user : net->users) {
             int clock_count = 0;
-            if (getPortTimingClass(user.cell, user.port, clock_count) == TMG_CLOCK_INPUT) return true;
+            if (ctx->getPortTimingClass(user.cell, user.port, clock_count) == TMG_CLOCK_INPUT) return true;
         }
         return false;
     };
     auto visit = [&](auto &&self, CellInfo *cell) -> bool {
         if (!cell || !lut_width(cell->type) || !seen.insert(cell).second || seen.size() > 4 ||
-            cell->bel != BelId() || cell->cluster != ClusterId() || cell->region || cell->isPseudo() ||
-            protected_attrs(cell->attrs) ||
+            (placed ? (cell->bel == BelId() || cell->belStrength > STRENGTH_WEAK) : cell->bel != BelId()) ||
+            cell->cluster != ClusterId() || cell->region || cell->isPseudo() ||
+            protected_attrs(cell->attrs) || (placed && cell->get_pin_state(id_Q) != PIN_SIG) ||
             cell->params.size() != 1 || !cell->params.count(id_LUT)) return false;
         const auto &table = cell->params.at(id_LUT);
         if (!table.is_fully_def() || table.size() != (1u << lut_width(cell->type))) return false;
@@ -86,6 +87,8 @@ bool Arch::balance_reduction(const std::string &root_name)
     std::sort(cone.begin(), cone.end(), [&](CellInfo *a, CellInfo *b) { return a->name.str(ctx) < b->name.str(ctx); });
     std::map<NetInfo *, int> signals;
     std::vector<NetInfo *> by_signal;
+    std::set<NetInfo *> boundary;
+    for (const auto &port : ctx->ports) boundary.insert(port.second.net);
     for (CellInfo *cell : cone) {
         auto net = cell->getPort(id_Q);
         if (unsafe_net(net) || signals.count(net)) return false;
@@ -93,7 +96,9 @@ bool Arch::balance_reduction(const std::string &root_name)
         signals.emplace(net, signal);
         by_signal.push_back(net);
         if (cell != root) {
-            if (net->users.entries() != 1) return false;
+            // Top-level ports do not occupy an ordinary cell consumer slot.
+            // Only the root function is preserved by this rewrite.
+            if (boundary.count(net) || net->users.entries() != 1) return false;
             for (auto user : net->users) if (!seen.count(user.cell)) return false;
         }
     }
@@ -137,6 +142,20 @@ bool Arch::balance_reduction(const std::string &root_name)
         if (ai.second != bi.second) return ai.second < bi.second;
         return an < bn;
     });
+    plan.root = root;
+    plan.cells = std::move(cone);
+    plan.literals = std::move(literals);
+    plan.slots = std::move(old_slots);
+    return true;
+}
+
+void rewrite_reduction(Context *ctx, const ReductionBalancePlan &plan)
+{
+    CellInfo *root = plan.root;
+    const auto &cone = plan.cells;
+    const auto &literals = plan.literals;
+    const auto &old_slots = plan.slots;
+    for (CellInfo *cell : cone) NPNR_ASSERT(cell->bel == BelId());
     std::vector<CellInfo *> children;
     for (CellInfo *cell : cone) if (cell != root) children.push_back(cell);
     const std::vector<int> sizes = cone.size() == 3 ? std::vector<int>{6, 5} : std::vector<int>{6, 6, 4};
@@ -176,9 +195,16 @@ bool Arch::balance_reduction(const std::string &root_name)
     for (CellInfo *child : children) root_inputs.push_back(child->getPort(id_Q));
     rewrite(root, int(children.size()), uint64_t(1) << ((1u << children.size()) - 1), root_inputs);
     if (cone.size() == 3)
-        log_info("Balanced three-LUT reduction at '%s' into 6+5 inputs.\n", root_name.c_str());
+        log_info("Balanced three-LUT reduction at '%s' into 6+5 inputs.\n", root->name.c_str(ctx));
     else
-        log_info("Balanced four-LUT reduction at '%s' into 6+6+4 inputs.\n", root_name.c_str());
+        log_info("Balanced four-LUT reduction at '%s' into 6+6+4 inputs.\n", root->name.c_str(ctx));
+}
+
+bool Arch::balance_reduction(const std::string &root_name)
+{
+    ReductionBalancePlan plan;
+    if (!plan_reduction(getCtx(), root_name, false, plan)) return false;
+    rewrite_reduction(getCtx(), plan);
     return true;
 }
 NEXTPNR_NAMESPACE_END
