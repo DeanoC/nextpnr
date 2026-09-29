@@ -955,8 +955,13 @@ struct MistralBitgen
                     if (ff == nullptr || ff->ffInfo.ctrlset.aclr.net != nullptr)
                         continue;
                     int slot = alm_data.aclr_idx[half];
-                    if (slot >= 0 && slot < 2)
-                        open_on_slot[slot] = true;
+                    if (slot < 0 || slot > 1)
+                        continue;
+                    // A restored snapshot can still name a live slot. Refuse
+                    // it here so the DATAIN choice below cannot drive the pin.
+                    if (lab_data.aclr_used[slot])
+                        log_error("Open flip-flop %s still selects a live LAB clear.\n", ctx->nameOf(ff));
+                    open_on_slot[slot] = true;
                 }
             }
         }
