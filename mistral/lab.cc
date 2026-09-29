@@ -710,25 +710,29 @@ bool Arch::is_lab_ctrlset_legal(uint32_t lab) const
 void Arch::lab_pre_route()
 {
     log_info("Preparing LABs for routing...\n");
+    // A user BEL lock fixes the site on a fresh route. LUT pins are still
+    // reassigned, and a flip-flop with no LUT still gets a data route-through.
+    // A scaffold reload locks the restored cells at STRENGTH_LOCKED. Rewriting
+    // that LAB clears the restored pin map and can disconnect the flip-flop's
+    // DATAIN, so the LUT mask no longer matches the frozen routes.
     for (uint32_t lab = 0; lab < labs.size(); lab++) {
-        bool frozen = false;
-        for (uint8_t alm = 0; alm < 10 && !frozen; alm++) {
+        bool scaffold = false;
+        for (uint8_t alm = 0; alm < 10 && !scaffold; alm++) {
             const auto &alm_data = labs.at(lab).alms.at(alm);
             for (BelId bel : {alm_data.lut_bels[0], alm_data.lut_bels[1], alm_data.ff_bels[0], alm_data.ff_bels[1],
                               alm_data.ff_bels[2], alm_data.ff_bels[3]}) {
                 CellInfo *cell = getBoundBelCell(bel);
-                if (cell != nullptr && cell->belStrength >= STRENGTH_LOCKED) {
-                    frozen = true;
+                if (cell != nullptr && cell->belStrength == STRENGTH_LOCKED) {
+                    scaffold = true;
                     break;
                 }
             }
         }
-        if (frozen)
+        if (scaffold)
             continue;
         assign_control_sets(lab);
-        for (uint8_t alm = 0; alm < 10; alm++) {
+        for (uint8_t alm = 0; alm < 10; alm++)
             reassign_alm_inputs(lab, alm);
-        }
     }
 }
 
@@ -802,8 +806,9 @@ void Arch::assign_control_sets(uint32_t lab)
             }
         }
     }
-    // Same rule as a restored FES_LABSTATE_V1 shell. Frozen LABs skip
-    // this function, so the scaffold lock parks them itself.
+    // Park open flops on a fresh route. A scaffold reload locks those cells
+    // at STRENGTH_LOCKED, and lab_pre_route leaves that LAB alone, so
+    // lock_fes_scaffold parks a stale V1 ACLR index itself.
     park_open_aclr(lab);
 }
 
@@ -1016,7 +1021,10 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
             CellInfo *ff = ffs[i * 2 + j];
             if (!ff || !ff->ffInfo.datain || alm_data.l6_mode || alm_data.carry_mode)
                 continue;
-            if (ff->belStrength >= STRENGTH_LOCKED)
+            // A restored scaffold flip-flop is STRENGTH_LOCKED and already has
+            // its data route. A user BEL lock still gets a route-through when
+            // this half has no LUT.
+            if (ff->belStrength == STRENGTH_LOCKED)
                 continue;
             CellInfo *rt_lut = createCell(idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
             // The route-through becomes the FF's DATAIN sink. Preserve the
