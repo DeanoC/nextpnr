@@ -63,6 +63,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("remap-critical", po::value<std::string>(), "prior routed timing report for local LUT remapping");
     specific.add_options()("remap-candidate", po::value<int>(), "qualified local-remap candidate index (default: list only)");
     specific.add_options()("remap-groups", po::value<int>(), "maximum whole LAB enable groups per remap (1..8, default 1)");
+    specific.add_options()("balance-reduction-root", po::value<std::string>(),
+                           "pre-placement four-LUT, sixteen-input conjunction root cell (opt-in)");
     return specific;
 }
 
@@ -100,6 +102,13 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
+    if (vm.count("balance-reduction-root")) {
+        if (vm.count("fes-cart") || vm.count("fes-scaffold") ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
+            log_error("Reduction balancing requires an unpacked, ordinary full design.\n");
+        if (!ctx->balance_reduction(vm["balance-reduction-root"].as<std::string>()))
+            log_error("Selected reduction root is not a safe four-LUT, sixteen-input conjunction.\n");
+    }
     // JSON provenance never enables a pass, including an explicit zero budget.
     // Avoid interning a new identifier before placement when no old key exists.
     ctx->enable_replication_budget = 0;

@@ -545,6 +545,7 @@ struct Arch : BaseArch<ArchRanges>
     int local_remap_selection = -1;
     int local_remap_groups = 1;
     bool remap_critical(const std::string &report, int selection, int group_budget = 1);
+    bool balance_reduction(const std::string &root_name);
     bool route() override;
 
     // -------------------------------------------------

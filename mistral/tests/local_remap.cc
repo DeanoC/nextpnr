@@ -1,5 +1,11 @@
 #include "gtest/gtest.h"
 #include "local_remap_policy.h"
+#include "reduction_balance_policy.h"
+#include "nextpnr.h"
+#include <map>
+#include <memory>
+
+USING_NEXTPNR_NAMESPACE
 
 using namespace local_remap_policy;
 
@@ -47,4 +53,113 @@ TEST(LocalRemapComposition, SixInputBit63AndBounds)
     EXPECT_FALSE(compose(0, {{INTERMEDIATE,false},{0,false}}, 0,
                          {{INTERMEDIATE,false},{1,false}}).valid);
     EXPECT_FALSE(compose(0, {{0,false},{1,false}}, 0, {{0,false},{1,false}}).valid);
+}
+
+TEST(ReductionBalance, RecognizesSixteenBitZeroConeAndRejectsNonCube)
+{
+    using reduction_balance_policy::Node;
+    std::vector<Node> network = {
+        {16, 0x0001, {{12,false},{13,false},{14,false},{15,false}}},
+        {17, 0x0001, {{4,false},{5,false},{6,false},{7,false}}},
+        {18, 1ULL << 48, {{8,false},{9,false},{10,false},{11,false},{16,false},{17,false}}},
+        {19, 1ULL << 16, {{0,false},{1,false},{2,false},{3,false},{18,false}}},
+    };
+    auto result = reduction_balance_policy::recognize(network, 19);
+    ASSERT_TRUE(result.valid);
+    EXPECT_EQ(result.outputs, (std::vector<int>{16,17,18,19}));
+    ASSERT_EQ(result.literals.size(), 16u);
+    for (int bit=0;bit<16;++bit) {
+        EXPECT_EQ(result.literals[bit].signal, bit);
+        EXPECT_FALSE(result.literals[bit].required);
+    }
+    network.back().mask |= 1ULL << 17;
+    EXPECT_FALSE(reduction_balance_policy::recognize(network,19).valid);
+    network.back().mask = 1ULL << 16;
+    network.front().inputs.front().inverted = true;
+    auto inverted = reduction_balance_policy::recognize(network,19);
+    ASSERT_TRUE(inverted.valid);
+    EXPECT_TRUE(inverted.literals[12].required);
+    network.front().inputs[1].signal = 12;
+    EXPECT_FALSE(reduction_balance_policy::recognize(network,19).valid);
+}
+
+TEST(ReductionBalance, PreservesConsumerSlotsAndUnrelatedFanout)
+{
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    auto ctx = std::make_unique<Context>(args);
+    const IdString pins[] = {id_A, id_B, id_C, id_D, id_E, id_F};
+    std::vector<NetInfo *> inputs;
+    std::map<NetInfo *, store_index<PortRef>> observer_slots, cone_slots;
+    for (int i = 0; i < 16; ++i) {
+        auto net = ctx->createNet(ctx->idf("errors[%d]", i));
+        inputs.push_back(net);
+        auto observer = ctx->createCell(ctx->idf("observer_%d", i), id_MISTRAL_ALUT2);
+        observer->addInput(id_A);
+        observer->connectPort(id_A, net);
+        observer_slots.emplace(net, observer->ports.at(id_A).user_idx);
+    }
+    auto lut = [&](const char *name, IdString type, uint64_t mask, std::vector<NetInfo *> ins) {
+        auto cell = ctx->createCell(ctx->id(name), type);
+        cell->params[id_LUT] = Property(int64_t(mask), 1 << ins.size());
+        for (size_t i = 0; i < ins.size(); ++i) {
+            cell->addInput(pins[i]);
+            cell->connectPort(pins[i], ins[i]);
+            cell->pin_data[pins[i]].state = PIN_SIG;
+            ASSERT_TRUE(cone_slots.emplace(ins[i], cell->ports.at(pins[i]).user_idx).second);
+        }
+        cell->addOutput(id_Q);
+        cell->connectPort(id_Q, ctx->createNet(ctx->idf("%s$q", name)));
+    };
+    lut("leaf_a", id_MISTRAL_ALUT4, 1, {inputs[8], inputs[9], inputs[10], inputs[11]});
+    lut("leaf_b", id_MISTRAL_ALUT4, 1, {inputs[12], inputs[13], inputs[14], inputs[15]});
+    auto leaf_a = ctx->cells.at(ctx->id("leaf_a")).get();
+    auto leaf_b = ctx->cells.at(ctx->id("leaf_b")).get();
+    lut("inner", id_MISTRAL_ALUT6, 1ULL << 48,
+        {inputs[4], inputs[5], inputs[6], inputs[7], leaf_a->getPort(id_Q), leaf_b->getPort(id_Q)});
+    auto inner = ctx->cells.at(ctx->id("inner")).get();
+    lut("root", id_MISTRAL_ALUT5, 1ULL << 16, {inputs[0], inputs[1], inputs[2], inputs[3], inner->getPort(id_Q)});
+    auto root = ctx->cells.at(ctx->id("root")).get();
+    auto output = root->getPort(id_Q);
+    std::map<NetInfo *, PortRef> observers;
+    for (const auto &entry : observer_slots) observers.emplace(entry.first, entry.first->users.at(entry.second));
+    ASSERT_TRUE(ctx->balance_reduction("root"));
+    EXPECT_EQ(root->getPort(id_Q), output);
+    for (const auto &entry : cone_slots) {
+        auto net = entry.first;
+        int found = 0;
+        for (auto user : net->users.enumerate()) {
+            if (user.value.cell->name.str(ctx.get()).find("observer_") == 0) continue;
+            ++found;
+            EXPECT_EQ(user.index, entry.second) << net->name.str(ctx.get());
+            EXPECT_EQ(user.value.cell->getPort(user.value.port), net);
+            EXPECT_EQ(user.value.cell->ports.at(user.value.port).user_idx, user.index);
+        }
+        EXPECT_EQ(found, 1);
+        EXPECT_EQ(net->users.entries(), observer_slots.count(net) ? 2 : 1);
+    }
+    for (const auto &entry : observer_slots) {
+        auto user = entry.first->users.at(entry.second);
+        EXPECT_EQ(user.cell, observers.at(entry.first).cell);
+        EXPECT_EQ(user.port, observers.at(entry.first).port);
+    }
+    std::map<NetInfo *, int> input_bits;
+    for (int i = 0; i < 16; ++i) input_bits.emplace(inputs[i], i);
+    auto evaluate = [&](auto &&self, NetInfo *net, unsigned row) -> bool {
+        auto bit = input_bits.find(net);
+        if (bit != input_bits.end()) return (row >> bit->second) & 1;
+        auto cell = net->driver.cell;
+        unsigned lut_row = 0;
+        for (size_t i = 0; i < cell->ports.size() - 1; ++i)
+            lut_row |= unsigned(self(self, cell->getPort(pins[i]), row)) << i;
+        return (uint64_t(cell->params.at(id_LUT).as_int64()) >> lut_row) & 1;
+    };
+    for (unsigned row = 0; row < 65536; ++row) EXPECT_EQ(evaluate(evaluate, output, row), row == 0);
+    // Repeat the real rewrite with one inverted leaf: now exactly bit 8 must be
+    // high. This exercises pin polarity in the transformed truth tables.
+    auto changed = inputs[8]->users.at(cone_slots.at(inputs[8]));
+    changed.cell->pin_data[changed.port].state = PIN_INV;
+    ASSERT_TRUE(ctx->balance_reduction("root"));
+    for (unsigned row = 0; row < 65536; ++row)
+        EXPECT_EQ(evaluate(evaluate, output, row), row == (1u << 8));
 }

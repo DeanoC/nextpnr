@@ -10,6 +10,7 @@ set(SOURCES
     constids.inc
     delay.cc
     local_remap.cc
+    reduction_balance.cc
     enable_replication.cc
     placed_timeout.cc
     retained_enable.cc
@@ -34,6 +35,9 @@ add_nextpnr_architecture(${family}
 if (BUILD_TESTS)
     add_test(NAME nextpnr-${family}-local-remap-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/local_remap_cli.py
+                $<TARGET_FILE:nextpnr-${family}> -v)
+    add_test(NAME nextpnr-${family}-reduction-balance-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/reduction_balance_cli.py
                 $<TARGET_FILE:nextpnr-${family}> -v)
 endif()
 
