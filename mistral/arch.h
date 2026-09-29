@@ -544,6 +544,7 @@ struct Arch : BaseArch<ArchRanges>
     std::string local_remap_report; // CLI only, never read from serialized settings.
     int local_remap_selection = -1;
     int local_remap_groups = 1;
+    bool local_remap_optimize_pins = false;
     bool remap_critical(const std::string &report, int selection, int group_budget = 1);
     bool balance_reduction(const std::string &root_name);
     bool route() override;

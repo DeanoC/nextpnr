@@ -10,6 +10,7 @@ set(SOURCES
     constids.inc
     delay.cc
     local_remap.cc
+    local_remap_pin_policy.h
     capture_locality.cc
     reduction_balance.cc
     placed_reduction.cc

@@ -487,3 +487,203 @@ TEST_F(EnableReplicationTest, LocalRemapExpandedProbeRestoresAllIndexedUsers)
     EXPECT_THROW(ctx->remap_critical(report, 0, 0), log_execution_error_exception);
     EXPECT_THROW(ctx->remap_critical(report, 0, 9), log_execution_error_exception);
 }
+
+class LocalRemapPinTest : public EnableReplicationTest
+{
+  protected:
+    std::string report;
+    CellInfo *extra_a, *extra_b, *side_a, *side_b;
+    store_index<PortRef> input_a_hole, input_b_hole;
+    struct State {
+        std::map<IdString, CellInfo *> cells;
+        std::map<IdString, NetInfo *> nets;
+        std::map<IdString, std::pair<BelId, PlaceStrength>> places;
+        std::map<IdString, decltype(CellInfo::params)> params;
+        std::map<std::pair<IdString, IdString>, PortInfo> ports;
+        std::map<std::pair<IdString, IdString>, int> pin_states;
+        std::map<NetInfo *, indexed_store<PortRef>> users;
+        std::map<IdString, IdString> aliases;
+    };
+    store_index<PortRef> make_hole(NetInfo *net, const char *name)
+    {
+        auto *cell = ctx->createCell(ctx->id(name), id_MISTRAL_ALUT2);
+        cell->addInput(id_A); cell->connectPort(id_A, net);
+        auto slot = cell->ports.at(id_A).user_idx;
+        cell->disconnectPort(id_A); ctx->cells.erase(cell->name);
+        return slot;
+    }
+    void SetUp() override
+    {
+        EnableReplicationTest::SetUp();
+        ctx->local_remap_optimize_pins = true;
+        ctx->unbindBel(source_a->bel); place(source_a, 15, 20);
+        // The original cone computes !a && b, so swapping its inputs requires
+        // an actual truth-table change rather than a symmetric XOR mask.
+        driver->params[id_LUT] = 0x80;
+        report = remap_report();
+        extra_a = ff("extra_a", enable); extra_b = ff("extra_b", enable);
+        side_a = ff("input_side_a", nullptr); side_b = ff("input_side_b", nullptr);
+        side_a->disconnectPort(id_DATAIN); side_a->connectPort(id_DATAIN, source_a->getPort(id_Q));
+        side_b->disconnectPort(id_DATAIN); side_b->connectPort(id_DATAIN, source_b->getPort(id_Q));
+        ctx->assignArchInfo();
+        place(extra_a, 30, 21); place(extra_b, 30, 21);
+        place(side_a, 15, 21); place(side_b, 30, 22);
+        input_a_hole = make_hole(source_a->getPort(id_Q), "removed_input_a_user");
+        input_b_hole = make_hole(source_b->getPort(id_Q), "removed_input_b_user");
+        make_hole(enable, "removed_enable_user");
+        ctx->check();
+    }
+    State save() const
+    {
+        State state;
+        for (const auto &entry : ctx->cells) {
+            auto *cell = entry.second.get();
+            state.cells.emplace(entry.first, cell);
+            state.places.emplace(entry.first, std::make_pair(cell->bel, cell->belStrength));
+            state.params.emplace(entry.first, cell->params);
+            for (const auto &port : cell->ports) {
+                state.ports.emplace(std::make_pair(entry.first, port.first), port.second);
+                state.pin_states.emplace(std::make_pair(entry.first, port.first), int(cell->get_pin_state(port.first)));
+            }
+        }
+        for (const auto &entry : ctx->nets) {
+            state.nets.emplace(entry.first, entry.second.get());
+            state.users.emplace(entry.second.get(), entry.second->users);
+        }
+        for (const auto &entry : ctx->net_aliases) state.aliases.emplace(entry.first, entry.second);
+        return state;
+    }
+    void expect_restored(const State &state)
+    {
+        ASSERT_EQ(ctx->cells.size(), state.cells.size());
+        ASSERT_EQ(ctx->nets.size(), state.nets.size());
+        ASSERT_EQ(ctx->net_aliases.size(), state.aliases.size());
+        for (const auto &entry : state.cells) {
+            auto *cell = ctx->cells.at(entry.first).get();
+            EXPECT_EQ(cell, entry.second);
+            EXPECT_EQ(cell->bel, state.places.at(entry.first).first);
+            EXPECT_EQ(cell->belStrength, state.places.at(entry.first).second);
+            EXPECT_EQ(cell->params, state.params.at(entry.first));
+        }
+        for (const auto &entry : state.ports) {
+            auto *cell = ctx->cells.at(entry.first.first).get();
+            auto actual = cell->ports.at(entry.first.second);
+            EXPECT_EQ(actual.net, entry.second.net);
+            EXPECT_EQ(actual.user_idx, entry.second.user_idx);
+            EXPECT_EQ(actual.type, entry.second.type);
+            EXPECT_EQ(int(cell->get_pin_state(entry.first.second)), state.pin_states.at(entry.first));
+        }
+        for (const auto &entry : state.nets) EXPECT_EQ(ctx->nets.at(entry.first).get(), entry.second);
+        for (const auto &entry : state.aliases) EXPECT_EQ(ctx->net_aliases.at(entry.first), entry.second);
+        for (const auto &entry : state.users) {
+            auto expected = entry.second;
+            auto actual = entry.first->users;
+            ASSERT_EQ(actual.entries(), expected.entries());
+            for (auto user : expected.enumerate()) {
+                ASSERT_TRUE(actual.count(user.index));
+                EXPECT_EQ(actual.at(user.index).cell, user.value.cell);
+                EXPECT_EQ(actual.at(user.index).port, user.value.port);
+            }
+            // Compare the free lists as well as live slots, without mutating
+            // either the live Context or its saved state.
+            for (int probe = 0; probe < 8; ++probe)
+                EXPECT_EQ(actual.add(PortRef{driver,id_A}), expected.add(PortRef{driver,id_A}));
+        }
+        ctx->check();
+    }
+    bool evaluate(NetInfo *net, unsigned assignment) const
+    {
+        if (net == source_a->getPort(id_Q)) return assignment & 1;
+        if (net == source_b->getPort(id_Q)) return (assignment >> 1) & 1;
+        auto *cell = net->driver.cell;
+        const IdString pins[] = {id_A,id_B,id_C,id_D,id_E,id_F};
+        unsigned row = 0;
+        for (unsigned pin = 0; pin < 6; ++pin) {
+            if (!cell->ports.count(pins[pin])) continue;
+            auto state = cell->get_pin_state(pins[pin]);
+            bool value = state == PIN_1;
+            if (state == PIN_SIG || state == PIN_INV) {
+                value = evaluate(cell->getPort(pins[pin]), assignment);
+                if (state == PIN_INV) value = !value;
+            }
+            row |= unsigned(value) << pin;
+        }
+        return (uint64_t(cell->params.at(id_LUT).as_int64()) >> row) & 1;
+    }
+};
+
+TEST_F(LocalRemapPinTest, ChangedOrderPreservesTruthTableAndEveryUnselectedUserSlot)
+{
+    auto state = save();
+    ASSERT_TRUE(ctx->remap_critical(report, 0, 2));
+    auto *net = near_a->getPort(id_ENA);
+    ASSERT_NE(net, enable);
+    auto *copy = net->driver.cell;
+    ASSERT_EQ(copy->type, id_MISTRAL_ALUT2);
+    // The distant source gets the faster B pin; both pin states were folded
+    // into the composed mask. This exercises the backend's apply_order path.
+    EXPECT_EQ(copy->getPort(id_A), source_b->getPort(id_Q));
+    EXPECT_EQ(copy->getPort(id_B), source_a->getPort(id_Q));
+    EXPECT_EQ(copy->params.at(id_LUT).as_int64(), 0x2);
+    EXPECT_EQ(copy->ports.at(id_A).user_idx, input_b_hole);
+    EXPECT_EQ(copy->ports.at(id_B).user_idx, input_a_hole);
+    for (unsigned assignment = 0; assignment < 4; ++assignment) {
+        bool expected = !(assignment & 1) && ((assignment >> 1) & 1);
+        EXPECT_EQ(evaluate(enable, assignment), expected);
+        EXPECT_EQ(evaluate(net, assignment), expected);
+    }
+    EXPECT_EQ(near_b->getPort(id_ENA), net);
+    EXPECT_EQ(near_b->get_pin_state(id_ENA), PIN_INV);
+    EXPECT_EQ(extra_a->getPort(id_ENA), net);
+    EXPECT_EQ(extra_b->getPort(id_ENA), net);
+    EXPECT_EQ(remote->getPort(id_ENA), enable);
+    for (const auto &entry : state.users) {
+        auto saved = entry.second;
+        for (auto user : saved.enumerate()) {
+            if (entry.first == enable && user.value.cell->getPort(user.value.port) != enable) continue;
+            ASSERT_TRUE(entry.first->users.count(user.index));
+            auto current = entry.first->users.at(user.index);
+            EXPECT_EQ(current.cell, user.value.cell);
+            EXPECT_EQ(current.port, user.value.port);
+            EXPECT_EQ(current.cell->ports.at(current.port).user_idx, user.index);
+        }
+    }
+    for (IdString pin : {id_A,id_B}) {
+        auto port = copy->ports.at(pin);
+        EXPECT_EQ(port.net->users.at(port.user_idx).cell, copy);
+        EXPECT_EQ(port.net->users.at(port.user_idx).port, pin);
+    }
+    for (const auto &entry : state.cells) {
+        if (entry.second == near_a || entry.second == near_b) continue;
+        EXPECT_EQ(entry.second->bel, state.places.at(entry.first).first);
+        EXPECT_EQ(entry.second->params, state.params.at(entry.first));
+    }
+    for (const auto &entry : ctx->cells) EXPECT_TRUE(ctx->isBelLocationValid(entry.second->bel));
+    ctx->check();
+}
+
+TEST_F(LocalRemapPinTest, ListRestoresGraphAndIndexedFreeListsAfterQualifiedPermutations)
+{
+    auto state = save();
+    std::ostringstream evidence;
+    log_streams.emplace_back(&evidence, LogLevel::INFO_MSG);
+    bool applied = ctx->remap_critical(report, -1, 8);
+    log_streams.pop_back();
+    EXPECT_FALSE(applied);
+    EXPECT_NE(evidence.str().find("Local remap candidate 0:"), std::string::npos) << evidence.str();
+    expect_restored(state);
+    EXPECT_FALSE(ctx->remap_critical(report, -1, 8));
+    expect_restored(state);
+}
+
+TEST_F(LocalRemapPinTest, InvalidIndexRestoresGraphAndIndexedFreeListsRepeatedly)
+{
+    auto state = save();
+    EXPECT_FALSE(ctx->remap_critical(report, 9999, 8));
+    expect_restored(state);
+    EXPECT_FALSE(ctx->remap_critical(report, 9999, 8));
+    expect_restored(state);
+    ASSERT_TRUE(ctx->remap_critical(report, 0, 2));
+    EXPECT_EQ(near_a->getPort(id_ENA)->driver.cell->getPort(id_B), source_a->getPort(id_Q));
+    ctx->check();
+}

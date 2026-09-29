@@ -1,9 +1,13 @@
 #include "gtest/gtest.h"
+#include "local_remap_pin_policy.h"
 #include "local_remap_policy.h"
 #include "reduction_balance_policy.h"
 #include "nextpnr.h"
+#include <limits>
 #include <map>
 #include <memory>
+#include <random>
+#include <set>
 
 USING_NEXTPNR_NAMESPACE
 
@@ -129,6 +133,113 @@ TEST(LocalRemapComposition, SixInputBit63AndBounds)
     EXPECT_FALSE(compose(0, {{INTERMEDIATE,false},{0,false}}, 0,
                          {{INTERMEDIATE,false},{1,false}}).valid);
     EXPECT_FALSE(compose(0, {{0,false},{1,false}}, 0, {{0,false},{1,false}}).valid);
+}
+
+TEST(LocalRemapPins, RanksAsymmetricSourcePinCostsByWorstArc)
+{
+    auto ranked = local_remap_pin_policy::orders({{20,5,9}, {0,30,5}, {5,0,40}});
+    ASSERT_EQ(ranked.size(), 6u);
+    const std::vector<local_remap_pin_policy::RankedOrder> expected = {
+        {{2,0,1},5}, {{1,2,0},9}, {{0,2,1},20}, {{2,1,0},30}, {{0,1,2},40}, {{1,0,2},40}};
+    // The first order minimizes the worst arc, although the second order has
+    // a lower sum. Its three-cycle also distinguishes source and pin indices.
+    for (std::size_t i = 0; i < expected.size(); ++i) {
+        EXPECT_EQ(ranked[i].input_for_pin, expected[i].input_for_pin);
+        EXPECT_EQ(ranked[i].score, expected[i].score);
+    }
+    auto large = local_remap_pin_policy::orders({{0,std::numeric_limits<int>::max()},
+                                                {std::numeric_limits<int>::max(),0}});
+    ASSERT_EQ(large.size(), 2u);
+    EXPECT_EQ(large.front().score, 0);
+    EXPECT_EQ(large.back().score, std::numeric_limits<int>::max());
+}
+
+TEST(LocalRemapPins, EnumeratesEveryOrderWithDeterministicLexicalTies)
+{
+    std::size_t factorial = 1;
+    for (int count = 2; count <= 6; ++count) {
+        factorial *= count;
+        std::vector<std::vector<int>> matrix(count, std::vector<int>(count, 0));
+        auto ranked = local_remap_pin_policy::orders(matrix);
+        auto repeated = local_remap_pin_policy::orders(matrix);
+        ASSERT_EQ(ranked.size(), factorial);
+        ASSERT_EQ(repeated.size(), ranked.size());
+        std::vector<int> identity(count);
+        for (int input = 0; input < count; ++input) identity[input] = input;
+        EXPECT_EQ(ranked.front().input_for_pin, identity);
+        std::set<std::vector<int>> unique;
+        for (std::size_t i = 0; i < ranked.size(); ++i) {
+            EXPECT_EQ(ranked[i].score, 0);
+            EXPECT_EQ(repeated[i].score, ranked[i].score);
+            EXPECT_EQ(repeated[i].input_for_pin, ranked[i].input_for_pin);
+            EXPECT_TRUE(unique.insert(ranked[i].input_for_pin).second);
+            auto sorted = ranked[i].input_for_pin;
+            std::sort(sorted.begin(), sorted.end());
+            EXPECT_EQ(sorted, identity);
+            if (i) {
+                EXPECT_LT(ranked[i-1].input_for_pin, ranked[i].input_for_pin);
+            }
+        }
+    }
+}
+
+TEST(LocalRemapPins, ExhaustiveAssignmentsForRandomMixedPolarityMasks)
+{
+    std::mt19937_64 random(0x70696e5f72656d61ULL);
+    for (int count = 2; count <= 6; ++count) {
+        auto ranked = local_remap_pin_policy::orders(
+            std::vector<std::vector<int>>(count, std::vector<int>(count, 0)));
+        for (int sample = 0; sample < 8; ++sample) {
+            uint64_t truth = random();
+            // Encode both inverted and ordinary input polarities in the table.
+            unsigned inverted = (unsigned(random()) & ((1u << count)-1)) | 1u;
+            inverted &= ~(1u << (count-1));
+            uint64_t mask = 0;
+            for (unsigned row = 0; row < (1u << count); ++row)
+                if ((truth >> (row ^ inverted)) & 1u) mask |= uint64_t(1) << row;
+            for (const auto &order : ranked) {
+                uint64_t permuted = 0;
+                ASSERT_TRUE(local_remap_pin_policy::permute_mask(mask, order.input_for_pin, permuted));
+                for (unsigned assignment = 0; assignment < (1u << count); ++assignment) {
+                    // Feed the original raw input values through the rewired pins.
+                    unsigned pin_values = 0;
+                    for (int pin = 0; pin < count; ++pin)
+                        pin_values |= ((assignment >> order.input_for_pin[pin]) & 1u) << pin;
+                    EXPECT_EQ((permuted >> pin_values) & 1u, (truth >> (assignment ^ inverted)) & 1u)
+                        << "inputs " << count << ", sample " << sample << ", assignment " << assignment;
+                }
+            }
+        }
+    }
+}
+
+TEST(LocalRemapPins, PreservesBit63AndDistinguishesPermutationDirection)
+{
+    uint64_t output = 0;
+    ASSERT_TRUE(local_remap_pin_policy::permute_mask(0xaa, {1,2,0}, output));
+    EXPECT_EQ(output, 0xf0u);
+    ASSERT_TRUE(local_remap_pin_policy::permute_mask((uint64_t(1) << 63) | (uint64_t(1) << 32),
+                                                   {5,4,3,2,1,0}, output));
+    EXPECT_EQ(output, (uint64_t(1) << 63) | (uint64_t(1) << 1));
+    ASSERT_TRUE(local_remap_pin_policy::permute_mask(0, {1,0}, output));
+    EXPECT_EQ(output, 0u);
+    ASSERT_TRUE(local_remap_pin_policy::permute_mask(std::numeric_limits<uint64_t>::max(), {0,1}, output));
+    EXPECT_EQ(output, 0xfu);
+}
+
+TEST(LocalRemapPins, RejectsMalformedCostsAndOrdersWithoutChangingOutput)
+{
+    for (const auto &matrix : std::vector<std::vector<std::vector<int>>>{
+             {}, {{0}}, {{0,1},{2}}, {{0,1},{2,3,4}}, {{},{0,1}}, {{0,-1},{2,3}},
+             std::vector<std::vector<int>>(7, std::vector<int>(7, 0))})
+        EXPECT_TRUE(local_remap_pin_policy::orders(matrix).empty());
+    for (const auto &order : std::vector<std::vector<int>>{
+             {}, {0}, {0,0}, {0,2}, {-1,0}, {0,std::numeric_limits<int>::min()},
+             {0,std::numeric_limits<int>::max()}, {0,1,2,3,4,5,6}}) {
+        uint64_t output = 0x0123456789abcdefULL;
+        EXPECT_FALSE(local_remap_pin_policy::permute_mask(0, order, output));
+        EXPECT_EQ(output, 0x0123456789abcdefULL);
+    }
 }
 
 TEST(ReductionBalance, RecognizesSixteenBitZeroConeAndRejectsNonCube)

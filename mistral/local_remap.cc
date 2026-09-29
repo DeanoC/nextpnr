@@ -5,6 +5,7 @@
 #include "timing.h"
 #include "enable_replication_policy.h"
 #include "local_remap_policy.h"
+#include "local_remap_pin_policy.h"
 #include <cmath>
 #include <limits>
 #include <map>
@@ -249,6 +250,29 @@ bool Arch::remap_critical(const std::string &report, int selection, int group_bu
         auto net = ctx->createNet(nname); clone->addOutput(id_Q); clone->connectPort(id_Q, net);
         for (auto c : group) { c->disconnectPort(id_ENA); c->connectPort(id_ENA, net); }
         assignArchInfo();
+        std::vector<NetInfo *> clone_inputs;
+        std::map<NetInfo *, store_index<PortRef>> clone_slots;
+        std::vector<int> canonical_order;
+        for (int i = 0; i < int(composition.signals.size()); ++i) {
+            auto input = clone->getPort(pins[i]);
+            clone_inputs.push_back(input);
+            clone_slots.emplace(input, clone->ports.at(pins[i]).user_idx);
+            canonical_order.push_back(i);
+        }
+        const bool optimize_pins = local_remap_optimize_pins && clone_inputs.size() >= 2;
+        auto apply_order = [&](const std::vector<int> &order) {
+            if (!optimize_pins) return;
+            uint64_t mask = 0;
+            NPNR_ASSERT(local_remap_pin_policy::permute_mask(composition.mask, order, mask));
+            for (size_t pin = 0; pin < order.size(); ++pin) {
+                auto input = clone_inputs.at(order.at(pin));
+                auto &port = clone->ports.at(pins.at(pin));
+                port.net = input; port.user_idx = clone_slots.at(input);
+                input->users.at(port.user_idx) = {clone, pins.at(pin)};
+            }
+            clone->params[id_LUT] = Property(int64_t(mask), 1 << count);
+            assignArchInfo();
+        };
         auto restore_placement = [&]() {
             if (!extra_selected.empty()) {
                 for (auto c : extra_selected) { c->disconnectPort(id_ENA); c->connectPort(id_ENA, old_net); }
@@ -293,7 +317,7 @@ bool Arch::remap_critical(const std::string &report, int selection, int group_bu
             for (auto &entry : cells) if (entry.second->bel != BelId() && !isBelLocationValid(entry.second->bel)) return false;
             return true;
         };
-        struct Trial { BelId bel; int dx, dy, score; };
+        struct Trial { BelId bel; int dx, dy, score; std::vector<int> order; };
         std::vector<Trial> trials;
         for (auto shift : std::vector<Lab>{{0,0},{-1,0},{1,0},{0,-1},{0,1}}) {
             if (!move_group(shift.first, shift.second)) continue;
@@ -302,12 +326,36 @@ bool Arch::remap_critical(const std::string &report, int selection, int group_bu
                 if (std::abs(loc.x-center.first-shift.first)+std::abs(loc.y-center.second-shift.second) > 3 ||
                     !checkBelAvail(bel) || !isValidBelForCellType(clone->type, bel) || protected_labs.count({loc.x,loc.y})) continue;
                 bindBel(bel, clone, STRENGTH_WEAK);
+                std::vector<int> order = canonical_order;
+                if (optimize_pins) {
+                    std::vector<std::vector<int>> costs(clone_inputs.size(), std::vector<int>(clone_inputs.size()));
+                    bool timed = true;
+                    for (size_t source = 0; source < clone_inputs.size(); ++source)
+                        for (size_t pin = 0; pin < clone_inputs.size(); ++pin) {
+                            DelayQuad logic;
+                            timed &= getCellDelay(clone, pins.at(pin), id_Q, logic);
+                            costs[source][pin] = int(ctx->predictArcDelay(clone_inputs[source], {clone,pins.at(pin)})) + logic.maxDelay();
+                        }
+                    const auto ranked = timed ? local_remap_pin_policy::orders(costs) : std::vector<local_remap_pin_policy::RankedOrder>{};
+                    if (!ranked.empty()) order = ranked.front().input_for_pin;
+                    apply_order(order);
+                    // Permutation changes shared ALM inputs; check neighboring
+                    // cells as well as this LUT, and retain a legal fallback.
+                    bool legal_order = true;
+                    for (const auto &entry : cells)
+                        if (entry.second->bel != BelId() && lab(entry.second.get()) == Lab(loc.x,loc.y))
+                            legal_order &= isBelLocationValid(entry.second->bel);
+                    if (!legal_order) { order = canonical_order; apply_order(order); }
+                }
                 if (isBelLocationValid(bel)) {
                     int in = 0, out = 0;
-                    for (int i = 0; i < int(composition.signals.size()); ++i)
-                        in = std::max(in, int(ctx->predictArcDelay(clone->getPort(pins[i]), {clone,pins[i]})));
+                    for (int i = 0; i < int(composition.signals.size()); ++i) {
+                        int delay = int(ctx->predictArcDelay(clone->getPort(pins[i]), {clone,pins[i]}));
+                        if (optimize_pins) { DelayQuad logic; if (getCellDelay(clone,pins[i],id_Q,logic)) delay += logic.maxDelay(); }
+                        in = std::max(in, delay);
+                    }
                     for (auto c : group) out = std::max(out, int(ctx->predictArcDelay(net,{c,id_ENA})));
-                    trials.push_back({bel,shift.first,shift.second,in+out});
+                    trials.push_back({bel,shift.first,shift.second,in+out,order});
                 }
                 unbindBel(bel);
             }
@@ -327,6 +375,7 @@ bool Arch::remap_critical(const std::string &report, int selection, int group_bu
             if (!tested.insert({loc.x,loc.y,t.dx,t.dy}).second) continue;
             if (examined++ == 12) break;
             if (!move_group(t.dx,t.dy) || !checkBelAvail(t.bel)) continue;
+            apply_order(t.order);
             bindBel(t.bel, clone, STRENGTH_WEAK);
             if (!legal()) continue;
             int selected_groups = 1;

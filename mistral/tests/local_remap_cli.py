@@ -54,6 +54,24 @@ class LocalRemapCliTest(unittest.TestCase):
         self.assertIn("Local remap: 0 qualified candidates", log)
         self.assertTrue(output)
 
+    def test_pin_optimization_requires_remapping(self):
+        code, log, output = self.run_design(options=("--remap-optimize-pins",), remap=False)
+        self.assertNotEqual(code, 0, log)
+        self.assertIn("Local-remap options require --remap-critical", log)
+        self.assertFalse(output)
+
+    def test_pin_optimization_preserves_list_mode(self):
+        code, log, output = self.run_design("heap", options=("--remap-optimize-pins",))
+        self.assertEqual(code, 0, log)
+        self.assertIn("Local remap: 0 qualified candidates", log)
+        self.assertTrue(output)
+
+    def test_pin_optimization_keeps_placement_mode_guard(self):
+        code, log, output = self.run_design(options=("--remap-optimize-pins", "--no-place"))
+        self.assertNotEqual(code, 0, log)
+        self.assertIn("Local remap requires fresh ordinary HeAP placement", log)
+        self.assertFalse(output)
+
     def test_pack_only_without_remapping_still_runs(self):
         code, log, output = self.run_design(options=("--pack-only",), remap=False)
         self.assertEqual(code, 0, log)
