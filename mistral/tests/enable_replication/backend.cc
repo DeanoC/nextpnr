@@ -441,3 +441,49 @@ TEST_F(EnableReplicationTest, LocalRemapRejectsUnrelatedHardCaptureClock)
     EXPECT_FALSE(ctx->remap_critical(report, 0));
     EXPECT_EQ(ctx->cells.size(), count);
 }
+
+TEST_F(EnableReplicationTest, LocalRemapExpandsOnlyWholeImprovingGroups)
+{
+    auto report = remap_report();
+    auto extra_a = ff("extra_a", enable), extra_b = ff("extra_b", enable);
+    extra_b->pin_data[id_ENA].state = PIN_INV;
+    ctx->assignArchInfo(); place(extra_a, 30, 21); place(extra_b, 30, 21);
+    auto a_bel = extra_a->bel, b_bel = extra_b->bel;
+    auto remote_index = remote->ports.at(id_ENA).user_idx;
+    ASSERT_TRUE(ctx->remap_critical(report, 0, 2));
+    auto net = near_a->getPort(id_ENA);
+    EXPECT_NE(net, enable);
+    EXPECT_EQ(near_b->getPort(id_ENA), net);
+    EXPECT_EQ(extra_a->getPort(id_ENA), net);
+    EXPECT_EQ(extra_b->getPort(id_ENA), net);
+    EXPECT_EQ(extra_b->get_pin_state(id_ENA), PIN_INV);
+    EXPECT_EQ(extra_a->bel, a_bel); EXPECT_EQ(extra_b->bel, b_bel);
+    EXPECT_EQ(remote->getPort(id_ENA), enable);
+    EXPECT_EQ(remote->ports.at(id_ENA).user_idx, remote_index);
+    for (auto &c : ctx->cells) EXPECT_TRUE(ctx->isBelLocationValid(c.second->bel));
+    ctx->check();
+}
+
+TEST_F(EnableReplicationTest, LocalRemapExpandedProbeRestoresAllIndexedUsers)
+{
+    auto report = remap_report();
+    auto extra_a = ff("extra_a", enable), extra_b = ff("extra_b", enable);
+    ctx->assignArchInfo(); place(extra_a, 30, 21); place(extra_b, 30, 21);
+    std::map<std::pair<IdString, IdString>, std::pair<NetInfo *, int>> ports;
+    std::map<IdString, BelId> bels;
+    for (auto &c : ctx->cells) {
+        bels[c.first] = c.second->bel;
+        for (auto &p : c.second->ports) ports[{c.first,p.first}] = {p.second.net,p.second.user_idx.idx()};
+    }
+    auto count = ctx->cells.size();
+    EXPECT_FALSE(ctx->remap_critical(report, -1, 8));
+    EXPECT_EQ(ctx->cells.size(), count);
+    for (auto &p : ports) {
+        auto actual = ctx->cells.at(p.first.first)->ports.at(p.first.second);
+        EXPECT_EQ(actual.net, p.second.first); EXPECT_EQ(actual.user_idx.idx(), p.second.second);
+    }
+    for (auto &c : bels) EXPECT_EQ(ctx->cells.at(c.first)->bel, c.second);
+    ctx->check();
+    EXPECT_THROW(ctx->remap_critical(report, 0, 0), log_execution_error_exception);
+    EXPECT_THROW(ctx->remap_critical(report, 0, 9), log_execution_error_exception);
+}

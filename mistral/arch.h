@@ -543,7 +543,8 @@ struct Arch : BaseArch<ArchRanges>
     void replicate_enables(int budget);
     std::string local_remap_report; // CLI only, never read from serialized settings.
     int local_remap_selection = -1;
-    bool remap_critical(const std::string &report, int selection);
+    int local_remap_groups = 1;
+    bool remap_critical(const std::string &report, int selection, int group_budget = 1);
     bool route() override;
 
     // -------------------------------------------------

@@ -15,10 +15,15 @@ is imported from JSON.
 The current search targets failing setup paths ending in an FF enable, whose final
 two combinational cells are ordinary LUTs. It composes those LUT truth tables,
 including constants, inverted inputs and shared nets, into at most six inputs.
-Both original LUTs and their side consumers remain. One whole LAB group of FF
-enables receives the composed copy. FF control polarity and initial state stay
+Both original LUTs and their side consumers remain. By default one whole LAB group
+of FF enables receives the composed copy. `--remap-groups N` (1–8, default 1)
+allows additional whole groups to share it. FF control polarity and initial state stay
 unchanged. Candidate variants keep the registers fixed or translate the group by
-one adjacent tile with identical z coordinates.
+one adjacent tile with identical z coordinates. Additional groups keep their
+placements. At most 32 additional groups are considered, ordered by their original
+worst setup slack and LAB coordinates. Provisional STA filters them; the retained
+subset receives fresh legality and timing checks. Every endpoint in an added group
+must improve by at least 250 ps.
 
 Frozen, kept, region-constrained and clustered cells, occupied memory/arithmetic
 LABs, top-level boundary nets and clock nets are excluded. Ordinary internal nets

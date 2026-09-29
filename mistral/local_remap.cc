@@ -42,10 +42,11 @@ std::map<std::string, int> holds(TimingAnalyser &t)
 }
 }
 
-bool Arch::remap_critical(const std::string &report, int selection)
+bool Arch::remap_critical(const std::string &report, int selection, int group_budget)
 {
     namespace policy = local_remap_policy;
     Context *ctx = getCtx();
+    if (group_budget < 1 || group_budget > 8) log_error("Local remap group budget must be 1..8.\n");
     if (selection < -1) log_error("Local remap selection must be -1 (list) or nonnegative.\n");
     if (fes_any_slot_region_active) log_error("Local remap requires ordinary full-design placement.\n");
     std::string error;
@@ -200,6 +201,42 @@ bool Arch::remap_critical(const std::string &report, int selection)
         if (!eligible) continue;
         float old_slack = std::numeric_limits<float>::max();
         for (auto c : group) old_slack = std::min(old_slack, before.get_setup_slack(CellPortKey(c->name, id_ENA)));
+        struct ExtraGroup { Lab location; std::vector<CellInfo *> cells; float slack; };
+        std::vector<ExtraGroup> extra_groups;
+        if (group_budget > 1) {
+            std::map<Lab, std::vector<CellInfo *>> by_lab;
+            std::set<Lab> rejected;
+            for (auto user : old_net->users) {
+                auto c = user.cell;
+                if (c->bel == BelId() || lab(c) == lab(cone.sink)) continue;
+                if (c->type != id_MISTRAL_FF || user.port != id_ENA || !safe_cell(c) ||
+                    c->getPort(id_CLK) != cone.sink->getPort(id_CLK) ||
+                    c->get_pin_state(id_CLK) != cone.sink->get_pin_state(id_CLK)) {
+                    rejected.insert(lab(c)); continue;
+                }
+                by_lab[lab(c)].push_back(c);
+            }
+            for (auto &entry : by_lab) {
+                if (rejected.count(entry.first)) continue;
+                float slack = std::numeric_limits<float>::max();
+                bool timed = true;
+                for (auto c : entry.second) {
+                    float value = before.get_setup_slack(CellPortKey(c->name, id_ENA));
+                    timed &= timed_slack(value); slack = std::min(slack, value);
+                }
+                if (!timed) continue;
+                std::sort(entry.second.begin(), entry.second.end(), [&](CellInfo *a, CellInfo *b) {
+                    return a->name.str(ctx) < b->name.str(ctx);
+                });
+                extra_groups.push_back({entry.first, entry.second, slack});
+            }
+            std::sort(extra_groups.begin(), extra_groups.end(), [](const ExtraGroup &a, const ExtraGroup &b) {
+                return std::make_pair(a.slack, a.location) < std::make_pair(b.slack, b.location);
+            });
+            if (extra_groups.size() > 32) extra_groups.resize(32);
+            for (auto &g : extra_groups) for (auto c : g.cells) ena.emplace(c, c->ports.at(id_ENA));
+        }
+        std::vector<CellInfo *> extra_selected;
         int count = std::max(2, int(composition.signals.size()));
         IdString types[] = {id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4, id_MISTRAL_ALUT5, id_MISTRAL_ALUT6};
         auto clone = ctx->createCell(cname, types[count-2]);
@@ -213,13 +250,20 @@ bool Arch::remap_critical(const std::string &report, int selection)
         for (auto c : group) { c->disconnectPort(id_ENA); c->connectPort(id_ENA, net); }
         assignArchInfo();
         auto restore_placement = [&]() {
+            if (!extra_selected.empty()) {
+                for (auto c : extra_selected) { c->disconnectPort(id_ENA); c->connectPort(id_ENA, old_net); }
+                extra_selected.clear();
+                assignArchInfo();
+            }
             if (clone->bel != BelId()) unbindBel(clone->bel);
             for (auto c : group) if (c->bel != BelId()) unbindBel(c->bel);
             for (auto c : group) bindBel(placements.at(c).first, c, placements.at(c).second);
         };
         auto rollback = [&]() {
             restore_placement();
-            for (auto c : group) { c->disconnectPort(id_ENA); c->ports.at(id_ENA) = ena.at(c); }
+            for (auto &entry : ena) {
+                entry.first->disconnectPort(id_ENA); entry.first->ports.at(id_ENA) = entry.second;
+            }
             for (auto p : pins) if (clone->ports.count(p)) clone->disconnectPort(p);
             clone->disconnectPort(id_Q);
             cells.erase(cname); nets.erase(nname); net_aliases.erase(nname);
@@ -285,7 +329,48 @@ bool Arch::remap_critical(const std::string &report, int selection)
             if (!move_group(t.dx,t.dy) || !checkBelAvail(t.bel)) continue;
             bindBel(t.bel, clone, STRENGTH_WEAK);
             if (!legal()) continue;
+            int selected_groups = 1;
+            if (!extra_groups.empty()) {
+                // Probe all bounded secondary groups, then keep only whole groups
+                // for which every endpoint improves. The final subset gets a fresh
+                // complete analysis; provisional legality is never accepted.
+                for (auto &g : extra_groups) for (auto c : g.cells) {
+                    c->disconnectPort(id_ENA); c->connectPort(id_ENA, net); extra_selected.push_back(c);
+                }
+                assignArchInfo();
+                std::set<CellInfo *> keep_extra;
+                {
+                    TimingAnalyser all(ctx); all.setup(false, false, true);
+                    for (auto &g : extra_groups) {
+                        if (selected_groups == group_budget) break;
+                        bool improves = true;
+                        for (auto c : g.cells) {
+                            auto port = CellPortKey(c->name, id_ENA);
+                            float value = all.get_setup_slack(port);
+                            improves &= isBelLocationValid(c->bel) && timed_slack(value) &&
+                                value >= before.get_setup_slack(port) + 250;
+                        }
+                        if (!improves) continue;
+                        ++selected_groups;
+                        keep_extra.insert(g.cells.begin(), g.cells.end());
+                    }
+                }
+                std::vector<CellInfo *> retained;
+                for (auto c : extra_selected) {
+                    if (keep_extra.count(c)) retained.push_back(c);
+                    else { c->disconnectPort(id_ENA); c->connectPort(id_ENA, old_net); }
+                }
+                extra_selected.swap(retained);
+                assignArchInfo();
+                if (!legal()) continue;
+            }
             TimingAnalyser after(ctx); after.setup(false, false, true);
+            bool extra_improve = true;
+            for (auto c : extra_selected) {
+                auto port = CellPortKey(c->name, id_ENA);
+                float value = after.get_setup_slack(port);
+                extra_improve &= timed_slack(value) && value >= before.get_setup_slack(port) + 250;
+            }
             float slack = std::numeric_limits<float>::max();
             for (auto c : group) slack = std::min(slack, after.get_setup_slack(CellPortKey(c->name,id_ENA)));
             bool clocks = true;
@@ -299,14 +384,23 @@ bool Arch::remap_critical(const std::string &report, int selection)
                 if (!timed_slack(now) || now < endpoint.second) boundaries = false;
             }
             bool hold = enable_replication_policy::hold_nonregressing(old_hold, holds(after));
-            log_info("Local remap trial inner=%s outer=%s lab=%d,%d bel=%s shift=%d,%d gain=%.0fps clocks=%d hold=%d boundaries=%d\n",
-                nameOf(inner),nameOf(outer),center.first,center.second,nameOfBel(t.bel),t.dx,t.dy,slack-old_slack,int(clocks),int(hold),int(boundaries));
-            if (!timed_slack(slack) || !timed_slack(old_slack) || slack < old_slack+250 || !clocks || !hold || !boundaries) continue;
+            log_info("Local remap trial inner=%s outer=%s lab=%d,%d bel=%s shift=%d,%d gain=%.0fps clocks=%d hold=%d boundaries=%d groups=%d sinks=%zu\n",
+                nameOf(inner),nameOf(outer),center.first,center.second,nameOfBel(t.bel),t.dx,t.dy,slack-old_slack,int(clocks),int(hold),int(boundaries),selected_groups,group.size()+extra_selected.size());
+            if (!timed_slack(slack) || !timed_slack(old_slack) || slack < old_slack+250 || !clocks || !hold || !boundaries || !extra_improve) continue;
             log_info("Local remap candidate %d: %s + %s -> %s, %zu ENA users, predicted gain %.0fps.\n",
-                qualified,nameOf(inner),nameOf(outer),nameOfBel(t.bel),group.size(),slack-old_slack);
+                qualified,nameOf(inner),nameOf(outer),nameOfBel(t.bel),group.size()+extra_selected.size(),slack-old_slack);
             if (selection == qualified++) { keep = true; break; }
         }
         if (keep) {
+            // Probing secondary groups can recycle user-store slots. Preserve the
+            // original indices of every unselected consumer in the retained graph.
+            if (!extra_groups.empty()) {
+                old_net->users = std::move(users.at(old_net));
+                for (auto &entry : ena) {
+                    if (entry.first->getPort(id_ENA) == old_net) entry.first->ports.at(id_ENA) = entry.second;
+                    else old_net->users.remove(entry.second.user_idx);
+                }
+            }
             ctx->check();
             log_info("Local remap applied candidate %d; full routing and signoff still required.\n", selection);
             return true;
