@@ -5,6 +5,7 @@
 #include <sstream>
 #include "gtest/gtest.h"
 #include "json_frontend.h"
+#include "log.h"
 #include "nextpnr.h"
 #include "placed_timeout_region.h"
 #include "retained_enable_policy.h"
@@ -80,6 +81,41 @@ TEST(PlacedTimeoutTest, DisabledIsIdentifierNeutral)
         unsetenv("NEXTPNR_MISTRAL_PLACED_TIMEOUT_REGION");
     auto after = ctx.id("timeout-test-after");
     EXPECT_EQ(after.index, before.index + 1);
+    EXPECT_TRUE(ctx.cells.empty());
+    EXPECT_TRUE(ctx.nets.empty());
+}
+TEST(PlacedTimeoutTest, MissingFixtureReportsNameBeforeMutation)
+{
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    Context ctx(args);
+    // The first generated root may still exist after a synthesis change.
+    ctx.createCell(ctx.id("ddr0_test.cmd_end_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT3_B"), id_MISTRAL_ALUT3);
+    const size_t before_cells = ctx.cells.size();
+    std::string message;
+    auto previous_writer = log_write_function;
+    log_write_function = [&](std::string text) { message += text; };
+    EXPECT_THROW(diagnostic_placed_timeout(&ctx, "/tmp/nextpnr-missing-timeout-fixture"),
+                 log_execution_error_exception);
+    log_write_function = previous_writer;
+    EXPECT_NE(message.find("Timeout fixture mismatch: missing cell"), std::string::npos);
+    EXPECT_NE(message.find("ddr0_test.burst_end_MISTRAL_ALUT3_A"), std::string::npos);
+    EXPECT_EQ(ctx.cells.size(), before_cells);
+    EXPECT_TRUE(ctx.nets.empty());
+}
+TEST(RetainedEnableTest, MissingFixtureReportsNameBeforeMutation)
+{
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    Context ctx(args);
+    std::string message;
+    auto previous_writer = log_write_function;
+    log_write_function = [&](std::string text) { message += text; };
+    EXPECT_THROW(diagnostic_retained_enable(&ctx, "/tmp/nextpnr-missing-retained-fixture", false),
+                 log_execution_error_exception);
+    log_write_function = previous_writer;
+    EXPECT_NE(message.find("Retained-enable fixture mismatch: missing cell"), std::string::npos);
+    EXPECT_NE(message.find("ddr1_nack_MISTRAL_FF_Q_ENA"), std::string::npos);
     EXPECT_TRUE(ctx.cells.empty());
     EXPECT_TRUE(ctx.nets.empty());
 }

@@ -86,8 +86,13 @@ void diagnostic_retained_enable(Context *ctx, const char *prefix, bool require_c
         auto p = ctx->getBelPinsForCellPin(c, pin);
         return p.begin() != p.end();
     };
-    CellInfo *driver = ctx->cells.at(ctx->id(target_name)).get(),
-             *critical = ctx->cells.at(ctx->id(critical_name)).get();
+    auto require_fixture_cell = [&](const char *name) -> CellInfo * {
+        auto it = ctx->cells.find(ctx->id(name));
+        if (it == ctx->cells.end())
+            log_error("Retained-enable fixture mismatch: missing cell '%s'.\n", name);
+        return it->second.get();
+    };
+    CellInfo *driver = require_fixture_cell(target_name), *critical = require_fixture_cell(critical_name);
     NPNR_ASSERT(driver->type == id_MISTRAL_ALUT4 && driver->params.at(id_LUT).as_int64() == 0xe400 && movable(driver) &&
                 ordinary_lab(driver->bel));
     NPNR_ASSERT(driver->ports.size() == 5);

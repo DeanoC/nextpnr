@@ -46,6 +46,18 @@ void diagnostic_placed_timeout(Context *ctx, const char *prefix)
     if (expand_roots && std::strcmp(requested_region, "roots") != 0)
         log_error("Timeout diagnostic REGION must be empty or roots.\n");
     const char *region_mode = expand_roots ? "roots" : "midpoint";
+    // The generated payload belongs to one qualified RAM-test netlist. Check
+    // every original reference before writing snapshots or changing cells.
+    auto require_fixture_cell = [&](const char *name) {
+        if (!ctx->cells.count(ctx->id(name)))
+            log_error("Timeout fixture mismatch: missing cell '%s'.\n", name);
+    };
+    for (const auto &root : timeout_roots)
+        require_fixture_cell(root.name);
+    for (const auto &cell : timeout_cells)
+        for (const auto &input : cell.inputs)
+            if (!input.added)
+                require_fixture_cell(input.cell);
     auto pin = [&](int i) { return ctx->id(std::string(1, 'A' + i)); };
     auto type = [&](int width) { return ctx->id("MISTRAL_ALUT" + std::to_string(width)); };
     std::set<IdString> removed;
