@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include "log.h"
 #include "nextpnr.h"
+#include "placed_reduction_policy.h"
 #include "reduction_balance_plan.h"
 #include "timing.h"
 #include <algorithm>
@@ -854,4 +855,149 @@ TEST_F(TwentyFourReductionTest, MultilineListingRetainsAcceptedElevenStep)
         }
     }
     ctx->check();
+}
+
+namespace {
+using ProbeLabs = std::array<placed_reduction_policy::Lab, 4>;
+
+ProbeLabs probe_geometry(int category)
+{
+    // Categories identify disjoint toy geometries independently of the
+    // policy's sorted-key implementation.
+    return {{{4 * category, 0}, {4 * category + 1, 1}, {4 * category + 2, 2}, {4 * category + 3, 3}}};
+}
+}
+
+TEST(PlacedReductionProbePolicy, AdversarialPermutationPrefixDoesNotHideMeasuredImprovement)
+{
+    struct Trial { ProbeLabs labs; int measured_gain; };
+    std::vector<Trial> candidates;
+    auto crowded = probe_geometry(0);
+    do { candidates.push_back({crowded, 19}); } while (std::next_permutation(crowded.begin(), crowded.end()));
+    ASSERT_EQ(candidates.size(), 24u);
+    const auto improvement = probe_geometry(1);
+    candidates.push_back({improvement, 300});
+    placed_reduction_policy::WideProbeBudget budget;
+    bool found_improvement = false;
+    for (const auto &trial : candidates) {
+        if (budget.exhausted()) break;
+        if (!budget.eligible(trial.labs)) continue;
+        ASSERT_TRUE(budget.admit_legal_ordered_tuple(trial.labs));
+        if (trial.measured_gain >= 250) {
+            EXPECT_EQ(trial.labs, improvement);
+            found_improvement = true;
+            break;
+        }
+    }
+    // A raw sixteen-tuple prefix contains no useful measurement. The spatial
+    // frontier must make the later geometry observable with budget remaining.
+    EXPECT_TRUE(found_improvement);
+    EXPECT_EQ(budget.timed_count(), 3);
+    EXPECT_EQ(budget.geometry_count(), 2u);
+    EXPECT_FALSE(budget.exhausted());
+}
+
+TEST(PlacedReductionProbePolicy, SixteenMeasurementsCoverAvailableGeometries)
+{
+    struct Trial { ProbeLabs labs; int category; };
+    std::vector<Trial> candidates;
+    auto prefix = probe_geometry(0);
+    do { candidates.push_back({prefix, 0}); } while (std::next_permutation(prefix.begin(), prefix.end()));
+    for (int category = 1; category < 8; ++category) {
+        auto labs = probe_geometry(category);
+        candidates.push_back({labs, category});
+        std::reverse(labs.begin(), labs.end());
+        candidates.push_back({labs, category});
+    }
+    placed_reduction_policy::WideProbeBudget budget;
+    std::map<int, int> category_measurements;
+    std::set<ProbeLabs> measured;
+    for (const auto &trial : candidates) {
+        if (budget.exhausted()) break;
+        if (!budget.eligible(trial.labs)) continue;
+        ASSERT_TRUE(budget.admit_legal_ordered_tuple(trial.labs));
+        EXPECT_TRUE(measured.insert(trial.labs).second);
+        ++category_measurements[trial.category];
+    }
+    EXPECT_TRUE(budget.exhausted());
+    EXPECT_EQ(budget.timed_count(), 16);
+    EXPECT_EQ(measured.size(), 16u);
+    EXPECT_EQ(budget.geometry_count(), 8u);
+    ASSERT_EQ(category_measurements.size(), 8u);
+    for (int category = 0; category < 8; ++category) EXPECT_EQ(category_measurements.at(category), 2);
+    EXPECT_FALSE(budget.eligible(probe_geometry(8)));
+    EXPECT_FALSE(budget.admit_legal_ordered_tuple(probe_geometry(8)));
+    EXPECT_EQ(budget.timed_count(), 16);
+}
+
+TEST(PlacedReductionProbePolicy, RepeatedLabsPreserveMultiplicityAndAssignmentAlternatives)
+{
+    const placed_reduction_policy::Lab a{1, 1}, b{2, 2}, c{3, 3};
+    ProbeLabs twice_a{{a, a, b, c}}, twice_b{{a, b, b, c}};
+    placed_reduction_policy::WideProbeBudget budget;
+    for (const auto &initial : {twice_a, twice_b}) {
+        auto labs = initial;
+        int admitted = 0;
+        do {
+            if (budget.admit_legal_ordered_tuple(labs)) ++admitted;
+        } while (std::next_permutation(labs.begin(), labs.end()));
+        EXPECT_EQ(admitted, 2);
+    }
+    // Both have the same set of distinct LABs. Collapsing multiplicities would
+    // incorrectly prevent the second geometry from receiving any probes.
+    EXPECT_EQ(budget.geometry_count(), 2u);
+    EXPECT_EQ(budget.timed_count(), 4);
+    EXPECT_FALSE(budget.eligible(twice_a));
+    EXPECT_FALSE(budget.eligible(twice_b));
+}
+
+TEST(PlacedReductionProbePolicy, LegalityFailuresAndDuplicatesDoNotConsumeMeasurements)
+{
+    const auto labs = probe_geometry(0);
+    placed_reduction_policy::WideProbeBudget budget;
+    // Several physical BEL variants can share one ordered LAB tuple. Failed
+    // legality probes only query eligibility and leave a later legal variant usable.
+    for (int illegal_variant = 0; illegal_variant < 20; ++illegal_variant) EXPECT_TRUE(budget.eligible(labs));
+    EXPECT_EQ(budget.timed_count(), 0);
+    EXPECT_EQ(budget.geometry_count(), 0u);
+    ASSERT_TRUE(budget.admit_legal_ordered_tuple(labs));
+    for (int duplicate = 0; duplicate < 20; ++duplicate) {
+        EXPECT_FALSE(budget.eligible(labs));
+        EXPECT_FALSE(budget.admit_legal_ordered_tuple(labs));
+    }
+    EXPECT_EQ(budget.timed_count(), 1);
+    auto alternative = labs;
+    std::swap(alternative[0], alternative[1]);
+    ASSERT_TRUE(budget.admit_legal_ordered_tuple(alternative));
+    EXPECT_EQ(budget.timed_count(), 2);
+    auto third = labs;
+    std::swap(third[0], third[2]);
+    EXPECT_FALSE(budget.admit_legal_ordered_tuple(third));
+    EXPECT_EQ(budget.timed_count(), 2);
+}
+
+TEST(PlacedReductionProbePolicy, DeterministicFrontierForIdenticalRankedInputs)
+{
+    std::vector<ProbeLabs> candidates;
+    for (int category = 0; category < 12; ++category) {
+        auto labs = probe_geometry(category);
+        candidates.push_back(labs);
+        std::swap(labs[0], labs[1]);
+        candidates.push_back(labs);
+        candidates.push_back(labs);
+        std::swap(labs[1], labs[2]);
+        candidates.push_back(labs);
+    }
+    placed_reduction_policy::WideProbeBudget first, second;
+    std::vector<ProbeLabs> first_frontier, second_frontier;
+    for (const auto &labs : candidates) {
+        const bool first_eligible = first.eligible(labs), second_eligible = second.eligible(labs);
+        EXPECT_EQ(first_eligible, second_eligible);
+        if (first.admit_legal_ordered_tuple(labs)) first_frontier.push_back(labs);
+        if (second.admit_legal_ordered_tuple(labs)) second_frontier.push_back(labs);
+    }
+    EXPECT_EQ(first_frontier, second_frontier);
+    EXPECT_EQ(first_frontier.size(), 16u);
+    EXPECT_EQ(first.timed_count(), second.timed_count());
+    EXPECT_EQ(first.geometry_count(), second.geometry_count());
 }

@@ -3,6 +3,7 @@
 #include "log.h"
 #include "timing.h"
 #include "reduction_balance_plan.h"
+#include "placed_reduction_policy.h"
 #include "enable_replication_policy.h"
 #include <algorithm>
 #include <array>
@@ -238,12 +239,13 @@ bool placed_reduction(Context *ctx, const std::string &root_name, int radius, in
         std::sort(trials.begin(),trials.end(),[](const WideTrial &a,const WideTrial &b) {
             return std::tie(a.score,a.total,a.bels) < std::tie(b.score,b.total,b.bels);
         });
-        int examined=0,qualified=0;
-        std::set<std::array<Lab,4>> tested;
+        int qualified=0;
+        placed_reduction_policy::WideProbeBudget budget;
         for (const auto &trial : trials) {
+            if (budget.exhausted()) break;
             std::array<Lab,4> labs;
             for (size_t child=0;child<children.size();++child) labs[child]=lab(trial.bels[child]);
-            if (tested.count(labs)) continue;
+            if (!budget.eligible(labs)) continue;
             for (auto *child : children) if (child->bel != BelId()) ctx->unbindBel(child->bel);
             for (size_t child=0;child<children.size();++child)
                 ctx->bindBel(trial.bels[child],children[child],all_places.at(children[child]).second);
@@ -254,8 +256,7 @@ bool placed_reduction(Context *ctx, const std::string &root_name, int radius, in
                 if (entry.second->bel != BelId() && affected.count(lab(entry.second->bel)))
                     legal &= ctx->isBelLocationValid(entry.second->bel);
             if (!legal) continue;
-            if (examined++==16) break;
-            tested.insert(labs);
+            NPNR_ASSERT(budget.admit_legal_ordered_tuple(labs));
             TimingAnalyser after(ctx); after.setup(false,false,true);
             float slack=std::numeric_limits<float>::max(); bool endpoints_safe=true;
             for (auto ep : endpoints) {
@@ -283,10 +284,14 @@ bool placed_reduction(Context *ctx, const std::string &root_name, int radius, in
                         NPNR_ASSERT(place.first->bel==place.second.first && place.first->belStrength==place.second.second);
                     }
                 ctx->check();
+                log_info("Placed reduction geometry probes: timed=%d distinct=%zu.\n",
+                    budget.timed_count(),budget.geometry_count());
                 return true;
             }
         }
         rollback();
+        log_info("Placed reduction geometry probes: timed=%d distinct=%zu.\n",
+            budget.timed_count(),budget.geometry_count());
         log_info("Placed reduction: %d qualified candidates; none applied.\n",qualified);
         return false;
     }

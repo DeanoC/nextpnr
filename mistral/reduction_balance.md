@@ -26,7 +26,11 @@ Placed balancing supports the eleven- and twenty-four-literal classes. It
 fixes the public root and all outside-cone cells, and searches nearby legal
 sites for two or four leaves. Each leaf has at most 24 spatially diverse
 sites; the 24-literal search is bounded to 24^4 tuples and sixteen legal LAB
-tuples with timing analysis. A candidate needs at least 250 ps modeled root
+tuples with timing analysis. The four-leaf search times at most two legal
+assignments per unordered LAB multiset, preserving repeated-LAB multiplicity
+and ordered assignment deduplication. This keeps permutations of one geometry
+from exhausting the timing budget. Illegal assignments consume no budget.
+A candidate needs at least 250 ps modeled root
 branch improvement, nonregressing downstream endpoints, clocks and holds,
 and live affected-LAB legality. The shared 24-literal root may have
 reconvergent downstream branches; an active-branch cycle is rejected.
