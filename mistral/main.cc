@@ -62,6 +62,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "replicate timing-critical LUT enables after placement (budget 0..8, default 0)");
     specific.add_options()("remap-critical", po::value<std::string>(), "prior routed timing report for local LUT remapping");
     specific.add_options()("remap-optimize-pins", "optimize local-remap LUT input order for predicted delay");
+    specific.add_options()("remap-comb-critical", po::value<std::string>(), "prior routed timing report for bounded internal LUT cut remapping");
+    specific.add_options()("remap-comb-candidate", po::value<int>(), "qualified internal-cut candidate index (default: list only)");
     specific.add_options()("remap-candidate", po::value<int>(), "qualified local-remap candidate index (default: list only)");
     specific.add_options()("remap-groups", po::value<int>(), "maximum whole LAB enable groups per remap (1..8, default 1)");
     specific.add_options()("balance-reduction-root", po::value<std::vector<std::string>>()->composing(),
@@ -143,6 +145,20 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         ctx->local_remap_optimize_pins = vm.count("remap-optimize-pins") != 0;
         if (ctx->local_remap_groups < 1 || ctx->local_remap_groups > 8)
             log_error("--remap-groups must be between 1 and 8.\n");
+    }
+    ctx->comb_remap_report.clear();
+    ctx->comb_remap_selection = -1;
+    if (vm.count("remap-comb-candidate") && !vm.count("remap-comb-critical"))
+        log_error("--remap-comb-candidate requires --remap-comb-critical.\n");
+    if (vm.count("remap-comb-critical")) {
+        if (vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") || vm.count("fes-scaffold") ||
+            (vm.count("placer") && vm["placer"].as<std::string>() != "heap"))
+            log_error("Comb remap requires fresh ordinary HeAP placement.\n");
+        auto in = open_ifstream_and_log_error(vm["remap-comb-critical"].as<std::string>(), "internal-cut timing report");
+        ctx->comb_remap_report.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        if (ctx->comb_remap_report.empty()) log_error("Empty internal-cut timing report.\n");
+        if (vm.count("remap-comb-candidate")) ctx->comb_remap_selection = vm["remap-comb-candidate"].as<int>();
+        if (ctx->comb_remap_selection < -1) log_error("Invalid comb-remap candidate index.\n");
     }
     const bool routed = ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "route";
     if (vm.count("fes-cram-region")) {

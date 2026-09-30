@@ -11,6 +11,8 @@ set(SOURCES
     delay.cc
     local_remap.cc
     local_remap_pin_policy.h
+    comb_remap.cc
+    local_remap_cut_policy.h
     capture_locality.cc
     reduction_balance.cc
     placed_reduction.cc
@@ -32,7 +34,7 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/completed_observations.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc
+    TEST_SOURCES tests/completed_observations.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc
     MAIN_SOURCE  main.cc
 )
 

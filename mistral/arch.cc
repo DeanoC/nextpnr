@@ -845,6 +845,8 @@ bool Arch::place()
     // JSON settings and pre-place hooks can override the command-line placer.
     if (!local_remap_report.empty() && (placer != "heap" || fes_any_slot_region_active))
         log_error("Local remap requires ordinary full-design HeAP placement.\n");
+    if (!comb_remap_report.empty() && (placer != "heap" || fes_any_slot_region_active))
+        log_error("Comb remap requires ordinary full-design HeAP placement.\n");
     if (enable_replication_budget && (placer != "heap" || fes_any_slot_region_active))
         log_error("Enable replication requires ordinary full-design HeAP placement.\n");
 
@@ -914,6 +916,9 @@ bool Arch::place()
     if (!local_remap_report.empty() && !remap_critical(local_remap_report, local_remap_selection, local_remap_groups) &&
         local_remap_selection >= 0)
         log_error("Requested local-remap candidate was not qualified; routing was not started.\n");
+    if (!comb_remap_report.empty() && !remap_comb_critical(comb_remap_report, comb_remap_selection) &&
+        comb_remap_selection >= 0)
+        log_error("Requested comb-remap candidate was not qualified; routing was not started.\n");
 
     diagnostic_capture_locality(getCtx(), std::getenv("NEXTPNR_MISTRAL_CAPTURE_LOCALITY"));
     diagnostic_placed_reduction(getCtx(), std::getenv("NEXTPNR_MISTRAL_PLACED_REDUCTION"));
