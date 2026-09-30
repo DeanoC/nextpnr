@@ -570,6 +570,9 @@ struct Arch : BaseArch<ArchRanges>
     std::string decomposition_remap_report; // Explicit CLI only; never a serialized setting.
     int decomposition_remap_selection = -1;
     bool remap_decomposed_critical(const std::string &report, int selection);
+    std::string lut_driver_copy_report; // Explicit CLI only; never a serialized setting.
+    int lut_driver_copy_selection = -1;
+    bool remap_lut_driver_critical(const std::string &report, int selection);
     bool balance_reduction(const std::string &root_name);
     bool route() override;
 

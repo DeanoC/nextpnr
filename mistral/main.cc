@@ -31,6 +31,7 @@
 #include "timing.h"
 #include "enable_replication_policy.h"
 #include "json11.hpp"
+#include "lut_driver_copy.h"
 
 USING_NEXTPNR_NAMESPACE
 
@@ -103,6 +104,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("remap-comb-plan", po::value<std::string>(), "JSON plan of staged internal LUT-cut remaps (1..8 steps)");
     specific.add_options()("remap-decompose-critical", po::value<std::string>(), "prior timing report for bounded seven-input control decomposition");
     specific.add_options()("remap-decompose-candidate", po::value<int>(), "qualified decomposition candidate index (default: list only)");
+    specific.add_options()("remap-lut-driver-critical", po::value<std::string>(), "prior timing report for one LUT driver copy to an arithmetic data input");
+    specific.add_options()("remap-lut-driver-candidate", po::value<int>(), "qualified LUT-driver-copy candidate index (default: list only)");
     specific.add_options()("remap-candidate", po::value<int>(), "qualified local-remap candidate index (default: list only)");
     specific.add_options()("remap-groups", po::value<int>(), "maximum whole LAB enable groups per remap (1..8, default 1)");
     specific.add_options()("balance-reduction-root", po::value<std::vector<std::string>>()->composing(),
@@ -328,6 +331,29 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         if (ctx->decomposition_remap_selection < -1) log_error("Invalid control decomposition candidate index.\n");
         if (ctx->decomposition_remap_selection < 0 && (!vm.count("no-route") || vm.count("rbf")))
             log_error("Control decomposition listing requires --no-route and no --rbf.\n");
+    }
+    ctx->lut_driver_copy_report.clear();
+    ctx->lut_driver_copy_selection = -1;
+    if (vm.count("remap-lut-driver-candidate") && !vm.count("remap-lut-driver-critical"))
+        log_error("--remap-lut-driver-candidate requires --remap-lut-driver-critical.\n");
+    if (vm.count("remap-lut-driver-critical")) {
+        if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") ||
+            vm.count("fes-scaffold") || (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
+            log_error("LUT driver copy requires fresh ordinary HeAP placement.\n");
+        auto in = open_ifstream_and_log_error(vm["remap-lut-driver-critical"].as<std::string>(), "LUT driver copy timing report");
+        ctx->lut_driver_copy_report.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        std::string error;
+        auto report = json11::Json::parse(ctx->lut_driver_copy_report, error);
+        if (!error.empty() || !report.is_object() || !report["critical_paths"].is_array())
+            log_error("Invalid LUT driver copy timing report.\n");
+        check_plan_keys(ctx->lut_driver_copy_report, "LUT driver copy report");
+        if (vm.count("remap-lut-driver-candidate"))
+            ctx->lut_driver_copy_selection = vm["remap-lut-driver-candidate"].as<int>();
+        if (ctx->lut_driver_copy_selection < -1) log_error("Invalid LUT driver copy candidate index.\n");
+        if (ctx->lut_driver_copy_selection < 0 && (!vm.count("no-route") || vm.count("rbf")))
+            log_error("LUT driver copy listing requires --no-route and no --rbf.\n");
+        prevalidate_lut_driver_copy_prefix(ctx);
     }
     const bool routed = ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "route";
     if (vm.count("fes-cram-region")) {
