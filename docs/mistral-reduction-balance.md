@@ -4,7 +4,9 @@ The current supported cone classes, rewrite rules, placed-search bounds and
 rollback guarantees are documented in
 [the reduction balancing guide](../mistral/reduction_balance.md).
 See [control remapping experiments](mistral-control-remapping.md) for the
-available options, pass order and current routed measurement.
+available options and pass order. The later
+[narrow-search measurement](mistral-narrow-reduction.md) records the selected
+seven-to-twelve-literal search extension and its verified routed profile.
 
 ## Historical eleven-literal route experiment
 
