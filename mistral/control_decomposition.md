@@ -23,8 +23,9 @@ reachable RTL states contributes to the equivalence proof.
 
 All original LUTs, FFs and BEL assignments remain. New LUTs use ALMs without
 original LUT, FF or routing-buffer occupants; new LUTs may share with each
-other. Accepted rewrites preserve the relative iteration order of original
-cells and nets. One selected LUT input
+other. Accepted rewrites keep original cells and nets as the exact iteration
+prefix, preserving their GPU net IDs; new clones follow them. New loads and
+queue sizes can still change routing. One selected LUT input
 receives an independent replacement root driven by one or two encoders. Other
 consumers retain the original cone. Protected cells/nets/LABs, regions,
 global/clock/top-level roles, unsupported timing and downstream cycles exclude

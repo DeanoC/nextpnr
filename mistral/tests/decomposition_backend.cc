@@ -390,13 +390,18 @@ TEST_F(DecompositionBackendTest, QualifiedSelectionPreservesOriginalDagAndEveryT
     EXPECT_FALSE(ctx->remap_decomposed_critical(report(), -1));
     saved.expect_exact(ctx.get());
     ASSERT_TRUE(ctx->remap_decomposed_critical(report(), 0)) << log.stream.str();
-    EXPECT_EQ(ctx->cells.size(), saved.cells.size() + 3);
-    EXPECT_EQ(ctx->nets.size(), saved.nets.size() + 3);
+    ASSERT_EQ(ctx->cells.size(), saved.cells.size() + 3);
+    ASSERT_EQ(ctx->nets.size(), saved.nets.size() + 3);
     std::vector<IdString> original_cell_order, original_net_order, original_alias_order;
-    for (const auto &entry : ctx->cells)
+    std::vector<IdString> actual_cell_order, actual_net_order;
+    for (const auto &entry : ctx->cells) {
+        actual_cell_order.push_back(entry.first);
         if (saved.cells.count(entry.first)) original_cell_order.push_back(entry.first);
-    for (const auto &entry : ctx->nets)
+    }
+    for (const auto &entry : ctx->nets) {
+        actual_net_order.push_back(entry.first);
         if (saved.nets.count(entry.first)) original_net_order.push_back(entry.first);
+    }
     for (const auto &entry : ctx->net_aliases)
         if (saved.aliases.count(entry.first)) {
             original_alias_order.push_back(entry.first);
@@ -405,6 +410,16 @@ TEST_F(DecompositionBackendTest, QualifiedSelectionPreservesOriginalDagAndEveryT
     EXPECT_EQ(original_cell_order, saved.cell_order);
     EXPECT_EQ(original_net_order, saved.net_order);
     EXPECT_EQ(original_alias_order, saved.alias_order);
+    // Keep every original owner at its existing iterator position. Appending
+    // the independent clone owners preserves the original router net IDs.
+    EXPECT_EQ(std::vector<IdString>(actual_cell_order.begin(), actual_cell_order.begin() + saved.cells.size()),
+              saved.cell_order);
+    EXPECT_EQ(std::vector<IdString>(actual_net_order.begin(), actual_net_order.begin() + saved.nets.size()),
+              saved.net_order);
+    for (size_t i = saved.cells.size(); i < actual_cell_order.size(); ++i)
+        EXPECT_EQ(saved.cells.count(actual_cell_order[i]), 0u);
+    for (size_t i = saved.nets.size(); i < actual_net_order.size(); ++i)
+        EXPECT_EQ(saved.nets.count(actual_net_order[i]), 0u);
     for (const auto &entry : ctx->cells) {
         if (saved.cells.count(entry.first)) continue;
         auto *clone = entry.second.get();

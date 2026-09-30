@@ -644,6 +644,36 @@ bool Arch::remap_decomposed_critical(const std::string &report, int selection)
                             for (const auto &entry : original_places) {
                                 NPNR_ASSERT(entry.first->bel==entry.second.first && entry.first->belStrength==entry.second.second);
                             }
+                            // Keep original owners as the exact iteration prefix:
+                            // appending clones to insertion storage would shift
+                            // every original GPU net ID because dict iterates
+                            // backwards. Prepare every allocation and lookup
+                            // before transferring ownership so rollback remains
+                            // safe even if preparing these dictionaries fails.
+                            decltype(ctx->cells) accepted_cells;
+                            decltype(ctx->nets) accepted_nets;
+                            for (auto name : cnames) accepted_cells[name]=nullptr;
+                            for (auto key=original_cell_order.rbegin();key!=original_cell_order.rend();++key)
+                                accepted_cells[*key]=nullptr;
+                            for (auto name : nnames) accepted_nets[name]=nullptr;
+                            for (auto key=original_net_order.rbegin();key!=original_net_order.rend();++key)
+                                accepted_nets[*key]=nullptr;
+                            auto owner_moves=[](auto &from,auto &to) {
+                                using Slot=decltype(&from.begin()->second);
+                                std::vector<std::pair<Slot,Slot>> moves;
+                                moves.reserve(to.size());
+                                for (auto &entry : to) {
+                                    auto &owner=from.at(entry.first);
+                                    NPNR_ASSERT(owner && !entry.second);
+                                    moves.emplace_back(&owner,&entry.second);
+                                }
+                                return moves;
+                            };
+                            auto cell_moves=owner_moves(cells,accepted_cells);
+                            auto net_moves=owner_moves(nets,accepted_nets);
+                            for (auto slots : cell_moves) *slots.second=std::move(*slots.first);
+                            for (auto slots : net_moves) *slots.second=std::move(*slots.first);
+                            cells.swap(accepted_cells); nets.swap(accepted_nets);
                             ctx->check(); live=false;
                             log_info("Decomposition applied candidate %d; full routing and signoff still required.\n",selection);
                             return true;
