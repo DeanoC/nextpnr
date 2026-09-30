@@ -112,6 +112,11 @@ struct TimingAnalyser
 
     TimingResult &get_timing_result() { return result; }
 
+    // After setup(..., ..., true), return extra actual registered endpoint
+    // paths. The count includes each domain pair's preserved legacy path.
+    // This does not change the legacy Fmax, path or hold results.
+    std::vector<CriticalPath> get_report_setup_paths(int count);
+
     // Enable analysis of clock skew between FFs.
     bool with_clock_skew = false;
 

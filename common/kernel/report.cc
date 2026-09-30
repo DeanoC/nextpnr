@@ -129,6 +129,12 @@ static Json::array json_report_critical_paths(const Context *ctx)
                                               {"max_delay", ctx->getDelayNS(report.max_delay)},
                                               {"path", report_critical_path(report)}}));
     }
+    for (const auto &report : ctx->timing_result.report_setup_paths) {
+        critPathsJson.push_back(Json::object({{"from", clock_event_name(ctx, report.clock_pair.start)},
+                                              {"to", clock_event_name(ctx, report.clock_pair.end)},
+                                              {"max_delay", ctx->getDelayNS(report.max_delay)},
+                                              {"path", report_critical_path(report)}}));
+    }
 
     return critPathsJson;
 }
@@ -263,6 +269,8 @@ void Context::writeJsonReport(std::ostream &out) const
 
     Json::object jsonRoot{
             {"utilization", util_json}, {"fmax", fmax_json}, {"critical_paths", json_report_critical_paths(this)}};
+    if (timing_report_paths > 1)
+        jsonRoot["timing_report_paths"] = timing_report_paths;
 
     if (detailed_timing_report) {
         jsonRoot["detailed_net_timings"] = json_report_detailed_net_timings(this);

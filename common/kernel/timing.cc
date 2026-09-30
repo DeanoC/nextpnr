@@ -22,8 +22,11 @@
 #include "timing.h"
 #include <algorithm>
 #include <boost/range/adaptor/reversed.hpp>
+#include <cmath>
 #include <deque>
 #include <map>
+#include <set>
+#include <tuple>
 #include <utility>
 #include "util.h"
 
@@ -895,6 +898,85 @@ std::vector<CellPortKey> TimingAnalyser::get_worst_eps(domain_id_t domain_pair, 
     return worst_eps;
 }
 
+std::vector<CriticalPath> TimingAnalyser::get_report_setup_paths(int count)
+{
+    if (count < 1 || count > 256)
+        log_error("Timing report path count must be between 1 and 256.\n");
+    std::vector<CriticalPath> paths;
+    if (count == 1)
+        return paths;
+    if (have_loops)
+        log_error("Cannot export additional setup paths for a design with timing loops.\n");
+
+    using PairKey = std::tuple<std::string, int, std::string, int>;
+    auto pair_key = [&](const ClockDomainKey &launch, const ClockDomainKey &capture) {
+        return PairKey(launch.clock.str(ctx), int(launch.edge), capture.clock.str(ctx), int(capture.edge));
+    };
+    std::map<PairKey, std::set<CellPortKey>> existing;
+    auto preserve = [&](const CriticalPath &path) {
+        if (path.segments.empty())
+            return;
+        const auto &pair = path.clock_pair;
+        auto key = PairKey(pair.start.clock.str(ctx), int(pair.start.edge),
+                           pair.end.clock.str(ctx), int(pair.end.edge));
+        const auto &endpoint = path.segments.back().to;
+        existing[key].insert(CellPortKey(endpoint.first, endpoint.second));
+    };
+    for (const auto &path : result.clock_paths)
+        preserve(path.second);
+    for (const auto &path : result.xclock_paths)
+        preserve(path);
+
+    std::vector<std::pair<PairKey, domain_id_t>> pairs;
+    for (domain_id_t index = 0; index < domain_id_t(domain_pairs.size()); ++index) {
+        const auto &pair = domain_pairs.at(index).key;
+        pairs.emplace_back(pair_key(domains.at(pair.launch).key, domains.at(pair.capture).key), index);
+    }
+    std::sort(pairs.begin(), pairs.end());
+    for (const auto &entry : pairs) {
+        const auto &pair = domain_pairs.at(entry.second).key;
+        auto &selected = existing[entry.first];
+        struct Endpoint {
+            CellPortKey key;
+            delay_t slack;
+        };
+        std::vector<Endpoint> endpoints;
+        std::set<CellPortKey> seen;
+        auto finite_delay = [](delay_t value) {
+            return std::isfinite(double(value)) && value != std::numeric_limits<delay_t>::lowest() &&
+                   value != std::numeric_limits<delay_t>::max();
+        };
+        for (const auto &endpoint : domains.at(pair.capture).endpoints) {
+            auto key = endpoint.first;
+            if (selected.count(key) || !seen.insert(key).second)
+                continue;
+            const auto &data = ports.at(key);
+            auto tag = data.domain_pairs.find(entry.second);
+            auto arrival = data.arrival.find(pair.launch);
+            auto required = data.required.find(pair.capture);
+            if (tag == data.domain_pairs.end() || arrival == data.arrival.end() || required == data.required.end() ||
+                !finite_delay(tag->second.setup_slack) || !finite_delay(arrival->second.value.maxDelay()) ||
+                !finite_delay(required->second.value.minDelay()))
+                continue;
+            int clocks = 0;
+            if (ctx->getPortTimingClass(cell_info(key), key.port, clocks) != TMG_REGISTER_INPUT || clocks <= 0)
+                continue;
+            endpoints.push_back({key, tag->second.setup_slack});
+        }
+        std::sort(endpoints.begin(), endpoints.end(), [&](const Endpoint &a, const Endpoint &b) {
+            return std::make_tuple(a.slack, a.key.cell.str(ctx), a.key.port.str(ctx)) <
+                   std::make_tuple(b.slack, b.key.cell.str(ctx), b.key.port.str(ctx));
+        });
+        for (const auto &endpoint : endpoints) {
+            if (selected.size() >= size_t(count))
+                break;
+            paths.push_back(build_critical_path_report(entry.second, endpoint.key, true));
+            selected.insert(endpoint.key);
+        }
+    }
+    return paths;
+}
+
 std::vector<PortRef> TimingAnalyser::walk_crit_path(domain_id_t domain_pair, CellPortKey endpoint, bool longest_path)
 {
     const auto &dp = domain_pairs.at(domain_pair);
@@ -1396,9 +1478,15 @@ void timing_analysis(Context *ctx, bool print_slack_histogram, bool print_fmax, 
     TimingAnalyser tmg(ctx);
     tmg.setup_only = false;
     tmg.with_clock_skew = true;
-    tmg.setup(ctx->detailed_timing_report, print_slack_histogram, print_path || print_fmax);
+    const bool extra_report_paths = update_results && ctx->timing_report_paths > 1;
+    tmg.setup(ctx->detailed_timing_report, print_slack_histogram, print_path || print_fmax || extra_report_paths);
 
     auto &result = tmg.get_timing_result();
+    if (extra_report_paths) {
+        result.report_setup_paths = tmg.get_report_setup_paths(ctx->timing_report_paths);
+        log_info("Timing report includes %zu additional registered setup endpoint paths (limit %d per domain pair).\n",
+                 result.report_setup_paths.size(), ctx->timing_report_paths);
+    }
     ctx->log_timing_results(result, print_slack_histogram, print_fmax, print_path, warn_on_failure);
 
     if (update_results)
