@@ -37,7 +37,7 @@ USING_NEXTPNR_NAMESPACE
 namespace {
 // json11 keeps the last duplicate key. Plans instead reject ambiguous options,
 // including escaped spellings of the same key, after ordinary syntax validation.
-void check_plan_keys(const std::string &text)
+void check_plan_keys(const std::string &text, const char *kind = "local-remap")
 {
     std::vector<std::set<std::string>> objects;
     for (size_t i = 0; i < text.size(); ++i) {
@@ -55,7 +55,7 @@ void check_plan_keys(const std::string &text)
                 std::string error;
                 auto key = json11::Json::parse(text.substr(start, i - start + 1), error).string_value();
                 if (objects.empty() || !objects.back().insert(key).second)
-                    log_error("Duplicate local-remap plan key.\n");
+                    log_error("Duplicate %s plan key.\n", kind);
             }
         }
     }
@@ -100,6 +100,7 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("remap-plan", po::value<std::string>(), "JSON plan of staged report-guided local remaps (1..8 steps)");
     specific.add_options()("remap-comb-critical", po::value<std::string>(), "prior routed timing report for bounded internal LUT cut remapping");
     specific.add_options()("remap-comb-candidate", po::value<int>(), "qualified internal-cut candidate index (default: list only)");
+    specific.add_options()("remap-comb-plan", po::value<std::string>(), "JSON plan of staged internal LUT-cut remaps (1..8 steps)");
     specific.add_options()("remap-candidate", po::value<int>(), "qualified local-remap candidate index (default: list only)");
     specific.add_options()("remap-groups", po::value<int>(), "maximum whole LAB enable groups per remap (1..8, default 1)");
     specific.add_options()("balance-reduction-root", po::value<std::vector<std::string>>()->composing(),
@@ -241,6 +242,13 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     }
     ctx->comb_remap_report.clear();
     ctx->comb_remap_selection = -1;
+    ctx->comb_remap_plan.clear();
+    ctx->comb_remap_plan_list_only = false;
+    if (vm.count("remap-comb-plan") && (vm.count("remap-comb-critical") || vm.count("remap-comb-candidate")))
+        log_error("--remap-comb-plan cannot be combined with legacy comb-remap options.\n");
+    if (vm.count("remap-comb-plan") && (ctx->local_remap_plan_list_only ||
+        (!ctx->local_remap_report.empty() && ctx->local_remap_selection < 0)))
+        log_error("Local-remap listing must be final; it cannot precede a comb-remap plan.\n");
     if (vm.count("remap-comb-candidate") && !vm.count("remap-comb-critical"))
         log_error("--remap-comb-candidate requires --remap-comb-critical.\n");
     if (vm.count("remap-comb-critical")) {
@@ -252,6 +260,47 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         if (ctx->comb_remap_report.empty()) log_error("Empty internal-cut timing report.\n");
         if (vm.count("remap-comb-candidate")) ctx->comb_remap_selection = vm["remap-comb-candidate"].as<int>();
         if (ctx->comb_remap_selection < -1) log_error("Invalid comb-remap candidate index.\n");
+    }
+    if (vm.count("remap-comb-plan")) {
+        if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") ||
+            vm.count("fes-scaffold") || (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
+            log_error("Comb-remap plans require fresh ordinary HeAP placement.\n");
+        auto filename = vm["remap-comb-plan"].as<std::string>();
+        auto in = open_ifstream_and_log_error(filename, "comb-remap plan");
+        std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()}, error;
+        auto plan = json11::Json::parse(text, error);
+        if (!error.empty() || !plan.is_object() || plan.object_items().size() != 1 || !plan["steps"].is_array() ||
+            plan["steps"].array_items().empty() || plan["steps"].array_items().size() > 8)
+            log_error("Invalid comb-remap plan; expected one to eight steps.\n");
+        check_plan_keys(text, "comb-remap");
+        for (const auto &entry : plan["steps"].array_items()) {
+            if (!entry.is_object() || entry.object_items().size() != 2 || !entry.object_items().count("report") ||
+                !entry.object_items().count("candidate"))
+                log_error("Invalid comb-remap plan step fields.\n");
+            if (!entry["report"].is_string() || entry["report"].string_value().empty() ||
+                entry["report"].string_value().find('\0') != std::string::npos)
+                log_error("Invalid comb-remap plan path.\n");
+            double candidate = entry["candidate"].number_value();
+            if (!entry["candidate"].is_number() || !std::isfinite(candidate) || candidate != std::floor(candidate) ||
+                candidate < -1 || candidate > std::numeric_limits<int>::max())
+                log_error("Invalid integer in comb-remap plan.\n");
+            Arch::CombRemapStep step;
+            step.candidate = int(candidate);
+            if (step.candidate == -1) {
+                if (&entry != &plan["steps"].array_items().back() || !vm.count("no-route") || vm.count("rbf"))
+                    log_error("A comb plan listing step must be last, with --no-route and without --rbf.\n");
+                ctx->comb_remap_plan_list_only = true;
+            }
+            std::filesystem::path path(entry["report"].string_value());
+            if (path.is_relative()) path = std::filesystem::path(filename).parent_path() / path;
+            auto report_in = open_ifstream_and_log_error(path.lexically_normal().string(), "comb-remap plan report");
+            step.report.assign(std::istreambuf_iterator<char>(report_in), std::istreambuf_iterator<char>());
+            auto report = json11::Json::parse(step.report, error);
+            if (!error.empty() || !report["critical_paths"].is_array())
+                log_error("Invalid comb-remap plan report.\n");
+            ctx->comb_remap_plan.push_back(std::move(step));
+        }
     }
     const bool routed = ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "route";
     if (vm.count("fes-cram-region")) {

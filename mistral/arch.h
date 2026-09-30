@@ -560,6 +560,13 @@ struct Arch : BaseArch<ArchRanges>
     std::string comb_remap_report; // Explicit CLI experiment, never a serialized setting.
     int comb_remap_selection = -1;
     bool remap_comb_critical(const std::string &report, int selection);
+    struct CombRemapStep {
+        std::string report;
+        int candidate = -1;
+    };
+    std::vector<CombRemapStep> comb_remap_plan; // CLI only, never serialized settings.
+    bool comb_remap_plan_list_only = false;
+    bool execute_comb_remap_plan();
     bool balance_reduction(const std::string &root_name);
     bool route() override;
 

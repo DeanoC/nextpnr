@@ -845,7 +845,7 @@ bool Arch::place()
     // JSON settings and pre-place hooks can override the command-line placer.
     if ((!local_remap_report.empty() || !local_remap_plan.empty()) && (placer != "heap" || fes_any_slot_region_active))
         log_error("Local remap requires ordinary full-design HeAP placement.\n");
-    if (!comb_remap_report.empty() && (placer != "heap" || fes_any_slot_region_active))
+    if ((!comb_remap_report.empty() || !comb_remap_plan.empty()) && (placer != "heap" || fes_any_slot_region_active))
         log_error("Comb remap requires ordinary full-design HeAP placement.\n");
     if (enable_replication_budget && (placer != "heap" || fes_any_slot_region_active))
         log_error("Enable replication requires ordinary full-design HeAP placement.\n");
@@ -896,8 +896,13 @@ bool Arch::place()
                 return found->second;
             };
         }
-        if (!placer_heap(getCtx(), cfg))
+        if (!placer_heap(getCtx(), cfg)) {
+            // --force otherwise bypasses a false placement result and routes
+            // a graph whose requested remap stages were never executed.
+            if (!local_remap_plan.empty() || !comb_remap_plan.empty())
+                log_error("Remap plans require successful placement; routing was not started.\n");
             return false;
+        }
     } else if (placer == "sa") {
         if (fes_any_slot_region_active)
             log_error("The SA placer moves FES cart LUT/FF pairs and carry chains cell by cell and can end with an "
@@ -920,6 +925,7 @@ bool Arch::place()
     if (!comb_remap_report.empty() && !remap_comb_critical(comb_remap_report, comb_remap_selection) &&
         comb_remap_selection >= 0)
         log_error("Requested comb-remap candidate was not qualified; routing was not started.\n");
+    if (!comb_remap_plan.empty()) execute_comb_remap_plan();
 
     diagnostic_capture_locality(getCtx(), std::getenv("NEXTPNR_MISTRAL_CAPTURE_LOCALITY"));
     diagnostic_placed_reduction(getCtx(), std::getenv("NEXTPNR_MISTRAL_PLACED_REDUCTION"));

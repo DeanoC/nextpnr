@@ -14,6 +14,7 @@ set(SOURCES
     remap_plan.cc
     remap_report.h
     comb_remap.cc
+    comb_plan.cc
     local_remap_cut_policy.h
     capture_locality.cc
     reduction_balance.cc
@@ -36,11 +37,14 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/completed_observations.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc
+    TEST_SOURCES tests/completed_observations.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc
     MAIN_SOURCE  main.cc
 )
 
 if (BUILD_TESTS)
+    add_test(NAME nextpnr-${family}-comb-remap-plan-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/comb_remap_plan_cli.py
+                $<TARGET_FILE:nextpnr-${family}> -v)
     add_test(NAME nextpnr-${family}-remap-plan-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/remap_plan_cli.py
                 $<TARGET_FILE:nextpnr-${family}> -v)

@@ -52,3 +52,6 @@ Plans cannot be combined with legacy local-remap options, skipped packing or
 placement, an already processed design, or FES slot/scaffold placement. Plan
 options are CLI state and are never enabled by serialized JSON settings. Plans
 run before the optional internal-cut remap and capture/placed-reduction hooks.
+Selected local stages may precede an explicit
+[`--remap-comb-plan`](comb_plan.md) of internal cuts. Local listing cannot
+precede an internal-cut plan because listing must be final.
