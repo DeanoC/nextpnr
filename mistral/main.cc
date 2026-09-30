@@ -104,7 +104,7 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("remap-candidate", po::value<int>(), "qualified local-remap candidate index (default: list only)");
     specific.add_options()("remap-groups", po::value<int>(), "maximum whole LAB enable groups per remap (1..8, default 1)");
     specific.add_options()("balance-reduction-root", po::value<std::vector<std::string>>()->composing(),
-                           "pre-placement 3-LUT/11-input or 4-LUT/16-input conjunction root cell (repeatable, opt-in)");
+                           "pre-placement 3-LUT/11-input, 4-LUT/16-input or 7-LUT/24-input conjunction root cell (repeatable, opt-in)");
     return specific;
 }
 
@@ -148,7 +148,7 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             log_error("Reduction balancing requires an unpacked, ordinary full design.\n");
         for (const auto &root : vm["balance-reduction-root"].as<std::vector<std::string>>())
             if (!ctx->balance_reduction(root))
-                log_error("Selected reduction root is not a safe four-LUT/sixteen-input or three-LUT/eleven-input conjunction.\n");
+                log_error("Selected reduction root is not a safe four-LUT/sixteen-input, three-LUT/eleven-input or seven-LUT/twenty-four-input conjunction.\n");
     }
     // JSON provenance never enables a pass, including an explicit zero budget.
     // Avoid interning a new identifier before placement when no old key exists.

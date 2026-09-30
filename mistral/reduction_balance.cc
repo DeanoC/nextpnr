@@ -67,7 +67,7 @@ bool plan_reduction(Context *ctx, const std::string &root_name, bool placed, Red
         return false;
     };
     auto visit = [&](auto &&self, CellInfo *cell) -> bool {
-        if (!cell || !lut_width(cell->type) || !seen.insert(cell).second || seen.size() > 4 ||
+        if (!cell || !lut_width(cell->type) || !seen.insert(cell).second || seen.size() > 7 ||
             (placed ? (cell->bel == BelId() || cell->belStrength > STRENGTH_WEAK) : cell->bel != BelId()) ||
             cell->cluster != ClusterId() || cell->region || cell->isPseudo() ||
             protected_attrs(cell->attrs) || (placed && cell->get_pin_state(id_Q) != PIN_SIG) ||
@@ -83,7 +83,7 @@ bool plan_reduction(Context *ctx, const std::string &root_name, bool placed, Red
         }
         return true;
     };
-    if (!visit(visit, root) || (cone.size() != 3 && cone.size() != 4)) return false;
+    if (!visit(visit, root) || (cone.size() != 3 && cone.size() != 4 && cone.size() != 7)) return false;
     std::sort(cone.begin(), cone.end(), [&](CellInfo *a, CellInfo *b) { return a->name.str(ctx) < b->name.str(ctx); });
     std::map<NetInfo *, int> signals;
     std::vector<NetInfo *> by_signal;
@@ -91,7 +91,8 @@ bool plan_reduction(Context *ctx, const std::string &root_name, bool placed, Red
     for (const auto &port : ctx->ports) boundary.insert(port.second.net);
     for (CellInfo *cell : cone) {
         auto net = cell->getPort(id_Q);
-        if (unsafe_net(net) || signals.count(net)) return false;
+        if (unsafe_net(net) || signals.count(net) || cell->ports.at(id_Q).type != PORT_OUT ||
+            net->driver.cell != cell || net->driver.port != id_Q) return false;
         int signal = int(by_signal.size());
         signals.emplace(net, signal);
         by_signal.push_back(net);
@@ -142,8 +143,22 @@ bool plan_reduction(Context *ctx, const std::string &root_name, bool placed, Red
         if (ai.second != bi.second) return ai.second < bi.second;
         return an < bn;
     });
+    std::vector<CellInfo *> leaves, retired;
+    std::vector<NetInfo *> retired_nets;
+    const size_t leaf_count = cone.size() == 7 ? 4 : cone.size() - 1;
+    for (CellInfo *cell : cone) {
+        if (cell == root) continue;
+        if (leaves.size() < leaf_count) leaves.push_back(cell);
+        else {
+            retired.push_back(cell);
+            retired_nets.push_back(cell->getPort(id_Q));
+        }
+    }
     plan.root = root;
     plan.cells = std::move(cone);
+    plan.leaves = std::move(leaves);
+    plan.retired = std::move(retired);
+    plan.retired_nets = std::move(retired_nets);
     plan.literals = std::move(literals);
     plan.slots = std::move(old_slots);
     return true;
@@ -156,9 +171,22 @@ void rewrite_reduction(Context *ctx, const ReductionBalancePlan &plan)
     const auto &literals = plan.literals;
     const auto &old_slots = plan.slots;
     for (CellInfo *cell : cone) NPNR_ASSERT(cell->bel == BelId());
-    std::vector<CellInfo *> children;
-    for (CellInfo *cell : cone) if (cell != root) children.push_back(cell);
-    const std::vector<int> sizes = cone.size() == 3 ? std::vector<int>{6, 5} : std::vector<int>{6, 6, 4};
+    const auto &children = plan.leaves;
+    const std::vector<int> sizes = cone.size() == 3 ? std::vector<int>{6, 5} :
+                                  cone.size() == 4 ? std::vector<int>{6, 6, 4} : std::vector<int>{6, 6, 6, 6};
+    NPNR_ASSERT(children.size() == sizes.size());
+    NPNR_ASSERT(plan.retired.size() == (cone.size() == 7 ? 2 : 0));
+    NPNR_ASSERT(plan.retired_nets.size() == plan.retired.size());
+    if (!plan.retired.empty()) {
+        // The seven-cell tree becomes five cells. Detach every old input port
+        // without freeing the original slots: all literal and surviving Q-net
+        // slots are reassigned below, preserving unrelated indexed-store state.
+        for (CellInfo *cell : cone)
+            for (int i = 0; i < lut_width(cell->type); ++i) {
+                cell->ports.erase(pin_names[i]);
+                cell->pin_data.erase(pin_names[i]);
+            }
+    }
     int offset = 0;
     auto rewrite = [&](CellInfo *cell, int width, uint64_t mask, const std::vector<NetInfo *> &inputs) {
         for (int i = 0; i < lut_width(cell->type); ++i) {
@@ -194,10 +222,21 @@ void rewrite_reduction(Context *ctx, const ReductionBalancePlan &plan)
     std::vector<NetInfo *> root_inputs;
     for (CellInfo *child : children) root_inputs.push_back(child->getPort(id_Q));
     rewrite(root, int(children.size()), uint64_t(1) << ((1u << children.size()) - 1), root_inputs);
+    for (size_t i = 0; i < plan.retired.size(); ++i) {
+        auto *cell = plan.retired[i];
+        auto *net = plan.retired_nets[i];
+        NPNR_ASSERT(cell->getPort(id_Q) == net && net->driver.cell == cell && net->driver.port == id_Q);
+        net->users.remove(old_slots.at(net));
+        cell->disconnectPort(id_Q);
+        NPNR_ASSERT(net->users.empty() && net->driver.cell == nullptr);
+    }
     if (cone.size() == 3)
         log_info("Balanced three-LUT reduction at '%s' into 6+5 inputs.\n", root->name.c_str(ctx));
-    else
+    else if (cone.size() == 4)
         log_info("Balanced four-LUT reduction at '%s' into 6+6+4 inputs.\n", root->name.c_str(ctx));
+    else
+        log_info("Balanced seven-LUT reduction at '%s' into 6+6+6+6 inputs; retired two private LUTs.\n",
+                 root->name.c_str(ctx));
 }
 
 bool Arch::balance_reduction(const std::string &root_name)
@@ -205,6 +244,15 @@ bool Arch::balance_reduction(const std::string &root_name)
     ReductionBalancePlan plan;
     if (!plan_reduction(getCtx(), root_name, false, plan)) return false;
     rewrite_reduction(getCtx(), plan);
+    // The unplaced path commits immediately; no detached object may reach pack.
+    for (auto *cell : plan.retired) {
+        const auto name = cell->name;
+        getCtx()->cells.erase(name);
+    }
+    for (auto *net : plan.retired_nets) {
+        const auto name = net->name;
+        getCtx()->nets.erase(name);
+    }
     return true;
 }
 NEXTPNR_NAMESPACE_END

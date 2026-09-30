@@ -23,14 +23,16 @@ struct Reduction {
     std::vector<Literal> literals;
 };
 
-// Only accept irredundant conjunctions of eleven literals in three LUTs or
-// sixteen literals in four LUTs. Both can use the same cells in two levels.
+// Only accept irredundant conjunctions of eleven literals in three LUTs,
+// sixteen literals in four LUTs, or twenty-four literals in seven LUTs.
+// The first two reuse every cell; the last needs four leaves and its public root.
 // Each LUT must encode a unique input assignment for the output polarity needed
-// by its parent. This deliberately excludes general Boolean factoring.
+// by its parent, checked using at most 64 rows per LUT. This deliberately
+// excludes repeated literals, reconvergence and general Boolean factoring.
 inline Reduction recognize(const std::vector<Node> &network, int root)
 {
     Reduction result;
-    if (network.size() != 3 && network.size() != 4) return result;
+    if (network.size() != 3 && network.size() != 4 && network.size() != 7) return result;
     std::map<int, const Node *> nodes;
     for (const auto &node : network)
         if (!nodes.emplace(node.output, &node).second || node.output < 0 || node.inputs.empty() ||
@@ -62,7 +64,7 @@ inline Reduction recognize(const std::vector<Node> &network, int root)
         }
         return true;
     };
-    const size_t expected_literals = network.size() == 3 ? 11 : 16;
+    const size_t expected_literals = network.size() == 3 ? 11 : network.size() == 4 ? 16 : 24;
     if (!descend(descend, root, true) || visited.size() != network.size() || literals.size() != expected_literals)
         return result;
     for (const auto &entry : nodes) result.outputs.push_back(entry.first);
