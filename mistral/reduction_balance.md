@@ -30,6 +30,11 @@ tuples with timing analysis. The four-leaf search times at most two legal
 assignments per unordered LAB multiset, preserving repeated-LAB multiplicity
 and ordered assignment deduplication. This keeps permutations of one geometry
 from exhausting the timing budget. Illegal assignments consume no budget.
+Four-leaf tuple ranking includes predicted input and leaf-to-root wires,
+leaf input logic and the rewritten root input logic before taking the worst
+path score. Root arcs are validated against the future ALUT4 type before
+mutating the live graph. This ranking is a local estimate; it does not include
+source arrival or replace full timing qualification.
 A candidate needs at least 250 ps modeled root
 branch improvement, nonregressing downstream endpoints, clocks and holds,
 and live affected-LAB legality. The shared 24-literal root may have

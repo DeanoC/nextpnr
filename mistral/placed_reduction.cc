@@ -65,6 +65,20 @@ bool placed_reduction(Context *ctx, const std::string &root_name, int radius, in
         log_info("Placed reduction: root is not a movable three-LUT/eleven-literal or seven-LUT/24-literal conjunction.\n"); return false;
     }
     const bool wide = plan.cells.size() == 7;
+    std::array<int,4> wide_root_delays{};
+    if (wide) {
+        // The current root can be ALUT3; score the ALUT4 that the rewrite
+        // creates without changing the live graph or interning any new IDs.
+        CellInfo future_root(ctx,plan.root->name,id_MISTRAL_ALUT4);
+        for (size_t pin=0;pin<wide_root_delays.size();++pin) {
+            DelayQuad delay;
+            if (!ctx->getCellDelay(&future_root,pins[pin],id_Q,delay)) {
+                log_info("Placed reduction: rewritten root input has no timing arc.\n");
+                return false;
+            }
+            wide_root_delays[pin]=delay.maxDelay();
+        }
+    }
     auto lab = [&](BelId bel) { auto loc = ctx->getBelLocation(bel); return Lab(loc.x,loc.y); };
     std::set<Lab> protected_labs;
     std::map<CellInfo *,std::pair<BelId,PlaceStrength>> all_places;
@@ -230,7 +244,10 @@ bool placed_reduction(Context *ctx, const std::string &root_name, int radius, in
                 for (size_t earlier=0;earlier<child;++earlier) distinct &= tuple[earlier] != site.bel;
                 if (!distinct) continue;
                 tuple[child] = site.bel;
-                self(self,child+1,std::max(score,site.score),total+site.score);
+                // The root's four pins have different logic delays. Include
+                // that term before taking the maximum across leaf paths.
+                int path_score=site.score+wide_root_delays[child];
+                self(self,child+1,std::max(score,path_score),total+path_score);
             }
         };
         // Four lists of at most 24 sites bound discovery to 24^4 tuples.
