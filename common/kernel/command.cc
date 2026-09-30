@@ -408,7 +408,7 @@ po::options_description CommandHandler::getGeneralOptions()
                           "write timing and utilization report in JSON format to file");
     general.add_options()("detailed-timing-report", "Append detailed net timing data to the JSON report");
     general.add_options()("timing-report-paths", po::value<int>(),
-                          "maximum setup endpoint paths per domain pair in --report (1..256; default 1 keeps legacy summaries)");
+                          "maximum setup endpoint paths per domain pair in --report (1..16384; default 1 keeps legacy summaries)");
 
     general.add_options()("placed-svg", po::value<std::string>(), "write render of placement to SVG file");
     general.add_options()("routed-svg", po::value<std::string>(), "write render of routing to SVG file");
@@ -589,8 +589,8 @@ void CommandHandler::setupContext(Context *ctx)
     ctx->timing_report_paths = 1;
     if (vm.count("timing-report-paths")) {
         int count = vm["timing-report-paths"].as<int>();
-        if (count < 1 || count > 256)
-            log_error("--timing-report-paths must be between 1 and 256.\n");
+        if (count < 1 || count > 16384)
+            log_error("--timing-report-paths must be between 1 and 16384.\n");
         if (!vm.count("report"))
             log_error("--timing-report-paths requires --report.\n");
         ctx->timing_report_paths = count;

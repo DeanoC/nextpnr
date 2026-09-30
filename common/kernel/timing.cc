@@ -900,8 +900,8 @@ std::vector<CellPortKey> TimingAnalyser::get_worst_eps(domain_id_t domain_pair, 
 
 std::vector<CriticalPath> TimingAnalyser::get_report_setup_paths(int count)
 {
-    if (count < 1 || count > 256)
-        log_error("Timing report path count must be between 1 and 256.\n");
+    if (count < 1 || count > 16384)
+        log_error("Timing report path count must be between 1 and 16384.\n");
     std::vector<CriticalPath> paths;
     if (count == 1)
         return paths;

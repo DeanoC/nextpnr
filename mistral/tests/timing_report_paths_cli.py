@@ -86,14 +86,14 @@ class TimingReportPathsCliTest(unittest.TestCase):
                 self.assertNotIn("Running analytical placer", log)
 
     def test_bounds_and_invalid_integer_stop_before_output(self):
-        for count in (0, -1, 257, "2147483648", "abc", "2.5"):
+        for count in (0, -1, 16385, "2147483648", "abc", "2.5"):
             with self.subTest(count=count):
                 code, log, outputs = self.run_design(count=count, placed=False)
                 self.assertNotEqual(code, 0, log)
                 self.assertFalse(outputs, log)
                 self.assertNotIn("Running analytical placer", log)
                 if isinstance(count, int):
-                    self.assertIn("--timing-report-paths must be between 1 and 256", log)
+                    self.assertIn("--timing-report-paths must be between 1 and 16384", log)
 
     def test_default_and_explicit_one_have_identical_report_and_native_graph(self):
         a = self.run_design()
@@ -153,13 +153,14 @@ class TimingReportPathsCliTest(unittest.TestCase):
         default = self.run_design()
         selected = self.run_design(count=3)
         all_paths = self.run_design(count=256)
-        for code, log, outputs in (default, selected, all_paths):
+        maximum_paths = self.run_design(count=16384)
+        for code, log, outputs in (default, selected, all_paths, maximum_paths):
             self.assertEqual(code, 0, log)
             self.assertEqual(set(outputs), {"output.json", "timing.json"}, log)
             self.assertNotIn("Routing...", log)
             self.assertNotIn("Running the GPU router", log)
         base = json.loads(default[2]["timing.json"])
-        for answer, count, expected in ((selected, 3, 3), (all_paths, 256, 4)):
+        for answer, count, expected in ((selected, 3, 3), (all_paths, 256, 4), (maximum_paths, 16384, 4)):
             timing = json.loads(answer[2]["timing.json"])
             self.assertEqual(timing["timing_report_paths"], count)
             self.assertEqual(timing["critical_paths"][:len(base["critical_paths"])], base["critical_paths"])

@@ -206,7 +206,7 @@ TEST_F(TimingReportPathsTest, TiedEndpointsHaveBoundedNativePathsAndRealPhaseWin
     }
     const auto before = ctx->checksum();
     EXPECT_TRUE(timing.get_report_setup_paths(1).empty());
-    for (int count : {2, 3, 256}) {
+    for (int count : {2, 3, 256, 16384}) {
         auto extra = timing.get_report_setup_paths(count);
         EXPECT_EQ(old, paths(ctx.get(), legacy(result)));
         EXPECT_TRUE(result.report_setup_paths.empty());
@@ -274,7 +274,7 @@ TEST_F(TimingReportPathsTest, InvalidPublicLimitsFailWithoutChangingResults)
 {
     TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
     const auto before = paths(ctx.get(), legacy(timing.get_timing_result()));
-    for (int count : {0, -1, 257}) {
+    for (int count : {0, -1, 16385}) {
         EXPECT_THROW(timing.get_report_setup_paths(count), log_execution_error_exception);
         EXPECT_EQ(before, paths(ctx.get(), legacy(timing.get_timing_result())));
         EXPECT_TRUE(timing.get_timing_result().report_setup_paths.empty());
