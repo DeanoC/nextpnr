@@ -54,9 +54,13 @@ std::map<std::string,int> holds(TimingAnalyser &timing)
 }
 }
 
-bool placed_reduction(Context *ctx, const std::string &root_name, int radius, int selection)
+bool placed_reduction(Context *ctx, const std::string &root_name, int radius, int selection,
+                      int minimum_branch_gain_ps = 250)
 {
     if (radius < 1 || radius > 6 || selection < -1) log_error("Placed reduction needs radius1..6 and selection>=-1.\n");
+    if (minimum_branch_gain_ps < 1) log_error("Placed reduction needs a positive minimum branch gain in ps.\n");
+    if (minimum_branch_gain_ps != 250)
+        log_info("Placed reduction minimum branch gain: %dps.\n", minimum_branch_gain_ps);
     if (ctx->fes_any_slot_region_active) log_error("Placed reduction requires ordinary placement.\n");
     for (const auto &net : ctx->nets)
         if (!net.second->wires.empty()) log_error("Placed reduction requires an unrouted design.\n");
@@ -281,7 +285,8 @@ bool placed_reduction(Context *ctx, const std::string &root_name, int radius, in
                 endpoints_safe &= timed(now) && now >= before.get_setup_slack(ep);
             }
             auto root_slack=after.get_setup_slack(root_output);
-            bool improve=timed(root_slack) && root_slack>=old_root_slack+250;
+            bool improve=timed(root_slack) && root_slack>old_root_slack &&
+                root_slack>=old_root_slack+minimum_branch_gain_ps;
             bool clocks=true;
             for (const auto &clock : before.get_timing_result().clock_fmax) {
                 const auto &now=after.get_timing_result().clock_fmax;
@@ -343,7 +348,8 @@ bool placed_reduction(Context *ctx, const std::string &root_name, int radius, in
         // Another fanin can dominate endpoint slack before routing. Measure
         // this branch at its fixed output, while guarding every endpoint.
         auto root_slack=after.get_setup_slack(root_output);
-        bool improve=timed(root_slack) && root_slack>=old_root_slack+250;
+        bool improve=timed(root_slack) && root_slack>old_root_slack &&
+            root_slack>=old_root_slack+minimum_branch_gain_ps;
         bool clocks=true;
         for (const auto &clock : before.get_timing_result().clock_fmax) {
             const auto &now=after.get_timing_result().clock_fmax;
@@ -371,14 +377,19 @@ bool placed_reduction(Context *ctx, const std::string &root_name, int radius, in
 void diagnostic_placed_reduction(Context *ctx,const char *spec)
 {
     if (!spec || !*spec) return;
-    struct Step { std::string root; int radius,selection; };
+    struct Step { std::string root; int radius,selection; int minimum_branch_gain_ps=250; };
     std::vector<Step> steps;
     std::istringstream lines(spec); std::string line;
     while (std::getline(lines,line)) {
         if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
         std::istringstream options(line); Step step; std::string extra;
-        if (!(options>>step.root>>step.radius>>step.selection) || (options>>extra) ||
-            step.radius<1 || step.radius>6 || step.selection<-1 || steps.size()==8)
+        if (!(options>>step.root>>step.radius>>step.selection))
+            log_error("Invalid placed reduction diagnostic options.\n");
+        options>>std::ws;
+        if (!options.eof() && !(options>>step.minimum_branch_gain_ps))
+            log_error("Invalid placed reduction diagnostic options.\n");
+        if ((options>>extra) || step.radius<1 || step.radius>6 || step.selection<-1 ||
+            step.minimum_branch_gain_ps<1 || steps.size()==8)
             log_error("Invalid placed reduction diagnostic options.\n");
         steps.push_back(std::move(step));
     }
@@ -395,7 +406,7 @@ void diagnostic_placed_reduction(Context *ctx,const char *spec)
         if (steps.size()>1)
             log_info("Placed reduction stage %zu: root=%s radius=%d selection=%d.\n",
                 index,step.root.c_str(),step.radius,step.selection);
-        if (!placed_reduction(ctx,step.root,step.radius,step.selection) && step.selection>=0)
+        if (!placed_reduction(ctx,step.root,step.radius,step.selection,step.minimum_branch_gain_ps) && step.selection>=0)
             log_error("Requested placed reduction candidate was not qualified; routing was not started.\n");
     }
 }

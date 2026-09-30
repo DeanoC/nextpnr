@@ -23,8 +23,13 @@ internal consumer and no top-level connection. Placement, region, clock,
 global-net, protected-attribute and malformed-driver guards apply.
 
 The experimental `NEXTPNR_MISTRAL_PLACED_REDUCTION` environment variable accepts
-one to eight newline-separated `ROOT RADIUS SELECTION` lines. Radius is 1..6;
+one to eight newline-separated `ROOT RADIUS SELECTION [MIN_BRANCH_GAIN_PS]`
+lines. Radius is 1..6;
 selection is a nonnegative qualified ordinal, or -1 for final-stage listing.
+The optional minimum is a positive integer in picoseconds and defaults to 250.
+It applies only to that stage and is logged when it differs from the default.
+It is a modeled admission margin; lowering it does not waive endpoint, clock,
+hold, legality or final-route checks. Three-field lines retain their behavior.
 The whole request is parsed before any stage executes. A selected failure
 aborts before routing; listing should be invoked with `--no-route`. This
 diagnostic is not serialized into a design or enabled by a recipe.
@@ -42,7 +47,7 @@ leaf input logic and the rewritten root input logic before taking the worst
 path score. Root arcs are validated against the future ALUT4 type before
 mutating the live graph. This ranking is a local estimate; it does not include
 source arrival or replace full timing qualification.
-A candidate needs at least 250 ps modeled root
+A candidate needs at least the stage's minimum modeled root
 branch improvement, nonregressing downstream endpoints, clocks and holds,
 and live affected-LAB legality. The shared 24-literal root may have
 reconvergent downstream branches; an active-branch cycle is rejected.
