@@ -544,7 +544,33 @@ struct Arch : BaseArch<ArchRanges>
     std::string local_remap_report; // CLI only, never read from serialized settings.
     int local_remap_selection = -1;
     int local_remap_groups = 1;
+    bool local_remap_optimize_pins = false;
+    bool local_remap_preserve_ff_placement = false;
     bool remap_critical(const std::string &report, int selection, int group_budget = 1);
+    struct LocalRemapStep {
+        std::string report;
+        int candidate = -1;
+        int groups = 1;
+        bool optimize_pins = false;
+        bool preserve_ff_placement = false;
+    };
+    std::vector<LocalRemapStep> local_remap_plan; // Explicit CLI state, never serialized settings.
+    bool local_remap_plan_list_only = false;
+    bool execute_local_remap_plan();
+    std::string comb_remap_report; // Explicit CLI experiment, never a serialized setting.
+    int comb_remap_selection = -1;
+    bool remap_comb_critical(const std::string &report, int selection);
+    struct CombRemapStep {
+        std::string report;
+        int candidate = -1;
+    };
+    std::vector<CombRemapStep> comb_remap_plan; // CLI only, never serialized settings.
+    bool comb_remap_plan_list_only = false;
+    bool execute_comb_remap_plan();
+    std::string decomposition_remap_report; // Explicit CLI only; never a serialized setting.
+    int decomposition_remap_selection = -1;
+    bool remap_decomposed_critical(const std::string &report, int selection);
+    bool balance_reduction(const std::string &root_name);
     bool route() override;
 
     // -------------------------------------------------
