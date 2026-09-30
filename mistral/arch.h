@@ -567,6 +567,9 @@ struct Arch : BaseArch<ArchRanges>
     std::vector<CombRemapStep> comb_remap_plan; // CLI only, never serialized settings.
     bool comb_remap_plan_list_only = false;
     bool execute_comb_remap_plan();
+    std::string decomposition_remap_report; // Explicit CLI only; never a serialized setting.
+    int decomposition_remap_selection = -1;
+    bool remap_decomposed_critical(const std::string &report, int selection);
     bool balance_reduction(const std::string &root_name);
     bool route() override;
 

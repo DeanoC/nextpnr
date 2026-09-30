@@ -842,6 +842,8 @@ void diagnostic_retained_enable(Context *, const char *, bool);
 bool Arch::place()
 {
     std::string placer = str_or_default(settings, id_placer, defaultPlacer);
+    if (!decomposition_remap_report.empty() && placer != "heap")
+        log_error("Control decomposition requires ordinary HeAP placement.\n");
     // JSON settings and pre-place hooks can override the command-line placer.
     if ((!local_remap_report.empty() || !local_remap_plan.empty()) && (placer != "heap" || fes_any_slot_region_active))
         log_error("Local remap requires ordinary full-design HeAP placement.\n");
@@ -899,7 +901,7 @@ bool Arch::place()
         if (!placer_heap(getCtx(), cfg)) {
             // --force otherwise bypasses a false placement result and routes
             // a graph whose requested remap stages were never executed.
-            if (!local_remap_plan.empty() || !comb_remap_plan.empty())
+            if (!local_remap_plan.empty() || !comb_remap_plan.empty() || !decomposition_remap_report.empty())
                 log_error("Remap plans require successful placement; routing was not started.\n");
             return false;
         }
@@ -929,6 +931,10 @@ bool Arch::place()
 
     diagnostic_capture_locality(getCtx(), std::getenv("NEXTPNR_MISTRAL_CAPTURE_LOCALITY"));
     diagnostic_placed_reduction(getCtx(), std::getenv("NEXTPNR_MISTRAL_PLACED_REDUCTION"));
+    if (!decomposition_remap_report.empty() &&
+        !remap_decomposed_critical(decomposition_remap_report,decomposition_remap_selection) &&
+        decomposition_remap_selection >= 0)
+        log_error("Requested decomposition candidate was not qualified; routing was not started.\n");
     getCtx()->attrs[id_step] = std::string("place");
     archInfoToAttributes();
     return true;

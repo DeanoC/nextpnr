@@ -101,6 +101,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("remap-comb-critical", po::value<std::string>(), "prior routed timing report for bounded internal LUT cut remapping");
     specific.add_options()("remap-comb-candidate", po::value<int>(), "qualified internal-cut candidate index (default: list only)");
     specific.add_options()("remap-comb-plan", po::value<std::string>(), "JSON plan of staged internal LUT-cut remaps (1..8 steps)");
+    specific.add_options()("remap-decompose-critical", po::value<std::string>(), "prior timing report for bounded seven-input control decomposition");
+    specific.add_options()("remap-decompose-candidate", po::value<int>(), "qualified decomposition candidate index (default: list only)");
     specific.add_options()("remap-candidate", po::value<int>(), "qualified local-remap candidate index (default: list only)");
     specific.add_options()("remap-groups", po::value<int>(), "maximum whole LAB enable groups per remap (1..8, default 1)");
     specific.add_options()("balance-reduction-root", po::value<std::vector<std::string>>()->composing(),
@@ -301,6 +303,31 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
                 log_error("Invalid comb-remap plan report.\n");
             ctx->comb_remap_plan.push_back(std::move(step));
         }
+    }
+    ctx->decomposition_remap_report.clear();
+    ctx->decomposition_remap_selection = -1;
+    if (vm.count("remap-decompose-candidate") && !vm.count("remap-decompose-critical"))
+        log_error("--remap-decompose-candidate requires --remap-decompose-critical.\n");
+    if (vm.count("remap-decompose-critical")) {
+        if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") ||
+            vm.count("fes-scaffold") || (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
+            log_error("Control decomposition requires fresh ordinary HeAP placement.\n");
+        if (ctx->local_remap_plan_list_only || ctx->comb_remap_plan_list_only ||
+            (!ctx->local_remap_report.empty() && ctx->local_remap_selection < 0) ||
+            (!ctx->comb_remap_report.empty() && ctx->comb_remap_selection < 0))
+            log_error("A remap listing must be final; it cannot precede control decomposition.\n");
+        auto in = open_ifstream_and_log_error(vm["remap-decompose-critical"].as<std::string>(), "control decomposition timing report");
+        ctx->decomposition_remap_report.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        std::string error;
+        auto report = json11::Json::parse(ctx->decomposition_remap_report,error);
+        if (!error.empty() || !report["critical_paths"].is_array())
+            log_error("Invalid control decomposition timing report.\n");
+        if (vm.count("remap-decompose-candidate"))
+            ctx->decomposition_remap_selection = vm["remap-decompose-candidate"].as<int>();
+        if (ctx->decomposition_remap_selection < -1) log_error("Invalid control decomposition candidate index.\n");
+        if (ctx->decomposition_remap_selection < 0 && (!vm.count("no-route") || vm.count("rbf")))
+            log_error("Control decomposition listing requires --no-route and no --rbf.\n");
     }
     const bool routed = ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "route";
     if (vm.count("fes-cram-region")) {

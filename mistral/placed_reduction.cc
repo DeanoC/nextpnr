@@ -383,6 +383,10 @@ void diagnostic_placed_reduction(Context *ctx,const char *spec)
         steps.push_back(std::move(step));
     }
     if (steps.empty()) log_error("Invalid placed reduction diagnostic options.\n");
+    if (!ctx->decomposition_remap_report.empty())
+        for (const auto &step : steps)
+            if (step.selection < 0)
+                log_error("A placed reduction listing cannot precede control decomposition.\n");
     for (size_t index=0;index+1<steps.size();++index)
         if (steps[index].selection==-1) log_error("Only the final placed reduction stage may list candidates.\n");
     // Prevalidate the entire request before applying an earlier selected stage.

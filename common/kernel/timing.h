@@ -86,6 +86,20 @@ struct TimingAnalyser
 
     float get_criticality(CellPortKey port) const { return ports.at(port).worst_crit; }
     float get_setup_slack(CellPortKey port) const { return ports.at(port).worst_setup_slack; }
+    // Data arrival already includes clock-to-Q and upstream data arcs. A
+    // maximum across launch domains is useful only for heuristic ranking;
+    // required times and clock relationships still need full timing analysis.
+    bool get_max_arrival(CellPortKey port, delay_t &value) const
+    {
+        auto found = ports.find(port);
+        if (found == ports.end()) return false;
+        delay_t latest = std::numeric_limits<delay_t>::lowest();
+        for (const auto &tag : found->second.arrival)
+            latest = std::max(latest, tag.second.value.maxDelay());
+        if (latest == std::numeric_limits<delay_t>::lowest()) return false;
+        value = latest;
+        return true;
+    }
     float get_domain_setup_slack(CellPortKey port) const
     {
         delay_t slack = std::numeric_limits<delay_t>::max();
