@@ -295,7 +295,7 @@ bool Arch::remap_critical(const std::string &report, int selection, int group_bu
             assignArchInfo(); ctx->check();
         };
         auto center = lab(cone.sink);
-        bool may_move = true;
+        bool may_move = !local_remap_preserve_ff_placement;
         for (auto c : group) may_move &= ordinary_net(c->getPort(id_Q));
         auto move_group = [&](int dx, int dy) {
             restore_placement();
@@ -319,7 +319,9 @@ bool Arch::remap_critical(const std::string &report, int selection, int group_bu
         };
         struct Trial { BelId bel; int dx, dy, score; std::vector<int> order; };
         std::vector<Trial> trials;
-        for (auto shift : std::vector<Lab>{{0,0},{-1,0},{1,0},{0,-1},{0,1}}) {
+        const auto shifts = local_remap_preserve_ff_placement ? std::vector<Lab>{{0,0}} :
+            std::vector<Lab>{{0,0},{-1,0},{1,0},{0,-1},{0,1}};
+        for (auto shift : shifts) {
             if (!move_group(shift.first, shift.second)) continue;
             for (auto bel : getBels()) {
                 auto loc = getBelLocation(bel);

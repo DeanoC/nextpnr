@@ -19,14 +19,48 @@
 
 #include <cerrno>
 #include <fstream>
+#include <filesystem>
+#include <cmath>
+#include <cctype>
+#include <limits>
+#include <set>
 #include "command.h"
 #include "design_utils.h"
 #include "jsonwrite.h"
 #include "log.h"
 #include "timing.h"
 #include "enable_replication_policy.h"
+#include "json11.hpp"
 
 USING_NEXTPNR_NAMESPACE
+
+namespace {
+// json11 keeps the last duplicate key. Plans instead reject ambiguous options,
+// including escaped spellings of the same key, after ordinary syntax validation.
+void check_plan_keys(const std::string &text)
+{
+    std::vector<std::set<std::string>> objects;
+    for (size_t i = 0; i < text.size(); ++i) {
+        if (text[i] == '{') objects.emplace_back();
+        else if (text[i] == '}') objects.pop_back();
+        else if (text[i] == '"') {
+            size_t start = i++;
+            while (i < text.size() && text[i] != '"') {
+                if (text[i] == '\\') ++i;
+                ++i;
+            }
+            size_t next = i + 1;
+            while (next < text.size() && std::isspace(static_cast<unsigned char>(text[next]))) ++next;
+            if (next < text.size() && text[next] == ':') {
+                std::string error;
+                auto key = json11::Json::parse(text.substr(start, i - start + 1), error).string_value();
+                if (objects.empty() || !objects.back().insert(key).second)
+                    log_error("Duplicate local-remap plan key.\n");
+            }
+        }
+    }
+}
+}
 
 class MistralCommandHandler : public CommandHandler
 {
@@ -62,6 +96,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "replicate timing-critical LUT enables after placement (budget 0..8, default 0)");
     specific.add_options()("remap-critical", po::value<std::string>(), "prior routed timing report for local LUT remapping");
     specific.add_options()("remap-optimize-pins", "optimize local-remap LUT input order for predicted delay");
+    specific.add_options()("remap-preserve-ffs", "keep every original FF placement during local remapping");
+    specific.add_options()("remap-plan", po::value<std::string>(), "JSON plan of staged report-guided local remaps (1..8 steps)");
     specific.add_options()("remap-comb-critical", po::value<std::string>(), "prior routed timing report for bounded internal LUT cut remapping");
     specific.add_options()("remap-comb-candidate", po::value<int>(), "qualified internal-cut candidate index (default: list only)");
     specific.add_options()("remap-candidate", po::value<int>(), "qualified local-remap candidate index (default: list only)");
@@ -130,7 +166,14 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     ctx->local_remap_selection = -1;
     ctx->local_remap_groups = 1;
     ctx->local_remap_optimize_pins = false;
-    if ((vm.count("remap-candidate") || vm.count("remap-groups") || vm.count("remap-optimize-pins")) && !vm.count("remap-critical"))
+    ctx->local_remap_preserve_ff_placement = false;
+    ctx->local_remap_plan.clear();
+    ctx->local_remap_plan_list_only = false;
+    if (vm.count("remap-plan") && (vm.count("remap-critical") || vm.count("remap-candidate") ||
+        vm.count("remap-groups") || vm.count("remap-optimize-pins") || vm.count("remap-preserve-ffs")))
+        log_error("--remap-plan cannot be combined with legacy local-remap options.\n");
+    if ((vm.count("remap-candidate") || vm.count("remap-groups") || vm.count("remap-optimize-pins") ||
+        vm.count("remap-preserve-ffs")) && !vm.count("remap-critical"))
         log_error("Local-remap options require --remap-critical.\n");
     if (vm.count("remap-critical")) {
         if (vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") || vm.count("fes-scaffold") ||
@@ -143,8 +186,58 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         if (ctx->local_remap_selection < -1) log_error("Invalid local-remap candidate index.\n");
         if (vm.count("remap-groups")) ctx->local_remap_groups = vm["remap-groups"].as<int>();
         ctx->local_remap_optimize_pins = vm.count("remap-optimize-pins") != 0;
+        ctx->local_remap_preserve_ff_placement = vm.count("remap-preserve-ffs") != 0;
         if (ctx->local_remap_groups < 1 || ctx->local_remap_groups > 8)
             log_error("--remap-groups must be between 1 and 8.\n");
+    }
+    if (vm.count("remap-plan")) {
+        if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") ||
+            vm.count("fes-scaffold") || (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
+            log_error("Local-remap plans require fresh ordinary HeAP placement.\n");
+        auto filename = vm["remap-plan"].as<std::string>();
+        auto in = open_ifstream_and_log_error(filename, "local-remap plan");
+        std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()}, error;
+        auto plan = json11::Json::parse(text, error);
+        if (!error.empty() || !plan.is_object() || plan.object_items().size() != 1 || !plan["steps"].is_array() ||
+            plan["steps"].array_items().empty() || plan["steps"].array_items().size() > 8)
+            log_error("Invalid local-remap plan; expected one to eight steps.\n");
+        check_plan_keys(text);
+        auto integer = [&](const json11::Json &value, int low, int high) {
+            double number = value.number_value();
+            if (!value.is_number() || !std::isfinite(number) || number != std::floor(number) || number < low || number > high)
+                log_error("Invalid integer in local-remap plan.\n");
+            return int(number);
+        };
+        const std::set<std::string> keys = {"report", "candidate", "groups", "optimize_pins", "preserve_ff_placement"};
+        for (const auto &entry : plan["steps"].array_items()) {
+            if (!entry.is_object() || entry.object_items().size() != keys.size())
+                log_error("Invalid local-remap plan step fields.\n");
+            for (const auto &field : entry.object_items()) if (!keys.count(field.first))
+                log_error("Unknown local-remap plan step field.\n");
+            if (!entry["report"].is_string() || entry["report"].string_value().empty() ||
+                entry["report"].string_value().find('\0') != std::string::npos ||
+                !entry["optimize_pins"].is_bool() || !entry["preserve_ff_placement"].is_bool())
+                log_error("Invalid local-remap plan path or boolean.\n");
+            Arch::LocalRemapStep step;
+            step.candidate = integer(entry["candidate"], -1, std::numeric_limits<int>::max());
+            step.groups = integer(entry["groups"], 1, 8);
+            step.optimize_pins = entry["optimize_pins"].bool_value();
+            step.preserve_ff_placement = entry["preserve_ff_placement"].bool_value();
+            if (step.candidate == -1) {
+                if (&entry != &plan["steps"].array_items().back() || !vm.count("no-route") || vm.count("rbf"))
+                    log_error("A plan listing step must be last, with --no-route and without --rbf.\n");
+                ctx->local_remap_plan_list_only = true;
+            }
+            std::filesystem::path path(entry["report"].string_value());
+            if (path.is_relative()) path = std::filesystem::path(filename).parent_path() / path;
+            auto report_in = open_ifstream_and_log_error(path.lexically_normal().string(), "local-remap plan report");
+            step.report.assign(std::istreambuf_iterator<char>(report_in), std::istreambuf_iterator<char>());
+            auto report = json11::Json::parse(step.report, error);
+            if (!error.empty() || !report["critical_paths"].is_array())
+                log_error("Invalid local-remap plan report.\n");
+            ctx->local_remap_plan.push_back(std::move(step));
+        }
     }
     ctx->comb_remap_report.clear();
     ctx->comb_remap_selection = -1;

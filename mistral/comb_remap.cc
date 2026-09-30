@@ -5,6 +5,7 @@
 #include "timing.h"
 #include "enable_replication_policy.h"
 #include "local_remap_cut_policy.h"
+#include "remap_report.h"
 #include <cmath>
 #include <functional>
 #include <limits>
@@ -94,87 +95,12 @@ bool Arch::remap_comb_critical(const std::string &report, int selection)
         }
         return true;
     };
-    auto endpoint = [&](const json11::Json &value) -> PortRef {
-        if (!value["cell"].is_string() || !value["port"].is_string() || value["loc"].array_items().size() != 2)
-            log_error("Malformed comb-remap path endpoint.\n");
-        auto found = cells.find(id(value["cell"].string_value()));
-        if (found == cells.end()) log_error("Stale comb-remap report cell.\n");
-        auto cell = found->second.get(); auto pin = id(value["port"].string_value());
-        const auto &loc = value["loc"].array_items();
-        if (!cell->ports.count(pin) || cell->bel == BelId() || !loc[0].is_number() || !loc[1].is_number() ||
-            loc[0].number_value() != lab(cell).first || loc[1].number_value() != lab(cell).second)
-            log_error("Stale comb-remap report port or placement.\n");
-        return {cell,pin};
-    };
     struct Cut { std::vector<CellInfo *> nodes; PortRef sink; double excess; size_t distance; };
     std::vector<Cut> cuts;
     std::map<std::tuple<std::vector<IdString>,IdString,IdString>,size_t> seen;
     // Validate all violated relevant paths before mutating any graph edge.
-    for (const auto &path : json["critical_paths"].array_items()) {
-        const auto &segments = path["path"].array_items();
-        if (segments.empty()) continue;
-        const auto &last = segments.back();
-        if (last["type"].string_value() != "setup" ||
-            (last["to"]["port"].string_value() != "ENA" && last["to"]["port"].string_value() != "DATAIN")) continue;
-        if (!path["max_delay"].is_number() || !std::isfinite(path["max_delay"].number_value()) ||
-            path["max_delay"].number_value() <= 0) log_error("Malformed comb-remap path constraint.\n");
-        double delay = 0;
-        for (const auto &segment : segments) {
-            if (!segment["delay"].is_number() || !std::isfinite(segment["delay"].number_value()))
-                log_error("Malformed comb-remap path delay.\n");
-            delay += segment["delay"].number_value();
-        }
-        if (delay <= path["max_delay"].number_value()) continue;
-        std::vector<std::pair<PortRef,PortRef>> edges;
-        PortRef previous;
-        bool has_previous = false, has_setup = false;
-        for (const auto &segment : segments) {
-            auto from = endpoint(segment["from"]), to = endpoint(segment["to"]);
-            const auto &type = segment["type"].string_value();
-            auto same = [](PortRef a, PortRef b) { return a.cell == b.cell && a.port == b.port; };
-            if (type == "clk-skew") {
-                int from_clocks = 0, to_clocks = 0;
-                if (has_previous || has_setup ||
-                    getPortTimingClass(from.cell,from.port,from_clocks) != TMG_CLOCK_INPUT ||
-                    getPortTimingClass(to.cell,to.port,to_clocks) != TMG_CLOCK_INPUT)
-                    log_error("Malformed comb-remap clock-skew segment.\n");
-                continue;
-            }
-            if (has_setup || (has_previous && !same(previous,from)))
-                log_error("Disconnected comb-remap report path.\n");
-            if (type == "clk-to-q") {
-                int clocks = 0;
-                if (has_previous || !same(from,to) ||
-                    getPortTimingClass(from.cell,from.port,clocks) != TMG_REGISTER_OUTPUT || clocks <= 0)
-                    log_error("Malformed comb-remap clock-to-Q segment.\n");
-            } else if (type == "logic") {
-                int width = cut_width(from.cell->type);
-                int from_clocks = 0, to_clocks = 0;
-                if (from.cell != to.cell ||
-                    getPortTimingClass(from.cell,from.port,from_clocks) != TMG_COMB_INPUT ||
-                    getPortTimingClass(to.cell,to.port,to_clocks) != TMG_COMB_OUTPUT ||
-                    (width && (to.port != id_Q ||
-                    std::find(cut_pins.begin(),cut_pins.begin()+width,from.port) == cut_pins.begin()+width)))
-                    log_error("Malformed comb-remap logic segment.\n");
-            } else if (type == "setup") {
-                int clocks = 0;
-                if (!has_previous || edges.empty() || !same(from,to) || !same(edges.back().second,to) ||
-                    to.cell->type != id_MISTRAL_FF || (to.port != id_ENA && to.port != id_DATAIN) ||
-                    getPortTimingClass(to.cell,to.port,clocks) != TMG_REGISTER_INPUT || clocks <= 0)
-                    log_error("Malformed comb-remap setup endpoint.\n");
-                has_setup = true;
-            } else if (type != "routing") {
-                log_error("Unsupported comb-remap path segment.\n");
-            }
-            previous = to;
-            has_previous = true;
-            if (type != "routing") continue;
-            auto net = from.cell->getPort(from.port);
-            if (!net || net != to.cell->getPort(to.port) || net->driver.cell != from.cell ||
-                net->driver.port != from.port || to.cell->ports.at(to.port).type != PORT_IN ||
-                segment["net"].string_value() != net->name.str(ctx)) log_error("Stale comb-remap report edge.\n");
-            edges.emplace_back(from,to);
-        }
+    for (const auto &path : mistral_remap_report::validate(ctx,json,true)) {
+        const auto &edges = path.edges;
         for (size_t end = 0; end < edges.size(); ++end) {
             auto target = edges[end].second;
             int target_width = cut_width(target.cell->type);
@@ -195,7 +121,7 @@ bool Arch::remap_comb_critical(const std::string &report, int selection)
                 std::vector<IdString> identities;
                 for (auto node : nodes) identities.push_back(node->name);
                 auto key = std::make_tuple(identities,target.cell->name,target.port);
-                auto excess = delay-path["max_delay"].number_value();
+                auto excess = path.excess;
                 auto found = seen.find(key);
                 if (found == seen.end()) {
                     seen.emplace(key,cuts.size());

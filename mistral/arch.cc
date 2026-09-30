@@ -843,7 +843,7 @@ bool Arch::place()
 {
     std::string placer = str_or_default(settings, id_placer, defaultPlacer);
     // JSON settings and pre-place hooks can override the command-line placer.
-    if (!local_remap_report.empty() && (placer != "heap" || fes_any_slot_region_active))
+    if ((!local_remap_report.empty() || !local_remap_plan.empty()) && (placer != "heap" || fes_any_slot_region_active))
         log_error("Local remap requires ordinary full-design HeAP placement.\n");
     if (!comb_remap_report.empty() && (placer != "heap" || fes_any_slot_region_active))
         log_error("Comb remap requires ordinary full-design HeAP placement.\n");
@@ -916,6 +916,7 @@ bool Arch::place()
     if (!local_remap_report.empty() && !remap_critical(local_remap_report, local_remap_selection, local_remap_groups) &&
         local_remap_selection >= 0)
         log_error("Requested local-remap candidate was not qualified; routing was not started.\n");
+    if (!local_remap_plan.empty()) execute_local_remap_plan();
     if (!comb_remap_report.empty() && !remap_comb_critical(comb_remap_report, comb_remap_selection) &&
         comb_remap_selection >= 0)
         log_error("Requested comb-remap candidate was not qualified; routing was not started.\n");
