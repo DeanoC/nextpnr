@@ -37,14 +37,19 @@ diagnostic is not serialized into a design or enabled by a recipe.
 Placed balancing supports the seven-to-twelve- and twenty-four-literal classes. It
 fixes the public root and all outside-cone cells, and searches nearby legal
 sites for two or four leaves. Each leaf has at most 24 spatially diverse
-sites; the 24-literal search is bounded to 24^4 tuples and sixteen legal LAB
+sites, with at most two entries per LAB. For a two-leaf ALUT6 search, those
+entries represent distinct physical ALMs: an individually legal original site
+has priority, then the sorted best site represents each remaining ALM. Two
+ALUT6 leaves cannot share an ALM. Leaves with five or fewer inputs and the
+four-leaf shortlist retain their existing selection. The 24-literal search is
+bounded to 24^4 tuples and sixteen legal LAB
 tuples with timing analysis. The four-leaf search times at most two legal
 assignments per unordered LAB multiset, preserving repeated-LAB multiplicity
 and ordered assignment deduplication. This keeps permutations of one geometry
 from exhausting the timing budget. Illegal assignments consume no budget.
-Four-leaf tuple ranking includes predicted input and leaf-to-root wires,
+Both two- and four-leaf tuple ranking include predicted input and leaf-to-root wires,
 leaf input logic and the rewritten root input logic before taking the worst
-path score. Root arcs are validated against the future ALUT4 type before
+path score. Root arcs are validated against the future ALUT2 or ALUT4 type before
 mutating the live graph. This ranking is a local estimate; it does not include
 source arrival or replace full timing qualification.
 A candidate needs at least the stage's minimum modeled root
@@ -56,7 +61,8 @@ Surplus objects are absent from live architecture and timing scans during a
 24-literal probe. Rejection or listing restores original owners, dictionary
 iteration order, drivers, complete indexed user stores, ports, parameters,
 pin states and placements. Acceptance permanently retires the two private
-objects. The earlier three-LUT placed search remains unchanged.
+objects. Both placed search classes retain their qualification and rollback
+guards and their sixteen-probe limit.
 
 Modeled qualification is not final route acceptance. Full-route clock and
 hold checks and preservation of outside-cone physical pin assignments and
