@@ -128,6 +128,12 @@ void MistralCommandHandler::customBitstream(Context *ctx)
                       std::error_code(errno, std::generic_category()).message().c_str());
         }
         out.write(reinterpret_cast<const char *>(data.data()), data.size());
+    } else if (vm.count("report") && vm.count("no-route") && ctx->attrs.count(id_step) &&
+               ctx->attrs.at(id_step).as_string() == "place") {
+        // Placement and optional remap probes keep their STA results local.
+        // An explicit report needs fresh results for the final placed graph.
+        log_info("Running predicted placed timing analysis for --report (no routing or analogue signoff).\n");
+        timing_analysis(ctx, false, true, false, false, true);
     }
 }
 

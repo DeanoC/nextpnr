@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check optional driver-copy stage ordering through the actual CLI."""
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -14,10 +15,12 @@ BINARY = str(Path(sys.argv.pop(1)).resolve())
 class LutDriverCopyCliTest(unittest.TestCase):
     def run_design(self, *, options=(), copy=True, route=False, loaded_step=None,
                    placer=None, report='{"critical_paths": []}', prefix=None,
-                   environment=None, reload=False):
+                   environment=None, reload=False, design_module=None,
+                   sdc=None, report_output=False, collect=False):
         with tempfile.TemporaryDirectory(prefix="lut-driver-copy-cli-") as directory:
             root = Path(directory)
-            module = dict(attributes={"top": 1}, ports={}, cells={}, netnames={})
+            module = (dict(attributes={"top": 1}, ports={}, cells={}, netnames={})
+                      if design_module is None else json.loads(json.dumps(design_module)))
             if loaded_step is not None:
                 module["attributes"]["step"] = loaded_step
             if placer is not None:
@@ -30,6 +33,11 @@ class LutDriverCopyCliTest(unittest.TestCase):
                        "--write", str(root / "output.json")]
             if not route:
                 command += ["--no-route"]
+            if sdc is not None:
+                (root / "clocks.sdc").write_text(sdc)
+                command += ["--sdc", str(root / "clocks.sdc")]
+            if report_output:
+                command += ["--report", str(root / "predicted-report.json")]
             if copy:
                 command += ["--remap-lut-driver-critical", str(root / "timing.json")]
             if prefix in ("local", "comb", "decomposition"):
@@ -51,7 +59,8 @@ class LutDriverCopyCliTest(unittest.TestCase):
             env.update(environment or {})
             result = subprocess.run(command + list(options), cwd=root, env=env, timeout=45,
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-            outputs = {name for name in ("output.json", "output.rbf") if (root / name).exists()}
+            outputs = {name for name in ("output.json", "output.rbf", "predicted-report.json")
+                       if (root / name).exists()}
             answer = result.returncode, result.stdout, outputs
             if reload and result.returncode == 0:
                 again = subprocess.run(
@@ -60,6 +69,11 @@ class LutDriverCopyCliTest(unittest.TestCase):
                     cwd=root, env=env, timeout=45, stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT, text=True)
                 return answer + (again.returncode, again.stdout, (root / "reloaded.json").exists())
+            if collect:
+                documents = {name: json.loads((root / name).read_text())
+                             for name in ("output.json", "predicted-report.json")
+                             if (root / name).exists()}
+                return answer + (documents,)
             return answer
 
     def reject(self, reason, *, before_placement=False, **kwargs):
@@ -137,6 +151,97 @@ class LutDriverCopyCliTest(unittest.TestCase):
         self.assertEqual(code, 0, log)
         self.assertTrue(reloaded)
         self.assertNotIn("LUT driver copy discovery", log)
+
+    def test_explicit_no_route_report_contains_placed_native_paths(self):
+        # A loaded native placement bypasses the placer's private STA object.
+        # Its explicit report must therefore analyse this final graph afresh.
+        def ff(bel, datain, q):
+            connections = {pin: ["x"] for pin in
+                           ("ENA", "ACLR", "SCLR", "SLOAD", "SDATA")}
+            connections.update(CLK=[2], DATAIN=[datain], Q=[q])
+            return dict(type="MISTRAL_FF", parameters={},
+                        attributes={"NEXTPNR_BEL": bel}, connections=connections,
+                        port_directions={pin: "output" if pin == "Q" else "input"
+                                         for pin in connections})
+
+        def constant(bel, value, q):
+            return dict(type="MISTRAL_CONST", parameters={"LUT": str(value)},
+                        attributes={"NEXTPNR_BEL": bel}, connections={"Q": [q]},
+                        port_directions={"Q": "output"})
+
+        module = dict(
+            attributes={"top": 1, "step": "place"}, ports={},
+            cells={
+                "launch": ff("MISTRAL_FF.24.20.2", 3, 3),
+                "capture": ff("MISTRAL_FF.30.20.2", 5, 4),
+                "$PACKER_VCC_DRV": constant("MISTRAL_COMB.24.20.0", 1, 6),
+                "$PACKER_GND_DRV": constant("MISTRAL_COMB.24.20.1", 0, 7),
+                "logic": dict(type="MISTRAL_ALUT2", parameters={"LUT": "0110"},
+                              attributes={"NEXTPNR_BEL": "MISTRAL_COMB.30.20.0"},
+                              connections={"A": [3], "B": [4], "Q": [5]},
+                              port_directions={"A": "input", "B": "input", "Q": "output"}),
+            },
+            netnames={name: dict(bits=[bit], attributes={}) for name, bit in
+                      (("clock", 2), ("launch_q", 3), ("capture_q", 4), ("logic_q", 5),
+                       ("$PACKER_VCC_NET", 6), ("$PACKER_GND_NET", 7))},
+        )
+        common = dict(copy=False, design_module=module,
+                      options=("--no-pack", "--no-place"),
+                      sdc="create_clock -period 10 [get_nets clock]\n", collect=True)
+        code, log, outputs, documents = self.run_design(report_output=True, **common)
+        self.assertEqual(code, 0, log)
+        self.assertEqual(outputs, {"output.json", "predicted-report.json"}, log)
+        self.assertIn("Running predicted placed timing analysis for --report", log)
+        self.assertNotIn("LUT driver copy discovery", log)
+        self.assertNotIn("Routing...", log)
+        self.assertNotIn("Running the GPU router", log)
+
+        timing = documents["predicted-report.json"]
+        self.assertEqual(set(timing["fmax"]), {"clock"}, timing)
+        self.assertTrue(math.isfinite(timing["fmax"]["clock"]["achieved"]))
+        self.assertGreater(timing["fmax"]["clock"]["achieved"], 0)
+        self.assertAlmostEqual(timing["fmax"]["clock"]["constraint"], 100, places=3)
+        self.assertTrue(timing["critical_paths"], timing)
+        path = timing["critical_paths"][0]["path"]
+        self.assertTrue(path, timing)
+        self.assertEqual(path[0]["type"], "clk-to-q")
+        self.assertEqual(path[-1]["type"], "setup")
+        self.assertEqual((path[0]["from"]["cell"], path[0]["from"]["port"]), ("launch", "Q"))
+        self.assertEqual((path[-1]["to"]["cell"], path[-1]["to"]["port"]), ("capture", "DATAIN"))
+        self.assertTrue(any(segment["type"] == "routing" and
+                            segment["from"]["cell"] == "launch" and segment["from"]["port"] == "Q" and
+                            segment["to"]["cell"] == "logic" and segment["to"]["port"] == "A"
+                            for segment in path), timing)
+        self.assertTrue(any(segment["type"] == "routing" and
+                            segment["from"]["cell"] == "logic" and segment["from"]["port"] == "Q" and
+                            segment["to"]["cell"] == "capture" and segment["to"]["port"] == "DATAIN"
+                            for segment in path), timing)
+        for critical in timing["critical_paths"]:
+            self.assertTrue(math.isfinite(critical["max_delay"]))
+            for segment in critical["path"]:
+                self.assertTrue(math.isfinite(segment["delay"]))
+                if segment["type"] != "setup":
+                    self.assertGreaterEqual(segment["delay"], 0)
+                self.assertIn(segment["from"]["cell"], module["cells"])
+                self.assertIn(segment["to"]["cell"], module["cells"])
+
+        placed = documents["output.json"]["modules"]["top"]
+        self.assertEqual(placed["attributes"]["step"], "place")
+        self.assertEqual(set(placed["cells"]), set(module["cells"]))
+        for name, cell in module["cells"].items():
+            self.assertEqual(placed["cells"][name]["attributes"]["NEXTPNR_BEL"],
+                             cell["attributes"]["NEXTPNR_BEL"])
+        self.assertTrue(all(not net.get("attributes", {}).get("ROUTING")
+                            for net in placed["netnames"].values()))
+
+        code, log, outputs, documents = self.run_design(**common)
+        self.assertEqual(code, 0, log)
+        self.assertEqual(outputs, {"output.json"}, log)
+        self.assertNotIn("predicted placed timing analysis", log)
+        self.assertNotIn("LUT driver copy discovery", log)
+        self.assertNotIn("Routing...", log)
+        self.assertNotIn("Running the GPU router", log)
+        self.assertEqual(documents["output.json"]["modules"]["top"], placed)
 
 
 if __name__ == "__main__":
