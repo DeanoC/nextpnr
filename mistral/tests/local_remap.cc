@@ -379,18 +379,45 @@ TEST(ReductionBalance, RecognizesElevenLiteralConeWithMixedPolarities)
 namespace {
 const IdString reduction_pins[] = {id_A, id_B, id_C, id_D, id_E, id_F};
 
+// A serial, read-once cube with active-low private results. Raw required
+// values and PIN_INV vary independently, including the intermediate edges.
+std::vector<reduction_balance_policy::Node> bounded_cube_network(int count)
+{
+    const int sizes[] = {count / 3, (count - count / 3) / 2,
+                         count - count / 3 - (count - count / 3) / 2};
+    std::vector<reduction_balance_policy::Node> network;
+    int bit = 0;
+    for (int stage = 0; stage < 3; ++stage) {
+        reduction_balance_policy::Node node{100 + stage, 0, {}};
+        unsigned row = 0;
+        for (int pin = 0; pin < sizes[stage]; ++pin, ++bit) {
+            const bool inverted = bit % 2 == 0, required = bit % 3 != 1;
+            node.inputs.push_back({bit, inverted});
+            row |= unsigned(required ^ inverted) << pin;
+        }
+        if (stage) {
+            node.inputs.push_back({99 + stage, true});
+            row |= 1u << sizes[stage]; // previous raw result must be zero
+        }
+        node.mask = uint64_t(1) << row;
+        if (stage != 2) node.mask ^= (uint64_t(1) << (1u << node.inputs.size())) - 1;
+        network.push_back(std::move(node));
+    }
+    return network;
+}
+
 struct ElevenLiteralCone {
     std::unique_ptr<Context> ctx;
     std::vector<NetInfo *> inputs;
     CellInfo *leaf, *middle, *root;
     NetInfo *output;
 
-    ElevenLiteralCone()
+    explicit ElevenLiteralCone(int count = 11)
     {
         ArchArgs args;
         args.device = "5CSEBA6U23I7";
         ctx = std::make_unique<Context>(args);
-        for (int bit = 0; bit < 11; ++bit) {
+        for (int bit = 0; bit < count; ++bit) {
             inputs.push_back(ctx->createNet(ctx->idf("status_bits[%d]", bit)));
             observer(ctx->idf("early_observer_%d", bit), inputs.back());
         }
@@ -406,19 +433,38 @@ struct ElevenLiteralCone {
             cell->connectPort(id_Q, ctx->createNet(ctx->idf("%s$q", name)));
             return cell;
         };
-        leaf = lut("first_phase", id_MISTRAL_ALUT4, 0x7fff,
-                   {inputs[0], inputs[1], inputs[2], inputs[3]});
-        leaf->pin_data[id_B].state = PIN_INV;
-        middle = lut("second_phase", id_MISTRAL_ALUT5, 0xffff7fffULL,
-                     {inputs[4], inputs[5], inputs[6], inputs[7], leaf->getPort(id_Q)});
-        middle->pin_data[id_C].state = PIN_INV;
-        root = lut("conjunction", id_MISTRAL_ALUT4, 0x80,
-                   {inputs[8], inputs[9], inputs[10], middle->getPort(id_Q)});
-        root->pin_data[id_B].state = PIN_INV;
+        if (count == 11) {
+            leaf = lut("first_phase", id_MISTRAL_ALUT4, 0x7fff,
+                       {inputs[0], inputs[1], inputs[2], inputs[3]});
+            leaf->pin_data[id_B].state = PIN_INV;
+            middle = lut("second_phase", id_MISTRAL_ALUT5, 0xffff7fffULL,
+                         {inputs[4], inputs[5], inputs[6], inputs[7], leaf->getPort(id_Q)});
+            middle->pin_data[id_C].state = PIN_INV;
+            root = lut("conjunction", id_MISTRAL_ALUT4, 0x80,
+                       {inputs[8], inputs[9], inputs[10], middle->getPort(id_Q)});
+            root->pin_data[id_B].state = PIN_INV;
+        } else {
+            const IdString types[] = {id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
+                                      id_MISTRAL_ALUT5, id_MISTRAL_ALUT6};
+            const char *names[] = {"first_phase", "second_phase", "conjunction"};
+            std::map<int, NetInfo *> signals;
+            for (int bit = 0; bit < count; ++bit) signals.emplace(bit, inputs[bit]);
+            std::vector<CellInfo *> cells;
+            for (const auto &node : bounded_cube_network(count)) {
+                std::vector<NetInfo *> ins;
+                for (const auto &pin : node.inputs) ins.push_back(signals.at(pin.signal));
+                auto *cell = lut(names[cells.size()], types[ins.size() - 2], node.mask, ins);
+                for (size_t pin = 0; pin < node.inputs.size(); ++pin)
+                    if (node.inputs[pin].inverted) cell->pin_data[reduction_pins[pin]].state = PIN_INV;
+                signals.emplace(node.output, cell->getPort(id_Q));
+                cells.push_back(cell);
+            }
+            leaf = cells[0]; middle = cells[1]; root = cells[2];
+        }
         output = root->getPort(id_Q);
         // Unrelated users on both sides of the cone user exercise actual live
         // indexed_store slots, rather than only counting remaining consumers.
-        for (int bit = 0; bit < 11; ++bit)
+        for (int bit = 0; bit < count; ++bit)
             observer(ctx->idf("late_observer_%d", bit), inputs[bit]);
         observer(ctx->id("output_observer"), output);
     }
@@ -445,6 +491,132 @@ struct ElevenLiteralCone {
         return (uint64_t(cell->params.at(id_LUT).as_int64()) >> lut_row) & 1;
     }
 };
+}
+
+TEST(ReductionBalance, RecognizesEverySupportedThreeCellSizeAndRejectsAdjacentBounds)
+{
+    for (int count = 6; count <= 13; ++count) {
+        SCOPED_TRACE(count);
+        auto network = bounded_cube_network(count);
+        auto result = reduction_balance_policy::recognize(network, 102);
+        ASSERT_EQ(result.valid, count >= 7 && count <= 12);
+        if (!result.valid) continue;
+        EXPECT_EQ(result.outputs, (std::vector<int>{100, 101, 102}));
+        ASSERT_EQ(result.literals.size(), size_t(count));
+        for (int bit = 0; bit < count; ++bit) {
+            EXPECT_EQ(result.literals[bit].signal, bit);
+            EXPECT_EQ(result.literals[bit].required, bit % 3 != 1);
+        }
+        network.back().mask ^= 1;
+        EXPECT_FALSE(reduction_balance_policy::recognize(network, 102).valid);
+    }
+}
+
+TEST(ReductionBalance, BoundedThreeCellRewritePreservesTruthIdentitiesAndIndexedStores)
+{
+    const IdString types[] = {id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
+                              id_MISTRAL_ALUT5, id_MISTRAL_ALUT6};
+    for (int count = 6; count <= 13; ++count) {
+        SCOPED_TRACE(count);
+        ElevenLiteralCone fixture(count);
+        auto &ctx = fixture.ctx;
+        const std::set<CellInfo *> cone{fixture.leaf, fixture.middle, fixture.root};
+        struct SavedNet {
+            NetInfo *identity;
+            PortRef driver;
+            indexed_store<PortRef> users;
+            std::map<store_index<PortRef>, PortRef> slots;
+        };
+        struct SavedCell {
+            CellInfo *identity;
+            IdString type;
+            decltype(CellInfo::params) params;
+            decltype(CellInfo::ports) ports;
+            decltype(CellInfo::pin_data) pins;
+        };
+        std::map<IdString, SavedCell> cells;
+        std::map<IdString, SavedNet> nets;
+        for (const auto &entry : ctx->cells) {
+            auto *cell = entry.second.get();
+            cells.emplace(entry.first, SavedCell{cell, cell->type, cell->params, cell->ports, cell->pin_data});
+        }
+        for (auto &entry : ctx->nets) {
+            auto *net = entry.second.get();
+            auto a = net->users.add(PortRef{}), b = net->users.add(PortRef{});
+            net->users.remove(a); net->users.remove(b);
+            SavedNet saved{net, net->driver, net->users, {}};
+            for (auto user : net->users.enumerate()) saved.slots.emplace(user.index, user.value);
+            nets.emplace(entry.first, std::move(saved));
+        }
+        const auto public_result = ctx->id("public_cube_result"), public_literal = ctx->id("public_cube_literal");
+        ctx->ports[public_result] = PortInfo{public_result, fixture.output, PORT_OUT, {}};
+        ctx->ports[public_literal] = PortInfo{public_literal, fixture.inputs[0], PORT_OUT, {}};
+        unsigned required = 0;
+        for (int bit = 0; bit < count; ++bit)
+            if (count == 11 ? bit != 1 && bit != 6 && bit != 9 : bit % 3 != 1) required |= 1u << bit;
+        for (unsigned row = 0; row < (1u << count); ++row)
+            ASSERT_EQ(fixture.evaluate(fixture.output, row), row == required);
+
+        const bool supported = count >= 7 && count <= 12;
+        ASSERT_EQ(ctx->balance_reduction("conjunction"), supported);
+        EXPECT_EQ(fixture.root->getPort(id_Q), fixture.output);
+        EXPECT_EQ(ctx->ports.at(public_result).net, fixture.output);
+        EXPECT_EQ(ctx->ports.at(public_literal).net, fixture.inputs[0]);
+        if (supported) {
+            EXPECT_EQ(fixture.root->type, id_MISTRAL_ALUT2);
+            EXPECT_EQ(fixture.leaf->type, types[(count + 1) / 2 - 2]);
+            EXPECT_EQ(fixture.middle->type, types[count / 2 - 2]);
+            EXPECT_EQ(fixture.leaf->ports.size(), size_t((count + 1) / 2 + 1));
+            EXPECT_EQ(fixture.middle->ports.size(), size_t(count / 2 + 1));
+        }
+        ASSERT_EQ(ctx->cells.size(), cells.size());
+        ASSERT_EQ(ctx->nets.size(), nets.size());
+        for (const auto &entry : cells) {
+            auto *cell = ctx->cells.at(entry.first).get();
+            const auto &saved = entry.second;
+            EXPECT_EQ(cell, saved.identity);
+            if (supported && cone.count(cell)) continue;
+            EXPECT_EQ(cell->type, saved.type);
+            ASSERT_EQ(cell->params.size(), saved.params.size());
+            for (const auto &param : saved.params) EXPECT_EQ(cell->params.at(param.first), param.second);
+            ASSERT_EQ(cell->ports.size(), saved.ports.size());
+            for (const auto &port : saved.ports) {
+                EXPECT_EQ(cell->ports.at(port.first).net, port.second.net);
+                EXPECT_EQ(cell->ports.at(port.first).user_idx, port.second.user_idx);
+            }
+            ASSERT_EQ(cell->pin_data.size(), saved.pins.size());
+            for (const auto &pin : saved.pins) {
+                EXPECT_EQ(cell->pin_data.at(pin.first).state, pin.second.state);
+                EXPECT_EQ(cell->pin_data.at(pin.first).bel_pins, pin.second.bel_pins);
+            }
+        }
+        for (auto &entry : nets) {
+            auto *net = ctx->nets.at(entry.first).get();
+            auto &saved = entry.second;
+            EXPECT_EQ(net, saved.identity);
+            EXPECT_EQ(net->driver.cell, saved.driver.cell);
+            EXPECT_EQ(net->driver.port, saved.driver.port);
+            ASSERT_EQ(net->users.entries(), saved.slots.size());
+            for (const auto &slot : saved.slots) {
+                ASSERT_TRUE(net->users.count(slot.first));
+                auto user = net->users.at(slot.first);
+                EXPECT_EQ(user.cell->getPort(user.port), net);
+                EXPECT_EQ(user.cell->ports.at(user.port).user_idx, slot.first);
+                if (!supported || !cone.count(slot.second.cell)) {
+                    EXPECT_EQ(user.cell, slot.second.cell);
+                    EXPECT_EQ(user.port, slot.second.port);
+                }
+            }
+            auto actual = net->users, expected = saved.users;
+            ASSERT_EQ(actual.capacity(), expected.capacity());
+            const size_t probes = size_t(expected.capacity()) + 4;
+            for (size_t probe = 0; probe < probes; ++probe)
+                EXPECT_EQ(actual.add(PortRef{}), expected.add(PortRef{}));
+        }
+        for (unsigned row = 0; row < (1u << count); ++row)
+            EXPECT_EQ(fixture.evaluate(fixture.output, row), row == required) << "assignment " << row;
+        ctx->check();
+    }
 }
 
 TEST(ReductionBalance, ExhaustiveElevenLiteralRewritePreservesIdentitiesAndEveryConsumerSlot)

@@ -23,7 +23,7 @@ struct Reduction {
     std::vector<Literal> literals;
 };
 
-// Only accept irredundant conjunctions of eleven literals in three LUTs,
+// Only accept irredundant conjunctions of seven to twelve literals in three LUTs,
 // sixteen literals in four LUTs, or twenty-four literals in seven LUTs.
 // The first two reuse every cell; the last needs four leaves and its public root.
 // Each LUT must encode a unique input assignment for the output polarity needed
@@ -64,8 +64,13 @@ inline Reduction recognize(const std::vector<Node> &network, int root)
         }
         return true;
     };
-    const size_t expected_literals = network.size() == 3 ? 11 : network.size() == 4 ? 16 : 24;
-    if (!descend(descend, root, true) || visited.size() != network.size() || literals.size() != expected_literals)
+    if (!descend(descend, root, true) || visited.size() != network.size())
+        return result;
+    // Two leaves cover at most twelve literals. Smaller functions fit one LUT;
+    // larger functions need an extra leaf and cannot reuse this three-cell cone.
+    const bool supported_size = network.size() == 3 ? literals.size() >= 7 && literals.size() <= 12 :
+                               literals.size() == (network.size() == 4 ? 16 : 24);
+    if (!supported_size)
         return result;
     for (const auto &entry : nodes) result.outputs.push_back(entry.first);
     for (const auto &entry : literals) result.literals.push_back({entry.first, entry.second});
