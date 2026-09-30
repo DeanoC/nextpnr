@@ -49,10 +49,14 @@ with no final reported hold violations.
 | Pixel | 95.229019 | 95.047997 | 74.250069 |
 | Capture | 378.582397 | 307.631805 | 130.005203 |
 
-Memory improves by 2.018829 MHz. Pixel and capture still meet their required
-clocks, but lose surplus margin. This remains an unselected experimental
-tradeoff under the existing all-clock nonregression criterion; it does not
-close the 130 MHz memory target. No hardware acceptance is claimed.
+Memory improved by 2.018829 MHz. Pixel and capture still met their required
+clocks, but lost surplus margin. This experiment remained unselected under
+the all-clock Fmax nonregression criterion used at the time; it did not close
+the 130 MHz memory target. The later
+[control-remapping measurement](mistral-control-remapping.md) uses a separately
+stated target-clock acceptance rule and discloses reduced positive capture
+headroom. That rule does not change this historical experiment's recorded
+status. No hardware acceptance is claimed.
 
 The new memory critical path is an error-counter control cone rather than an
 HPS data capture. Its 11-literal conjunction uses three LUT levels before the
