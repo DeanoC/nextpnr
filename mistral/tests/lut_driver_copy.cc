@@ -145,13 +145,18 @@ struct DriverCopySnapshot {
             const auto &info = cell->combInfo;
             EXPECT_EQ(info.lut_input_count, saved.input_count); EXPECT_EQ(info.used_lut_input_count, saved.used_inputs);
             EXPECT_EQ(info.lut_bits_count, saved.bits);
-            if (!successor_cache_change) EXPECT_EQ(info.chain_shared_input_count, saved.shared_inputs);
+            if (!successor_cache_change) {
+                EXPECT_EQ(info.chain_shared_input_count, saved.shared_inputs);
+            }
             EXPECT_EQ(info.mlab_group, saved.mlab_group); EXPECT_EQ(info.comb_out, saved.output);
             EXPECT_EQ(info.is_carry, saved.carry); EXPECT_EQ(info.is_shared, saved.shared);
             EXPECT_EQ(info.is_extended, saved.extended); EXPECT_EQ(info.carry_start, saved.carry_start);
             EXPECT_EQ(info.carry_end, saved.carry_end);
-            for (int i = 0; i < saved.input_count; ++i)
-                if (cell != changed || pin != id_A || i != 0) EXPECT_EQ(info.lut_in[i], saved.lut_inputs[i]);
+            for (int i = 0; i < saved.input_count; ++i) {
+                if (cell != changed || pin != id_A || i != 0) {
+                    EXPECT_EQ(info.lut_in[i], saved.lut_inputs[i]);
+                }
+            }
         } else if (cell->type == id_MISTRAL_FF) {
             EXPECT_EQ(cell->ffInfo.ctrlset, saved.controls);
             EXPECT_EQ(cell->ffInfo.datain, saved.datain); EXPECT_EQ(cell->ffInfo.sdata, saved.sdata);
@@ -522,7 +527,9 @@ class LutDriverCopyTest : public ::testing::Test {
         }
         auto location = ctx->getBelLocation(clone->bel);
         EXPECT_LE(std::abs(location.x - 30) + std::abs(location.y - 20), 3);
-        if (protected_sink_lab) EXPECT_FALSE(location.x == 30 && location.y == 20);
+        if (protected_sink_lab) {
+            EXPECT_FALSE(location.x == 30 && location.y == 20);
+        }
         for (const auto &entry : saved.cells) {
             auto old = ctx->getBelLocation(entry.second.bel);
             EXPECT_FALSE(location.x == old.x && location.y == old.y && location.z / 6 == old.z / 6);
