@@ -119,9 +119,9 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
     }
     for (const auto &entry : nets) original_net_order.push_back(entry.first);
     for (const auto &entry : net_aliases) original_alias_order.push_back(entry.first);
-    std::set<NetInfo *> boundary;
+    std::set<const NetInfo *> boundary;
     for (const auto &entry : ctx->ports) if (entry.second.net) boundary.insert(entry.second.net);
-    auto ordinary = [&](NetInfo *net) {
+    auto ordinary = [&](const NetInfo *net) {
         return net && net->driver.cell && !net->is_global && !net->clkconstr && !net->region &&
             net->wires.empty() && net->constant_value == IdString() && !boundary.count(net) &&
             !copy_protected(net->attrs,ctx) && net->driver.cell->ports.count(net->driver.port) &&
