@@ -392,6 +392,34 @@ TEST_F(DecompositionBackendTest, QualifiedSelectionPreservesOriginalDagAndEveryT
     ASSERT_TRUE(ctx->remap_decomposed_critical(report(), 0)) << log.stream.str();
     EXPECT_EQ(ctx->cells.size(), saved.cells.size() + 3);
     EXPECT_EQ(ctx->nets.size(), saved.nets.size() + 3);
+    std::vector<IdString> original_cell_order, original_net_order, original_alias_order;
+    for (const auto &entry : ctx->cells)
+        if (saved.cells.count(entry.first)) original_cell_order.push_back(entry.first);
+    for (const auto &entry : ctx->nets)
+        if (saved.nets.count(entry.first)) original_net_order.push_back(entry.first);
+    for (const auto &entry : ctx->net_aliases)
+        if (saved.aliases.count(entry.first)) {
+            original_alias_order.push_back(entry.first);
+            EXPECT_EQ(entry.second, saved.aliases.at(entry.first));
+        }
+    EXPECT_EQ(original_cell_order, saved.cell_order);
+    EXPECT_EQ(original_net_order, saved.net_order);
+    EXPECT_EQ(original_alias_order, saved.alias_order);
+    for (const auto &entry : ctx->cells) {
+        if (saved.cells.count(entry.first)) continue;
+        auto *clone = entry.second.get();
+        SCOPED_TRACE(clone->name.str(ctx.get()));
+        ASSERT_NE(clone->bel, BelId());
+        auto site = ctx->getBelLocation(clone->bel);
+        // LAB BEL order is two COMBs then four FFs per ALM. New clones
+        // may share an ALM with each other, but no original occupant.
+        for (const auto &original : saved.cells) {
+            if (original.second.bel == BelId()) continue;
+            auto old_site = ctx->getBelLocation(original.second.bel);
+            EXPECT_FALSE(site.x == old_site.x && site.y == old_site.y && site.z / 6 == old_site.z / 6)
+                    << "Original ALM occupant: " << original.first.str(ctx.get());
+        }
+    }
     auto *replacement = terminal->getPort(id_C);
     ASSERT_NE(replacement, n2->getPort(id_Q));
     EXPECT_EQ(side->getPort(id_ENA), n2->getPort(id_Q));

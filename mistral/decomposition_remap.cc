@@ -355,6 +355,9 @@ bool Arch::remap_decomposed_critical(const std::string &report, int selection)
             decltype(ctx->cells) parked_cells;
             decltype(ctx->nets) parked_nets;
             decltype(ctx->net_aliases) parked_aliases;
+            std::vector<IdString> original_cell_order,original_net_order;
+            for (const auto &entry : cells) original_cell_order.push_back(entry.first);
+            for (const auto &entry : nets) original_net_order.push_back(entry.first);
             std::vector<CellInfo *> clones;
             std::vector<NetInfo *> outputs;
             std::vector<std::vector<NetInfo *>> clone_inputs;
@@ -381,8 +384,13 @@ bool Arch::remap_decomposed_critical(const std::string &report, int selection)
             cells.swap(parked_cells); nets.swap(parked_nets); net_aliases.swap(parked_aliases);
             live=true;
             try {
-                for (auto &entry : parked_cells) cells[entry.first]=std::move(entry.second);
-                for (auto &entry : parked_nets) nets[entry.first]=std::move(entry.second);
+                // dict iterates its insertion storage backwards. Reinsert in
+                // reverse iteration order so accepting a trial preserves the
+                // original subsequences used by clock and GPU routing.
+                for (auto key=original_cell_order.rbegin();key!=original_cell_order.rend();++key)
+                    cells[*key]=std::move(parked_cells.at(*key));
+                for (auto key=original_net_order.rbegin();key!=original_net_order.rend();++key)
+                    nets[*key]=std::move(parked_nets.at(*key));
                 net_aliases=parked_aliases;
                 for (size_t index=0;index<models.size();++index) {
                     auto *cell=ctx->createCell(cnames[index],dtype(models[index].signals.size())); clones.push_back(cell);
@@ -420,6 +428,19 @@ bool Arch::remap_decomposed_critical(const std::string &report, int selection)
                     return true;
                 };
                 struct Site { BelId bel; int64_t score; std::vector<int> order; };
+                auto isolated_alm=[&](BelId site) {
+                    const auto &target=bel_data(site).lab_data;
+                    auto at=getBelLocation(site);
+                    for (auto bel : getBelsByTile(at.x,at.y)) {
+                        auto type=getBelType(bel);
+                        if (type!=id_MISTRAL_COMB && type!=id_MISTRAL_MCOMB && type!=id_MISTRAL_FF) continue;
+                        const auto &neighbour=bel_data(bel).lab_data;
+                        if (neighbour.lab!=target.lab || neighbour.alm!=target.alm) continue;
+                        auto *cell=getBoundBelCell(bel);
+                        if (cell && std::find(clones.begin(),clones.end(),cell)==clones.end()) return false;
+                    }
+                    return true;
+                };
                 auto rank_order=[&](size_t cell_index,const std::array<int64_t,2> &code_arrival)->Site {
                     auto *cell=clones.at(cell_index); size_t count=models.at(cell_index).signals.size();
                     std::vector<std::vector<int>> costs(count,std::vector<int>(count));
@@ -500,7 +521,7 @@ bool Arch::remap_decomposed_critical(const std::string &report, int selection)
                 std::vector<Site> roots;
                 for (auto at : nearby({lab(cut.sink.cell->bel),lab(cut.nodes.back()->bel)}))
                     for (auto bel : getBelsByTile(at.first,at.second)) {
-                        if (!checkBelAvail(bel) || !isValidBelForCellType(clones.back()->type,bel)) continue;
+                        if (!checkBelAvail(bel) || !isValidBelForCellType(clones.back()->type,bel) || !isolated_alm(bel)) continue;
                         bindBel(bel,clones.back(),STRENGTH_WEAK);
                         auto site=choose(root_index,estimated);
                         if (site.bel!=BelId()) {
@@ -525,7 +546,7 @@ bool Arch::remap_decomposed_critical(const std::string &report, int selection)
                         if (!xs.empty()) centers.emplace_back(xs[xs.size()/2],ys[ys.size()/2]);
                         std::vector<Site> sites;
                         for (auto at : nearby(centers)) for (auto bel : getBelsByTile(at.first,at.second)) {
-                            if (!checkBelAvail(bel) || !isValidBelForCellType(clones[code]->type,bel)) continue;
+                            if (!checkBelAvail(bel) || !isValidBelForCellType(clones[code]->type,bel) || !isolated_alm(bel)) continue;
                             bindBel(bel,clones[code],STRENGTH_WEAK);
                             auto site=choose(code,{});
                             if (site.bel!=BelId()) {

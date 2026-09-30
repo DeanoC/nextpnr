@@ -21,7 +21,10 @@ have two to six inputs. Every proposal is recomposed against all 128 rows.
 Unused generated codes have deterministic zero outputs. No assumption about
 reachable RTL states contributes to the equivalence proof.
 
-All original LUTs, FFs and BEL assignments remain. One selected LUT input
+All original LUTs, FFs and BEL assignments remain. New LUTs use ALMs without
+original LUT, FF or routing-buffer occupants; new LUTs may share with each
+other. Accepted rewrites preserve the relative iteration order of original
+cells and nets. One selected LUT input
 receives an independent replacement root driven by one or two encoders. Other
 consumers retain the original cone. Protected cells/nets/LABs, regions,
 global/clock/top-level roles, unsupported timing and downstream cycles exclude
