@@ -1,11 +1,18 @@
 # Bounded conjunction balancing diagnostics
 
-The opt-in `--balance-reduction-root NAME` recognizes three LUTs with eleven
-distinct literals, four LUTs with sixteen, or seven LUTs with twenty-four.
+The opt-in `--balance-reduction-root NAME` recognizes three LUTs with seven to
+twelve distinct literals, four LUTs with sixteen, or seven LUTs with twenty-four.
 Every LUT must have exactly one input assignment for the polarity required
 by its parent. Recognition examines at most 64 rows per LUT and propagates
 pin inversion; it rejects repeated inputs, reconvergence, cycles and general
 Boolean functions. No RTL name, constant or location identifies a candidate.
+
+A three-LUT reduction reuses its two private intermediates as balanced product
+leaves and its public root as a two-input product. Each leaf receives half the
+literals, with the odd extra input assigned to the first leaf. The eleven-input
+form retains its six-plus-five partition. Functions with six or fewer literals
+fit one LUT; functions above twelve need more than two leaves. Both fall outside
+this three-cell rewrite.
 
 The 24-literal tree becomes four six-input product LUTs and a four-input root.
 Four original private intermediates are reused in deterministic name order;
@@ -22,7 +29,7 @@ The whole request is parsed before any stage executes. A selected failure
 aborts before routing; listing should be invoked with `--no-route`. This
 diagnostic is not serialized into a design or enabled by a recipe.
 
-Placed balancing supports the eleven- and twenty-four-literal classes. It
+Placed balancing supports the seven-to-twelve- and twenty-four-literal classes. It
 fixes the public root and all outside-cone cells, and searches nearby legal
 sites for two or four leaves. Each leaf has at most 24 spatially diverse
 sites; the 24-literal search is bounded to 24^4 tuples and sixteen legal LAB

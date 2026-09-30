@@ -291,6 +291,61 @@ class PlacedReductionTest : public ::testing::Test {
         return (uint64_t(cell->params.at(id_LUT).as_int64()) >> address) & 1;
     }
 };
+
+class TwelveReductionTest : public PlacedReductionTest {
+  protected:
+    void SetUp() override
+    {
+        PlacedReductionTest::SetUp();
+        auto *extra_source = ff(ctx->id("generic_source_11"), nullptr);
+        inputs.push_back(extra_source->getPort(id_Q));
+        for (auto *cell : {leaf, middle, root}) {
+            ctx->unbindBel(cell->bel);
+            for (IdString pin : cube_pins)
+                if (cell->ports.count(pin)) {
+                    cell->disconnectPort(pin);
+                    cell->ports.erase(pin);
+                    cell->pin_data.erase(pin);
+                }
+        }
+        // Extend the existing active-low chain by one final literal. Both
+        // new six-input leaves must be used after balancing; the public root
+        // and all source/sink registers keep their original identities.
+        auto rebuild = [&](CellInfo *cell, IdString type, uint64_t mask, const std::vector<NetInfo *> &ins) {
+            cell->type = type;
+            cell->params[id_LUT] = Property(int64_t(mask), 1 << ins.size());
+            for (size_t pin = 0; pin < ins.size(); ++pin) {
+                cell->addInput(cube_pins[pin]);
+                cell->connectPort(cube_pins[pin], ins[pin]);
+                cell->pin_data[cube_pins[pin]].state = PIN_SIG;
+            }
+        };
+        rebuild(leaf, id_MISTRAL_ALUT4, 0x7fff, {inputs[0], inputs[1], inputs[2], inputs[3]});
+        rebuild(middle, id_MISTRAL_ALUT5, 0xffff7fffULL,
+                {inputs[4], inputs[5], inputs[6], inputs[7], leaf->getPort(id_Q)});
+        rebuild(root, id_MISTRAL_ALUT5, 0x8000,
+                {inputs[8], inputs[9], inputs[10], inputs[11], middle->getPort(id_Q)});
+        leaf->pin_data[id_B].state = PIN_INV;
+        middle->pin_data[id_C].state = PIN_INV;
+        root->pin_data[id_B].state = PIN_INV;
+        auto holes = [&](NetInfo *net) {
+            auto a = net->users.add(PortRef{}), b = net->users.add(PortRef{}), c = net->users.add(PortRef{});
+            net->users.remove(a); net->users.remove(c); net->users.remove(b);
+        };
+        for (auto *net : inputs) holes(net);
+        for (auto *cell : {leaf, middle, root}) holes(cell->getPort(id_Q));
+        const auto public_result = ctx->id("twelve_public_result"), public_literal = ctx->id("twelve_public_literal");
+        ctx->ports[public_result] = PortInfo{public_result, output, PORT_OUT, {}};
+        ctx->ports[public_literal] = PortInfo{public_literal, inputs[11], PORT_OUT, {}};
+        ctx->assignArchInfo();
+        ASSERT_NO_FATAL_FAILURE(place(extra_source, 25, 29));
+        ASSERT_NO_FATAL_FAILURE(place(leaf, 25, 10));
+        ASSERT_NO_FATAL_FAILURE(place(middle, 25, 40));
+        ASSERT_NO_FATAL_FAILURE(place(root, 25, 30));
+        assert_legal();
+        ctx->check();
+    }
+};
 }
 
 TEST(PlacedReductionDiagnostic, DisabledDoesNotInternIdentifiers)
@@ -343,6 +398,73 @@ TEST_F(PlacedReductionTest, AppliesEquivalentTwoLevelsWithFixedRegistersAndConsu
     timing_after.setup(false, false, true);
     EXPECT_TRUE(timing_after.get_timing_result().min_delay_violations.empty());
     EXPECT_GE(timing_after.get_setup_slack(CellPortKey(sink->name, id_ENA)) - slack, 250);
+    const auto &fmax_after = timing_after.get_timing_result().clock_fmax;
+    for (const auto &entry : timing_before.get_timing_result().clock_fmax) {
+        ASSERT_TRUE(fmax_after.count(entry.first));
+        EXPECT_GE(fmax_after.at(entry.first).achieved + 0.001f, entry.second.achieved);
+    }
+    assert_legal();
+    ctx->check();
+}
+
+TEST_F(TwelveReductionTest, ListingRestoresEveryCellNetPinAndIndexedFreeList)
+{
+    ReductionBalancePlan plan;
+    ASSERT_TRUE(plan_reduction(ctx.get(), root->name.str(ctx.get()), true, plan));
+    ASSERT_EQ(plan.literals.size(), 12u);
+    ASSERT_EQ(plan.cells.size(), 3u);
+    CubeSnapshot before(ctx.get());
+    EXPECT_FALSE(placed_reduction(ctx.get(), root->name.str(ctx.get()), 2, -1));
+    before.expect_exact(ctx.get());
+    EXPECT_EQ(ctx->ports.at(ctx->id("twelve_public_result")).net, output);
+    EXPECT_EQ(ctx->ports.at(ctx->id("twelve_public_literal")).net, inputs[11]);
+    assert_legal();
+    ctx->check();
+}
+
+TEST_F(TwelveReductionTest, SelectedRewriteIsExhaustiveAndPreservesEveryRegisterAndPublicRoot)
+{
+    const unsigned required = ((1u << 12) - 1) ^ (1u << 1) ^ (1u << 6) ^ (1u << 9);
+    for (unsigned row = 0; row < (1u << 12); ++row)
+        ASSERT_EQ(evaluate(output, row), row == required) << "before assignment " << row;
+    CubeSnapshot before(ctx.get());
+    TimingAnalyser timing_before(ctx.get());
+    timing_before.setup(false, false, true);
+    ASSERT_TRUE(timing_before.get_timing_result().min_delay_violations.empty());
+    const auto root_port = CellPortKey(root->name, id_Q), sink_port = CellPortKey(sink->name, id_ENA);
+    const auto branch_slack = timing_before.get_setup_slack(root_port);
+    const auto endpoint_slack = timing_before.get_setup_slack(sink_port);
+    ASSERT_TRUE(placed_reduction(ctx.get(), root->name.str(ctx.get()), 2, 0));
+    EXPECT_EQ(root->type, id_MISTRAL_ALUT2);
+    EXPECT_EQ(leaf->type, id_MISTRAL_ALUT6);
+    EXPECT_EQ(middle->type, id_MISTRAL_ALUT6);
+    EXPECT_EQ(root->bel, before.cells.at(root->name).bel);
+    EXPECT_EQ(root->belStrength, before.cells.at(root->name).strength);
+    EXPECT_EQ(root->getPort(id_Q), output);
+    EXPECT_EQ(ctx->ports.at(ctx->id("twelve_public_result")).net, output);
+    EXPECT_EQ(ctx->ports.at(ctx->id("twelve_public_literal")).net, inputs[11]);
+    before.expect_slots_and_fixed_cells(ctx.get(), {leaf, middle, root});
+    for (const auto &entry : before.cells) {
+        const auto &saved = entry.second;
+        if (saved.type != id_MISTRAL_FF) continue;
+        auto *cell = ctx->cells.at(entry.first).get();
+        EXPECT_EQ(cell->type, saved.type);
+        ASSERT_EQ(cell->params.size(), saved.params.size());
+        for (const auto &param : saved.params) EXPECT_EQ(cell->params.at(param.first), param.second);
+        ASSERT_EQ(cell->pin_data.size(), saved.pins.size());
+        for (const auto &pin : saved.pins) {
+            ASSERT_TRUE(cell->pin_data.count(pin.first));
+            EXPECT_EQ(cell->pin_data.at(pin.first).state, pin.second.state);
+            EXPECT_EQ(cell->pin_data.at(pin.first).bel_pins, pin.second.bel_pins);
+        }
+    }
+    for (unsigned row = 0; row < (1u << 12); ++row)
+        EXPECT_EQ(evaluate(output, row), row == required) << "after assignment " << row;
+    TimingAnalyser timing_after(ctx.get());
+    timing_after.setup(false, false, true);
+    EXPECT_GE(timing_after.get_setup_slack(root_port) - branch_slack, 250);
+    EXPECT_GE(timing_after.get_setup_slack(sink_port), endpoint_slack);
+    EXPECT_TRUE(timing_after.get_timing_result().min_delay_violations.empty());
     const auto &fmax_after = timing_after.get_timing_result().clock_fmax;
     for (const auto &entry : timing_before.get_timing_result().clock_fmax) {
         ASSERT_TRUE(fmax_after.count(entry.first));

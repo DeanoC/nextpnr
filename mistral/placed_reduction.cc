@@ -62,7 +62,7 @@ bool placed_reduction(Context *ctx, const std::string &root_name, int radius, in
         if (!net.second->wires.empty()) log_error("Placed reduction requires an unrouted design.\n");
     ReductionBalancePlan plan;
     if (!plan_reduction(ctx,root_name,true,plan) || (plan.cells.size() != 3 && plan.cells.size() != 7)) {
-        log_info("Placed reduction: root is not a movable three-LUT/eleven-literal or seven-LUT/24-literal conjunction.\n"); return false;
+        log_info("Placed reduction: root is not a movable three-LUT/7..12-literal or seven-LUT/24-literal conjunction.\n"); return false;
     }
     const bool wide = plan.cells.size() == 7;
     std::array<int,4> wide_root_delays{};
