@@ -101,6 +101,7 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
             cell->cluster == ClusterId() && !cell->region && !cell->isPseudo() && !copy_protected(cell->attrs,ctx);
     };
     std::set<CopyLab> protected_labs;
+    std::map<CopyLab, const CellInfo *> protected_owners;
     std::vector<IdString> original_cell_order, original_net_order, original_alias_order;
     struct Original {
         CellInfo *cell;
@@ -114,8 +115,10 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
     for (const auto &entry : cells) {
         auto *cell = entry.second.get(); original_cell_order.push_back(entry.first);
         originals.push_back({cell,cell->bel,cell->belStrength,cell->params,cell->attrs,cell->ports,cell->pin_data});
-        if (cell->bel != BelId() && (!movable(cell) || cell->type == id_MISTRAL_MLAB))
+        if (cell->bel != BelId() && (!movable(cell) || cell->type == id_MISTRAL_MLAB)) {
             protected_labs.insert(lab(cell->bel));
+            protected_owners.emplace(lab(cell->bel), cell);
+        }
     }
     for (const auto &entry : nets) original_net_order.push_back(entry.first);
     for (const auto &entry : net_aliases) original_alias_order.push_back(entry.first);
@@ -143,12 +146,89 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
         return cell->ports.count(id_Q) && cell->ports.at(id_Q).type == PORT_OUT && ordinary(output) &&
             output->driver.cell == cell && output->driver.port == id_Q;
     };
+    // Diagnostics retain only the first pretrial rejection for each bounded
+    // report edge. They use existing names and never intern an IdString.
+    std::string first_rejection;
+    auto reject = [&](const char *reason, const CellInfo *cell = nullptr, IdString port = IdString(),
+                      const NetInfo *net = nullptr, const std::string &detail = std::string()) {
+        if (!first_rejection.empty()) return;
+        std::ostringstream text;
+        text << reason;
+        if (cell) text << " cell=" << cell->name.str(ctx) << " type=" << cell->type.str(ctx);
+        if (port != IdString()) text << " port=" << port.str(ctx);
+        if (net) text << " net=" << net->name.str(ctx);
+        if (!detail.empty()) text << ' ' << detail;
+        first_rejection = text.str();
+    };
+    auto ordinary_flags = [&](const NetInfo *net) {
+        if (!first_rejection.empty()) return std::string();
+        const auto *driver = net ? net->driver.cell : nullptr;
+        const bool driver_port_present = driver && driver->ports.count(net->driver.port);
+        std::ostringstream text;
+        text << "net_present=" << bool(net) << " driver_present=" << bool(driver)
+             << " global=" << (net && net->is_global) << " clkconstr=" << (net && bool(net->clkconstr))
+             << " region=" << (net && bool(net->region)) << " routed=" << (net && !net->wires.empty())
+             << " constant=" << (net && net->constant_value != IdString())
+             << " boundary=" << (net && boundary.count(net))
+             << " protected=" << (net && copy_protected(net->attrs,ctx))
+             << " driver_port_present=" << driver_port_present
+             << " driver_port_output=" << (driver_port_present && driver->ports.at(net->driver.port).type == PORT_OUT)
+             << " driver_port_matching_net=" << (driver_port_present && driver->getPort(net->driver.port) == net);
+        return text.str();
+    };
+    auto table_flags = [&](const CellInfo *cell) {
+        if (!first_rejection.empty()) return std::string();
+        const int width = mistral_remap_report::lut_width(cell->type);
+        const bool has_table = cell->params.count(id_LUT);
+        std::ostringstream text;
+        text << "width=" << width << " params_count=" << cell->params.size() << " lut_present=" << has_table
+             << " lut_fully_defined=" << (has_table && cell->params.at(id_LUT).is_fully_def())
+             << " lut_size=" << (has_table ? cell->params.at(id_LUT).size() : 0)
+             << " ports_count=" << cell->ports.size() << " q_pin_state=" << int(cell->get_pin_state(id_Q));
+        for (int pin = 0; pin < width && pin < int(copy_pins.size()); ++pin) {
+            const auto logical = copy_pins[pin];
+            const bool present = cell->ports.count(logical);
+            const auto *net = present ? cell->getPort(logical) : nullptr;
+            const auto prefix = " input_" + logical.str(ctx);
+            text << prefix << "_present=" << present
+                 << prefix << "_state=" << int(cell->get_pin_state(logical))
+                 << prefix << "_hasnet=" << bool(net)
+                 << prefix << "_ordinary=" << ordinary(net);
+        }
+        return text.str();
+    };
+    auto owner_flags = [&](const CellInfo *cell) {
+        bool keep = false, dont_touch = false;
+        for (const auto &attr : cell->attrs) {
+            auto name = attr.first.str(ctx);
+            keep |= name == "keep";
+            dont_touch |= name == "dont_touch";
+        }
+        std::ostringstream text;
+        text << "owner=" << cell->name.str(ctx) << " owner_type=" << cell->type.str(ctx)
+             << " bound=" << (cell->bel != BelId()) << " weak=" << (cell->belStrength <= STRENGTH_WEAK)
+             << " cluster=" << (cell->cluster != ClusterId()) << " region=" << bool(cell->region)
+             << " pseudo=" << cell->isPseudo() << " keep=" << keep << " dont_touch=" << dont_touch
+             << " mlab=" << (cell->type == id_MISTRAL_MLAB);
+        return text.str();
+    };
     auto clocked = [&](CellInfo *cell, IdString port, int count) {
-        if (count <= 0 || cell->bel == BelId() || getBelPinsForCellPin(cell,port).empty()) return false;
+        if (count <= 0 || cell->bel == BelId() || getBelPinsForCellPin(cell,port).empty()) {
+            if (count <= 0) reject("clock-count-zero", cell, port, nullptr, "count=" + std::to_string(count));
+            else if (cell->bel == BelId()) reject("clock-cell-unplaced", cell, port);
+            else reject("clock-physical-pin-missing", cell, port);
+            return false;
+        }
         for (int index = 0; index < count; ++index) {
             auto info = getPortClockingInfo(cell,port,index);
             auto clock = cell->getPort(info.clock_port);
-            if (!clock || !clock->clkconstr || clock->clkconstr->period.minDelay() <= 0) return false;
+            if (!clock || !clock->clkconstr || clock->clkconstr->period.minDelay() <= 0) {
+                const auto detail = "endpoint_port=" + port.str(ctx) + " clock_index=" + std::to_string(index);
+                if (!clock) reject("clock-net-missing", cell, info.clock_port, clock, detail);
+                else if (!clock->clkconstr) reject("clock-constraint-missing", cell, info.clock_port, clock, detail);
+                else reject("clock-period-nonpositive", cell, info.clock_port, clock, detail);
+                return false;
+            }
         }
         return true;
     };
@@ -179,13 +259,34 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
     log_info("LUT driver copy discovery: %zu bounded data edges.\n",edges.size());
     int qualified = 0;
     for (const auto &edge : edges) {
+        first_rejection.clear();
         auto *source = edge.source.cell, *sink = edge.sink.cell;
         auto old_net = source->getPort(id_Q); int width = mistral_remap_report::lut_width(source->type);
+        auto report_rejection = [&]() {
+            if (first_rejection.empty()) reject("pretrial-ineligible");
+            log_info("LUT driver copy rejection source=%s sink=%s.%s reason=%s\n",
+                     nameOf(source), nameOf(sink), edge.sink.port.c_str(ctx), first_rejection.c_str());
+        };
         if (!movable(source) || protected_labs.count(lab(source->bel)) || !table_valid(source) ||
             getBelPinsForCellPin(source,id_Q).empty() ||
             sink->bel == BelId() || sink->region || sink->isPseudo() || copy_protected(sink->attrs,ctx) ||
             sink->getPort(edge.sink.port) != old_net || sink->ports.at(edge.sink.port).type != PORT_IN ||
-            getBelPinsForCellPin(sink,edge.sink.port).empty()) continue;
+            getBelPinsForCellPin(sink,edge.sink.port).empty()) {
+            if (!movable(source)) reject("source-not-movable", source, id_Q, old_net, owner_flags(source));
+            else if (protected_labs.count(lab(source->bel)))
+                reject("source-protected-lab", source, id_Q, old_net, owner_flags(protected_owners.at(lab(source->bel))));
+            else if (!table_valid(source)) reject("source-lut-table-invalid", source, id_Q, old_net, table_flags(source));
+            else if (getBelPinsForCellPin(source,id_Q).empty()) reject("source-physical-pin-missing", source, id_Q, old_net);
+            else if (sink->bel == BelId()) reject("sink-unplaced", sink, edge.sink.port, old_net);
+            else if (sink->region) reject("sink-region", sink, edge.sink.port, old_net);
+            else if (sink->isPseudo()) reject("sink-pseudo", sink, edge.sink.port, old_net);
+            else if (copy_protected(sink->attrs,ctx)) reject("sink-protected", sink, edge.sink.port, old_net, owner_flags(sink));
+            else if (sink->getPort(edge.sink.port) != old_net) reject("sink-net-mismatch", sink, edge.sink.port, old_net);
+            else if (sink->ports.at(edge.sink.port).type != PORT_IN) reject("sink-direction", sink, edge.sink.port, old_net);
+            else reject("sink-physical-pin-missing", sink, edge.sink.port, old_net);
+            report_rejection();
+            continue;
+        }
         bool eligible = true;
         std::vector<NetInfo *> inputs;
         for (int pin = 0; pin < width; ++pin) {
@@ -198,22 +299,42 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
         auto carry = sink->getPort(id_CO);
         if (carry) for (auto user : carry->users) {
             if (carry->driver.cell != sink || carry->driver.port != id_CO || user.port != id_CI ||
-                user.cell->type != id_MISTRAL_ALUT_ARITH || user.cell->bel == BelId()) eligible = false;
+                user.cell->type != id_MISTRAL_ALUT_ARITH || user.cell->bel == BelId()) {
+                reject("carry-successor-invalid", user.cell, user.port, carry);
+                eligible = false;
+            }
             else if (std::find(cache_cells.begin(),cache_cells.end(),user.cell) == cache_cells.end()) cache_cells.push_back(user.cell);
         }
-        if (carry && carry->users.entries() > 1) eligible = false;
+        if (carry && carry->users.entries() > 1) {
+            reject("carry-successor-multiple", sink, id_CO, carry, "users=" + std::to_string(carry->users.entries()));
+            eligible = false;
+        }
         std::set<CellPortKey> endpoint_keys;
         std::map<NetInfo *,int> visit;
         std::function<void(NetInfo *)> follow = [&](NetInfo *net) {
-            if (!ordinary(net) || visit[net] == 1) { eligible = false; return; }
+            if (!ordinary(net) || visit[net] == 1) {
+                if (!ordinary(net)) reject("cone-net-not-ordinary", nullptr, IdString(), net, ordinary_flags(net));
+                else reject("cone-cycle", nullptr, IdString(), net);
+                eligible = false; return;
+            }
             if (visit[net] == 2) return;
             visit[net] = 1;
             for (auto user : net->users) {
                 if (!user.cell || !user.cell->ports.count(user.port) ||
                     user.cell->ports.at(user.port).type != PORT_IN || user.cell->getPort(user.port) != net ||
-                    !net->users.count(user.cell->ports.at(user.port).user_idx)) { eligible = false; continue; }
+                    !net->users.count(user.cell->ports.at(user.port).user_idx)) {
+                    if (!user.cell) reject("cone-user-cell-missing", nullptr, user.port, net);
+                    else if (!user.cell->ports.count(user.port)) reject("cone-user-port-missing", user.cell, user.port, net);
+                    else if (user.cell->ports.at(user.port).type != PORT_IN) reject("cone-user-direction", user.cell, user.port, net);
+                    else if (user.cell->getPort(user.port) != net) reject("cone-user-net-mismatch", user.cell, user.port, net);
+                    else reject("cone-user-index-missing", user.cell, user.port, net);
+                    eligible = false; continue;
+                }
                 auto indexed = net->users.at(user.cell->ports.at(user.port).user_idx);
-                if (indexed.cell != user.cell || indexed.port != user.port) { eligible = false; continue; }
+                if (indexed.cell != user.cell || indexed.port != user.port) {
+                    reject("cone-user-index-mismatch", user.cell, user.port, net);
+                    eligible = false; continue;
+                }
                 int count = 0; auto kind = getPortTimingClass(user.cell,user.port,count);
                 if (kind == TMG_REGISTER_INPUT) {
                     if (!clocked(user.cell,user.port,count)) eligible = false;
@@ -222,12 +343,24 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
                 }
                 bool known = mistral_remap_report::lut_width(user.cell->type) ||
                     user.cell->type.in(id_MISTRAL_ALUT_ARITH,id_MISTRAL_NOT,id_MISTRAL_BUF);
-                if (kind != TMG_COMB_INPUT || !known || user.cell->bel == BelId()) { eligible = false; continue; }
-                if (mistral_remap_report::lut_width(user.cell->type) && !table_valid(user.cell)) { eligible = false; continue; }
+                if (kind != TMG_COMB_INPUT || !known || user.cell->bel == BelId()) {
+                    if (kind != TMG_COMB_INPUT)
+                        reject("cone-unsupported-timing-kind", user.cell, user.port, net, "kind=" + std::to_string(int(kind)));
+                    else if (!known) reject("cone-unsupported-cell", user.cell, user.port, net);
+                    else reject("cone-cell-unplaced", user.cell, user.port, net);
+                    eligible = false; continue;
+                }
+                if (mistral_remap_report::lut_width(user.cell->type) && !table_valid(user.cell)) {
+                    reject("cone-lut-table-invalid", user.cell, user.port, net, table_flags(user.cell));
+                    eligible = false; continue;
+                }
                 if (user.cell->type == id_MISTRAL_ALUT_ARITH) {
                     for (auto table : {id_LUT0,id_LUT1})
                         if (!user.cell->params.count(table) || !user.cell->params.at(table).is_fully_def() ||
-                            user.cell->params.at(table).size() != 16) eligible = false;
+                            user.cell->params.at(table).size() != 16) {
+                            reject("cone-arithmetic-table-invalid", user.cell, user.port, net, "table=" + table.str(ctx));
+                            eligible = false;
+                        }
                     if (!eligible) continue;
                 }
                 bool has_arc = false;
@@ -238,7 +371,10 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
                         !getCellDelay(user.cell,user.port,port.first,delay)) continue;
                     has_arc = true; follow(port.second.net);
                 }
-                if (!has_arc) eligible = false;
+                if (!has_arc) {
+                    reject("cone-combinational-arc-missing", user.cell, user.port, net);
+                    eligible = false;
+                }
             }
             visit[net] = 2;
         };
@@ -248,34 +384,64 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
         for (auto input : inputs) {
             int count = 0; auto kind = getPortTimingClass(input->driver.cell,input->driver.port,count);
             if (input->driver.cell->bel == BelId() ||
-                getBelPinsForCellPin(input->driver.cell,input->driver.port).empty()) eligible = false;
+                getBelPinsForCellPin(input->driver.cell,input->driver.port).empty()) {
+                reject(input->driver.cell->bel == BelId() ? "input-driver-unplaced" : "input-driver-physical-pin-missing",
+                       input->driver.cell, input->driver.port, input);
+                eligible = false;
+            }
             if (kind == TMG_REGISTER_OUTPUT) eligible &= clocked(input->driver.cell,input->driver.port,count);
-            else if (kind != TMG_COMB_OUTPUT) eligible = false;
+            else if (kind != TMG_COMB_OUTPUT) {
+                reject("input-unsupported-timing-kind", input->driver.cell, input->driver.port, input,
+                       "kind=" + std::to_string(int(kind)));
+                eligible = false;
+            }
             follow(input);
         }
-        if (!eligible || endpoint_keys.empty()) continue;
+        if (!eligible || endpoint_keys.empty()) {
+            if (endpoint_keys.empty()) reject("cone-registered-endpoints-empty");
+            report_rejection();
+            continue;
+        }
         TimingAnalyser before(ctx); before.setup(false,false,true);
-        if (before.have_loops) continue;
+        if (before.have_loops) {
+            reject("timing-loops"); report_rejection(); continue;
+        }
         float old_slack = before.get_setup_slack(CellPortKey(edge.sink));
-        if (!copy_timed(old_slack) || before.get_timing_result().clock_fmax.empty()) continue;
+        if (!copy_timed(old_slack) || before.get_timing_result().clock_fmax.empty()) {
+            if (!copy_timed(old_slack)) reject("sink-slack-untimed", sink, edge.sink.port, old_net);
+            else reject("clock-fmax-empty");
+            report_rejection(); continue;
+        }
         auto old_holds = copy_holds(before);
         std::map<CellPortKey,float> endpoints;
         for (auto key : endpoint_keys) {
             float value = before.get_setup_slack(key);
-            if (!copy_timed(value)) eligible = false;
+            if (!copy_timed(value)) {
+                reject("endpoint-slack-untimed", cells.at(key.cell).get(), key.port);
+                eligible = false;
+            }
             else endpoints.emplace(key,value);
         }
         std::map<NetInfo *,delay_t> arrivals;
         for (auto input : inputs) {
             delay_t value = 0;
             if (!before.get_max_arrival(CellPortKey(input->driver),value) ||
-                value == std::numeric_limits<delay_t>::max()) eligible = false;
+                value == std::numeric_limits<delay_t>::max()) {
+                reject("input-arrival-unavailable", input->driver.cell, input->driver.port, input);
+                eligible = false;
+            }
             else arrivals.emplace(input,value);
         }
-        if (!eligible) continue;
+        if (!eligible) { report_rejection(); continue; }
         auto cname = id(source->name.str(ctx) + "$lut_driver_copy$" + sink->name.str(ctx) + "$" + edge.sink.port.str(ctx));
         auto nname = id(cname.str(ctx) + "$Q");
-        if (cells.count(cname) || nets.count(nname) || net_aliases.count(nname)) continue;
+        if (cells.count(cname) || nets.count(nname) || net_aliases.count(nname)) {
+            reject("private-name-collision", source, id_Q, old_net,
+                   "cell_name_exists=" + std::to_string(cells.count(cname)) +
+                   " net_name_exists=" + std::to_string(nets.count(nname)) +
+                   " alias_name_exists=" + std::to_string(net_aliases.count(nname)));
+            report_rejection(); continue;
+        }
         log_info("LUT driver copy discovery source=%s sink=%s.%s users=%zu rows=%u\n",
                  nameOf(source),nameOf(sink),edge.sink.port.c_str(ctx),size_t(old_net->users.entries()),1u<<width);
         std::map<NetInfo *,indexed_store<PortRef>> saved_users;
