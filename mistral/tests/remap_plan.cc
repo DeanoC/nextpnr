@@ -1,5 +1,7 @@
 /* Backend proofs for explicit local-remap plans. SPDX-License-Identifier: ISC */
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -11,6 +13,7 @@
 #include "log.h"
 #include "nextpnr.h"
 #include "remap_report.h"
+#include "timing.h"
 
 USING_NEXTPNR_NAMESPACE
 
@@ -53,6 +56,31 @@ struct PlanSnapshot {
         }
         for (const auto &entry : ctx->net_aliases) aliases.emplace(entry.first, entry.second);
         for (const auto &entry : ctx->ports) ports.emplace(entry.first, entry.second);
+    }
+
+    void expect_cell(Context *ctx, IdString name, IdString changed_port = IdString()) const
+    {
+        ASSERT_TRUE(ctx->cells.count(name));
+        const auto &saved = cells.at(name);
+        auto *cell = ctx->cells.at(name).get();
+        EXPECT_EQ(cell, saved.identity); EXPECT_EQ(cell->type, saved.type);
+        EXPECT_EQ(cell->bel, saved.bel); EXPECT_EQ(cell->belStrength, saved.strength);
+        EXPECT_EQ(cell->params, saved.params); EXPECT_EQ(cell->attrs, saved.attrs);
+        ASSERT_EQ(cell->ports.size(), saved.ports.size());
+        for (const auto &port : saved.ports) {
+            ASSERT_TRUE(cell->ports.count(port.first));
+            const auto &actual = cell->ports.at(port.first);
+            EXPECT_EQ(actual.name, port.second.name); EXPECT_EQ(actual.type, port.second.type);
+            if (port.first != changed_port) {
+                EXPECT_EQ(actual.net, port.second.net); EXPECT_EQ(actual.user_idx, port.second.user_idx);
+            }
+        }
+        ASSERT_EQ(cell->pin_data.size(), saved.pins.size());
+        for (const auto &pin : saved.pins) {
+            ASSERT_TRUE(cell->pin_data.count(pin.first));
+            EXPECT_EQ(cell->pin_data.at(pin.first).state, pin.second.state);
+            EXPECT_EQ(cell->pin_data.at(pin.first).bel_pins, pin.second.bel_pins);
+        }
     }
 
     void expect_exact(Context *ctx) const
@@ -300,10 +328,27 @@ class LocalRemapPlanTest : public ::testing::Test {
         return result;
     }
 
-    CellInfo *clone(const Cone &cone) const
+    CellInfo *clone(const Cone &cone, int suffix = 0) const
     {
-        auto found = ctx->cells.find(ctx->id(cone.outer->name.str(ctx.get()) + "$local_remap"));
+        auto name = cone.outer->name.str(ctx.get()) + "$local_remap";
+        if (suffix) name += "$" + std::to_string(suffix);
+        auto found = ctx->cells.find(ctx->id(name));
         return found == ctx->cells.end() ? nullptr : found->second.get();
+    }
+
+    Cone remaining_cohort()
+    {
+        // Two original consumers stay in the first LAB. This third original
+        // consumer needs a separate nearby copy of the same two-cell cone.
+        ctx->unbindBel(first.remote->bel);
+        place(first.remote, 30, 23);
+        make_holes(first.enable, "repeated_enable_hole_");
+        make_holes(first.b->getPort(id_Q), "repeated_input_hole_");
+        Cone remaining = first;
+        remaining.near_a = first.remote;
+        remaining.report = report(remaining);
+        ctx->check();
+        return remaining;
     }
 
     bool evaluate(NetInfo *net, const Cone &cone, unsigned assignment) const
@@ -379,6 +424,153 @@ TEST_F(LocalRemapPlanTest, TwoSequentialConesPreserveRegistersPolarityAndSideUse
         ++trials;
     }
     EXPECT_GT(trials, 0);
+    expect_options_restored();
+    ctx->check();
+}
+
+TEST_F(LocalRemapPlanTest, RepeatedOuterRetainsFirstTwoUsersAndAddsASeparateOneUserCopy)
+{
+    auto remaining = remaining_cohort();
+    ctx->local_remap_plan = {step(first)};
+    ASSERT_TRUE(ctx->execute_local_remap_plan());
+    auto *old_copy = clone(first);
+    ASSERT_NE(old_copy, nullptr);
+    ASSERT_EQ(old_copy->getPort(id_Q)->users.entries(), 2);
+    PlanSnapshot retained(ctx.get());
+    TimingAnalyser before(ctx.get()); before.setup(false, false, true);
+    const float old_a = before.get_setup_slack(CellPortKey(first.near_a->name, id_ENA));
+    const float old_b = before.get_setup_slack(CellPortKey(first.near_b->name, id_ENA));
+    const float old_remote = before.get_setup_slack(CellPortKey(first.remote->name, id_ENA));
+    for (float slack : {old_a, old_b, old_remote})
+        ASSERT_TRUE(std::isfinite(slack) && slack < float(std::numeric_limits<delay_t>::max()));
+    ctx->local_remap_plan = {step(remaining)};
+    PlanLogCapture capture(ctx.get());
+    ASSERT_TRUE(ctx->execute_local_remap_plan()) << capture.buffer.text;
+    auto *new_copy = clone(first, 1);
+    ASSERT_NE(new_copy, nullptr);
+    EXPECT_EQ(clone(first), old_copy);
+    EXPECT_NE(new_copy, old_copy);
+    EXPECT_EQ(ctx->cells.size(), retained.cells.size() + 1);
+    EXPECT_EQ(ctx->nets.size(), retained.nets.size() + 1);
+    EXPECT_EQ(ctx->net_aliases.size(), retained.aliases.size() + 1);
+    EXPECT_EQ(first.near_a->getPort(id_ENA), old_copy->getPort(id_Q));
+    EXPECT_EQ(first.near_b->getPort(id_ENA), old_copy->getPort(id_Q));
+    EXPECT_EQ(first.remote->getPort(id_ENA), new_copy->getPort(id_Q));
+    EXPECT_EQ(first.near_b->get_pin_state(id_ENA), PIN_INV);
+    EXPECT_EQ(old_copy->getPort(id_Q)->users.entries(), 2);
+    ASSERT_EQ(new_copy->getPort(id_Q)->users.entries(), 1);
+    auto only_user = *new_copy->getPort(id_Q)->users.begin();
+    EXPECT_EQ(only_user.cell, first.remote); EXPECT_EQ(only_user.port, id_ENA);
+    for (const auto &entry : retained.cells)
+        retained.expect_cell(ctx.get(), entry.first, entry.second.identity == first.remote ? id_ENA : IdString());
+    for (const auto &entry : retained.nets) {
+        auto *net = ctx->nets.at(entry.first).get();
+        EXPECT_EQ(net, entry.second.identity);
+        EXPECT_EQ(net->driver.cell, entry.second.driver.cell); EXPECT_EQ(net->driver.port, entry.second.driver.port);
+        auto saved_users = entry.second.users;
+        for (auto user : saved_users.enumerate()) {
+            if (user.value.cell == first.remote && user.value.port == id_ENA) continue;
+            ASSERT_TRUE(net->users.count(user.index));
+            EXPECT_EQ(net->users.at(user.index).cell, user.value.cell);
+            EXPECT_EQ(net->users.at(user.index).port, user.value.port);
+        }
+    }
+    for (const auto &entry : retained.aliases) EXPECT_EQ(ctx->net_aliases.at(entry.first), entry.second);
+    for (unsigned row = 0; row < 4; ++row) {
+        const bool expected = !(row & 1) && ((row >> 1) & 1);
+        EXPECT_EQ(evaluate(first.enable, first, row), expected);
+        EXPECT_EQ(evaluate(old_copy->getPort(id_Q), first, row), expected);
+        EXPECT_EQ(evaluate(new_copy->getPort(id_Q), first, row), expected);
+    }
+    TimingAnalyser after(ctx.get()); after.setup(false, false, true);
+    EXPECT_GE(after.get_setup_slack(CellPortKey(first.near_a->name, id_ENA)), old_a);
+    EXPECT_GE(after.get_setup_slack(CellPortKey(first.near_b->name, id_ENA)), old_b);
+    EXPECT_GE(after.get_setup_slack(CellPortKey(first.remote->name, id_ENA)), old_remote + 250);
+    EXPECT_NE(capture.buffer.text.find("Local remap candidate 0:"), std::string::npos);
+    expect_options_restored();
+    ctx->check();
+}
+
+TEST_F(LocalRemapPlanTest, RepeatedOuterFinalListingRestoresExactAcceptedFirstCopy)
+{
+    auto remaining = remaining_cohort();
+    ctx->local_remap_plan = {step(first), step(remaining, -1)};
+    ctx->local_remap_plan_list_only = true;
+    PlanLogCapture capture(ctx.get());
+    EXPECT_FALSE(ctx->execute_local_remap_plan());
+    ASSERT_NE(capture.buffer.first, nullptr) << capture.buffer.text;
+    const auto second = capture.buffer.text.find("Local-remap plan step 1:");
+    ASSERT_NE(second, std::string::npos);
+    EXPECT_NE(capture.buffer.text.find("Local remap candidate 0:", second), std::string::npos) << capture.buffer.text;
+    EXPECT_EQ(clone(first, 1), nullptr);
+    capture.buffer.first->expect_exact(ctx.get());
+    expect_options_restored();
+}
+
+TEST_F(LocalRemapPlanTest, RepeatedOuterFailedSelectionRestoresExactAcceptedFirstCopy)
+{
+    auto remaining = remaining_cohort();
+    auto failed = step(remaining, 9999);
+    failed.optimize_pins = true;
+    failed.preserve_ff_placement = false;
+    ctx->local_remap_plan = {step(first), failed};
+    PlanLogCapture capture(ctx.get());
+    EXPECT_THROW(ctx->execute_local_remap_plan(), log_execution_error_exception);
+    ASSERT_NE(capture.buffer.first, nullptr) << capture.buffer.text;
+    const auto second = capture.buffer.text.find("Local-remap plan step 1:");
+    ASSERT_NE(second, std::string::npos);
+    EXPECT_NE(capture.buffer.text.find("Local remap candidate 0:", second), std::string::npos) << capture.buffer.text;
+    EXPECT_EQ(clone(first, 1), nullptr);
+    capture.buffer.first->expect_exact(ctx.get());
+    expect_options_restored();
+}
+
+TEST_F(LocalRemapPlanTest, RepeatedOuterPreservesCellNetAndAliasCollisionsForBothNames)
+{
+    auto remaining = remaining_cohort();
+    const auto base = first.outer->name.str(ctx.get()) + "$local_remap";
+    auto name = [&](int suffix, bool output) { return base + "$" + std::to_string(suffix) + (output ? "$Q" : ""); };
+    auto marker_cell = [&](const std::string &text) {
+        auto *cell = ctx->createCell(ctx->id(text), id_MISTRAL_ALUT2);
+        cell->params[id_LUT] = Property(0, 4);
+        for (IdString pin : {id_A, id_B}) { cell->addInput(pin); cell->pin_data[pin].state = PIN_0; }
+        cell->addOutput(id_Q);
+    };
+    marker_cell(name(1, false)); marker_cell(name(2, true));
+    ctx->createNet(ctx->id(name(3, false))); ctx->createNet(ctx->id(name(4, true)));
+    ctx->net_aliases.emplace(ctx->id(name(5, false)), first.enable->name);
+    ctx->net_aliases.emplace(ctx->id(name(6, true)), first.enable->name);
+    ctx->assignArchInfo(); ctx->check();
+    ctx->local_remap_plan = {step(first)};
+    ASSERT_TRUE(ctx->execute_local_remap_plan());
+    auto *old_copy = clone(first);
+    ASSERT_NE(old_copy, nullptr);
+    PlanSnapshot retained(ctx.get());
+    ctx->local_remap_plan = {step(remaining)};
+    PlanLogCapture capture(ctx.get());
+    ASSERT_TRUE(ctx->execute_local_remap_plan()) << capture.buffer.text;
+    auto *new_copy = clone(first, 7);
+    ASSERT_NE(new_copy, nullptr);
+    EXPECT_EQ(clone(first), old_copy);
+    EXPECT_EQ(first.near_a->getPort(id_ENA), old_copy->getPort(id_Q));
+    EXPECT_EQ(first.near_b->getPort(id_ENA), old_copy->getPort(id_Q));
+    EXPECT_EQ(first.remote->getPort(id_ENA), new_copy->getPort(id_Q));
+    for (int suffix : {1, 2}) retained.expect_cell(ctx.get(), ctx->id(name(suffix, suffix == 2)));
+    for (int suffix : {3, 4}) {
+        const auto id = ctx->id(name(suffix, suffix == 4));
+        auto *net = ctx->nets.at(id).get();
+        EXPECT_EQ(net, retained.nets.at(id).identity);
+        EXPECT_EQ(net->driver.cell, retained.nets.at(id).driver.cell);
+        EXPECT_EQ(net->driver.port, retained.nets.at(id).driver.port);
+        EXPECT_EQ(net->users.entries(), retained.nets.at(id).users.entries());
+    }
+    for (const auto &entry : retained.aliases) EXPECT_EQ(ctx->net_aliases.at(entry.first), entry.second);
+    // A Q-only collision must not intern the corresponding absent cell name.
+    for (int suffix : {2, 4, 6})
+        EXPECT_EQ(ctx->idstring_str_to_idx->count(name(suffix, false)), 0u);
+    retained.expect_cell(ctx.get(), old_copy->name);
+    EXPECT_EQ(ctx->cells.size(), retained.cells.size() + 1);
+    EXPECT_EQ(ctx->nets.size(), retained.nets.size() + 1);
     expect_options_restored();
     ctx->check();
 }
