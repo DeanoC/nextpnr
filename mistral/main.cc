@@ -32,6 +32,7 @@
 #include "enable_replication_policy.h"
 #include "json11.hpp"
 #include "lut_driver_copy.h"
+#include "lut_pair_placement.h"
 
 USING_NEXTPNR_NAMESPACE
 
@@ -106,6 +107,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("remap-comb-plan", po::value<std::string>(), "JSON plan of staged internal LUT-cut remaps (1..8 steps)");
     specific.add_options()("remap-decompose-critical", po::value<std::string>(), "prior timing report for bounded seven-input control decomposition");
     specific.add_options()("remap-decompose-candidate", po::value<int>(), "qualified decomposition candidate index (default: list only)");
+    specific.add_options()("remap-lut-pair-critical", po::value<std::string>(), "prior timing report for joint placement of two consecutive LUTs");
+    specific.add_options()("remap-lut-pair-candidate", po::value<int>(), "qualified LUT-pair-placement candidate index (default: list only)");
     specific.add_options()("remap-lut-driver-critical", po::value<std::string>(), "prior timing report for one LUT driver copy to an arithmetic data input");
     specific.add_options()("remap-lut-driver-candidate", po::value<int>(), "qualified LUT-driver-copy candidate index (default: list only)");
     specific.add_options()("remap-candidate", po::value<int>(), "qualified local-remap candidate index (default: list only)");
@@ -358,6 +361,29 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     if (vm.count("remap-post-plan")) {
         load_local_plan("remap-post-plan", true);
         prevalidate_local_remap_post_prefix(ctx);
+    }
+    ctx->lut_pair_report.clear();
+    ctx->lut_pair_selection = -1;
+    if (vm.count("remap-lut-pair-candidate") && !vm.count("remap-lut-pair-critical"))
+        log_error("--remap-lut-pair-candidate requires --remap-lut-pair-critical.\n");
+    if (vm.count("remap-lut-pair-critical")) {
+        if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") ||
+            vm.count("fes-scaffold") || (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
+            log_error("LUT pair placement requires fresh ordinary HeAP placement.\n");
+        auto in = open_ifstream_and_log_error(vm["remap-lut-pair-critical"].as<std::string>(), "LUT pair placement timing report");
+        ctx->lut_pair_report.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        std::string error;
+        auto report = json11::Json::parse(ctx->lut_pair_report, error);
+        if (!error.empty() || !report.is_object() || !report["critical_paths"].is_array())
+            log_error("Invalid LUT pair placement timing report.\n");
+        check_plan_keys(ctx->lut_pair_report, "LUT pair placement report");
+        if (vm.count("remap-lut-pair-candidate"))
+            ctx->lut_pair_selection = vm["remap-lut-pair-candidate"].as<int>();
+        if (ctx->lut_pair_selection < -1) log_error("Invalid LUT pair placement candidate index.\n");
+        if (ctx->lut_pair_selection < 0 && (!vm.count("no-route") || vm.count("rbf")))
+            log_error("LUT pair placement listing requires --no-route and no --rbf.\n");
+        prevalidate_lut_pair_prefix(ctx);
     }
     ctx->lut_driver_copy_report.clear();
     ctx->lut_driver_copy_selection = -1;
