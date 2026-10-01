@@ -97,6 +97,7 @@ TimingAnalyser::TimingAnalyser(Context *ctx) : ctx(ctx)
 
 void TimingAnalyser::setup(bool update_net_timings, bool update_histogram, bool update_crit_paths)
 {
+    analysis_complete = false;
     init_ports();
     get_cell_delays();
     topo_sort();
@@ -108,6 +109,7 @@ void TimingAnalyser::setup(bool update_net_timings, bool update_histogram, bool 
 void TimingAnalyser::run(bool update_route_delays, bool update_net_timings, bool update_histogram,
                          bool update_crit_paths)
 {
+    analysis_complete = false;
     reset_times();
     if (update_route_delays)
         get_route_delays();
@@ -134,6 +136,9 @@ void TimingAnalyser::run(bool update_route_delays, bool update_net_timings, bool
     if (update_crit_paths) {
         build_crit_path_reports();
     }
+    analysed_clock_skew = with_clock_skew;
+    analysed_setup_only = setup_only;
+    analysis_complete = true;
 }
 
 void TimingAnalyser::init_ports()
@@ -975,6 +980,170 @@ std::vector<CriticalPath> TimingAnalyser::get_report_setup_paths(int count)
         }
     }
     return paths;
+}
+
+bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
+                                                    std::vector<EndpointClockPairTiming> &rows)
+{
+    rows.clear();
+    auto found = ports.find(endpoint);
+    auto owner = ctx->cells.find(endpoint.cell);
+    if (!analysis_complete || setup_only || analysed_setup_only || with_clock_skew != analysed_clock_skew ||
+        have_loops || found == ports.end() || owner == ctx->cells.end() ||
+        !owner->second->ports.count(endpoint.port) || !owner->second->getPort(endpoint.port))
+        return false;
+    const auto &data = found->second;
+    if (data.type != PORT_IN || data.arrival.empty() || data.required.empty() ||
+        data.domain_pairs.size() != data.arrival.size() * data.required.size())
+        return false;
+    auto finite = [](delay_t value) {
+        return std::isfinite(double(value)) && value != std::numeric_limits<delay_t>::lowest() &&
+               value != std::numeric_limits<delay_t>::max();
+    };
+    auto finite_pair = [&](const DelayPair &value) {
+        return finite(value.minDelay()) && finite(value.maxDelay());
+    };
+    auto valid_clock = [&](const ClockDomainKey &key) {
+        auto net = ctx->nets.find(key.clock);
+        if (key.is_async() || (key.edge != RISING_EDGE && key.edge != FALLING_EDGE) || net == ctx->nets.end() ||
+            !net->second->clkconstr)
+            return false;
+        const auto &constraint = *net->second->clkconstr;
+        return finite_pair(constraint.period) && constraint.period.minDelay() > 0 &&
+               constraint.period.minDelay() <= constraint.period.maxDelay() &&
+               finite_pair(constraint.high) && finite_pair(constraint.low) && finite(constraint.phase_shift);
+    };
+    auto registered = [&](CellPortKey key, TimingPortClass kind, const ClockDomainKey &domain) {
+        auto cell = ctx->cells.find(key.cell);
+        if (cell == ctx->cells.end() || !cell->second->ports.count(key.port))
+            return false;
+        int count = 0;
+        if (ctx->getPortTimingClass(cell->second.get(), key.port, count) != kind || count <= 0)
+            return false;
+        bool matched = false;
+        for (int index = 0; index < count; ++index) {
+            auto info = ctx->getPortClockingInfo(cell->second.get(), key.port, index);
+            auto clock = cell->second->getPort(info.clock_port);
+            if (!clock || !valid_clock(ClockDomainKey(clock->name, info.edge)))
+                return false;
+            if (clock->name == domain.clock && info.edge == domain.edge)
+                matched = true;
+        }
+        return matched;
+    };
+    // Validate the native backpointer walk before using the existing report
+    // builder, which assumes a complete registered path and dereferences it.
+    auto registered_path = [&](domain_id_t launch_id, bool longest) {
+        auto cursor = endpoint;
+        std::set<CellPortKey> seen;
+        while (seen.insert(cursor).second) {
+            auto port = ports.find(cursor);
+            auto cell = ctx->cells.find(cursor.cell);
+            if (port == ports.end() || cell == ctx->cells.end() || !cell->second->ports.count(cursor.port))
+                return false;
+            auto tag = port->second.arrival.find(launch_id);
+            if (tag == port->second.arrival.end() || !finite_pair(tag->second.value))
+                return false;
+            const auto &connection = cell->second->ports.at(cursor.port);
+            if (connection.type == PORT_OUT &&
+                registered(cursor, TMG_REGISTER_OUTPUT, domains.at(launch_id).key))
+                return connection.net && connection.net->driver.cell == cell->second.get() &&
+                       connection.net->driver.port == cursor.port;
+            auto previous = longest ? tag->second.bwd_max : tag->second.bwd_min;
+            if (previous.cell == IdString() || previous.port == IdString())
+                return false;
+            if (connection.type == PORT_IN) {
+                auto net = connection.net;
+                if (!net || !net->driver.cell || previous != CellPortKey(net->driver))
+                    return false;
+            } else if (connection.type == PORT_OUT) {
+                auto input = cell->second->ports.find(previous.port);
+                DelayQuad delay;
+                if (previous.cell != cursor.cell || input == cell->second->ports.end() ||
+                    input->second.type != PORT_IN || !input->second.net ||
+                    !ctx->getCellDelay(cell->second.get(), previous.port, cursor.port, delay) ||
+                    !finite(delay.minDelay()) || !finite(delay.maxDelay()))
+                    return false;
+            } else {
+                return false;
+            }
+            cursor = previous;
+        }
+        return false;
+    };
+    std::vector<EndpointClockPairTiming> complete;
+    for (const auto &arrival : data.arrival) {
+        if (arrival.first < 0 || size_t(arrival.first) >= domains.size() ||
+            !valid_clock(domains.at(arrival.first).key) || !finite_pair(arrival.second.value) ||
+            !registered_path(arrival.first, true) || !registered_path(arrival.first, false))
+            return false;
+        for (const auto &required : data.required) {
+            if (required.first < 0 || size_t(required.first) >= domains.size() ||
+                !valid_clock(domains.at(required.first).key) || !finite_pair(required.second.value) ||
+                !registered(endpoint, TMG_REGISTER_INPUT, domains.at(required.first).key))
+                return false;
+            auto pair = pair_to_id.find(ClockDomainPairKey(arrival.first, required.first));
+            if (pair == pair_to_id.end() || pair->second < 0 || size_t(pair->second) >= domain_pairs.size())
+                return false;
+            auto tag = data.domain_pairs.find(pair->second);
+            if (tag == data.domain_pairs.end() || !finite(tag->second.setup_slack) || !finite(tag->second.hold_slack))
+                return false;
+            const auto &launch = domains.at(arrival.first).key;
+            const auto &capture = domains.at(required.first).key;
+            EndpointClockPairTiming row(launch, capture);
+            row.setup_timed = timed_clocks(ctx, launch.clock, capture.clock);
+            row.hold_related = arrival.first == required.first ||
+                               clock_delays.count(std::make_pair(launch.clock, capture.clock)) ||
+                               phase_related(ctx, launch.clock, capture.clock);
+            if (row.setup_timed) {
+                auto window = domain_pairs.at(pair->second).period.minDelay();
+                if (!finite(window) || window <= 0)
+                    return false;
+                row.setup_window = window;
+                const auto margin = EndpointClockPairTiming::DelaySum(window) +
+                                    EndpointClockPairTiming::DelaySum(tag->second.setup_slack);
+                if (!std::isfinite(double(margin)) || margin <= std::numeric_limits<delay_t>::lowest() ||
+                    margin >= std::numeric_limits<delay_t>::max())
+                    return false;
+                row.setup_margin = delay_t(margin);
+            }
+            if (row.hold_related)
+                row.hold_margin = tag->second.hold_slack;
+            auto sum_path = [&](bool longest, EndpointClockPairTiming::DelaySum &sum) {
+                auto path = build_critical_path_report(pair->second, endpoint, longest);
+                if (path.segments.empty() || path.segments.back().to != std::make_pair(endpoint.cell, endpoint.port) ||
+                    path.segments.back().type != (longest ? CriticalPath::Segment::Type::SETUP :
+                                                          CriticalPath::Segment::Type::HOLD))
+                    return false;
+                sum = 0;
+                for (const auto &segment : path.segments) {
+                    if (!finite(segment.delay))
+                        return false;
+                    const auto value = EndpointClockPairTiming::DelaySum(segment.delay);
+                    if constexpr (std::is_integral<delay_t>::value) {
+                        if ((value > 0 && sum > std::numeric_limits<int64_t>::max() - value) ||
+                            (value < 0 && sum < std::numeric_limits<int64_t>::lowest() - value))
+                            return false;
+                    }
+                    sum += value;
+                    if (!std::isfinite(double(sum)))
+                        return false;
+                }
+                return true;
+            };
+            if (!sum_path(true, row.max_path_delay) || !sum_path(false, row.min_path_delay))
+                return false;
+            complete.push_back(row);
+        }
+    }
+    std::sort(complete.begin(), complete.end(), [&](const EndpointClockPairTiming &a, const EndpointClockPairTiming &b) {
+        return std::make_tuple(a.launch.clock.str(ctx), int(a.launch.edge), a.capture.clock.str(ctx), int(a.capture.edge)) <
+               std::make_tuple(b.launch.clock.str(ctx), int(b.launch.edge), b.capture.clock.str(ctx), int(b.capture.edge));
+    });
+    if (complete.empty())
+        return false;
+    rows.swap(complete);
+    return true;
 }
 
 std::vector<PortRef> TimingAnalyser::walk_crit_path(domain_id_t domain_pair, CellPortKey endpoint, bool longest_path)

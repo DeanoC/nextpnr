@@ -276,6 +276,56 @@ struct DriverCopyProbeLog : std::streambuf {
     }
 };
 
+// Compare the real trial graph using both native STA modes. There are no
+// injected route delays and the observer never changes placement or caches.
+struct DriverCopySkewProbeLog : std::streambuf {
+    Context *ctx;
+    CellInfo *sink, *endpoint;
+    float old_target, old_skew_target, old_skew_endpoint;
+    std::ostream stream;
+    std::string text, line;
+    int trials = 0, unskewed_gains = 0, skewed_regressions = 0;
+
+    DriverCopySkewProbeLog(Context *ctx, CellInfo *sink, CellInfo *endpoint,
+                          float old_target, float old_skew_target, float old_skew_endpoint)
+        : ctx(ctx), sink(sink), endpoint(endpoint), old_target(old_target), old_skew_target(old_skew_target),
+          old_skew_endpoint(old_skew_endpoint), stream(this)
+    {
+        log_streams.emplace_back(&stream, LogLevel::INFO_MSG);
+    }
+    ~DriverCopySkewProbeLog() { log_streams.pop_back(); }
+
+    void append(char value)
+    {
+        text.push_back(value);
+        if (value != '\n') { line.push_back(value); return; }
+        if (line.find("LUT driver copy trial source=decoder sink=carry_middle.A ") != std::string::npos) {
+            ++trials;
+            TimingAnalyser unskewed(ctx); unskewed.setup(false, false, true);
+            TimingAnalyser skewed(ctx); skewed.with_clock_skew = true; skewed.setup(false, false, true);
+            const auto gain = unskewed.get_setup_slack(CellPortKey(sink->name, id_A)) - old_target;
+            if (gain >= 250) {
+                ++unskewed_gains;
+                EXPECT_LT(skewed.get_setup_slack(CellPortKey(sink->name, id_A)) - old_skew_target, 0);
+                if (skewed.get_setup_slack(CellPortKey(endpoint->name, id_DATAIN)) < old_skew_endpoint)
+                    ++skewed_regressions;
+                EXPECT_NE(line.find("improve=0"), std::string::npos);
+            }
+        }
+        line.clear();
+    }
+    std::streamsize xsputn(const char *data, std::streamsize size) override
+    {
+        for (std::streamsize i = 0; i < size; ++i) append(data[i]);
+        return size;
+    }
+    int_type overflow(int_type value) override
+    {
+        if (!traits_type::eq_int_type(value, traits_type::eof())) append(traits_type::to_char_type(value));
+        return traits_type::not_eof(value);
+    }
+};
+
 std::map<std::string, int> copy_hold_slacks(TimingAnalyser &timing)
 {
     std::map<std::string, int> result;
@@ -356,6 +406,36 @@ class LutDriverCopyTest : public ::testing::Test {
         for (auto *cell : temporary) {
             cell->disconnectPort(id_A); ctx->cells.erase(cell->name);
         }
+    }
+
+    CellInfo *clock_source(NetInfo *net, const std::string &name, bool require_left = false)
+    {
+        auto *driver = ctx->createCell(ctx->id(name), id_MISTRAL_CLKBUF);
+        driver->addOutput(id_Q); driver->connectPort(id_Q, net);
+        ctx->assign_default_pinmap(driver);
+        for (auto bel : ctx->getBels()) {
+            const auto loc = ctx->getBelLocation(bel);
+            if (require_left && (loc.x != 0 || loc.y != 35)) continue;
+            if (!ctx->checkBelAvail(bel) || !ctx->isValidBelForCellType(driver->type, bel)) continue;
+            ctx->bindBel(bel, driver, STRENGTH_LOCKED);
+            if (ctx->isBelLocationValid(bel)) return driver;
+            ctx->unbindBel(bel);
+        }
+        ADD_FAILURE() << "No legal native driver-copy clock source";
+        return nullptr;
+    }
+
+    CellInfo *cdc_capture(NetInfo *&independent_clock)
+    {
+        independent_clock = ctx->createNet(ctx->id("independent_capture_clock"));
+        independent_clock->is_global = true;
+        independent_clock->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+        EXPECT_NE(clock_source(independent_clock, "independent_capture_clock_source"), nullptr);
+        auto *cell = ff("independent_capture", nullptr, source->getPort(id_Q));
+        cell->disconnectPort(id_CLK); cell->connectPort(id_CLK, independent_clock);
+        ctx->assign_ff_info(cell); ctx->assign_default_pinmap(cell);
+        place(cell, 25, 22, STRENGTH_LOCKED);
+        return cell;
     }
 
     void SetUp() override
@@ -721,4 +801,96 @@ TEST_F(LutDriverCopyTest, HardBoundaryUnknownClockAndFeedbackCannotBeIgnored)
     source->disconnectPort(id_C); source->connectPort(id_C, source->getPort(id_Q));
     ctx->assign_comb_info(source); ctx->update_bel(source->bel);
     { DriverCopySnapshot saved(ctx.get()); reject(report(), saved); }
+}
+
+TEST_F(LutDriverCopyTest, KnownUnrelatedCaptureIsGuardedWithoutBlockingAnOtherwiseQualifiedCopy)
+{
+    ASSERT_NE(clock_source(clock, "primary_clock_source", true), nullptr);
+    NetInfo *independent_clock = nullptr;
+    auto *capture = cdc_capture(independent_clock);
+    ASSERT_NE(capture->bel, BelId());
+    TimingAnalyser before(ctx.get()); before.setup(false, false, true);
+    EXPECT_EQ(before.get_setup_slack(CellPortKey(capture->name, id_DATAIN)),
+              float(std::numeric_limits<delay_t>::max()));
+    std::vector<EndpointClockPairTiming> old_pairs;
+    ASSERT_TRUE(before.get_endpoint_clock_pair_timings(CellPortKey(capture->name, id_DATAIN), old_pairs));
+    ASSERT_EQ(old_pairs.size(), 1u); EXPECT_FALSE(old_pairs.front().setup_timed);
+    EXPECT_FALSE(old_pairs.front().setup_window.has_value());
+    DriverCopySnapshot saved(ctx.get());
+    {
+        DriverCopyLog listing;
+        EXPECT_FALSE(ctx->remap_lut_driver_critical(report(), -1));
+        EXPECT_NE(listing.stream.str().find("LUT driver copy candidate 0:"), std::string::npos)
+            << listing.stream.str();
+        EXPECT_NE(listing.stream.str().find("unrelated_pairs="), std::string::npos);
+        saved.expect_exact(ctx.get());
+    }
+    std::vector<bool> expected;
+    for (unsigned row = 0; row < 8; ++row) expected.push_back(!(row & 1) && !(row & 2) && bool(row & 4));
+    ASSERT_NE(expect_accepted(saved, expected), nullptr);
+    TimingAnalyser after(ctx.get()); after.setup(false, false, true);
+    std::vector<EndpointClockPairTiming> new_pairs;
+    ASSERT_TRUE(after.get_endpoint_clock_pair_timings(CellPortKey(capture->name, id_DATAIN), new_pairs));
+    ASSERT_EQ(new_pairs.size(), old_pairs.size());
+    EXPECT_EQ(new_pairs.front().launch, old_pairs.front().launch);
+    EXPECT_EQ(new_pairs.front().capture, old_pairs.front().capture);
+    EXPECT_EQ(new_pairs.front().max_path_delay, old_pairs.front().max_path_delay);
+    EXPECT_EQ(new_pairs.front().min_path_delay, old_pairs.front().min_path_delay);
+    EXPECT_FALSE(new_pairs.front().setup_window.has_value());
+    EXPECT_EQ(capture->getPort(id_DATAIN), source->getPort(id_Q));
+}
+
+TEST_F(LutDriverCopyTest, UnknownUnrelatedCaptureClockStillRejectsWithoutMutation)
+{
+    ASSERT_NE(clock_source(clock, "primary_clock_source", true), nullptr);
+    NetInfo *independent_clock = nullptr;
+    cdc_capture(independent_clock);
+    independent_clock->clkconstr.reset();
+    DriverCopySnapshot saved(ctx.get());
+    DriverCopyLog listing;
+    reject(report(), saved, -1);
+    EXPECT_EQ(listing.stream.str().find("LUT driver copy candidate "), std::string::npos);
+    EXPECT_NE(listing.stream.str().find("clock-constraint-missing"), std::string::npos);
+}
+
+TEST_F(LutDriverCopyTest, NativeClockSkewRejectsAnUnskewedGainThatWorsensRegisteredSetup)
+{
+    ASSERT_NE(clock_source(clock, "primary_clock_source", true), nullptr);
+    for (auto *cell : {inputs[0], inputs[1]}) ctx->unbindBel(cell->bel);
+    place(inputs[0], 30, 26, STRENGTH_LOCKED);
+    place(inputs[1], 24, 18, STRENGTH_LOCKED);
+    // Retain the carry links, but remove the head decoder branch which would
+    // otherwise hide middle.A behind an unchanged, slightly longer prefix.
+    head->disconnectPort(id_A); head->pin_data[id_A].state = PIN_0;
+    ctx->assign_comb_info(head); ctx->update_bel(head->bel);
+    // Leave only the x32,y20 LAB available. Locked ordinary FFs make every
+    // other candidate LAB protected, without injecting timing or bypassing
+    // any production placement/protection guard.
+    for (int x = 27; x <= 33; ++x) for (int y = 17; y <= 23; ++y) {
+        if (std::abs(x - 30) + std::abs(y - 20) > 3 || (x == 32 && y == 20)) continue;
+        bool protected_lab = false, has_ff = false;
+        for (auto bel : ctx->getBelsByTile(x, y)) {
+            has_ff |= ctx->getBelType(bel) == id_MISTRAL_FF;
+            auto *cell = ctx->getBoundBelCell(bel);
+            protected_lab |= cell && (cell->belStrength > STRENGTH_WEAK || cell->cluster != ClusterId());
+        }
+        if (protected_lab || !has_ff) continue;
+        auto *blocker = ff("skew_block_" + std::to_string(x) + "_" + std::to_string(y));
+        ctx->assign_ff_info(blocker); ctx->assign_default_pinmap(blocker);
+        place(blocker, x, y, STRENGTH_LOCKED);
+    }
+    ctx->check();
+    TimingAnalyser before(ctx.get()); before.setup(false, false, true);
+    TimingAnalyser skewed(ctx.get()); skewed.with_clock_skew = true; skewed.setup(false, false, true);
+    DriverCopySnapshot saved(ctx.get());
+    DriverCopySkewProbeLog probes(ctx.get(), sink, endpoint,
+        before.get_setup_slack(CellPortKey(sink->name, id_A)),
+        skewed.get_setup_slack(CellPortKey(sink->name, id_A)),
+        skewed.get_setup_slack(CellPortKey(endpoint->name, id_DATAIN)));
+    EXPECT_FALSE(ctx->remap_lut_driver_critical(report(), -1));
+    EXPECT_GT(probes.trials, 0) << probes.text;
+    EXPECT_GT(probes.unskewed_gains, 0) << probes.text;
+    EXPECT_EQ(probes.skewed_regressions, probes.unskewed_gains);
+    EXPECT_EQ(probes.text.find("LUT driver copy candidate "), std::string::npos) << probes.text;
+    saved.expect_exact(ctx.get());
 }

@@ -36,6 +36,42 @@ bool copy_timed(float slack)
     return std::isfinite(slack) && slack < float(std::numeric_limits<delay_t>::max());
 }
 
+bool copy_domain_rows_match(const std::vector<EndpointClockPairTiming> &before,
+                            const std::vector<EndpointClockPairTiming> &after)
+{
+    if (before.empty() || before.size() != after.size()) return false;
+    for (size_t i = 0; i < before.size(); ++i) {
+        const auto &old = before[i], &now = after[i];
+        if (!(old.launch == now.launch) || !(old.capture == now.capture) ||
+            old.setup_timed != now.setup_timed || old.hold_related != now.hold_related ||
+            old.setup_window != now.setup_window ||
+            old.setup_margin.has_value() != now.setup_margin.has_value() ||
+            old.hold_margin.has_value() != now.hold_margin.has_value()) return false;
+    }
+    return true;
+}
+
+bool copy_domain_rows_nonregressing(const std::vector<EndpointClockPairTiming> &before,
+                                    const std::vector<EndpointClockPairTiming> &after, bool reference_free)
+{
+    if (!copy_domain_rows_match(before, after)) return false;
+    for (size_t i = 0; i < before.size(); ++i) {
+        const auto &old = before[i], &now = after[i];
+        if (!old.setup_timed) {
+            // Both native-report and false-skew frames must retain every
+            // unrelated maximum and minimum. MAX scalar slack is no proof.
+            if (now.max_path_delay > old.max_path_delay || now.min_path_delay < old.min_path_delay) return false;
+        } else if (!reference_free) {
+            if (!old.setup_window || !old.setup_margin ||
+                now.max_path_delay > old.max_path_delay || *now.setup_margin < *old.setup_margin) return false;
+        }
+        if (!reference_free && old.hold_related) {
+            if (!old.hold_margin || *now.hold_margin < std::min(delay_t(0), *old.hold_margin)) return false;
+        }
+    }
+    return true;
+}
+
 std::map<std::string,int> copy_holds(TimingAnalyser &timing)
 {
     std::map<std::string,int> result;
@@ -402,7 +438,7 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
             report_rejection();
             continue;
         }
-        TimingAnalyser before(ctx); before.setup(false,false,true);
+        TimingAnalyser before(ctx); before.with_clock_skew = true; before.setup(false,false,true);
         if (before.have_loops) {
             reject("timing-loops"); report_rejection(); continue;
         }
@@ -413,14 +449,38 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
             report_rejection(); continue;
         }
         auto old_holds = copy_holds(before);
-        std::map<CellPortKey,float> endpoints;
+        using DomainRows = std::vector<EndpointClockPairTiming>;
+        std::map<CellPortKey,DomainRows> endpoints, reference_endpoints;
+        size_t timed_pairs = 0, unrelated_pairs = 0, hold_pairs = 0;
         for (auto key : endpoint_keys) {
-            float value = before.get_setup_slack(key);
-            if (!copy_timed(value)) {
-                reject("endpoint-slack-untimed", cells.at(key.cell).get(), key.port);
+            DomainRows rows;
+            if (!before.get_endpoint_clock_pair_timings(key, rows)) {
+                reject("endpoint-domain-coverage-unavailable", cells.at(key.cell).get(), key.port);
                 eligible = false;
             }
-            else endpoints.emplace(key,value);
+            else {
+                for (const auto &row : rows) {
+                    timed_pairs += row.setup_timed;
+                    unrelated_pairs += !row.setup_timed;
+                    hold_pairs += row.hold_related;
+                }
+                endpoints.emplace(key, std::move(rows));
+            }
+        }
+        TimingAnalyser before_reference(ctx);
+        if (eligible && unrelated_pairs) {
+            before_reference.with_clock_skew = false;
+            before_reference.setup(false,false,true);
+            for (const auto &entry : endpoints) {
+                DomainRows rows;
+                if (!before_reference.get_endpoint_clock_pair_timings(entry.first, rows) ||
+                    !copy_domain_rows_match(entry.second, rows)) {
+                    reject("endpoint-reference-coverage-unavailable", cells.at(entry.first.cell).get(), entry.first.port);
+                    eligible = false;
+                } else {
+                    reference_endpoints.emplace(entry.first, std::move(rows));
+                }
+            }
         }
         std::map<NetInfo *,delay_t> arrivals;
         for (auto input : inputs) {
@@ -444,6 +504,9 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
         }
         log_info("LUT driver copy discovery source=%s sink=%s.%s users=%zu rows=%u\n",
                  nameOf(source),nameOf(sink),edge.sink.port.c_str(ctx),size_t(old_net->users.entries()),1u<<width);
+        log_info("LUT driver copy domains source=%s sink=%s.%s endpoints=%zu timed_pairs=%zu unrelated_pairs=%zu hold_pairs=%zu reference_free=%d\n",
+                 nameOf(source),nameOf(sink),edge.sink.port.c_str(ctx),endpoints.size(),timed_pairs,unrelated_pairs,
+                 hold_pairs,int(unrelated_pairs != 0));
         std::map<NetInfo *,indexed_store<PortRef>> saved_users;
         saved_users.emplace(old_net,old_net->users);
         for (auto input : inputs) saved_users.emplace(input,input->users);
@@ -595,13 +658,23 @@ bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
                 bindBel(site.bel,clone,STRENGTH_WEAK);
                 if (!legal()) { unbindBel(site.bel); labs.at(index) = probe_labs.at(index); continue; }
                 ++timed;
-                TimingAnalyser after(ctx); after.setup(false,false,true);
+                TimingAnalyser after(ctx); after.with_clock_skew = true; after.setup(false,false,true);
                 float slack = after.get_setup_slack(CellPortKey(edge.sink));
                 bool improve = !after.have_loops && copy_timed(slack) && slack > old_slack && slack >= old_slack+250;
                 bool endpoint_ok = true, clocks = true;
                 for (const auto &entry : endpoints) {
-                    float now = after.get_setup_slack(entry.first);
-                    endpoint_ok &= copy_timed(now) && now >= entry.second;
+                    DomainRows rows;
+                    endpoint_ok &= after.get_endpoint_clock_pair_timings(entry.first, rows) &&
+                        copy_domain_rows_nonregressing(entry.second, rows, false);
+                }
+                if (!reference_endpoints.empty()) {
+                    TimingAnalyser after_reference(ctx); after_reference.with_clock_skew = false;
+                    after_reference.setup(false,false,true);
+                    for (const auto &entry : reference_endpoints) {
+                        DomainRows rows;
+                        endpoint_ok &= after_reference.get_endpoint_clock_pair_timings(entry.first, rows) &&
+                            copy_domain_rows_nonregressing(entry.second, rows, true);
+                    }
                 }
                 const auto &old_clocks = before.get_timing_result().clock_fmax;
                 const auto &new_clocks = after.get_timing_result().clock_fmax;

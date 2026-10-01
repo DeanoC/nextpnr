@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <limits>
 #include <map>
 #include <memory>
 #include <set>
@@ -48,6 +50,13 @@ std::vector<CriticalPath> legacy(const TimingResult &result)
     reports.insert(reports.end(), result.xclock_paths.begin(), result.xclock_paths.end());
     return reports;
 }
+
+int64_t path_delay(const CriticalPath &path)
+{
+    int64_t result = 0;
+    for (const auto &segment : path.segments) result += segment.delay;
+    return result;
+}
 } // namespace
 
 class TimingReportPathsTest : public ::testing::Test
@@ -83,6 +92,53 @@ class TimingReportPathsTest : public ::testing::Test
             ctx->unbindBel(bel);
         }
         FAIL() << "No legal report fixture BEL for " << cell->name.str(ctx.get()) << " at " << x << ',' << y;
+    }
+
+    void bind_clock_source(NetInfo *net, const std::string &name)
+    {
+        auto *driver = ctx->createCell(ctx->id(name), id_MISTRAL_CLKBUF);
+        driver->addOutput(id_Q); driver->connectPort(id_Q, net);
+        ctx->assign_default_pinmap(driver);
+        for (auto bel : ctx->getBels()) {
+            if (!ctx->checkBelAvail(bel) || !ctx->isValidBelForCellType(driver->type, bel)) continue;
+            ctx->bindBel(bel, driver, STRENGTH_USER);
+            if (ctx->isBelLocationValid(bel)) return;
+            ctx->unbindBel(bel);
+        }
+        FAIL() << "No legal native clock source BEL";
+    }
+
+    NetInfo *other_clock(const std::string &name)
+    {
+        auto *net = ctx->createNet(ctx->id(name)); net->is_global = true;
+        net->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+        bind_clock_source(net, name + "$source");
+        return net;
+    }
+
+    CellInfo *other_launch(NetInfo *net)
+    {
+        auto *cell = ff("independent_launch");
+        cell->disconnectPort(id_CLK); cell->connectPort(id_CLK, net);
+        cell->connectPort(id_DATAIN, cell->getPort(id_Q));
+        ctx->assignArchInfo(); place(cell, 25, 23);
+        return cell;
+    }
+
+    CriticalPath native_setup_path(TimingAnalyser &timing, CellInfo *endpoint,
+                                  const EndpointClockPairTiming &pair)
+    {
+        auto reports = legacy(timing.get_timing_result());
+        auto extra = timing.get_report_setup_paths(16384);
+        reports.insert(reports.end(), extra.begin(), extra.end());
+        for (const auto &path : reports) {
+            if (path.segments.empty() || path.segments.back().to != std::make_pair(endpoint->name, id_DATAIN)) continue;
+            if (path.clock_pair.start.clock == pair.launch.clock && path.clock_pair.start.edge == pair.launch.edge &&
+                path.clock_pair.end.clock == pair.capture.clock && path.clock_pair.end.edge == pair.capture.edge)
+                return path;
+        }
+        ADD_FAILURE() << "Missing actual native setup path for returned endpoint clock pair";
+        return CriticalPath();
     }
 
     void capture(const std::string &name, bool inverted)
@@ -278,6 +334,168 @@ TEST_F(TimingReportPathsTest, InvalidPublicLimitsFailWithoutChangingResults)
         EXPECT_THROW(timing.get_report_setup_paths(count), log_execution_error_exception);
         EXPECT_EQ(before, paths(ctx.get(), legacy(timing.get_timing_result())));
         EXPECT_TRUE(timing.get_timing_result().report_setup_paths.empty());
+    }
+    ctx->check();
+}
+
+TEST_F(TimingReportPathsTest, KnownUnrelatedEndpointHasFiniteTransferBoundsWithoutAnInventedWindow)
+{
+    bind_clock_source(clock, "primary_clock_source");
+    auto *independent_clock = other_clock("independent_clock");
+    auto *independent = other_launch(independent_clock);
+    auto *endpoint = rising.front(); auto *logic = cone.at(endpoint->name);
+    for (auto pin : {id_A, id_B}) {
+        logic->disconnectPort(pin); logic->connectPort(pin, independent->getPort(id_Q));
+    }
+    ctx->assignArchInfo();
+    TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
+    EXPECT_EQ(timing.get_setup_slack(CellPortKey(endpoint->name, id_DATAIN)),
+              float(std::numeric_limits<delay_t>::max()));
+    std::vector<EndpointClockPairTiming> rows;
+    const auto graph = ctx->checksum();
+    ASSERT_TRUE(timing.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_DATAIN), rows));
+    ASSERT_EQ(rows.size(), 1u);
+    const auto &row = rows.front();
+    EXPECT_EQ(row.launch.clock, independent_clock->name); EXPECT_EQ(row.capture.clock, clock->name);
+    EXPECT_FALSE(row.setup_timed); EXPECT_FALSE(row.hold_related);
+    EXPECT_FALSE(row.setup_window.has_value()); EXPECT_FALSE(row.setup_margin.has_value());
+    EXPECT_FALSE(row.hold_margin.has_value());
+    EXPECT_EQ(row.max_path_delay, path_delay(native_setup_path(timing, endpoint, row)));
+    // The two aliases take distinct characterized LUT arcs. The shortest
+    // transfer uses B, independently of the longest native setup backpointer.
+    DelayQuad fastest;
+    ASSERT_TRUE(ctx->getCellDelay(logic, id_B, id_Q, fastest));
+    const auto capture = ctx->getPortClockingInfo(endpoint, id_DATAIN, 0);
+    const auto start = ctx->getPortClockingInfo(independent, id_Q, 0);
+    const int64_t shortest = int64_t(start.clockToQ.minDelay()) +
+        ctx->getNetinfoRouteDelay(independent->getPort(id_Q), PortRef{logic, id_B}) + fastest.minDelay() +
+        ctx->getNetinfoRouteDelay(logic->getPort(id_Q), PortRef{endpoint, id_DATAIN}) - capture.hold.maxDelay();
+    EXPECT_EQ(row.min_path_delay, shortest);
+    EXPECT_LT(row.min_path_delay, row.max_path_delay);
+    EXPECT_EQ(ctx->checksum(), graph);
+    ctx->check();
+}
+
+TEST_F(TimingReportPathsTest, MixedEndpointRetainsEveryTimedAndUnrelatedClockPair)
+{
+    bind_clock_source(clock, "primary_clock_source");
+    auto *independent_clock = other_clock("independent_clock");
+    auto *independent = other_launch(independent_clock);
+    auto *endpoint = rising.front(); auto *logic = cone.at(endpoint->name);
+    logic->disconnectPort(id_B); logic->connectPort(id_B, independent->getPort(id_Q));
+    ctx->assignArchInfo();
+    TimingAnalyser timing(ctx.get()); timing.with_clock_skew = true; timing.setup(false, false, true);
+    std::vector<EndpointClockPairTiming> rows;
+    ASSERT_TRUE(timing.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_DATAIN), rows));
+    ASSERT_EQ(rows.size(), 2u);
+    std::set<std::pair<IdString, IdString>> coverage;
+    size_t constrained = 0, unrelated = 0;
+    for (const auto &row : rows) {
+        EXPECT_TRUE(coverage.emplace(row.launch.clock, row.capture.clock).second);
+        EXPECT_EQ(row.capture.clock, clock->name);
+        EXPECT_EQ(row.max_path_delay, path_delay(native_setup_path(timing, endpoint, row)));
+        if (row.launch.clock == clock->name) {
+            ++constrained;
+            ASSERT_TRUE(row.setup_timed); ASSERT_TRUE(row.setup_window.has_value());
+            ASSERT_TRUE(row.setup_margin.has_value()); ASSERT_TRUE(row.hold_margin.has_value());
+            EXPECT_EQ(*row.setup_window, 10000);
+            EXPECT_EQ(*row.setup_margin, *row.setup_window - row.max_path_delay);
+            EXPECT_EQ(*row.hold_margin, row.min_path_delay);
+            EXPECT_FLOAT_EQ(timing.get_setup_slack(CellPortKey(endpoint->name, id_DATAIN)),
+                            float(*row.setup_margin));
+        } else {
+            ++unrelated;
+            EXPECT_EQ(row.launch.clock, independent_clock->name);
+            EXPECT_FALSE(row.setup_timed); EXPECT_FALSE(row.hold_related);
+            EXPECT_FALSE(row.setup_window.has_value()); EXPECT_FALSE(row.setup_margin.has_value());
+            EXPECT_FALSE(row.hold_margin.has_value());
+        }
+    }
+    EXPECT_EQ(constrained, 1u); EXPECT_EQ(unrelated, 1u);
+    std::vector<EndpointClockPairTiming> repeat;
+    ASSERT_TRUE(timing.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_DATAIN), repeat));
+    ASSERT_EQ(repeat.size(), rows.size());
+    for (size_t i = 0; i < rows.size(); ++i) {
+        EXPECT_EQ(repeat[i].launch, rows[i].launch); EXPECT_EQ(repeat[i].capture, rows[i].capture);
+        EXPECT_EQ(repeat[i].max_path_delay, rows[i].max_path_delay);
+        EXPECT_EQ(repeat[i].min_path_delay, rows[i].min_path_delay);
+    }
+    ctx->check();
+}
+
+TEST_F(TimingReportPathsTest, PhaseRelatedEndpointRetainsItsActualSetupAndHoldWindows)
+{
+    bind_clock_source(clock, "primary_clock_source");
+    clock->clkconstr->phase_group = ctx->id("shared_pll_phase");
+    auto *phase_clock = other_clock("phase_clock");
+    phase_clock->clkconstr->phase_shift = 2500;
+    auto *endpoint = rising.front();
+    endpoint->disconnectPort(id_CLK); endpoint->connectPort(id_CLK, phase_clock);
+    ctx->assignArchInfo();
+    TimingAnalyser timing(ctx.get()); timing.with_clock_skew = true; timing.setup(false, false, true);
+    std::vector<EndpointClockPairTiming> rows;
+    ASSERT_TRUE(timing.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_DATAIN), rows));
+    ASSERT_EQ(rows.size(), 1u);
+    const auto &row = rows.front();
+    EXPECT_EQ(row.launch.clock, clock->name); EXPECT_EQ(row.capture.clock, phase_clock->name);
+    ASSERT_TRUE(row.setup_timed); ASSERT_TRUE(row.hold_related);
+    ASSERT_TRUE(row.setup_window.has_value()); ASSERT_TRUE(row.setup_margin.has_value());
+    ASSERT_TRUE(row.hold_margin.has_value());
+    EXPECT_EQ(*row.setup_window, 2500); // rising launch to the actual +2.5ns capture edge
+    EXPECT_EQ(row.max_path_delay, path_delay(native_setup_path(timing, endpoint, row)));
+    EXPECT_EQ(*row.setup_margin, 2500 - row.max_path_delay);
+    EXPECT_EQ(*row.hold_margin, row.min_path_delay);
+    EXPECT_FLOAT_EQ(timing.get_setup_slack(CellPortKey(endpoint->name, id_DATAIN)), float(*row.setup_margin));
+    EXPECT_GT(row.min_path_delay, 7500); // previous capture edge contributes period minus interval
+    ctx->check();
+}
+
+TEST_F(TimingReportPathsTest, UnknownClocksAsyncLaunchesAndIncompleteAnalysisFailClosed)
+{
+    bind_clock_source(clock, "primary_clock_source");
+    auto *independent_clock = other_clock("independent_clock");
+    auto *independent = other_launch(independent_clock);
+    auto *endpoint = rising.front(); auto *logic = cone.at(endpoint->name);
+    logic->disconnectPort(id_B); logic->connectPort(id_B, independent->getPort(id_Q));
+    ctx->assignArchInfo();
+    std::vector<EndpointClockPairTiming> rows;
+    {
+        TimingAnalyser complete(ctx.get()); complete.setup(false, false, true);
+        ASSERT_TRUE(complete.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_DATAIN), rows));
+        ASSERT_EQ(rows.size(), 2u);
+    }
+    auto known = std::move(independent_clock->clkconstr);
+    {
+        TimingAnalyser unknown(ctx.get()); unknown.setup(false, false, true);
+        EXPECT_FALSE(unknown.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_DATAIN), rows));
+        EXPECT_TRUE(rows.empty());
+    }
+    independent_clock->clkconstr = std::move(known);
+    {
+        TimingAnalyser changed_flags(ctx.get()); changed_flags.setup(false, false, true);
+        ASSERT_TRUE(changed_flags.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_DATAIN), rows));
+        changed_flags.with_clock_skew = true;
+        EXPECT_FALSE(changed_flags.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_DATAIN), rows));
+        EXPECT_TRUE(rows.empty()); // flags cannot relabel an already completed unskewed analysis
+    }
+    {
+        TimingAnalyser incomplete(ctx.get()); incomplete.setup_only = true; incomplete.setup();
+        EXPECT_FALSE(incomplete.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_DATAIN), rows));
+        EXPECT_TRUE(rows.empty());
+    }
+    // PLL lock is an actual asynchronous startpoint in the Mistral model.
+    auto *asynchronous = ctx->createCell(ctx->id("asynchronous_lock"), id_altera_pll);
+    asynchronous->addOutput(id_locked);
+    auto *lock = ctx->createNet(ctx->id("asynchronous_lock_signal"));
+    asynchronous->connectPort(id_locked, lock);
+    logic->disconnectPort(id_B); logic->connectPort(id_B, lock);
+    ctx->assignArchInfo();
+    {
+        TimingAnalyser mixed(ctx.get()); mixed.setup(false, false, true);
+        EXPECT_FALSE(mixed.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_DATAIN), rows));
+        EXPECT_TRUE(rows.empty()); // the remaining finite synchronous pair cannot hide the async branch
+        EXPECT_FALSE(mixed.get_endpoint_clock_pair_timings(CellPortKey(launch->name, id_Q), rows));
+        EXPECT_TRUE(rows.empty());
     }
     ctx->check();
 }
