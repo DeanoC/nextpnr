@@ -134,6 +134,11 @@ void MistralCommandHandler::customBitstream(Context *ctx)
         // An explicit report needs fresh results for the final placed graph.
         log_info("Running predicted placed timing analysis for --report (no routing or analogue signoff).\n");
         timing_analysis(ctx, false, true, false, false, true);
+    } else if (vm.count("report") && ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "route") {
+        // GPU analogue repair can change the route after the router's timing
+        // check. Refresh the report for the graph we are about to write.
+        log_info("Running final routed timing analysis for --report (no bitstream signoff).\n");
+        timing_analysis(ctx, false, true, false, false, true);
     }
 }
 

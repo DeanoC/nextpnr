@@ -34,8 +34,11 @@ per reported clock pair, including its original critical path. The range is
 1 through 16,384; the default remains one. Increasing report coverage changes
 neither the legacy worst-path nor Fmax/hold results. An explicitly requested
 `--report --no-route` obtains fresh predicted timing for the final placed graph;
-it does not claim routed analogue signoff. Preflight rejection diagnostics
-identify why an edge cannot be probed.
+it does not claim routed analogue signoff. An explicit report on a routed graph
+refreshes timing after route repair and before the design is written. Without
+`--rbf`, this uses final routed pip-table timing; `--rbf` retains its analogue
+signoff report. Preflight rejection diagnostics identify why an edge cannot be
+probed.
 
 ## RAM-test measurement
 
@@ -53,7 +56,9 @@ not hardware acceptance or an independent physical delay calibration.
 
 The measured source is `5dd69a8ddece6280d576816d2277c73f80607f52`; the CLI
 binary is SHA256 `2ebe29caf7ca46b3c68afd23d26efda1426c94bc6f1b214d22f810bb5c48351c`.
-The publication retains those compiler and test bytes and adds documentation.
+The recorded measurement predates the final routed-report refresh added during
+review. That refresh covers reports without `--rbf`; the measured RBF run already
+used final analogue signoff.
 The exact profile stacks the earlier capture locality, placed reductions and
 control remaps before driver copying. It retains the fixed RTL/BUILD_ID,
 constraints, seed 2, device, placement options and GPU device 1. No FES default
@@ -79,6 +84,14 @@ The common timing changes also compile for the generic architecture; generic
 runtime STA was not exercised. The earlier 37-case focused run is retained
 separately. Cold compilation retains existing warnings; one fixture rebuild
 also reports a dangling-else warning in the test code.
+
+The report-refresh review fix was rebuilt separately. All five native-report
+CLI cases pass, including a real CPU route followed by replay of its saved
+route without `--rbf`. The replay preserves connected signals, physical pin
+and routing attributes, and the complete timing report. The same regression
+fails on the measured compiler because the replay report contains no Fmax
+results. GPU repair reaches this refresh through the same final report path;
+the portable regression does not rerun the RAM-test GPU route.
 
 The [machine-readable validation record](validation/ramtest-lut-driver-copy-2026-10-01.json)
 binds the completed comparison, invocation, input identities and raw artifacts.
