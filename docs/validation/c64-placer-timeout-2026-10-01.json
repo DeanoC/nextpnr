@@ -1,0 +1,131 @@
+{
+  "date": "2026-10-01",
+  "issue": "https://github.com/DeanoC/nextpnr/issues/99",
+  "scope": "Historical placement-only diagnostic replay; no routing or bitstream validation",
+  "nextpnr_base": "0259c6dc1c46dd46fe79f3923a17ad36d2513421",
+  "mistral": "7ed06e21c18b047ec5c6d6a7e85e5ea2c8827039",
+  "effective_criticality_exponent": 7,
+  "cli_criticality_exponent": 5,
+  "seed": 5,
+  "timing_weight": 2000,
+  "timeout_seconds": 600,
+  "source_sha256": {
+    "synth.json": "0a92919799dd4d5168a0d0d716151a7e40e8a119a0a8c6e715c5884fcdbf5854",
+    "socket.qsf": "0750256013421a34462416ab6f1c94d6f9eccf19a1ac499b2dfe22dc8f6b7b0a"
+  },
+  "backport_patch_sha256": "8533f25bede2f577452d7c61cd4dde42d968f1cec757a7100f2ed629723cd251",
+  "backport_note": "The replay enables joint placement for ordinary designs. The final change also enables it for FES carts, tested separately by fes_slot_region.py. This difference does not affect the ordinary C64 replay.",
+  "returncode": 0,
+  "wall_seconds": 408.30541717191227,
+  "heap_seconds": 359.99,
+  "legalisation_seconds": 351.6,
+  "placed_json_sha256": "f6333197e998538e9a94f375fb095ed09cea97f50dbb1c07111955dbc05a3428",
+  "log_sha256": "762c4d3b0d3cb09a0dbedf0152915dee05d50032f4acc109731e9e4af620f368",
+  "analytical_passes": [
+    {
+      "iteration": 1,
+      "bucket": "ALL",
+      "seconds": 43.56
+    },
+    {
+      "iteration": 2,
+      "bucket": "ALL",
+      "seconds": 11.59
+    },
+    {
+      "iteration": 3,
+      "bucket": "ALL",
+      "seconds": 34.16
+    },
+    {
+      "iteration": 4,
+      "bucket": "ALL",
+      "seconds": 38.9
+    },
+    {
+      "iteration": 5,
+      "bucket": "ALL",
+      "seconds": 76.57
+    },
+    {
+      "iteration": 6,
+      "bucket": "ALL",
+      "seconds": 78.43
+    },
+    {
+      "iteration": 7,
+      "bucket": "ALL",
+      "seconds": 73.09
+    }
+  ],
+  "placement_fmax": [
+    {
+      "clock": "system_clock.clocks[0]",
+      "mhz": 44.53,
+      "status": "FAIL",
+      "target_mhz": 52.22
+    },
+    {
+      "clock": "machine.main_ram.clk_b",
+      "mhz": 37.8,
+      "status": "FAIL",
+      "target_mhz": 74.25
+    },
+    {
+      "clock": "system_clock.clocks[1]",
+      "mhz": 138.77,
+      "status": "PASS",
+      "target_mhz": 12.29
+    }
+  ],
+  "comparison": {
+    "original_recipe": "Exceeded 600 seconds during analytical placement (original route.log)",
+    "control_affinity_only": {
+      "returncode": 124,
+      "wall_seconds": 600.0754370351788,
+      "heap_seconds": 530.95
+    },
+    "joint_placement_only": {
+      "returncode": 124,
+      "wall_seconds": 600.1017375818919,
+      "heap_seconds": 554.14
+    }
+  },
+  "current_main_replay": "Fails before placement on unsupported asynchronous M10K reads in machine.firmware.lane9; safeguard retained",
+  "regressions": {
+    "placer_control_sets_2048_ff": "pass",
+    "placer_control_sets_8192_ff": "pass",
+    "placer_options": "pass",
+    "fes_slot_region": "pass",
+    "heap_control_set_native_unit": {
+      "status": "pass",
+      "tests": 4,
+      "ci_target": "nextpnr-heap-control-set-test"
+    },
+    "mistral_native_suite": {
+      "status": "pass",
+      "tests": 175,
+      "seconds": 534.76,
+      "note": "Local binary included 171 Mistral tests plus the four shared control-set tests; the shared tests now have a standalone CI target."
+    },
+    "architecture_self_check": {
+      "status": "pre-existing failure",
+      "device": "5CEBA2F17A7",
+      "assertion": "bel != BelId() in common/kernel/archcheck.cc:91",
+      "baseline": "Reproduced with existing toolchain revision 655f3833; fails before placement."
+    },
+    "mistral_cli_suites": {
+      "status": "pass",
+      "suites": [
+        "timing-report-paths",
+        "lut-driver-copy",
+        "decomposition",
+        "comb-remap-plan",
+        "remap-plan",
+        "local-remap",
+        "reduction-balance"
+      ]
+    }
+  },
+  "local_evidence_directory": "/tmp/nextpnr-issue99-c64-final"
+}

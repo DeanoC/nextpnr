@@ -870,17 +870,24 @@ bool Arch::place()
         // The Cyclone V is asymmetrical enough that it's somewhat beneficial to prefer connecting things horizontally.
         cfg.hpwl_scale_x = 1;
         cfg.hpwl_scale_y = 2;
+        // LUTs and FFs share ALM input routing and LAB controls. Moving one
+        // type against the other's fixed placement repeatedly undoes packing
+        // work; solve the movable design together instead.
+        cfg.placeAllAtOnce = true;
 
         if (fes_any_slot_region_active) {
             // A cart confined to a small rectangle can cycle evictions for
             // a long time; report the cycling cell instead of running on.
             cfg.cellRipupLimit = std::max(cfg.cellRipupLimit, 500);
-            // Legalise flip-flops LAB by LAB. HeAP's model admits one control
-            // set per LAB, so key it on the signals a Cyclone V LAB really
-            // has one of: clock (LabCtrlSetWorker allows one), synchronous
-            // clear and synchronous load. Enables and asynchronous clears
-            // have several LAB lines and are left to the full validity
-            // check, which still decides legality.
+        }
+        {
+            // Prefer nearby FFs with matching controls. A LAB can legally
+            // mix sets (several enables/async clears, missing sync controls),
+            // so ordinary placement uses affinity rather than an exclusive
+            // group. Full LAB legality still decides which sets can coexist.
+            // Region-constrained carts retain their exclusive clock/SCLR/
+            // SLOAD model and leave enables/async clears to full legality.
+            cfg.ctrlSetExclusive = fes_any_slot_region_active;
             cfg.ff_bel_bucket = id_MISTRAL_FF;
             cfg.ff_control_set_groups.assign(1, {});
             for (int alm = 0; alm < 10; alm++)
@@ -888,16 +895,20 @@ bool Arch::place()
                     cfg.ff_control_set_groups.at(0).push_back(alm * 6 + 2 + ff);
             cfg.ctrl_set_max_radius = std::vector<int>{12, 12, 12, 8, 6, 4};
             // Deterministic ids keyed by net names, not pointers.
-            auto ids = std::make_shared<std::map<std::array<int, 6>, int32_t>>();
+            auto ids = std::make_shared<std::map<std::array<int, 10>, int32_t>>();
             cfg.get_cell_control_set = [ids, this](Context *, const CellInfo *ci) -> int32_t {
-                // Frozen shell LABs legitimately mix enables under the full
-                // LAB rules; HeAP's one-set-per-LAB model must not see them.
-                if (ci->type != id_MISTRAL_FF || !fes_cell_is_slot(ci))
+                // Frozen shell cells are excluded from the cart's exclusive
+                // model; their compatibility is checked by the backend.
+                if (ci->type != id_MISTRAL_FF || (fes_any_slot_region_active && !fes_cell_is_slot(ci)))
                     return -1;
                 const auto &cs = ci->ffInfo.ctrlset;
                 auto sig = [](const ControlSig &s) { return s.net ? s.net->name.index : -1; };
-                std::array<int, 6> key{sig(cs.clk),  int(cs.clk.inverted),  sig(cs.sclr),
-                                       int(cs.sclr.inverted), sig(cs.sload), int(cs.sload.inverted)};
+                std::array<int, 10> key{sig(cs.clk), int(cs.clk.inverted), sig(cs.sclr), int(cs.sclr.inverted),
+                                       sig(cs.sload), int(cs.sload.inverted), -1, 0, -1, 0};
+                if (!fes_any_slot_region_active)
+                    key = {sig(cs.clk), int(cs.clk.inverted), sig(cs.sclr), int(cs.sclr.inverted),
+                           sig(cs.sload), int(cs.sload.inverted), sig(cs.ena), int(cs.ena.inverted),
+                           sig(cs.aclr), int(cs.aclr.inverted)};
                 auto found = ids->find(key);
                 if (found == ids->end())
                     found = ids->emplace(key, int32_t(ids->size())).first;
