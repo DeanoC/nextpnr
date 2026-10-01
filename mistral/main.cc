@@ -98,7 +98,7 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("remap-critical", po::value<std::string>(), "prior routed timing report for local LUT remapping");
     specific.add_options()("remap-optimize-pins", "optimize local-remap LUT input order for predicted delay");
     specific.add_options()("remap-preserve-ffs", "keep every original FF placement during local remapping");
-    specific.add_options()("remap-plan", po::value<std::string>(), "JSON plan of staged report-guided local remaps (1..8 steps)");
+    specific.add_options()("remap-plan", po::value<std::string>(), "JSON plan of staged report-guided local remaps (1..16 steps)");
     specific.add_options()("remap-comb-critical", po::value<std::string>(), "prior routed timing report for bounded internal LUT cut remapping");
     specific.add_options()("remap-comb-candidate", po::value<int>(), "qualified internal-cut candidate index (default: list only)");
     specific.add_options()("remap-comb-plan", po::value<std::string>(), "JSON plan of staged internal LUT-cut remaps (1..8 steps)");
@@ -217,8 +217,8 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()}, error;
         auto plan = json11::Json::parse(text, error);
         if (!error.empty() || !plan.is_object() || plan.object_items().size() != 1 || !plan["steps"].is_array() ||
-            plan["steps"].array_items().empty() || plan["steps"].array_items().size() > 8)
-            log_error("Invalid local-remap plan; expected one to eight steps.\n");
+            plan["steps"].array_items().empty() || plan["steps"].array_items().size() > Arch::local_remap_max_steps)
+            log_error("Invalid local-remap plan; expected one to %zu steps.\n", Arch::local_remap_max_steps);
         check_plan_keys(text);
         auto integer = [&](const json11::Json &value, int low, int high) {
             double number = value.number_value();

@@ -658,7 +658,7 @@ TEST_F(LocalRemapPlanTest, CompletePlanBoundsAndReportSyntaxAreRejectedBeforeFir
 {
     PlanSnapshot before(ctx.get());
     struct Invalid { std::vector<Arch::LocalRemapStep> steps; bool listing; };
-    std::vector<Invalid> invalid{{{}, false}, {std::vector<Arch::LocalRemapStep>(9, step(first)), false}};
+    std::vector<Invalid> invalid{{{}, false}, {std::vector<Arch::LocalRemapStep>(17, step(first)), false}};
     for (int candidate : {-2, -1}) {
         auto bad = step(second, candidate);
         invalid.push_back({{step(first), bad}, false});
@@ -682,6 +682,36 @@ TEST_F(LocalRemapPlanTest, CompletePlanBoundsAndReportSyntaxAreRejectedBeforeFir
         before.expect_exact(ctx.get());
         expect_options_restored();
     }
+}
+
+TEST_F(LocalRemapPlanTest, LongerBoundedPlansReachSelectionAndRestoreFailedProbe)
+{
+    PlanSnapshot before(ctx.get());
+    for (size_t count : {size_t(9), size_t(16)}) {
+        SCOPED_TRACE(count);
+        ctx->local_remap_plan = std::vector<Arch::LocalRemapStep>(count, step(first, 9999));
+        PlanLogCapture capture(ctx.get());
+        EXPECT_THROW(ctx->execute_local_remap_plan(), log_execution_error_exception);
+        EXPECT_NE(capture.buffer.text.find("Local-remap plan step 0:"), std::string::npos);
+        EXPECT_NE(capture.buffer.text.find("did not qualify; routing was not started"), std::string::npos);
+        EXPECT_EQ(capture.buffer.first, nullptr);
+        before.expect_exact(ctx.get());
+        expect_options_restored();
+    }
+}
+
+TEST_F(LocalRemapPlanTest, MalformedSixteenthReportRejectedBeforeFirstMutation)
+{
+    PlanSnapshot before(ctx.get());
+    ctx->local_remap_plan = std::vector<Arch::LocalRemapStep>(16, step(first));
+    ctx->local_remap_plan.back().report = "{";
+    PlanLogCapture capture(ctx.get());
+    EXPECT_THROW(ctx->execute_local_remap_plan(), log_execution_error_exception);
+    EXPECT_NE(capture.buffer.text.find("Invalid local-remap plan report at step 15"), std::string::npos);
+    EXPECT_EQ(capture.buffer.text.find("Local-remap plan step 0:"), std::string::npos);
+    EXPECT_EQ(capture.buffer.first, nullptr);
+    before.expect_exact(ctx.get());
+    expect_options_restored();
 }
 
 namespace {
