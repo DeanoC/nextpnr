@@ -185,7 +185,9 @@ struct PairTrialObserver : std::streambuf {
     CellInfo *endpoint;
     std::ostream stream;
     std::string text, line;
-    int trials = 0, setup_rejections = 0, hold_rejections = 0, shorter_setup_hold_rejections = 0, negative_trial_holds = 0;
+    int trials = 0, setup_rejections = 0, hold_rejections = 0, shorter_setup_hold_rejections = 0,
+        negative_trial_holds = 0, shorter_setup_negative_holds = 0;
+    std::vector<delay_t> terminal_hold_margins;
     bool throw_on_trial;
     PairTrialObserver(Context *ctx, CellInfo *endpoint, bool throw_on_trial = false)
         : ctx(ctx), endpoint(endpoint), stream(this), throw_on_trial(throw_on_trial)
@@ -207,7 +209,12 @@ struct PairTrialObserver : std::streambuf {
             TimingAnalyser timing(ctx); timing.with_clock_skew = true; timing.setup(false, false, true);
             std::vector<EndpointClockPairTiming> rows;
             if (timing.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_ENA), rows))
-                for (const auto &row : rows) negative_trial_holds += row.hold_margin && *row.hold_margin < 0;
+                for (const auto &row : rows) if (row.hold_margin) {
+                    terminal_hold_margins.push_back(*row.hold_margin);
+                    negative_trial_holds += *row.hold_margin < 0;
+                    shorter_setup_negative_holds += *row.hold_margin < 0 && line.find("improve=1") != std::string::npos &&
+                        line.find("hold=0") != std::string::npos;
+                }
             if (throw_on_trial) throw std::runtime_error("actual joint-placement trial log exception");
         }
         line.clear();
@@ -318,11 +325,13 @@ class LutPairPlacementTest : public ::testing::Test {
         place(cell, x, y, STRENGTH_LOCKED); return cell;
     }
 
-    CellInfo *clock_source(NetInfo *net, const std::string &name)
+    CellInfo *clock_source(NetInfo *net, const std::string &name, bool require_left = false)
     {
         auto *cell = ctx->createCell(ctx->id(name), id_MISTRAL_CLKBUF);
         cell->addOutput(id_Q); cell->connectPort(id_Q, net); ctx->assign_default_pinmap(cell);
         for (auto bel : ctx->getBels()) {
+            auto loc = ctx->getBelLocation(bel);
+            if (require_left && (loc.x != 0 || loc.y != 35)) continue;
             if (!ctx->checkBelAvail(bel) || !ctx->isValidBelForCellType(cell->type, bel)) continue;
             ctx->bindBel(bel, cell, STRENGTH_LOCKED);
             if (ctx->isBelLocationValid(bel)) return cell;
@@ -376,8 +385,17 @@ TEST_F(LutPairPlacementTest, TrialExceptionRestoresBothBindingsAndEveryOriginalC
 TEST_F(LutPairPlacementTest, TimedInnerSideUserRegressionRejectsEveryOtherwiseTargetedMove)
 {
     auto *capture = side("inner_side", inner->getPort(id_Q), 24, 20);
+    // Every FF remains fixed by the pass. A weak capture avoids protecting
+    // the source LAB while retaining its original dedicated DATAIN link.
+    capture->belStrength = STRENGTH_WEAK;
+    ASSERT_EQ(capture->belStrength, STRENGTH_WEAK);
+    ASSERT_EQ(ctx->getBelLocation(capture->bel).x, 24); ASSERT_EQ(ctx->getBelLocation(capture->bel).y, 20);
+    ASSERT_EQ(ctx->getBelLocation(capture->bel).z / 6, ctx->getBelLocation(inner->bel).z / 6);
     TimingAnalyser before(ctx.get()); before.with_clock_skew = true; before.setup(false, false, true);
     EXPECT_TRUE(std::isfinite(before.get_setup_slack(CellPortKey(capture->name, id_DATAIN))));
+    std::vector<EndpointClockPairTiming> rows;
+    ASSERT_TRUE(before.get_endpoint_clock_pair_timings(CellPortKey(capture->name, id_DATAIN), rows)); ASSERT_FALSE(rows.empty());
+    for (const auto &row : rows) { ASSERT_TRUE(row.setup_timed); ASSERT_TRUE(row.setup_margin); ASSERT_TRUE(row.hold_margin); }
     PairSnapshot saved(ctx.get()); PairTrialObserver probe(ctx.get(), sink);
     EXPECT_FALSE(ctx->remap_lut_pair_critical(report(), -1));
     EXPECT_GT(probe.trials, 0); EXPECT_GT(probe.setup_rejections, 0);
@@ -386,17 +404,62 @@ TEST_F(LutPairPlacementTest, TimedInnerSideUserRegressionRejectsEveryOtherwiseTa
     saved.expect(ctx.get());
 }
 
-TEST_F(LutPairPlacementTest, NativeFallingEdgeHoldRejectsARealShorterSetupPath)
+TEST_F(LutPairPlacementTest, UnsupportedOppositeEdgeHoldCoverageRejectsBeforeAnyMove)
 {
     ctx->unbindBel(sink->bel);
     clock->clkconstr->period = DelayPair(8000); clock->clkconstr->high = clock->clkconstr->low = DelayPair(4000);
     ctx->settings[ctx->id("target_freq")] = 125e6;
     sink->pin_data[id_CLK].state = PIN_INV; ctx->assign_ff_info(sink); ctx->assign_default_pinmap(sink);
     place(sink, 30, 20, STRENGTH_LOCKED, 8);
+    TimingAnalyser before(ctx.get()); before.with_clock_skew = true; before.setup(false, false, true);
+    std::vector<EndpointClockPairTiming> rows;
+    ASSERT_TRUE(before.get_endpoint_clock_pair_timings(CellPortKey(sink->name, id_ENA), rows)); ASSERT_FALSE(rows.empty());
+    for (const auto &row : rows) { ASSERT_TRUE(row.setup_timed); ASSERT_FALSE(row.hold_related); ASSERT_FALSE(row.hold_margin); }
+    PairSnapshot saved(ctx.get()); PairLog log;
+    EXPECT_FALSE(ctx->remap_lut_pair_critical(report(), -1));
+    EXPECT_NE(log.stream.str().find("reason=endpoint-related-hold-coverage-unavailable"), std::string::npos) << log.stream.str();
+    EXPECT_EQ(log.stream.str().find("LUT pair placement trial"), std::string::npos);
+    EXPECT_NE(log.stream.str().find("LUT pair placement: 0 qualified candidates; no candidate applied."), std::string::npos);
+    saved.expect(ctx.get());
+}
+
+TEST_F(LutPairPlacementTest, NativeRelatedClockHoldRejectsARealShorterSetupPath)
+{
+    clock->clkconstr->period = DelayPair(8000); clock->clkconstr->high = clock->clkconstr->low = DelayPair(4000);
+    clock->clkconstr->phase_group = ctx->id("hold_shared_phase");
+    ctx->settings[ctx->id("target_freq")] = 125e6;
+    ASSERT_NE(clock_source(clock, "hold_primary_clock", true), nullptr);
+    auto *capture_clock = clock;
+    // Seven real identity LUT arcs create a late common-root capture clock.
+    // Native A-to-Q max delay is 400ps per stage; no delay is injected.
+    for (int index = 0; index < 7; ++index) {
+        auto name = "hold_clock_stage_" + std::to_string(index);
+        auto *cell = ctx->createCell(ctx->id(name), id_MISTRAL_ALUT2);
+        cell->params[id_LUT] = Property(0xa, 4); cell->addInput(id_A); cell->addInput(id_B); cell->addOutput(id_Q);
+        cell->connectPort(id_A, capture_clock); cell->pin_data[id_B].state = PIN_0;
+        capture_clock = ctx->createNet(ctx->id(name + "$q")); capture_clock->is_global = true;
+        cell->connectPort(id_Q, capture_clock); ctx->assign_comb_info(cell); ctx->assign_default_pinmap(cell);
+        place(cell, 2, 35, STRENGTH_LOCKED, 6 * index);
+    }
+    capture_clock->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+    capture_clock->clkconstr->phase_shift = 0;
+    ctx->unbindBel(sink->bel); sink->disconnectPort(id_CLK); sink->connectPort(id_CLK, capture_clock);
+    ctx->assign_ff_info(sink); ctx->assign_default_pinmap(sink); place(sink, 30, 20, STRENGTH_LOCKED, 8);
+    TimingAnalyser before(ctx.get()); before.with_clock_skew = true; before.setup(false, false, true);
+    std::vector<EndpointClockPairTiming> rows;
+    ASSERT_TRUE(before.get_endpoint_clock_pair_timings(CellPortKey(sink->name, id_ENA), rows)); ASSERT_FALSE(rows.empty());
+    for (const auto &row : rows) {
+        ASSERT_EQ(row.launch.clock, clock->name); ASSERT_EQ(row.capture.clock, capture_clock->name);
+        ASSERT_EQ(row.launch.edge, RISING_EDGE); ASSERT_EQ(row.capture.edge, RISING_EDGE);
+        ASSERT_TRUE(row.setup_timed); ASSERT_TRUE(row.hold_related); ASSERT_TRUE(row.hold_margin);
+        ASSERT_TRUE(row.setup_window); ASSERT_EQ(*row.setup_window, 8000);
+        ASSERT_GE(*row.hold_margin, 0);
+    }
     PairSnapshot saved(ctx.get()); PairTrialObserver probe(ctx.get(), sink);
     EXPECT_FALSE(ctx->remap_lut_pair_critical(report(), -1));
     EXPECT_GT(probe.trials, 0); EXPECT_GT(probe.hold_rejections, 0); EXPECT_GT(probe.negative_trial_holds, 0);
     EXPECT_GT(probe.shorter_setup_hold_rejections, 0);
+    EXPECT_GT(probe.shorter_setup_negative_holds, 0) << ::testing::PrintToString(probe.terminal_hold_margins) << probe.text;
     EXPECT_NE(probe.text.find("LUT pair placement: 0 qualified candidates; no candidate applied."), std::string::npos)
         << probe.text;
     saved.expect(ctx.get());
@@ -410,7 +473,10 @@ TEST_F(LutPairPlacementTest, UnrelatedSideCaptureKeepsFiniteBoundsWithoutInventi
     ASSERT_NE(clock_source(clock, "primary_clock_source"), nullptr);
     ASSERT_NE(clock_source(other, "independent_clock_source"), nullptr);
     ctx->unbindBel(capture->bel); capture->disconnectPort(id_CLK); capture->connectPort(id_CLK, other);
-    ctx->assign_ff_info(capture); ctx->assign_default_pinmap(capture); place(capture, 24, 20, STRENGTH_LOCKED);
+    ctx->assign_ff_info(capture); ctx->assign_default_pinmap(capture); place(capture, 24, 20, STRENGTH_WEAK);
+    ASSERT_EQ(capture->belStrength, STRENGTH_WEAK);
+    ASSERT_EQ(ctx->getBelLocation(capture->bel).x, 24); ASSERT_EQ(ctx->getBelLocation(capture->bel).y, 20);
+    ASSERT_EQ(ctx->getBelLocation(capture->bel).z / 6, ctx->getBelLocation(inner->bel).z / 6);
     TimingAnalyser before(ctx.get()); before.with_clock_skew = false; before.setup(false, false, true);
     std::vector<EndpointClockPairTiming> rows;
     ASSERT_TRUE(before.get_endpoint_clock_pair_timings(CellPortKey(capture->name, id_DATAIN), rows)); ASSERT_FALSE(rows.empty());

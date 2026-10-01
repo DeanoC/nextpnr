@@ -256,7 +256,12 @@ bool Arch::remap_lut_pair_critical(const std::string &report, int selection)
             guard::Rows rows;
             if (!before.get_endpoint_clock_pair_timings(key, rows)) { reject("endpoint-domain-coverage-unavailable"); eligible = false; }
             else {
-                for (const auto &row : rows) { timed_pairs += row.setup_timed; unrelated_pairs += !row.setup_timed; hold_pairs += row.hold_related; }
+                for (const auto &row : rows) {
+                    timed_pairs += row.setup_timed; unrelated_pairs += !row.setup_timed; hold_pairs += row.hold_related;
+                    if (row.setup_timed && (!row.hold_related || !row.hold_margin)) {
+                        reject("endpoint-related-hold-coverage-unavailable"); eligible = false;
+                    }
+                }
                 endpoints.emplace(key, std::move(rows));
             }
         }

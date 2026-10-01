@@ -36,7 +36,8 @@ the cone.
 
 A candidate needs at least 250 ps of predicted target setup improvement.
 Complete reachable endpoint clock-pair rows, all clock constraints and the
-hold violation distribution must not regress. Unrelated clocks retain their
+hold violation distribution must not regress. A setup-timed pair without
+native hold coverage is rejected before movement. Unrelated clocks retain their
 finite path extrema through a separate analysis without clock skew; no setup
 window is invented for them. Original FF placements and controls, graph owner
 order, port user slots, pin/cache records and unrelated LAB state remain fixed.
@@ -44,7 +45,8 @@ Listing, rejection, an unavailable index and an exception restore both original
 LUT bindings and the saved architecture/LAB state.
 
 `LutPairPlacementTest` uses real native LUT/FF/carry fixtures, including a fixed
-protected terminal, side-user setup and falling-edge hold conflicts, unrelated
+protected terminal, side-user setup and related-clock hold conflicts, missing
+opposite-edge hold coverage, unrelated
 clock domains, occupied/protected destination LABs and stale report rejection.
 Its rollback snapshot checks user-storage holes as well as pin maps, cache
 records and ownership order. The exception case throws at an actual joint
