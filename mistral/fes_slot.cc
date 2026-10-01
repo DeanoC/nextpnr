@@ -471,8 +471,10 @@ void Arch::lock_fes_scaffold()
     }
     for (BelId bel : restored)
         update_bel(bel);
-    // lab_pre_route skips these locked LABs, so a V1 snapshot from before
-    // open flops were parked would otherwise keep the stale ACLR index.
+    // Scaffold cells are STRENGTH_LOCKED, and lab_pre_route does not rewrite
+    // those LABs. --no-route never calls lab_pre_route either. A V1 snapshot
+    // from before open flops were parked keeps its stale ACLR index until
+    // this park.
     int parked = 0;
     for (uint32_t lab = 0; lab < labs.size(); ++lab)
         parked += park_open_aclr(lab);

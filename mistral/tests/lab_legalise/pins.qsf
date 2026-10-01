@@ -1,0 +1,5 @@
+set_location_assignment PIN_V11 -to clk
+set_location_assignment PIN_U10 -to pcm_a
+set_location_assignment PIN_AG5 -to pcm_b
+set_location_assignment PIN_AD19 -to pcm_q
+set_location_assignment PIN_AD12 -to rdata_q
