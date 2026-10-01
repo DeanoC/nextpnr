@@ -557,7 +557,10 @@ struct Arch : BaseArch<ArchRanges>
     };
     std::vector<LocalRemapStep> local_remap_plan; // Explicit CLI state, never serialized settings.
     bool local_remap_plan_list_only = false;
-    bool execute_local_remap_plan();
+    std::vector<LocalRemapStep> local_remap_post_plan; // After reductions/decomposition, before driver copies.
+    bool local_remap_post_plan_list_only = false;
+    void prevalidate_local_remap_plans();
+    bool execute_local_remap_plan(bool post = false);
     std::string comb_remap_report; // Explicit CLI experiment, never a serialized setting.
     int comb_remap_selection = -1;
     bool remap_comb_critical(const std::string &report, int selection);

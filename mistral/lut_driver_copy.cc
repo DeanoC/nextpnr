@@ -92,13 +92,15 @@ std::map<std::string,int> copy_holds(TimingAnalyser &timing)
 }
 }
 
-void prevalidate_lut_driver_copy_prefix(Context *ctx)
+namespace {
+void prevalidate_remap_prefix(Context *ctx, const char *stage, bool include_post)
 {
     if (ctx->local_remap_plan_list_only || ctx->comb_remap_plan_list_only ||
+        (include_post && ctx->local_remap_post_plan_list_only) ||
         (!ctx->local_remap_report.empty() && ctx->local_remap_selection < 0) ||
         (!ctx->comb_remap_report.empty() && ctx->comb_remap_selection < 0) ||
         (!ctx->decomposition_remap_report.empty() && ctx->decomposition_remap_selection < 0))
-        log_error("A remap listing must be final; it cannot precede LUT driver copy.\n");
+        log_error("A remap listing must be final; it cannot precede %s.\n", stage);
     const char *spec = std::getenv("NEXTPNR_MISTRAL_PLACED_REDUCTION");
     if (!spec || !*spec) return;
     std::istringstream lines(spec); std::string line; size_t count = 0;
@@ -114,9 +116,20 @@ void prevalidate_lut_driver_copy_prefix(Context *ctx)
         if ((options >> extra) || radius < 1 || radius > 6 || selection < -1 || minimum < 1 || ++count > 8)
             log_error("Invalid placed reduction diagnostic options.\n");
         if (selection < 0)
-            log_error("A placed reduction listing cannot precede LUT driver copy.\n");
+            log_error("A placed reduction listing cannot precede %s.\n", stage);
     }
     if (!count) log_error("Invalid placed reduction diagnostic options.\n");
+}
+}
+
+void prevalidate_lut_driver_copy_prefix(Context *ctx)
+{
+    prevalidate_remap_prefix(ctx, "LUT driver copy", true);
+}
+
+void prevalidate_local_remap_post_prefix(Context *ctx)
+{
+    prevalidate_remap_prefix(ctx, "post-remap plan", false);
 }
 
 bool Arch::remap_lut_driver_critical(const std::string &report, int selection)
