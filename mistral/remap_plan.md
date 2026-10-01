@@ -1,6 +1,6 @@
 # Staged local remapping
 
-`--remap-plan plan.json` runs one to eight explicit local LUT remaps after
+`--remap-plan plan.json` runs one to sixteen explicit local LUT remaps after
 fresh full-design HeAP placement. Each step uses the existing composition,
 whole-LAB enable-group selection, legality and timing guards. This opt-in
 experiment is disabled unless the CLI requests it.

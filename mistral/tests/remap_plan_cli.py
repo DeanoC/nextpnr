@@ -77,12 +77,29 @@ class RemapPlanCliTest(unittest.TestCase):
                 self.assertNotIn("Running analytical placer", log)
 
     def test_strict_schema_and_step_bounds(self):
-        for plan in ({"steps": []}, {"steps": [step()] * 9},
+        for plan in ({"steps": []}, {"steps": [step()] * 17},
                      {"steps": [step()], "unknown": 1},
                      {"steps": [{key: value for key, value in step().items() if key != "groups"}]},
                      {"steps": [step(unknown=True)]}):
             with self.subTest(plan=plan):
                 self.reject(plan, "local-remap plan")
+
+    def test_longer_bounded_plans_reach_selection(self):
+        for count in (9, 16):
+            with self.subTest(count=count):
+                log = self.reject({"steps": [step()] * count},
+                                  "did not qualify; routing was not started",
+                                  options=("--force",), route=True)
+                self.assertIn("Local-remap plan step 0:", log)
+
+    def test_sixteenth_report_preloaded_before_placement(self):
+        for report, expected in (("missing.json", "local-remap plan report"),
+                                 ("invalid.json", "Invalid local-remap plan report")):
+            with self.subTest(report=report):
+                plan = {"steps": [step()] * 15 + [step(report=report)]}
+                log = self.reject(plan, expected, reports={"invalid.json": '{"critical_paths": 3}'})
+                self.assertNotIn("Local-remap plan step", log)
+                self.assertNotIn("Running analytical placer", log)
 
     def test_numeric_values_checked_before_cast(self):
         for key, value in (("candidate", -2), ("candidate", 2**31),

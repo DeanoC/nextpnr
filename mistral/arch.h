@@ -547,6 +547,7 @@ struct Arch : BaseArch<ArchRanges>
     bool local_remap_optimize_pins = false;
     bool local_remap_preserve_ff_placement = false;
     bool remap_critical(const std::string &report, int selection, int group_budget = 1);
+    static constexpr size_t local_remap_max_steps = 16;
     struct LocalRemapStep {
         std::string report;
         int candidate = -1;

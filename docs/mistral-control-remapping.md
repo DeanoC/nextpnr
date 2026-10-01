@@ -10,7 +10,7 @@ recipe, RTL or clock constraints.
 | Unplaced pure-cube balancing | Repeat `--balance-reduction-root CELL` | [Reduction balancing](../mistral/reduction_balance.md) |
 | Local FF-enable composition | `--remap-critical REPORT`, `--remap-candidate N`, `--remap-groups N` | [Local path remapping](local-path-remap.md) |
 | Local input ordering / fixed FF placement | `--remap-optimize-pins`, `--remap-preserve-ffs` with a local request | [Staged local remapping](../mistral/remap_plan.md) |
-| One to eight local stages | `--remap-plan FILE` | [Local plan schema](../mistral/remap_plan.md) |
+| One to sixteen local stages | `--remap-plan FILE` | [Local plan schema](../mistral/remap_plan.md) |
 | Bounded two/three-LUT internal cut | `--remap-comb-critical REPORT`, `--remap-comb-candidate N`, or `--remap-comb-plan FILE` | [Internal-cut plans](../mistral/comb_plan.md) |
 | Hard-IP capture locality | `NEXTPNR_MISTRAL_CAPTURE_LOCALITY="REPORT BUDGET RADIUS"` | [Capture locality](mistral-capture-locality.md) |
 | Placed 7–12/24-literal balancing | `NEXTPNR_MISTRAL_PLACED_REDUCTION="ROOT RADIUS SELECTION [MIN_BRANCH_GAIN_PS]"` (one to eight lines) | [Placed balancing](../mistral/reduction_balance.md) |

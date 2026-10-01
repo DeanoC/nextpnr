@@ -7,8 +7,8 @@ NEXTPNR_NAMESPACE_BEGIN
 bool Arch::execute_local_remap_plan()
 {
     if (fes_any_slot_region_active) log_error("Local-remap plans require ordinary full-design placement.\n");
-    if (local_remap_plan.empty() || local_remap_plan.size() > 8)
-        log_error("Local-remap plans require between one and eight steps.\n");
+    if (local_remap_plan.empty() || local_remap_plan.size() > local_remap_max_steps)
+        log_error("Local-remap plans require between one and %zu steps.\n", local_remap_max_steps);
     if (local_remap_plan_list_only != (local_remap_plan.back().candidate == -1))
         log_error("Local-remap plan list mode must select the final listing step.\n");
     // Validate the complete request before applying the first step.
