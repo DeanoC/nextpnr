@@ -851,8 +851,11 @@ bool Arch::place()
     if (!decomposition_remap_report.empty() && placer != "heap")
         log_error("Control decomposition requires ordinary HeAP placement.\n");
     // JSON settings and pre-place hooks can override the command-line placer.
-    if ((!local_remap_report.empty() || !local_remap_plan.empty()) && (placer != "heap" || fes_any_slot_region_active))
+    if ((!local_remap_report.empty() || !local_remap_plan.empty() || !local_remap_post_plan.empty()) &&
+        (placer != "heap" || fes_any_slot_region_active))
         log_error("Local remap requires ordinary full-design HeAP placement.\n");
+    if (!local_remap_plan.empty() || !local_remap_post_plan.empty())
+        prevalidate_local_remap_plans();
     if ((!comb_remap_report.empty() || !comb_remap_plan.empty()) && (placer != "heap" || fes_any_slot_region_active))
         log_error("Comb remap requires ordinary full-design HeAP placement.\n");
     if (enable_replication_budget && (placer != "heap" || fes_any_slot_region_active))
@@ -918,8 +921,8 @@ bool Arch::place()
         if (!placer_heap(getCtx(), cfg)) {
             // --force otherwise bypasses a false placement result and routes
             // a graph whose requested remap stages were never executed.
-            if (!local_remap_plan.empty() || !comb_remap_plan.empty() || !decomposition_remap_report.empty() ||
-                !lut_driver_copy_report.empty())
+            if (!local_remap_plan.empty() || !local_remap_post_plan.empty() || !comb_remap_plan.empty() ||
+                !decomposition_remap_report.empty() || !lut_driver_copy_report.empty())
                 log_error("Remap plans require successful placement; routing was not started.\n");
             return false;
         }
@@ -953,6 +956,7 @@ bool Arch::place()
         !remap_decomposed_critical(decomposition_remap_report,decomposition_remap_selection) &&
         decomposition_remap_selection >= 0)
         log_error("Requested decomposition candidate was not qualified; routing was not started.\n");
+    if (!local_remap_post_plan.empty()) execute_local_remap_plan(true);
     if (!lut_driver_copy_report.empty() &&
         !remap_lut_driver_critical(lut_driver_copy_report,lut_driver_copy_selection) &&
         lut_driver_copy_selection >= 0)

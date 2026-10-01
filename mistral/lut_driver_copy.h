@@ -7,5 +7,7 @@ struct Context;
 // A listing from an earlier stage cannot feed a later driver-copy stage.
 // Called while preloading CLI state and again before placement.
 void prevalidate_lut_driver_copy_prefix(Context *ctx);
+// A post-plan follows reductions and decomposition, so their listings must be final too.
+void prevalidate_local_remap_post_prefix(Context *ctx);
 NEXTPNR_NAMESPACE_END
 #endif
