@@ -1,0 +1,58 @@
+# Joint LUT placement
+
+The optional Mistral pass relocates two consecutive, existing ordinary LUTs
+jointly. It keeps their truth tables, logical pins, Q nets, aliases and complete
+consumer lists. It creates no cell or net and moves no FF. A terminal FF may
+remain in a protected carry LAB; both source LUTs and destination LABs must be
+unprotected. Each destination is a distinct, empty whole ALM with compatible
+physical pins. Input pin states and their physical mapping remain unchanged.
+
+Enable the pass with `--remap-lut-pair-critical report.json`. Omit
+`--remap-lut-pair-candidate` or use `-1` to list qualified candidates. Listing
+requires `--no-route`, forbids `--rbf`, and must be the final transformation.
+A nonnegative candidate selects one of the freshly qualified joint moves.
+An unavailable selection stops before routing, including with `--force`.
+The default invocation does not run this pass.
+
+The report must describe the current placed graph: cell names, locations,
+ports, net names and route continuity are checked before a probe changes any
+binding. A violating registered ENA or DATAIN path supplies its final two LUTs
+and terminal FF. The report guides discovery; the pass recomputes native
+predicted timing for qualification rather than accepting its delay numbers.
+
+The pass runs after local early plans, internal cuts, placed reduction,
+decomposition and local post plans, and before LUT driver copying. Any earlier
+listing is incompatible with a following pair pass. A pair listing cannot
+precede driver copying. Fresh packing and ordinary HeAP placement are required;
+loaded processed designs, skipped stages, simulated annealing and FES slot
+placement are excluded. Reports are loaded before placement.
+
+Search is bounded to eight distinct source-pair/terminal-port cones. It ranks
+isolated whole ALMs within Manhattan distance three of the terminal, retains
+at most 24 joint placements and performs at most 16 native timing trials per
+cone. Every movable source and reachable side branch must have a supported
+native timing boundary. Unknown clocks, unsupported fanout and feedback reject
+the cone.
+
+A candidate needs at least 250 ps of predicted target setup improvement.
+Complete reachable endpoint clock-pair rows, all clock constraints and the
+hold violation distribution must not regress. Unrelated clocks retain their
+finite path extrema through a separate analysis without clock skew; no setup
+window is invented for them. Original FF placements and controls, graph owner
+order, port user slots, pin/cache records and unrelated LAB state remain fixed.
+Listing, rejection, an unavailable index and an exception restore both original
+LUT bindings and the saved architecture/LAB state.
+
+`LutPairPlacementTest` uses real native LUT/FF/carry fixtures, including a fixed
+protected terminal, side-user setup and falling-edge hold conflicts, unrelated
+clock domains, occupied/protected destination LABs and stale report rejection.
+Its rollback snapshot checks user-storage holes as well as pin maps, cache
+records and ownership order. The exception case throws at an actual joint
+trial's log boundary after binding and native timing. The portable CLI suite
+checks orchestration, loading, stage ordering, default-off behavior and failure
+before routing.
+
+Qualification is predicted placement evidence. Full routing, final timing and
+bitstream signoff remain required. This pass supplies no timing gain,
+independent numerical STA calibration, decoded RBF equivalence or hardware
+acceptance claim, and contains no RAM-specific selector.
