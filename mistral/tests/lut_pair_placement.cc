@@ -893,9 +893,17 @@ TEST_F(LutPairCopyTest, ProtectedSourceOrTargetAndMixedClockCohortCannotBeCopied
     sink->belStrength = STRENGTH_LOCKED; { PairSnapshot saved(ctx.get()); rejected(saved); } sink->belStrength = STRENGTH_WEAK;
     auto *other_clock = ctx->createNet(ctx->id("cohort_other_clock")); other_clock->is_global = true;
     other_clock->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
-    auto *peer = ff("mixed_clock_enable", outer->getPort(id_Q)); peer->disconnectPort(id_CLK); peer->connectPort(id_CLK, other_clock);
+    auto *peer = ff("mixed_clock_enable", outer->getPort(id_Q));
     ctx->assign_ff_info(peer); ctx->assign_default_pinmap(peer); place(peer, 30, 20, STRENGTH_WEAK, 14);
-    PairSnapshot saved(ctx.get()); rejected(saved);
+    ASSERT_TRUE(ctx->isBelLocationValid(peer->bel));
+    // LAB validity currently supports one clock. Inject the mismatch only
+    // after legal placement to exercise preflight rejection of an inconsistent
+    // cohort; no candidate should probe or repair this deliberately bad input.
+    peer->disconnectPort(id_CLK); peer->connectPort(id_CLK, other_clock); ctx->assign_ff_info(peer);
+    ASSERT_FALSE(ctx->isBelLocationValid(peer->bel));
+    PairSnapshot saved(ctx.get()); PairLog log; rejected(saved);
+    EXPECT_NE(log.stream.str().find("reason=whole-enable-cohort-unavailable"), std::string::npos) << log.stream.str();
+    EXPECT_EQ(log.stream.str().find("LUT pair copy trial "), std::string::npos);
 }
 
 TEST_F(LutPairCopyTest, SevenDistinctLeavesRejectBeforeTrial)
