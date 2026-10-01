@@ -13,6 +13,7 @@
 #include <limits>
 #include <map>
 #include <set>
+#include <string>
 #include <tuple>
 
 NEXTPNR_NAMESPACE_BEGIN
@@ -54,6 +55,46 @@ bool info_equal(Context *ctx, CellInfo *cell, const ArchCellInfo &saved)
             cell->ffInfo.datain != saved.ffInfo.datain) return false;
     }
     return true;
+}
+struct EndpointFailure {
+    const char *reason;
+    int row = -1;
+};
+EndpointFailure endpoint_failure(const mistral_remap_clock_guard::Rows &before,
+                                 const mistral_remap_clock_guard::Rows &after, bool covered, bool reference_free)
+{
+    // Explain a failed existing guard only; this never decides qualification.
+    // Match rows_match's complete first pass before inspecting numeric bounds.
+    if (!covered) return {"endpoint-coverage-unavailable"};
+    if (before.empty()) return {"baseline-rows-empty"};
+    if (before.size() != after.size()) return {"row-count-changed"};
+    for (size_t i = 0; i < before.size(); ++i) {
+        const auto &old = before[i], &now = after[i];
+        if (!(old.launch == now.launch)) return {"launch-clock-or-edge-changed", int(i)};
+        if (!(old.capture == now.capture)) return {"capture-clock-or-edge-changed", int(i)};
+        if (old.setup_timed != now.setup_timed) return {"setup-timed-class-changed", int(i)};
+        if (old.hold_related != now.hold_related) return {"hold-related-class-changed", int(i)};
+        if (old.setup_window != now.setup_window) return {"setup-window-changed", int(i)};
+        if (old.setup_margin.has_value() != now.setup_margin.has_value()) return {"setup-margin-presence-changed", int(i)};
+        if (old.hold_margin.has_value() != now.hold_margin.has_value()) return {"hold-margin-presence-changed", int(i)};
+    }
+    for (size_t i = 0; i < before.size(); ++i) {
+        const auto &old = before[i], &now = after[i];
+        if (!old.setup_timed) {
+            if (now.max_path_delay > old.max_path_delay) return {"unrelated-max-path-delay-increased", int(i)};
+            if (now.min_path_delay < old.min_path_delay) return {"unrelated-min-path-delay-decreased", int(i)};
+        } else if (!reference_free) {
+            if (!old.setup_window) return {"timed-setup-window-unavailable", int(i)};
+            if (!old.setup_margin) return {"timed-setup-margin-unavailable", int(i)};
+            if (now.max_path_delay > old.max_path_delay) return {"timed-max-path-delay-increased", int(i)};
+            if (*now.setup_margin < *old.setup_margin) return {"timed-setup-margin-decreased", int(i)};
+        }
+        if (!reference_free && old.hold_related) {
+            if (!old.hold_margin) return {"related-hold-margin-unavailable", int(i)};
+            if (*now.hold_margin < std::min(delay_t(0), *old.hold_margin)) return {"related-hold-margin-below-floor", int(i)};
+        }
+    }
+    return {"guard-failure-unclassified"};
 }
 } // namespace
 
@@ -476,17 +517,77 @@ bool Arch::remap_lut_pair_critical(const std::string &report, int selection)
                 float slack = after.get_setup_slack(CellPortKey(cone.sink));
                 bool improve = !after.have_loops && guard::timed(slack) && slack >= old_slack + 250;
                 bool endpoints_ok = true;
+                std::map<std::pair<std::string, std::string>, size_t> endpoint_failures;
+                size_t native_failures = 0, reference_failures = 0, details = 0;
+                auto explain_endpoint = [&](const char *frame, CellPortKey key, const guard::Rows &old_rows,
+                                            const guard::Rows &rows, bool covered, bool reference_free) {
+                    auto failure = endpoint_failure(old_rows, rows, covered, reference_free);
+                    ++endpoint_failures[{frame, failure.reason}];
+                    if (reference_free) ++reference_failures; else ++native_failures;
+                    if (details == 4) return;
+                    ++details;
+                    const EndpointClockPairTiming *old = failure.row >= 0 ? &old_rows.at(failure.row) : nullptr;
+                    const EndpointClockPairTiming *now = failure.row >= 0 ? &rows.at(failure.row) : nullptr;
+                    auto edge = [](const EndpointClockPairTiming *row, bool launch) {
+                        if (!row) return "unavailable";
+                        auto value = launch ? row->launch.edge : row->capture.edge;
+                        return value == RISING_EDGE ? "rising" : value == FALLING_EDGE ? "falling" : "unknown";
+                    };
+                    auto owner = cells.find(key.cell);
+                    const char *endpoint_bel = owner != cells.end() && owner->second->bel != BelId() ? nameOfBel(owner->second->bel) : "unavailable";
+                    // Long-double differences avoid overflowing the integer
+                    // DelaySum; original guard comparisons retain their types.
+                    log_info("LUT pair placement endpoint rejection trial=%d inner=%s outer=%s inner_bel=%s outer_bel=%s frame=%s endpoint=%s.%s endpoint_bel=%s reason=%s covered=%d row=%d before_rows=%zu after_rows=%zu "
+                        "before_launch=%s before_launch_edge=%s after_launch=%s after_launch_edge=%s before_capture=%s before_capture_edge=%s after_capture=%s after_capture_edge=%s "
+                        "before_setup_timed=%d after_setup_timed=%d before_hold_related=%d after_hold_related=%d "
+                        "before_setup_window_present=%d before_setup_window_ps=%lld after_setup_window_present=%d after_setup_window_ps=%lld "
+                        "before_setup_margin_present=%d before_setup_margin_ps=%lld after_setup_margin_present=%d after_setup_margin_ps=%lld setup_margin_delta_ps=%.21Lg "
+                        "before_hold_margin_present=%d before_hold_margin_ps=%lld after_hold_margin_present=%d after_hold_margin_ps=%lld hold_margin_delta_ps=%.21Lg hold_floor_present=%d hold_floor_ps=%lld "
+                        "before_max_path_ps=%lld after_max_path_ps=%lld max_path_delta_ps=%.21Lg before_min_path_ps=%lld after_min_path_ps=%lld min_path_delta_ps=%.21Lg\n",
+                        examined - 1, nameOf(inner), nameOf(outer), nameOfBel(pair.inner), nameOfBel(pair.outer), frame,
+                        key.cell.c_str(ctx), key.port.c_str(ctx), endpoint_bel, failure.reason, int(covered), failure.row, old_rows.size(), rows.size(),
+                        old ? old->launch.clock.c_str(ctx) : "unavailable", edge(old, true), now ? now->launch.clock.c_str(ctx) : "unavailable", edge(now, true),
+                        old ? old->capture.clock.c_str(ctx) : "unavailable", edge(old, false), now ? now->capture.clock.c_str(ctx) : "unavailable", edge(now, false),
+                        int(old && old->setup_timed), int(now && now->setup_timed), int(old && old->hold_related), int(now && now->hold_related),
+                        int(old && old->setup_window.has_value()), (long long)(old ? old->setup_window.value_or(0) : 0),
+                        int(now && now->setup_window.has_value()), (long long)(now ? now->setup_window.value_or(0) : 0),
+                        int(old && old->setup_margin.has_value()), (long long)(old ? old->setup_margin.value_or(0) : 0),
+                        int(now && now->setup_margin.has_value()), (long long)(now ? now->setup_margin.value_or(0) : 0),
+                        old && now && old->setup_margin && now->setup_margin ? (long double)*now->setup_margin - (long double)*old->setup_margin : 0.0L,
+                        int(old && old->hold_margin.has_value()), (long long)(old ? old->hold_margin.value_or(0) : 0),
+                        int(now && now->hold_margin.has_value()), (long long)(now ? now->hold_margin.value_or(0) : 0),
+                        old && now && old->hold_margin && now->hold_margin ? (long double)*now->hold_margin - (long double)*old->hold_margin : 0.0L,
+                        int(!reference_free && old && old->hold_related && old->hold_margin.has_value()),
+                        (long long)(old && old->hold_margin ? std::min(delay_t(0), *old->hold_margin) : 0),
+                        (long long)(old ? old->max_path_delay : 0), (long long)(now ? now->max_path_delay : 0),
+                        old && now ? (long double)now->max_path_delay - (long double)old->max_path_delay : 0.0L,
+                        (long long)(old ? old->min_path_delay : 0), (long long)(now ? now->min_path_delay : 0),
+                        old && now ? (long double)now->min_path_delay - (long double)old->min_path_delay : 0.0L);
+                };
                 for (const auto &entry : endpoints) {
                     guard::Rows rows;
-                    endpoints_ok &= after.get_endpoint_clock_pair_timings(entry.first, rows) && guard::rows_nonregressing(entry.second, rows, false);
+                    bool covered = after.get_endpoint_clock_pair_timings(entry.first, rows);
+                    bool endpoint_ok = covered && guard::rows_nonregressing(entry.second, rows, false);
+                    endpoints_ok &= endpoint_ok;
+                    if (!endpoint_ok) explain_endpoint("native", entry.first, entry.second, rows, covered, false);
                 }
                 if (!reference_endpoints.empty()) {
                     TimingAnalyser unskewed(ctx); unskewed.with_clock_skew = false; unskewed.setup(false, false, true);
                     for (const auto &entry : reference_endpoints) {
                         guard::Rows rows;
-                        endpoints_ok &= unskewed.get_endpoint_clock_pair_timings(entry.first, rows) && guard::rows_nonregressing(entry.second, rows, true);
+                        bool covered = unskewed.get_endpoint_clock_pair_timings(entry.first, rows);
+                        bool endpoint_ok = covered && guard::rows_nonregressing(entry.second, rows, true);
+                        endpoints_ok &= endpoint_ok;
+                        if (!endpoint_ok) explain_endpoint("reference", entry.first, entry.second, rows, covered, true);
                     }
                 }
+                log_info("LUT pair placement endpoint rejection summary trial=%d inner=%s outer=%s inner_bel=%s outer_bel=%s native_failures=%zu reference_failures=%zu detail_rows=%zu omitted_detail_rows=%zu\n",
+                    examined - 1, nameOf(inner), nameOf(outer), nameOfBel(pair.inner), nameOfBel(pair.outer),
+                    native_failures, reference_failures, details, native_failures + reference_failures - details);
+                for (const auto &failure : endpoint_failures)
+                    log_info("LUT pair placement endpoint rejection count trial=%d inner=%s outer=%s inner_bel=%s outer_bel=%s frame=%s reason=%s endpoint_failures=%zu\n",
+                        examined - 1, nameOf(inner), nameOf(outer), nameOfBel(pair.inner), nameOfBel(pair.outer),
+                        failure.first.first.c_str(), failure.first.second.c_str(), failure.second);
                 bool clocks = guard::clocks_nonregressing(before, after), hold = guard::holds_nonregressing(old_holds, guard::holds(after));
                 bool fixed_graph = legal() && fixed();
                 log_info("LUT pair placement trial inner=%s outer=%s sink=%s.%s inner_bel=%s outer_bel=%s gain=%.0fps improve=%d endpoints=%d clocks=%d hold=%d fixed=%d\n",
