@@ -108,6 +108,26 @@ class RemapPlanCliTest(unittest.TestCase):
         self.reject({"steps": [step(candidate=-1)]}, "listing step must be last",
                     options=("--rbf", "output.rbf"))
 
+    def test_final_listing_cannot_precede_legacy_comb_remapping(self):
+        report = ("--remap-comb-critical", "plans/guidance/timing.json")
+        for options in (report, report + ("--remap-comb-candidate", "-1"),
+                        report + ("--remap-comb-candidate", "0"),
+                        ("--remap-comb-candidate", "0")):
+            with self.subTest(options=options):
+                log = self.reject({"steps": [step(candidate=-1)]},
+                                  "Local-remap listing must be final", options=options)
+                self.assertNotIn("Running analytical placer", log)
+                self.assertNotIn("Local-remap plan step", log)
+                self.assertNotIn("Comb remap:", log)
+
+    def test_selected_local_plan_can_precede_legacy_comb_remapping(self):
+        log = self.reject({"steps": [step()]}, "did not qualify; routing was not started",
+                          options=("--remap-comb-critical", "plans/guidance/timing.json",
+                                   "--remap-comb-candidate", "0"))
+        self.assertIn("Local-remap plan step 0", log)
+        self.assertNotIn("Comb remap:", log)
+        self.assertNotIn("cannot precede", log)
+
     def test_requires_fresh_full_heap_placement(self):
         for option in ("--no-pack", "--no-place", "--pack-only", "--fes-scaffold"):
             with self.subTest(option=option):
