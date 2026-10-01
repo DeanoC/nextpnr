@@ -7,7 +7,7 @@ experiment is disabled unless the CLI requests it.
 
 `--remap-post-plan post.json` uses the same schema for additional local remaps
 after internal-cut remapping, capture and placed reductions, and control
-decomposition, immediately before LUT driver copying. Early and post plans
+decomposition, before joint LUT placement and LUT driver copying. Early and post plans
 together may contain at most sixteen steps. Either plan can be used alone.
 Each plan resolves its reports relative to its own file. A post plan is also
 explicit CLI state and is disabled by default.
@@ -64,9 +64,9 @@ route with normal constraints.
 
 Listing must be final across the complete transformation sequence. An early,
 internal-cut, placed-reduction or decomposition listing cannot precede a post
-plan. A post listing cannot precede any LUT-driver-copy request, including a
-driver listing. Selected post steps may precede a selected or listing driver
-request. Neither a selected candidate nor a listing proves routed timing,
+plan. A post listing cannot precede a joint LUT placement or LUT-driver-copy
+request, including a listing. Selected post steps may precede selected or listing
+pair and driver requests. Neither a selected candidate nor a listing proves routed timing,
 exported physical truth or hardware behavior.
 
 Early plans cannot be combined with legacy local-remap options. Both plan
