@@ -44,6 +44,7 @@
 #include <tuple>
 #include "array2d.h"
 #include "fast_bels.h"
+#include "heap_control_set.h"
 #include "log.h"
 #include "nextpnr.h"
 #include "parallel_refine.h"
@@ -131,29 +132,6 @@ template <typename T> struct EquationSystem
         // for (int i = 0; i < int(x.size()); i++)
         //    log_info("x[%d] = %f\n", i, x.at(i));
     }
-};
-
-struct ControlSetState
-{
-    int32_t ctrl_set = -1;
-    int32_t count = 0;
-    void bind(int32_t ctrl_set)
-    {
-        if (count == 0) {
-            this->ctrl_set = ctrl_set;
-        } else {
-            NPNR_ASSERT(this->ctrl_set == ctrl_set);
-        }
-        ++count;
-    }
-    void unbind()
-    {
-        --count;
-        NPNR_ASSERT(count >= 0);
-        if (count == 0)
-            this->ctrl_set = -1;
-    }
-    bool check(int32_t ctrl_set) { return count == 0 || ctrl_set == this->ctrl_set; }
 };
 
 } // namespace
@@ -453,7 +431,7 @@ class HeAPPlacer
     dict<IdString, int> cell_ctrl_set;
     dict<ClusterId, int> chain_size;
     // Tracking control sets
-    array2d<std::vector<ControlSetState>> control_sets;
+    array2d<std::vector<HeapControlSetState>> control_sets;
     dict<int, int> z_to_ctrl_set;
     // Performance counting
     double solve_time = 0, cl_time = 0, sl_time = 0;
@@ -595,27 +573,38 @@ class HeAPPlacer
 
     bool test_ctrl_set(BelId bel, IdString cell)
     {
-        if (cfg.ff_bel_bucket == BelBucketId() || cfg.disableCtrlSet)
+        if (cfg.ff_bel_bucket == BelBucketId() || cfg.disableCtrlSet || !cfg.ctrlSetExclusive)
+            return true;
+        auto found = cell_ctrl_set.find(cell);
+        if (found == cell_ctrl_set.end())
             return true;
         if (ctx->getBelBucketForBel(bel) != cfg.ff_bel_bucket)
             return true;
         auto loc = ctx->getBelLocation(bel);
-        return control_sets.at(loc.x, loc.y).at(z_to_ctrl_set.at(loc.z)).check(cell_ctrl_set.at(cell));
+        return control_sets.at(loc.x, loc.y).at(z_to_ctrl_set.at(loc.z)).check(found->second);
     }
 
     void bind_ctrl_set(BelId bel, IdString cell)
     {
         if (cfg.ff_bel_bucket == BelBucketId() || cfg.disableCtrlSet)
             return;
+        auto found = cell_ctrl_set.find(cell);
+        if (found == cell_ctrl_set.end())
+            return;
         if (ctx->getBelBucketForBel(bel) != cfg.ff_bel_bucket)
             return;
         auto loc = ctx->getBelLocation(bel);
-        control_sets.at(loc.x, loc.y).at(z_to_ctrl_set.at(loc.z)).bind(cell_ctrl_set.at(cell));
+        auto &group = control_sets.at(loc.x, loc.y).at(z_to_ctrl_set.at(loc.z));
+        NPNR_ASSERT(!cfg.ctrlSetExclusive || group.check(found->second));
+        group.bind(found->second);
     }
 
-    void unbind_ctrl_set(BelId bel)
+    void unbind_ctrl_set(BelId bel, IdString cell)
     {
         if (cfg.ff_bel_bucket == BelBucketId() || cfg.disableCtrlSet)
+            return;
+        auto found = cell_ctrl_set.find(cell);
+        if (found == cell_ctrl_set.end())
             return;
         if (ctx->getBelBucketForBel(bel) != cfg.ff_bel_bucket)
             return;
@@ -626,7 +615,7 @@ class HeAPPlacer
         auto fnd = z_to_ctrl_set.find(loc.z);
         if (fnd == z_to_ctrl_set.end())
             return;
-        tile.at(fnd->second).unbind();
+        tile.at(fnd->second).unbind(found->second);
     }
 
     int32_t get_cluster_control_set(ClusterId cluster)
@@ -669,7 +658,7 @@ class HeAPPlacer
                 return;
             ++nonempty;
             for (int g = 0; g < int(tile.size()); g++) {
-                if (tile.at(g).count > 0 && tile.at(g).ctrl_set == ctrl_set) {
+                if (tile.at(g).members.count(ctrl_set)) {
                     result.emplace_back(x, y, g);
                 }
             }
@@ -820,7 +809,7 @@ class HeAPPlacer
                             bels_used.insert(bel);
                         } else {
                             ctx->unbindBel(bel);
-                            unbind_ctrl_set(bel);
+                            unbind_ctrl_set(bel, ci->name);
                             available_bels.at(ci->type).push_front(bel);
                         }
                     }
@@ -1079,7 +1068,7 @@ class HeAPPlacer
                 if (ci->bel != BelId() &&
                     (ci->udata != dont_solve ||
                      (ci->cluster != ClusterId() && ctx->getClusterRootCell(ci->cluster)->udata != dont_solve))) {
-                    p->unbind_ctrl_set(ci->bel);
+                    p->unbind_ctrl_set(ci->bel, ci->name);
                     ctx->unbindBel(ci->bel);
                 }
             }
@@ -1238,7 +1227,7 @@ class HeAPPlacer
                 if (iter_at_radius >= need_to_explore && bestBel != BelId()) {
                     CellInfo *bound = ctx->getBoundBelCell(bestBel);
                     if (bound != nullptr) {
-                        p->unbind_ctrl_set(bound->bel);
+                        p->unbind_ctrl_set(bound->bel, bound->name);
                         ctx->unbindBel(bound->bel);
                         remaining.emplace(p->chain_size[bound->name] * p->cfg.get_cell_legalisation_weight(ctx, bound),
                                           bound->name);
@@ -1367,7 +1356,7 @@ class HeAPPlacer
                     } else {
                         // It's legal, and we've tried enough. Finish.
                         if (bound != nullptr) {
-                            p->unbind_ctrl_set(sz);
+                            p->unbind_ctrl_set(sz, bound->name);
                             remaining.emplace(p->chain_size[bound->name] *
                                                       p->cfg.get_cell_legalisation_weight(ctx, bound),
                                               bound->name);
@@ -1463,7 +1452,7 @@ class HeAPPlacer
                 }
                 for (auto &move : moves_made) {
                     if (move.second)
-                        p->unbind_ctrl_set(move.first);
+                        p->unbind_ctrl_set(move.first, move.second->name);
                 }
                 for (auto &target : targets) {
                     Loc loc = ctx->getBelLocation(target.second);

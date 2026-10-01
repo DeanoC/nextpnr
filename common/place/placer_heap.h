@@ -65,12 +65,16 @@ struct PlacerHeapCfg
     std::function<float(Context *, CellInfo *)> get_cell_legalisation_weight = [](Context *, CellInfo *) { return 1; };
 
     bool disableCtrlSet;
+    // When false, prefer matching sets without requiring exclusive use of a
+    // group. The backend's full legality check decides whether mixed sets
+    // may share it (e.g. Cyclone V LABs have several enable/reset lines).
+    bool ctrlSetExclusive = true;
 
     /*
     Control set API
     HeAP legalisation can be sped up by directly searching for nearby tiles to place an FF with a compatible control
-    set. Only one shared control set is currently supported, however, as a full validity check is always performed too,
-    this doesn't need to encompass every possible incompatibility (this is only for performance/QoR not correctness)
+    set. By default each group admits one set. With ctrlSetExclusive=false, matching sets are only a search
+    preference and the backend's validity check decides whether different sets may share a group.
 
     ff_bel_bucket is the bel bucket ID for the flipflop (or logic cell if combined with LUT) bel type
 
@@ -79,7 +83,7 @@ struct PlacerHeapCfg
     the two SLICEs in a tile.
 
     get_cell_control_set should return a unique index for every control set possibility. i.e. if this function returns
-    the same value the flipflops could be placed in the same group.
+    the same value the flipflops could be placed in the same group. Returning -1 excludes the cell from this model.
     */
 
     BelBucketId ff_bel_bucket = BelBucketId();

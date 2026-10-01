@@ -14,13 +14,13 @@ function get_dependencies {
 function build_nextpnr {
     mkdir build
     pushd build
-    cmake .. -DARCH=mistral -DMISTRAL_ROOT=${MISTRAL_PATH}
-    make nextpnr-mistral -j`nproc`
+    cmake .. -DARCH=mistral -DMISTRAL_ROOT=${MISTRAL_PATH} -DBUILD_TESTS=ON
+    make nextpnr-mistral nextpnr-heap-control-set-test -j`nproc`
     popd
 }
 
 function run_tests {
-    :
+    ctest --test-dir build -R '^nextpnr-heap-control-set-test$' --output-on-failure
 }
 
 function run_archcheck {
