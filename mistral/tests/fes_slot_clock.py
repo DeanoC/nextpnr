@@ -31,14 +31,14 @@ def main():
         .CLK1(clk_a), .CLK2(clk_a), .A1ADDR(10'b0), .A1DATA(10'b0), .A1EN(address),
         .B1ADDR(10'b0), .B1DATA(shell_data), .B1EN(1'b1),
         .ACLR0(1'b0), .ACLR1(1'b0));
-    // Six counter bits exercise the carry chain and every LUT6 input.
-    reg [5:0] arithmetic = 6'd0;
-    always @(posedge clk_a) arithmetic <= arithmetic + 6'd1;
+    // Eight bits retain the FES #263 counter regression alongside LUT6 coverage.
+    reg [7:0] arithmetic = 8'd0;
+    always @(posedge clk_a) arithmetic <= arithmetic + 8'd1;
     wire lut6_result;
     (* keep *) MISTRAL_ALUT6 #(.LUT(64'h6996966996696996)) six_input (
         .A(arithmetic[0]), .B(arithmetic[1]), .C(arithmetic[2]),
         .D(arithmetic[3]), .E(arithmetic[4]), .F(arithmetic[5]), .Q(lut6_result));
-    assign qa = plug_addr ^ shell_data[0] ^ arithmetic[5] ^ lut6_result;
+    assign qa = plug_addr ^ shell_data[0] ^ arithmetic[7] ^ lut6_result;
 endmodule
 ''')
     cart = output / "cart.v"

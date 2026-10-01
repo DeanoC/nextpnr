@@ -37,6 +37,16 @@ python3 mistral/tests/fes_slot_clock.py --yosys /path/to/yosys \
 This regression validates merge and packing. It does not claim timing closure,
 CRAM overlay equivalence or hardware acceptance for a consumer shell.
 
+The shell retains the eight-bit arithmetic counter from
+[FES #263](https://github.com/DeanoC/fes/issues/263). Its router2 GOUT conflict
+came from skipping LAB preparation when a user BEL lock was mistaken for a
+restored scaffold lock: both arithmetic halves retained the placement-only
+E0 input estimate. Commits `7b212392` and `c2bb4363` legalise fresh user-locked
+LABs while leaving restored scaffold pin maps intact. The reduced
+`LabPinmapTest` cases in `nextpnr-mistral-test` cover distinct arithmetic
+inputs beside a user-locked socket, its required FF data route-through, and
+preservation of alternate pin maps and DATAIN for a restored scaffold.
+
 The merge regression also routes a shell containing RAM before importing the
 cart. Imported physical BEL pins are used when detaching a vacant return sink;
 logical pin maps are not yet restored at that point. Cart packing skips bound
