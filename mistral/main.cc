@@ -109,6 +109,7 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("remap-decompose-candidate", po::value<int>(), "qualified decomposition candidate index (default: list only)");
     specific.add_options()("remap-lut-pair-critical", po::value<std::string>(), "prior timing report for joint placement of two consecutive LUTs");
     specific.add_options()("remap-lut-pair-candidate", po::value<int>(), "qualified LUT-pair-placement candidate index (default: list only)");
+    specific.add_options()("remap-lut-pair-compose-copy", "compose a LUT pair into one isolated copy for a whole same-LAB enable cohort");
     specific.add_options()("remap-lut-driver-critical", po::value<std::string>(), "prior timing report for one LUT driver copy to an arithmetic data input");
     specific.add_options()("remap-lut-driver-candidate", po::value<int>(), "qualified LUT-driver-copy candidate index (default: list only)");
     specific.add_options()("remap-candidate", po::value<int>(), "qualified local-remap candidate index (default: list only)");
@@ -364,9 +365,13 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     }
     ctx->lut_pair_report.clear();
     ctx->lut_pair_selection = -1;
+    ctx->lut_pair_compose_copy = false;
+    if (vm.count("remap-lut-pair-compose-copy") && !vm.count("remap-lut-pair-critical"))
+        log_error("--remap-lut-pair-compose-copy requires --remap-lut-pair-critical.\n");
     if (vm.count("remap-lut-pair-candidate") && !vm.count("remap-lut-pair-critical"))
         log_error("--remap-lut-pair-candidate requires --remap-lut-pair-critical.\n");
     if (vm.count("remap-lut-pair-critical")) {
+        ctx->lut_pair_compose_copy = vm.count("remap-lut-pair-compose-copy") != 0;
         if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") ||
             vm.count("fes-scaffold") || (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
             (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))

@@ -100,6 +100,7 @@ EndpointFailure endpoint_failure(const mistral_remap_clock_guard::Rows &before,
 
 bool Arch::remap_lut_pair_critical(const std::string &report, int selection)
 {
+    if (lut_pair_compose_copy) return remap_lut_pair_copy_critical(report, selection);
     namespace guard = mistral_remap_clock_guard;
     Context *ctx = getCtx();
     if (selection < -1) log_error("Invalid LUT pair placement candidate index.\n");

@@ -1,6 +1,6 @@
 # Joint LUT placement
 
-The optional Mistral pass relocates two consecutive, existing ordinary LUTs
+By default, the optional Mistral pass relocates two consecutive, existing ordinary LUTs
 jointly. It keeps their truth tables, logical pins, Q nets, aliases and complete
 consumer lists. It creates no cell or net and moves no FF. A terminal FF may
 remain in a protected carry LAB; both source LUTs and destination LABs must be
@@ -13,6 +13,28 @@ requires `--no-route`, forbids `--rbf`, and must be the final transformation.
 A nonnegative candidate selects one of the freshly qualified joint moves.
 An unavailable selection stops before routing, including with `--force`.
 The default invocation does not run this pass.
+
+With the explicit `--remap-lut-pair-compose-copy` option, the same stage instead
+composes the final two ordinary LUTs of an FF enable path into one new LUT with
+at most six distinct external inputs. This option requires the critical report.
+Constants, inversions and shared inputs are included in exhaustive truth-table
+evaluation. Only the complete same-clock FF enable cohort in the selected LAB
+is redirected. Both original LUTs, every other consumer, all aliases and every
+original cell placement remain fixed. The selected FFs must themselves be weak,
+ordinary and unconstrained; protected carry neighbours in their LAB are allowed.
+Source and copy destination LABs remain unprotected, and the copy occupies an
+empty isolated whole ALM. Repeated copies use the first available paired cell
+and private-net names without replacing an earlier copy.
+
+Copy mode searches within the same radius three, with at most eight cones and
+16 timing trials per cone, choosing distinct destination tiles. It follows all
+external input fanouts and both original output fanouts for the same strict
+endpoint, related-hold, reference and global-clock checks. A negative baseline
+setup margin cannot worsen. No original FF or LUT is unbound, including during
+a probe. Only the selected equivalent ENA control changes; other controls and
+protected neighbours remain exact. Listing, rejection, an unavailable selection
+and exceptions remove the new owners and restore dictionary order, indexed
+consumer storage, original pin/cache records and every saved LAB field.
 
 The report must describe the current placed graph: cell names, locations,
 ports, net names and route continuity are checked before a probe changes any

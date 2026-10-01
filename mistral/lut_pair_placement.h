@@ -1,4 +1,4 @@
-/* Optional original-LUT pair relocation. SPDX-License-Identifier: ISC */
+/* Optional original-LUT pair relocation or composed enable copy. SPDX-License-Identifier: ISC */
 #ifndef MISTRAL_LUT_PAIR_PLACEMENT_H
 #define MISTRAL_LUT_PAIR_PLACEMENT_H
 #include "nextpnr_namespaces.h"
