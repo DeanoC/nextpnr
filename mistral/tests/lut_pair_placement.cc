@@ -86,7 +86,8 @@ struct PairSnapshot {
             ASSERT_TRUE(a.count(user.index));
             EXPECT_EQ(a.at(user.index).cell, user.value.cell); EXPECT_EQ(a.at(user.index).port, user.value.port);
         }
-        for (size_t i = 0; i < size_t(b.capacity()) + 8; ++i) EXPECT_EQ(a.add(PortRef{}), b.add(PortRef{}));
+        const size_t probes = size_t(b.capacity()) + 8;
+        for (size_t i = 0; i < probes; ++i) EXPECT_EQ(a.add(PortRef{}), b.add(PortRef{}));
     }
 
     void expect(Context *ctx, const std::set<IdString> &moved = {}) const
