@@ -430,9 +430,9 @@ TEST_F(LutPairPlacementTest, NativeRelatedClockHoldRejectsARealShorterSetupPath)
     ctx->settings[ctx->id("target_freq")] = 125e6;
     ASSERT_NE(clock_source(clock, "hold_primary_clock", true), nullptr);
     auto *capture_clock = clock;
-    // Seven real identity LUT arcs create a late common-root capture clock.
+    // Eight real identity LUT arcs create a late common-root capture clock.
     // Native A-to-Q max delay is 400ps per stage; no delay is injected.
-    for (int index = 0; index < 7; ++index) {
+    for (int index = 0; index < 8; ++index) {
         auto name = "hold_clock_stage_" + std::to_string(index);
         auto *cell = ctx->createCell(ctx->id(name), id_MISTRAL_ALUT2);
         cell->params[id_LUT] = Property(0xa, 4); cell->addInput(id_A); cell->addInput(id_B); cell->addOutput(id_Q);
