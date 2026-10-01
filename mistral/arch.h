@@ -576,7 +576,9 @@ struct Arch : BaseArch<ArchRanges>
     bool remap_decomposed_critical(const std::string &report, int selection);
     std::string lut_pair_report; // Explicit CLI only; never a serialized setting.
     int lut_pair_selection = -1;
+    bool lut_pair_compose_copy = false; // Explicit CLI only; default relocation remains unchanged.
     bool remap_lut_pair_critical(const std::string &report, int selection);
+    bool remap_lut_pair_copy_critical(const std::string &report, int selection);
     std::string lut_driver_copy_report; // Explicit CLI only; never a serialized setting.
     int lut_driver_copy_selection = -1;
     bool remap_lut_driver_critical(const std::string &report, int selection);

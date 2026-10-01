@@ -14,7 +14,8 @@ BINARY = str(Path(sys.argv.pop(1)).resolve())
 class LutPairPlacementCliTest(unittest.TestCase):
     def run_design(self, *, options=(), pair=True, route=False, loaded_step=None,
                    placer=None, report='{"critical_paths": []}', prefix=None,
-                   prefix_candidate=-1, driver=False, environment=None, reload=False):
+                   prefix_candidate=-1, driver=False, environment=None, reload=False,
+                   compose=False, copy_setting=None):
         with tempfile.TemporaryDirectory(prefix="lut-pair-placement-cli-") as directory:
             root = Path(directory)
             module = dict(attributes={"top": 1}, ports={}, cells={}, netnames={})
@@ -22,6 +23,8 @@ class LutPairPlacementCliTest(unittest.TestCase):
                 module["attributes"]["step"] = loaded_step
             if placer is not None:
                 module["settings"] = {"placer": placer}
+            if copy_setting is not None:
+                module.setdefault("settings", {})["lut_pair_compose_copy"] = copy_setting
             (root / "design.json").write_text(json.dumps({"modules": {"top": module}}))
             if report is not None:
                 (root / "timing.json").write_text(report)
@@ -32,6 +35,8 @@ class LutPairPlacementCliTest(unittest.TestCase):
                 command += ["--no-route"]
             if pair:
                 command += ["--remap-lut-pair-critical", str(root / "timing.json")]
+            if compose:
+                command += ["--remap-lut-pair-compose-copy"]
             if prefix in ("local", "comb", "decomposition"):
                 critical, candidate = {
                     "local": ("--remap-critical", "--remap-candidate"),
@@ -161,6 +166,63 @@ class LutPairPlacementCliTest(unittest.TestCase):
         self.assertEqual(code, 0, log)
         self.assertTrue(reloaded)
         self.assertNotIn("LUT pair placement discovery", log)
+
+    def test_compose_copy_requires_explicit_report(self):
+        self.reject("--remap-lut-pair-compose-copy requires --remap-lut-pair-critical",
+                    pair=False, compose=True, before_placement=True)
+        self.reject("Invalid LUT pair placement candidate index", compose=True,
+                    options=("--remap-lut-pair-candidate", "-2"), before_placement=True)
+
+    def test_compose_listing_is_distinct_and_writes_no_routed_artifact(self):
+        code, log, outputs = self.run_design(compose=True, placer="heap")
+        self.assertEqual(code, 0, log)
+        self.assertEqual(outputs, {"output.json"}, log)
+        self.assertIn("LUT pair copy discovery: 0 bounded cones.", log)
+        self.assertIn("LUT pair copy: 0 qualified candidates; no candidate applied.", log)
+        self.assertNotIn("LUT pair placement discovery", log)
+        self.assertNotIn("Routing complete.", log)
+        self.assertNotIn("Running the GPU router", log)
+
+    def test_compose_mode_keeps_fresh_and_listing_restrictions(self):
+        for options in (("--no-pack",), ("--no-place",), ("--pack-only",),
+                        ("--fes-scaffold",), ("--fes-cart", "missing-cart.json"), ("--placer", "sa")):
+            with self.subTest(options=options):
+                self.reject("LUT pair placement requires fresh ordinary HeAP placement",
+                            compose=True, options=options, before_placement=True)
+        for step in ("pack", "place", "route"):
+            with self.subTest(step=step):
+                self.reject("LUT pair placement requires fresh ordinary HeAP placement",
+                            compose=True, loaded_step=step, before_placement=True)
+        self.reject("LUT pair placement listing requires --no-route and no --rbf",
+                    compose=True, route=True, before_placement=True)
+
+    def test_compose_failure_stops_before_route_despite_force(self):
+        log = self.reject("Requested LUT pair placement candidate was not qualified; routing was not started",
+                          compose=True, route=True,
+                          options=("--remap-lut-pair-candidate", "0", "--force", "--rbf", "output.rbf"))
+        self.assertIn("LUT pair copy discovery: 0 bounded cones.", log)
+        self.assertNotIn("LUT pair copy applied candidate", log)
+
+    def test_compose_preserves_prefix_and_following_driver_listing_rules(self):
+        for prefix in ("local", "comb", "decomposition", "local-plan", "comb-plan", "post-plan"):
+            with self.subTest(prefix=prefix):
+                self.reject("A remap listing must be final; it cannot precede LUT pair placement",
+                            compose=True, prefix=prefix, before_placement=True)
+        self.reject("A LUT pair placement listing must be final; it cannot precede LUT driver copy",
+                    compose=True, driver=True, before_placement=True)
+
+    def test_compose_default_off_and_saved_settings_do_not_activate_it(self):
+        code, log, outputs = self.run_design(copy_setting=1)
+        self.assertEqual(code, 0, log)
+        self.assertEqual(outputs, {"output.json"})
+        self.assertIn("LUT pair placement discovery", log)
+        self.assertNotIn("LUT pair copy discovery", log)
+        answer = self.run_design(compose=True, reload=True)
+        self.assertEqual(answer[0], 0, answer[1])
+        self.assertEqual(len(answer), 6, answer)
+        self.assertEqual(answer[3], 0, answer[4]); self.assertTrue(answer[5])
+        self.assertNotIn("LUT pair copy discovery", answer[4])
+        self.assertNotIn("LUT pair placement discovery", answer[4])
 
 
 if __name__ == "__main__":

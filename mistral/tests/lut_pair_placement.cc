@@ -90,7 +90,7 @@ struct PairSnapshot {
         for (size_t i = 0; i < probes; ++i) EXPECT_EQ(a.add(PortRef{}), b.add(PortRef{}));
     }
 
-    void expect(Context *ctx, const std::set<IdString> &moved = {}) const
+    void expect(Context *ctx, const std::set<IdString> &moved = {}, bool owner_addresses = true) const
     {
         ASSERT_EQ(ctx->cells.size(), cells.size()); ASSERT_EQ(ctx->nets.size(), nets.size());
         ASSERT_EQ(ctx->net_aliases.size(), aliases.size()); ASSERT_EQ(ctx->ports.size(), ports.size());
@@ -104,7 +104,8 @@ struct PairSnapshot {
             SCOPED_TRACE(row.first.str(ctx));
             ASSERT_TRUE(ctx->cells.count(row.first));
             auto *cell = ctx->cells.at(row.first).get(); const auto &saved = row.second;
-            EXPECT_EQ(cell, saved.identity); EXPECT_EQ(&ctx->cells.at(row.first), saved.owner);
+            EXPECT_EQ(cell, saved.identity);
+            if (owner_addresses) EXPECT_EQ(&ctx->cells.at(row.first), saved.owner);
             EXPECT_EQ(cell->type, saved.type); EXPECT_EQ(cell->belStrength, saved.strength);
             EXPECT_EQ(cell->params, saved.params); EXPECT_EQ(cell->attrs, saved.attrs);
             EXPECT_EQ(cell->cluster, saved.cluster); EXPECT_EQ(cell->region, saved.region);
@@ -142,7 +143,8 @@ struct PairSnapshot {
         for (const auto &row : nets) {
             ASSERT_TRUE(ctx->nets.count(row.first));
             auto *net = ctx->nets.at(row.first).get(); const auto &saved = row.second;
-            EXPECT_EQ(net, saved.identity); EXPECT_EQ(&ctx->nets.at(row.first), saved.owner);
+            EXPECT_EQ(net, saved.identity);
+            if (owner_addresses) EXPECT_EQ(&ctx->nets.at(row.first), saved.owner);
             EXPECT_EQ(net->driver.cell, saved.driver.cell); EXPECT_EQ(net->driver.port, saved.driver.port);
             EXPECT_EQ(net->attrs, saved.attrs); users(net->users, saved.users);
             ASSERT_EQ(net->wires.size(), saved.wires.size());
@@ -561,4 +563,421 @@ TEST_F(LutPairPlacementTest, DirectListingRejectsFollowingDriverBeforeDiscovery)
     EXPECT_EQ(log.stream.str().find("LUT pair placement discovery"), std::string::npos);
     EXPECT_EQ(log.stream.str().find("LUT pair placement trial"), std::string::npos);
     saved.expect(ctx.get());
+}
+
+namespace {
+struct CopyTrialObserver : std::streambuf {
+    Context *ctx;
+    CellInfo *endpoint;
+    std::ostream stream;
+    std::string text, line;
+    int trials = 0, improving_negative_holds = 0;
+    bool throw_on_trial;
+    CopyTrialObserver(Context *ctx, CellInfo *endpoint, bool fail = false)
+        : ctx(ctx), endpoint(endpoint), stream(this), throw_on_trial(fail)
+    {
+        stream.exceptions(std::ios::badbit | std::ios::failbit);
+        log_streams.emplace_back(&stream, LogLevel::INFO_MSG);
+    }
+    ~CopyTrialObserver() { log_streams.pop_back(); }
+    void append(char value)
+    {
+        text.push_back(value);
+        if (value != '\n') { line.push_back(value); return; }
+        if (line.find("LUT pair copy trial ") != std::string::npos) {
+            ++trials;
+            TimingAnalyser timing(ctx); timing.with_clock_skew = true; timing.setup(false, false, true);
+            std::vector<EndpointClockPairTiming> rows;
+            if (timing.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_ENA), rows))
+                for (const auto &row : rows) if (row.hold_margin && *row.hold_margin < 0 &&
+                        line.find("improve=1") != std::string::npos) {
+                    ++improving_negative_holds;
+                    EXPECT_TRUE(line.find("endpoints=0") != std::string::npos || line.find("hold=0") != std::string::npos)
+                        << "An actual negative related hold must reject this improving trial: " << line;
+                }
+            if (throw_on_trial) throw std::runtime_error("actual composed-copy trial exception");
+        }
+        line.clear();
+    }
+    std::streamsize xsputn(const char *data, std::streamsize count) override
+    { for (std::streamsize i = 0; i < count; ++i) append(data[i]); return count; }
+    int_type overflow(int_type value) override
+    { if (!traits_type::eq_int_type(value, traits_type::eof())) append(traits_type::to_char_type(value)); return traits_type::not_eof(value); }
+};
+} // namespace
+
+class LutPairCopyTest : public LutPairPlacementTest {
+  protected:
+    const std::array<IdString, 6> pins = {id_A, id_B, id_C, id_D, id_E, id_F};
+    std::vector<NetInfo *> literal_nets;
+
+    void SetUp() override
+    {
+        LutPairPlacementTest::SetUp();
+        ctx->lut_pair_compose_copy = true;
+        for (auto *cell : inputs) literal_nets.push_back(cell->getPort(id_Q));
+        // The FF itself is eligible; its real carry neighbour protects the
+        // entire terminal LAB against source/destination LUT placement.
+        sink->belStrength = STRENGTH_WEAK;
+    }
+
+    bool value(NetInfo *net, unsigned assignment) const
+    {
+        for (unsigned i = 0; i < literal_nets.size(); ++i)
+            if (net == literal_nets[i]) return (assignment >> i) & 1;
+        if (!net || !net->driver.cell || !net->driver.cell->params.count(id_LUT)) {
+            ADD_FAILURE() << "Unexpected composed-copy boundary"; return false;
+        }
+        auto *cell = net->driver.cell;
+        unsigned lut_row = 0;
+        for (unsigned i = 0; i < pins.size(); ++i) {
+            if (!cell->ports.count(pins[i])) continue;
+            auto state = cell->get_pin_state(pins[i]);
+            bool bit = state == PIN_1;
+            if (state == PIN_SIG || state == PIN_INV) {
+                bit = value(cell->getPort(pins[i]), assignment);
+                if (state == PIN_INV) bit = !bit;
+            } else EXPECT_TRUE(state == PIN_0 || state == PIN_1);
+            lut_row |= unsigned(bit) << i;
+        }
+        return (uint64_t(cell->params.at(id_LUT).as_int64()) >> lut_row) & 1;
+    }
+
+    CellInfo *new_clone(const PairSnapshot &saved) const
+    {
+        auto *net = sink->getPort(id_ENA);
+        if (!net || !net->driver.cell || saved.cells.count(net->driver.cell->name)) return nullptr;
+        return net->driver.cell;
+    }
+
+    void restored(const PairSnapshot &saved) const
+    {
+        // Dictionary insertion may reallocate owner entries; original owned
+        // CellInfo/NetInfo identities and their order must still be exact.
+        saved.expect(ctx.get(), {}, false);
+    }
+
+    void rejected(const PairSnapshot &saved, int selection = 0)
+    {
+        try { EXPECT_FALSE(ctx->remap_lut_pair_critical(report(), selection)); }
+        catch (const log_execution_error_exception &) { }
+        restored(saved);
+    }
+
+    void originals(const PairSnapshot &saved, CellInfo *clone, const std::set<IdString> &cohort) const
+    {
+        ASSERT_NE(clone, nullptr); auto *output = clone->getPort(id_Q);
+        ASSERT_NE(output, nullptr); ASSERT_EQ(ctx->cells.size(), saved.cells.size() + 1);
+        ASSERT_EQ(ctx->nets.size(), saved.nets.size() + 1);
+        ASSERT_EQ(ctx->net_aliases.size(), saved.aliases.size() + 1);
+        ASSERT_TRUE(ctx->net_aliases.count(output->name));
+        EXPECT_EQ(ctx->net_aliases.at(output->name), output->name);
+        std::vector<IdString> cells, nets, aliases;
+        for (const auto &row : ctx->cells) if (row.first != clone->name) cells.push_back(row.first);
+        for (const auto &row : ctx->nets) if (row.first != output->name) nets.push_back(row.first);
+        for (const auto &row : ctx->net_aliases) {
+            if (!saved.aliases.count(row.first)) {
+                EXPECT_EQ(row.first, output->name); EXPECT_EQ(row.second, output->name);
+            } else aliases.push_back(row.first);
+        }
+        EXPECT_EQ(cells, saved.cell_order); EXPECT_EQ(nets, saved.net_order); EXPECT_EQ(aliases, saved.alias_order);
+        EXPECT_EQ(ctx->ports.size(), saved.ports.size());
+        for (const auto &row : saved.ports) PairSnapshot::port(ctx->ports.at(row.first), row.second);
+        for (const auto &row : saved.aliases) EXPECT_EQ(ctx->net_aliases.at(row.first), row.second);
+        for (const auto &row : saved.cells) {
+            SCOPED_TRACE(row.first.str(ctx.get())); auto *cell = ctx->cells.at(row.first).get(); const auto &old = row.second;
+            EXPECT_EQ(cell, old.identity); EXPECT_EQ(cell->type, old.type); EXPECT_EQ(cell->bel, old.bel);
+            EXPECT_EQ(cell->belStrength, old.strength); EXPECT_EQ(cell->params, old.params); EXPECT_EQ(cell->attrs, old.attrs);
+            EXPECT_EQ(cell->cluster, old.cluster); EXPECT_EQ(cell->region, old.region);
+            EXPECT_EQ(cell->constr_children, old.cache.constr_children);
+            EXPECT_EQ(cell->constr_x, old.cache.constr_x); EXPECT_EQ(cell->constr_y, old.cache.constr_y);
+            EXPECT_EQ(cell->constr_z, old.cache.constr_z); EXPECT_EQ(cell->constr_abs_z, old.cache.constr_abs_z);
+            std::vector<IdString> port_order;
+            for (const auto &pin : cell->ports) port_order.push_back(pin.first);
+            EXPECT_EQ(port_order, old.port_order); ASSERT_EQ(cell->pin_data.size(), old.pins.size());
+            for (const auto &pin : old.pins) {
+                ASSERT_TRUE(cell->pin_data.count(pin.first));
+                EXPECT_EQ(cell->pin_data.at(pin.first).state, pin.second.state);
+                EXPECT_EQ(cell->pin_data.at(pin.first).bel_pins, pin.second.bel_pins);
+            }
+            for (const auto &pin : old.ports) {
+                const auto &actual = cell->ports.at(pin.first);
+                if (cohort.count(row.first) && pin.first == id_ENA) {
+                    EXPECT_EQ(actual.name, pin.second.name); EXPECT_EQ(actual.type, pin.second.type); EXPECT_EQ(actual.net, output);
+                    ASSERT_TRUE(output->users.count(actual.user_idx));
+                    EXPECT_EQ(output->users.at(actual.user_idx).cell, cell); EXPECT_EQ(output->users.at(actual.user_idx).port, id_ENA);
+                } else PairSnapshot::port(actual, pin.second);
+            }
+            if (cell->type == id_MISTRAL_FF) {
+                const auto &a = cell->ffInfo.ctrlset, &b = old.cache.ffInfo.ctrlset;
+                EXPECT_EQ(a.clk, b.clk); EXPECT_EQ(a.aclr, b.aclr); EXPECT_EQ(a.sclr, b.sclr); EXPECT_EQ(a.sload, b.sload);
+                EXPECT_EQ(a.ena.inverted, b.ena.inverted);
+                EXPECT_EQ(a.ena.net, cohort.count(row.first) ? output : b.ena.net);
+                EXPECT_EQ(cell->ffInfo.datain, old.cache.ffInfo.datain); EXPECT_EQ(cell->ffInfo.sdata, old.cache.ffInfo.sdata);
+            } else if (ctx->is_comb_cell(cell->type)) {
+                const auto &a = cell->combInfo, &b = old.cache.combInfo;
+                EXPECT_EQ(a.comb_out, b.comb_out); EXPECT_EQ(a.lut_input_count, b.lut_input_count);
+                EXPECT_EQ(a.used_lut_input_count, b.used_lut_input_count); EXPECT_EQ(a.lut_bits_count, b.lut_bits_count);
+                EXPECT_EQ(a.chain_shared_input_count, b.chain_shared_input_count); EXPECT_EQ(a.mlab_group, b.mlab_group);
+                EXPECT_EQ(a.is_carry, b.is_carry); EXPECT_EQ(a.is_shared, b.is_shared); EXPECT_EQ(a.is_extended, b.is_extended);
+                EXPECT_EQ(a.carry_start, b.carry_start); EXPECT_EQ(a.carry_end, b.carry_end);
+                for (int i = 0; i < b.lut_input_count; ++i) EXPECT_EQ(a.lut_in[i], b.lut_in[i]);
+            }
+        }
+        ASSERT_EQ(output->users.entries(), cohort.size());
+        for (const auto &row : saved.nets) {
+            auto *net = ctx->nets.at(row.first).get(); const auto &old = row.second;
+            EXPECT_EQ(net, old.identity); EXPECT_EQ(net->driver.cell, old.driver.cell); EXPECT_EQ(net->driver.port, old.driver.port);
+            EXPECT_EQ(net->attrs, old.attrs); EXPECT_EQ(net->wires.size(), old.wires.size());
+            for (const auto &wire : old.wires) {
+                ASSERT_TRUE(net->wires.count(wire.first));
+                EXPECT_EQ(net->wires.at(wire.first).pip, wire.second.pip);
+                EXPECT_EQ(net->wires.at(wire.first).strength, wire.second.strength);
+            }
+            auto expected = old.users;
+            for (auto name : cohort) {
+                const auto &port = saved.cells.at(name).ports.at(id_ENA);
+                if (port.net == net) expected.remove(port.user_idx);
+            }
+            size_t added = 0;
+            for (auto user : net->users.enumerate()) {
+                if (user.value.cell == clone) {
+                    ++added; EXPECT_NE(user.value.port, id_Q);
+                    EXPECT_EQ(clone->ports.at(user.value.port).user_idx, user.index);
+                    EXPECT_EQ(clone->getPort(user.value.port), net);
+                } else {
+                    ASSERT_TRUE(expected.count(user.index)); EXPECT_EQ(expected.at(user.index).cell, user.value.cell);
+                    EXPECT_EQ(expected.at(user.index).port, user.value.port);
+                }
+            }
+            EXPECT_EQ(net->users.entries(), expected.entries() + added);
+        }
+        EXPECT_TRUE(ctx->isBelLocationValid(clone->bel));
+        auto site = ctx->getBelLocation(clone->bel), target = ctx->getBelLocation(sink->bel);
+        EXPECT_FALSE(site.x == target.x && site.y == target.y);
+        auto alm = ctx->bel_data(clone->bel).lab_data;
+        for (auto bel : ctx->getBelsByTile(site.x, site.y))
+            if ((ctx->isValidBelForCellType(id_MISTRAL_ALUT2, bel) || ctx->isValidBelForCellType(id_MISTRAL_FF, bel)) &&
+                ctx->bel_data(bel).lab_data.alm == alm.alm && ctx->getBoundBelCell(bel)) EXPECT_EQ(ctx->getBoundBelCell(bel), clone);
+        ctx->check();
+    }
+};
+
+TEST_F(LutPairCopyTest, ComposedCopyRetainsSharedOriginalPathsAndRedirectsOnlySelectedLab)
+{
+    auto *inner_side = side("original_inner_capture", inner->getPort(id_Q), 24, 20); inner_side->belStrength = STRENGTH_WEAK;
+    auto *outer_side = side("original_outer_capture", outer->getPort(id_Q), 24, 21); outer_side->belStrength = STRENGTH_WEAK;
+    auto *peer = ff("same_lab_enable", outer->getPort(id_Q)); ctx->assign_ff_info(peer); ctx->assign_default_pinmap(peer);
+    place(peer, 30, 20, STRENGTH_WEAK, 14);
+    auto *remote = ff("different_lab_enable", outer->getPort(id_Q)); ctx->assign_ff_info(remote); ctx->assign_default_pinmap(remote);
+    place(remote, 24, 22, STRENGTH_WEAK);
+    std::array<std::vector<EndpointClockPairTiming>, 2> old_rows;
+    TimingAnalyser before(ctx.get()); before.with_clock_skew = true; before.setup(false, false, true);
+    for (int i = 0; i < 2; ++i) {
+        auto *cell = i ? outer_side : inner_side;
+        ASSERT_TRUE(before.get_endpoint_clock_pair_timings(CellPortKey(cell->name, id_DATAIN), old_rows[i]));
+        ASSERT_FALSE(old_rows[i].empty()); ASSERT_TRUE(old_rows[i][0].setup_margin); ASSERT_LT(*old_rows[i][0].setup_margin, 0);
+    }
+    float old_slack = before.get_setup_slack(CellPortKey(sink->name, id_ENA)); ASSERT_TRUE(std::isfinite(old_slack));
+    PairSnapshot saved(ctx.get()); PairLog log;
+    ASSERT_TRUE(ctx->remap_lut_pair_critical(report(), 0)) << log.stream.str();
+    auto *clone = new_clone(saved); ASSERT_NE(clone, nullptr); EXPECT_EQ(clone->type, id_MISTRAL_ALUT4);
+    originals(saved, clone, {sink->name, peer->name}); EXPECT_EQ(remote->getPort(id_ENA), outer->getPort(id_Q));
+    for (unsigned row = 0; row < 16; ++row) EXPECT_EQ(value(outer->getPort(id_Q), row), value(clone->getPort(id_Q), row)) << row;
+    TimingAnalyser after(ctx.get()); after.with_clock_skew = true; after.setup(false, false, true);
+    EXPECT_GE(after.get_setup_slack(CellPortKey(sink->name, id_ENA)), old_slack + 250);
+    for (int i = 0; i < 2; ++i) {
+        std::vector<EndpointClockPairTiming> now; auto *cell = i ? outer_side : inner_side;
+        ASSERT_TRUE(after.get_endpoint_clock_pair_timings(CellPortKey(cell->name, id_DATAIN), now)); ASSERT_EQ(now.size(), old_rows[i].size());
+        for (size_t j = 0; j < now.size(); ++j) {
+            EXPECT_EQ(now[j].launch, old_rows[i][j].launch); EXPECT_EQ(now[j].capture, old_rows[i][j].capture);
+            EXPECT_EQ(now[j].max_path_delay, old_rows[i][j].max_path_delay); EXPECT_EQ(now[j].min_path_delay, old_rows[i][j].min_path_delay);
+            EXPECT_EQ(now[j].setup_margin, old_rows[i][j].setup_margin); EXPECT_EQ(now[j].hold_margin, old_rows[i][j].hold_margin);
+        }
+    }
+    EXPECT_NE(log.stream.str().find("LUT pair copy applied candidate 0"), std::string::npos);
+    EXPECT_EQ(log.stream.str().find("LUT pair placement trial "), std::string::npos);
+}
+
+TEST_F(LutPairCopyTest, ConstantInvertedAndSharedLeavesHaveExhaustiveEffectivePinTruth)
+{
+    auto old_bel = outer->bel; ctx->unbindBel(old_bel);
+    outer->disconnectPort(id_A); outer->connectPort(id_A, inputs[1]->getPort(id_Q));
+    outer->disconnectPort(id_C); outer->pin_data[id_C].state = PIN_1; outer->pin_data[id_B].state = PIN_INV;
+    ctx->assign_comb_info(outer); ctx->assign_default_pinmap(outer); ctx->bindBel(old_bel, outer, STRENGTH_WEAK);
+    ASSERT_TRUE(ctx->isBelLocationValid(old_bel));
+    std::array<bool, 16> truth;
+    for (unsigned row = 0; row < 16; ++row) truth[row] = value(outer->getPort(id_Q), row);
+    PairSnapshot saved(ctx.get()); PairLog log;
+    ASSERT_TRUE(ctx->remap_lut_pair_critical(report(), 0)) << log.stream.str();
+    auto *clone = new_clone(saved); ASSERT_NE(clone, nullptr); EXPECT_EQ(clone->type, id_MISTRAL_ALUT2);
+    originals(saved, clone, {sink->name});
+    for (unsigned row = 0; row < 16; ++row) {
+        EXPECT_EQ(value(outer->getPort(id_Q), row), truth[row]); EXPECT_EQ(value(clone->getPort(id_Q), row), truth[row]);
+    }
+}
+
+TEST_F(LutPairCopyTest, SixDistinctLeavesRetainAllSixtyFourAssignments)
+{
+    auto bel = outer->bel; ctx->unbindBel(bel); outer->type = id_MISTRAL_ALUT5; outer->params[id_LUT] = Property(0x7fff0000, 32);
+    for (int i = 0; i < 2; ++i) {
+        auto *launch = ff("sixth_cut_literal_" + std::to_string(i)); ctx->assign_ff_info(launch); ctx->assign_default_pinmap(launch);
+        place(launch, 30, 19, STRENGTH_LOCKED); literal_nets.push_back(launch->getPort(id_Q));
+        outer->addInput(pins[i + 3]); outer->connectPort(pins[i + 3], launch->getPort(id_Q));
+    }
+    ctx->assign_comb_info(outer); ctx->assign_default_pinmap(outer); ctx->bindBel(bel, outer, STRENGTH_WEAK);
+    ASSERT_TRUE(ctx->isBelLocationValid(bel));
+    std::array<bool, 64> truth;
+    for (unsigned row = 0; row < 64; ++row) truth[row] = value(outer->getPort(id_Q), row);
+    PairSnapshot saved(ctx.get()); PairLog log;
+    ASSERT_TRUE(ctx->remap_lut_pair_critical(report(), 0)) << log.stream.str();
+    auto *clone = new_clone(saved); ASSERT_NE(clone, nullptr); EXPECT_EQ(clone->type, id_MISTRAL_ALUT6);
+    originals(saved, clone, {sink->name});
+    for (unsigned row = 0; row < 64; ++row) {
+        EXPECT_EQ(value(outer->getPort(id_Q), row), truth[row]); EXPECT_EQ(value(clone->getPort(id_Q), row), truth[row]);
+    }
+}
+
+TEST_F(LutPairCopyTest, QualifiedListingUnavailableSelectionAndTrialExceptionRestoreExactStores)
+{
+    PairSnapshot saved(ctx.get());
+    EXPECT_THROW(ctx->remap_lut_pair_critical("{", -1), log_execution_error_exception); restored(saved);
+    auto stale = report(); auto offset = stale.find("inner$q"); ASSERT_NE(offset, std::string::npos);
+    stale.replace(offset, 7, "wrong$q");
+    EXPECT_THROW(ctx->remap_lut_pair_critical(stale, -1), log_execution_error_exception); restored(saved);
+    { PairLog log; EXPECT_FALSE(ctx->remap_lut_pair_critical(report(), -1));
+      ASSERT_NE(log.stream.str().find("LUT pair copy candidate 0:"), std::string::npos) << log.stream.str(); }
+    restored(saved);
+    EXPECT_FALSE(ctx->remap_lut_pair_critical(report(), 9999)); restored(saved);
+    { CopyTrialObserver probe(ctx.get(), sink, true);
+      EXPECT_THROW(ctx->remap_lut_pair_critical(report(), -1), std::exception); EXPECT_GT(probe.trials, 0); }
+    restored(saved);
+}
+
+TEST_F(LutPairCopyTest, PrivateNamePairsRespectBothAliasNamespaces)
+{
+    const auto stem = outer->name.str(ctx.get()) + "$lut_pair_copy";
+    ctx->net_aliases[ctx->id(stem)] = outer->getPort(id_Q)->name;
+    ctx->net_aliases[ctx->id(stem + "$1$Q")] = outer->getPort(id_Q)->name;
+    PairSnapshot saved(ctx.get()); PairLog log;
+    ASSERT_TRUE(ctx->remap_lut_pair_critical(report(), 0)) << log.stream.str();
+    auto *clone = new_clone(saved); ASSERT_NE(clone, nullptr);
+    EXPECT_EQ(clone->name.str(ctx.get()), stem + "$2");
+    EXPECT_EQ(clone->getPort(id_Q)->name.str(ctx.get()), stem + "$2$Q");
+    originals(saved, clone, {sink->name});
+}
+
+TEST_F(LutPairCopyTest, LaterFailedProbeRetainsAnEarlierAcceptedCopyAndItsUsers)
+{
+    PairLog log; ASSERT_TRUE(ctx->remap_lut_pair_critical(report(), 0)) << log.stream.str();
+    auto *first = sink->getPort(id_ENA)->driver.cell; auto first_bel = first->bel; auto first_q = first->getPort(id_Q);
+    auto *next = ff("later_target", outer->getPort(id_Q)); ctx->assign_ff_info(next); ctx->assign_default_pinmap(next);
+    place(next, 31, 20, STRENGTH_WEAK);
+    sink = next; PairSnapshot retained(ctx.get());
+    EXPECT_FALSE(ctx->remap_lut_pair_critical(report(), -1)); restored(retained);
+    EXPECT_FALSE(ctx->remap_lut_pair_critical(report(), 9999)); restored(retained);
+    EXPECT_EQ(ctx->cells.at(first->name).get(), first); EXPECT_EQ(first->bel, first_bel); EXPECT_EQ(first->getPort(id_Q), first_q);
+}
+
+TEST_F(LutPairCopyTest, ProtectedSourceOrTargetAndMixedClockCohortCannotBeCopied)
+{
+    inner->belStrength = STRENGTH_LOCKED; { PairSnapshot saved(ctx.get()); rejected(saved); }
+    inner->belStrength = STRENGTH_WEAK;
+    for (auto *cell : {inner, outer, sink}) {
+        for (auto key : {ctx->id("keep"), ctx->id("dont_touch")}) {
+            cell->attrs[key] = Property(1); { PairSnapshot saved(ctx.get()); rejected(saved); } cell->attrs.erase(key);
+        }
+        cell->cluster = cell->name; { PairSnapshot saved(ctx.get()); rejected(saved); } cell->cluster = ClusterId();
+        Region region; cell->region = &region; { PairSnapshot saved(ctx.get()); rejected(saved); } cell->region = nullptr;
+    }
+    sink->belStrength = STRENGTH_LOCKED; { PairSnapshot saved(ctx.get()); rejected(saved); } sink->belStrength = STRENGTH_WEAK;
+    auto *other_clock = ctx->createNet(ctx->id("cohort_other_clock")); other_clock->is_global = true;
+    other_clock->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+    auto *peer = ff("mixed_clock_enable", outer->getPort(id_Q)); peer->disconnectPort(id_CLK); peer->connectPort(id_CLK, other_clock);
+    ctx->assign_ff_info(peer); ctx->assign_default_pinmap(peer); place(peer, 30, 20, STRENGTH_WEAK, 14);
+    PairSnapshot saved(ctx.get()); rejected(saved);
+}
+
+TEST_F(LutPairCopyTest, SevenDistinctLeavesRejectBeforeTrial)
+{
+    auto bel = outer->bel; ctx->unbindBel(bel); outer->type = id_MISTRAL_ALUT6; outer->params[id_LUT] = Property(uint64_t(0xf0f0f0f0f0f0f0f0), 64);
+    for (int i = 0; i < 3; ++i) {
+        auto *launch = ff("extra_literal_" + std::to_string(i)); ctx->assign_ff_info(launch); ctx->assign_default_pinmap(launch);
+        place(launch, 30, 19, STRENGTH_LOCKED); outer->addInput(pins[i + 3]); outer->connectPort(pins[i + 3], launch->getPort(id_Q));
+    }
+    ctx->assign_comb_info(outer); ctx->assign_default_pinmap(outer); ctx->bindBel(bel, outer, STRENGTH_WEAK);
+    ASSERT_TRUE(ctx->isBelLocationValid(bel));
+    { PairSnapshot saved(ctx.get()); PairLog log; rejected(saved);
+      EXPECT_EQ(log.stream.str().find("LUT pair copy trial "), std::string::npos); }
+}
+
+TEST_F(LutPairCopyTest, UnsupportedSideBoundaryRejectsWithoutChangingOriginalGraph)
+{
+    // This case retains a supported four-leaf cut; the side boundary is
+    // independently responsible for rejection rather than cut-width failure.
+    // The root is also an uncharacterized generated clock, not a register input.
+    auto *capture = ff("unsupported_clock_side");
+    capture->disconnectPort(id_CLK); capture->connectPort(id_CLK, outer->getPort(id_Q));
+    ctx->assign_ff_info(capture); ctx->assign_default_pinmap(capture); place(capture, 24, 22);
+    PairSnapshot saved(ctx.get()); PairLog log; rejected(saved);
+    EXPECT_NE(log.stream.str().find("reason=boundary-clock-or-fanout-unavailable"), std::string::npos) << log.stream.str();
+    EXPECT_EQ(log.stream.str().find("LUT pair copy trial "), std::string::npos);
+}
+
+TEST_F(LutPairCopyTest, KnownUnrelatedOriginalSideUserKeepsItsFiniteMaxAndMinBounds)
+{
+    auto *other = ctx->createNet(ctx->id("copy_unrelated_clock")); other->is_global = true;
+    other->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+    ASSERT_NE(clock_source(clock, "copy_launch_clock"), nullptr);
+    ASSERT_NE(clock_source(other, "copy_independent_capture_clock"), nullptr);
+    auto *capture = ff("copy_unrelated_original_side", nullptr, inner->getPort(id_Q));
+    capture->disconnectPort(id_CLK); capture->connectPort(id_CLK, other);
+    ctx->assign_ff_info(capture); ctx->assign_default_pinmap(capture); place(capture, 24, 20, STRENGTH_WEAK);
+    TimingAnalyser before(ctx.get()); before.with_clock_skew = false; before.setup(false, false, true);
+    std::vector<EndpointClockPairTiming> old_rows;
+    ASSERT_TRUE(before.get_endpoint_clock_pair_timings(CellPortKey(capture->name, id_DATAIN), old_rows)); ASSERT_FALSE(old_rows.empty());
+    for (const auto &row : old_rows) {
+        ASSERT_FALSE(row.setup_timed); ASSERT_FALSE(row.setup_window); ASSERT_FALSE(row.setup_margin);
+        ASSERT_GT(row.min_path_delay, 0); ASSERT_GE(row.max_path_delay, row.min_path_delay);
+    }
+    PairSnapshot saved(ctx.get()); PairLog log;
+    ASSERT_TRUE(ctx->remap_lut_pair_critical(report(), 0)) << log.stream.str();
+    auto *clone = new_clone(saved); ASSERT_NE(clone, nullptr); originals(saved, clone, {sink->name});
+    TimingAnalyser after(ctx.get()); after.with_clock_skew = false; after.setup(false, false, true);
+    std::vector<EndpointClockPairTiming> now;
+    ASSERT_TRUE(after.get_endpoint_clock_pair_timings(CellPortKey(capture->name, id_DATAIN), now)); ASSERT_EQ(now.size(), old_rows.size());
+    for (size_t i = 0; i < now.size(); ++i) {
+        EXPECT_EQ(now[i].launch, old_rows[i].launch); EXPECT_EQ(now[i].capture, old_rows[i].capture);
+        EXPECT_FALSE(now[i].setup_timed); EXPECT_FALSE(now[i].setup_margin); EXPECT_FALSE(now[i].setup_window);
+        EXPECT_EQ(now[i].max_path_delay, old_rows[i].max_path_delay); EXPECT_EQ(now[i].min_path_delay, old_rows[i].min_path_delay);
+    }
+    EXPECT_NE(log.stream.str().find("reference_free=1"), std::string::npos) << log.stream.str();
+}
+
+TEST_F(LutPairCopyTest, UnsupportedHoldCoverageAndRealNegativeHoldRejectSafely)
+{
+    auto old_state = sink->pin_data[id_CLK].state;
+    sink->pin_data[id_CLK].state = PIN_INV; ctx->assign_ff_info(sink);
+    { PairSnapshot saved(ctx.get()); PairLog log; rejected(saved);
+      EXPECT_EQ(log.stream.str().find("LUT pair copy trial "), std::string::npos); }
+    sink->pin_data[id_CLK].state = old_state; ctx->assign_ff_info(sink);
+    clock->clkconstr->period = DelayPair(8000); clock->clkconstr->high = clock->clkconstr->low = DelayPair(4000);
+    clock->clkconstr->phase_group = ctx->id("copy_hold_phase"); ctx->settings[ctx->id("target_freq")] = 125e6;
+    ASSERT_NE(clock_source(clock, "copy_primary_clock", true), nullptr); auto *capture = clock;
+    for (int i = 0; i < 8; ++i) {
+        auto *cell = ctx->createCell(ctx->idf("copy_clock_stage_%d", i), id_MISTRAL_ALUT2);
+        cell->params[id_LUT] = Property(0xa, 4); cell->addInput(id_A); cell->addInput(id_B); cell->addOutput(id_Q);
+        cell->connectPort(id_A, capture); cell->pin_data[id_B].state = PIN_0;
+        capture = ctx->createNet(ctx->idf("copy_clock_q_%d", i)); capture->is_global = true; cell->connectPort(id_Q, capture);
+        ctx->assign_comb_info(cell); ctx->assign_default_pinmap(cell); place(cell, 2, 35, STRENGTH_LOCKED, 6 * i);
+    }
+    capture->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr); capture->clkconstr->phase_shift = 0;
+    sink->disconnectPort(id_CLK); sink->connectPort(id_CLK, capture); ctx->assign_ff_info(sink);
+    TimingAnalyser before(ctx.get()); before.with_clock_skew = true; before.setup(false, false, true);
+    std::vector<EndpointClockPairTiming> rows;
+    ASSERT_TRUE(before.get_endpoint_clock_pair_timings(CellPortKey(sink->name, id_ENA), rows)); ASSERT_FALSE(rows.empty());
+    for (const auto &row : rows) { ASSERT_TRUE(row.hold_related); ASSERT_TRUE(row.hold_margin); ASSERT_GE(*row.hold_margin, 0); }
+    PairSnapshot saved(ctx.get()); CopyTrialObserver probe(ctx.get(), sink);
+    EXPECT_FALSE(ctx->remap_lut_pair_critical(report(), -1)); EXPECT_GT(probe.trials, 0); EXPECT_GT(probe.improving_negative_holds, 0) << probe.text;
+    restored(saved);
 }

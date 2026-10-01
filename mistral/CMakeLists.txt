@@ -19,6 +19,7 @@ set(SOURCES
     lut_driver_copy.cc
     lut_driver_copy.h
     lut_pair_placement.cc
+    lut_pair_copy.cc
     lut_pair_placement.h
     remap_clock_guard.h
     comb_plan.cc
