@@ -5,20 +5,30 @@
 #include "reduction_balance_plan.h"
 #include "timing.h"
 #include <algorithm>
+#include <cstdio>
+#include <limits>
 #include <map>
 #include <memory>
+#include <regex>
 #include <set>
+#include <sstream>
 #include <vector>
 
 USING_NEXTPNR_NAMESPACE
 
 NEXTPNR_NAMESPACE_BEGIN
-bool placed_reduction(Context *, const std::string &, int, int);
+bool placed_reduction(Context *, const std::string &, int, int, int minimum_branch_gain_ps = 250);
 void diagnostic_placed_reduction(Context *, const char *);
 NEXTPNR_NAMESPACE_END
 
 namespace {
 const IdString cube_pins[] = {id_A, id_B, id_C, id_D, id_E, id_F};
+
+struct PlacedReductionLog {
+    std::ostringstream stream;
+    PlacedReductionLog() { log_streams.emplace_back(&stream, LogLevel::INFO_MSG); }
+    ~PlacedReductionLog() { log_streams.pop_back(); }
+};
 
 // Save actual indexed_store slots, not merely the number of consumers. A
 // rewrite can preserve its truth table while perturbing unrelated placement
@@ -30,6 +40,7 @@ struct CubeSnapshot {
         BelId bel;
         PlaceStrength strength;
         std::map<IdString, Property> params;
+        std::map<IdString, Property> attrs;
         std::map<IdString, PortInfo> ports;
         std::map<IdString, ArchPinInfo> pins;
     };
@@ -48,8 +59,9 @@ struct CubeSnapshot {
         for (const auto &entry : ctx->cells) {
             cell_order.push_back(entry.first);
             auto *c = entry.second.get();
-            Cell saved{c, c->type, c->bel, c->belStrength, {}, {}, {}};
+            Cell saved{c, c->type, c->bel, c->belStrength, {}, {}, {}, {}};
             for (const auto &value : c->params) saved.params.emplace(value.first, value.second);
+            for (const auto &value : c->attrs) saved.attrs.emplace(value.first, value.second);
             for (const auto &value : c->ports) saved.ports.emplace(value.first, value.second);
             for (const auto &value : c->pin_data) saved.pins.emplace(value.first, value.second);
             cells.emplace(entry.first, std::move(saved));
@@ -85,6 +97,11 @@ struct CubeSnapshot {
             for (const auto &param : saved.params) {
                 ASSERT_TRUE(cell->params.count(param.first));
                 EXPECT_EQ(cell->params.at(param.first), param.second);
+            }
+            ASSERT_EQ(cell->attrs.size(), saved.attrs.size());
+            for (const auto &attr : saved.attrs) {
+                ASSERT_TRUE(cell->attrs.count(attr.first));
+                EXPECT_EQ(cell->attrs.at(attr.first), attr.second);
             }
             ASSERT_EQ(cell->ports.size(), saved.ports.size());
             for (const auto &port : saved.ports) {
@@ -128,15 +145,33 @@ struct CubeSnapshot {
     {
         ASSERT_EQ(ctx->cells.size(), cells.size());
         ASSERT_EQ(ctx->nets.size(), nets.size());
+        std::vector<IdString> actual_cells, actual_nets;
+        for (const auto &entry : ctx->cells) actual_cells.push_back(entry.first);
+        for (const auto &entry : ctx->nets) actual_nets.push_back(entry.first);
+        EXPECT_EQ(actual_cells, cell_order);
+        EXPECT_EQ(actual_nets, net_order);
         for (const auto &entry : cells) {
             auto *cell = ctx->cells.at(entry.first).get();
             EXPECT_EQ(cell, entry.second.identity);
             if (std::find(cone.begin(), cone.end(), cell) != cone.end()) continue;
+            EXPECT_EQ(cell->type, entry.second.type) << entry.first.str(ctx);
             EXPECT_EQ(cell->bel, entry.second.bel) << entry.first.str(ctx);
             EXPECT_EQ(cell->belStrength, entry.second.strength) << entry.first.str(ctx);
+            ASSERT_EQ(cell->params.size(), entry.second.params.size());
+            for (const auto &param : entry.second.params) EXPECT_EQ(cell->params.at(param.first), param.second);
+            ASSERT_EQ(cell->attrs.size(), entry.second.attrs.size());
+            for (const auto &attr : entry.second.attrs) EXPECT_EQ(cell->attrs.at(attr.first), attr.second);
+            ASSERT_EQ(cell->pin_data.size(), entry.second.pins.size());
+            for (const auto &pin : entry.second.pins) {
+                ASSERT_TRUE(cell->pin_data.count(pin.first));
+                EXPECT_EQ(cell->pin_data.at(pin.first).state, pin.second.state);
+                EXPECT_EQ(cell->pin_data.at(pin.first).bel_pins, pin.second.bel_pins);
+            }
             ASSERT_EQ(cell->ports.size(), entry.second.ports.size());
             for (const auto &port : entry.second.ports) {
                 ASSERT_TRUE(cell->ports.count(port.first));
+                EXPECT_EQ(cell->ports.at(port.first).name, port.second.name);
+                EXPECT_EQ(cell->ports.at(port.first).type, port.second.type);
                 EXPECT_EQ(cell->ports.at(port.first).net, port.second.net);
                 EXPECT_EQ(cell->ports.at(port.first).user_idx, port.second.user_idx);
             }
@@ -157,6 +192,10 @@ struct CubeSnapshot {
                     EXPECT_EQ(now.port, user.second.port);
                 }
             }
+            auto actual = net->users, expected = entry.second.user_store;
+            ASSERT_EQ(actual.capacity(), expected.capacity());
+            for (size_t probe = 0; probe < size_t(entry.second.user_store.capacity()) + 8; ++probe)
+                EXPECT_EQ(actual.add(PortRef{}), expected.add(PortRef{}));
         }
     }
 };
@@ -291,6 +330,322 @@ class PlacedReductionTest : public ::testing::Test {
         return (uint64_t(cell->params.at(id_LUT).as_int64()) >> address) & 1;
     }
 };
+
+class TwelveReductionTest : public PlacedReductionTest {
+  protected:
+    void SetUp() override
+    {
+        PlacedReductionTest::SetUp();
+        auto *extra_source = ff(ctx->id("generic_source_11"), nullptr);
+        inputs.push_back(extra_source->getPort(id_Q));
+        for (auto *cell : {leaf, middle, root}) {
+            ctx->unbindBel(cell->bel);
+            for (IdString pin : cube_pins)
+                if (cell->ports.count(pin)) {
+                    cell->disconnectPort(pin);
+                    cell->ports.erase(pin);
+                    cell->pin_data.erase(pin);
+                }
+        }
+        // Extend the existing active-low chain by one final literal. Both
+        // new six-input leaves must be used after balancing; the public root
+        // and all source/sink registers keep their original identities.
+        auto rebuild = [&](CellInfo *cell, IdString type, uint64_t mask, const std::vector<NetInfo *> &ins) {
+            cell->type = type;
+            cell->params[id_LUT] = Property(int64_t(mask), 1 << ins.size());
+            for (size_t pin = 0; pin < ins.size(); ++pin) {
+                cell->addInput(cube_pins[pin]);
+                cell->connectPort(cube_pins[pin], ins[pin]);
+                cell->pin_data[cube_pins[pin]].state = PIN_SIG;
+            }
+        };
+        rebuild(leaf, id_MISTRAL_ALUT4, 0x7fff, {inputs[0], inputs[1], inputs[2], inputs[3]});
+        rebuild(middle, id_MISTRAL_ALUT5, 0xffff7fffULL,
+                {inputs[4], inputs[5], inputs[6], inputs[7], leaf->getPort(id_Q)});
+        rebuild(root, id_MISTRAL_ALUT5, 0x8000,
+                {inputs[8], inputs[9], inputs[10], inputs[11], middle->getPort(id_Q)});
+        leaf->pin_data[id_B].state = PIN_INV;
+        middle->pin_data[id_C].state = PIN_INV;
+        root->pin_data[id_B].state = PIN_INV;
+        auto holes = [&](NetInfo *net) {
+            auto a = net->users.add(PortRef{}), b = net->users.add(PortRef{}), c = net->users.add(PortRef{});
+            net->users.remove(a); net->users.remove(c); net->users.remove(b);
+        };
+        for (auto *net : inputs) holes(net);
+        for (auto *cell : {leaf, middle, root}) holes(cell->getPort(id_Q));
+        const auto public_result = ctx->id("twelve_public_result"), public_literal = ctx->id("twelve_public_literal");
+        ctx->ports[public_result] = PortInfo{public_result, output, PORT_OUT, {}};
+        ctx->ports[public_literal] = PortInfo{public_literal, inputs[11], PORT_OUT, {}};
+        ctx->assignArchInfo();
+        ASSERT_NO_FATAL_FAILURE(place(extra_source, 25, 29));
+        ASSERT_NO_FATAL_FAILURE(place(leaf, 25, 10));
+        ASSERT_NO_FATAL_FAILURE(place(middle, 25, 40));
+        ASSERT_NO_FATAL_FAILURE(place(root, 25, 30));
+        assert_legal();
+        ctx->check();
+    }
+};
+
+// A test-side transaction exposes real timing on the future graph, then
+// restores the source before calling the production search. It neither uses
+// its shortlist nor reproduces its score function.
+struct NarrowTimingProbe {
+    struct Saved {
+        CellInfo *cell;
+        IdString type;
+        decltype(CellInfo::ports) ports;
+        decltype(CellInfo::params) params;
+        decltype(CellInfo::pin_data) pins;
+        BelId bel;
+        PlaceStrength strength;
+    };
+    Context *ctx;
+    const ReductionBalancePlan &plan;
+    std::vector<Saved> saved;
+    std::map<NetInfo *, indexed_store<PortRef>> users;
+    std::map<NetInfo *, PortRef> drivers;
+
+    NarrowTimingProbe(Context *ctx, const ReductionBalancePlan &plan) : ctx(ctx), plan(plan)
+    {
+        NPNR_ASSERT(plan.cells.size() == 3 && plan.retired.empty());
+        for (auto *cell : plan.cells)
+            saved.push_back({cell, cell->type, cell->ports, cell->params, cell->pin_data,
+                             cell->bel, cell->belStrength});
+        for (const auto &entry : ctx->nets) {
+            users.emplace(entry.second.get(), entry.second->users);
+            drivers.emplace(entry.second.get(), entry.second->driver);
+        }
+        for (auto *cell : plan.cells) ctx->unbindBel(cell->bel);
+        rewrite_reduction(ctx, plan);
+        ctx->assignArchInfo();
+        for (const auto &cell : saved)
+            if (cell.cell == plan.root) ctx->bindBel(cell.bel, plan.root, cell.strength);
+    }
+
+    void unbind_leaves()
+    {
+        for (auto *cell : plan.leaves)
+            if (cell->bel != BelId()) ctx->unbindBel(cell->bel);
+    }
+
+    bool bind_pair(BelId a, BelId b)
+    {
+        unbind_leaves();
+        if (a == b || !ctx->checkBelAvail(a) || !ctx->checkBelAvail(b)) return false;
+        ctx->bindBel(a, plan.leaves[0], STRENGTH_WEAK);
+        ctx->bindBel(b, plan.leaves[1], STRENGTH_WEAK);
+        for (const auto &entry : ctx->cells)
+            if (entry.second->bel != BelId() && !ctx->isBelLocationValid(entry.second->bel)) return false;
+        return true;
+    }
+
+    ~NarrowTimingProbe()
+    {
+        unbind_leaves();
+        ctx->unbindBel(plan.root->bel);
+        for (const auto &cell : saved) {
+            cell.cell->type = cell.type;
+            cell.cell->ports = cell.ports;
+            cell.cell->params = cell.params;
+            cell.cell->pin_data = cell.pins;
+        }
+        for (auto &entry : users) std::swap(entry.first->users, entry.second);
+        for (const auto &entry : drivers) entry.first->driver = entry.second;
+        ctx->assignArchInfo();
+        for (const auto &cell : saved) ctx->bindBel(cell.bel, cell.cell, cell.strength);
+    }
+};
+
+class NarrowSearchTest : public TwelveReductionTest {
+  protected:
+    using Lab = std::pair<int, int>;
+    static constexpr int compact_x = 25, compact_y = 28;
+    CellInfo *preserved_buf = nullptr;
+    std::vector<CellInfo *> blockers;
+
+    Lab lab(BelId bel) const
+    {
+        const auto at = ctx->getBelLocation(bel);
+        return {at.x, at.y};
+    }
+
+    std::string ff_tile_diagnostic(CellInfo *source, const std::vector<Lab> &tiles)
+    {
+        NPNR_ASSERT(source->bel == BelId());
+        std::ostringstream result;
+        for (const auto &tile : tiles) {
+            const auto bels = ctx->getBelsByTile(tile.first, tile.second);
+            unsigned ff_bels = 0, valid_type = 0, free = 0, legal = 0;
+            for (auto bel : bels) {
+                if (ctx->getBelType(bel) == id_MISTRAL_FF) ++ff_bels;
+                if (!ctx->isValidBelForCellType(source->type, bel)) continue;
+                ++valid_type;
+                if (!ctx->checkBelAvail(bel)) continue;
+                ++free;
+                ctx->bindBel(bel, source, STRENGTH_WEAK);
+                if (ctx->isBelLocationValid(bel)) ++legal;
+                ctx->unbindBel(bel);
+            }
+            result << "Ranking fixture FF tile " << tile.first << ',' << tile.second << ": bels=" << bels.size()
+                   << " ff=" << ff_bels << " valid_type=" << valid_type << " free=" << free
+                   << " legal=" << legal << '\n';
+        }
+        return result.str();
+    }
+
+    bool empty_alm(BelId bel) const
+    {
+        const auto at = ctx->getBelLocation(bel);
+        for (const auto &entry : ctx->cells) {
+            if (entry.second->bel == BelId()) continue;
+            const auto other = ctx->getBelLocation(entry.second->bel);
+            if (other.x == at.x && other.y == at.y && other.z / 6 == at.z / 6) return false;
+        }
+        return true;
+    }
+
+    void place_empty_alm(CellInfo *cell)
+    {
+        for (auto bel : ctx->getBelsByTile(compact_x, compact_y)) {
+            if (!ctx->checkBelAvail(bel) || !ctx->isValidBelForCellType(cell->type, bel) || !empty_alm(bel)) continue;
+            ctx->bindBel(bel, cell, STRENGTH_WEAK);
+            if (ctx->isBelLocationValid(bel)) return;
+            ctx->unbindBel(bel);
+        }
+        FAIL() << "No completely empty ALM for " << cell->name.str(ctx.get());
+    }
+
+    CellInfo *constant_blocker()
+    {
+        const std::string name = "generic_search_blocker_" + std::to_string(blockers.size());
+        auto *cell = lut(name.c_str(), id_MISTRAL_ALUT2, 0, {inputs[0], inputs[1]});
+        for (IdString pin : {id_A, id_B}) {
+            cell->disconnectPort(pin);
+            cell->pin_data[pin].state = PIN_0;
+        }
+        blockers.push_back(cell);
+        ctx->assign_comb_info(cell);
+        return cell;
+    }
+
+    void compact_with_blocked_upgrades(unsigned spare_alms)
+    {
+        for (auto *cell : {leaf, middle, root}) ctx->unbindBel(cell->bel);
+        auto *extra = inputs[11]->driver.cell;
+        ctx->unbindBel(extra->bel);
+        ASSERT_NO_FATAL_FAILURE(place(extra, compact_x, compact_y));
+        ASSERT_NO_FATAL_FAILURE(place(leaf, compact_x, compact_y));
+        ASSERT_NO_FATAL_FAILURE(place(middle, compact_x, compact_y));
+        ASSERT_NO_FATAL_FAILURE(place(root, compact_x, compact_y));
+        ctx->unbindBel(leaf->bel);
+        ctx->unbindBel(middle->bel);
+        ASSERT_NO_FATAL_FAILURE(place_empty_alm(leaf));
+        ASSERT_NO_FATAL_FAILURE(place_empty_alm(middle));
+        for (auto *original : {leaf, middle}) {
+            const auto at = ctx->getBelLocation(original->bel);
+            auto *blocker = constant_blocker();
+            bool placed = false;
+            for (auto bel : ctx->getBelsByTile(at.x, at.y)) {
+                if (ctx->getBelLocation(bel).z != (at.z ^ 1)) continue;
+                ASSERT_TRUE(ctx->checkBelAvail(bel));
+                ASSERT_TRUE(ctx->isValidBelForCellType(blocker->type, bel));
+                ctx->bindBel(bel, blocker, STRENGTH_WEAK);
+                ASSERT_TRUE(ctx->isBelLocationValid(bel));
+                placed = true;
+                break;
+            }
+            ASSERT_TRUE(placed);
+        }
+        // Reserve genuinely FF-empty ALMs. Constant, weak unrelated LUTs
+        // block every other COMB-empty ALM without consuming extra LAB inputs
+        // or making the LAB protected. The two old child sites cannot upgrade.
+        std::set<int> reserved;
+        for (auto bel : ctx->getBelsByTile(compact_x, compact_y)) {
+            if (!ctx->isValidBelForCellType(id_MISTRAL_ALUT6, bel) || !empty_alm(bel)) continue;
+            reserved.insert(ctx->getBelLocation(bel).z / 6);
+            if (reserved.size() == spare_alms) break;
+        }
+        ASSERT_EQ(reserved.size(), spare_alms);
+        for (int alm = 0; alm < 10; ++alm) {
+            if (reserved.count(alm)) continue;
+            bool occupied = false;
+            for (auto bel : ctx->getBelsByTile(compact_x, compact_y))
+                if (ctx->getBelLocation(bel).z / 6 == alm &&
+                    ctx->isValidBelForCellType(id_MISTRAL_ALUT2, bel) && !ctx->checkBelAvail(bel)) occupied = true;
+            if (occupied) continue;
+            auto *blocker = constant_blocker();
+            bool placed = false;
+            for (auto bel : ctx->getBelsByTile(compact_x, compact_y)) {
+                if (ctx->getBelLocation(bel).z / 6 != alm || !ctx->checkBelAvail(bel) ||
+                    !ctx->isValidBelForCellType(blocker->type, bel)) continue;
+                ctx->bindBel(bel, blocker, STRENGTH_WEAK);
+                if (ctx->isBelLocationValid(bel)) { placed = true; break; }
+                ctx->unbindBel(bel);
+            }
+            ASSERT_TRUE(placed) << "Cannot block unrelated ALM " << alm;
+        }
+        preserved_buf = ctx->createCell(ctx->id("generic_preserved_buffer"), id_MISTRAL_BUF);
+        preserved_buf->addInput(id_A);
+        preserved_buf->connectPort(id_A, unrelated->getPort(id_Q));
+        preserved_buf->addOutput(id_Q);
+        preserved_buf->connectPort(id_Q, ctx->createNet(ctx->id("generic_preserved_buffer$q")));
+        ctx->assignArchInfo();
+        // BUF is a late route-through cell, intentionally excluded from the
+        // ordinary placer type filter. Follow the backend's direct COMB bind
+        // and still require full physical legality and complete pin state.
+        for (auto bel : ctx->getBelsByTile(30, 21)) {
+            if (!ctx->checkBelAvail(bel) || !ctx->getBelType(bel).in(id_MISTRAL_COMB, id_MISTRAL_MCOMB)) continue;
+            ctx->bindBel(bel, preserved_buf, STRENGTH_WEAK);
+            if (ctx->isBelLocationValid(bel)) break;
+            ctx->unbindBel(bel);
+        }
+        ASSERT_NE(preserved_buf->bel, BelId());
+        assert_legal();
+        ctx->check();
+    }
+
+    std::vector<BelId> representatives(NarrowTimingProbe &probe, CellInfo *child)
+    {
+        probe.unbind_leaves();
+        std::vector<BelId> sites;
+        const std::vector<Lab> labs{{compact_x, compact_y}, {compact_x - 1, compact_y},
+                                  {compact_x + 1, compact_y}, {compact_x, compact_y - 1},
+                                  {compact_x, compact_y + 1}};
+        for (auto tile : labs) {
+            std::set<int> alms;
+            for (auto bel : ctx->getBelsByTile(tile.first, tile.second)) {
+                const auto at = ctx->getBelLocation(bel);
+                if (!ctx->checkBelAvail(bel) || !ctx->isValidBelForCellType(child->type, bel) || alms.count(at.z / 6)) continue;
+                ctx->bindBel(bel, child, STRENGTH_WEAK);
+                const bool legal = ctx->isBelLocationValid(bel);
+                ctx->unbindBel(bel);
+                if (!legal) continue;
+                alms.insert(at.z / 6);
+                sites.push_back(bel);
+                if (alms.size() == 2) break;
+            }
+        }
+        EXPECT_LE(sites.size(), 12u);
+        return sites;
+    }
+
+    std::pair<BelId, BelId> first_logged_pair(const std::string &log)
+    {
+        const std::regex pattern("Placed reduction trial root=" + root->name.str(ctx.get()) +
+                                 " leaves=([^, ]+),([^ ]+) ");
+        std::smatch match;
+        if (!std::regex_search(log, match, pattern)) {
+            ADD_FAILURE() << "No actual timed tuple in log:\n" << log;
+            return {};
+        }
+        std::pair<BelId, BelId> result;
+        for (auto bel : ctx->getBels()) {
+            if (match[1].str() == ctx->nameOfBel(bel)) result.first = bel;
+            if (match[2].str() == ctx->nameOfBel(bel)) result.second = bel;
+        }
+        return result;
+    }
+};
 }
 
 TEST(PlacedReductionDiagnostic, DisabledDoesNotInternIdentifiers)
@@ -348,6 +703,413 @@ TEST_F(PlacedReductionTest, AppliesEquivalentTwoLevelsWithFixedRegistersAndConsu
         ASSERT_TRUE(fmax_after.count(entry.first));
         EXPECT_GE(fmax_after.at(entry.first).achieved + 0.001f, entry.second.achieved);
     }
+    assert_legal();
+    ctx->check();
+}
+
+TEST_F(TwelveReductionTest, ListingRestoresEveryCellNetPinAndIndexedFreeList)
+{
+    ReductionBalancePlan plan;
+    ASSERT_TRUE(plan_reduction(ctx.get(), root->name.str(ctx.get()), true, plan));
+    ASSERT_EQ(plan.literals.size(), 12u);
+    ASSERT_EQ(plan.cells.size(), 3u);
+    CubeSnapshot before(ctx.get());
+    EXPECT_FALSE(placed_reduction(ctx.get(), root->name.str(ctx.get()), 2, -1));
+    before.expect_exact(ctx.get());
+    EXPECT_EQ(ctx->ports.at(ctx->id("twelve_public_result")).net, output);
+    EXPECT_EQ(ctx->ports.at(ctx->id("twelve_public_literal")).net, inputs[11]);
+    assert_legal();
+    ctx->check();
+}
+
+TEST_F(TwelveReductionTest, SelectedRewriteIsExhaustiveAndPreservesEveryRegisterAndPublicRoot)
+{
+    const unsigned required = ((1u << 12) - 1) ^ (1u << 1) ^ (1u << 6) ^ (1u << 9);
+    for (unsigned row = 0; row < (1u << 12); ++row)
+        ASSERT_EQ(evaluate(output, row), row == required) << "before assignment " << row;
+    CubeSnapshot before(ctx.get());
+    TimingAnalyser timing_before(ctx.get());
+    timing_before.setup(false, false, true);
+    ASSERT_TRUE(timing_before.get_timing_result().min_delay_violations.empty());
+    const auto root_port = CellPortKey(root->name, id_Q), sink_port = CellPortKey(sink->name, id_ENA);
+    const auto branch_slack = timing_before.get_setup_slack(root_port);
+    const auto endpoint_slack = timing_before.get_setup_slack(sink_port);
+    ASSERT_TRUE(placed_reduction(ctx.get(), root->name.str(ctx.get()), 2, 0));
+    EXPECT_EQ(root->type, id_MISTRAL_ALUT2);
+    EXPECT_EQ(leaf->type, id_MISTRAL_ALUT6);
+    EXPECT_EQ(middle->type, id_MISTRAL_ALUT6);
+    EXPECT_EQ(root->bel, before.cells.at(root->name).bel);
+    EXPECT_EQ(root->belStrength, before.cells.at(root->name).strength);
+    EXPECT_EQ(root->getPort(id_Q), output);
+    EXPECT_EQ(ctx->ports.at(ctx->id("twelve_public_result")).net, output);
+    EXPECT_EQ(ctx->ports.at(ctx->id("twelve_public_literal")).net, inputs[11]);
+    before.expect_slots_and_fixed_cells(ctx.get(), {leaf, middle, root});
+    for (const auto &entry : before.cells) {
+        const auto &saved = entry.second;
+        if (saved.type != id_MISTRAL_FF) continue;
+        auto *cell = ctx->cells.at(entry.first).get();
+        EXPECT_EQ(cell->type, saved.type);
+        ASSERT_EQ(cell->params.size(), saved.params.size());
+        for (const auto &param : saved.params) EXPECT_EQ(cell->params.at(param.first), param.second);
+        ASSERT_EQ(cell->pin_data.size(), saved.pins.size());
+        for (const auto &pin : saved.pins) {
+            ASSERT_TRUE(cell->pin_data.count(pin.first));
+            EXPECT_EQ(cell->pin_data.at(pin.first).state, pin.second.state);
+            EXPECT_EQ(cell->pin_data.at(pin.first).bel_pins, pin.second.bel_pins);
+        }
+    }
+    for (unsigned row = 0; row < (1u << 12); ++row)
+        EXPECT_EQ(evaluate(output, row), row == required) << "after assignment " << row;
+    TimingAnalyser timing_after(ctx.get());
+    timing_after.setup(false, false, true);
+    EXPECT_GE(timing_after.get_setup_slack(root_port) - branch_slack, 250);
+    EXPECT_GE(timing_after.get_setup_slack(sink_port), endpoint_slack);
+    EXPECT_TRUE(timing_after.get_timing_result().min_delay_violations.empty());
+    const auto &fmax_after = timing_after.get_timing_result().clock_fmax;
+    for (const auto &entry : timing_before.get_timing_result().clock_fmax) {
+        ASSERT_TRUE(fmax_after.count(entry.first));
+        EXPECT_GE(fmax_after.at(entry.first).achieved + 0.001f, entry.second.achieved);
+    }
+    assert_legal();
+    ctx->check();
+}
+
+TEST_F(TwelveReductionTest, PositiveSubDefaultGainNeedsItsExplicitMinimum)
+{
+    // Compact the generic cone, including all twelve launch registers, into
+    // one LAB. With real architecture arcs the original critical chain has
+    // 512 + (300 + 97) + (300 + 97) ps after its first input route; the
+    // balanced chain has 605 + 300 + 400 ps. That leaves a genuine but tiny
+    // positive opportunity. Any trial outside this LAB pays extra routing.
+    for (auto *cell : {leaf, middle, root}) ctx->unbindBel(cell->bel);
+    auto *extra_source = inputs[11]->driver.cell;
+    ctx->unbindBel(extra_source->bel);
+    ASSERT_NO_FATAL_FAILURE(place(extra_source, 25, 28));
+    ASSERT_NO_FATAL_FAILURE(place(leaf, 25, 28));
+    ASSERT_NO_FATAL_FAILURE(place(middle, 25, 28));
+    ASSERT_NO_FATAL_FAILURE(place(root, 25, 28));
+    // Keep an original child site in each of two entirely empty ALMs. The
+    // per-LAB shortlist retains those original sites. Merely taking the two
+    // first free halves can choose the same ALM; two ALUT6s cannot share its
+    // 64 LUT bits, even when both sites are individually legal.
+    ctx->unbindBel(leaf->bel);
+    ctx->unbindBel(middle->bel);
+    auto place_in_empty_alm = [&](CellInfo *cell) {
+        for (auto bel : ctx->getBelsByTile(25, 28)) {
+            if (!ctx->checkBelAvail(bel) || !ctx->isValidBelForCellType(cell->type, bel)) continue;
+            const auto at = ctx->getBelLocation(bel);
+            bool empty = true;
+            for (const auto &entry : ctx->cells) {
+                if (entry.second->bel == BelId()) continue;
+                const auto other = ctx->getBelLocation(entry.second->bel);
+                if (other.x == at.x && other.y == at.y && other.z / 6 == at.z / 6) empty = false;
+            }
+            if (!empty) continue;
+            ctx->bindBel(bel, cell, STRENGTH_WEAK);
+            if (ctx->isBelLocationValid(bel)) return true;
+            ctx->unbindBel(bel);
+        }
+        return false;
+    };
+    ASSERT_TRUE(place_in_empty_alm(leaf));
+    ASSERT_TRUE(place_in_empty_alm(middle));
+    EXPECT_NE(ctx->getBelLocation(leaf->bel).z / 6, ctx->getBelLocation(middle->bel).z / 6);
+    assert_legal();
+    ctx->check();
+    CubeSnapshot before(ctx.get());
+    TimingAnalyser timing_before(ctx.get());
+    timing_before.setup(false, false, true);
+    ASSERT_TRUE(timing_before.get_timing_result().min_delay_violations.empty());
+    const auto root_port = CellPortKey(root->name, id_Q), sink_port = CellPortKey(sink->name, id_ENA);
+    const auto branch_slack = timing_before.get_setup_slack(root_port);
+    const auto endpoint_slack = timing_before.get_setup_slack(sink_port);
+    std::vector<bool> values;
+    for (unsigned row = 0; row < (1u << 12); ++row) values.push_back(evaluate(output, row));
+
+    // The old three-field diagnostic and explicit default must both reject
+    // and restore exactly. A lower positive threshold changes admission only.
+    const auto diagnostic = root->name.str(ctx.get()) + " 1 0";
+    EXPECT_THROW(diagnostic_placed_reduction(ctx.get(), diagnostic.c_str()), log_execution_error_exception);
+    before.expect_exact(ctx.get());
+    EXPECT_THROW(diagnostic_placed_reduction(ctx.get(), (diagnostic + " 250").c_str()),
+                 log_execution_error_exception);
+    before.expect_exact(ctx.get());
+    PlacedReductionLog evidence;
+    for (auto *cell : {clock->driver.cell, leaf, middle, root, extra_source, unrelated}) {
+        auto at = ctx->getBelLocation(cell->bel);
+        evidence.stream << "Fixture " << cell->name.str(ctx.get()) << " @ " << at.x << ',' << at.y << ',' << at.z
+                        << " strength=" << int(cell->belStrength) << '\n';
+    }
+    ASSERT_NO_THROW(diagnostic_placed_reduction(ctx.get(), (diagnostic + " 1").c_str())) << evidence.stream.str();
+    ASSERT_EQ(root->type, id_MISTRAL_ALUT2);
+    EXPECT_EQ(leaf->type, id_MISTRAL_ALUT6);
+    EXPECT_EQ(middle->type, id_MISTRAL_ALUT6);
+    EXPECT_EQ(root->bel, before.cells.at(root->name).bel);
+    EXPECT_EQ(root->getPort(id_Q), output);
+    before.expect_slots_and_fixed_cells(ctx.get(), {leaf, middle, root});
+    for (const auto &entry : before.cells) {
+        if (entry.second.type != id_MISTRAL_FF) continue;
+        auto *cell = ctx->cells.at(entry.first).get();
+        ASSERT_EQ(cell->pin_data.size(), entry.second.pins.size());
+        for (const auto &pin : entry.second.pins) {
+            ASSERT_TRUE(cell->pin_data.count(pin.first));
+            EXPECT_EQ(cell->pin_data.at(pin.first).state, pin.second.state);
+            EXPECT_EQ(cell->pin_data.at(pin.first).bel_pins, pin.second.bel_pins);
+        }
+    }
+    for (unsigned row = 0; row < (1u << 12); ++row)
+        EXPECT_EQ(evaluate(output, row), values[row]) << "assignment " << row;
+    TimingAnalyser timing_after(ctx.get());
+    timing_after.setup(false, false, true);
+    const auto branch_gain = timing_after.get_setup_slack(root_port) - branch_slack;
+    EXPECT_GE(branch_gain, 1);
+    EXPECT_LT(branch_gain, 250);
+    EXPECT_GE(timing_after.get_setup_slack(sink_port), endpoint_slack);
+    EXPECT_TRUE(timing_after.get_timing_result().min_delay_violations.empty());
+    for (const auto &clock_fmax : timing_before.get_timing_result().clock_fmax) {
+        const auto &after = timing_after.get_timing_result().clock_fmax;
+        ASSERT_TRUE(after.count(clock_fmax.first));
+        EXPECT_GE(after.at(clock_fmax.first).achieved + 0.001f, clock_fmax.second.achieved);
+    }
+    EXPECT_EQ(ctx->ports.at(ctx->id("twelve_public_result")).net, output);
+    EXPECT_EQ(ctx->ports.at(ctx->id("twelve_public_literal")).net, inputs[11]);
+    assert_legal();
+    ctx->check();
+}
+
+TEST_F(NarrowSearchTest, BlockedOriginalUpgradesStillReachTwoSameLabAlms)
+{
+    ASSERT_NO_FATAL_FAILURE(compact_with_blocked_upgrades(2));
+    ReductionBalancePlan plan;
+    ASSERT_TRUE(plan_reduction(ctx.get(), root->name.str(ctx.get()), true, plan));
+    ASSERT_EQ(plan.literals.size(), 12u);
+    CubeSnapshot before(ctx.get());
+    {
+        NarrowTimingProbe probe(ctx.get(), plan);
+        const auto a = representatives(probe, plan.leaves[0]);
+        const auto b = representatives(probe, plan.leaves[1]);
+        const Lab home{compact_x, compact_y};
+        ASSERT_EQ(std::count_if(a.begin(), a.end(), [&](BelId bel) { return lab(bel) == home; }), 2);
+        ASSERT_EQ(std::count_if(b.begin(), b.end(), [&](BelId bel) { return lab(bel) == home; }), 2);
+        const auto first = *std::find_if(a.begin(), a.end(), [&](BelId bel) { return lab(bel) == home; });
+        const auto second = *std::find_if(b.begin(), b.end(), [&](BelId bel) {
+            return lab(bel) == home && ctx->getBelLocation(bel).z / 6 != ctx->getBelLocation(first).z / 6;
+        });
+        ASSERT_TRUE(probe.bind_pair(first, second));
+        EXPECT_FALSE(probe.bind_pair(before.cells.at(plan.leaves[0]->name).bel, second));
+        EXPECT_FALSE(probe.bind_pair(first, before.cells.at(plan.leaves[1]->name).bel));
+    }
+    before.expect_exact(ctx.get());
+
+    // Both original sites are blocked for their future ALUT6s. The obsolete
+    // quota counted the two halves of the first empty ALM and never reached
+    // the next jointly legal same-LAB pair. That loses this real 1 ps gain.
+    std::string listing;
+    {
+        PlacedReductionLog evidence;
+        EXPECT_FALSE(placed_reduction(ctx.get(), root->name.str(ctx.get()), 1, -1, 1));
+        listing = evidence.stream.str();
+    }
+    before.expect_exact(ctx.get());
+    const auto first = first_logged_pair(listing);
+    ASSERT_NE(first.first, BelId()) << listing;
+    ASSERT_NE(first.second, BelId()) << listing;
+    EXPECT_EQ(lab(first.first), (Lab{compact_x, compact_y}));
+    EXPECT_EQ(lab(first.second), (Lab{compact_x, compact_y}));
+    EXPECT_NE(ctx->getBelLocation(first.first).z / 6, ctx->getBelLocation(first.second).z / 6);
+    ASSERT_NE(listing.find("Placed reduction candidate 0,"), std::string::npos) << listing;
+
+    TimingAnalyser timing_before(ctx.get());
+    timing_before.setup(false, false, true);
+    ASSERT_TRUE(timing_before.get_timing_result().min_delay_violations.empty());
+    const auto old_branch = timing_before.get_setup_slack(CellPortKey(root->name, id_Q));
+    const auto old_endpoint = timing_before.get_setup_slack(CellPortKey(sink->name, id_ENA));
+    const unsigned required = ((1u << 12) - 1) ^ (1u << 1) ^ (1u << 6) ^ (1u << 9);
+    for (unsigned row = 0; row < 4096; ++row) ASSERT_EQ(evaluate(output, row), row == required);
+    ASSERT_TRUE(placed_reduction(ctx.get(), root->name.str(ctx.get()), 1, 0, 1));
+    EXPECT_EQ(plan.leaves[0]->bel, first.first);
+    EXPECT_EQ(plan.leaves[1]->bel, first.second);
+    EXPECT_EQ(root->bel, before.cells.at(root->name).bel);
+    before.expect_slots_and_fixed_cells(ctx.get(), {leaf, middle, root});
+    ASSERT_EQ(preserved_buf->type, id_MISTRAL_BUF);
+    for (unsigned row = 0; row < 4096; ++row) EXPECT_EQ(evaluate(output, row), row == required) << row;
+    EXPECT_EQ(ctx->ports.at(ctx->id("twelve_public_result")).net, output);
+    EXPECT_EQ(ctx->ports.at(ctx->id("twelve_public_literal")).net, inputs[11]);
+    TimingAnalyser timing_after(ctx.get());
+    timing_after.setup(false, false, true);
+    const auto gain = timing_after.get_setup_slack(CellPortKey(root->name, id_Q)) - old_branch;
+    EXPECT_GE(gain, 1);
+    EXPECT_LT(gain, 250);
+    EXPECT_GE(timing_after.get_setup_slack(CellPortKey(sink->name, id_ENA)), old_endpoint);
+    EXPECT_TRUE(timing_after.get_timing_result().min_delay_violations.empty());
+    for (const auto &clock_fmax : timing_before.get_timing_result().clock_fmax) {
+        const auto &after = timing_after.get_timing_result().clock_fmax;
+        ASSERT_TRUE(after.count(clock_fmax.first));
+        EXPECT_GE(after.at(clock_fmax.first).achieved + 0.001f, clock_fmax.second.achieved);
+    }
+    assert_legal();
+    ctx->check();
+}
+
+TEST_F(NarrowSearchTest, FutureAlut2ArcsChooseTheActualFasterFirstTuple)
+{
+    ASSERT_NO_FATAL_FAILURE(compact_with_blocked_upgrades(1));
+    ReductionBalancePlan plan;
+    ASSERT_TRUE(plan_reduction(ctx.get(), root->name.str(ctx.get()), true, plan));
+    ASSERT_EQ(plan.literals.size(), 12u);
+    // Derive the future second group's D literal from the actual canonical
+    // policy order. Its diagonal launch site makes the two objectives disagree.
+    auto *diagonal_source = plan.literals.at(6 + 3).first->driver.cell;
+    ASSERT_EQ(diagonal_source->type, id_MISTRAL_FF);
+    ctx->unbindBel(diagonal_source->bel);
+    // sx120f has an M10K column at x26; use its adjacent real LAB at
+    // x24 for the mirrored diagonal. Keep the bounded actual grid/legality
+    // diagnostic so a missing tile differs visibly from a rejected FF.
+    const auto tile_diagnostic = ff_tile_diagnostic(diagonal_source,
+        {{compact_x - 1, compact_y + 1}, {compact_x + 1, compact_y + 1},
+         {compact_x, compact_y + 1}, {compact_x + 2, compact_y + 1}});
+    std::fputs(tile_diagnostic.c_str(), stderr);
+    ASSERT_NO_FATAL_FAILURE(place(diagonal_source, compact_x - 1, compact_y + 1)) << tile_diagnostic;
+    // Long original stages ensure the genuinely faster first tuple also
+    // qualifies with the unchanged default margin and safety guards.
+    ctx->unbindBel(leaf->bel);
+    ctx->unbindBel(middle->bel);
+    ASSERT_NO_FATAL_FAILURE(place(leaf, compact_x, 10));
+    ASSERT_NO_FATAL_FAILURE(place(middle, compact_x, 40));
+    assert_legal();
+    ctx->check();
+    ASSERT_TRUE(plan_reduction(ctx.get(), root->name.str(ctx.get()), true, plan));
+    CellInfo future_root(ctx.get(), root->name, id_MISTRAL_ALUT2);
+    DelayQuad a_arc, b_arc, original_a, original_b;
+    ASSERT_TRUE(ctx->getCellDelay(&future_root, id_A, id_Q, a_arc));
+    ASSERT_TRUE(ctx->getCellDelay(&future_root, id_B, id_Q, b_arc));
+    ASSERT_TRUE(ctx->getCellDelay(root, id_A, id_Q, original_a));
+    ASSERT_TRUE(ctx->getCellDelay(root, id_B, id_Q, original_b));
+    EXPECT_EQ(a_arc.maxDelay(), 400);
+    EXPECT_EQ(b_arc.maxDelay(), 97);
+    EXPECT_NE(a_arc.maxDelay(), original_a.maxDelay());
+    EXPECT_NE(b_arc.maxDelay(), original_b.maxDelay());
+    struct Measurement { BelId a, b; delay_t leaf_only, root_arrival; };
+    std::vector<Measurement> measurements;
+    CubeSnapshot before(ctx.get());
+    {
+        NarrowTimingProbe probe(ctx.get(), plan);
+        const auto a_sites = representatives(probe, plan.leaves[0]);
+        const auto b_sites = representatives(probe, plan.leaves[1]);
+        const Lab home{compact_x, compact_y};
+        ASSERT_EQ(std::count_if(a_sites.begin(), a_sites.end(), [&](BelId bel) { return lab(bel) == home; }), 1);
+        ASSERT_EQ(std::count_if(b_sites.begin(), b_sites.end(), [&](BelId bel) { return lab(bel) == home; }), 1);
+        std::set<std::pair<Lab, Lab>> measured;
+        for (auto a : a_sites) {
+            for (auto b : b_sites) {
+                const auto geometry = std::make_pair(lab(a), lab(b));
+                if (measured.count(geometry) || !probe.bind_pair(a, b)) continue;
+                measured.insert(geometry);
+                TimingAnalyser timing(ctx.get());
+                timing.setup(false, false, true);
+                delay_t at_a, at_b, at_root;
+                ASSERT_TRUE(timing.get_max_arrival(CellPortKey(plan.leaves[0]->name, id_Q), at_a));
+                ASSERT_TRUE(timing.get_max_arrival(CellPortKey(plan.leaves[1]->name, id_Q), at_b));
+                ASSERT_TRUE(timing.get_max_arrival(CellPortKey(root->name, id_Q), at_root));
+                const auto without_root = std::max(
+                    at_a + ctx->predictArcDelay(plan.leaves[0]->getPort(id_Q), {root, id_A}),
+                    at_b + ctx->predictArcDelay(plan.leaves[1]->getPort(id_Q), {root, id_B}));
+                measurements.push_back({a, b, without_root, at_root});
+            }
+        }
+        ASSERT_LE(measurements.size(), 25u);
+        const unsigned required = ((1u << 12) - 1) ^ (1u << 1) ^ (1u << 6) ^ (1u << 9);
+        for (unsigned row = 0; row < 4096; ++row) EXPECT_EQ(evaluate(output, row), row == required) << row;
+    }
+    before.expect_exact(ctx.get());
+    ASSERT_FALSE(measurements.empty());
+    const auto fastest = std::min_element(measurements.begin(), measurements.end(),
+        [](const Measurement &a, const Measurement &b) { return a.root_arrival < b.root_arrival; });
+    const auto old_best = std::min_element(measurements.begin(), measurements.end(),
+        [](const Measurement &a, const Measurement &b) { return a.leaf_only < b.leaf_only; });
+    // The five root-neighborhood LABs contain a measured rank reversal, not
+    // merely the two delay constants. The logged production prefix below
+    // independently checks its choice despite the additional far-old-site LABs.
+    for (const auto &row : measurements) {
+        if (row.leaf_only == old_best->leaf_only) {
+            EXPECT_GE(row.root_arrival - fastest->root_arrival, 80);
+        }
+    }
+    EXPECT_EQ(lab(fastest->a), (Lab{compact_x, compact_y}));
+    EXPECT_EQ(lab(fastest->b), (Lab{compact_x - 1, compact_y}));
+    std::string listing;
+    {
+        PlacedReductionLog evidence;
+        EXPECT_FALSE(placed_reduction(ctx.get(), root->name.str(ctx.get()), 1, -1));
+        listing = evidence.stream.str();
+    }
+    before.expect_exact(ctx.get());
+    const auto actual = first_logged_pair(listing);
+    ASSERT_NE(actual.first, BelId()) << listing;
+    ASSERT_NE(actual.second, BelId()) << listing;
+    EXPECT_EQ(lab(actual.first), lab(fastest->a)) << listing;
+    EXPECT_EQ(lab(actual.second), lab(fastest->b)) << listing;
+    ASSERT_NE(listing.find("Placed reduction candidate 0,"), std::string::npos) << listing;
+    ASSERT_TRUE(placed_reduction(ctx.get(), root->name.str(ctx.get()), 1, 0));
+    EXPECT_EQ(plan.leaves[0]->bel, actual.first);
+    EXPECT_EQ(plan.leaves[1]->bel, actual.second);
+    EXPECT_EQ(root->bel, before.cells.at(root->name).bel);
+    before.expect_slots_and_fixed_cells(ctx.get(), {leaf, middle, root});
+    const unsigned required = ((1u << 12) - 1) ^ (1u << 1) ^ (1u << 6) ^ (1u << 9);
+    for (unsigned row = 0; row < 4096; ++row) EXPECT_EQ(evaluate(output, row), row == required) << row;
+    assert_legal();
+    ctx->check();
+}
+
+TEST_F(TwelveReductionTest, ExplicitDefaultMinimumRetainsQualifiedRewriteAndRollback)
+{
+    CubeSnapshot before(ctx.get());
+    const auto listing = root->name.str(ctx.get()) + " 2 -1 250";
+    ASSERT_NO_THROW(diagnostic_placed_reduction(ctx.get(), listing.c_str()));
+    before.expect_exact(ctx.get());
+    TimingAnalyser timing_before(ctx.get());
+    timing_before.setup(false, false, true);
+    const auto branch_slack = timing_before.get_setup_slack(CellPortKey(root->name, id_Q));
+    const auto selected = root->name.str(ctx.get()) + " 2 0 250";
+    ASSERT_NO_THROW(diagnostic_placed_reduction(ctx.get(), selected.c_str()));
+    EXPECT_EQ(root->type, id_MISTRAL_ALUT2);
+    before.expect_slots_and_fixed_cells(ctx.get(), {leaf, middle, root});
+    const unsigned required = ((1u << 12) - 1) ^ (1u << 1) ^ (1u << 6) ^ (1u << 9);
+    for (unsigned row = 0; row < (1u << 12); ++row)
+        EXPECT_EQ(evaluate(output, row), row == required) << "assignment " << row;
+    TimingAnalyser timing_after(ctx.get());
+    timing_after.setup(false, false, true);
+    EXPECT_GE(timing_after.get_setup_slack(CellPortKey(root->name, id_Q)) - branch_slack, 250);
+    assert_legal();
+    ctx->check();
+}
+
+TEST_F(PlacedReductionTest, OptionalMinimumPrevalidatesEveryStageBeforeMutation)
+{
+    const auto root_name = root->name.str(ctx.get());
+    const auto first = root_name + " 2 0\n";
+    for (const auto &invalid : {"0", "-1", "2147483648", "999999999999999999999999999", "200x", "word",
+                                "250 extra"}) {
+        SCOPED_TRACE(invalid);
+        const auto bad_stage = root_name + " 2 0 " + invalid;
+        CubeSnapshot before(ctx.get());
+        // A valid selected first stage would mutate this fixture. Parsing a
+        // malformed second minimum must fail before that first stage runs.
+        EXPECT_THROW(diagnostic_placed_reduction(ctx.get(), (first + bad_stage).c_str()),
+                     log_execution_error_exception);
+        before.expect_exact(ctx.get());
+        EXPECT_THROW(diagnostic_placed_reduction(ctx.get(), bad_stage.c_str()), log_execution_error_exception);
+        before.expect_exact(ctx.get());
+    }
+    for (int minimum : {0, -1}) {
+        CubeSnapshot before(ctx.get());
+        EXPECT_THROW(placed_reduction(ctx.get(), root_name, 2, 0, minimum), log_execution_error_exception);
+        before.expect_exact(ctx.get());
+    }
+    CubeSnapshot before(ctx.get());
+    const auto largest_positive = root_name + " 2 -1 " + std::to_string(std::numeric_limits<int>::max());
+    ASSERT_NO_THROW(diagnostic_placed_reduction(ctx.get(), largest_positive.c_str()));
+    before.expect_exact(ctx.get());
     assert_legal();
     ctx->check();
 }
@@ -854,6 +1616,53 @@ TEST_F(TwentyFourReductionTest, MultilineListingRetainsAcceptedElevenStep)
             EXPECT_EQ(cell->pin_data.at(pin.first).bel_pins, pin.second.bel_pins);
         }
     }
+    ctx->check();
+}
+
+TEST_F(TwentyFourReductionTest, MinimumIsLocalToItsStageAndFinalListingStillRollsBack)
+{
+    CubeSnapshot before(ctx.get());
+    // Parsing the final very high threshold must not replace the first
+    // stage's threshold. The second eligible cone is probed and restored.
+    const auto spec = root->name.str(ctx.get()) + " 2 0 250\n" + wide_root->name.str(ctx.get()) + " 2 -1 " +
+                      std::to_string(std::numeric_limits<int>::max());
+    ASSERT_NO_THROW(diagnostic_placed_reduction(ctx.get(), spec.c_str()));
+    ASSERT_EQ(root->type, id_MISTRAL_ALUT2);
+    for (auto *cell : wide_cone) {
+        const auto &saved = before.cells.at(cell->name);
+        EXPECT_EQ(cell, saved.identity);
+        EXPECT_EQ(cell->type, saved.type);
+        EXPECT_EQ(cell->bel, saved.bel);
+        EXPECT_EQ(cell->belStrength, saved.strength);
+        ASSERT_EQ(cell->params.size(), saved.params.size());
+        for (const auto &param : saved.params) EXPECT_EQ(cell->params.at(param.first), param.second);
+        ASSERT_EQ(cell->ports.size(), saved.ports.size());
+        for (const auto &port : saved.ports) {
+            EXPECT_EQ(cell->ports.at(port.first).net, port.second.net);
+            EXPECT_EQ(cell->ports.at(port.first).user_idx, port.second.user_idx);
+        }
+        ASSERT_EQ(cell->pin_data.size(), saved.pins.size());
+        for (const auto &pin : saved.pins) {
+            EXPECT_EQ(cell->pin_data.at(pin.first).state, pin.second.state);
+            EXPECT_EQ(cell->pin_data.at(pin.first).bel_pins, pin.second.bel_pins);
+        }
+    }
+    for (auto *net : wide_inputs) {
+        const auto &saved = before.nets.at(net->name);
+        auto actual = net->users, expected = saved.user_store;
+        ASSERT_EQ(actual.capacity(), expected.capacity());
+        ASSERT_EQ(actual.entries(), expected.entries());
+        for (auto user : expected.enumerate()) {
+            ASSERT_TRUE(net->users.count(user.index));
+            EXPECT_EQ(net->users.at(user.index).cell, user.value.cell);
+            EXPECT_EQ(net->users.at(user.index).port, user.value.port);
+        }
+        for (size_t probe = 0; probe < size_t(saved.user_store.capacity()) + 8; ++probe)
+            EXPECT_EQ(actual.add(PortRef{}), expected.add(PortRef{}));
+    }
+    EXPECT_EQ(wide_root->getPort(id_Q), wide_output);
+    EXPECT_EQ(ctx->ports.at(ctx->id("wide_public_result")).net, wide_output);
+    assert_legal();
     ctx->check();
 }
 

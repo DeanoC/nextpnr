@@ -172,7 +172,7 @@ void rewrite_reduction(Context *ctx, const ReductionBalancePlan &plan)
     const auto &old_slots = plan.slots;
     for (CellInfo *cell : cone) NPNR_ASSERT(cell->bel == BelId());
     const auto &children = plan.leaves;
-    const std::vector<int> sizes = cone.size() == 3 ? std::vector<int>{6, 5} :
+    const std::vector<int> sizes = cone.size() == 3 ? std::vector<int>{int((literals.size() + 1) / 2), int(literals.size() / 2)} :
                                   cone.size() == 4 ? std::vector<int>{6, 6, 4} : std::vector<int>{6, 6, 6, 6};
     NPNR_ASSERT(children.size() == sizes.size());
     NPNR_ASSERT(plan.retired.size() == (cone.size() == 7 ? 2 : 0));
@@ -231,7 +231,7 @@ void rewrite_reduction(Context *ctx, const ReductionBalancePlan &plan)
         NPNR_ASSERT(net->users.empty() && net->driver.cell == nullptr);
     }
     if (cone.size() == 3)
-        log_info("Balanced three-LUT reduction at '%s' into 6+5 inputs.\n", root->name.c_str(ctx));
+        log_info("Balanced three-LUT reduction at '%s' into %d+%d inputs.\n", root->name.c_str(ctx), sizes[0], sizes[1]);
     else if (cone.size() == 4)
         log_info("Balanced four-LUT reduction at '%s' into 6+6+4 inputs.\n", root->name.c_str(ctx));
     else

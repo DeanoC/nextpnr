@@ -1,0 +1,233 @@
+{
+  "artifact_hash_count": 339,
+  "binary_sha256": "3712ddd3d4419bf46831a0dae9bdef617b5390eb0e05c34c1051c9a4b0fd1324",
+  "build_warning_scope": {
+    "preexisting_narrowing_outside_new_reduction_code": true,
+    "warnings": 112
+  },
+  "command": [
+    "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/narrow-integrated-264/nextpnr-mistral",
+    "--json",
+    "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-merged-remap/measured-diagnostic/synth.json",
+    "--device",
+    "5CSEBA6U23I7",
+    "--qsf",
+    "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/sources/misteross/cores/fes-ramtest/constraints.qsf",
+    "--sdc",
+    "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/sources/misteross/boards/de10nano/clocks.sdc",
+    "--freq",
+    "74.25",
+    "--seed",
+    "2",
+    "--placer-heap-timingweight",
+    "10",
+    "--placer-heap-critexp",
+    "2",
+    "--replicate-enables",
+    "4",
+    "--timing-allow-fail",
+    "--detailed-timing-report",
+    "--balance-reduction-root",
+    "ddr0_test.group_valid_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT6_F_E_MISTRAL_ALUT5_Q_1",
+    "--remap-plan",
+    "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/narrow-search-264/local-plan.json",
+    "--router",
+    "gpu",
+    "--gpu-device",
+    "1",
+    "--remap-comb-critical",
+    "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/ready-remap-264/route-g1-c0/timing.json",
+    "--remap-comb-candidate",
+    "0",
+    "--compress-rbf",
+    "--write",
+    "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/narrow-integrated-264/route-reproduction/routed.json",
+    "--report",
+    "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/narrow-integrated-264/route-reproduction/timing.json",
+    "--rbf",
+    "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/narrow-integrated-264/route-reproduction/core.rbf",
+    "--remap-decompose-critical",
+    "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/remap-plan-264/route-c0-g1-third-c0-g1/timing.json",
+    "--remap-decompose-candidate",
+    "0"
+  ],
+  "comparator_sha256": "32fd10ebbff4332816a81278c43b48d529db94914bfb4af49cdce44f53666379",
+  "comparison_sha256": "01886d65d6e55f1f1c1d5345e00e3dee5358ce672b0f4a3bac3135f6ec155d4e",
+  "current_runtime_qualification_messages_equal_accepted": true,
+  "default_recipe_selected": false,
+  "diagnostic_environment": {
+    "NEXTPNR_MISTRAL_CAPTURE_LOCALITY": "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/route-slots-final/timing.json 64 24",
+    "NEXTPNR_MISTRAL_PLACED_REDUCTION": "ddr0_test.group_valid_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT4_Q 6 0\nddr0_test.group_valid_MISTRAL_ALUT6_E_F_MISTRAL_ALUT5_Q 6 0 200"
+  },
+  "elapsed_seconds": 756.4527281690389,
+  "exact_native_graph": {
+    "algebraic_alignment_or_buffer_collapse_used": false,
+    "cell_and_net_export_order_exact": true,
+    "cell_count": 20132,
+    "complete_native_module_exact": true,
+    "creator_metadata": {
+      "current": "Next Generation Place and Route (Version nextpnr-0.11.1-328-g0c59d78a)",
+      "only_permitted_nonmodule_difference": "creator",
+      "reference": "Next Generation Place and Route (Version nextpnr-0.11.1-315-gec3fc015)"
+    },
+    "lossless_ordered_pll_occurrences_exact": true,
+    "named_net_count": 21870,
+    "native_json_value_equality_type_sensitive": true,
+    "numeric_bit_ids_routes_aliases_bels_params_attrs_and_full_pins_exact": true
+  },
+  "execution_file_hash_count": 281,
+  "external_runtime_hash_count": 280,
+  "fresh_listing_qualification_claimed": false,
+  "hardware_tested": false,
+  "helpers_sha256": {
+    "compare_route.py": "32fd10ebbff4332816a81278c43b48d529db94914bfb4af49cdce44f53666379",
+    "freeze.py": "7c2fc0fc9730ea21771af231e308c82d7df2c2ea7f7112902a1c9a31bb88a9df",
+    "route.py": "8560f1428f8a8ccdc6e066477df5d0af423a8595338250dc341f54a9072c5c5d"
+  },
+  "host_checks": {
+    "cli": {
+      "elapsed_seconds": 748.56,
+      "exit_code": 0,
+      "passed": true,
+      "targets": 5
+    },
+    "focused_backend": {
+      "cases": 37,
+      "elapsed_seconds": 148.803,
+      "exit_code": 0,
+      "passed": true
+    },
+    "integration96": {
+      "diagnostics": [
+        "lab_legalise",
+        "lab_aclr"
+      ],
+      "exit_code": 0,
+      "passed": true
+    }
+  },
+  "host_validation_sha256": "7b060e60fec30e2bbc81e80ebc03a6840c7553c67e7b639a5936e7d36c92f7b3",
+  "integration_base_commit": "e792486c5763564ffc8a9b56366a11cebd982baa",
+  "kind": "exact merged-main compiler reproduction of accepted narrow profile",
+  "matched_ordinary_placement_metrics": 71,
+  "output_sha256": {
+    "core.rbf": "3bc9174f236a7bb18ed21b0bfec349d03ebfc57925501c830c525d5b000cb462",
+    "route.log": "cb8176d9e6b4764e242c5e8977995e32fb72894b5ce4ec66271495335c04004d",
+    "routed.json": "0ecb9e44978dae407841680836d7881ef3cc3ce084a28ce3253a4431bec4e05b",
+    "timing.json": "fc99943bdf4a9e4cbf9ba5c7cf296439b9d88bcc9a1514fba52ace00b9a43b5d"
+  },
+  "proof_limitations": [
+    "Graph reproduction requires type-sensitive full native module equality, owner order, lossless PLL occurrences and identical RBF bytes; only root creator metadata may differ.",
+    "Timing differences are reported from actual signoff; successful reproduction also preserves accepted narrow memory Fmax and passing practical non-target constraints/windows/holds.",
+    "The accepted physical proof is reused by exact serialized graph/RBF identity; no algebraic reference, buffer collapse, scope widening or new pin normalization is used.",
+    "JSON does not serialize in-memory indexed-store/free-list/bucket or GPU ID state. No independent RBF/CRAM decoder or hardware acceptance is claimed."
+  ],
+  "raw_folder": "out/ramtest-wide-reduction-264/narrow-integrated-264",
+  "rbf_identity_proved": true,
+  "reference_proof_sha256": "0de965ae99e9708c158b590d62bdcfca31205e821e0b178b5bfb809fefb8918c",
+  "related_windows": [
+    {
+      "complete_delay_delta_vs_accepted_ns": 0.0,
+      "complete_delay_ns": 2.1129999794065952,
+      "from": "posedge ram_clock.clocks[1]",
+      "passes_window": true,
+      "positive_headroom_required": true,
+      "setup_headroom_ns": 2.8870000205934048,
+      "to": "negedge ram_clock.clocks[0]",
+      "window_ns": 5
+    },
+    {
+      "complete_delay_delta_vs_accepted_ns": 0.0,
+      "complete_delay_ns": 8.573000013828278,
+      "from": "posedge ram_clock.clocks[0]",
+      "passes_window": true,
+      "positive_headroom_required": false,
+      "setup_headroom_ns": -0.8810001015663147,
+      "to": "posedge ram_clock.clocks[0]",
+      "window_ns": 7.691999912261963
+    },
+    {
+      "complete_delay_delta_vs_accepted_ns": 0.0,
+      "complete_delay_ns": 10.717000044882298,
+      "from": "posedge display.pixel_clk",
+      "passes_window": true,
+      "positive_headroom_required": true,
+      "setup_headroom_ns": 2.751000367105007,
+      "to": "posedge display.pixel_clk",
+      "window_ns": 13.468000411987305
+    },
+    {
+      "complete_delay_delta_vs_accepted_ns": 0.0,
+      "complete_delay_ns": 3.76699997484684,
+      "from": "<async>",
+      "passes_window": true,
+      "positive_headroom_required": true,
+      "setup_headroom_ns": 9.701000437140465,
+      "to": "posedge ram_clock.clocks[0]",
+      "window_ns": 13.468000411987305
+    },
+    {
+      "complete_delay_delta_vs_accepted_ns": 0.0,
+      "complete_delay_ns": 4.184999987483025,
+      "from": "posedge display.pixel_clk",
+      "passes_window": true,
+      "positive_headroom_required": true,
+      "setup_headroom_ns": 9.28300042450428,
+      "to": "posedge ram_clock.clocks[0]",
+      "window_ns": 13.468000411987305
+    },
+    {
+      "complete_delay_delta_vs_accepted_ns": 0.0,
+      "complete_delay_ns": 4.158000037074089,
+      "from": "posedge ram_clock.clocks[0]",
+      "passes_window": true,
+      "positive_headroom_required": true,
+      "setup_headroom_ns": 3.533999875187874,
+      "to": "posedge display.pixel_clk",
+      "window_ns": 7.691999912261963
+    }
+  ],
+  "reproduction_proved": true,
+  "result_commit": "0c59d78a9d672f5ddc4a81b622055b125f1d2522",
+  "run_sha256": "b9bf2cb7eb7e207eb630da9fe55a7bc2875582ae60531431ba9506b01ff50c8e",
+  "schema": 1,
+  "source_archive_sha256": "bf79cd46de327172339736e5a811dc125ab92f3dbbb2305d145e38adabc576df",
+  "source_identity_sha256": "f183700f0749f55a2d8410a9df3f83beddfbb56a16f956f2509051a3913ced1e",
+  "timing": {
+    "achieved_fmax_or_timing_json_identity_is_not_required": true,
+    "all_clock_fmax_nonregression_vs_groups8": false,
+    "clocks": {
+      "display.pixel_clk": {
+        "accepted_narrow_mhz": 93.3096923828125,
+        "achieved_mhz": 93.3096923828125,
+        "constraint_mhz": 74.25006866455078,
+        "constraint_passed": true,
+        "delta_vs_accepted_narrow_mhz": 0.0,
+        "gain_vs_groups8_mhz": -0.5870208740234375,
+        "groups8_reference_mhz": 93.89671325683594
+      },
+      "ram_clock.clocks[0]": {
+        "accepted_narrow_mhz": 116.64527893066406,
+        "achieved_mhz": 116.64527893066406,
+        "constraint_mhz": 130.0052032470703,
+        "constraint_passed": false,
+        "delta_vs_accepted_narrow_mhz": 0.0,
+        "gain_vs_groups8_mhz": 0.3662109375,
+        "groups8_reference_mhz": 116.27906799316406
+      },
+      "ram_clock.clocks[1]": {
+        "accepted_narrow_mhz": 307.6318054199219,
+        "achieved_mhz": 307.6318054199219,
+        "constraint_mhz": 130.0052032470703,
+        "constraint_passed": true,
+        "delta_vs_accepted_narrow_mhz": 0.0,
+        "gain_vs_groups8_mhz": 0.0,
+        "groups8_reference_mhz": 307.6318054199219
+      }
+    },
+    "final_reported_hold_violations": false,
+    "memory_130mhz_closed": false,
+    "passes_practical_timing_gate": true,
+    "preserves_accepted_narrow_memory_fmax": true
+  }
+}

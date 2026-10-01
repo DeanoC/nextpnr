@@ -13,7 +13,7 @@ recipe, RTL or clock constraints.
 | One to eight local stages | `--remap-plan FILE` | [Local plan schema](../mistral/remap_plan.md) |
 | Bounded two/three-LUT internal cut | `--remap-comb-critical REPORT`, `--remap-comb-candidate N`, or `--remap-comb-plan FILE` | [Internal-cut plans](../mistral/comb_plan.md) |
 | Hard-IP capture locality | `NEXTPNR_MISTRAL_CAPTURE_LOCALITY="REPORT BUDGET RADIUS"` | [Capture locality](mistral-capture-locality.md) |
-| Placed eleven/24-literal balancing | `NEXTPNR_MISTRAL_PLACED_REDUCTION="ROOT RADIUS SELECTION"` (one to eight lines) | [Placed balancing](../mistral/reduction_balance.md) |
+| Placed 7–12/24-literal balancing | `NEXTPNR_MISTRAL_PLACED_REDUCTION="ROOT RADIUS SELECTION [MIN_BRANCH_GAIN_PS]"` (one to eight lines) | [Placed balancing](../mistral/reduction_balance.md) |
 | Four-LUT, seven-essential-input decomposition | `--remap-decompose-critical REPORT`, `--remap-decompose-candidate N` | [Control decomposition](../mistral/control_decomposition.md) |
 
 Unplaced balancing runs during packing. After ordinary HeAP placement, the
@@ -33,6 +33,11 @@ plan listing guards. A listed placement-model gain requires a separate full
 route before making a routed timing claim.
 
 ## Routed RAM-test measurement
+
+The later [narrow-search measurement](mistral-narrow-reduction.md) reaches
+116.645279 MHz memory on the same fixed inputs, with a full graph/physical
+comparison and disclosed pixel Fmax tradeoff. The retained measurement below
+is its 116.279068 MHz reference.
 
 The frozen groups-eight profile used compiler
 `6ad210a60991f93a607ac4490d6282b1267ec64a`, the same RTL, synthesis JSON,
