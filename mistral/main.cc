@@ -265,6 +265,8 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     if (vm.count("remap-comb-plan") && (ctx->local_remap_plan_list_only ||
         (!ctx->local_remap_report.empty() && ctx->local_remap_selection < 0)))
         log_error("Local-remap listing must be final; it cannot precede a comb-remap plan.\n");
+    if (ctx->local_remap_plan_list_only && (vm.count("remap-comb-critical") || vm.count("remap-comb-candidate")))
+        log_error("Local-remap listing must be final; it cannot precede legacy comb remapping.\n");
     if (vm.count("remap-comb-candidate") && !vm.count("remap-comb-critical"))
         log_error("--remap-comb-candidate requires --remap-comb-critical.\n");
     if (vm.count("remap-comb-critical")) {
