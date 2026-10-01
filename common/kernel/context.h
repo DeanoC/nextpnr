@@ -38,6 +38,8 @@ struct Context : Arch, DeterministicRNG
     bool disable_critical_path_source_print = false;
     // True when detailed per-net timing is to be stored / reported
     bool detailed_timing_report = false;
+    // Volatile diagnostic limit; never changes placement or serialized settings.
+    int timing_report_paths = 1;
 
     Context(ArchArgs args) : Arch(args) { BaseCtx::as_ctx = this; }
 

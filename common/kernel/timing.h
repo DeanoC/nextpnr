@@ -22,6 +22,8 @@
 #define TIMING_H
 
 #include "nextpnr.h"
+#include <optional>
+#include <type_traits>
 
 NEXTPNR_NAMESPACE_BEGIN
 
@@ -71,6 +73,18 @@ struct ClockDomainPairKey
     unsigned int hash() const { return mkhash(launch, capture); }
 };
 
+// One registered endpoint's actual STA row, keyed by clocks rather than the
+// analyser's internal domain IDs. Unrelated clocks have no setup window.
+struct EndpointClockPairTiming
+{
+    using DelaySum = std::conditional_t<std::is_integral<delay_t>::value, int64_t, double>;
+    ClockDomainKey launch, capture;
+    bool setup_timed = false, hold_related = false;
+    std::optional<delay_t> setup_window, setup_margin, hold_margin;
+    DelaySum max_path_delay = 0, min_path_delay = 0;
+    EndpointClockPairTiming(ClockDomainKey launch, ClockDomainKey capture) : launch(launch), capture(capture) {}
+};
+
 struct TimingAnalyser
 {
   public:
@@ -111,6 +125,18 @@ struct TimingAnalyser
     dict<std::pair<IdString, IdString>, delay_t> get_clock_delays() const { return clock_delays; }
 
     TimingResult &get_timing_result() { return result; }
+
+    // After setup(..., ..., true), return extra actual registered endpoint
+    // paths. The count includes each domain pair's preserved legacy path.
+    // This does not change the legacy Fmax, path or hold results.
+    std::vector<CriticalPath> get_report_setup_paths(int count);
+
+    // Complete, stable clock-pair coverage after full STA, or false with no
+    // rows for loops, unknown clocks, incomplete tags or unregistered paths.
+    // Path extrema are sums of native report segments in this analyser's
+    // frame. Use a separate false-skew analyser for reference-free unrelated
+    // extrema: true-skew backpointers can select a different launch register.
+    bool get_endpoint_clock_pair_timings(CellPortKey endpoint, std::vector<EndpointClockPairTiming> &rows);
 
     // Enable analysis of clock skew between FFs.
     bool with_clock_skew = false;
@@ -262,6 +288,8 @@ struct TimingAnalyser
     Context *ctx;
 
     TimingResult result;
+    bool analysis_complete = false;
+    bool analysed_clock_skew = false, analysed_setup_only = false;
 };
 
 // Perform timing analysis and optionaly print out slack histogram, fmax and critical paths

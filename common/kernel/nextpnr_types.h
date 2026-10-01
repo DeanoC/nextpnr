@@ -488,6 +488,8 @@ struct TimingResult
     dict<IdString, CriticalPath> clock_paths;
     // Cross-domain critical paths
     std::vector<CriticalPath> xclock_paths;
+    // Additional registered setup endpoints requested for JSON reporting only.
+    std::vector<CriticalPath> report_setup_paths;
     // Domains with no interior paths
     pool<IdString> empty_paths;
 

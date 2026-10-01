@@ -16,6 +16,8 @@ set(SOURCES
     comb_remap.cc
     decomposition_remap.cc
     decomposition_policy.h
+    lut_driver_copy.cc
+    lut_driver_copy.h
     comb_plan.cc
     local_remap_cut_policy.h
     capture_locality.cc
@@ -39,11 +41,17 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/completed_observations.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc
+    TEST_SOURCES tests/completed_observations.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/timing_report_paths.cc
     MAIN_SOURCE  main.cc
 )
 
 if (BUILD_TESTS)
+    add_test(NAME nextpnr-${family}-timing-report-paths-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/timing_report_paths_cli.py
+                $<TARGET_FILE:nextpnr-${family}> -v)
+    add_test(NAME nextpnr-${family}-lut-driver-copy-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut_driver_copy_cli.py
+                $<TARGET_FILE:nextpnr-${family}> -v)
     add_test(NAME nextpnr-${family}-decomposition-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/decomposition_cli.py
                 $<TARGET_FILE:nextpnr-${family}> -v)
