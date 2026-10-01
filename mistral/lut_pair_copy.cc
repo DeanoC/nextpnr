@@ -60,14 +60,14 @@ bool info_equal(Context *ctx, CellInfo *cell, const ArchCellInfo &saved)
 bool users_equal(const indexed_store<PortRef> &a, const indexed_store<PortRef> &b)
 {
     if (a.entries() != b.entries() || a.capacity() != b.capacity()) return false;
-    auto left = a.enumerate(), right = b.enumerate();
+    auto ac = a, bc = b;
+    auto left = ac.enumerate(), right = bc.enumerate();
     auto x = left.begin(), y = right.begin();
     for (; x != left.end() && y != right.end(); ++x, ++y)
         if ((*x).index != (*y).index || (*x).value.cell != (*y).value.cell || (*x).value.port != (*y).value.port) return false;
     if (x != left.end() || y != right.end()) return false;
     // Probe copies only: compare the complete hole/free-list sequence with a
     // fixed bound captured before add() can grow either copy.
-    auto ac = a, bc = b;
     const size_t probes = size_t(a.capacity()) + 1;
     for (size_t i = 0; i < probes; ++i)
         if (ac.add(PortRef{}) != bc.add(PortRef{})) return false;
@@ -202,7 +202,7 @@ bool Arch::remap_lut_pair_copy_critical(const std::string &report, int selection
             reject("whole-enable-cohort-unavailable"); continue;
         }
         std::vector<NetInfo *> external;
-        auto encode = [&](const CellInfo *cell, bool outer_input) {
+        auto encode = [&](CellInfo *cell, bool outer_input) {
             std::vector<policy::Pin> result;
             for (int i = 0; i < mistral_remap_report::lut_width(cell->type); ++i) {
                 auto pin = copy_pins[i]; auto state = cell->get_pin_state(pin); auto net = cell->getPort(pin);
@@ -293,7 +293,7 @@ bool Arch::remap_lut_pair_copy_critical(const std::string &report, int selection
         if (!eligible || endpoint_keys.empty()) { reject("boundary-clock-or-fanout-unavailable"); continue; }
         TimingAnalyser before(ctx); before.with_clock_skew = true; before.setup(false, false, true);
         float old_slack = before.get_setup_slack(CellPortKey(cone.sink));
-        if (before.have_loops || before.clock_fmax.empty() || !guard::timed(old_slack)) { reject("native-baseline-unavailable"); continue; }
+        if (before.have_loops || before.get_timing_result().clock_fmax.empty() || !guard::timed(old_slack)) { reject("native-baseline-unavailable"); continue; }
         std::map<CellPortKey, guard::Rows> endpoints, reference_endpoints;
         size_t timed_pairs = 0, unrelated_pairs = 0, hold_pairs = 0;
         for (auto key : endpoint_keys) {
