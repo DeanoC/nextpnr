@@ -858,16 +858,17 @@ TEST_F(LutDriverCopyTest, NativeClockSkewRejectsAnUnskewedGainThatWorsensRegiste
     ASSERT_NE(clock_source(clock, "primary_clock_source", true), nullptr);
     for (auto *cell : {inputs[0], inputs[1]}) ctx->unbindBel(cell->bel);
     place(inputs[0], 30, 26, STRENGTH_LOCKED);
-    place(inputs[1], 24, 18, STRENGTH_LOCKED);
+    place(inputs[1], 24, 17, STRENGTH_LOCKED);
     // Retain the carry links, but remove the head decoder branch which would
     // otherwise hide middle.A behind an unchanged, slightly longer prefix.
     head->disconnectPort(id_A); head->pin_data[id_A].state = PIN_0;
     ctx->assign_comb_info(head); ctx->update_bel(head->bel);
-    // Leave only the x32,y20 LAB available. Locked ordinary FFs make every
+    // Leave only the x31,y20 LAB available. Column x32 is a DSP column on
+    // this device. Locked ordinary FFs make every
     // other candidate LAB protected, without injecting timing or bypassing
     // any production placement/protection guard.
     for (int x = 27; x <= 33; ++x) for (int y = 17; y <= 23; ++y) {
-        if (std::abs(x - 30) + std::abs(y - 20) > 3 || (x == 32 && y == 20)) continue;
+        if (std::abs(x - 30) + std::abs(y - 20) > 3 || (x == 31 && y == 20)) continue;
         bool protected_lab = false, has_ff = false;
         for (auto bel : ctx->getBelsByTile(x, y)) {
             has_ff |= ctx->getBelType(bel) == id_MISTRAL_FF;
@@ -879,6 +880,13 @@ TEST_F(LutDriverCopyTest, NativeClockSkewRejectsAnUnskewedGainThatWorsensRegiste
         ctx->assign_ff_info(blocker); ctx->assign_default_pinmap(blocker);
         place(blocker, x, y, STRENGTH_LOCKED);
     }
+    bool candidate_bel_available = false;
+    for (auto bel : ctx->getBelsByTile(31, 20))
+        candidate_bel_available |= ctx->checkBelAvail(bel) && ctx->isValidBelForCellType(source->type, bel);
+    ASSERT_TRUE(candidate_bel_available) << "Skew fixture requires an actual available LUT BEL";
+    for (const auto &entry : ctx->cells)
+        if (entry.second->bel != BelId())
+            ASSERT_TRUE(ctx->isBelLocationValid(entry.second->bel)) << entry.first.str(ctx.get());
     ctx->check();
     TimingAnalyser before(ctx.get()); before.setup(false, false, true);
     TimingAnalyser skewed(ctx.get()); skewed.with_clock_skew = true; skewed.setup(false, false, true);
