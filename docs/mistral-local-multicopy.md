@@ -65,8 +65,9 @@ The proof reconstructs every native driver/user slot, owner order, paired PLL
 record, original full pin/BEL/metadata and complete LAB snapshot. Only the two
 new LUT/private-net owners and seven named ENA transfers are admitted. Each
 copy's actual pin states and four native inputs are evaluated on all 16 rows;
-the source/driver-copy function and immediate carry successor are checked
-separately on eight rows. Physical closure covers 18 LABs, 166 original FFs and
+the source/driver-copy function is checked separately on eight rows, alongside
+the arithmetic banks and immediate carry successor. Physical closure covers
+18 LABs, 166 original FFs and
 237 unchanged occupied banks. All 5,232 existing buffers have explicit named
 owner/private-Q/unique-FF ledgers; four other private outputs and the driver
 output have separate frames. There is no global raw-ID translation or buffer
