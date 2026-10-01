@@ -32,7 +32,18 @@ diagnostic listing too; the legacy interfaces do not all enforce the newer
 plan listing guards. A listed placement-model gain requires a separate full
 route before making a routed timing claim.
 
+Repeated local stages may copy the same outer LUT for distinct FF-enable
+cohorts. The first copy keeps `<outer>$local_remap` and its paired `$Q` net.
+Later copies use the first free paired `$1`, `$2`, ... names across the cell,
+net and alias namespaces. Existing copies and their consumers remain intact;
+all Boolean, placement and timing guards still apply. See
+[repeated-root remapping and its measured profile](mistral-local-multicopy.md).
+
 ## Routed RAM-test measurement
+
+The later [repeated-root measurement](mistral-local-multicopy.md) reaches
+117.771759 MHz memory with an explicit capture-margin tradeoff. The historical
+measurement below retains its original source and evidence.
 
 The later [narrow-search measurement](mistral-narrow-reduction.md) reaches
 116.645279 MHz memory on the same fixed inputs, with a full graph/physical

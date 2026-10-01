@@ -184,8 +184,37 @@ bool Arch::remap_critical(const std::string &report, int selection, int group_bu
         std::map<CellInfo *, PortInfo> ena;
         std::map<CellInfo *, std::pair<BelId, PlaceStrength>> placements;
         for (auto c : group) { ena.emplace(c, c->ports.at(id_ENA)); placements[c] = {c->bel, c->belStrength}; }
-        auto cname = id(outer->name.str(ctx) + "$local_remap"), nname = id(cname.str(ctx) + "$Q");
-        if (cells.count(cname) || nets.count(nname) || net_aliases.count(nname)) continue;
+        const std::string copy_base = outer->name.str(ctx) + "$local_remap";
+        // Preserve the first copy's names and ID allocation order. A later
+        // stage may copy the remaining users without replacing that owner.
+        auto cname = id(copy_base), nname = id(cname.str(ctx) + "$Q");
+        auto occupied = [&](IdString name) {
+            return cells.count(name) || nets.count(name) || net_aliases.count(name);
+        };
+        if (occupied(cname) || occupied(nname)) {
+            size_t entries = cells.size();
+            if (nets.size() > std::numeric_limits<size_t>::max() - entries) continue;
+            entries += nets.size();
+            if (net_aliases.size() >= std::numeric_limits<size_t>::max() - entries) continue;
+            entries += net_aliases.size();
+            const size_t attempts = entries + 1;
+            // Each distinct occupied pair consumes at least one live entry.
+            // Probe existing IDs only; rejected suffixes must not intern IDs.
+            auto named_owner_exists = [&](const std::string &name) {
+                auto found = ctx->idstring_str_to_idx->find(name);
+                return found != ctx->idstring_str_to_idx->end() && occupied(IdString(found->second));
+            };
+            bool found = false;
+            for (size_t attempt = 0; attempt < attempts; ++attempt) {
+                const std::string cell_name = copy_base + "$" + std::to_string(attempt + 1);
+                const std::string net_name = cell_name + "$Q";
+                if (named_owner_exists(cell_name) || named_owner_exists(net_name)) continue;
+                cname = id(cell_name); nname = id(net_name);
+                found = true;
+                break;
+            }
+            if (!found) continue;
+        }
         TimingAnalyser before(ctx); before.setup(false, false, true);
         auto old_hold = holds(before);
         auto timed_slack = [](float value) {

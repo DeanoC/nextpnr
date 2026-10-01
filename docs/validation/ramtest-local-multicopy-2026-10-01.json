@@ -1,0 +1,248 @@
+{
+  "accepted_full_proof": {
+    "additional_ena_redirect_count": 7,
+    "all_clock_fmax_nonregression": false,
+    "artifact_count": 651,
+    "existing_buffers_explicitly_checked": 5232,
+    "exported_physical_function_scope_proved": true,
+    "native_graph_scope_proved": true,
+    "native_path_count": 15290,
+    "path": "local-multicopy-ready1-address-route-proof-264/comparison.json",
+    "prefix_sha256": "a7e83fc3c117c614f289a0697e7ee30858d7812704e6324877b56105ab2bc3c9",
+    "reference_sha256": "a4a91235f652af541265daa5a3b6e12e658dc6f01089ce16ecad622b95b2b304",
+    "runtime_file_count": 282,
+    "sha256": "6dcf8c4bb6b4b20811334ab4a87d52163756085428fdc3dbb67b84a29c795e65",
+    "target_clock_acceptance_passed": true,
+    "unchanged_original_occupied_banks_checked": 237,
+    "whole_lab_ff_control_rows": 166,
+    "whole_labs": 18
+  },
+  "accepted_reference_fmax_mhz": {
+    "capture": 378.5823974609375,
+    "memory": 117.34334564208984,
+    "pixel": 93.4928970336914
+  },
+  "actual_clock_pair_windows": [
+    {
+      "before_headroom_ns": 8.610000357031822,
+      "complete_delay_ns": 4.470999971032143,
+      "from": "<async>",
+      "headroom_change_ns": 0.38700008392333984,
+      "headroom_ns": 8.997000440955162,
+      "passes_acceptance_window_policy": true,
+      "positive_headroom_required": true,
+      "reported_window_met": true,
+      "to": "posedge ram_clock.clocks[0]",
+      "window_ns": 13.468000411987305
+    },
+    {
+      "before_headroom_ns": 2.090999983716756,
+      "complete_delay_ns": 1.7760000517591834,
+      "from": "negedge ram_clock.clocks[0]",
+      "headroom_change_ns": -0.021000079344958067,
+      "headroom_ns": 2.069999904371798,
+      "passes_acceptance_window_policy": true,
+      "positive_headroom_required": true,
+      "reported_window_met": true,
+      "to": "posedge ram_clock.clocks[0]",
+      "window_ns": 3.8459999561309814
+    },
+    {
+      "before_headroom_ns": 2.7720001563429832,
+      "complete_delay_ns": 10.678000129759312,
+      "from": "posedge display.pixel_clk",
+      "headroom_change_ns": 0.018000125885009766,
+      "headroom_ns": 2.790000282227993,
+      "passes_acceptance_window_policy": true,
+      "positive_headroom_required": true,
+      "reported_window_met": true,
+      "to": "posedge display.pixel_clk",
+      "window_ns": 13.468000411987305
+    },
+    {
+      "before_headroom_ns": 9.856000378727913,
+      "complete_delay_ns": 3.552999898791313,
+      "from": "posedge display.pixel_clk",
+      "headroom_change_ns": 0.05900013446807861,
+      "headroom_ns": 9.915000513195992,
+      "passes_acceptance_window_policy": true,
+      "positive_headroom_required": true,
+      "reported_window_met": true,
+      "to": "posedge ram_clock.clocks[0]",
+      "window_ns": 13.468000411987305
+    },
+    {
+      "before_headroom_ns": 3.51999993622303,
+      "complete_delay_ns": 4.3449999541044235,
+      "from": "posedge ram_clock.clocks[0]",
+      "headroom_change_ns": -0.17299997806549072,
+      "headroom_ns": 3.3469999581575394,
+      "passes_acceptance_window_policy": true,
+      "positive_headroom_required": true,
+      "reported_window_met": true,
+      "to": "posedge display.pixel_clk",
+      "window_ns": 7.691999912261963
+    },
+    {
+      "before_headroom_ns": -0.8300003856420517,
+      "complete_delay_ns": 8.490999922156334,
+      "from": "posedge ram_clock.clocks[0]",
+      "headroom_change_ns": 0.031000375747680664,
+      "headroom_ns": -0.799000009894371,
+      "passes_acceptance_window_policy": true,
+      "positive_headroom_required": false,
+      "reported_window_met": false,
+      "to": "posedge ram_clock.clocks[0]",
+      "window_ns": 7.691999912261963
+    },
+    {
+      "before_headroom_ns": 3.2829999290406704,
+      "complete_delay_ns": 2.5050000585615635,
+      "from": "posedge ram_clock.clocks[1]",
+      "headroom_change_ns": -0.7879999876022339,
+      "headroom_ns": 2.4949999414384365,
+      "passes_acceptance_window_policy": true,
+      "positive_headroom_required": true,
+      "reported_window_met": true,
+      "to": "negedge ram_clock.clocks[0]",
+      "window_ns": 5
+    }
+  ],
+  "fmax_mhz": {
+    "display.pixel_clk": {
+      "achieved": 93.6504898071289,
+      "constraint": 74.25006866455078
+    },
+    "ram_clock.clocks[0]": {
+      "achieved": 117.77175903320312,
+      "constraint": 130.0052032470703
+    },
+    "ram_clock.clocks[1]": {
+      "achieved": 259.49139404296875,
+      "constraint": 130.0052032470703
+    }
+  },
+  "four_stage_rejected_proof": {
+    "memory_mhz": 116.52295684814453,
+    "path": "local-multicopy-ready1-route-proof-264/comparison.json",
+    "routed_gain_accepted": false,
+    "sha256": "a905b65ff5b925f8e6527be52a12469b8c65dadee2b6ad6cd7c9ed94ce6b66c9"
+  },
+  "full_run": {
+    "command": [
+      "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/local-multicopy-264/nextpnr-mistral",
+      "--json",
+      "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-merged-remap/measured-diagnostic/synth.json",
+      "--device",
+      "5CSEBA6U23I7",
+      "--qsf",
+      "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/sources/misteross/cores/fes-ramtest/constraints.qsf",
+      "--sdc",
+      "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/sources/misteross/boards/de10nano/clocks.sdc",
+      "--freq",
+      "74.25",
+      "--seed",
+      "2",
+      "--placer-heap-timingweight",
+      "10",
+      "--placer-heap-critexp",
+      "2",
+      "--replicate-enables",
+      "4",
+      "--timing-allow-fail",
+      "--detailed-timing-report",
+      "--balance-reduction-root",
+      "ddr0_test.group_valid_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT6_F_E_MISTRAL_ALUT5_Q_1",
+      "--remap-plan",
+      "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/local-multicopy-ready1-address-stage-264/local-plan.json",
+      "--router",
+      "gpu",
+      "--gpu-device",
+      "1",
+      "--remap-comb-critical",
+      "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/ready-remap-264/route-g1-c0/timing.json",
+      "--remap-comb-candidate",
+      "0",
+      "--write",
+      "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/local-multicopy-ready1-address-route-264/route-c0/routed.json",
+      "--report",
+      "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/local-multicopy-ready1-address-route-264/route-c0/timing.json",
+      "--remap-decompose-critical",
+      "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/remap-plan-264/route-c0-g1-third-c0-g1/timing.json",
+      "--remap-decompose-candidate",
+      "0",
+      "--timing-report-paths",
+      "16384",
+      "--remap-lut-driver-critical",
+      "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/local-multicopy-ready1-address-stage-264/baseline/timing.json",
+      "--remap-lut-driver-candidate",
+      "0",
+      "--rbf",
+      "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/local-multicopy-ready1-address-route-264/route-c0/core.rbf"
+    ],
+    "compiler_read_audit_passed": true,
+    "completed": true,
+    "diagnostic_environment": {
+      "NEXTPNR_MISTRAL_CAPTURE_LOCALITY": "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/route-slots-final/timing.json 64 24",
+      "NEXTPNR_MISTRAL_PLACED_REDUCTION": "ddr0_test.group_valid_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT4_Q 6 0\nddr0_test.group_valid_MISTRAL_ALUT6_E_F_MISTRAL_ALUT5_Q 6 0 200"
+    },
+    "elapsed_seconds": 761.6359827818815,
+    "final_input_output_runtime_hashes_stable": true,
+    "final_reported_hold_violations": false,
+    "gpu_backend": "hip",
+    "local_plan_sha256": "4221d99b826ff7dfebf1e4433065e7e36749dc7087cceb61abb22048f0b9138b",
+    "output_sha256": {
+      "local-multicopy-ready1-address-route-264/route-c0/core.rbf": "b2877830cbdff575af2f5e786168f3184f4de1308be14a80b17f98774a8b23eb",
+      "local-multicopy-ready1-address-route-264/route-c0/route.log": "8bd6846f18d466a5b8b247ed36d91d033d41fe756000590c693e195e79291137",
+      "local-multicopy-ready1-address-route-264/route-c0/routed.json": "9638ab9673244bbe10e537145aa387658eb7bfd4a929626b9f4884b49c487880",
+      "local-multicopy-ready1-address-route-264/route-c0/timing.json": "4083965020bca2c525f7700f6f192fa2a34851a1f03b35b6404f7f834cd53f8a"
+    },
+    "path": "local-multicopy-ready1-address-route-264/route-c0/run.json",
+    "profile_sha256": "d32305c1cf99c1f3ead93fe11ba7e7539b3c88ae2b2b1b44b93346da3ddb5f64",
+    "sha256": "5ed3c077a6beee28c651f6b8638969160abad05d1965f55fb4ae6b373abde8dd"
+  },
+  "host_validation": {
+    "all_passed": true,
+    "backend_cases": 23,
+    "backend_elapsed_seconds": 62.622,
+    "backend_xml_sha256": "71abc766b01f5d34ef81c6c6c57520e18308eb1d315f092583a7bb3a892485f3",
+    "cli_cases": {
+      "local_remap": 12,
+      "remap_plan": 11,
+      "timing_report_paths": 5
+    },
+    "cli_log_sha256": "45dcaeabe7e0be64fe66e2da39a9845c0586e3c452bddf6546e60a60eba3db6a",
+    "cmake_cache_sha256": "24b21676c4f0687349549edb9d3e91b516e6ebfe91164ec11e8eae61561d083f",
+    "ctest_last_test_log_sha256": "a3db9cff3353a94ba7aa8f3bc90ec3643f15adf64dbb5d46daedc92f4f857e50",
+    "ctest_total_elapsed_seconds": 299.17,
+    "focused_cases_total": 51,
+    "fresh_hip_build_passed": true,
+    "measured_host_validation_sha256": "98c1f40aac52907e60f51e27db1e5a06b49c99020187b9c59dddffdcd332689e",
+    "publication_backend_binary_sha256": "c51c70cf8c8be035910823865417e5d2e6e428dec3942ab1a3d450894b920969",
+    "publication_cli_binary_sha256": "92416f4a82d29dc7e8bfb36efa7dbd0f1b8cebeb714c18ee3090caf070bd1519"
+  },
+  "measured_base_commit": "5dd69a8ddece6280d576816d2277c73f80607f52",
+  "measured_binary_sha256": "91a51253a44e74a10f6ac97fa1f3d7bdd402bc45fdede6f46ff054a5d519b5cf",
+  "measured_compiler_commit": "81243a1300304d7e598156c692be2fcbf2c16268",
+  "measured_rbf_signoff_branch_unchanged": true,
+  "measured_source_archive_sha256": "c9476dec61230fb01f03b1baafc5efae07288f069f88b3a27e97759bdee792ad",
+  "memory_gain_mhz": 0.42841339111328125,
+  "publication_allocator_and_backend_test_bytes_match_measurement": true,
+  "publication_base_commit": "3f4acc0e3b471039a019f53b3674c9f0c1ca112d",
+  "publication_code_commit": "08a1afdf7a1d0f5b855b7aec68cf6ebd5a28d1f8",
+  "publication_full_ramtest_route_rerun": false,
+  "publication_source_sha256": {
+    "mistral/local_remap.cc": "9cab6b21a1b1f80b6ccc20237c136bdf150586fab82121ee33c8648c507ced62",
+    "mistral/tests/remap_plan.cc": "12d4d89179aca920b977021443baaaa1cbe77d93ff323186b1b0a6fdbea91dab"
+  },
+  "publication_upstream_non_rbf_report_refresh_absent_from_measurement": true,
+  "schema": 1,
+  "scope_limits": {
+    "default_recipe_or_fes_compiler_pins_changed": false,
+    "hardware_tested": false,
+    "independent_numerical_sta_or_delay_calibration_proved": false,
+    "memory_130mhz_closed": false,
+    "rbf_cram_or_route_pips_independently_decoded": false,
+    "unexported_caches_or_gpu_indices_proved": false
+  }
+}
