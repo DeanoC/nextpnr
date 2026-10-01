@@ -1,0 +1,11 @@
+{
+  "issue": "https://github.com/DeanoC/nextpnr/issues/98",
+  "fes_revision": "17929b2bd5636655586e47f121d44242e5519446",
+  "nextpnr_baseline": "da1ee82b7b019ff51d62fe41fd9447961f178e1a",
+  "sha256": {
+    "synth.json.gz": "0d7ab067f1c3c33c1f62c3479b0a20490c177f97236ad7c5b9dd3c1e1e95ec7e",
+    "constraints.qsf": "c38882cbba0b0e3050e86f7d2acd7e7b090fb9329e43e2a6c4f438ab7c7df83f",
+    "clocks.sdc": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041"
+  },
+  "synth_json_sha256": "fb75be656cf6c9fbb94ac54c57c4486f850188fe747e779a7b3343222a7225c4"
+}
