@@ -41,8 +41,10 @@ provided final signoff; the measured full route took 728.1713569071144 seconds.
 
 The selected copy serves the complete two-FF ENA cohort while retaining the two
 shared original LUTs and their other consumers. The proof checks all 8,221 original
-FF BELs, complete original owner/port/alias ordering, paired PLL ports and raw
-driver/user reconstruction. Its routed pin interpretation independently checks
+FF BELs, relative original owner and alias order after filtering introduced
+owners, original port ordering, paired PLL ports and raw driver/user
+reconstruction. It did not prove that original owners remain a complete prefix
+or that GPU net IDs are preserved. Its routed pin interpretation independently checks
 the four-leaf composed function over 16 assignments, 27 affected whole LABs,
 210 original LUT banks, 5,322 original FF control rows and all 5,232 introduced
 route-through buffers. No private output ID frame changed in this run.
@@ -67,15 +69,30 @@ coverage comprises 12 pair-placement, 11 composed-copy, 25 plan and 10 driver-co
 cases; CLI coverage comprises 17 pair, 24 plan and 10 driver methods. The host
 record binds their actual command/log identities to the frozen compiler.
 
-Publication code is synchronized onto main
+The initial publication was synchronized onto main
 `04a224483a3e01147523033351176b20ce41317c`, which includes the additional #108
 placement-timeout fix. The publication build passed **60 native cases, 53 CLI
 methods and four shared control-set cases**, including both LAB pin-map tests.
-Those checks used source `02269d27e802cc13dc6ef85641c3aac8d0662391`; subsequent
-documentation changes leave the tested production code unchanged. Publication
-timing is not yet qualified. This benchmark does not claim that publication binaries match the
+Those checks used source `02269d27e802cc13dc6ef85641c3aac8d0662391`. That publication
+binary was not timing qualified. This benchmark does not claim that publication binaries match the
 frozen measured ELF. The source additions are generic, explicitly requested
 options and default off; the recipe above is an explicit benchmark configuration.
+
+## Owner-prefix review fix
+
+The acceptance code at source HEAD `ae372ba6b54e6146343abbd0598d3e8f169c1d73`
+appends new cell, net and alias owners after all original owners. A regression
+accepts two copies and checks the earlier copy and every existing GPU net ID.
+Host validation passed **45 native cases and 38 CLI methods**. The native test
+build used that HEAD plus an uncommitted change to
+`mistral/tests/lut_pair_placement.cc`; the CLI checks used the unchanged production ELF
+`4b9f541909044f3934e9a7b29cbdadc50f7be443f3dd7777f72d6349a6f6836c`.
+The native fixture record is
+`97e6e36c9755eedd6d15acb94d95fb4ad0f6d24e396ce8862ebbd02cad752e88`;
+the CLI record is
+`561a825d29fa33e7e8ad15cd962e82ade406f1ca5220d88cd95b2dc0dc9ec0e6`.
+These host checks provide no new timing qualification or benchmark result and
+do not transfer the frozen measurement to the reviewed binary.
 
 No default-recipe or current-pin acceptance, independent numerical STA, complete
 route/device legality proof, unexported pre-route cache equality, bitstream decode

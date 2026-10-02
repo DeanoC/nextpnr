@@ -679,7 +679,8 @@ class LutPairCopyTest : public LutPairPlacementTest {
         for (const auto &entry : ctx->nets) entry.second->udata = index++;
     }
 
-    void originals(const PairSnapshot &saved, CellInfo *clone, const std::set<IdString> &cohort) const
+    void originals(const PairSnapshot &saved, CellInfo *clone, const std::set<IdString> &cohort,
+                   bool require_clone_outside_sink_lab = true) const
     {
         ASSERT_NE(clone, nullptr); auto *output = clone->getPort(id_Q);
         ASSERT_NE(output, nullptr); ASSERT_EQ(ctx->cells.size(), saved.cells.size() + 1);
@@ -781,7 +782,7 @@ class LutPairCopyTest : public LutPairPlacementTest {
         EXPECT_EQ(output->udata, int32_t(saved.net_order.size()));
         EXPECT_TRUE(ctx->isBelLocationValid(clone->bel));
         auto site = ctx->getBelLocation(clone->bel), target = ctx->getBelLocation(sink->bel);
-        EXPECT_FALSE(site.x == target.x && site.y == target.y);
+        if (require_clone_outside_sink_lab) EXPECT_FALSE(site.x == target.x && site.y == target.y);
         auto alm = ctx->bel_data(clone->bel).lab_data;
         for (auto bel : ctx->getBelsByTile(site.x, site.y))
             if ((ctx->isValidBelForCellType(id_MISTRAL_ALUT2, bel) || ctx->isValidBelForCellType(id_MISTRAL_FF, bel)) &&
@@ -931,7 +932,9 @@ TEST_F(LutPairCopyTest, RepeatedAcceptedCopiesAppendAfterEveryPriorOwnerAndGpuNe
     ASSERT_EQ(retained.alias_order.back(), first_output->name);
     ASSERT_TRUE(ctx->remap_lut_pair_critical(report(), 0)) << log.stream.str();
     auto *second = new_clone(retained); ASSERT_NE(second, nullptr); ASSERT_NE(second, first);
-    originals(retained, second, {next->name});
+    // This target's LAB is unprotected, so a separate empty ALM in the same
+    // LAB is legal. Keep all owner, pin, ALM isolation and net-ID checks.
+    originals(retained, second, {next->name}, false);
     EXPECT_EQ(ctx->cells.at(first->name).get(), first);
     EXPECT_EQ(ctx->nets.at(first_output->name).get(), first_output);
     EXPECT_EQ(ctx->getNetByAlias(first_output->name), first_output);

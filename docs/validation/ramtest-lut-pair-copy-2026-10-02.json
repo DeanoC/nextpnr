@@ -97,7 +97,9 @@
     "native_graph_proved": true, "physical_scope_proved": true, "gain_rule_passed": true,
     "structural_rejection": null, "topology_rejection": null,
     "original_ff_bels_preserved": 8221, "ten_models_and_71_placement_metrics_exact": true,
-    "whole_original_owner_order_paired_pll_and_raw_tables_proved": true,
+    "relative_original_owner_order_paired_pll_and_raw_tables_proved": true,
+    "original_owner_prefix_and_gpu_net_ids_proved": false,
+    "original_port_order_proved": true,
     "composed_copy_truth_assignments": 16, "composed_copy_leaves": 4,
     "actual_late_buffers_explicitly_proved": 5232, "actual_private_output_id_frames": 0,
     "affected_whole_labs": 27, "original_lut_banks_checked": 210, "original_ff_control_rows_checked": 5322,
@@ -106,6 +108,7 @@
     "frozen_host_tests": {"status": "passed", "native_cases": 58, "cli_methods": 51, "native_suites": {"pair": 12, "copy": 11, "plan": 25, "driver": 10}, "cli_scripts": {"pair": 17, "plan": 24, "driver": 10}}
   },
   "publication": {
+    "scope": "Initial publication host checks before the owner-prefix review fix",
     "synchronization_base": "04a224483a3e01147523033351176b20ce41317c",
     "includes_pr_108_placement_timeout_fix": true,
     "test_status": "passed", "timing_qualification_status": "not performed",
@@ -119,6 +122,23 @@
     "build_log_sha256": "185f78c2752571d64dd23d84572d1590053b4cdd1b30eee7d36f7860c2c14c0d",
     "exact_frozen_binary_equivalence_claimed": false,
     "generic_source_changes_default_off": true
+  },
+  "review_fix_validation": {
+    "source_head": "ae372ba6b54e6146343abbd0598d3e8f169c1d73",
+    "compiled_source_identity": "Native test build: source HEAD plus an uncommitted fixture correction; CLI checks used the unchanged production ELF",
+    "source_tree_dirty": true,
+    "changed_fixture": "mistral/tests/lut_pair_placement.cc",
+    "production_binary_sha256": "4b9f541909044f3934e9a7b29cbdadc50f7be443f3dd7777f72d6349a6f6836c",
+    "acceptance_appends_new_owners_after_all_originals": true,
+    "two_acceptances_preserve_earlier_copy_and_all_existing_gpu_net_ids_regression_passed": true,
+    "test_status": "passed",
+    "native_cases": 45,
+    "cli_methods": 38,
+    "native_fixture_record_sha256": "97e6e36c9755eedd6d15acb94d95fb4ad0f6d24e396ce8862ebbd02cad752e88",
+    "cli_record_sha256": "561a825d29fa33e7e8ad15cd962e82ade406f1ca5220d88cd95b2dc0dc9ec0e6",
+    "timing_qualification_status": "not performed",
+    "new_benchmark_result_claimed": false,
+    "frozen_measurement_inherited_by_reviewed_binary": false
   },
   "limits": {
     "default_recipe_acceptance_claimed": false, "current_pin_assignment_change_claimed": false,
