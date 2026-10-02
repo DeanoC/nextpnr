@@ -606,6 +606,33 @@ bool Arch::remap_lut_pair_copy_critical(const std::string &report, int selection
                     log_info("LUT pair copy candidate %d: inner=%s outer=%s sink=%s.ENA clone_bel=%s gain=%.0fps cohort=%zu.\n",
                              qualified, nameOf(inner), nameOf(outer), nameOf(sink), nameOfBel(site.bel), slack - old_slack, cohort.size());
                     if (selection == qualified++) {
+                        // dict iterates insertion storage backwards. Append
+                        // the new owners to iteration order without shifting
+                        // any original GPU net index, including prior copies.
+                        decltype(cells) accepted_cells;
+                        decltype(nets) accepted_nets;
+                        decltype(net_aliases) accepted_aliases;
+                        accepted_cells[cname] = nullptr; accepted_nets[nname] = nullptr;
+                        accepted_aliases[nname] = nname;
+                        for (auto it = originals.rbegin(); it != originals.rend(); ++it) accepted_cells[it->name] = nullptr;
+                        for (auto it = original_nets.rbegin(); it != original_nets.rend(); ++it) accepted_nets[it->name] = nullptr;
+                        for (auto it = alias_order.rbegin(); it != alias_order.rend(); ++it) accepted_aliases[it->first] = it->second;
+                        // Finish every allocation and lookup before moving an
+                        // owner; allocation failure still uses exact rollback.
+                        auto owner_moves = [](auto &from, auto &to) {
+                            using Slot = decltype(&from.begin()->second);
+                            std::vector<std::pair<Slot, Slot>> moves; moves.reserve(to.size());
+                            for (auto &entry : to) {
+                                auto &owner = from.at(entry.first); NPNR_ASSERT(owner && !entry.second);
+                                moves.emplace_back(&owner, &entry.second);
+                            }
+                            return moves;
+                        };
+                        auto cell_moves = owner_moves(cells, accepted_cells);
+                        auto net_moves = owner_moves(nets, accepted_nets);
+                        for (auto slots : cell_moves) *slots.second = std::move(*slots.first);
+                        for (auto slots : net_moves) *slots.second = std::move(*slots.first);
+                        cells.swap(accepted_cells); nets.swap(accepted_nets); net_aliases.swap(accepted_aliases);
                         ctx->check();
                         log_info("LUT pair copy applied candidate %d; full routing and signoff still required.\n", selection);
                         live = false; return true;

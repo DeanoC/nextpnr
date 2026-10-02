@@ -38,6 +38,7 @@ struct PairSnapshot {
     struct Net {
         NetInfo *identity;
         const std::unique_ptr<NetInfo> *owner;
+        int32_t udata;
         PortRef driver;
         indexed_store<PortRef> users;
         decltype(NetInfo::attrs) attrs;
@@ -46,6 +47,7 @@ struct PairSnapshot {
     std::map<IdString, Cell> cells;
     std::map<IdString, Net> nets;
     std::map<IdString, IdString> aliases;
+    std::map<IdString, NetInfo *> alias_owners;
     std::map<IdString, PortInfo> ports;
     std::vector<IdString> cell_order, net_order, alias_order;
     std::vector<LABInfo> labs;
@@ -64,11 +66,12 @@ struct PairSnapshot {
         }
         for (const auto &entry : ctx->nets) {
             auto *net = entry.second.get();
-            nets.emplace(entry.first, Net{net, &entry.second, net->driver, net->users, net->attrs, net->wires});
+            nets.emplace(entry.first, Net{net, &entry.second, net->udata, net->driver, net->users, net->attrs, net->wires});
             net_order.push_back(entry.first);
         }
         for (const auto &entry : ctx->net_aliases) {
             aliases.emplace(entry.first, entry.second); alias_order.push_back(entry.first);
+            alias_owners.emplace(entry.first, ctx->getNetByAlias(entry.first));
         }
         for (const auto &entry : ctx->ports) ports.emplace(entry.first, entry.second);
     }
@@ -145,6 +148,7 @@ struct PairSnapshot {
             auto *net = ctx->nets.at(row.first).get(); const auto &saved = row.second;
             EXPECT_EQ(net, saved.identity);
             if (owner_addresses) EXPECT_EQ(&ctx->nets.at(row.first), saved.owner);
+            EXPECT_EQ(net->udata, saved.udata);
             EXPECT_EQ(net->driver.cell, saved.driver.cell); EXPECT_EQ(net->driver.port, saved.driver.port);
             EXPECT_EQ(net->attrs, saved.attrs); users(net->users, saved.users);
             ASSERT_EQ(net->wires.size(), saved.wires.size());
@@ -154,7 +158,10 @@ struct PairSnapshot {
                 EXPECT_EQ(net->wires.at(wire.first).strength, wire.second.strength);
             }
         }
-        for (const auto &row : aliases) EXPECT_EQ(ctx->net_aliases.at(row.first), row.second);
+        for (const auto &row : aliases) {
+            EXPECT_EQ(ctx->net_aliases.at(row.first), row.second);
+            EXPECT_EQ(ctx->getNetByAlias(row.first), alias_owners.at(row.first));
+        }
         for (const auto &row : ports) port(ctx->ports.at(row.first), row.second);
         ASSERT_EQ(ctx->labs.size(), labs.size());
         for (size_t i = 0; i < labs.size(); ++i) {
@@ -664,6 +671,14 @@ class LutPairCopyTest : public LutPairPlacementTest {
         restored(saved);
     }
 
+    void assign_router_net_indices() const
+    {
+        // Match gpurouter.cc::setup_net_indices without constructing a GPU
+        // router: every live net receives its actual full iteration ordinal.
+        int32_t index = 0;
+        for (const auto &entry : ctx->nets) entry.second->udata = index++;
+    }
+
     void originals(const PairSnapshot &saved, CellInfo *clone, const std::set<IdString> &cohort) const
     {
         ASSERT_NE(clone, nullptr); auto *output = clone->getPort(id_Q);
@@ -673,17 +688,21 @@ class LutPairCopyTest : public LutPairPlacementTest {
         ASSERT_TRUE(ctx->net_aliases.count(output->name));
         EXPECT_EQ(ctx->net_aliases.at(output->name), output->name);
         std::vector<IdString> cells, nets, aliases;
-        for (const auto &row : ctx->cells) if (row.first != clone->name) cells.push_back(row.first);
-        for (const auto &row : ctx->nets) if (row.first != output->name) nets.push_back(row.first);
-        for (const auto &row : ctx->net_aliases) {
-            if (!saved.aliases.count(row.first)) {
-                EXPECT_EQ(row.first, output->name); EXPECT_EQ(row.second, output->name);
-            } else aliases.push_back(row.first);
-        }
-        EXPECT_EQ(cells, saved.cell_order); EXPECT_EQ(nets, saved.net_order); EXPECT_EQ(aliases, saved.alias_order);
+        for (const auto &row : ctx->cells) cells.push_back(row.first);
+        for (const auto &row : ctx->nets) nets.push_back(row.first);
+        for (const auto &row : ctx->net_aliases) aliases.push_back(row.first);
+        auto expected_cells = saved.cell_order, expected_nets = saved.net_order, expected_aliases = saved.alias_order;
+        expected_cells.push_back(clone->name); expected_nets.push_back(output->name); expected_aliases.push_back(output->name);
+        // Keep the new owners in the comparison: filtering them out would
+        // hide a head insertion that shifts every original GPU net ID.
+        EXPECT_EQ(cells, expected_cells); EXPECT_EQ(nets, expected_nets); EXPECT_EQ(aliases, expected_aliases);
         EXPECT_EQ(ctx->ports.size(), saved.ports.size());
         for (const auto &row : saved.ports) PairSnapshot::port(ctx->ports.at(row.first), row.second);
-        for (const auto &row : saved.aliases) EXPECT_EQ(ctx->net_aliases.at(row.first), row.second);
+        for (const auto &row : saved.aliases) {
+            EXPECT_EQ(ctx->net_aliases.at(row.first), row.second);
+            EXPECT_EQ(ctx->getNetByAlias(row.first), saved.alias_owners.at(row.first));
+        }
+        EXPECT_EQ(ctx->getNetByAlias(output->name), output);
         for (const auto &row : saved.cells) {
             SCOPED_TRACE(row.first.str(ctx.get())); auto *cell = ctx->cells.at(row.first).get(); const auto &old = row.second;
             EXPECT_EQ(cell, old.identity); EXPECT_EQ(cell->type, old.type); EXPECT_EQ(cell->bel, old.bel);
@@ -728,6 +747,7 @@ class LutPairCopyTest : public LutPairPlacementTest {
         for (const auto &row : saved.nets) {
             auto *net = ctx->nets.at(row.first).get(); const auto &old = row.second;
             EXPECT_EQ(net, old.identity); EXPECT_EQ(net->driver.cell, old.driver.cell); EXPECT_EQ(net->driver.port, old.driver.port);
+            EXPECT_EQ(net->udata, old.udata);
             EXPECT_EQ(net->attrs, old.attrs); EXPECT_EQ(net->wires.size(), old.wires.size());
             for (const auto &wire : old.wires) {
                 ASSERT_TRUE(net->wires.count(wire.first));
@@ -752,6 +772,13 @@ class LutPairCopyTest : public LutPairPlacementTest {
             }
             EXPECT_EQ(net->users.entries(), expected.entries() + added);
         }
+        assign_router_net_indices();
+        for (size_t index = 0; index < saved.net_order.size(); ++index) {
+            auto *net = ctx->nets.at(saved.net_order[index]).get();
+            EXPECT_EQ(net, saved.nets.at(saved.net_order[index]).identity);
+            EXPECT_EQ(net->udata, int32_t(index));
+        }
+        EXPECT_EQ(output->udata, int32_t(saved.net_order.size()));
         EXPECT_TRUE(ctx->isBelLocationValid(clone->bel));
         auto site = ctx->getBelLocation(clone->bel), target = ctx->getBelLocation(sink->bel);
         EXPECT_FALSE(site.x == target.x && site.y == target.y);
@@ -877,6 +904,46 @@ TEST_F(LutPairCopyTest, LaterFailedProbeRetainsAnEarlierAcceptedCopyAndItsUsers)
     EXPECT_FALSE(ctx->remap_lut_pair_critical(report(), -1)); restored(retained);
     EXPECT_FALSE(ctx->remap_lut_pair_critical(report(), 9999)); restored(retained);
     EXPECT_EQ(ctx->cells.at(first->name).get(), first); EXPECT_EQ(first->bel, first_bel); EXPECT_EQ(first->getPort(id_Q), first_q);
+}
+
+TEST_F(LutPairCopyTest, RepeatedAcceptedCopiesAppendAfterEveryPriorOwnerAndGpuNetId)
+{
+    // Reuse the real later-target geometry, but create it before either
+    // acceptance. No new fixture owners are inserted between the two copies.
+    auto *next = ff("later_target", outer->getPort(id_Q));
+    ctx->assign_ff_info(next); ctx->assign_default_pinmap(next);
+    place(next, 31, 20, STRENGTH_WEAK);
+    assign_router_net_indices();
+    PairSnapshot original(ctx.get()); PairLog log;
+    ASSERT_TRUE(ctx->remap_lut_pair_critical(report(), 0)) << log.stream.str();
+    auto *first = new_clone(original); ASSERT_NE(first, nullptr);
+    originals(original, first, {sink->name});
+    auto *first_output = first->getPort(id_Q);
+    ASSERT_NE(first_output, nullptr);
+    EXPECT_EQ(first_output->udata, int32_t(original.net_order.size()));
+
+    // The first clone/output/identity alias are now originals themselves.
+    // They must remain in the exact next prefix, at the same live net IDs.
+    sink = next;
+    PairSnapshot retained(ctx.get());
+    ASSERT_EQ(retained.cell_order.back(), first->name);
+    ASSERT_EQ(retained.net_order.back(), first_output->name);
+    ASSERT_EQ(retained.alias_order.back(), first_output->name);
+    ASSERT_TRUE(ctx->remap_lut_pair_critical(report(), 0)) << log.stream.str();
+    auto *second = new_clone(retained); ASSERT_NE(second, nullptr); ASSERT_NE(second, first);
+    originals(retained, second, {next->name});
+    EXPECT_EQ(ctx->cells.at(first->name).get(), first);
+    EXPECT_EQ(ctx->nets.at(first_output->name).get(), first_output);
+    EXPECT_EQ(ctx->getNetByAlias(first_output->name), first_output);
+    EXPECT_EQ(first->getPort(id_Q), first_output);
+    EXPECT_EQ(first_output->udata, int32_t(original.net_order.size()));
+    EXPECT_EQ(second->getPort(id_Q)->udata, int32_t(retained.net_order.size()));
+
+    // The old outer-to-ENA report is now stale. Both selection modes must
+    // reject it while retaining both clones and the assigned routing indices.
+    PairSnapshot twice(ctx.get());
+    EXPECT_THROW(ctx->remap_lut_pair_critical(report(), -1), log_execution_error_exception); restored(twice);
+    EXPECT_THROW(ctx->remap_lut_pair_critical(report(), 9999), log_execution_error_exception); restored(twice);
 }
 
 TEST_F(LutPairCopyTest, ProtectedSourceOrTargetAndMixedClockCohortCannotBeCopied)
