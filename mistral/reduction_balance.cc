@@ -239,11 +239,21 @@ void rewrite_reduction(Context *ctx, const ReductionBalancePlan &plan)
                  root->name.c_str(ctx));
 }
 
+void remove_reduction_net_aliases(Context *ctx, const ReductionBalancePlan &plan)
+{
+    for (auto *net : plan.retired_nets)
+        for (auto alias = ctx->net_aliases.begin(); alias != ctx->net_aliases.end();) {
+            if (alias->second == net->name) alias = ctx->net_aliases.erase(alias);
+            else ++alias;
+        }
+}
+
 bool Arch::balance_reduction(const std::string &root_name)
 {
     ReductionBalancePlan plan;
     if (!plan_reduction(getCtx(), root_name, false, plan)) return false;
     rewrite_reduction(getCtx(), plan);
+    remove_reduction_net_aliases(getCtx(), plan);
     // The unplaced path commits immediately; no detached object may reach pack.
     for (auto *cell : plan.retired) {
         const auto name = cell->name;

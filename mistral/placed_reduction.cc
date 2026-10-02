@@ -156,8 +156,12 @@ bool placed_reduction(Context *ctx, const std::string &root_name, int radius, in
     // dictionaries on rejection; pointers remain stable throughout the probe.
     decltype(ctx->cells) parked_cells;
     decltype(ctx->nets) parked_nets;
+    decltype(ctx->net_aliases) parked_aliases;
     auto retire = [&]() {
         if (plan.retired.empty()) return;
+        ctx->net_aliases.swap(parked_aliases);
+        ctx->net_aliases = parked_aliases;
+        remove_reduction_net_aliases(ctx,plan);
         ctx->cells.swap(parked_cells);
         for (auto &entry : parked_cells)
             if (std::find(plan.retired.begin(),plan.retired.end(),entry.second.get()) == plan.retired.end())
@@ -173,6 +177,7 @@ bool placed_reduction(Context *ctx, const std::string &root_name, int radius, in
         ctx->cells.swap(parked_cells);
         for (auto &entry : ctx->nets) parked_nets.at(entry.first) = std::move(entry.second);
         ctx->nets.swap(parked_nets);
+        ctx->net_aliases.swap(parked_aliases);
     };
     auto unbind = [&]() { for (auto *cell : plan.cells) if (cell->bel != BelId()) ctx->unbindBel(cell->bel); };
     auto rollback = [&]() {
