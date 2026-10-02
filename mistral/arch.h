@@ -582,6 +582,9 @@ struct Arch : BaseArch<ArchRanges>
     std::string lut_driver_copy_report; // Explicit CLI only; never a serialized setting.
     int lut_driver_copy_selection = -1;
     bool remap_lut_driver_critical(const std::string &report, int selection);
+    std::string capture_pipeline_report; // Experimental request bytes, never serialized settings.
+    int capture_pipeline_budget = 0;
+    int capture_pipeline_radius = 24;
     bool balance_reduction(const std::string &root_name);
     bool route() override;
 
@@ -750,6 +753,9 @@ struct Arch : BaseArch<ArchRanges>
 
     void build_bitstream(); // bitstream.cc
 };
+
+// Experimental request preload; the live placement is validated by the worker.
+void preload_capture_pipeline_locality(Context *, const char *);
 
 NEXTPNR_NAMESPACE_END
 
