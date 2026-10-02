@@ -55,8 +55,10 @@ Placement qualification is not routed timing acceptance. A retained pair still
 needs a full route and signoff under the required clocks, plus independent
 graph and physical checks before claiming a gain. The
 [2026-10-02 RAM-test record](validation/ramtest-capture-pipeline-2026-10-02.md)
-qualifies two explicit configurations against a matched fresh main baseline.
-The best, budget 64 and radius 24, reached 106.1233139038086 MHz memory Fmax,
-a 0.34798431396484375 MHz gain; all six non-target clock windows remained
-positive and final signoff reported no hold violations. Memory still misses
-130 MHz. The pass remains default off and does not change the build recipe.
+qualifies explicit budget-8 and budget-64 configurations against a matched fresh
+main baseline, plus budget 8 followed by one selected existing LUT-pair copy.
+The combined result reached 107.30764770507812 MHz memory Fmax, gaining
+1.4427337646484375 MHz over the budget-8 parent and 1.532318115234375 MHz over
+fresh main. All six non-target clock windows remained positive and final
+signoff reported no hold violations. Memory still misses 130 MHz. The pass
+remains default off and does not change the build recipe.

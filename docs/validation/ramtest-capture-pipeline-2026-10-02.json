@@ -1,8 +1,9 @@
 {
   "schema": 1,
   "record_date": "2026-10-02",
-  "scope": "Explicit generic two-FF capture-pipeline placement trials against a matched fresh main baseline",
-  "best_matched_main_result": "budget64_radius24",
+  "scope": "Explicit generic two-FF capture-pipeline placement trials and one existing composed LUT-pair copy against matched baselines",
+  "best_matched_main_result": "budget8_radius24_pair_copy0",
+  "best_standalone_pipeline_result": "budget64_radius24",
   "raw_root": "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264",
   "raw_artifacts_committed_with_summary": false,
   "compiler": {
@@ -41,8 +42,9 @@
   "actual_command_and_environment_bound_by_profile_sha256": true,
   "ordinary_heap_placement": true,
   "other_selected_nextpnr_diagnostic_environment": {},
-  "reduction_remap_plan_lut_pair_copy_or_driver_copy_selected": false,
+  "standalone_pipeline_routes_select_reduction_remap_plan_lut_pair_copy_or_driver_copy": false,
   "recorder": {
+    "scope": "standalone budget8 and budget64 pipeline trials",
     "path": "capture-pipeline-264/trial_clock_group.py",
     "sha256": "a3fb41cb3300099022c1af4c63c44bac6bf92eb4612ca4456bdaa41596ff01ed",
     "run_role": "Exploratory recorder; qualification is established by the later independent proof",
@@ -214,9 +216,188 @@
         "directly_rehashed_source_or_compiler_files": 2328,
         "historical_archive_members_bound": 932
       }
+    },
+    "budget8_radius24_pair_copy0": {
+      "status": "qualified measured composition gain against B8 parent and matched fresh main",
+      "parent_result": "budget8_radius24",
+      "attempted_chain_budget": 8,
+      "radius": 24,
+      "selected_environment": {
+        "NEXTPNR_MISTRAL_CAPTURE_PIPELINE_LOCALITY": "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/lut-pair-copies-publication-264/main-baseline-placed/timing.json 8 24"
+      },
+      "additional_command_arguments": [
+        "--remap-lut-pair-critical",
+        "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/capture-pipeline-264/clock-group-pipeline-placed-b8-r24/timing.json",
+        "--remap-lut-pair-compose-copy",
+        "--remap-lut-pair-candidate", "0"
+      ],
+      "reduction_remap_plan_or_driver_copy_selected": false,
+      "source_commit": "a0432321e5ab99e20ec83e4fe97b652128b3c4b8",
+      "compiler_elf_sha256": "4db58a6de261b8542cce2c50f969f1f7b23b2c9c92150fa9a80697f88d185c27",
+      "source_archive_sha256": "19c307f0fc22f5b766d8eba1f0bb7a282a52e0f5344a4674d2a76aa214fa7d29",
+      "input_sha256": {
+        "out/ramtest-merged-remap/measured-diagnostic/synth.json": "61ee68c657e49364425dd4ba4880a679e0759992f2750e284e256d1e4139de28",
+        "sources/misteross/cores/fes-ramtest/constraints.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+        "sources/misteross/boards/de10nano/clocks.sdc": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041"
+      },
+      "recorder": {
+        "path": "capture-pipeline-264/select_post_pipeline.py",
+        "sha256": "c2f59722b380245c46933bcc5b90f2c0766df86be8169d85d3993ab001f5505d",
+        "run_role": "Exploratory recorder; qualification established by later independent proof",
+        "exact_prefix_listing_profile_compiler_source_input_closure_checked_before_after_both_runs": true,
+        "cleared_environment_prefix": "NEXTPNR_",
+        "fixed_locale": {"LANG": "C", "LC_ALL": "C", "TZ": "UTC"}
+      },
+      "prefix": {
+        "directory": "capture-pipeline-264/clock-group-pipeline-placed-b8-r24",
+        "run_sha256": "95eb2f478408d8b65fb0127cd8404a3f97f2377a9c819aff31e8d2b81076b8df",
+        "output_sha256": {
+          "placed.json": "8a433d2a8670a16c8d438ec42b19a27fd19cf79c6d83156101f22b7d4d55cef6",
+          "profile.json": "9f770cfb10603b58bc7977d51854f6f79ab2980ea35f0c62374094631ecc959b",
+          "timing.json": "18aecabd79f697c0f010ce0339349bbdd34c94e32814194b90a9610068cb980b",
+          "trial.log": "0e5177153e02a4ed6476204aa29f89424c279e67faa187b3b950ec7e83b5f2ab"
+        }
+      },
+      "listing": {
+        "directory": "capture-pipeline-264/clock-group-pipeline-b8-pair-copy-list",
+        "run_sha256": "05bbdd76ba39abcb03b5538087c3eab80c72eaf4216d4294f4b7d8d83af41cfd",
+        "helper_sha256": "be7e5dae7076555d43f40ea445bae05bb151072b293f4616c58c2224095e91e1",
+        "qualified_candidates": 56,
+        "all_candidates_rolled_back": true,
+        "complete_parent_frame_restored_exactly": true,
+        "output_sha256": {
+          "placed.json": "8a433d2a8670a16c8d438ec42b19a27fd19cf79c6d83156101f22b7d4d55cef6",
+          "profile.json": "fcc7ac5b2b05b705d22c0534ec07810a5e3a6d27d36ed00bc5aa82b786f36854",
+          "timing.json": "18aecabd79f697c0f010ce0339349bbdd34c94e32814194b90a9610068cb980b",
+          "trial.log": "28045b3f6b8835b82b1713de24fb699a8bfbab5784d82d125026114c317436f0"
+        }
+      },
+      "selected_placement": {
+        "directory": "capture-pipeline-264/clock-group-pipeline-b8-pair-copy-c0-placed",
+        "run_sha256": "1ac34d488937d68b8a63d8b46b45433086cd42e36af6caf038b505ac08e09f9c",
+        "elapsed_seconds": 71.57336285104975,
+        "exit_code": 0,
+        "output_sha256": {
+          "placed.json": "42fd106f4cc66f965eeb44d9bea2c6d0128d2a07009cdec9c1ed2b7efb5a93ba",
+          "profile.json": "b01ebf1178bde3b447a5d40c0a9ab5364bbbc39df1ec403ef33e92a067f3c825",
+          "timing.json": "ba18c96552bb3865b5ab2484c63d8b689e14539a07e3766a65dab83b423b6df9",
+          "trial.log": "3270ab5d38333fbedc2a61cc0e9159270f256d23e718961e25b2443cf7fa13c0"
+        }
+      },
+      "route_directory": "capture-pipeline-264/clock-group-pipeline-b8-pair-copy-c0-route",
+      "route_run_sha256": "a2ddc6830f6d75e11cb1e0fbd13a2d3b284db69554fc72505c27b531484c893d",
+      "route_elapsed_seconds": 881.0144869019277,
+      "route_exit_code": 0,
+      "output_sha256": {
+        "profile.json": "218946fb41717c027fe7b54ce819a6dc1076b7aeff187dc22cf8e710c3e14dd7",
+        "routed.json": "919ac9752d2a30b6b2d190add729671b568fcdb692103a79ddbb31fe4ba91175",
+        "timing.json": "cfd9b3a7612346351a9470788be0cc306bb42f6e25fe2dc84af54c863674f4cc",
+        "trial.log": "dd353d7200ba6330f68b8fd8fdb3881bfaa64ee18f6fc08d1630fe7bb0baafa0",
+        "core.rbf": "40e3cd9c6274eee8b9d4d3c867f12b7d3a6bfbecff835a448791b12ae5e85110"
+      },
+      "proof_source": "capture-pipeline-264/prove_pipeline_c0.py",
+      "proof_source_sha256": "e9d9833b390a433c0e87f0f667a10fd407985d441abad14e31dc50111ac81b16",
+      "proof_result": "capture-pipeline-264/proof-pipeline-c0.json",
+      "proof_result_sha256": "6241696ea763e4cc8c8961ea6e57800beeda05fe545779f833a8a04d443a3cf8",
+      "gain_accepted_against_b8_pipeline_parent": true,
+      "gain_accepted_against_matched_main_baseline": true,
+      "exported_native_physical_equivalence_proved": true,
+      "all_six_non_target_windows_positive": true,
+      "all_clock_nonregression_vs_b8_parent": false,
+      "all_clock_nonregression_vs_fresh_main": false,
+      "final_reported_hold_violations": false,
+      "complete_reported_paths": 15290,
+      "clock_domain_pairs": 7,
+      "fmax_mhz": {
+        "ram_clock.clocks[0]": 107.30764770507812,
+        "display.pixel_clk": 94.89466857910156,
+        "ram_clock.clocks[1]": 375.0871276855469
+      },
+      "gain_vs_b8_parent_mhz": {
+        "ram_clock.clocks[0]": 1.4427337646484375,
+        "display.pixel_clk": -0.67108154296875,
+        "ram_clock.clocks[1]": 0.0
+      },
+      "gain_vs_fresh_main_mhz": {
+        "ram_clock.clocks[0]": 1.532318115234375,
+        "display.pixel_clk": -1.4258880615234375,
+        "ram_clock.clocks[1]": 0.0
+      },
+      "memory_constraint_passed": false,
+      "pixel_and_capture_constraints_passed": true,
+      "seven_pair_results": [
+        {"id": "async_to_memory", "complete_delay_ns": 1.7819999605417252, "headroom_ns": 11.68600045144558},
+        {"id": "memory_falling_to_memory_rising", "complete_delay_ns": 1.5470000067725778, "headroom_ns": 2.2989999493584037},
+        {"id": "pixel_to_pixel", "complete_delay_ns": 10.538000136613846, "headroom_ns": 2.930000275373459},
+        {"id": "pixel_to_memory", "complete_delay_ns": 2.235000044107437, "headroom_ns": 11.233000367879868},
+        {"id": "memory_to_pixel", "complete_delay_ns": 2.690999910235405, "headroom_ns": 5.001000002026558},
+        {"id": "memory_to_memory", "complete_delay_ns": 9.318999871611595, "headroom_ns": -1.6269999593496323},
+        {"id": "capture_to_memory_falling", "complete_delay_ns": 1.733000063803047, "headroom_ns": 3.266999936196953}
+      ],
+      "native_edit": {
+        "candidate": 0,
+        "inner": "hps_ddr.port0.slot_free_MISTRAL_ALUT2_Q",
+        "outer": "hps_ddr.port0.slot_free_MISTRAL_ALUT3_B",
+        "clone": "hps_ddr.port0.slot_free_MISTRAL_ALUT3_B$lut_pair_copy",
+        "clone_type": "MISTRAL_ALUT4",
+        "clone_bel": "MISTRAL_COMB.19.28.0",
+        "clone_lut_mask_hex": "0x4440",
+        "clone_leaves_raw_bits_ABCD": [98306, 98311, 5029, 103525],
+        "selected_sink": "hps_ddr.port0.skid_burstcount_MISTRAL_FF_Q_5",
+        "selected_port": "ENA",
+        "selected_old_raw_bit": 105902,
+        "selected_new_raw_bit": 120708,
+        "clone_q_sole_consumer": ["hps_ddr.port0.skid_burstcount_MISTRAL_FF_Q_5", "ENA", 0, 0],
+        "prior_14_pipeline_ff_bel_moves_preserved": true,
+        "all_original_parent_ff_bels_preserved": true,
+        "original_inner_outer_luts_and_other_users_retained": true,
+        "original_graph_params_init_metadata_alias_order_ports_pll_tokens_and_raw_slots_exact_except_declared_clone_and_ena": true,
+        "pipeline_latency_unchanged": true,
+        "independent_native_truth_rows": 16,
+        "independent_routed_pin_state_truth_rows": 16
+      },
+      "physical_proof_counts": {
+        "original_cells": 14893,
+        "original_net_names": 16631,
+        "added_native_lut_cells": 1,
+        "new_ff_bel_moves_after_b8_parent": 0,
+        "original_full_pin_maps_exact": 14893,
+        "whole_labs_checked": 3,
+        "all_ten_alms_per_affected_lab_checked": true,
+        "affected_whole_labs": [[19, 18], [19, 19], [19, 28]],
+        "outside_alms_exact": 41880,
+        "route_buffers_before": 4957,
+        "route_buffers_after": 4957,
+        "bound_artifacts": 140,
+        "directly_rehashed_source_or_compiler_files": 2328
+      },
+      "proof_scope": {
+        "explicit_route_buffer_identity_function_and_raw_slot_ledgers_proved": true,
+        "original_occupied_banks_and_shared_input_functions_exact": true,
+        "complete_injective_control_signatures_and_group_memberships_proved_after_single_equivalent_ena_substitution": true,
+        "affected_saved_fields_exact_except_proved_occupied_half_clk_ena_renumbering": true,
+        "unoccupied_half_clk_ena_indices_exact": true,
+        "lab_aclr_used_and_all_aclr_indices_exact": true,
+        "all_emitted_finite_complete_path_sums_and_final_reported_holds_checked": true,
+        "old_operational_main_authentication_generator_or_aggregate_evaluator_executed": false,
+        "independent_live_pointer_cache_gpu_or_full_runtime_identity_proved": false,
+        "selector_to_routed_wire_reservation_table_independently_checked": false,
+        "independent_numerical_sta_or_unreported_pair_extrema_proved": false,
+        "independent_route_mux_pip_cram_or_rbf_decode_proved": false,
+        "complete_placement_routing_or_device_legality_proved": false,
+        "hardware_tested": false,
+        "default_recipe_or_publication_binary_qualification_claimed": false,
+        "frozen_117_869_stack_qualification_inherited": false
+      },
+      "pinned_pure_helper_sha256": {
+        "driver-copy-selected-264/compare_selected.py": "72131acf8311ed508278625c3f21cade3709a88461239de16fce669aeea489ba",
+        "local-multicopy-ready1-address-route-proof-264/physical.py": "60ca4442887cba2c175d714c2f10e330331ea61220b2259bed6d2645c6026d41",
+        "narrow-integrated-264/compare_route.py": "32fd10ebbff4332816a81278c43b48d529db94914bfb4af49cdce44f53666379"
+      }
     }
   },
   "proof_scope": {
+    "scope": "standalone budget8 and budget64 pipeline trials",
     "original_graph_params_directions_metadata_aliases_ordered_ports_and_serialized_slots_exact": true,
     "paired_pll_ports_exact": true,
     "plain_two_register_latency_and_initial_values_unchanged": true,
@@ -274,13 +455,15 @@
     "qualification_inherited": false
   },
   "post_budget8_lut_pair_copy": {
-    "role": "separate exploratory route",
-    "accepted_result_in_this_record": false
+    "role": "qualified measured composition on B8 parent",
+    "result": "budget8_radius24_pair_copy0",
+    "accepted_result_in_this_record": true
   },
   "fes_rtl_pins_constraints_default_recipe_or_hardware_changed": false,
   "pass_default_off": true,
   "limitations": [
     "Physical equivalence uses exported pin/LAB snapshots and packed truth; route muxes and bitstream bytes are not independently decoded.",
+    "Selected runs rely on the compiler's legality checks; exported snapshot and function comparisons do not independently prove complete placement, routing or device legality.",
     "Logical CLK/ENA selector renumbering does not independently prove the unexported selector-to-routed-wire reservation table.",
     "Exact serialized consumer slots do not prove live indexed-store allocation, pointers, caches, GPU IDs or full runtime identity.",
     "Timing acceptance checks all emitted paths and final reported holds; it does not independently recompute numerical STA or extrema for unreported clock pairs.",
