@@ -837,6 +837,7 @@ BoundingBox Arch::getRouteBoundingBox(WireId src, WireId dst) const
 }
 
 void diagnostic_capture_locality(Context *, const char *);
+int capture_pipeline_locality(Context *, const std::string &, int, int);
 void diagnostic_placed_reduction(Context *, const char *);
 void diagnostic_placed_timeout(Context *, const char *);
 void diagnostic_retained_enable(Context *, const char *, bool);
@@ -844,6 +845,14 @@ void diagnostic_retained_enable(Context *, const char *, bool);
 bool Arch::place()
 {
     std::string placer = str_or_default(settings, id_placer, defaultPlacer);
+    if (capture_pipeline_budget) {
+        if (placer != "heap" || fes_any_slot_region_active)
+            log_error("Capture pipeline locality requires ordinary HeAP placement.\n");
+        if (local_remap_plan_list_only || comb_remap_plan_list_only ||
+            (!local_remap_report.empty() && local_remap_selection < 0) ||
+            (!comb_remap_report.empty() && comb_remap_selection < 0))
+            log_error("An earlier remap listing cannot precede capture pipeline locality.\n");
+    }
     if (!lut_pair_report.empty()) {
         if (placer != "heap" || fes_any_slot_region_active)
             log_error("LUT pair placement requires ordinary HeAP placement.\n");
@@ -928,7 +937,8 @@ bool Arch::place()
             // --force otherwise bypasses a false placement result and routes
             // a graph whose requested remap stages were never executed.
             if (!local_remap_plan.empty() || !local_remap_post_plan.empty() || !comb_remap_plan.empty() ||
-                !decomposition_remap_report.empty() || !lut_pair_report.empty() || !lut_driver_copy_report.empty())
+                !decomposition_remap_report.empty() || !lut_pair_report.empty() || !lut_driver_copy_report.empty() ||
+                capture_pipeline_budget)
                 log_error("Remap plans require successful placement; routing was not started.\n");
             return false;
         }
@@ -957,6 +967,8 @@ bool Arch::place()
     if (!comb_remap_plan.empty()) execute_comb_remap_plan();
 
     diagnostic_capture_locality(getCtx(), std::getenv("NEXTPNR_MISTRAL_CAPTURE_LOCALITY"));
+    if (capture_pipeline_budget)
+        capture_pipeline_locality(getCtx(), capture_pipeline_report, capture_pipeline_budget, capture_pipeline_radius);
     diagnostic_placed_reduction(getCtx(), std::getenv("NEXTPNR_MISTRAL_PLACED_REDUCTION"));
     if (!decomposition_remap_report.empty() &&
         !remap_decomposed_critical(decomposition_remap_report,decomposition_remap_selection) &&

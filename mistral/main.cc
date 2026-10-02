@@ -18,6 +18,7 @@
  */
 
 #include <cerrno>
+#include <cstdlib>
 #include <fstream>
 #include <filesystem>
 #include <cmath>
@@ -164,6 +165,18 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
+    // Preload request bytes before packing or placement; saved settings cannot enable it.
+    const char *capture_pipeline = std::getenv("NEXTPNR_MISTRAL_CAPTURE_PIPELINE_LOCALITY");
+    if (capture_pipeline) {
+        if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") ||
+            vm.count("fes-cart") || vm.count("fes-scaffold") ||
+            (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
+            log_error("Capture pipeline locality requires fresh ordinary HeAP placement.\n");
+        if (std::getenv("NEXTPNR_MISTRAL_CAPTURE_LOCALITY"))
+            log_error("Capture pipeline locality cannot combine with single-capture locality.\n");
+    }
+    preload_capture_pipeline_locality(ctx, capture_pipeline);
     if (vm.count("balance-reduction-root")) {
         if (vm.count("fes-cart") || vm.count("fes-scaffold") ||
             (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
