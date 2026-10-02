@@ -585,6 +585,9 @@ struct Arch : BaseArch<ArchRanges>
     std::string capture_pipeline_report; // Experimental request bytes, never serialized settings.
     int capture_pipeline_budget = 0;
     int capture_pipeline_radius = 24;
+    std::string hard_input_report; // Experimental immutable request bytes; never serialized settings.
+    int hard_input_budget = 0;
+    int hard_input_radius = 24;
     bool balance_reduction(const std::string &root_name);
     bool route() override;
 
@@ -756,6 +759,8 @@ struct Arch : BaseArch<ArchRanges>
 
 // Experimental request preload; the live placement is validated by the worker.
 void preload_capture_pipeline_locality(Context *, const char *);
+void preload_hard_input_locality(Context *, const char *);
+void prevalidate_hard_input_locality_prefix(Context *);
 
 NEXTPNR_NAMESPACE_END
 

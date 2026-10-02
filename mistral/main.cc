@@ -177,6 +177,17 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             log_error("Capture pipeline locality cannot combine with single-capture locality.\n");
     }
     preload_capture_pipeline_locality(ctx, capture_pipeline);
+    const char *hard_input = std::getenv("NEXTPNR_MISTRAL_HARD_INPUT_LOCALITY");
+    if (hard_input) {
+        if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") ||
+            vm.count("fes-cart") || vm.count("fes-scaffold") ||
+            (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
+            log_error("Hard input locality requires fresh ordinary HeAP placement.\n");
+        if (std::getenv("NEXTPNR_MISTRAL_CAPTURE_LOCALITY"))
+            log_error("Hard input locality cannot combine with single-capture locality.\n");
+    }
+    preload_hard_input_locality(ctx, hard_input);
     if (vm.count("balance-reduction-root")) {
         if (vm.count("fes-cart") || vm.count("fes-scaffold") ||
             (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
@@ -428,6 +439,7 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             log_error("LUT driver copy listing requires --no-route and no --rbf.\n");
         prevalidate_lut_driver_copy_prefix(ctx);
     }
+    if (ctx->hard_input_budget) prevalidate_hard_input_locality_prefix(ctx);
     const bool routed = ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "route";
     if (vm.count("fes-cram-region")) {
         if (!routed)

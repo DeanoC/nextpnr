@@ -46,11 +46,14 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/completed_observations.cc tests/lab_pinmap.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc
+    TEST_SOURCES tests/completed_observations.cc tests/lab_pinmap.cc tests/fes_cram.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/hard_input_locality.cc
     MAIN_SOURCE  main.cc
 )
 
 if (BUILD_TESTS)
+    add_test(NAME nextpnr-${family}-hard-input-locality-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/hard_input_locality_cli.py
+                $<TARGET_FILE:nextpnr-${family}> -v)
     add_test(NAME nextpnr-${family}-capture-pipeline-locality-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/capture_pipeline_locality_cli.py
                 $<TARGET_FILE:nextpnr-${family}> -v)

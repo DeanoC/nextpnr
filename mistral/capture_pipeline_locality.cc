@@ -2,6 +2,7 @@
 #include "nextpnr.h"
 #include "json11.hpp"
 #include "log.h"
+#include "lut_driver_copy.h"
 #include "remap_clock_guard.h"
 #include "remap_report.h"
 #include "timing.h"
@@ -216,6 +217,17 @@ struct Snapshot {
         for (const auto &saved : cells) static_cast<ArchCellInfo &>(*saved.owner) = saved.info;
         ctx->labs = labs;
         NPNR_ASSERT(fixed(ctx, first, first_bel, second, second_bel, {}));
+    }
+
+    // A hard-input transaction moves only its launch FF. Never unbind the
+    // registered hard sink, including when restoring an exceptional trial.
+    void restore_one(Context *ctx, CellInfo *cell, BelId bel, PlaceStrength strength) const
+    {
+        if (cell->bel != BelId()) ctx->unbindBel(cell->bel);
+        ctx->bindBel(bel, cell, strength);
+        for (const auto &saved : cells) static_cast<ArchCellInfo &>(*saved.owner) = saved.info;
+        ctx->labs = labs;
+        NPNR_ASSERT(fixed(ctx, cell, bel, nullptr, BelId(), {}));
     }
 };
 
@@ -676,5 +688,492 @@ void diagnostic_capture_pipeline_locality(Context *ctx, const char *spec)
     if (!spec) return;
     auto options = read_options(spec);
     capture_pipeline_locality(ctx, options.report, options.budget, options.radius);
+}
+
+namespace {
+// Unlike the capture-pair report reader, this validates all exported paths,
+// including passing paths and registered hard inputs. No routed BUF aliases
+// or missing owners are normalised into the current placement graph.
+struct HardPath {
+    std::vector<std::pair<PortRef, PortRef>> edges;
+    PortRef launch, capture;
+    double excess = 0;
+    bool registered_launch = false, registered_capture = false;
+};
+
+std::vector<HardPath> hard_paths(Context *ctx, const json11::Json &json)
+{
+    auto same = [](PortRef a, PortRef b) { return a.cell == b.cell && a.port == b.port; };
+    auto endpoint = [&](const json11::Json &value) -> PortRef {
+        const auto &loc = value["loc"].array_items();
+        if (!value["cell"].is_string() || !value["port"].is_string() || loc.size() != 2 ||
+            !loc[0].is_number() || !loc[1].is_number())
+            log_error("Malformed hard input path endpoint.\n");
+        auto found = ctx->cells.find(ctx->id(value["cell"].string_value()));
+        if (found == ctx->cells.end()) log_error("Stale hard input report cell.\n");
+        auto *cell = found->second.get(); auto pin = ctx->id(value["port"].string_value());
+        if (!cell->ports.count(pin) || cell->bel == BelId())
+            log_error("Stale hard input report port or placement.\n");
+        auto at = ctx->getBelLocation(cell->bel);
+        if (loc[0].number_value() != at.x || loc[1].number_value() != at.y)
+            log_error("Stale hard input report placement.\n");
+        return {cell, pin};
+    };
+    auto clock_event = [&](PortRef port, const std::string &event, bool output) {
+        int count = 0;
+        if (ctx->getPortTimingClass(port.cell, port.port, count) !=
+            (output ? TMG_REGISTER_OUTPUT : TMG_REGISTER_INPUT) || count <= 0) return false;
+        for (int i = 0; i < count; ++i) {
+            auto info = ctx->getPortClockingInfo(port.cell, port.port, i);
+            auto *clock = port.cell->getPort(info.clock_port);
+            if (clock && event == (info.edge == FALLING_EDGE ? "negedge " : "posedge ") + clock->name.str(ctx))
+                return true;
+        }
+        return false;
+    };
+    std::vector<HardPath> result;
+    for (const auto &path : json["critical_paths"].array_items()) {
+        if (!path.is_object() || !path["path"].is_array() || path["path"].array_items().empty() ||
+            !path["from"].is_string() || !path["to"].is_string() ||
+            !path["max_delay"].is_number() || !std::isfinite(path["max_delay"].number_value()) ||
+            path["max_delay"].number_value() <= 0)
+            log_error("Malformed hard input path constraint.\n");
+        HardPath checked; PortRef previous;
+        std::vector<std::pair<PortRef, PortRef>> clock_prefix;
+        bool started = false, finished = false; double total = 0;
+        for (const auto &segment : path["path"].array_items()) {
+            if (!segment["type"].is_string() || !segment["delay"].is_number() ||
+                !std::isfinite(segment["delay"].number_value()))
+                log_error("Malformed hard input path delay.\n");
+            total += segment["delay"].number_value();
+            auto from = endpoint(segment["from"]), to = endpoint(segment["to"]);
+            const auto &type = segment["type"].string_value();
+            int a = 0, b = 0;
+            if (type == "clk-skew" || type == "clk-to-clk") {
+                if (started || finished || clock_prefix.size() >= 2 ||
+                    ctx->getPortTimingClass(from.cell, from.port, a) != TMG_CLOCK_INPUT ||
+                    ctx->getPortTimingClass(to.cell, to.port, b) != TMG_CLOCK_INPUT)
+                    log_error("Malformed hard input clock prefix.\n");
+                clock_prefix.emplace_back(from, to); continue;
+            }
+            if (finished || (started && !same(previous, from)))
+                log_error("Disconnected hard input report path.\n");
+            if (type == "clk-to-q" || type == "source") {
+                if (started || !same(from, to) || from.cell->ports.at(from.port).type != PORT_OUT)
+                    log_error("Malformed hard input launch segment.\n");
+                checked.launch = from;
+                checked.registered_launch = type == "clk-to-q";
+                if (checked.registered_launch && !clock_event(from, path["from"].string_value(), true))
+                    log_error("Stale hard input launch clock or edge.\n");
+                if (!checked.registered_launch && path["from"].string_value() != "<async>")
+                    log_error("Malformed hard input asynchronous launch.\n");
+            } else if (type == "routing") {
+                auto *net = from.cell->getPort(from.port);
+                if (!started || !net || from.cell->ports.at(from.port).type != PORT_OUT ||
+                    to.cell->ports.at(to.port).type != PORT_IN || net != to.cell->getPort(to.port) ||
+                    net->driver.cell != from.cell || net->driver.port != from.port ||
+                    segment["net"].string_value() != net->name.str(ctx) ||
+                    !net->users.count(to.cell->ports.at(to.port).user_idx))
+                    log_error("Stale hard input report edge.\n");
+                auto user = net->users.at(to.cell->ports.at(to.port).user_idx);
+                if (!same(user, to)) log_error("Stale hard input report raw user.\n");
+                checked.edges.emplace_back(from, to);
+            } else if (type == "logic") {
+                DelayQuad delay;
+                if (!started || from.cell != to.cell ||
+                    ctx->getPortTimingClass(from.cell, from.port, a) != TMG_COMB_INPUT ||
+                    ctx->getPortTimingClass(to.cell, to.port, b) != TMG_COMB_OUTPUT ||
+                    !ctx->getCellDelay(from.cell, from.port, to.port, delay))
+                    log_error("Malformed hard input logic segment.\n");
+            } else if (type == "setup") {
+                if (!started || checked.edges.empty() || !same(from, to) ||
+                    !same(checked.edges.back().second, to) || !clock_event(to, path["to"].string_value(), false))
+                    log_error("Stale hard input setup clock or endpoint.\n");
+                checked.capture = to; checked.registered_capture = true; finished = true;
+            } else {
+                log_error("Unsupported hard input path segment.\n");
+            }
+            previous = to; started = true;
+        }
+        if (!started || checked.edges.empty() || !std::isfinite(total))
+            log_error("Malformed hard input report path.\n");
+        if (!checked.registered_capture) {
+            int count = 0;
+            auto cls = ctx->getPortTimingClass(previous.cell, previous.port, count);
+            if (cls == TMG_REGISTER_INPUT || path["to"].string_value() != "<async>")
+                log_error("Missing hard input report setup endpoint.\n");
+        }
+        for (const auto &prefix : clock_prefix) {
+            auto matches = [&](PortRef data, PortRef clock, bool output) {
+                if (!data.cell || data.cell != clock.cell) return false;
+                int count = 0;
+                if (ctx->getPortTimingClass(data.cell, data.port, count) !=
+                    (output ? TMG_REGISTER_OUTPUT : TMG_REGISTER_INPUT)) return false;
+                for (int i = 0; i < count; ++i)
+                    if (ctx->getPortClockingInfo(data.cell, data.port, i).clock_port == clock.port) return true;
+                return false;
+            };
+            if (!checked.registered_launch || !checked.registered_capture ||
+                !matches(checked.launch, prefix.first, true) || !matches(checked.capture, prefix.second, false))
+                log_error("Hard input clock prefix does not match its registers.\n");
+        }
+        checked.excess = total - path["max_delay"].number_value();
+        result.push_back(std::move(checked));
+    }
+    return result;
+}
+
+Options read_hard_input_options(const char *spec)
+{
+    std::istringstream options(spec); std::string path, extra;
+    int budget = 0, radius = 0;
+    if (!(options >> path >> budget >> radius) || (options >> extra) ||
+        budget < 1 || budget > 64 || radius < 1 || radius > 24)
+        log_error("Hard input locality requires exactly report, budget 1..64 and radius 1..24.\n");
+    std::ifstream file(path);
+    if (!file) log_error("Cannot read hard input locality timing report.\n");
+    std::string report((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>()), error;
+    auto json = json11::Json::parse(report, error);
+    if (!error.empty() || !json.is_object() || !json["critical_paths"].is_array())
+        log_error("Invalid hard input locality timing report.\n");
+    return {std::move(report), budget, radius};
+}
+
+bool hard_rows_complete(const guard::Rows &rows)
+{
+    if (rows.empty()) return false;
+    for (const auto &row : rows) {
+        if (!std::isfinite(double(row.max_path_delay)) || !std::isfinite(double(row.min_path_delay)) ||
+            row.max_path_delay >= std::numeric_limits<delay_t>::max() ||
+            row.max_path_delay <= std::numeric_limits<delay_t>::lowest() ||
+            row.min_path_delay >= std::numeric_limits<delay_t>::max() ||
+            row.min_path_delay <= std::numeric_limits<delay_t>::lowest() ||
+            (row.setup_timed && (!row.setup_window || !row.setup_margin || !row.hold_related || !row.hold_margin)) ||
+            (row.setup_window && !finite_timing(*row.setup_window)) ||
+            (row.setup_margin && !finite_timing(*row.setup_margin)) ||
+            (row.hold_margin && !finite_timing(*row.hold_margin))) return false;
+    }
+    return true;
+}
+} // namespace
+
+void prevalidate_hard_input_locality_prefix(Context *ctx)
+{
+    // Reuse the existing read-only ordering checks, without executing a pass.
+    prevalidate_lut_driver_copy_prefix(ctx);
+    if (!ctx->lut_driver_copy_report.empty() && ctx->lut_driver_copy_selection < 0)
+        log_error("A LUT driver copy listing must be final; it cannot precede hard input locality.\n");
+}
+
+int hard_input_locality(Context *ctx, const std::string &report, int budget, int radius)
+{
+    if (budget < 1 || budget > 64 || radius < 1 || radius > 24)
+        log_error("Hard input locality budget must be 1..64 and radius 1..24.\n");
+    if (ctx->fes_any_slot_region_active ||
+        (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != "") ||
+        (ctx->settings.count(id_placer) && ctx->settings.at(id_placer).as_string() != "heap"))
+        log_error("Hard input locality requires ordinary fresh HeAP placement.\n");
+    prevalidate_hard_input_locality_prefix(ctx);
+    for (const auto &entry : ctx->nets) if (!entry.second->wires.empty())
+        log_error("Hard input locality requires an unrouted design.\n");
+    std::string error; auto json = json11::Json::parse(report, error);
+    if (!error.empty() || !json.is_object() || !json["critical_paths"].is_array())
+        log_error("Invalid hard input locality timing report.\n");
+    const auto paths = hard_paths(ctx, json); // Whole report validated before binding.
+    auto lab = [&](BelId bel) { auto at = ctx->getBelLocation(bel); return Lab(at.x, at.y); };
+    auto weak = [&](const CellInfo *cell) {
+        return cell && cell->bel != BelId() && cell->belStrength <= STRENGTH_WEAK &&
+               cell->cluster == ClusterId() && !cell->region && !cell->isPseudo() &&
+               !protected_attrs(cell->attrs, ctx);
+    };
+    std::set<Lab> protected_labs;
+    std::map<IdString, size_t> bel_counts;
+    for (auto bel : ctx->getBels()) ++bel_counts[ctx->getBelType(bel)];
+    for (const auto &entry : ctx->cells) {
+        auto *cell = entry.second.get();
+        if (cell->bel != BelId() && (!weak(cell) || cell->type.in(id_MISTRAL_MLAB, id_MISTRAL_ALUT_ARITH)))
+            protected_labs.insert(lab(cell->bel));
+    }
+    for (const auto &native_lab : ctx->labs) {
+        bool protected_mode = native_lab.is_mlab;
+        for (const auto &alm : native_lab.alms) protected_mode |= alm.carry_mode;
+        if (protected_mode && !native_lab.alms.empty())
+            protected_labs.insert(lab(native_lab.alms.front().lut_bels[0]));
+    }
+    std::set<const NetInfo *> boundary;
+    for (const auto &entry : ctx->ports) if (entry.second.net) boundary.insert(entry.second.net);
+    auto ordinary = [&](const NetInfo *net) {
+        return net && net->driver.cell && net->driver.cell->bel != BelId() && !net->driver.cell->isPseudo() &&
+               !net->is_global && !net->clkconstr && !net->region && net->wires.empty() &&
+               net->constant_value == IdString() && !boundary.count(net) && !protected_attrs(net->attrs, ctx) &&
+               net->driver.cell->ports.count(net->driver.port) &&
+               net->driver.cell->ports.at(net->driver.port).type == PORT_OUT &&
+               net->driver.cell->getPort(net->driver.port) == net;
+    };
+    auto valid_user = [&](NetInfo *net, PortRef user) {
+        if (!user.cell || !user.cell->ports.count(user.port) || user.cell->getPort(user.port) != net ||
+            user.cell->ports.at(user.port).type != PORT_IN ||
+            !net->users.count(user.cell->ports.at(user.port).user_idx)) return false;
+        auto actual = net->users.at(user.cell->ports.at(user.port).user_idx);
+        return actual.cell == user.cell && actual.port == user.port;
+    };
+    auto wire_at = [&](CellInfo *cell, BelId bel, IdString pin) {
+        if (!cell->pin_data.count(pin) || cell->pin_data.at(pin).bel_pins.size() != 1) return WireId();
+        auto physical = cell->pin_data.at(pin).bel_pins.front();
+        const auto &pins = ctx->bel_data(bel).pins;
+        if (!cell->ports.count(pin) || !pins.count(physical) || pins.at(physical).dir != cell->ports.at(pin).type)
+            return WireId();
+        return ctx->getBelPinWire(bel, physical);
+    };
+    auto clocked = [&](CellInfo *cell, IdString pin, int count) {
+        if (count != 1 || cell->bel == BelId() || wire_at(cell, cell->bel, pin) == WireId()) return false;
+        auto info = ctx->getPortClockingInfo(cell, pin, 0); auto *clock = cell->getPort(info.clock_port);
+        int clock_count = 0;
+        if (!clock || !clock->clkconstr || !clock->wires.empty() || clock->region ||
+            ctx->getPortTimingClass(cell, info.clock_port, clock_count) != TMG_CLOCK_INPUT ||
+            !valid_user(clock, {cell, info.clock_port}) || wire_at(cell, cell->bel, info.clock_port) == WireId() ||
+            clock->clkconstr->period.minDelay() <= 0 || clock->clkconstr->high.minDelay() <= 0 ||
+            clock->clkconstr->low.minDelay() <= 0 || !finite_timing(clock->clkconstr->period.maxDelay()) ||
+            !finite_timing(clock->clkconstr->high.maxDelay()) || !finite_timing(clock->clkconstr->low.maxDelay()) ||
+            clock->clkconstr->period.minDelay() > clock->clkconstr->period.maxDelay() ||
+            clock->clkconstr->high.minDelay() > clock->clkconstr->high.maxDelay() ||
+            clock->clkconstr->low.minDelay() > clock->clkconstr->low.maxDelay() ||
+            !finite_timing(clock->clkconstr->phase_shift) ||
+            !finite_timing(info.setup.minDelay()) || !finite_timing(info.setup.maxDelay()) ||
+            !finite_timing(info.hold.minDelay()) || !finite_timing(info.hold.maxDelay()) ||
+            !finite_delay(info.clockToQ.minDelay()) || !finite_delay(info.clockToQ.maxDelay())) return false;
+        return info.edge == RISING_EDGE || info.edge == FALLING_EDGE;
+    };
+    const std::array<IdString, 6> inputs{{id_DATAIN, id_ENA, id_ACLR, id_SCLR, id_SLOAD, id_SDATA}};
+    auto movable = [&](CellInfo *cell) {
+        if (!weak(cell) || cell->type != id_MISTRAL_FF || cell->ports.size() != 8 ||
+            protected_labs.count(lab(cell->bel)) || !ordinary(cell->getPort(id_Q)) ||
+            !ordinary(cell->getPort(id_DATAIN)) || cell->get_pin_state(id_Q) != PIN_SIG ||
+            !cell->ports.count(id_Q) || cell->ports.at(id_Q).type != PORT_OUT ||
+            !cell->ports.count(id_CLK) || cell->ports.at(id_CLK).type != PORT_IN ||
+            (cell->get_pin_state(id_CLK) != PIN_SIG && cell->get_pin_state(id_CLK) != PIN_INV)) return false;
+        int count = 0;
+        if (ctx->getPortTimingClass(cell, id_Q, count) != TMG_REGISTER_OUTPUT || !clocked(cell, id_Q, count)) return false;
+        for (auto pin : inputs) {
+            if (!cell->ports.count(pin) || cell->ports.at(pin).type != PORT_IN) return false;
+            if (!cell->getPort(pin)) continue;
+            if (!ordinary(cell->getPort(pin)) ||
+                (cell->get_pin_state(pin) != PIN_SIG && cell->get_pin_state(pin) != PIN_INV) ||
+                ctx->getPortTimingClass(cell, pin, count) != TMG_REGISTER_INPUT || !clocked(cell, pin, count) ||
+                !valid_user(cell->getPort(pin), {cell, pin})) return false;
+        }
+        return true;
+    };
+    auto hard_sink = [&](PortRef sink) {
+        auto *cell = sink.cell; int count = 0;
+        return cell && cell->bel != BelId() && !cell->region && !cell->isPseudo() &&
+               cell->type != id_MISTRAL_FF && !ctx->is_comb_cell(cell->type) &&
+               !cell->type.in(id_MISTRAL_BUF, id_MISTRAL_NOT, id_MISTRAL_MLAB) &&
+               (bel_counts[ctx->getBelType(cell->bel)] == 1 || cell->belStrength >= STRENGTH_LOCKED) &&
+               ctx->getPortTimingClass(cell, sink.port, count) == TMG_REGISTER_INPUT && clocked(cell, sink.port, count);
+    };
+    struct Attempt { CellInfo *ff; PortRef sink; WireId wire; double excess; int64_t delay; };
+    std::map<IdString, Attempt> unique;
+    for (const auto &path : paths) {
+        if (!path.registered_launch || !path.registered_capture || path.edges.size() != 1) continue;
+        auto edge = path.edges.front(); auto *ff = edge.first.cell;
+        if (edge.first.port != id_Q || edge.first.cell != path.launch.cell || edge.first.port != path.launch.port ||
+            edge.second.cell != path.capture.cell || edge.second.port != path.capture.port ||
+            !movable(ff) || !hard_sink(edge.second) || !valid_user(ff->getPort(id_Q), edge.second)) continue;
+        auto wire = ctx->getNetinfoSinkWire(ff->getPort(id_Q), edge.second, 0);
+        auto source = wire_at(ff, ff->bel, id_Q);
+        if (wire == WireId() || source == WireId()) continue;
+        auto delay = ctx->estimateDelay(source, wire); if (!finite_delay(delay)) continue;
+        Attempt next{ff, edge.second, wire, path.excess, delay};
+        auto old = unique.find(ff->name);
+        if (old == unique.end() || std::make_tuple(next.excess, next.delay) >
+                                  std::make_tuple(old->second.excess, old->second.delay)) unique[ff->name] = next;
+    }
+    std::vector<Attempt> attempts;
+    for (const auto &entry : unique) attempts.push_back(entry.second);
+    std::sort(attempts.begin(), attempts.end(), [&](const Attempt &a, const Attempt &b) {
+        if (a.excess != b.excess) return a.excess > b.excess;
+        if (a.delay != b.delay) return a.delay > b.delay;
+        return a.ff->name.str(ctx) < b.ff->name.str(ctx);
+    });
+    if (attempts.size() > size_t(budget)) attempts.resize(budget);
+    int accepted = 0;
+    for (const auto &attempt : attempts) {
+        auto *ff = attempt.ff; const CellPortKey target(attempt.sink);
+        std::set<CellPortKey> endpoints{target}; std::set<NetInfo *> visiting, done;
+        size_t edges = 0;
+        std::function<bool(NetInfo *)> follow = [&](NetInfo *net) {
+            if (!ordinary(net) || net->users.empty() || ctx->getNetinfoSourceWire(net) == WireId()) return false;
+            if (done.count(net)) return true;
+            if (done.size() + visiting.size() >= 1024 || !visiting.insert(net).second) return false;
+            for (auto user : net->users) {
+                if (++edges > 4096 || !valid_user(net, user) || user.cell->bel == BelId() ||
+                    user.cell->region || user.cell->isPseudo() || protected_attrs(user.cell->attrs, ctx) ||
+                    ctx->getNetinfoSinkWire(net, user, 0) == WireId()) return false;
+                int count = 0; auto cls = ctx->getPortTimingClass(user.cell, user.port, count);
+                if (cls == TMG_REGISTER_INPUT) {
+                    if (!clocked(user.cell, user.port, count) || endpoints.size() >= 2048) return false;
+                    endpoints.insert(CellPortKey(user));
+                } else {
+                    if (cls != TMG_COMB_INPUT || !(mistral_remap_report::lut_width(user.cell->type) ||
+                        user.cell->type.in(id_MISTRAL_BUF, id_MISTRAL_NOT, id_MISTRAL_ALUT_ARITH))) return false;
+                    bool arc = false;
+                    for (const auto &port : user.cell->ports) if (port.second.type == PORT_OUT && port.second.net) {
+                        DelayQuad delay; int outputs = 0;
+                        if (ctx->getPortTimingClass(user.cell, port.first, outputs) != TMG_COMB_OUTPUT ||
+                            !ctx->getCellDelay(user.cell, user.port, port.first, delay)) continue;
+                        if (!finite_delay(delay.minDelay()) || !finite_delay(delay.maxDelay()) || !follow(port.second.net)) return false;
+                        arc = true;
+                    }
+                    if (!arc) return false;
+                }
+            }
+            visiting.erase(net); done.insert(net); return true;
+        };
+        bool covered = follow(ff->getPort(id_Q));
+        for (auto pin : inputs) if (ff->getPort(pin)) {
+            endpoints.insert(CellPortKey(ff->name, pin)); covered &= follow(ff->getPort(pin));
+        }
+        if (!covered) {
+            log_info("Hard input locality rejected %s: complete input/control/feedback/branch coverage unavailable.\n", ctx->nameOf(ff));
+            continue;
+        }
+        TimingAnalyser before(ctx); before.with_clock_skew = true; before.setup(false, false, true);
+        float old_slack = before.get_setup_slack(target);
+        if (before.have_loops || !guard::timed(old_slack) || before.get_timing_result().clock_fmax.empty()) continue;
+        std::map<CellPortKey, guard::Rows> rows, references; bool complete = true, unrelated = false;
+        for (auto key : endpoints) {
+            guard::Rows current;
+            if (!before.get_endpoint_clock_pair_timings(key, current) || !hard_rows_complete(current)) { complete = false; break; }
+            for (const auto &row : current) unrelated |= !row.setup_timed;
+            rows.emplace(key, std::move(current));
+        }
+        if (unrelated && complete) {
+            TimingAnalyser reference(ctx); reference.with_clock_skew = false; reference.setup(false, false, true);
+            complete &= !reference.have_loops;
+            for (const auto &entry : rows) {
+                guard::Rows current;
+                if (!reference.get_endpoint_clock_pair_timings(entry.first, current) || !hard_rows_complete(current) ||
+                    !guard::rows_match(entry.second, current)) complete = false;
+                else references.emplace(entry.first, std::move(current));
+            }
+        }
+        if (!complete) continue;
+        const auto old_holds = guard::holds(before); const auto old_bel = ff->bel; const auto strength = ff->belStrength;
+        const auto old_wire_delay = ctx->estimateDelay(wire_at(ff, old_bel, id_Q), attempt.wire);
+        auto free_half = [&](BelId bel) {
+            if (bel == old_bel || ctx->getBelType(bel) != id_MISTRAL_FF || !ctx->isValidBelForCellType(ff->type, bel) ||
+                ctx->getBoundBelCell(bel) || protected_labs.count(lab(bel))) return false;
+            auto at = ctx->getBelLocation(bel); if (at.z % 6 != 2 && at.z % 6 != 4) return false;
+            auto comb = ctx->getBelByLocation(Loc(at.x, at.y, (at.z / 6) * 6 + (at.z % 6 == 4 ? 1 : 0)));
+            auto partner = ctx->getBelByLocation(Loc(at.x, at.y, at.z + 1));
+            if (comb == BelId() || partner == BelId() || ctx->getBoundBelCell(comb) || ctx->getBoundBelCell(partner)) return false;
+            const auto &d = ctx->bel_data(bel).lab_data;
+            if (ctx->labs.at(d.lab).is_mlab || ctx->labs.at(d.lab).alms.at(d.alm).carry_mode ||
+                wire_at(ff, bel, id_Q) == WireId()) return false;
+            for (auto pin : inputs) if (ff->getPort(pin) && wire_at(ff, bel, pin) == WireId()) return false;
+            return true;
+        };
+        struct Site { BelId bel; int64_t delay; };
+        std::vector<Site> all, candidates; const auto center = ctx->getBelLocation(old_bel);
+        for (int x = center.x - radius; x <= center.x + radius; ++x)
+            for (int y = center.y - radius; y <= center.y + radius; ++y) {
+                if (std::abs(x - center.x) + std::abs(y - center.y) > radius) continue;
+                for (auto bel : ctx->getBelsByTile(x, y)) if (free_half(bel)) {
+                    auto delay = ctx->estimateDelay(wire_at(ff, bel, id_Q), attempt.wire);
+                    if (finite_delay(delay) && old_wire_delay - int64_t(delay) >= 250) all.push_back({bel, delay});
+                }
+            }
+        std::sort(all.begin(), all.end(), [&](const Site &a, const Site &b) {
+            auto x = ctx->getBelLocation(a.bel), y = ctx->getBelLocation(b.bel);
+            return std::make_tuple(a.delay, x.x, x.y, x.z) < std::make_tuple(b.delay, y.x, y.y, y.z);
+        });
+        std::set<Lab> tiles; std::set<std::tuple<int, int, int>> halves;
+        for (auto site : all) {
+            auto at = ctx->getBelLocation(site.bel); auto tile = lab(site.bel);
+            if (!tiles.count(tile) && tiles.size() >= 32) continue;
+            if (!halves.insert({at.x, at.y, (at.z % 6) / 2}).second) continue;
+            tiles.insert(tile); candidates.push_back(site); if (candidates.size() == 64) break;
+        }
+        Snapshot saved(ctx); int geometry = 0, legal_rejects = 0, fixed_rejects = 0, timed = 0; bool retained = false;
+        log_info("Hard input locality launch=%s sink=%s.%s wire=%s sites=%zu endpoints=%zu.\n",
+                 ctx->nameOf(ff), ctx->nameOf(attempt.sink.cell), attempt.sink.port.c_str(ctx),
+                 ctx->getWireName(attempt.wire).str(ctx).c_str(), candidates.size(), endpoints.size());
+        for (auto candidate : candidates) {
+            if (timed >= 16) break;
+            ++geometry; bool live = true;
+            auto restore = [&]() { if (live) { saved.restore_one(ctx, ff, old_bel, strength); live = false; } };
+            try {
+                ctx->unbindBel(old_bel); ctx->bindBel(candidate.bel, ff, strength);
+                std::set<uint32_t> changed_labs; std::set<std::pair<uint32_t, uint8_t>> changed_counts;
+                for (auto bel : {old_bel, candidate.bel}) {
+                    const auto &d = ctx->bel_data(bel).lab_data;
+                    changed_labs.insert(d.lab); changed_counts.insert({d.lab, d.alm});
+                }
+                auto legal = [&]() {
+                    for (auto index : changed_labs) for (const auto &alm : ctx->labs.at(index).alms)
+                        for (auto bel : {alm.lut_bels[0], alm.lut_bels[1], alm.ff_bels[0], alm.ff_bels[1], alm.ff_bels[2], alm.ff_bels[3]})
+                            if (ctx->getBoundBelCell(bel) && !ctx->isBelLocationValid(bel)) return false;
+                    return true;
+                };
+                bool legal_now = legal(); bool fixed_now = saved.fixed(ctx, ff, candidate.bel, nullptr, BelId(), changed_counts);
+                if (!legal_now || !fixed_now) {
+                    legal_rejects += !legal_now; fixed_rejects += !fixed_now;
+                    if (legal_rejects + fixed_rejects <= 4)
+                        log_info("Hard input locality preflight launch=%s bel=%s legal=%d fixed=%d.\n", ctx->nameOf(ff),
+                                 ctx->getBelName(candidate.bel).str(ctx).c_str(), int(legal_now), int(fixed_now));
+                    restore(); continue;
+                }
+                ++timed;
+                TimingAnalyser after(ctx); after.with_clock_skew = true; after.setup(false, false, true);
+                float slack = after.get_setup_slack(target);
+                bool improve = !after.have_loops && guard::timed(slack) && slack >= old_slack + 250;
+                bool endpoints_ok = !after.have_loops;
+                for (const auto &entry : rows) {
+                    guard::Rows current;
+                    endpoints_ok &= after.get_endpoint_clock_pair_timings(entry.first, current) && hard_rows_complete(current) &&
+                                    guard::rows_nonregressing(entry.second, current, false);
+                }
+                if (!references.empty()) {
+                    TimingAnalyser reference(ctx); reference.with_clock_skew = false; reference.setup(false, false, true);
+                    endpoints_ok &= !reference.have_loops;
+                    for (const auto &entry : references) {
+                        guard::Rows current;
+                        endpoints_ok &= reference.get_endpoint_clock_pair_timings(entry.first, current) && hard_rows_complete(current) &&
+                                        guard::rows_nonregressing(entry.second, current, true);
+                    }
+                }
+                bool clocks_ok = guard::clocks_nonregressing(before, after);
+                bool holds_ok = guard::holds_nonregressing(old_holds, guard::holds(after));
+                bool fixed = legal() && saved.fixed(ctx, ff, candidate.bel, nullptr, BelId(), changed_counts);
+                auto current_wire = ctx->getNetinfoSinkWire(ff->getPort(id_Q), attempt.sink, 0);
+                auto wire_gain = old_wire_delay - int64_t(ctx->estimateDelay(wire_at(ff, candidate.bel, id_Q), attempt.wire));
+                bool wire_ok = current_wire == attempt.wire && wire_gain >= 250;
+                log_info("Hard input locality trial launch=%s bel=%s gain=%.0fps wire_gain=%lldps improve=%d wire=%d endpoints=%d clocks=%d holds=%d fixed=%d.\n",
+                         ctx->nameOf(ff), ctx->getBelName(candidate.bel).str(ctx).c_str(), slack - old_slack,
+                         (long long)wire_gain, int(improve), int(wire_ok), int(endpoints_ok), int(clocks_ok), int(holds_ok), int(fixed));
+                if (improve && wire_ok && endpoints_ok && clocks_ok && holds_ok && fixed) {
+                    ctx->check(); live = false; retained = true; ++accepted;
+                    log_info("Hard input locality retained launch=%s; routing and signoff still required.\n", ctx->nameOf(ff));
+                    break;
+                }
+                restore();
+            } catch (...) { restore(); throw; }
+        }
+        log_info("Hard input locality summary launch=%s attempted_geometry=%d legality_rejects=%d preservation_rejects=%d timed_trials=%d retained=%d.\n",
+                 ctx->nameOf(ff), geometry, legal_rejects, fixed_rejects, timed, int(retained));
+    }
+    ctx->check();
+    log_info("Hard input locality: eligible=%zu attempted=%zu retained=%d (route signoff still required).\n", unique.size(), attempts.size(), accepted);
+    return accepted;
+}
+
+void preload_hard_input_locality(Context *ctx, const char *spec)
+{
+    ctx->hard_input_report.clear(); ctx->hard_input_budget = 0; ctx->hard_input_radius = 24;
+    if (!spec) return;
+    auto options = read_hard_input_options(spec);
+    ctx->hard_input_report = std::move(options.report); ctx->hard_input_budget = options.budget;
+    ctx->hard_input_radius = options.radius;
 }
 NEXTPNR_NAMESPACE_END
