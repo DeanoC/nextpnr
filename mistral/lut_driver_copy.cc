@@ -125,6 +125,8 @@ void prevalidate_remap_prefix(Context *ctx, const char *stage, bool include_post
 
 void prevalidate_lut_driver_copy_prefix(Context *ctx)
 {
+    if (ctx->lut_pair_copy_plan_list_only)
+        log_error("A LUT pair copy plan listing must be final; it cannot precede LUT driver copy.\n");
     if (!ctx->lut_pair_report.empty() && ctx->lut_pair_selection < 0)
         log_error("A LUT pair placement listing must be final; it cannot precede LUT driver copy.\n");
     prevalidate_remap_prefix(ctx, "LUT driver copy", true);
@@ -133,6 +135,11 @@ void prevalidate_lut_driver_copy_prefix(Context *ctx)
 void prevalidate_lut_pair_prefix(Context *ctx)
 {
     prevalidate_remap_prefix(ctx, "LUT pair placement", true);
+}
+
+void prevalidate_lut_pair_copy_plan_prefix(Context *ctx)
+{
+    prevalidate_remap_prefix(ctx, "LUT pair copy plan", true);
 }
 
 void prevalidate_local_remap_post_prefix(Context *ctx)

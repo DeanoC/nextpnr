@@ -65,7 +65,10 @@ route with normal constraints.
 Listing must be final across the complete transformation sequence. An early,
 internal-cut, placed-reduction or decomposition listing cannot precede a post
 plan. A post listing cannot precede a joint LUT placement or LUT-driver-copy
-request, including a listing. Selected post steps may precede selected or listing
+request, including a listing. The same final-listing rule applies to a
+[`--remap-lut-pair-copy-plan`](lut_pair_copy_plan.md), which occupies the
+LUT-pair stage and can retain up to two copies for disjoint enable cohorts.
+Selected post steps may precede selected or listing
 pair and driver requests. Neither a selected candidate nor a listing proves routed timing,
 exported physical truth or hardware behavior.
 

@@ -844,6 +844,11 @@ void diagnostic_retained_enable(Context *, const char *, bool);
 bool Arch::place()
 {
     std::string placer = str_or_default(settings, id_placer, defaultPlacer);
+    if (!lut_pair_copy_plan.empty() || lut_pair_copy_plan_list_only) {
+        if (placer != "heap" || fes_any_slot_region_active)
+            log_error("LUT pair copy plans require ordinary HeAP placement.\n");
+        prevalidate_lut_pair_copy_plan();
+    }
     if (!lut_pair_report.empty()) {
         if (placer != "heap" || fes_any_slot_region_active)
             log_error("LUT pair placement requires ordinary HeAP placement.\n");
@@ -928,7 +933,8 @@ bool Arch::place()
             // --force otherwise bypasses a false placement result and routes
             // a graph whose requested remap stages were never executed.
             if (!local_remap_plan.empty() || !local_remap_post_plan.empty() || !comb_remap_plan.empty() ||
-                !decomposition_remap_report.empty() || !lut_pair_report.empty() || !lut_driver_copy_report.empty())
+                !decomposition_remap_report.empty() || !lut_pair_report.empty() || !lut_pair_copy_plan.empty() ||
+                !lut_driver_copy_report.empty())
                 log_error("Remap plans require successful placement; routing was not started.\n");
             return false;
         }
@@ -963,6 +969,7 @@ bool Arch::place()
         decomposition_remap_selection >= 0)
         log_error("Requested decomposition candidate was not qualified; routing was not started.\n");
     if (!local_remap_post_plan.empty()) execute_local_remap_plan(true);
+    if (!lut_pair_copy_plan.empty()) execute_lut_pair_copy_plan();
     if (!lut_pair_report.empty() && !remap_lut_pair_critical(lut_pair_report,lut_pair_selection) &&
         lut_pair_selection >= 0)
         log_error("Requested LUT pair placement candidate was not qualified; routing was not started.\n");

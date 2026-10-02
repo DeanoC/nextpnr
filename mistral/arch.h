@@ -578,7 +578,17 @@ struct Arch : BaseArch<ArchRanges>
     int lut_pair_selection = -1;
     bool lut_pair_compose_copy = false; // Explicit CLI only; default relocation remains unchanged.
     bool remap_lut_pair_critical(const std::string &report, int selection);
-    bool remap_lut_pair_copy_critical(const std::string &report, int selection);
+    bool remap_lut_pair_copy_critical(const std::string &report, int selection,
+                                     const pool<IdString> *retained_ena_users = nullptr);
+    static constexpr size_t lut_pair_copy_max_steps = 2;
+    struct LutPairCopyStep {
+        std::string report;
+        int candidate = -1;
+    };
+    std::vector<LutPairCopyStep> lut_pair_copy_plan; // Explicit CLI state, never serialized settings.
+    bool lut_pair_copy_plan_list_only = false;
+    void prevalidate_lut_pair_copy_plan();
+    bool execute_lut_pair_copy_plan();
     std::string lut_driver_copy_report; // Explicit CLI only; never a serialized setting.
     int lut_driver_copy_selection = -1;
     bool remap_lut_driver_critical(const std::string &report, int selection);

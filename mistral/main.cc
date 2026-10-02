@@ -110,6 +110,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("remap-lut-pair-critical", po::value<std::string>(), "prior timing report for joint placement of two consecutive LUTs");
     specific.add_options()("remap-lut-pair-candidate", po::value<int>(), "qualified LUT-pair-placement candidate index (default: list only)");
     specific.add_options()("remap-lut-pair-compose-copy", "compose a LUT pair into one isolated copy for a whole same-LAB enable cohort");
+    specific.add_options()("remap-lut-pair-copy-plan", po::value<std::string>(),
+                           "JSON plan of one or two composed LUT-pair enable copies");
     specific.add_options()("remap-lut-driver-critical", po::value<std::string>(), "prior timing report for one LUT driver copy to an arithmetic data input");
     specific.add_options()("remap-lut-driver-candidate", po::value<int>(), "qualified LUT-driver-copy candidate index (default: list only)");
     specific.add_options()("remap-candidate", po::value<int>(), "qualified local-remap candidate index (default: list only)");
@@ -368,6 +370,13 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     ctx->lut_pair_report.clear();
     ctx->lut_pair_selection = -1;
     ctx->lut_pair_compose_copy = false;
+    ctx->lut_pair_copy_plan.clear();
+    ctx->lut_pair_copy_plan_list_only = false;
+    ctx->lut_driver_copy_report.clear();
+    ctx->lut_driver_copy_selection = -1;
+    if (vm.count("remap-lut-pair-copy-plan") && (vm.count("remap-lut-pair-critical") ||
+        vm.count("remap-lut-pair-candidate") || vm.count("remap-lut-pair-compose-copy")))
+        log_error("--remap-lut-pair-copy-plan cannot be combined with legacy LUT pair options.\n");
     if (vm.count("remap-lut-pair-compose-copy") && !vm.count("remap-lut-pair-critical"))
         log_error("--remap-lut-pair-compose-copy requires --remap-lut-pair-critical.\n");
     if (vm.count("remap-lut-pair-candidate") && !vm.count("remap-lut-pair-critical"))
@@ -392,8 +401,51 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             log_error("LUT pair placement listing requires --no-route and no --rbf.\n");
         prevalidate_lut_pair_prefix(ctx);
     }
-    ctx->lut_driver_copy_report.clear();
-    ctx->lut_driver_copy_selection = -1;
+    if (vm.count("remap-lut-pair-copy-plan")) {
+        if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") ||
+            vm.count("fes-scaffold") || (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
+            log_error("LUT pair copy plans require fresh ordinary HeAP placement.\n");
+        auto filename = vm["remap-lut-pair-copy-plan"].as<std::string>();
+        auto in = open_ifstream_and_log_error(filename, "LUT pair copy plan");
+        std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()}, error;
+        auto plan = json11::Json::parse(text, error);
+        if (!error.empty() || !plan.is_object() || plan.object_items().size() != 1 || !plan["steps"].is_array() ||
+            plan["steps"].array_items().empty() || plan["steps"].array_items().size() > Arch::lut_pair_copy_max_steps)
+            log_error("Invalid LUT pair copy plan; expected one or two steps.\n");
+        check_plan_keys(text, "LUT pair copy");
+        for (const auto &entry : plan["steps"].array_items()) {
+            if (!entry.is_object() || entry.object_items().size() != 2 || !entry.object_items().count("report") ||
+                !entry.object_items().count("candidate"))
+                log_error("Invalid LUT pair copy plan step fields.\n");
+            if (!entry["report"].is_string() || entry["report"].string_value().empty() ||
+                entry["report"].string_value().find('\0') != std::string::npos)
+                log_error("Invalid LUT pair copy plan path.\n");
+            double candidate = entry["candidate"].number_value();
+            if (!entry["candidate"].is_number() || !std::isfinite(candidate) || candidate != std::floor(candidate) ||
+                candidate < -1 || candidate > std::numeric_limits<int>::max())
+                log_error("Invalid integer in LUT pair copy plan.\n");
+            Arch::LutPairCopyStep step;
+            step.candidate = int(candidate);
+            if (step.candidate == -1) {
+                if (&entry != &plan["steps"].array_items().back() || !vm.count("no-route") || vm.count("rbf"))
+                    log_error("A LUT pair copy plan listing step must be last, with --no-route and without --rbf.\n");
+                if (vm.count("remap-lut-driver-critical") || vm.count("remap-lut-driver-candidate"))
+                    log_error("A LUT pair copy plan listing must be final; it cannot precede LUT driver copy.\n");
+                ctx->lut_pair_copy_plan_list_only = true;
+            }
+            std::filesystem::path path(entry["report"].string_value());
+            if (path.is_relative()) path = std::filesystem::path(filename).parent_path() / path;
+            auto report_in = open_ifstream_and_log_error(path.lexically_normal().string(), "LUT pair copy plan report");
+            step.report.assign(std::istreambuf_iterator<char>(report_in), std::istreambuf_iterator<char>());
+            auto report = json11::Json::parse(step.report, error);
+            if (!error.empty() || !report.is_object() || !report["critical_paths"].is_array())
+                log_error("Invalid LUT pair copy plan report.\n");
+            check_plan_keys(step.report, "LUT pair copy plan report");
+            ctx->lut_pair_copy_plan.push_back(std::move(step));
+        }
+        ctx->prevalidate_lut_pair_copy_plan();
+    }
     if (vm.count("remap-lut-driver-candidate") && !vm.count("remap-lut-driver-critical"))
         log_error("--remap-lut-driver-candidate requires --remap-lut-driver-critical.\n");
     if (vm.count("remap-lut-driver-critical")) {

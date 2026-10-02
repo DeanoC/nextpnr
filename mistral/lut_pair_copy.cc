@@ -4,6 +4,7 @@
 #include "json11.hpp"
 #include "timing.h"
 #include "lut_pair_placement.h"
+#include "lut_driver_copy.h"
 #include "local_remap_policy.h"
 #include "remap_report.h"
 #include "remap_clock_guard.h"
@@ -75,7 +76,93 @@ bool users_equal(const indexed_store<PortRef> &a, const indexed_store<PortRef> &
 }
 } // namespace
 
-bool Arch::remap_lut_pair_copy_critical(const std::string &report, int selection)
+void Arch::prevalidate_lut_pair_copy_plan()
+{
+    if (lut_pair_copy_plan.empty()) {
+        if (lut_pair_copy_plan_list_only)
+            log_error("LUT pair copy plan list mode requires a final listing step.\n");
+        return;
+    }
+    if (lut_pair_copy_plan.size() > lut_pair_copy_max_steps)
+        log_error("LUT pair copy plans require between one and %zu steps.\n", lut_pair_copy_max_steps);
+    if (!lut_pair_report.empty() || lut_pair_selection != -1 || lut_pair_compose_copy)
+        log_error("LUT pair copy plans cannot precede or combine with legacy LUT pair options.\n");
+    prevalidate_lut_pair_copy_plan_prefix(getCtx());
+    if (lut_pair_copy_plan_list_only != (lut_pair_copy_plan.back().candidate == -1))
+        log_error("LUT pair copy plan list mode must select the final listing step.\n");
+    if (lut_pair_copy_plan_list_only && !lut_driver_copy_report.empty())
+        log_error("A LUT pair copy plan listing must be final; it cannot precede LUT driver copy.\n");
+    // The CLI preloads every report. Native callers also check all requests
+    // before the first step; their live edges are validated at their own stage.
+    for (size_t i = 0; i < lut_pair_copy_plan.size(); ++i) {
+        const auto &step = lut_pair_copy_plan[i];
+        const bool listing = i + 1 == lut_pair_copy_plan.size() && lut_pair_copy_plan_list_only;
+        if (step.report.empty() || step.candidate < -1 || (step.candidate < 0 && !listing))
+            log_error("Invalid LUT pair copy plan step %zu.\n", i);
+        std::string error;
+        auto report = json11::Json::parse(step.report, error);
+        if (!error.empty() || !report.is_object() || !report["critical_paths"].is_array())
+            log_error("Invalid LUT pair copy plan report at step %zu.\n", i);
+        auto invalid = [&]() { log_error("Invalid LUT pair copy plan report path at step %zu.\n", i); };
+        auto endpoint = [&](const json11::Json &value) {
+            if (!value.is_object() || !value["cell"].is_string() || !value["port"].is_string() ||
+                !value["loc"].is_array() || value["loc"].array_items().size() != 2)
+                invalid();
+            for (const auto &coordinate : value["loc"].array_items())
+                if (!coordinate.is_number() || !std::isfinite(coordinate.number_value()) ||
+                    coordinate.number_value() != std::floor(coordinate.number_value()))
+                    invalid();
+        };
+        for (const auto &path : report["critical_paths"].array_items()) {
+            if (!path.is_object() || !path["path"].is_array() || !path["max_delay"].is_number() ||
+                !std::isfinite(path["max_delay"].number_value()) || path["max_delay"].number_value() <= 0)
+                invalid();
+            double delay = 0;
+            for (const auto &segment : path["path"].array_items()) {
+                if (!segment.is_object() || !segment["type"].is_string() || segment["type"].string_value().empty() ||
+                    !segment["delay"].is_number() || !std::isfinite(segment["delay"].number_value()) ||
+                    (segment["type"].string_value() == "routing" && !segment["net"].is_string()))
+                    invalid();
+                endpoint(segment["from"]);
+                endpoint(segment["to"]);
+                delay += segment["delay"].number_value();
+            }
+            if (!std::isfinite(delay)) invalid();
+        }
+    }
+}
+
+bool Arch::execute_lut_pair_copy_plan()
+{
+    if (fes_any_slot_region_active || lut_pair_copy_plan.empty())
+        log_error("LUT pair copy plans require an ordinary full-design request.\n");
+    prevalidate_lut_pair_copy_plan();
+    pool<IdString> retained_ena_users;
+    for (size_t i = 0; i < lut_pair_copy_plan.size(); ++i) {
+        const auto &step = lut_pair_copy_plan[i];
+        std::map<IdString, NetInfo *> previous_enables;
+        for (const auto &entry : cells)
+            if (entry.second->type == id_MISTRAL_FF)
+                previous_enables.emplace(entry.first, entry.second->getPort(id_ENA));
+        log_info("LUT pair copy plan step %zu: candidate=%d.\n", i, step.candidate);
+        bool applied = remap_lut_pair_copy_critical(step.report, step.candidate, &retained_ena_users);
+        if (step.candidate >= 0 && !applied)
+            log_error("LUT pair copy plan step %zu did not qualify; routing was not started.\n", i);
+        if (step.candidate < 0) return false;
+        const auto earlier = retained_ena_users.size();
+        for (const auto &entry : previous_enables) {
+            auto found = cells.find(entry.first);
+            NPNR_ASSERT(found != cells.end() && found->second->type == id_MISTRAL_FF);
+            if (found->second->getPort(id_ENA) != entry.second)
+                retained_ena_users.insert(entry.first);
+        }
+        NPNR_ASSERT(retained_ena_users.size() > earlier);
+    }
+    return true;
+}
+
+bool Arch::remap_lut_pair_copy_critical(const std::string &report, int selection,
+                                      const pool<IdString> *retained_ena_users)
 {
     namespace guard = mistral_remap_clock_guard;
     namespace policy = local_remap_policy;
@@ -200,6 +287,11 @@ bool Arch::remap_lut_pair_copy_critical(const std::string &report, int selection
         std::sort(cohort.begin(), cohort.end(), [&](CellInfo *a, CellInfo *b) { return a->name.str(ctx) < b->name.str(ctx); });
         if (!eligible || cohort.empty() || std::find(cohort.begin(), cohort.end(), sink) == cohort.end()) {
             reject("whole-enable-cohort-unavailable"); continue;
+        }
+        if (retained_ena_users && std::any_of(cohort.begin(), cohort.end(), [&](CellInfo *cell) {
+                return retained_ena_users->count(cell->name) != 0;
+            })) {
+            reject("cohort-retargets-retained-copy"); continue;
         }
         std::vector<NetInfo *> external;
         auto encode = [&](CellInfo *cell, bool outer_input) {
