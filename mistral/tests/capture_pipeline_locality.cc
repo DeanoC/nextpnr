@@ -11,6 +11,7 @@
 #include <memory>
 #include <set>
 #include <sstream>
+#include <tuple>
 #include <vector>
 
 USING_NEXTPNR_NAMESPACE
@@ -22,6 +23,12 @@ NEXTPNR_NAMESPACE_END
 
 namespace {
 namespace guard = mistral_remap_clock_guard;
+
+struct PipelineLog {
+    std::ostringstream stream;
+    PipelineLog() { log_streams.emplace_back(&stream, LogLevel::INFO_MSG); }
+    ~PipelineLog() { log_streams.pop_back(); }
+};
 
 // Save identities and the raw indexed user allocation order, rather than
 // merely comparing the visible connections after a placement transaction.
@@ -405,6 +412,136 @@ TEST_F(CapturePipelineLocalityTest, DistinctHardClockPortsOnTheSameNetQualifyBot
     }
     EXPECT_TRUE(guard::holds_nonregressing(old_holds, guard::holds(after)));
     EXPECT_TRUE(guard::clocks_nonregressing(before, after));
+}
+
+TEST_F(CapturePipelineLocalityTest, IllegalClockGeometriesDoNotSpendTheTimingTrialBudget)
+{
+    auto *foreign_clock = ctx->createNet(ctx->id("independent_occupant_clock"));
+    foreign_clock->is_global = true;
+    foreign_clock->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+    auto *driver = ctx->createCell(ctx->id("independent_occupant_clock_buffer"), id_MISTRAL_CLKBUF);
+    driver->addOutput(id_Q); driver->connectPort(id_Q, foreign_clock);
+    ctx->assignArchInfo();
+    const BelId old_first = first->bel, old_second = second->bel;
+    const auto first_strength = first->belStrength, second_strength = second->belStrength;
+    auto clock_values = [](const ClockConstraint &c) {
+        return std::make_tuple(c.period.minDelay(), c.period.maxDelay(), c.high.minDelay(), c.high.maxDelay(),
+                               c.low.minDelay(), c.low.maxDelay(), c.phase_group, c.phase_shift);
+    };
+    const auto old_clock = clock_values(*clock->clkconstr), old_foreign_clock = clock_values(*foreign_clock->clkconstr);
+
+    // Build a congested fixture using the real pass's accepted first-stage
+    // LABs, without copying its candidate scoring or adding production hooks.
+    // A weak FF on a different clock leaves the feed-through geometry free
+    // but makes that LAB illegal for either pipeline register. Setup is
+    // bounded to 32 discovery passes; the final pass must actually reach a
+    // legal, guarded candidate after more than 16 native-illegal geometries.
+    for (int discovery = 0; discovery < 32; ++discovery) {
+        SCOPED_TRACE(discovery);
+        PipelineSnapshot saved(ctx.get());
+        TimingAnalyser before(ctx.get()), before_reference(ctx.get());
+        before.with_clock_skew = true; before.setup(false, false, true);
+        before_reference.setup(false, false, true);
+        ASSERT_FALSE(before.have_loops); ASSERT_FALSE(before_reference.have_loops);
+        auto old_first_rows = rows(before, first), old_second_rows = rows(before, second);
+        auto old_terminal = rows(before, terminal), old_terminal_reference = rows(before_reference, terminal);
+        auto old_holds = guard::holds(before);
+        PipelineLog log;
+        ASSERT_EQ(capture_pipeline_locality(ctx.get(), report(), 1, 24), 1) << log.stream.str();
+        saved.expect(ctx.get(), {first->name, second->name});
+        const BelId accepted_first = first->bel;
+
+        std::string summary, line;
+        std::istringstream lines(log.stream.str());
+        int rejected_rows = 0;
+        while (std::getline(lines, line)) {
+            if (line.find("Capture pipeline locality chain summary ") != std::string::npos) {
+                ASSERT_TRUE(summary.empty()); summary = line;
+            }
+            if (line.find("Capture pipeline locality rejected geometry ") != std::string::npos) ++rejected_rows;
+        }
+        ASSERT_FALSE(summary.empty()) << log.stream.str();
+        auto count = [&](const std::string &name) {
+            auto at = summary.find(" " + name + "=");
+            EXPECT_NE(at, std::string::npos);
+            if (at == std::string::npos) return -1;
+            std::istringstream value(summary.substr(at + name.size() + 2));
+            int result = -1; value >> result; EXPECT_FALSE(value.fail()); return result;
+        };
+        const int attempts = count("attempted_geometry"), illegal = count("legality_rejects");
+        const int preservation = count("preservation_rejects"), timed = count("timed_trials");
+        const int first_timed = count("first_timed_geometry");
+        EXPECT_LE(attempts, 64); EXPECT_LE(timed, 16); EXPECT_GE(timed, 1);
+        EXPECT_EQ(attempts, illegal + preservation + timed);
+        EXPECT_EQ(preservation, 0); EXPECT_EQ(count("retained"), 1);
+        EXPECT_EQ(rejected_rows, std::min(4, illegal + preservation));
+        EXPECT_EQ(clock_values(*clock->clkconstr), old_clock);
+        EXPECT_EQ(clock_values(*foreign_clock->clkconstr), old_foreign_clock);
+        if (illegal > 16 && first_timed > 17) {
+            // More than the old entire geometry budget was rejected before
+            // the first timing trial, yet this later native placement passes
+            // the complete timing, graph, INIT and preservation checks.
+            for (const auto &entry : ctx->cells)
+                if (entry.second->bel != BelId()) EXPECT_TRUE(ctx->isBelLocationValid(entry.second->bel));
+            TimingAnalyser after(ctx.get()), after_reference(ctx.get());
+            after.with_clock_skew = true; after.setup(false, false, true);
+            after_reference.setup(false, false, true);
+            ASSERT_FALSE(after.have_loops); ASSERT_FALSE(after_reference.have_loops);
+            auto new_first = rows(after, first), new_second = rows(after, second);
+            ASSERT_TRUE(guard::rows_match(old_first_rows, new_first));
+            ASSERT_TRUE(guard::rows_match(old_second_rows, new_second));
+            EXPECT_TRUE(guard::rows_nonregressing(old_first_rows, new_first, false));
+            for (size_t i = 0; i < old_first_rows.size(); ++i) {
+                ASSERT_TRUE(old_first_rows[i].setup_margin); ASSERT_TRUE(new_first[i].setup_margin);
+                EXPECT_GE(*new_first[i].setup_margin, *old_first_rows[i].setup_margin + 250);
+            }
+            for (size_t i = 0; i < old_second_rows.size(); ++i) {
+                ASSERT_TRUE(old_second_rows[i].setup_margin); ASSERT_TRUE(new_second[i].setup_margin);
+                EXPECT_GE(*old_second_rows[i].setup_margin, 0); EXPECT_GE(*new_second[i].setup_margin, 0);
+                if (old_second_rows[i].hold_related) {
+                    ASSERT_TRUE(old_second_rows[i].hold_margin); ASSERT_TRUE(new_second[i].hold_margin);
+                    EXPECT_GE(*new_second[i].hold_margin, std::min(delay_t(0), *old_second_rows[i].hold_margin));
+                }
+            }
+            EXPECT_TRUE(guard::rows_nonregressing(old_terminal, rows(after, terminal), false));
+            EXPECT_TRUE(guard::rows_nonregressing(old_terminal_reference, rows(after_reference, terminal), true));
+            EXPECT_TRUE(guard::holds_nonregressing(old_holds, guard::holds(after)));
+            EXPECT_TRUE(guard::clocks_nonregressing(before, after));
+            return;
+        }
+
+        // Undo this setup discovery using ordinary native placement updates;
+        // the complete saved fixture must be exact before adding congestion.
+        ctx->unbindBel(first->bel); ctx->unbindBel(second->bel);
+        ctx->bindBel(old_first, first, first_strength); ctx->bindBel(old_second, second, second_strength);
+        saved.expect(ctx.get());
+        const auto target = ctx->bel_data(accepted_first).lab_data;
+        ASSERT_NE(target.lab, ctx->bel_data(old_first).lab_data.lab);
+        ASSERT_NE(target.lab, ctx->bel_data(old_second).lab_data.lab);
+        BelId blocker_bel;
+        const auto &alms = ctx->labs.at(target.lab).alms;
+        for (auto alm = alms.rbegin(); alm != alms.rend() && blocker_bel == BelId(); ++alm)
+            for (int half : {2, 0}) {
+                auto candidate = alm->ff_bels[half];
+                if (ctx->bel_data(candidate).lab_data.alm == target.alm || ctx->getBoundBelCell(candidate) ||
+                    ctx->getBoundBelCell(alm->ff_bels[half + 1]) || ctx->getBoundBelCell(alm->lut_bels[half / 2])) continue;
+                blocker_bel = candidate; break;
+            }
+        ASSERT_NE(blocker_bel, BelId());
+        auto *blocker = ff("weak_clock_occupant_" + std::to_string(discovery),
+                           ctx->nets.at(ctx->id("$PACKER_GND_NET")).get(), discovery % 2);
+        blocker->disconnectPort(id_CLK); blocker->connectPort(id_CLK, foreign_clock);
+        ctx->assignArchInfo(); ctx->bindBel(blocker_bel, blocker, STRENGTH_WEAK);
+        ASSERT_TRUE(ctx->isBelLocationValid(blocker_bel));
+        ASSERT_TRUE(blocker->attrs.empty()); ASSERT_EQ(blocker->belStrength, STRENGTH_WEAK);
+        ASSERT_EQ(blocker->getPort(id_Q)->users.entries(), 0);
+        PipelineSnapshot congested(ctx.get());
+        ctx->unbindBel(old_first); ctx->bindBel(accepted_first, first, first_strength);
+        EXPECT_FALSE(ctx->isBelLocationValid(accepted_first)); EXPECT_FALSE(ctx->isBelLocationValid(blocker_bel));
+        ctx->unbindBel(accepted_first); ctx->bindBel(old_first, first, first_strength);
+        congested.expect(ctx.get());
+    }
+    FAIL() << "Bounded native fixture did not expose a retained candidate beyond 16 illegal geometries";
 }
 
 TEST_F(CapturePipelineLocalityTest, RequestIsDefaultOffAndNullPreloadPreservesTheDesign)

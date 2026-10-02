@@ -34,8 +34,13 @@ the same clock signal belong to the same search group. Each pipeline still
 must match its actual launch clock and edge. Protected cells, protected LABs,
 carry chains, MLABs and constrained regions are excluded. Each target consumes an
 empty LUT/FF half suitable for a feed-through, with its partner FF empty.
-The search keeps up to 32 distinct LABs per stage and tests at most 16 distinct
-LAB pairs per attempted chain.
+The search keeps up to 32 distinct LABs per stage and up to 64 ranked distinct
+LAB pairs per attempted chain. It checks native legality and complete snapshot
+preservation before spending a timing trial. A failure of either check restores
+the pair and leaves the timing budget available for later geometries. At most
+16 placements that pass both checks receive timing analysis. The worst case
+therefore allows four times as many placement snapshots and geometry checks as
+the earlier 16-pair search, while keeping the expensive timing-trial cap at 16.
 
 Every trial checks native physical legality in all affected LABs and complete
 clock-pair timing at both registers and every reached registered endpoint.
@@ -51,6 +56,15 @@ parameters, constraints and pin maps. Rejection or an exception restores both
 register BELs, strengths and all saved architecture and LAB caches, including
 previously accepted pairs.
 
+Each attempted chain reports its geometry attempts, native-legality rejections,
+snapshot-preservation rejections, timing trials and whether a pair was retained.
+It also reports the ordinal of the first geometry to reach timing analysis;
+zero means none did. At most four rejected geometries per chain log their BELs
+and rejection reason. The summary counts all rejections, including those omitted
+from the detailed log. The native fixture uses weak occupants on a different
+clock to exercise more than 16 illegal geometries before a later qualifying
+placement, with exact restoration during its bounded setup discoveries.
+
 Placement qualification is not routed timing acceptance. A retained pair still
 needs a full route and signoff under the required clocks, plus independent
 graph and physical checks before claiming a gain. The
@@ -58,5 +72,7 @@ graph and physical checks before claiming a gain. The
 qualifies two explicit configurations against a matched fresh main baseline.
 The best, budget 64 and radius 24, reached 106.1233139038086 MHz memory Fmax,
 a 0.34798431396484375 MHz gain; all six non-target clock windows remained
-positive and final signoff reported no hold violations. Memory still misses
-130 MHz. The pass remains default off and does not change the build recipe.
+positive and final signoff reported no hold violations. Those measurements used
+the earlier 16-geometry search and do not qualify this 64-geometry prototype.
+Memory still misses 130 MHz. The pass remains default off and does not change
+the build recipe.
