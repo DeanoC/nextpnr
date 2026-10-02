@@ -53,5 +53,10 @@ previously accepted pairs.
 
 Placement qualification is not routed timing acceptance. A retained pair still
 needs a full route and signoff under the required clocks, plus independent
-graph and physical checks before claiming a gain. This prototype has no
-qualified RAM-test gain yet and does not change the default build recipe.
+graph and physical checks before claiming a gain. The
+[2026-10-02 RAM-test record](validation/ramtest-capture-pipeline-2026-10-02.md)
+qualifies two explicit configurations against a matched fresh main baseline.
+The best, budget 64 and radius 24, reached 106.1233139038086 MHz memory Fmax,
+a 0.34798431396484375 MHz gain; all six non-target clock windows remained
+positive and final signoff reported no hold violations. Memory still misses
+130 MHz. The pass remains default off and does not change the build recipe.

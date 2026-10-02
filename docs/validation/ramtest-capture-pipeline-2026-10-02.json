@@ -1,0 +1,290 @@
+{
+  "schema": 1,
+  "record_date": "2026-10-02",
+  "scope": "Explicit generic two-FF capture-pipeline placement trials against a matched fresh main baseline",
+  "best_matched_main_result": "budget64_radius24",
+  "raw_root": "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264",
+  "raw_artifacts_committed_with_summary": false,
+  "compiler": {
+    "measured_source_commit": "a0432321e5ab99e20ec83e4fe97b652128b3c4b8",
+    "production_elf_sha256": "4db58a6de261b8542cce2c50f969f1f7b23b2c9c92150fa9a80697f88d185c27",
+    "source_archive": "capture-pipeline-264/clock-group-source.tar.gz",
+    "source_archive_sha256": "19c307f0fc22f5b766d8eba1f0bb7a282a52e0f5344a4674d2a76aa214fa7d29",
+    "stacked_base_branch": "feat/mistral-lut-pair-copies-264",
+    "stacked_base_commit": "266e3ef7a0821c38a18a3076f7d8b9b1638a7cd2",
+    "stacked_base_pr": "https://github.com/DeanoC/nextpnr/pull/109",
+    "publication_production_bytes_inherited_from_measured_source": true,
+    "publication_binary_timing_qualification_claimed": false
+  },
+  "input_sha256": {
+    "out/ramtest-merged-remap/measured-diagnostic/synth.json": "61ee68c657e49364425dd4ba4880a679e0759992f2750e284e256d1e4139de28",
+    "sources/misteross/cores/fes-ramtest/constraints.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+    "sources/misteross/boards/de10nano/clocks.sdc": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041"
+  },
+  "common_route_options_with_input_paths_relative_to_fes_root": [
+    "--json", "out/ramtest-merged-remap/measured-diagnostic/synth.json",
+    "--device", "5CSEBA6U23I7",
+    "--qsf", "sources/misteross/cores/fes-ramtest/constraints.qsf",
+    "--sdc", "sources/misteross/boards/de10nano/clocks.sdc",
+    "--freq", "74.25",
+    "--seed", "2",
+    "--placer-heap-timingweight", "10",
+    "--placer-heap-critexp", "2",
+    "--replicate-enables", "4",
+    "--timing-allow-fail",
+    "--detailed-timing-report",
+    "--router", "gpu",
+    "--gpu-device", "1",
+    "--timing-report-paths", "16384"
+  ],
+  "actual_command_cwd": "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/sources/misteross",
+  "actual_command_and_environment_bound_by_profile_sha256": true,
+  "ordinary_heap_placement": true,
+  "other_selected_nextpnr_diagnostic_environment": {},
+  "reduction_remap_plan_lut_pair_copy_or_driver_copy_selected": false,
+  "recorder": {
+    "path": "capture-pipeline-264/trial_clock_group.py",
+    "sha256": "a3fb41cb3300099022c1af4c63c44bac6bf92eb4612ca4456bdaa41596ff01ed",
+    "run_role": "Exploratory recorder; qualification is established by the later independent proof",
+    "production_and_input_bytes_stable_before_after_both_runs": true
+  },
+  "matched_baseline": {
+    "name": "fresh publication main",
+    "run": "lut-pair-copies-publication-264/main-baseline/run.json",
+    "run_sha256": "3389f349e09a9462be09f1ff5c7d0196c8ec775bd0844235b0624642675b529c",
+    "compiler_elf_sha256": "fb53b77256ab2958c8dfc321a8e977e4a741a73b1ead584c21c8f72116b129e8",
+    "output_sha256": {
+      "core.rbf": "8fa377cd030e26c2999090ea618d0607066cabaa9690d18b01a06b826395a975",
+      "route.log": "2b95cabc123abae22daf6efdd69240c4f99f73ee69bdf71b4353d5d50dfdaea9",
+      "routed.json": "720ab3c828fdbbcb7a60865335f9772876fbab3e96c8ee5710a5f5788f31dab2",
+      "timing.json": "af2cfae26e73833bf92efc598fad998da1ff4200a9ebb770da4b91755e0d217f"
+    },
+    "native_pre_route_guide": "lut-pair-copies-publication-264/main-baseline-placed/timing.json",
+    "native_pre_route_guide_sha256": "d117e8952e4741f64ca14094df6c4db5a973f9de3a9dc038820852f7b5c0f512",
+    "fmax_mhz": {
+      "ram_clock.clocks[0]": 105.77532958984375,
+      "display.pixel_clk": 96.320556640625,
+      "ram_clock.clocks[1]": 375.0871276855469
+    },
+    "final_reported_hold_violations": false
+  },
+  "clock_constraints_mhz": {
+    "ram_clock.clocks[0]": 130.0052032470703,
+    "display.pixel_clk": 74.25006866455078,
+    "ram_clock.clocks[1]": 130.0052032470703
+  },
+  "clock_pair_windows": [
+    {"id": "async_to_memory", "from": "<async>", "to": "posedge ram_clock.clocks[0]", "window_ns": 13.468000411987305, "baseline_headroom_ns": 11.67400036752224, "positive_headroom_required": true, "reported_endpoint_count": 4},
+    {"id": "memory_falling_to_memory_rising", "from": "negedge ram_clock.clocks[0]", "to": "posedge ram_clock.clocks[0]", "window_ns": 3.8459999561309814, "baseline_headroom_ns": 2.2989999493584037, "positive_headroom_required": true, "reported_endpoint_count": 16},
+    {"id": "pixel_to_pixel", "from": "posedge display.pixel_clk", "to": "posedge display.pixel_clk", "window_ns": 13.468000411987305, "baseline_headroom_ns": 3.0860004127025604, "positive_headroom_required": true, "reported_endpoint_count": 1822},
+    {"id": "pixel_to_memory", "from": "posedge display.pixel_clk", "to": "posedge ram_clock.clocks[0]", "window_ns": 13.468000411987305, "baseline_headroom_ns": 11.233000367879868, "positive_headroom_required": true, "reported_endpoint_count": 5},
+    {"id": "memory_to_pixel", "from": "posedge ram_clock.clocks[0]", "to": "posedge display.pixel_clk", "window_ns": 7.691999912261963, "baseline_headroom_ns": 4.950999811291695, "positive_headroom_required": true, "reported_endpoint_count": 1142},
+    {"id": "memory_to_memory", "from": "posedge ram_clock.clocks[0]", "to": "posedge ram_clock.clocks[0]", "window_ns": 7.691999912261963, "baseline_headroom_ns": -1.762000247836113, "positive_headroom_required": false, "reported_endpoint_count": 12285},
+    {"id": "capture_to_memory_falling", "from": "posedge ram_clock.clocks[1]", "to": "negedge ram_clock.clocks[0]", "window_ns": 5.0, "baseline_headroom_ns": 3.266999936196953, "positive_headroom_required": true, "reported_endpoint_count": 16}
+  ],
+  "results": {
+    "budget8_radius24": {
+      "status": "qualified measured gain against matched fresh main",
+      "attempted_chain_budget": 8,
+      "radius": 24,
+      "selected_environment": {
+        "NEXTPNR_MISTRAL_CAPTURE_PIPELINE_LOCALITY": "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/lut-pair-copies-publication-264/main-baseline-placed/timing.json 8 24"
+      },
+      "route_directory": "capture-pipeline-264/clock-group-pipeline-route-b8-r24",
+      "route_run_sha256": "43ae1c42b28456f53fce8927276c00c58dee433dd0db2504b353b3183c8ea5c3",
+      "route_elapsed_seconds": 862.6983340589795,
+      "route_exit_code": 0,
+      "output_sha256": {
+        "profile.json": "41775eaa812dcf186abfec00730f6723a35a343b54c8bd98f5b4a4e67940e8ee",
+        "routed.json": "4276395491fee29b9e81784761742332aa9490b693cf92c9aef4a520b32f9b6c",
+        "timing.json": "74e6791e93a2f28e01c98199fb10677b2195cbb10beb46b429f41830a451a22a",
+        "trial.log": "a61b415eb6ff4e6e3042620f50cd57224e73754686fd3c50a03a3c45d7513a4b",
+        "core.rbf": "67fbc8fb8a6df4df94a6d19d3976cd481daa519b6348c3a63e27fcd5fe32b31b"
+      },
+      "proof_source": "capture-pipeline-264/prove_pipeline.py",
+      "proof_source_sha256": "c44e65a1e5fd48da36969ed76597720ec6fc5202e59c84f233f74253e34c894a",
+      "proof_result": "capture-pipeline-264/proof-pipeline-b8-r24.json",
+      "proof_result_sha256": "b03e2b0770cdf46c287ceae90c8ba7fa6e2c9f98e62fc2a5f340730232ddd825",
+      "gain_accepted_against_matched_main_baseline": true,
+      "exported_native_physical_equivalence_proved": true,
+      "all_six_non_target_windows_positive": true,
+      "all_clock_nonregression": false,
+      "final_reported_hold_violations": false,
+      "complete_reported_paths": 15290,
+      "clock_domain_pairs": 7,
+      "fmax_mhz": {
+        "ram_clock.clocks[0]": 105.86491394042969,
+        "display.pixel_clk": 95.56575012207031,
+        "ram_clock.clocks[1]": 375.0871276855469
+      },
+      "gain_mhz": {
+        "ram_clock.clocks[0]": 0.0895843505859375,
+        "display.pixel_clk": -0.7548065185546875,
+        "ram_clock.clocks[1]": 0.0
+      },
+      "memory_constraint_passed": false,
+      "pixel_and_capture_constraints_passed": true,
+      "seven_pair_results": [
+        {"id": "async_to_memory", "complete_delay_ns": 1.7849999815225601, "headroom_ns": 11.683000430464745},
+        {"id": "memory_falling_to_memory_rising", "complete_delay_ns": 1.5470000067725778, "headroom_ns": 2.2989999493584037},
+        {"id": "pixel_to_pixel", "complete_delay_ns": 10.464000254869461, "headroom_ns": 3.0040001571178436},
+        {"id": "pixel_to_memory", "complete_delay_ns": 2.235000044107437, "headroom_ns": 11.233000367879868},
+        {"id": "memory_to_pixel", "complete_delay_ns": 2.6650001257658005, "headroom_ns": 5.026999786496162},
+        {"id": "memory_to_memory", "complete_delay_ns": 9.445999875664711, "headroom_ns": -1.753999963402748},
+        {"id": "capture_to_memory_falling", "complete_delay_ns": 1.733000063803047, "headroom_ns": 3.266999936196953}
+      ],
+      "physical_proof_counts": {
+        "disjoint_pairs": 7,
+        "existing_ff_bel_moves": 14,
+        "original_cells": 14893,
+        "original_net_names": 16631,
+        "whole_labs_checked": 16,
+        "outside_alms_exact": 41750,
+        "route_buffers_before": 4957,
+        "route_buffers_after": 4957,
+        "new_route_buffers_individually_ledgered": 0,
+        "unmoved_ff_control_selector_rows_with_proved_logical_renumbering": 9,
+        "bound_artifacts": 119,
+        "directly_rehashed_source_or_compiler_files": 2328,
+        "historical_archive_members_bound": 932
+      }
+    },
+    "budget64_radius24": {
+      "status": "qualified measured gain against matched fresh main",
+      "attempted_chain_budget": 64,
+      "radius": 24,
+      "selected_environment": {
+        "NEXTPNR_MISTRAL_CAPTURE_PIPELINE_LOCALITY": "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/lut-pair-copies-publication-264/main-baseline-placed/timing.json 64 24"
+      },
+      "route_directory": "capture-pipeline-264/clock-group-pipeline-route-b64-r24",
+      "route_run_sha256": "3305e36039e6263c03d6bdd63670b523318678cddd558d2136e0f22dc310e38e",
+      "route_elapsed_seconds": 830.5435178589541,
+      "route_exit_code": 0,
+      "output_sha256": {
+        "profile.json": "29551082fa5a9262baa9e00da523219f950e002fda638fb68ae32fa0db663d3f",
+        "routed.json": "e84e01f52c2bbf693c3619766ff9b571a2709212081b825d93a264e1320d1a5a",
+        "timing.json": "01548ffc147ff42e6b3bb63a04c347dc3e9119ab7746fdad3a310b9e2c8d236a",
+        "trial.log": "ca6a9fa3211432807fce8d5e0d956258c6dcd2f2533fd104991d65c5276b3454",
+        "core.rbf": "0d3d5f6701f2ecfa90b3c01040726a0ddd4e449829423b87cf89b288728e85c7"
+      },
+      "proof_source": "capture-pipeline-264/prove_pipeline_b64.py",
+      "proof_source_sha256": "3c64fd6c3127b5b686f47005d4014c75dfc8749ee152ee6f744dd62f5f80b490",
+      "proof_result": "capture-pipeline-264/proof-pipeline-b64-r24.json",
+      "proof_result_sha256": "05d91f7b946d4f3e00dc8be745fb67c3131d92e96451c9a9b98ab11892596b43",
+      "gain_accepted_against_matched_main_baseline": true,
+      "exported_native_physical_equivalence_proved": true,
+      "all_six_non_target_windows_positive": true,
+      "all_clock_nonregression": false,
+      "final_reported_hold_violations": false,
+      "complete_reported_paths": 15290,
+      "clock_domain_pairs": 7,
+      "fmax_mhz": {
+        "ram_clock.clocks[0]": 106.1233139038086,
+        "display.pixel_clk": 93.90553283691406,
+        "ram_clock.clocks[1]": 375.0871276855469
+      },
+      "gain_mhz": {
+        "ram_clock.clocks[0]": 0.34798431396484375,
+        "display.pixel_clk": -2.4150238037109375,
+        "ram_clock.clocks[1]": 0.0
+      },
+      "memory_constraint_passed": false,
+      "pixel_and_capture_constraints_passed": true,
+      "seven_pair_results": [
+        {"id": "async_to_memory", "complete_delay_ns": 1.79100002348423, "headroom_ns": 11.677000388503075},
+        {"id": "memory_falling_to_memory_rising", "complete_delay_ns": 1.5470000067725778, "headroom_ns": 2.2989999493584037},
+        {"id": "pixel_to_pixel", "complete_delay_ns": 10.649000018835068, "headroom_ns": 2.819000393152237},
+        {"id": "pixel_to_memory", "complete_delay_ns": 2.235000044107437, "headroom_ns": 11.233000367879868},
+        {"id": "memory_to_pixel", "complete_delay_ns": 2.648000046610832, "headroom_ns": 5.043999865651131},
+        {"id": "memory_to_memory", "complete_delay_ns": 9.42300021648407, "headroom_ns": -1.731000304222107},
+        {"id": "capture_to_memory_falling", "complete_delay_ns": 1.733000063803047, "headroom_ns": 3.266999936196953}
+      ],
+      "physical_proof_counts": {
+        "disjoint_pairs": 37,
+        "existing_ff_bel_moves": 74,
+        "original_cells": 14893,
+        "original_net_names": 16631,
+        "whole_labs_checked": 43,
+        "outside_alms_exact": 41480,
+        "route_buffers_before": 4957,
+        "route_buffers_after": 4971,
+        "new_route_buffers_individually_ledgered": 14,
+        "unmoved_ff_control_selector_rows_with_proved_logical_renumbering": 39,
+        "bound_artifacts": 119,
+        "directly_rehashed_source_or_compiler_files": 2328,
+        "historical_archive_members_bound": 932
+      }
+    }
+  },
+  "proof_scope": {
+    "original_graph_params_directions_metadata_aliases_ordered_ports_and_serialized_slots_exact": true,
+    "paired_pll_ports_exact": true,
+    "plain_two_register_latency_and_initial_values_unchanged": true,
+    "same_actual_source_and_ff_clock_and_edge": true,
+    "first_ff_q_sole_second_ff_datain_consumer": true,
+    "all_route_buffers_explicit_identity_and_packed_function_ledgered": true,
+    "changed_control_indices_have_consistent_injective_logical_group_renumbering": true,
+    "all_emitted_finite_complete_path_sums_checked": true,
+    "final_reported_holds_checked": true,
+    "old_path_delays_or_signoff_inherited": false,
+    "full_live_runtime_pointer_indexed_store_cache_or_gpu_identity_proved": false,
+    "selector_to_routed_wire_reservation_table_independently_checked": false,
+    "independent_numerical_sta_or_unreported_pair_extrema_proved": false,
+    "independent_route_mux_pip_cram_or_rbf_decode_proved": false,
+    "complete_placement_routing_or_device_legality_proved": false,
+    "rbf_digest_is_output_identity_only": true,
+    "hardware_tested": false,
+    "default_recipe_or_current_pin_qualification_claimed": false,
+    "memory_130_mhz_closed": false
+  },
+  "host_tests": {
+    "source_commit": "a0432321e5ab99e20ec83e4fe97b652128b3c4b8",
+    "status": "passed",
+    "closed_check_record": "capture-pipeline-264/final-check-results.json",
+    "closed_check_record_sha256": "ace803d429620d5b52ccc3aeef737c4c475f35e702dcaca335dcbb4cad8f2224",
+    "native_cases": 32,
+    "cli_methods": 11,
+    "test_elf_sha256": "c090efb24fc4479f7fea3910b2a8e39c5cbadec8311e6ead4ac863e37fe06ea3",
+    "capture_pipeline_native": {
+      "cases": 8,
+      "elapsed_seconds": 29.660,
+      "log": "capture-pipeline-264/native-clock-group.log",
+      "log_sha256": "5e1f715d7b64dce331f95f97f399a84c653febfcbd50aa6fab69fd9221c1336f"
+    },
+    "native_regression": {
+      "lut_pair_placement_cases": 12,
+      "lut_driver_copy_cases": 10,
+      "lab_pinmap_cases": 2,
+      "elapsed_seconds": 96.912,
+      "log": "capture-pipeline-264/final-native-regression.log",
+      "log_sha256": "ae553f528100663254764b8edd8faf4e3771379a5263dfc203f478dbe738c47d"
+    },
+    "capture_pipeline_cli": {
+      "methods": 11,
+      "elapsed_seconds": 202.29,
+      "log": "capture-pipeline-264/final-cli-pipeline.log",
+      "log_sha256": "6767b230805b2d39ba86463ebc799288af46b8cf12dee05395c777a128ceceb4"
+    }
+  },
+  "separate_historical_stack": {
+    "memory_fmax_mhz": 117.86892700195312,
+    "unchanged": true,
+    "same_compiler_configuration_or_heap_baseline": false,
+    "used_as_regression_baseline": false,
+    "qualification_inherited": false
+  },
+  "post_budget8_lut_pair_copy": {
+    "role": "separate exploratory route",
+    "accepted_result_in_this_record": false
+  },
+  "fes_rtl_pins_constraints_default_recipe_or_hardware_changed": false,
+  "pass_default_off": true,
+  "limitations": [
+    "Physical equivalence uses exported pin/LAB snapshots and packed truth; route muxes and bitstream bytes are not independently decoded.",
+    "Logical CLK/ENA selector renumbering does not independently prove the unexported selector-to-routed-wire reservation table.",
+    "Exact serialized consumer slots do not prove live indexed-store allocation, pointers, caches, GPU IDs or full runtime identity.",
+    "Timing acceptance checks all emitted paths and final reported holds; it does not independently recompute numerical STA or extrema for unreported clock pairs.",
+    "These explicit measured trials do not qualify a new publication binary, the current default recipe or hardware, and do not close the memory target.",
+    "The separate 117.86892700195312 MHz historical stack uses an older compiler, configuration and HeAP baseline; its qualification is not inherited."
+  ]
+}
