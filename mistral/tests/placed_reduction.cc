@@ -52,10 +52,15 @@ struct CubeSnapshot {
     };
     std::map<IdString, Cell> cells;
     std::map<IdString, Net> nets;
-    std::vector<IdString> cell_order, net_order;
+    std::map<IdString, IdString> aliases;
+    std::vector<IdString> cell_order, net_order, alias_order;
 
     explicit CubeSnapshot(Context *ctx)
     {
+        for (const auto &entry : ctx->net_aliases) {
+            aliases.emplace(entry.first, entry.second);
+            alias_order.push_back(entry.first);
+        }
         for (const auto &entry : ctx->cells) {
             cell_order.push_back(entry.first);
             auto *c = entry.second.get();
@@ -79,6 +84,15 @@ struct CubeSnapshot {
     {
         ASSERT_EQ(ctx->cells.size(), cells.size());
         ASSERT_EQ(ctx->nets.size(), nets.size());
+        ASSERT_EQ(ctx->net_aliases.size(), aliases.size());
+        std::vector<IdString> actual_aliases;
+        for (const auto &entry : ctx->net_aliases) actual_aliases.push_back(entry.first);
+        EXPECT_EQ(actual_aliases, alias_order);
+        for (const auto &entry : aliases) {
+            ASSERT_TRUE(ctx->net_aliases.count(entry.first));
+            EXPECT_EQ(ctx->net_aliases.at(entry.first), entry.second);
+            EXPECT_EQ(ctx->getNetByAlias(entry.first), nets.at(entry.second).identity);
+        }
         std::vector<IdString> actual_cells, actual_nets;
         for (const auto &entry : ctx->cells) actual_cells.push_back(entry.first);
         for (const auto &entry : ctx->nets) actual_nets.push_back(entry.first);
@@ -1308,6 +1322,16 @@ class TwentyFourReductionTest : public PlacedReductionTest {
         wide_root = cube("wide_result", branches, branch_values, true, 1);
         wide_cone.push_back(wide_root);
         wide_output = wide_root->getPort(id_Q);
+        // Exercise multiple aliases, including map entries absent from the
+        // net's optional alias list, for both retired and surviving outputs.
+        for (auto *cell : wide_cone) {
+            auto *net = cell->getPort(id_Q);
+            auto alias = ctx->id(net->name.str(ctx.get()) + "_alias");
+            net->aliases.push_back(alias);
+            ctx->net_aliases[alias] = net->name;
+            ctx->net_aliases[ctx->id(net->name.str(ctx.get()) + "_extra_alias")] = net->name;
+        }
+        ctx->net_aliases[ctx->id("wide_literal_alias")] = wide_inputs[7]->name;
         for (int i = 0; i < 9; ++i)
             wide_sinks.push_back(ff(ctx->idf("wide_endpoint_%d", i), wide_output));
         const auto public_root = ctx->id("wide_public_result"), public_literal = ctx->id("wide_public_literal");
@@ -1405,6 +1429,30 @@ class TwentyFourReductionTest : public PlacedReductionTest {
         EXPECT_TRUE(wide_evaluate(wide_output, required));
         for (int bit = 0; bit < 24; ++bit) EXPECT_FALSE(wide_evaluate(wide_output, required ^ (1u << bit)));
     }
+
+    void expect_retired_aliases(const CubeSnapshot &before, const std::vector<IdString> &retired_nets)
+    {
+        std::vector<IdString> removed;
+        for (const auto &entry : before.aliases) {
+            if (std::find(retired_nets.begin(), retired_nets.end(), entry.second) != retired_nets.end()) {
+                ASSERT_FALSE(ctx->net_aliases.count(entry.first));
+                EXPECT_EQ(ctx->getNetByAlias(entry.first), nullptr);
+                removed.push_back(entry.first);
+            } else {
+                ASSERT_TRUE(ctx->net_aliases.count(entry.first));
+                EXPECT_EQ(ctx->net_aliases.at(entry.first), entry.second);
+                EXPECT_EQ(ctx->getNetByAlias(entry.first), before.nets.at(entry.second).identity);
+            }
+        }
+        EXPECT_EQ(ctx->net_aliases.size() + removed.size(), before.aliases.size());
+        ASSERT_EQ(removed.size(), 3 * retired_nets.size());
+        // Both canonical net names and secondary alias names become reusable.
+        for (auto name : removed) {
+            auto *net = ctx->createNet(name);
+            EXPECT_EQ(ctx->getNetByAlias(name), net);
+        }
+        ctx->check();
+    }
 };
 }
 
@@ -1459,6 +1507,7 @@ TEST_F(TwentyFourReductionTest, UnplacedRewriteRetiresOnlyTwoPrivateCellsAndNets
     EXPECT_EQ(ctx->ports.at(ctx->id("wide_public_literal")).net, wide_inputs[7]);
     expect_balanced_cube(plan);
     ctx->check();
+    expect_retired_aliases(before, retired_nets);
 }
 
 TEST_F(TwentyFourReductionTest, ListingAndMissingOrdinalRestoreExactGraphAndFreeLists)
@@ -1477,6 +1526,8 @@ TEST_F(TwentyFourReductionTest, PlacedRewritePreservesPublicRootAndExternalRegis
     CubeSnapshot before(ctx.get());
     ReductionBalancePlan plan;
     ASSERT_TRUE(plan_reduction(ctx.get(), wide_root->name.str(ctx.get()), true, plan));
+    std::vector<IdString> retired_nets;
+    for (auto *net : plan.retired_nets) retired_nets.push_back(net->name);
     auto root_bel = wide_root->bel;
     ASSERT_TRUE(placed_reduction(ctx.get(), wide_root->name.str(ctx.get()), 2, 0));
     EXPECT_EQ(wide_root->bel, root_bel);
@@ -1492,6 +1543,7 @@ TEST_F(TwentyFourReductionTest, PlacedRewritePreservesPublicRootAndExternalRegis
     expect_balanced_cube(plan);
     assert_legal();
     ctx->check();
+    expect_retired_aliases(before, retired_nets);
 }
 
 TEST_F(TwentyFourReductionTest, RejectsRepeatedLiteralReconvergenceCycleAndNonCubeExactly)

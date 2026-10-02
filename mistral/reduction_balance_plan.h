@@ -24,5 +24,7 @@ bool plan_reduction(Context *, const std::string &, bool placed, ReductionBalanc
 // owners before architecture assignment/timing/checks, restoring the original
 // objects, cell fields, net drivers and complete user stores on rejection.
 void rewrite_reduction(Context *, const ReductionBalancePlan &);
+// Remove every alias targeting a retired net while its owner is still alive.
+void remove_reduction_net_aliases(Context *, const ReductionBalancePlan &);
 NEXTPNR_NAMESPACE_END
 #endif
