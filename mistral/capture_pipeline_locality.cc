@@ -387,8 +387,7 @@ int capture_pipeline_locality(Context *ctx, const std::string &report, int budge
         CellInfo *second = nullptr;
         TimingClockingInfo info;
         if (pair(first, second, info) && first->getPort(id_DATAIN)->driver.cell == source &&
-            first->getPort(id_CLK) == critical->getPort(id_CLK) &&
-            info.clock_port == ctx->getPortClockingInfo(source, source_port, 0).clock_port)
+            first->getPort(id_CLK) == critical->getPort(id_CLK))
             chains.push_back({first, second, first->getPort(id_DATAIN)->driver.port});
     }
     std::sort(chains.begin(), chains.end(), [&](const Chain &a, const Chain &b) {

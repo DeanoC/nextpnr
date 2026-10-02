@@ -320,6 +320,93 @@ TEST_F(CapturePipelineLocalityTest, RenamedPairMovesWithoutChangingLatencyGraphO
     accepted.expect(ctx.get());
 }
 
+TEST_F(CapturePipelineLocalityTest, DistinctHardClockPortsOnTheSameNetQualifyBothIndependentPairs)
+{
+    auto other_clock_pin = ctx->id("rd_clk_2"), other_data_pin = ctx->id("rd_data_2[0]");
+    hard->addInput(other_clock_pin); hard->connectPort(other_clock_pin, clock);
+    hard->addOutput(other_data_pin);
+    hard->connectPort(other_data_pin, ctx->createNet(ctx->id("unrelated_other_hard_data")));
+    auto *other_first = ff("cedar_register", hard->getPort(other_data_pin), false);
+    auto *other_second = ff("harbor_register", other_first->getPort(id_Q), true);
+    auto *other_terminal = ff("violet_register", other_second->getPort(id_Q), false);
+    ctx->net_aliases[ctx->id("unrelated_other_data_alias")] = other_first->getPort(id_Q)->name;
+    ctx->ports[ctx->id("observed_other_output")] =
+            PortInfo{ctx->id("observed_other_output"), other_terminal->getPort(id_Q), PORT_OUT, {}};
+    ctx->assignArchInfo();
+    place(other_first, 27, 23); place(other_second, 27, 17); place(other_terminal, 30, 24, STRENGTH_LOCKED);
+    for (auto *net : {other_first->getPort(id_DATAIN), other_first->getPort(id_Q), other_second->getPort(id_Q)}) holes(net);
+    ctx->check();
+
+    auto launch = ctx->getPortClockingInfo(hard, data_pin, 0);
+    auto other_launch = ctx->getPortClockingInfo(hard, other_data_pin, 0);
+    ASSERT_EQ(launch.clock_port, ctx->id("rd_clk_0")); ASSERT_EQ(other_launch.clock_port, other_clock_pin);
+    ASSERT_NE(launch.clock_port, other_launch.clock_port);
+    ASSERT_EQ(hard->getPort(launch.clock_port), clock); ASSERT_EQ(hard->getPort(other_launch.clock_port), clock);
+    ASSERT_EQ(launch.edge, other_launch.edge);
+    const std::array<std::array<CellInfo *, 3>, 2> chains{{{first, second, terminal},
+                                                        {other_first, other_second, other_terminal}}};
+    PipelineSnapshot saved(ctx.get());
+    TimingAnalyser before(ctx.get()), before_reference(ctx.get());
+    before.with_clock_skew = true; before.setup(false, false, true); before_reference.setup(false, false, true);
+    ASSERT_FALSE(before.have_loops); ASSERT_FALSE(before_reference.have_loops);
+    std::array<guard::Rows, 2> old_first, old_second, old_terminal, old_terminal_reference;
+    std::array<delay_t, 2> old_incoming;
+    for (size_t i = 0; i < chains.size(); ++i) {
+        const auto &chain = chains[i]; SCOPED_TRACE(chain[0]->name.str(ctx.get()));
+        for (auto *cell : chain) {
+            ASSERT_EQ(cell->getPort(id_CLK), clock);
+            ASSERT_EQ(ctx->getPortClockingInfo(cell, id_DATAIN, 0).edge, launch.edge);
+        }
+        auto *data = chain[0]->getPort(id_DATAIN);
+        auto source_wire = ctx->getNetinfoSourceWire(data);
+        auto sink_wire = ctx->getNetinfoSinkWire(data, PortRef{chain[0], id_DATAIN}, 0);
+        ASSERT_NE(source_wire, WireId()); ASSERT_NE(sink_wire, WireId());
+        old_incoming[i] = ctx->estimateDelay(source_wire, sink_wire);
+        old_first[i] = rows(before, chain[0]); old_second[i] = rows(before, chain[1]);
+        old_terminal[i] = rows(before, chain[2]); old_terminal_reference[i] = rows(before_reference, chain[2]);
+    }
+    auto old_holds = guard::holds(before);
+    // The report names only the original chain; the budget must reach the
+    // other registered output through the shared actual clock net and edge.
+    ASSERT_EQ(capture_pipeline_locality(ctx.get(), report(), 2, 24), 2);
+    saved.expect(ctx.get(), {first->name, second->name, other_first->name, other_second->name});
+    TimingAnalyser after(ctx.get()), after_reference(ctx.get());
+    after.with_clock_skew = true; after.setup(false, false, true); after_reference.setup(false, false, true);
+    ASSERT_FALSE(after.have_loops); ASSERT_FALSE(after_reference.have_loops);
+    for (size_t i = 0; i < chains.size(); ++i) {
+        const auto &chain = chains[i]; SCOPED_TRACE(chain[0]->name.str(ctx.get()));
+        for (auto *cell : chain) {
+            EXPECT_TRUE(ctx->isBelLocationValid(cell->bel));
+            EXPECT_NE(ctx->getNetinfoSinkWire(cell->getPort(id_DATAIN), PortRef{cell, id_DATAIN}, 0), WireId());
+            EXPECT_NE(ctx->getNetinfoSourceWire(cell->getPort(id_Q)), WireId());
+        }
+        auto *data = chain[0]->getPort(id_DATAIN);
+        auto source_wire = ctx->getNetinfoSourceWire(data);
+        auto sink_wire = ctx->getNetinfoSinkWire(data, PortRef{chain[0], id_DATAIN}, 0);
+        ASSERT_NE(source_wire, WireId()); ASSERT_NE(sink_wire, WireId());
+        EXPECT_LE(ctx->estimateDelay(source_wire, sink_wire), old_incoming[i] - 250);
+        auto new_first = rows(after, chain[0]), new_second = rows(after, chain[1]);
+        ASSERT_TRUE(guard::rows_match(old_first[i], new_first)); ASSERT_TRUE(guard::rows_match(old_second[i], new_second));
+        EXPECT_TRUE(guard::rows_nonregressing(old_first[i], new_first, false));
+        for (size_t j = 0; j < old_first[i].size(); ++j) {
+            ASSERT_TRUE(old_first[i][j].setup_margin); ASSERT_TRUE(new_first[j].setup_margin);
+            EXPECT_GE(*new_first[j].setup_margin, *old_first[i][j].setup_margin + 250);
+        }
+        for (size_t j = 0; j < old_second[i].size(); ++j) {
+            ASSERT_TRUE(old_second[i][j].setup_margin); ASSERT_TRUE(new_second[j].setup_margin);
+            EXPECT_GE(*old_second[i][j].setup_margin, 0); EXPECT_GE(*new_second[j].setup_margin, 0);
+            if (old_second[i][j].hold_related) {
+                ASSERT_TRUE(old_second[i][j].hold_margin); ASSERT_TRUE(new_second[j].hold_margin);
+                EXPECT_GE(*new_second[j].hold_margin, std::min(delay_t(0), *old_second[i][j].hold_margin));
+            }
+        }
+        EXPECT_TRUE(guard::rows_nonregressing(old_terminal[i], rows(after, chain[2]), false));
+        EXPECT_TRUE(guard::rows_nonregressing(old_terminal_reference[i], rows(after_reference, chain[2]), false));
+    }
+    EXPECT_TRUE(guard::holds_nonregressing(old_holds, guard::holds(after)));
+    EXPECT_TRUE(guard::clocks_nonregressing(before, after));
+}
+
 TEST_F(CapturePipelineLocalityTest, RequestIsDefaultOffAndNullPreloadPreservesTheDesign)
 {
     PipelineSnapshot saved(ctx.get());

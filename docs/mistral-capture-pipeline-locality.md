@@ -29,8 +29,10 @@ locality diagnostic cannot accompany it.
 
 Both registers must be movable, use the same clock and edge, and have no
 connected enable, reset, synchronous load or secondary-data controls. Shared
-first-register outputs are excluded. Protected cells, protected LABs, carry
-chains, MLABs and constrained regions are excluded. Each target consumes an
+first-register outputs are excluded. Distinct hard-block clock ports sharing
+the same clock signal belong to the same search group. Each pipeline still
+must match its actual launch clock and edge. Protected cells, protected LABs,
+carry chains, MLABs and constrained regions are excluded. Each target consumes an
 empty LUT/FF half suitable for a feed-through, with its partner FF empty.
 The search keeps up to 32 distinct LABs per stage and tests at most 16 distinct
 LAB pairs per attempted chain.
