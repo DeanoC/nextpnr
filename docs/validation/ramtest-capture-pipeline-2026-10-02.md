@@ -4,6 +4,11 @@ Local record date: 2026-10-02. Machine-readable identities, measured options,
 input hashes and all seven clock windows are in
 [ramtest-capture-pipeline-2026-10-02.json](ramtest-capture-pipeline-2026-10-02.json).
 
+This historical record describes the earlier 16-geometry search and the initial
+publication through `38929152`. Its measurements and identities remain unchanged.
+The later 64-geometry search uses a different measured ELF and has a separate
+[validation record](ramtest-capture-search64-2026-10-02.md).
+
 The explicit budget-8, radius-24 capture pipeline pass followed by composed
 LUT-pair-copy candidate 0 reached **107.30764770507812 MHz** memory Fmax:
 **+1.4427337646484375 MHz** over its qualified budget-8 parent and
@@ -153,11 +158,14 @@ and 11 capture-pipeline CLI methods. The eight capture cases passed in 29.660
 seconds; the 24 native regressions passed in 96.912 seconds; the final CLI rerun
 passed in 202.29 seconds. The test ELF is separately identified in the JSON.
 
-Publication production bytes are inherited from the measured source on top of
+The initial publication through `38929152` inherited production bytes from the
+measured source on top of
 `feat/mistral-lut-pair-copies-264` ([PR #109](https://github.com/DeanoC/nextpnr/pull/109),
 base `266e3ef7a0821c38a18a3076f7d8b9b1638a7cd2`). The records qualify the measured
 ELF and explicit benchmark options; they do not qualify a newly built
-publication binary or the current default recipe. No FES RTL, pins,
+publication binary or the current default recipe. This inheritance describes
+that initial publication, not the later 64-geometry source and fixture changes.
+No FES RTL, pins,
 constraints or hardware configuration changed. The pass remains default off.
 
 The separate frozen composed stack remains at **117.86892700195312 MHz** on

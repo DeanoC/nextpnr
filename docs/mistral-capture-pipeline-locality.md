@@ -34,8 +34,13 @@ the same clock signal belong to the same search group. Each pipeline still
 must match its actual launch clock and edge. Protected cells, protected LABs,
 carry chains, MLABs and constrained regions are excluded. Each target consumes an
 empty LUT/FF half suitable for a feed-through, with its partner FF empty.
-The search keeps up to 32 distinct LABs per stage and tests at most 16 distinct
-LAB pairs per attempted chain.
+The search keeps up to 32 distinct LABs per stage and up to 64 ranked distinct
+LAB pairs per attempted chain. It checks native legality and complete snapshot
+preservation before spending a timing trial. A failure of either check restores
+the pair and leaves the timing budget available for later geometries. At most
+16 placements that pass both checks receive timing analysis. The worst case
+therefore allows four times as many placement snapshots and geometry checks as
+the earlier 16-pair search, while keeping the expensive timing-trial cap at 16.
 
 Every trial checks native physical legality in all affected LABs and complete
 clock-pair timing at both registers and every reached registered endpoint.
@@ -51,14 +56,27 @@ parameters, constraints and pin maps. Rejection or an exception restores both
 register BELs, strengths and all saved architecture and LAB caches, including
 previously accepted pairs.
 
+Each attempted chain reports its geometry attempts, native-legality rejections,
+snapshot-preservation rejections, timing trials and whether a pair was retained.
+It also reports the ordinal of the first geometry to reach timing analysis;
+zero means none did. At most four rejected geometries per chain log their BELs
+and rejection reason. The summary counts all rejections, including those omitted
+from the detailed log. The native fixture uses weak occupants on a different
+clock to exercise more than 16 illegal geometries before a later qualifying
+placement, with exact restoration during its bounded setup discoveries.
+
 Placement qualification is not routed timing acceptance. A retained pair still
 needs a full route and signoff under the required clocks, plus independent
 graph and physical checks before claiming a gain. The
-[2026-10-02 RAM-test record](validation/ramtest-capture-pipeline-2026-10-02.md)
-qualifies explicit budget-8 and budget-64 configurations against a matched fresh
-main baseline, plus budget 8 followed by one selected existing LUT-pair copy.
-The combined result reached 107.30764770507812 MHz memory Fmax, gaining
-1.4427337646484375 MHz over the budget-8 parent and 1.532318115234375 MHz over
-fresh main. All six non-target clock windows remained positive and final
-signoff reported no hold violations. Memory still misses 130 MHz. The pass
-remains default off and does not change the build recipe.
+[64-geometry RAM-test record](validation/ramtest-capture-search64-2026-10-02.md)
+qualifies the measured budget-64, radius-24 configuration at
+107.5037612915039 MHz memory Fmax: +1.7284317016601562 MHz over matched fresh
+main and +1.3804473876953125 MHz over the earlier 16-geometry budget-64 result.
+It retained 53 disjoint pairs. All six non-target clock windows remained
+positive and final signoff reported no hold violations. Pixel Fmax decreased
+by 1.33575439453125 MHz against fresh main but still passes its required clock.
+The [earlier record](validation/ramtest-capture-pipeline-2026-10-02.md)
+preserves the 16-geometry trials and budget-8 plus LUT-pair-copy result.
+The records qualify their measured ELFs and explicit options, rather than a
+new publication build. Memory still misses 130 MHz. The pass remains default
+off and does not change the build recipe.

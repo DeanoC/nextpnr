@@ -584,11 +584,16 @@ int capture_pipeline_locality(Context *ctx, const std::string &report, int budge
         std::set<std::pair<Lab, Lab>> geometries;
         std::vector<Placement> diverse;
         for (const auto &candidate : candidates) if (geometries.insert({lab(candidate.first), lab(candidate.second)}).second) {
-            diverse.push_back(candidate); if (diverse.size() == 16) break;
+            diverse.push_back(candidate); if (diverse.size() == 64) break;
         }
-        log_info("Capture pipeline locality chain first=%s second=%s endpoints=%zu pair_trials=%zu.\n",
+        log_info("Capture pipeline locality chain first=%s second=%s endpoints=%zu pair_trials=%zu timing_budget=16.\n",
                  ctx->nameOf(first), ctx->nameOf(second), endpoint_keys.size(), diverse.size());
+        int attempted_geometry = 0, legality_rejects = 0, preservation_rejects = 0, timed_trials = 0;
+        int first_timed_geometry = 0;
+        bool retained = false;
         for (const auto &candidate : diverse) {
+            if (timed_trials == 16) break;
+            ++attempted_geometry;
             Snapshot saved(ctx);
             bool live = true;
             auto restore = [&]() {
@@ -612,9 +617,23 @@ int capture_pipeline_locality(Context *ctx, const std::string &report, int budge
                             if (ctx->getBoundBelCell(bel) && !ctx->isBelLocationValid(bel)) return false;
                     return true;
                 };
-                if (!legal() || !saved.fixed(ctx, first, candidate.first, second, candidate.second, changed_counts)) {
-                    restore(); continue;
+                auto reject_geometry = [&](const char *reason) {
+                    // Keep detailed failures bounded; the summary counts every rejection.
+                    if (legality_rejects + preservation_rejects <= 4)
+                        log_info("Capture pipeline locality rejected geometry first=%s second=%s geometry=%d reason=%s first_bel=%s second_bel=%s.\n",
+                                 ctx->nameOf(first), ctx->nameOf(second), attempted_geometry, reason,
+                                 ctx->getBelName(candidate.first).str(ctx).c_str(),
+                                 ctx->getBelName(candidate.second).str(ctx).c_str());
+                    restore();
+                };
+                if (!legal()) {
+                    ++legality_rejects; reject_geometry("legality"); continue;
                 }
+                if (!saved.fixed(ctx, first, candidate.first, second, candidate.second, changed_counts)) {
+                    ++preservation_rejects; reject_geometry("preservation"); continue;
+                }
+                ++timed_trials;
+                if (!first_timed_geometry) first_timed_geometry = attempted_geometry;
                 TimingAnalyser after(ctx); after.with_clock_skew = true; after.setup(false, false, true);
                 float slack = after.get_setup_slack(first_key);
                 bool improve = !after.have_loops && guard::timed(slack) && slack >= old_slack + 250;
@@ -644,7 +663,7 @@ int capture_pipeline_locality(Context *ctx, const std::string &report, int budge
                          int(endpoints_ok), int(clocks_ok), int(holds_ok), int(fixed),
                          (long long)candidate.incoming, (long long)candidate.middle, (long long)candidate.outgoing);
                 if (improve && endpoints_ok && clocks_ok && holds_ok && fixed) {
-                    ctx->check(); live = false; ++accepted;
+                    ctx->check(); live = false; ++accepted; retained = true;
                     log_info("Capture pipeline locality retained first=%s second=%s; routing and signoff still required.\n",
                              ctx->nameOf(first), ctx->nameOf(second));
                     break;
@@ -652,6 +671,9 @@ int capture_pipeline_locality(Context *ctx, const std::string &report, int budge
                 restore();
             } catch (...) { restore(); throw; }
         }
+        log_info("Capture pipeline locality chain summary first=%s second=%s attempted_geometry=%d legality_rejects=%d preservation_rejects=%d timed_trials=%d first_timed_geometry=%d retained=%d.\n",
+                 ctx->nameOf(first), ctx->nameOf(second), attempted_geometry, legality_rejects,
+                 preservation_rejects, timed_trials, first_timed_geometry, int(retained));
     }
     ctx->check();
     log_info("Capture pipeline locality: source %s.%s, eligible=%zu retained_pairs=%d (route signoff still required).\n",

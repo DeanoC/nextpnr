@@ -1,0 +1,235 @@
+{
+  "schema": 1,
+  "record_date": "2026-10-02",
+  "scope": "Measured default-off generic two-FF capture-pipeline locality with 64 geometry attempts and 16 timing trials per chain",
+  "raw_root": "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264",
+  "raw_artifacts_committed_with_summary": false,
+  "compiler": {
+    "source_root": "/home/deano/kepler/worktrees/nextpnr-experiment-mistral-capture-pipeline-search-264-54cde5d3",
+    "base_commit": "afd1dcf9bc38e5e168ae4e4eccabcc13e2f0c07e",
+    "uncommitted_diff_sha256": "617fb987892babe588297192d97381e2800e3de1ffba3a6f8d602402d8656c4e",
+    "compiled_commit_asserted": false,
+    "production_elf_sha256": "d4277a58ccd84ece70a5f678eac6c0e8dafb2f7a2d08d6d3deeae59b100396ca",
+    "test_elf_sha256": "75217b015937f7bd7679a490cfe01aeef8df9ae200a0bb608d3048691ce4f1b9",
+    "measured_source_file_sha256": {
+      "docs/mistral-capture-pipeline-locality.md": "181636d6b3db64e02033277ab60e9fc4019b90454571efa0ecc2f74d154be946",
+      "mistral/capture_pipeline_locality.cc": "ee6a9ef316a52ad460e5793b995f06448e4cd72354f7ba684153d10f75a8d875",
+      "mistral/tests/capture_pipeline_locality.cc": "6fe6815e54f5ca015789e393ea9926a74174910d24073ab9d94d29e4f0bbe846"
+    },
+    "source_model_and_elf_before_after_inventories_bound_by_final_proof": true,
+    "source_to_elf_independent_reproducibility_proved": false
+  },
+  "publication": {
+    "pr": "https://github.com/DeanoC/nextpnr/pull/110",
+    "previous_publication_commit_abbreviated": "38929152",
+    "production_file_and_native_fixture_selected_from_exact_measured_bytes": true,
+    "publication_guide_rewritten_from_measured_guide": true,
+    "measured_guide_digest_identifies_publication_guide": false,
+    "publication_binary_timing_qualification_claimed": false,
+    "earlier_16_geometry_record": "ramtest-capture-pipeline-2026-10-02.json"
+  },
+  "input_sha256": {
+    "out/ramtest-merged-remap/measured-diagnostic/synth.json": "61ee68c657e49364425dd4ba4880a679e0759992f2750e284e256d1e4139de28",
+    "sources/misteross/cores/fes-ramtest/constraints.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+    "sources/misteross/boards/de10nano/clocks.sdc": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041"
+  },
+  "measured_options": {
+    "device": "5CSEBA6U23I7",
+    "seed": 2,
+    "ordinary_heap": true,
+    "placer_heap_timingweight": 10,
+    "placer_heap_critexp": 2,
+    "replicate_enables": 4,
+    "router": "gpu",
+    "gpu_device": 1,
+    "freq_mhz": 74.25,
+    "timing_allow_fail": true,
+    "detailed_timing_report": true,
+    "timing_report_paths": 16384,
+    "selected_diagnostic_environment": {
+      "NEXTPNR_MISTRAL_CAPTURE_PIPELINE_LOCALITY": "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264/lut-pair-copies-publication-264/main-baseline-placed/timing.json 64 24"
+    },
+    "other_selected_nextpnr_diagnostic_environment": {},
+    "reduction_remap_plan_lut_pair_copy_or_driver_copy_selected": false,
+    "actual_command_and_environment_bound_by_profile_sha256": true
+  },
+  "search": {
+    "attempted_chain_budget": 64,
+    "manhattan_radius": 24,
+    "distinct_labs_per_stage_limit": 32,
+    "geometry_attempt_limit_per_chain": 64,
+    "timing_trial_limit_per_chain": 16,
+    "legality_or_preservation_rejection_spends_timing_trial": false,
+    "worst_case_geometry_snapshot_multiplier_vs_previous_search": 4,
+    "detailed_rejection_log_limit_per_chain": 4,
+    "retained_disjoint_pairs": 53,
+    "declared_ff_bel_moves": 106,
+    "retained_chains_after_more_than_16_legality_rejections": 18,
+    "previously_limiting_read_capture_chain": {
+      "first": "hps_ddr.port1.returned_data_MISTRAL_FF_Q_3",
+      "second": "ddr1_rdata_MISTRAL_FF_Q_63",
+      "first_timed_geometry": 34,
+      "legality_rejections": 33,
+      "timing_trials": 1,
+      "retained": true,
+      "names_are_evidence_only_and_not_production_matching_rules": true
+    }
+  },
+  "matched_baseline": {
+    "run": "lut-pair-copies-publication-264/main-baseline/run.json",
+    "run_sha256": "3389f349e09a9462be09f1ff5c7d0196c8ec775bd0844235b0624642675b529c",
+    "compiler_elf_sha256": "fb53b77256ab2958c8dfc321a8e977e4a741a73b1ead584c21c8f72116b129e8",
+    "pre_route_guide": "lut-pair-copies-publication-264/main-baseline-placed/timing.json",
+    "pre_route_guide_sha256": "d117e8952e4741f64ca14094df6c4db5a973f9de3a9dc038820852f7b5c0f512"
+  },
+  "earlier_16_geometry_budget64": {
+    "run": "capture-pipeline-264/clock-group-pipeline-route-b64-r24/run.json",
+    "run_sha256": "3305e36039e6263c03d6bdd63670b523318678cddd558d2136e0f22dc310e38e",
+    "memory_mhz": 106.1233139038086,
+    "current_memory_gain_mhz": 1.3804473876953125,
+    "separate_historical_measurement": true
+  },
+  "recorder": {
+    "path": "capture-pipeline-264/trial_search64.py",
+    "sha256": "9201e96636fce9e11152b26644391ea4b84e308ffdf6c6f7b4edd12dae6ff3cc",
+    "record_role_is_exploratory_not_qualification": true,
+    "all_nextpnr_diagnostic_keys_cleared_before_fixed_selection": true,
+    "all_environment_values_hashed_but_only_narrow_runtime_subset_recorded": true,
+    "production_inputs_profile_and_outputs_stable_before_after": true
+  },
+  "disabled_placement": {
+    "run": "capture-pipeline-264/legal64-disabled-placed/run.json",
+    "run_sha256": "565f61889cec317ace54a4308a3140e9feea9b19d3d498e1810efb7b87cb3b82",
+    "proof": "capture-pipeline-264/proof-legal64-disabled-placement.json",
+    "proof_sha256": "1d3adcb5b2e88e6697797a0262181317655b2e72b4641b3cd645166dd77311a8",
+    "whole_module_ordered_pll_and_entire_timing_json_exact_to_fresh_main_placed": true
+  },
+  "selected_placement": {
+    "run": "capture-pipeline-264/legal64-pipeline-placed-b64-r24/run.json",
+    "run_sha256": "5473effd8642ba03a96fb6665356825b785119a3231c7d20aba51decaf92a78c",
+    "profile_sha256": "1c4e2970ef93a39013b6e0f37867361b6d85c7ab796982da6cfa0844d04ff246",
+    "manifest": "capture-pipeline-264/proof-legal64-placed-graph.json",
+    "manifest_sha256": "b111938b634a510361f0232ded4e4d03d6de67c6ab91d065daa8353e0c3ac83e"
+  },
+  "full_route": {
+    "run": "capture-pipeline-264/legal64-pipeline-route-b64-r24/run.json",
+    "run_sha256": "3e3628d856bb288a87f625f220572e6fa8aa34c620eb89fe80f6239b9450d7c8",
+    "exit_code": 0,
+    "completed_normally": true,
+    "elapsed_seconds": 960.064000725979,
+    "output_sha256": {
+      "core.rbf": "8dd4c4a24b7a1460d8efc5b4ae564f391bef492e7073550d30def77bef1e95f4",
+      "profile.json": "28a383b8a3e2112d214b224e1d4f06cd3a235b7d7a79387c680bd9684f0682d5",
+      "routed.json": "be7456f0e00781afbabdffbea3d3d062313d36de816fa504169737619f7b1c20",
+      "timing.json": "533218cc76d71328e6b2e44cc1e3121b28c12f17d7909793ba06d9bdc5258209",
+      "trial.log": "49c0ca5f5548ed6d56f3823cc5a30a459abccac8ebe0504da006377a82a0927a"
+    }
+  },
+  "independent_proof": {
+    "source": "capture-pipeline-264/prove_pipeline_search64.py",
+    "source_sha256": "642da61c9862f2a9cf673820812e4bc71bf990c8fe9dedc7bab27049c6a5381c",
+    "result": "capture-pipeline-264/proof-pipeline-search64.json",
+    "result_sha256": "15d4a2e25357768db71836c41a038372b7119b794f217b361f472d68b8a6bf44",
+    "root_execution_session": 40759,
+    "exit_code": 0,
+    "native_physical_equivalence_proved_in_exported_scope": true,
+    "gain_accepted_against_matched_main_baseline": true,
+    "artifact_count": 118,
+    "directly_rehashed_source_or_compiler_file_count": 2329,
+    "original_cell_and_full_pin_map_count": 14893,
+    "affected_whole_labs": 50,
+    "outside_exact_alms": 41410,
+    "baseline_explicit_identity_buffers": 4957,
+    "current_explicit_identity_buffers": 4973,
+    "changed_buffer_records": 106,
+    "unmoved_ff_clk_ena_selector_renumberings": 43,
+    "complete_logical_control_signatures_membership_and_injective_mapping_checked": true,
+    "aclr_index_changes_only_unconsumed_plain_ff_half_initialization_after_declared_moves": true,
+    "empty_in_both_halves_l6_carry_modes_and_lab_aclr_used_flags_exact": true,
+    "old_operational_main_authentication_generators_or_aggregate_evaluators_executed": false
+  },
+  "closed_initial_proof_failure": {
+    "source": "capture-pipeline-264/prove_pipeline_search64-v1-manifest-key-order.py",
+    "source_sha256": "55ba6124d89bd19803ec4307077646b24fff3d7dc03469c88a54f03ab6c32616",
+    "record": "capture-pipeline-264/proof-search64-v1-failure.json",
+    "record_sha256": "fd547d9d5af8ab42fdfa8e6f3c56796403db9003547c1f33e360453823b69354",
+    "root_execution_session": 36467,
+    "exit_code": 1,
+    "proof_output_created": false,
+    "gain_accepted": false,
+    "reason": "Manifest metadata dictionary key insertion order differed after sort_keys=True serialization; value comparison passed",
+    "correction_scope": "Ignore object key order only for rederived move-list versus manifest metadata; preserve exact values, list order and every native export/PLL/raw-slot check"
+  },
+  "host_checks": {
+    "record": "capture-pipeline-264/search64-check-results.json",
+    "record_sha256": "8357884ee87617f1034b62ccd916109b0c09464e4fd18325d78d5c6663861b8a",
+    "native_cases_passed": 33,
+    "cli_methods_passed": 11,
+    "capture_pipeline_native_cases": 9,
+    "lut_pair_placement_native_cases": 12,
+    "lut_driver_copy_native_cases": 10,
+    "lab_pin_map_native_cases": 2,
+    "log_sha256": {
+      "capture-pipeline-264/search64-native-prefix.log": "10e5fe0ce00e543e313b4fad6d75a02b7b00c7121c68a982e1200169371d9e31",
+      "capture-pipeline-264/search64-native-regression.log": "a2470e7b12c8737abe9e2e1282330c091f60cf11c6e90d41bc06cb5367fab5d2",
+      "capture-pipeline-264/search64-cli-pipeline.log": "60e4700756c9e5e9fced64454156bb76864f404662d943e59905e296949e7050"
+    },
+    "earlier_check_record_fresh_route_gain_false_not_used_as_final_gain_claim": true
+  },
+  "reported_timing": {
+    "complete_emitted_paths": 15290,
+    "domain_pair_count": 7,
+    "actual_native_registered_endpoint_clock_event_and_window_coverage_checked": true,
+    "all_six_non_target_windows_positive": true,
+    "final_reported_hold_violations": false,
+    "passes_practical_target_memory_clock_rule": true,
+    "all_clock_nonregression_vs_fresh_main": false,
+    "positive_non_target_margin_reduction_allowed_and_disclosed": true,
+    "clocks": {
+      "ram_clock.clocks[0]": {
+        "fresh_main_mhz": 105.77532958984375,
+        "current_mhz": 107.5037612915039,
+        "gain_mhz": 1.7284317016601562,
+        "constraint_mhz": 130.0052032470703,
+        "constraint_passed": false
+      },
+      "display.pixel_clk": {
+        "fresh_main_mhz": 96.320556640625,
+        "current_mhz": 94.98480224609375,
+        "gain_mhz": -1.33575439453125,
+        "constraint_mhz": 74.25006866455078,
+        "constraint_passed": true
+      },
+      "ram_clock.clocks[1]": {
+        "fresh_main_mhz": 375.0871276855469,
+        "current_mhz": 375.0871276855469,
+        "gain_mhz": 0.0,
+        "constraint_mhz": 130.0052032470703,
+        "constraint_passed": true
+      }
+    },
+    "seven_clock_windows": [
+      {"from": "<async>", "to": "posedge ram_clock.clocks[0]", "window_ns": 13.468000411987305, "complete_delay_ns": 1.794000044465065, "headroom_ns": 11.67400036752224},
+      {"from": "negedge ram_clock.clocks[0]", "to": "posedge ram_clock.clocks[0]", "window_ns": 3.8459999561309814, "complete_delay_ns": 1.5470000067725778, "headroom_ns": 2.2989999493584037},
+      {"from": "posedge display.pixel_clk", "to": "posedge display.pixel_clk", "window_ns": 13.468000411987305, "complete_delay_ns": 10.5280000269413, "headroom_ns": 2.9400003850460052},
+      {"from": "posedge display.pixel_clk", "to": "posedge ram_clock.clocks[0]", "window_ns": 13.468000411987305, "complete_delay_ns": 2.235000044107437, "headroom_ns": 11.233000367879868},
+      {"from": "posedge ram_clock.clocks[0]", "to": "posedge display.pixel_clk", "window_ns": 7.691999912261963, "complete_delay_ns": 2.5590000599622726, "headroom_ns": 5.13299985229969},
+      {"from": "posedge ram_clock.clocks[0]", "to": "posedge ram_clock.clocks[0]", "window_ns": 7.691999912261963, "complete_delay_ns": 9.302000254392624, "headroom_ns": -1.610000342130661},
+      {"from": "posedge ram_clock.clocks[1]", "to": "negedge ram_clock.clocks[0]", "window_ns": 5.0, "complete_delay_ns": 1.733000063803047, "headroom_ns": 3.266999936196953}
+    ]
+  },
+  "limitations": {
+    "memory_130_mhz_closed": false,
+    "independent_numerical_sta_or_unreported_pair_extrema_proved": false,
+    "live_pointer_cache_gpu_or_full_runtime_identity_proved": false,
+    "complete_placement_routing_or_device_legality_independently_proved": false,
+    "selector_to_routed_wire_reservation_table_independently_decoded": false,
+    "route_mux_pip_cram_or_rbf_independently_decoded": false,
+    "rbf_digest_identifies_bytes_only": true,
+    "current_default_recipe_qualified": false,
+    "publication_binary_qualified": false,
+    "hardware_tested": false,
+    "rtl_pins_constraints_or_hardware_configuration_changed": false,
+    "historical_117_868927_stack_qualification_inherited": false
+  }
+}

@@ -2,6 +2,9 @@
   "schema": 1,
   "record_date": "2026-10-02",
   "scope": "Explicit generic two-FF capture-pipeline placement trials and one existing composed LUT-pair copy against matched baselines",
+  "historical_search_geometry_limit": 16,
+  "historical_publication_scope": "Initial publication through 38929152; measurements and identities below are unchanged",
+  "later_search64_record": "ramtest-capture-search64-2026-10-02.json",
   "best_matched_main_result": "budget8_radius24_pair_copy0",
   "best_standalone_pipeline_result": "budget64_radius24",
   "raw_root": "/home/deano/kepler/worktrees/fes-fes-ramtest-compiler-gains-264-17a49c0d/out/ramtest-wide-reduction-264",
@@ -15,6 +18,7 @@
     "stacked_base_commit": "266e3ef7a0821c38a18a3076f7d8b9b1638a7cd2",
     "stacked_base_pr": "https://github.com/DeanoC/nextpnr/pull/109",
     "publication_production_bytes_inherited_from_measured_source": true,
+    "publication_production_bytes_inherited_from_measured_source_scope": "Initial publication through 38929152 only; later 64-geometry production and fixture changes are separately recorded",
     "publication_binary_timing_qualification_claimed": false
   },
   "input_sha256": {
