@@ -376,6 +376,39 @@ class LocalRemapPlanTest : public ::testing::Test {
         EXPECT_EQ(ctx->local_remap_optimize_pins, pins);
         EXPECT_EQ(ctx->local_remap_preserve_ff_placement, placement);
     }
+
+    CellInfo *make_upstream_rewrite()
+    {
+        auto *cell = ctx->createCell(ctx->id("late$upstream"), id_MISTRAL_ALUT2);
+        cell->params[id_LUT] = Property(0xa, 4); // Pass the original source through unchanged.
+        cell->addInput(id_A); cell->addInput(id_B); cell->addOutput(id_Q);
+        cell->connectPort(id_A, second.a->getPort(id_Q));
+        cell->pin_data[id_B].state = PIN_0;
+        cell->connectPort(id_Q, ctx->createNet(ctx->id("late$upstream$q")));
+        ctx->assignArchInfo(); place(cell, 34, 21);
+        return cell;
+    }
+
+    std::string report_after_upstream_rewrite(CellInfo *rewrite) const
+    {
+        using json11::Json;
+        std::string error;
+        auto result = Json::parse(second.report, error).object_items();
+        auto paths = result.at("critical_paths").array_items();
+        auto path = paths.at(0).object_items();
+        const auto previous = path.at("path").array_items();
+        auto segment = [&](const char *kind, CellInfo *from, IdString source, CellInfo *to, IdString target) {
+            Json::object row{{"type", kind}, {"delay", .4}, {"from", endpoint(from, source)}, {"to", endpoint(to, target)}};
+            if (std::string(kind) == "routing") row["net"] = from->getPort(source)->name.str(ctx.get());
+            return Json(row);
+        };
+        Json::array current{previous.at(0), segment("routing", second.a, id_Q, rewrite, id_A),
+                            segment("logic", rewrite, id_A, rewrite, id_Q),
+                            segment("routing", rewrite, id_Q, second.inner, id_A)};
+        current.insert(current.end(), previous.begin() + 2, previous.end());
+        path["path"] = current; paths[0] = path; result["critical_paths"] = paths;
+        return Json(result).dump();
+    }
 };
 
 TEST_F(LocalRemapPlanTest, TwoSequentialConesPreserveRegistersPolarityAndSideUsers)
@@ -658,7 +691,7 @@ TEST_F(LocalRemapPlanTest, CompletePlanBoundsAndReportSyntaxAreRejectedBeforeFir
 {
     PlanSnapshot before(ctx.get());
     struct Invalid { std::vector<Arch::LocalRemapStep> steps; bool listing; };
-    std::vector<Invalid> invalid{{{}, false}, {std::vector<Arch::LocalRemapStep>(9, step(first)), false}};
+    std::vector<Invalid> invalid{{{}, false}, {std::vector<Arch::LocalRemapStep>(17, step(first)), false}};
     for (int candidate : {-2, -1}) {
         auto bad = step(second, candidate);
         invalid.push_back({{step(first), bad}, false});
@@ -682,6 +715,201 @@ TEST_F(LocalRemapPlanTest, CompletePlanBoundsAndReportSyntaxAreRejectedBeforeFir
         before.expect_exact(ctx.get());
         expect_options_restored();
     }
+}
+
+TEST_F(LocalRemapPlanTest, LongerBoundedPlansReachSelectionAndRestoreFailedProbe)
+{
+    PlanSnapshot before(ctx.get());
+    for (size_t count : {size_t(9), size_t(16)}) {
+        SCOPED_TRACE(count);
+        ctx->local_remap_plan = std::vector<Arch::LocalRemapStep>(count, step(first, 9999));
+        PlanLogCapture capture(ctx.get());
+        EXPECT_THROW(ctx->execute_local_remap_plan(), log_execution_error_exception);
+        EXPECT_NE(capture.buffer.text.find("Local-remap plan step 0:"), std::string::npos);
+        EXPECT_NE(capture.buffer.text.find("did not qualify; routing was not started"), std::string::npos);
+        EXPECT_EQ(capture.buffer.first, nullptr);
+        before.expect_exact(ctx.get());
+        expect_options_restored();
+    }
+}
+
+TEST_F(LocalRemapPlanTest, MalformedSixteenthReportRejectedBeforeFirstMutation)
+{
+    PlanSnapshot before(ctx.get());
+    ctx->local_remap_plan = std::vector<Arch::LocalRemapStep>(16, step(first));
+    ctx->local_remap_plan.back().report = "{";
+    PlanLogCapture capture(ctx.get());
+    EXPECT_THROW(ctx->execute_local_remap_plan(), log_execution_error_exception);
+    EXPECT_NE(capture.buffer.text.find("Invalid local-remap plan report at step 15"), std::string::npos);
+    EXPECT_EQ(capture.buffer.text.find("Local-remap plan step 0:"), std::string::npos);
+    EXPECT_EQ(capture.buffer.first, nullptr);
+    before.expect_exact(ctx.get());
+    expect_options_restored();
+}
+
+TEST_F(LocalRemapPlanTest, PostPlanUsesLiveEdgesAfterUpstreamRewriteAndRetainsEarlyCopy)
+{
+    ctx->local_remap_plan = {step(first)};
+    ASSERT_TRUE(ctx->execute_local_remap_plan());
+    ASSERT_NE(clone(first), nullptr);
+    auto *rewrite = make_upstream_rewrite();
+    auto late = step(second); late.report = report_after_upstream_rewrite(rewrite);
+    ctx->local_remap_post_plan = {late};
+    // The future report is stale before the intentional upstream rewrite.
+    PlanSnapshot before_rewrite(ctx.get());
+    EXPECT_THROW(ctx->execute_local_remap_plan(true), log_execution_error_exception);
+    before_rewrite.expect_exact(ctx.get()); expect_options_restored();
+    second.inner->disconnectPort(id_A); second.inner->connectPort(id_A, rewrite->getPort(id_Q));
+    ctx->assignArchInfo(); ctx->check();
+    PlanSnapshot rewritten(ctx.get());
+    // Conversely, the original early report must still reject after the rewrite.
+    ctx->local_remap_post_plan = {step(second)};
+    EXPECT_THROW(ctx->execute_local_remap_plan(true), log_execution_error_exception);
+    rewritten.expect_exact(ctx.get()); expect_options_restored();
+    ctx->local_remap_post_plan = {late};
+    PlanLogCapture capture(ctx.get());
+    ASSERT_TRUE(ctx->execute_local_remap_plan(true)) << capture.buffer.text;
+    ASSERT_NE(clone(second), nullptr);
+    EXPECT_NE(capture.buffer.text.find("Local-remap post-plan step 0:"), std::string::npos);
+    EXPECT_EQ(capture.buffer.text.find("Local-remap plan step 0:"), std::string::npos);
+    EXPECT_EQ(ctx->cells.size(), rewritten.cells.size() + 1);
+    EXPECT_EQ(ctx->nets.size(), rewritten.nets.size() + 1);
+    for (const auto &entry : rewritten.cells)
+        rewritten.expect_cell(ctx.get(), entry.first,
+            entry.first == second.near_a->name || entry.first == second.near_b->name ? id_ENA : IdString());
+    EXPECT_EQ(second.near_a->getPort(id_ENA), clone(second)->getPort(id_Q));
+    EXPECT_EQ(second.near_b->getPort(id_ENA), clone(second)->getPort(id_Q));
+    EXPECT_EQ(second.remote->getPort(id_ENA), second.enable);
+    for (unsigned row = 0; row < 4; ++row) {
+        const bool expected = !(row & 1) && ((row >> 1) & 1);
+        EXPECT_EQ(evaluate(second.enable, second, row), expected);
+        EXPECT_EQ(evaluate(clone(second)->getPort(id_Q), second, row), expected);
+        EXPECT_EQ(evaluate(clone(first)->getPort(id_Q), first, row), expected);
+    }
+    expect_options_restored(); ctx->check();
+}
+
+TEST_F(LocalRemapPlanTest, PostPlanQualifiedListingRestoresExactAcceptedEarlyGraph)
+{
+    ctx->local_remap_plan = {step(first)};
+    ASSERT_TRUE(ctx->execute_local_remap_plan());
+    PlanSnapshot retained(ctx.get());
+    ctx->local_remap_post_plan = {step(second, -1)};
+    ctx->local_remap_post_plan_list_only = true;
+    PlanLogCapture capture(ctx.get());
+    EXPECT_FALSE(ctx->execute_local_remap_plan(true));
+    EXPECT_NE(capture.buffer.text.find("Local remap candidate 0: second$"), std::string::npos) << capture.buffer.text;
+    EXPECT_NE(capture.buffer.text.find("Local-remap post-plan step 0:"), std::string::npos);
+    EXPECT_EQ(clone(second), nullptr); retained.expect_exact(ctx.get()); expect_options_restored();
+}
+
+TEST_F(LocalRemapPlanTest, PostPlanUnqualifiedSelectionRestoresExactAcceptedEarlyGraph)
+{
+    ctx->local_remap_plan = {step(first)};
+    ASSERT_TRUE(ctx->execute_local_remap_plan());
+    PlanSnapshot retained(ctx.get());
+    ctx->local_remap_post_plan = {step(second, 9999)};
+    PlanLogCapture capture(ctx.get());
+    EXPECT_THROW(ctx->execute_local_remap_plan(true), log_execution_error_exception);
+    EXPECT_NE(capture.buffer.text.find("Local remap candidate 0: second$"), std::string::npos) << capture.buffer.text;
+    EXPECT_NE(capture.buffer.text.find("Local-remap post-plan step 0 did not qualify; routing was not started"), std::string::npos);
+    EXPECT_EQ(clone(second), nullptr); retained.expect_exact(ctx.get()); expect_options_restored();
+}
+
+TEST_F(LocalRemapPlanTest, CombinedPlansValidateLateBoundsAndSyntaxBeforeEarlyMutation)
+{
+    PlanSnapshot before(ctx.get());
+    ctx->local_remap_plan = {step(first)};
+    auto check = [&]() {
+        PlanLogCapture capture(ctx.get());
+        EXPECT_THROW(ctx->execute_local_remap_plan(), log_execution_error_exception);
+        EXPECT_EQ(capture.buffer.text.find("Local-remap plan step 0:"), std::string::npos);
+        before.expect_exact(ctx.get()); expect_options_restored();
+    };
+    ctx->local_remap_post_plan = std::vector<Arch::LocalRemapStep>(16, step(second)); check();
+    ctx->local_remap_post_plan = std::vector<Arch::LocalRemapStep>(15, step(second));
+    ctx->local_remap_post_plan.back().report = "{"; check();
+    for (int candidate : {-2, -1}) {
+        ctx->local_remap_post_plan = {step(second, candidate)}; check();
+    }
+    for (int groups : {0, 9}) {
+        ctx->local_remap_post_plan = {step(second)}; ctx->local_remap_post_plan[0].groups = groups; check();
+    }
+    ctx->local_remap_post_plan.clear(); ctx->local_remap_post_plan_list_only = true; check();
+}
+
+TEST_F(LocalRemapPlanTest, CombinedSixteenStepsReachSelectionAndRestoreFailedProbe)
+{
+    PlanSnapshot before(ctx.get());
+    ctx->local_remap_plan = {step(first, 9999)};
+    ctx->local_remap_post_plan = std::vector<Arch::LocalRemapStep>(15, step(second));
+    PlanLogCapture capture(ctx.get());
+    EXPECT_THROW(ctx->execute_local_remap_plan(), log_execution_error_exception);
+    EXPECT_NE(capture.buffer.text.find("Local-remap plan step 0:"), std::string::npos);
+    EXPECT_NE(capture.buffer.text.find("Local remap candidate 0: first$"), std::string::npos) << capture.buffer.text;
+    before.expect_exact(ctx.get()); expect_options_restored();
+}
+
+TEST_F(LocalRemapPlanTest, PostOnlyValidationPrecedesPlacementAndLegacyMutation)
+{
+    PlanSnapshot before(ctx.get());
+    ctx->local_remap_report = first.report; ctx->local_remap_selection = 0;
+    auto malformed = step(second); malformed.report = "{";
+    auto bad_groups = step(second); bad_groups.groups = 9;
+    auto bad_candidate = step(second, -2);
+    const std::vector<std::vector<Arch::LocalRemapStep>> invalid{
+        {malformed}, {bad_groups}, {bad_candidate}, std::vector<Arch::LocalRemapStep>(17, step(second))};
+    for (const auto &request : invalid) {
+        ctx->local_remap_post_plan = request;
+        PlanLogCapture capture(ctx.get());
+        EXPECT_THROW(ctx->place(), log_execution_error_exception);
+        EXPECT_EQ(capture.buffer.text.find("Running analytical placer"), std::string::npos);
+        EXPECT_EQ(capture.buffer.text.find("Local remap trial "), std::string::npos);
+        EXPECT_EQ(capture.buffer.first, nullptr);
+        before.expect_exact(ctx.get()); expect_options_restored();
+    }
+    ctx->local_remap_report.clear(); ctx->local_remap_post_plan.clear();
+    EXPECT_NO_THROW(ctx->prevalidate_local_remap_plans());
+    before.expect_exact(ctx.get()); expect_options_restored();
+}
+
+TEST_F(LocalRemapPlanTest, PostPlanRejectsEveryEarlierListingAndAnyFollowingDriver)
+{
+    PlanSnapshot before(ctx.get());
+    for (int ordering = 0; ordering < 6; ++ordering) {
+        SCOPED_TRACE(ordering);
+        ctx->local_remap_report.clear(); ctx->local_remap_plan.clear(); ctx->local_remap_plan_list_only = false;
+        ctx->comb_remap_report.clear(); ctx->comb_remap_plan.clear(); ctx->comb_remap_plan_list_only = false;
+        ctx->decomposition_remap_report.clear(); ctx->lut_driver_copy_report.clear();
+        ctx->local_remap_post_plan = {step(second)}; ctx->local_remap_post_plan_list_only = false;
+        if (ordering == 0) { ctx->local_remap_report = first.report; ctx->local_remap_selection = -1; }
+        if (ordering == 1) { ctx->local_remap_plan = {step(first, -1)}; ctx->local_remap_plan_list_only = true; }
+        if (ordering == 2) { ctx->comb_remap_report = first.report; ctx->comb_remap_selection = -1; }
+        if (ordering == 3) {
+            Arch::CombRemapStep listing; listing.report = first.report; listing.candidate = -1;
+            ctx->comb_remap_plan = {listing}; ctx->comb_remap_plan_list_only = true;
+        }
+        if (ordering == 4) { ctx->decomposition_remap_report = first.report; ctx->decomposition_remap_selection = -1; }
+        if (ordering == 5) {
+            ctx->local_remap_post_plan = {step(second, -1)}; ctx->local_remap_post_plan_list_only = true;
+            ctx->lut_driver_copy_report = first.report; ctx->lut_driver_copy_selection = 0;
+        }
+        EXPECT_THROW(ctx->execute_local_remap_plan(true), log_execution_error_exception);
+        before.expect_exact(ctx.get()); expect_options_restored();
+    }
+}
+
+TEST_F(LocalRemapPlanTest, PostPlanExceptionRestoresOptionsAndRetainsItsAcceptedFirstGraph)
+{
+    auto stale = step(second);
+    auto at = stale.report.find("second$inner"); ASSERT_NE(at, std::string::npos);
+    stale.report.replace(at, std::string("second$inner").size(), "missing$inner");
+    ctx->local_remap_post_plan = {step(first), stale};
+    PlanLogCapture capture(ctx.get());
+    EXPECT_THROW(ctx->execute_local_remap_plan(true), log_execution_error_exception);
+    ASSERT_NE(capture.buffer.first, nullptr) << capture.buffer.text;
+    EXPECT_NE(capture.buffer.text.find("Local-remap post-plan step 1:"), std::string::npos);
+    capture.buffer.first->expect_exact(ctx.get()); expect_options_restored();
 }
 
 namespace {

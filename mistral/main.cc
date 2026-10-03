@@ -18,6 +18,7 @@
  */
 
 #include <cerrno>
+#include <cstdlib>
 #include <fstream>
 #include <filesystem>
 #include <cmath>
@@ -32,6 +33,7 @@
 #include "enable_replication_policy.h"
 #include "json11.hpp"
 #include "lut_driver_copy.h"
+#include "lut_pair_placement.h"
 
 USING_NEXTPNR_NAMESPACE
 
@@ -98,12 +100,17 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("remap-critical", po::value<std::string>(), "prior routed timing report for local LUT remapping");
     specific.add_options()("remap-optimize-pins", "optimize local-remap LUT input order for predicted delay");
     specific.add_options()("remap-preserve-ffs", "keep every original FF placement during local remapping");
-    specific.add_options()("remap-plan", po::value<std::string>(), "JSON plan of staged report-guided local remaps (1..8 steps)");
+    specific.add_options()("remap-plan", po::value<std::string>(), "JSON plan of staged report-guided local remaps (1..16 steps)");
+    specific.add_options()("remap-post-plan", po::value<std::string>(),
+                           "JSON local-remap plan after internal cuts and decomposition (combined early/post limit 16)");
     specific.add_options()("remap-comb-critical", po::value<std::string>(), "prior routed timing report for bounded internal LUT cut remapping");
     specific.add_options()("remap-comb-candidate", po::value<int>(), "qualified internal-cut candidate index (default: list only)");
     specific.add_options()("remap-comb-plan", po::value<std::string>(), "JSON plan of staged internal LUT-cut remaps (1..8 steps)");
     specific.add_options()("remap-decompose-critical", po::value<std::string>(), "prior timing report for bounded seven-input control decomposition");
     specific.add_options()("remap-decompose-candidate", po::value<int>(), "qualified decomposition candidate index (default: list only)");
+    specific.add_options()("remap-lut-pair-critical", po::value<std::string>(), "prior timing report for joint placement of two consecutive LUTs");
+    specific.add_options()("remap-lut-pair-candidate", po::value<int>(), "qualified LUT-pair-placement candidate index (default: list only)");
+    specific.add_options()("remap-lut-pair-compose-copy", "compose a LUT pair into one isolated copy for a whole same-LAB enable cohort");
     specific.add_options()("remap-lut-driver-critical", po::value<std::string>(), "prior timing report for one LUT driver copy to an arithmetic data input");
     specific.add_options()("remap-lut-driver-candidate", po::value<int>(), "qualified LUT-driver-copy candidate index (default: list only)");
     specific.add_options()("remap-candidate", po::value<int>(), "qualified local-remap candidate index (default: list only)");
@@ -158,6 +165,18 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
+    // Preload request bytes before packing or placement; saved settings cannot enable it.
+    const char *capture_pipeline = std::getenv("NEXTPNR_MISTRAL_CAPTURE_PIPELINE_LOCALITY");
+    if (capture_pipeline) {
+        if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") ||
+            vm.count("fes-cart") || vm.count("fes-scaffold") ||
+            (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
+            log_error("Capture pipeline locality requires fresh ordinary HeAP placement.\n");
+        if (std::getenv("NEXTPNR_MISTRAL_CAPTURE_LOCALITY"))
+            log_error("Capture pipeline locality cannot combine with single-capture locality.\n");
+    }
+    preload_capture_pipeline_locality(ctx, capture_pipeline);
     if (vm.count("balance-reduction-root")) {
         if (vm.count("fes-cart") || vm.count("fes-scaffold") ||
             (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
@@ -186,6 +205,8 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     ctx->local_remap_preserve_ff_placement = false;
     ctx->local_remap_plan.clear();
     ctx->local_remap_plan_list_only = false;
+    ctx->local_remap_post_plan.clear();
+    ctx->local_remap_post_plan_list_only = false;
     if (vm.count("remap-plan") && (vm.count("remap-critical") || vm.count("remap-candidate") ||
         vm.count("remap-groups") || vm.count("remap-optimize-pins") || vm.count("remap-preserve-ffs")))
         log_error("--remap-plan cannot be combined with legacy local-remap options.\n");
@@ -207,35 +228,41 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         if (ctx->local_remap_groups < 1 || ctx->local_remap_groups > 8)
             log_error("--remap-groups must be between 1 and 8.\n");
     }
-    if (vm.count("remap-plan")) {
+    auto load_local_plan = [&](const char *option, bool post) {
+        const char *kind = post ? "post-remap" : "local-remap";
+        auto &steps = post ? ctx->local_remap_post_plan : ctx->local_remap_plan;
+        auto &list_only = post ? ctx->local_remap_post_plan_list_only : ctx->local_remap_plan_list_only;
         if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") ||
             vm.count("fes-scaffold") || (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
             (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
-            log_error("Local-remap plans require fresh ordinary HeAP placement.\n");
-        auto filename = vm["remap-plan"].as<std::string>();
-        auto in = open_ifstream_and_log_error(filename, "local-remap plan");
+            log_error(post ? "Post-remap plans require fresh ordinary HeAP placement.\n" :
+                             "Local-remap plans require fresh ordinary HeAP placement.\n");
+        auto filename = vm[option].as<std::string>();
+        auto in = open_ifstream_and_log_error(filename, post ? "post-remap plan" : "local-remap plan");
         std::string text{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()}, error;
         auto plan = json11::Json::parse(text, error);
         if (!error.empty() || !plan.is_object() || plan.object_items().size() != 1 || !plan["steps"].is_array() ||
-            plan["steps"].array_items().empty() || plan["steps"].array_items().size() > 8)
-            log_error("Invalid local-remap plan; expected one to eight steps.\n");
-        check_plan_keys(text);
+            plan["steps"].array_items().empty() || plan["steps"].array_items().size() > Arch::local_remap_max_steps)
+            log_error("Invalid %s plan; expected one to %zu steps.\n", kind, Arch::local_remap_max_steps);
+        check_plan_keys(text, kind);
+        if (post && ctx->local_remap_plan.size() + plan["steps"].array_items().size() > Arch::local_remap_max_steps)
+            log_error("Combined early and post-remap plans exceed %zu steps.\n", Arch::local_remap_max_steps);
         auto integer = [&](const json11::Json &value, int low, int high) {
             double number = value.number_value();
             if (!value.is_number() || !std::isfinite(number) || number != std::floor(number) || number < low || number > high)
-                log_error("Invalid integer in local-remap plan.\n");
+                log_error("Invalid integer in %s plan.\n", kind);
             return int(number);
         };
         const std::set<std::string> keys = {"report", "candidate", "groups", "optimize_pins", "preserve_ff_placement"};
         for (const auto &entry : plan["steps"].array_items()) {
             if (!entry.is_object() || entry.object_items().size() != keys.size())
-                log_error("Invalid local-remap plan step fields.\n");
+                log_error("Invalid %s plan step fields.\n", kind);
             for (const auto &field : entry.object_items()) if (!keys.count(field.first))
-                log_error("Unknown local-remap plan step field.\n");
+                log_error("Unknown %s plan step field.\n", kind);
             if (!entry["report"].is_string() || entry["report"].string_value().empty() ||
                 entry["report"].string_value().find('\0') != std::string::npos ||
                 !entry["optimize_pins"].is_bool() || !entry["preserve_ff_placement"].is_bool())
-                log_error("Invalid local-remap plan path or boolean.\n");
+                log_error("Invalid %s plan path or boolean.\n", kind);
             Arch::LocalRemapStep step;
             step.candidate = integer(entry["candidate"], -1, std::numeric_limits<int>::max());
             step.groups = integer(entry["groups"], 1, 8);
@@ -243,19 +270,21 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             step.preserve_ff_placement = entry["preserve_ff_placement"].bool_value();
             if (step.candidate == -1) {
                 if (&entry != &plan["steps"].array_items().back() || !vm.count("no-route") || vm.count("rbf"))
-                    log_error("A plan listing step must be last, with --no-route and without --rbf.\n");
-                ctx->local_remap_plan_list_only = true;
+                    log_error(post ? "A post-plan listing step must be last, with --no-route and without --rbf.\n" :
+                                     "A plan listing step must be last, with --no-route and without --rbf.\n");
+                list_only = true;
             }
             std::filesystem::path path(entry["report"].string_value());
             if (path.is_relative()) path = std::filesystem::path(filename).parent_path() / path;
-            auto report_in = open_ifstream_and_log_error(path.lexically_normal().string(), "local-remap plan report");
+            auto report_in = open_ifstream_and_log_error(path.lexically_normal().string(), post ? "post-remap plan report" : "local-remap plan report");
             step.report.assign(std::istreambuf_iterator<char>(report_in), std::istreambuf_iterator<char>());
             auto report = json11::Json::parse(step.report, error);
             if (!error.empty() || !report["critical_paths"].is_array())
-                log_error("Invalid local-remap plan report.\n");
-            ctx->local_remap_plan.push_back(std::move(step));
+                log_error("Invalid %s plan report.\n", kind);
+            steps.push_back(std::move(step));
         }
-    }
+    };
+    if (vm.count("remap-plan")) load_local_plan("remap-plan", false);
     ctx->comb_remap_report.clear();
     ctx->comb_remap_selection = -1;
     ctx->comb_remap_plan.clear();
@@ -344,6 +373,37 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         if (ctx->decomposition_remap_selection < -1) log_error("Invalid control decomposition candidate index.\n");
         if (ctx->decomposition_remap_selection < 0 && (!vm.count("no-route") || vm.count("rbf")))
             log_error("Control decomposition listing requires --no-route and no --rbf.\n");
+    }
+    if (vm.count("remap-post-plan")) {
+        load_local_plan("remap-post-plan", true);
+        prevalidate_local_remap_post_prefix(ctx);
+    }
+    ctx->lut_pair_report.clear();
+    ctx->lut_pair_selection = -1;
+    ctx->lut_pair_compose_copy = false;
+    if (vm.count("remap-lut-pair-compose-copy") && !vm.count("remap-lut-pair-critical"))
+        log_error("--remap-lut-pair-compose-copy requires --remap-lut-pair-critical.\n");
+    if (vm.count("remap-lut-pair-candidate") && !vm.count("remap-lut-pair-critical"))
+        log_error("--remap-lut-pair-candidate requires --remap-lut-pair-critical.\n");
+    if (vm.count("remap-lut-pair-critical")) {
+        ctx->lut_pair_compose_copy = vm.count("remap-lut-pair-compose-copy") != 0;
+        if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") ||
+            vm.count("fes-scaffold") || (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
+            log_error("LUT pair placement requires fresh ordinary HeAP placement.\n");
+        auto in = open_ifstream_and_log_error(vm["remap-lut-pair-critical"].as<std::string>(), "LUT pair placement timing report");
+        ctx->lut_pair_report.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        std::string error;
+        auto report = json11::Json::parse(ctx->lut_pair_report, error);
+        if (!error.empty() || !report.is_object() || !report["critical_paths"].is_array())
+            log_error("Invalid LUT pair placement timing report.\n");
+        check_plan_keys(ctx->lut_pair_report, "LUT pair placement report");
+        if (vm.count("remap-lut-pair-candidate"))
+            ctx->lut_pair_selection = vm["remap-lut-pair-candidate"].as<int>();
+        if (ctx->lut_pair_selection < -1) log_error("Invalid LUT pair placement candidate index.\n");
+        if (ctx->lut_pair_selection < 0 && (!vm.count("no-route") || vm.count("rbf")))
+            log_error("LUT pair placement listing requires --no-route and no --rbf.\n");
+        prevalidate_lut_pair_prefix(ctx);
     }
     ctx->lut_driver_copy_report.clear();
     ctx->lut_driver_copy_selection = -1;
