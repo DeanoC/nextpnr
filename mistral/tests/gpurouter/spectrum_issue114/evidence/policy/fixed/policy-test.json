@@ -1,0 +1,17 @@
+{
+  "compile_argv": [
+    "/usr/bin/c++",
+    "-std=c++11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-I",
+    "/home/deano/kepler/worktrees/nextpnr-qualify-114-spectrum-fixed-54cde5d3",
+    "/home/deano/kepler/worktrees/nextpnr-qualify-114-spectrum-fixed-54cde5d3/mistral/tests/gpurouter/congestion_plateau.cc",
+    "-o",
+    "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/congestion-plateau-test"
+  ],
+  "compile_returncode": 0,
+  "test_returncode": 0,
+  "binary_sha256": "cf5d8af7672ee7fbd73c4e67fdf9ed80748c2298e998f564eb66515c4e9d89b4"
+}

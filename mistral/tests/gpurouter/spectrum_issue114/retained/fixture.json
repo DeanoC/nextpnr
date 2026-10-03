@@ -1,0 +1,28 @@
+{
+  "default_seed": 4,
+  "qsf": "socket.qsf",
+  "sha256": {
+    "synth.json.gz": "943b3fedbce0b7bbc1bca8af3bb21f4e78e4edac7205e172c477122e0be28021",
+    "synth.json": "01c8e412c0a48b79897f80bdcf8948ea8946a104ec7f95c06689b261c60fb671",
+    "socket.qsf": "0661e5ca219a80d8b6053fb150e201bd3bae84dccaa376d9c49e2d79eb7f241a",
+    "clocks.sdc": "d719b08d2753416423427110d3b657ae63a445552c2dacc696b23290f3f1fbdd"
+  },
+  "source": {
+    "gist_id": "e5261a539b56d1be3e7618238c9b7d6d",
+    "gist_revision": "cda29dcb208ef61bc3e705c1d81dc0934cb21ac5",
+    "url": "https://gist.github.com/DeanoC/e5261a539b56d1be3e7618238c9b7d6d/cda29dcb208ef61bc3e705c1d81dc0934cb21ac5",
+    "readme": "SOURCE-README.md",
+    "sha256sums": "SOURCE-SHA256SUMS",
+    "base64_sha256": "d0eaf9722e0afac8ebc9b9ee18a0bf3064c1e9af6be9418b1e33f4e068777a4a"
+  },
+  "firmware": {
+    "cell_name_pattern": "machine.rom.lane0 through machine.rom.lane15",
+    "cells": 16,
+    "cell_type": "MISTRAL_M10K",
+    "init_bits_per_cell": 10240,
+    "all_init_zero": true,
+    "cfg_async_read": 1
+  },
+  "top_primitives_sha256": "ad0bcced932a8ec7af2da846517677dbf892e547a80fa9c0adaca840b6020b25",
+  "top_primitives_hash_format": "UTF-8 compact sorted-key JSON mapping top cell names to type, parameters, port_directions and connections; excludes source attributes"
+}

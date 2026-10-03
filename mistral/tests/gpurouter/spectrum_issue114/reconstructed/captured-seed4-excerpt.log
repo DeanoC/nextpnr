@@ -1,0 +1,11 @@
+# Captured excerpt from the original deb0f18d GPU0 seed4/weight2000/critexp5 run.
+# Original full log unavailable; this is a routing timeout, not a placement error.
+Info:     iter=100 wires=144092 overused=18 overuse=18 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=103 wires=144096 overused=21 overuse=22 tmgfail=0 nets=16 batches=12 archfail=NA
+Info:     congestion has not improved from 16 overused wires in 20 iterations; accelerating present-congestion growth (x1.50)
+Info:     iter=104 wires=144077 overused=16 overuse=17 tmgfail=0 nets=16 batches=12 archfail=NA
+Info:     iter=115 wires=144108 overused=24 overuse=24 tmgfail=0 nets=15 batches=12 archfail=NA
+Info:     iter=116 wires=144113 overused=20 overuse=22 tmgfail=0 nets=16 batches=12 archfail=NA
+Info:     iter=117 wires=144098 overused=24 overuse=26 tmgfail=0 nets=16 batches=12 archfail=NA
+search_placer_qor: nextpnr command timed out after 600 seconds
+# Last line normalized from the original command exception to remove absolute machine paths.

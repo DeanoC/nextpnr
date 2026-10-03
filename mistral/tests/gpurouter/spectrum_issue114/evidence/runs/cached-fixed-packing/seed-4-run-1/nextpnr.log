@@ -1,0 +1,51 @@
+Info: Initialising bels...
+Info: Initialising routing graph...
+Info:     imported 2740007 wires and 25465239 pips
+Info: constraining clock net 'FPGA_CLK1_50' to 50.00 MHz
+Info: FES reserved rect 'slot1' 24 1 28 18 (4338 bels)
+Info: FES reserved rect 'slot2' 24 21 28 38 (4338 bels)
+Info: FES reserved rect 'slot3' 24 41 28 58 (4338 bels)
+Info: FES reserved rect 'slot4' 24 61 28 78 (4338 bels)
+Info: Constraining IO 'system_clock.refclk_MISTRAL_IB_O' to pin PIN_V11 (bel MISTRAL_IO.32.0.0)
+Info: Constraining IO 'hdmi_sda_pad' to pin PIN_AA4 (bel MISTRAL_IO.4.0.2)
+Info: Constraining IO 'hdmi_scl_pad' to pin PIN_U10 (bel MISTRAL_IO.6.0.0)
+Info: Constraining IO 'HDMI_TX_VS_MISTRAL_OB_PAD' to pin PIN_V13 (bel MISTRAL_IO.60.0.1)
+Info: Constraining IO 'HDMI_TX_HS_MISTRAL_OB_PAD' to pin PIN_T8 (bel MISTRAL_IO.4.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_9' to pin PIN_Y4 (bel MISTRAL_IO.2.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_8' to pin PIN_AF10 (bel MISTRAL_IO.34.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_7' to pin PIN_Y5 (bel MISTRAL_IO.2.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_6' to pin PIN_AE11 (bel MISTRAL_IO.30.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_5' to pin PIN_AD10 (bel MISTRAL_IO.26.0.0)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_4' to pin PIN_AD11 (bel MISTRAL_IO.30.0.0)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_3' to pin PIN_Y8 (bel MISTRAL_IO.2.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_23' to pin PIN_AE8 (bel MISTRAL_IO.30.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_22' to pin PIN_AF9 (bel MISTRAL_IO.30.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_21' to pin PIN_AG6 (bel MISTRAL_IO.34.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_20' to pin PIN_AH6 (bel MISTRAL_IO.40.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_2' to pin PIN_W8 (bel MISTRAL_IO.2.0.0)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_19' to pin PIN_AH5 (bel MISTRAL_IO.40.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_18' to pin PIN_AH4 (bel MISTRAL_IO.38.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_17' to pin PIN_AH2 (bel MISTRAL_IO.36.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_16' to pin PIN_AE4 (bel MISTRAL_IO.26.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_15' to pin PIN_AF5 (bel MISTRAL_IO.32.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_14' to pin PIN_AF8 (bel MISTRAL_IO.28.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_13' to pin PIN_AF6 (bel MISTRAL_IO.32.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_12' to pin PIN_AE7 (bel MISTRAL_IO.28.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_11' to pin PIN_AB4 (bel MISTRAL_IO.4.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_10' to pin PIN_AE9 (bel MISTRAL_IO.26.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_1' to pin PIN_AE12 (bel MISTRAL_IO.38.0.0)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD' to pin PIN_AD12 (bel MISTRAL_IO.38.0.1)
+Info: Constraining IO 'HDMI_TX_DE_MISTRAL_OB_PAD' to pin PIN_AD19 (bel MISTRAL_IO.66.0.1)
+Info: Constraining IO 'HDMI_TX_CLK_MISTRAL_OB_PAD' to pin PIN_AG5 (bel MISTRAL_IO.38.0.2)
+Info: Constraining IO 'HDMI_SCLK_MISTRAL_OB_PAD' to pin PIN_T12 (bel MISTRAL_IO.36.0.1)
+Info: Constraining IO 'HDMI_MCLK_MISTRAL_OB_PAD' to pin PIN_U11 (bel MISTRAL_IO.28.0.1)
+Info: Constraining IO 'HDMI_LRCLK_MISTRAL_OB_PAD' to pin PIN_T11 (bel MISTRAL_IO.28.0.0)
+Info: Constraining IO 'HDMI_I2S_MISTRAL_OB_PAD' to pin PIN_T13 (bel MISTRAL_IO.36.0.0)
+Info: PLL 'video_clock.pll': fractional-N requested 74250000.000000 Hz, achieved 74249999.832439542 Hz, error -0.00225670649 ppm.
+Info: PLL 'video_clock.pll': 50 MHz -> 74.25 MHz, direct, M=8 N=1 C6=6, bel altera_pll.0.14.0
+Info: PLL 'system_clock.faithful.pll': fractional-N requested 52224000.000000 Hz, achieved 52224000.000569507 Hz, error 1.09050546e-05 ppm.
+Info: PLL 'system_clock.faithful.pll': fractional-N second requested 12288000.000000 Hz, achieved 12288000.000134002 Hz, error 1.09050546e-05 ppm.
+Info: PLL 'system_clock.faithful.pll': second output 12.288 MHz, C7=34.
+Info: PLL 'system_clock.faithful.pll': 50 MHz -> 52.224 MHz, direct, M=8 N=1 C6=8, bel altera_pll.0.31.0
+ERROR: M10K 'machine.rom.lane9': Cyclone V M10K does not support asynchronous reads; use MLAB, logic, or a registered M10K read.
+0 warnings, 1 error

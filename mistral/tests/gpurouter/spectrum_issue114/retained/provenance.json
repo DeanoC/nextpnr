@@ -1,0 +1,22 @@
+{
+  "build_id": "e5efe9634129e80ad5c4a8429a897fea",
+  "device": "5CSEBA6U23I7",
+  "firmware_INIT": "All sixteen machine.rom.lane* MISTRAL_M10K INITs are zero.",
+  "gpu_device": 0,
+  "original_input_sha256": {
+    "build-inputs.json": "a372bde45800fac7b50220c2ef53936f19db2adad0c68517f0443e7bf8e54c0e",
+    "seed-4-route.log": "03bdac89a2097abf1e18666339534dde8d8959bd7df08f1c1d94838347c61b72",
+    "seed-5-route.log": "698825ba699dc00cf7a53f4df2c8ef59232dcae11be3dabe75728439f96123b1",
+    "socket.qsf": "0661e5ca219a80d8b6053fb150e201bd3bae84dccaa376d9c49e2d79eb7f241a",
+    "synth.json": "7c430afc331c801e43447fcc15b1f708f8cd2e9ae144563ebfacb3a2592d7f0d"
+  },
+  "portable_synth_sha256": "01c8e412c0a48b79897f80bdcf8948ea8946a104ec7f95c06689b261c60fb671",
+  "revision": "792b24805ce714e890485c71fe122ebf0e445c8e",
+  "sanitization": "Absolute source-attribution/tool paths changed to /repro/fes and /repro/toolchain, including path-derived names in unused blackbox simulation modules. All TOP mapped primitive names, parameters, ports and connectivity unchanged. Complete route logs similarly path-sanitized.",
+  "status": "Retained original producer inputs and COMPLETE seed4/seed5 logs; no reconstruction or new route.",
+  "tools": {
+    "mistral": "commit=7ed06e21c18b047ec5c6d6a7e85e5ea2c8827039; sha256=f76d8dd417d842fbcb0ab905fc5090af9f99d68cb0a8596ca2142a5398a1ae6a",
+    "nextpnr-mistral": "commit=0259c6dc1c46dd46fe79f3923a17ad36d2513421; sha256=f3f8ae8c781fa93e6db5f844863234b7faac8506228ff88c37596e38173f6d37; gpu-router=HIP; hip-architectures=gfx1100;gfx1201",
+    "yosys": "commit=e2d425dee148cc60c50f4e9b354a10d90eab15f4; sha256=1069351d825a220e0d0e3408e80cc80dc8bfd04807a1d83fe63f61d4b6dc1785"
+  }
+}

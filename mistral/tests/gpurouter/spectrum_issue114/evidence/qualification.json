@@ -1,0 +1,989 @@
+{
+  "schema": 1,
+  "issue": "https://github.com/DeanoC/nextpnr/issues/114",
+  "policy_fix": "53e1ad42b3fc3bb016a6dbbddfe3fc292f98b98c",
+  "collection_complete": true,
+  "pending_collections": [],
+  "planned_run_counts": {
+    "original-retained": 1,
+    "cached-fixed-packing": 1,
+    "baseline-retained": 1,
+    "baseline-reconstructed": 1,
+    "fixed-retained": 2,
+    "fixed-reconstructed": 2
+  },
+  "checksum_normalization": "Only this consolidated file maps legacy raw summary field checksum to last_logged_route_checksum; raw summaries and logs are unchanged. A logged checksum may precede later analogue route changes.",
+  "result_semantics": "test_passed includes expected failure assertions. actual_route_complete requires route and normal-tool completion with exit 0 and no timeout. route_qualification_passed additionally requires the default runner gates and repeat comparison. Final analogue/FES timing gates are separate.",
+  "builds": {
+    "baseline": {
+      "source_commit": "0259c6dc1c46dd46fe79f3923a17ad36d2513421",
+      "source_tree": "5649170402bdd5a408c540a19b1a10cb089a4f12",
+      "binary": {
+        "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/nextpnr-mistral",
+        "sha256": "e62f41204ca4c2c4a988c5ed2bd90028a3e48dfa54acb29f9ec963240d047924",
+        "size": 638377432,
+        "version_returncode": 0,
+        "version": "\"nextpnr-mistral\" -- Next Generation Place and Route (Version nextpnr-0.11.1-271-g0259c6dc)"
+      },
+      "metadata": "builds/baseline/metadata.json",
+      "mistral_archive_sha256": "71bf9e5b60ae844e6a5dd12693fd9b41094510f278b952374c8ce4e994ae5e31",
+      "hip_archive_sha256": "a7379a98d49f0a398550adead098e1827ee73e0713e95f0cd6bc075dac9b7ea6"
+    },
+    "fixed": {
+      "source_commit": "fdb8e11c57a7c4e1afa83f1864fc57f8dedaa08c",
+      "source_tree": "43f03e34ddf895cd7b2f9d56ba897c5c9f9ccb7b",
+      "binary": {
+        "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/nextpnr-mistral",
+        "sha256": "dede5ab70917aec964932c5b58ca5167d472306610eb330eb670dfa2a8394665",
+        "size": 638384096,
+        "version_returncode": 0,
+        "version": "\"nextpnr-mistral\" -- Next Generation Place and Route (Version nextpnr-0.11.1-272-gfdb8e11c)"
+      },
+      "metadata": "builds/fixed/metadata.json",
+      "mistral_archive_sha256": "71bf9e5b60ae844e6a5dd12693fd9b41094510f278b952374c8ce4e994ae5e31",
+      "hip_archive_sha256": "a7379a98d49f0a398550adead098e1827ee73e0713e95f0cd6bc075dac9b7ea6"
+    }
+  },
+  "cached_builds": {
+    "original-retained": {
+      "source_commit": "0259c6dc1c46dd46fe79f3923a17ad36d2513421",
+      "identity": {
+        "binary": "bin/nextpnr-mistral",
+        "commit": "0259c6dc1c46dd46fe79f3923a17ad36d2513421",
+        "identity": "\"nextpnr-mistral\" -- Next Generation Place and Route (Version nextpnr-0.11.1-271-g0259c6dc)",
+        "path": "install/bin/nextpnr-mistral",
+        "sha256": "f3f8ae8c781fa93e6db5f844863234b7faac8506228ff88c37596e38173f6d37"
+      },
+      "ready_path": "/home/deano/fes/out/cache/misteross-toolchains/slots/2e5173721849eea2192ecb067b449243b80c8cc072095cd5ae48298ae23eea27/ready.json",
+      "ready_sha256": "fe65a050def29a6db5fe0a15a0079fbc59ac8ab3c80d643e7e60a677cc3ba59e"
+    },
+    "cached-fixed-packing": {
+      "source_commit": "655f38334b8a1ba798cc05cf3744b6a897119b5d",
+      "identity": {
+        "binary": "bin/nextpnr-mistral",
+        "commit": "655f38334b8a1ba798cc05cf3744b6a897119b5d",
+        "identity": "\"nextpnr-mistral\" -- Next Generation Place and Route (Version nextpnr-0.11.1-307-g655f3833)",
+        "path": "install/bin/nextpnr-mistral",
+        "sha256": "8f2a93c75ebdc7de141a6344dbf3174bf6c950c3cd4c41a4632578aa5f7d8121"
+      },
+      "ready_path": "/home/deano/fes/out/cache/misteross-toolchains/slots/1e3827e592617f41dbbaa2fad1c64ce7377a16c73eab03a83c7d3e7af602758e/ready.json",
+      "ready_sha256": "d870dea627f8341597e9e93b52e334baa707250edb41643a9c6b9cdc4f457ae4"
+    }
+  },
+  "iteration_comparison_semantics": "Select full log lines matching iter=N wires=N overused=N overuse=N; compare line strings exactly after splitting line endings. No fields or paths within iteration lines are normalized.",
+  "iteration_prefix_comparisons": [
+    {
+      "run": "original-retained/seed-4-run-1",
+      "reference_log": "../retained/seed-4-route.log",
+      "reference_log_sha256": "03bdac89a2097abf1e18666339534dde8d8959bd7df08f1c1d94838347c61b72",
+      "compared_log": "runs/original-retained/seed-4-run-1/nextpnr.log",
+      "compared_log_sha256": "5c978ff56e2c9564f713b08ea0552b5580fe932190b3040498feb72bd47400b9",
+      "reference_iteration_count": 104,
+      "compared_iteration_count": 104,
+      "exact_common_prefix_iterations": 104,
+      "all_104_reference_iterations_match": true,
+      "complete_iteration_sequence_matches": true
+    },
+    {
+      "run": "baseline-retained/seed-4-run-1",
+      "reference_log": "../retained/seed-4-route.log",
+      "reference_log_sha256": "03bdac89a2097abf1e18666339534dde8d8959bd7df08f1c1d94838347c61b72",
+      "compared_log": "runs/baseline-retained/seed-4-run-1/nextpnr.log",
+      "compared_log_sha256": "7e66e3b7b8f24f3993b8981639f491be10bf1cbbd730273526f198ae3ddd6923",
+      "reference_iteration_count": 104,
+      "compared_iteration_count": 104,
+      "exact_common_prefix_iterations": 104,
+      "all_104_reference_iterations_match": true,
+      "complete_iteration_sequence_matches": true
+    },
+    {
+      "run": "fixed-retained/seed-4-run-1",
+      "reference_log": "../retained/seed-4-route.log",
+      "reference_log_sha256": "03bdac89a2097abf1e18666339534dde8d8959bd7df08f1c1d94838347c61b72",
+      "compared_log": "runs/fixed-retained/seed-4-run-1/nextpnr.log",
+      "compared_log_sha256": "035cc16e02d02e1ad76624e04f4b34d9f5f108a25ac43ad5d23a484d4fdf69d0",
+      "reference_iteration_count": 104,
+      "compared_iteration_count": 254,
+      "exact_common_prefix_iterations": 104,
+      "all_104_reference_iterations_match": true,
+      "complete_iteration_sequence_matches": false
+    },
+    {
+      "run": "fixed-retained/seed-4-run-2",
+      "reference_log": "../retained/seed-4-route.log",
+      "reference_log_sha256": "03bdac89a2097abf1e18666339534dde8d8959bd7df08f1c1d94838347c61b72",
+      "compared_log": "runs/fixed-retained/seed-4-run-2/nextpnr.log",
+      "compared_log_sha256": "6c4fe7c6c63ec16552616e269e8fc89181634d32fda6427ae484e4ac5fab4605",
+      "reference_iteration_count": 104,
+      "compared_iteration_count": 254,
+      "exact_common_prefix_iterations": 104,
+      "all_104_reference_iterations_match": true,
+      "complete_iteration_sequence_matches": false
+    }
+  ],
+  "collections": [
+    {
+      "id": "original-retained",
+      "source_commit": "0259c6dc1c46dd46fe79f3923a17ad36d2513421",
+      "binary_path": "/home/deano/fes/out/cache/misteross-toolchains/slots/2e5173721849eea2192ecb067b449243b80c8cc072095cd5ae48298ae23eea27/install/bin/nextpnr-mistral",
+      "binary_sha256": "f3f8ae8c781fa93e6db5f844863234b7faac8506228ff88c37596e38173f6d37",
+      "fixture": "retained",
+      "fixture_hashes": {
+        "synth.json.gz": "943b3fedbce0b7bbc1bca8af3bb21f4e78e4edac7205e172c477122e0be28021",
+        "socket.qsf": "0661e5ca219a80d8b6053fb150e201bd3bae84dccaa376d9c49e2d79eb7f241a",
+        "clocks.sdc": "d719b08d2753416423427110d3b657ae63a445552c2dacc696b23290f3f1fbdd",
+        "synth.json": "01c8e412c0a48b79897f80bdcf8948ea8946a104ec7f95c06689b261c60fb671"
+      },
+      "fixture_manifest_sha256": "96929dcf1552a981366f0587a12a9897931feb76d48490040994b1def0dce9d9",
+      "expected_failure": "plateau",
+      "timeout_seconds": 1800.0,
+      "raw_summary": "runs/original-retained/summary.json",
+      "raw_summary_sha256": "caf077b8352757c7f5052e1b1b2e9ba5231195f81fc2b7f1eeae5cacd2c7c38b",
+      "planned_run_count": 1,
+      "recorded_run_count": 1,
+      "collection_complete": true,
+      "test_passed": true,
+      "runs": [
+        {
+          "seed": 4,
+          "attempt": 1,
+          "backend": "hip:AMD Radeon RX 7900 XTX",
+          "backend_matches": true,
+          "outcome": "initial_plateau",
+          "returncode": 125,
+          "timed_out": false,
+          "wall_seconds": 220.14951320085675,
+          "last_iteration": {
+            "iteration": 104,
+            "wires": 144608,
+            "overused": 1,
+            "overuse": 1
+          },
+          "reached_zero_overuse": false,
+          "tool_complete": false,
+          "signoff": false,
+          "artifacts": {
+            "core.rbf": false,
+            "routed.json": false,
+            "timing.json": false
+          },
+          "analogue_timing": {
+            "fmax": {},
+            "gates": {},
+            "signoff_pass": null,
+            "fes_timing_pass": null
+          },
+          "table_fmax": {
+            "machine.ram.pixel_clk": 95.76,
+            "system_clock.faithful.clocks[0]": 48.25,
+            "system_clock.faithful.clocks[1]": 178.28
+          },
+          "rbf_sha256": null,
+          "repeat_matches": null,
+          "errors": [],
+          "raw_log": "runs/original-retained/seed-4-run-1/nextpnr.log",
+          "raw_log_sha256": "5c978ff56e2c9564f713b08ea0552b5580fe932190b3040498feb72bd47400b9",
+          "route_complete_marker": false,
+          "actual_route_complete": false,
+          "test_passed": true,
+          "route_qualification_passed": false,
+          "first_initial_zero_iteration": null,
+          "first_zero_overuse_iteration": null,
+          "last_logged_route_checksum": "0xe8bf3a51"
+        }
+      ]
+    },
+    {
+      "id": "cached-fixed-packing",
+      "source_commit": "655f38334b8a1ba798cc05cf3744b6a897119b5d",
+      "binary_path": "/home/deano/fes/out/cache/misteross-toolchains/slots/1e3827e592617f41dbbaa2fad1c64ce7377a16c73eab03a83c7d3e7af602758e/install/bin/nextpnr-mistral",
+      "binary_sha256": "8f2a93c75ebdc7de141a6344dbf3174bf6c950c3cd4c41a4632578aa5f7d8121",
+      "fixture": "retained",
+      "fixture_hashes": {
+        "synth.json.gz": "943b3fedbce0b7bbc1bca8af3bb21f4e78e4edac7205e172c477122e0be28021",
+        "socket.qsf": "0661e5ca219a80d8b6053fb150e201bd3bae84dccaa376d9c49e2d79eb7f241a",
+        "clocks.sdc": "d719b08d2753416423427110d3b657ae63a445552c2dacc696b23290f3f1fbdd",
+        "synth.json": "01c8e412c0a48b79897f80bdcf8948ea8946a104ec7f95c06689b261c60fb671"
+      },
+      "fixture_manifest_sha256": "96929dcf1552a981366f0587a12a9897931feb76d48490040994b1def0dce9d9",
+      "expected_failure": "packing",
+      "timeout_seconds": 1800.0,
+      "raw_summary": "runs/cached-fixed-packing/summary.json",
+      "raw_summary_sha256": "ece75ae59a743933bc294aff4d31384a4fcb40da727d8c3c7a2634d95e696a91",
+      "planned_run_count": 1,
+      "recorded_run_count": 1,
+      "collection_complete": true,
+      "test_passed": true,
+      "runs": [
+        {
+          "seed": 4,
+          "attempt": 1,
+          "backend": null,
+          "backend_matches": false,
+          "outcome": "packing_rejected",
+          "returncode": 125,
+          "timed_out": false,
+          "wall_seconds": 4.732428913004696,
+          "last_iteration": null,
+          "reached_zero_overuse": false,
+          "tool_complete": false,
+          "signoff": false,
+          "artifacts": {
+            "core.rbf": false,
+            "routed.json": false,
+            "timing.json": false
+          },
+          "analogue_timing": {
+            "fmax": {},
+            "gates": {},
+            "signoff_pass": null,
+            "fes_timing_pass": null
+          },
+          "table_fmax": {},
+          "rbf_sha256": null,
+          "repeat_matches": null,
+          "errors": [],
+          "raw_log": "runs/cached-fixed-packing/seed-4-run-1/nextpnr.log",
+          "raw_log_sha256": "1574c31e9addd256b56375fae71280b65efcdd3810604517dd15b974c2928776",
+          "route_complete_marker": false,
+          "actual_route_complete": false,
+          "test_passed": true,
+          "route_qualification_passed": false,
+          "first_initial_zero_iteration": null,
+          "first_zero_overuse_iteration": null,
+          "last_logged_route_checksum": null
+        }
+      ]
+    },
+    {
+      "id": "baseline-retained",
+      "source_commit": "0259c6dc1c46dd46fe79f3923a17ad36d2513421",
+      "binary_path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/nextpnr-mistral",
+      "binary_sha256": "e62f41204ca4c2c4a988c5ed2bd90028a3e48dfa54acb29f9ec963240d047924",
+      "fixture": "retained",
+      "fixture_hashes": {
+        "synth.json.gz": "943b3fedbce0b7bbc1bca8af3bb21f4e78e4edac7205e172c477122e0be28021",
+        "socket.qsf": "0661e5ca219a80d8b6053fb150e201bd3bae84dccaa376d9c49e2d79eb7f241a",
+        "clocks.sdc": "d719b08d2753416423427110d3b657ae63a445552c2dacc696b23290f3f1fbdd",
+        "synth.json": "01c8e412c0a48b79897f80bdcf8948ea8946a104ec7f95c06689b261c60fb671"
+      },
+      "fixture_manifest_sha256": "96929dcf1552a981366f0587a12a9897931feb76d48490040994b1def0dce9d9",
+      "expected_failure": "plateau",
+      "timeout_seconds": 1800.0,
+      "raw_summary": "runs/baseline-retained/summary.json",
+      "raw_summary_sha256": "e65ad5ecb0cf85cd4a95818f454f48ed52445131ecbbb995c938902ba304df2d",
+      "planned_run_count": 1,
+      "recorded_run_count": 1,
+      "collection_complete": true,
+      "test_passed": true,
+      "runs": [
+        {
+          "seed": 4,
+          "attempt": 1,
+          "backend": "hip:AMD Radeon RX 7900 XTX",
+          "backend_matches": true,
+          "outcome": "initial_plateau",
+          "returncode": 125,
+          "timed_out": false,
+          "wall_seconds": 218.4507910842076,
+          "last_iteration": {
+            "iteration": 104,
+            "wires": 144608,
+            "overused": 1,
+            "overuse": 1
+          },
+          "reached_zero_overuse": false,
+          "tool_complete": false,
+          "signoff": false,
+          "artifacts": {
+            "core.rbf": false,
+            "routed.json": false,
+            "timing.json": false
+          },
+          "analogue_timing": {
+            "fmax": {},
+            "gates": {},
+            "signoff_pass": null,
+            "fes_timing_pass": null
+          },
+          "table_fmax": {
+            "machine.ram.pixel_clk": 95.76,
+            "system_clock.faithful.clocks[0]": 48.25,
+            "system_clock.faithful.clocks[1]": 178.28
+          },
+          "rbf_sha256": null,
+          "repeat_matches": null,
+          "errors": [],
+          "raw_log": "runs/baseline-retained/seed-4-run-1/nextpnr.log",
+          "raw_log_sha256": "7e66e3b7b8f24f3993b8981639f491be10bf1cbbd730273526f198ae3ddd6923",
+          "route_complete_marker": false,
+          "actual_route_complete": false,
+          "test_passed": true,
+          "route_qualification_passed": false,
+          "first_initial_zero_iteration": null,
+          "first_zero_overuse_iteration": null,
+          "last_logged_route_checksum": "0xe8bf3a51"
+        }
+      ]
+    },
+    {
+      "id": "baseline-reconstructed",
+      "source_commit": "0259c6dc1c46dd46fe79f3923a17ad36d2513421",
+      "binary_path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/nextpnr-mistral",
+      "binary_sha256": "e62f41204ca4c2c4a988c5ed2bd90028a3e48dfa54acb29f9ec963240d047924",
+      "fixture": "reconstructed",
+      "fixture_hashes": {
+        "synth.json.gz": "437a5d5682a26473a2e59cee82de2b9c1c3b49e068ffac1affb8d7abed205365",
+        "constraints.qsf": "0661e5ca219a80d8b6053fb150e201bd3bae84dccaa376d9c49e2d79eb7f241a",
+        "clocks.sdc": "d719b08d2753416423427110d3b657ae63a445552c2dacc696b23290f3f1fbdd",
+        "synth.json": "70d0e0fe72686a8ee3d3097c5fe8413a2e61dd57163b84ee4e3d7f54cad5ed7a"
+      },
+      "fixture_manifest_sha256": "83074505433c50ca8cfe34054318bbe24a0236f98d1ee178751f6bb0ed3a029b",
+      "expected_failure": "plateau",
+      "timeout_seconds": 1800.0,
+      "raw_summary": "runs/baseline-reconstructed/summary.json",
+      "raw_summary_sha256": "b455c6eedf033609e7031ed2a1b0f80704a5f73e1ca3f966be3237eff62086bc",
+      "planned_run_count": 1,
+      "recorded_run_count": 1,
+      "collection_complete": true,
+      "test_passed": true,
+      "runs": [
+        {
+          "seed": 2,
+          "attempt": 1,
+          "backend": "hip:AMD Radeon RX 7900 XTX",
+          "backend_matches": true,
+          "outcome": "initial_plateau",
+          "returncode": 125,
+          "timed_out": false,
+          "wall_seconds": 189.06028728699312,
+          "last_iteration": {
+            "iteration": 122,
+            "wires": 146730,
+            "overused": 1,
+            "overuse": 1
+          },
+          "reached_zero_overuse": false,
+          "tool_complete": false,
+          "signoff": false,
+          "artifacts": {
+            "core.rbf": false,
+            "routed.json": false,
+            "timing.json": false
+          },
+          "analogue_timing": {
+            "fmax": {},
+            "gates": {},
+            "signoff_pass": null,
+            "fes_timing_pass": null
+          },
+          "table_fmax": {
+            "machine.ram.pixel_clk": 101.18,
+            "system_clock.faithful.clocks[0]": 46.41,
+            "system_clock.faithful.clocks[1]": 192.72
+          },
+          "rbf_sha256": null,
+          "repeat_matches": null,
+          "errors": [],
+          "raw_log": "runs/baseline-reconstructed/seed-2-run-1/nextpnr.log",
+          "raw_log_sha256": "883e6d5e4779b4bd7ca48dadeee8c567751099a3f028829fa98608ae0c3bac07",
+          "route_complete_marker": false,
+          "actual_route_complete": false,
+          "test_passed": true,
+          "route_qualification_passed": false,
+          "first_initial_zero_iteration": null,
+          "first_zero_overuse_iteration": null,
+          "last_logged_route_checksum": "0x364c89a2"
+        }
+      ]
+    },
+    {
+      "id": "fixed-retained",
+      "source_commit": "fdb8e11c57a7c4e1afa83f1864fc57f8dedaa08c",
+      "binary_path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/nextpnr-mistral",
+      "binary_sha256": "dede5ab70917aec964932c5b58ca5167d472306610eb330eb670dfa2a8394665",
+      "fixture": "retained",
+      "fixture_hashes": {
+        "synth.json.gz": "943b3fedbce0b7bbc1bca8af3bb21f4e78e4edac7205e172c477122e0be28021",
+        "socket.qsf": "0661e5ca219a80d8b6053fb150e201bd3bae84dccaa376d9c49e2d79eb7f241a",
+        "clocks.sdc": "d719b08d2753416423427110d3b657ae63a445552c2dacc696b23290f3f1fbdd",
+        "synth.json": "01c8e412c0a48b79897f80bdcf8948ea8946a104ec7f95c06689b261c60fb671"
+      },
+      "fixture_manifest_sha256": "96929dcf1552a981366f0587a12a9897931feb76d48490040994b1def0dce9d9",
+      "expected_failure": null,
+      "timeout_seconds": 1800.0,
+      "raw_summary": "runs/fixed-retained/summary.json",
+      "raw_summary_sha256": "b6ffc9428465c5ac581be0dd8acec6c6758fa681770e21f4d7f1b8118501417e",
+      "planned_run_count": 2,
+      "recorded_run_count": 2,
+      "collection_complete": true,
+      "test_passed": true,
+      "runs": [
+        {
+          "seed": 4,
+          "attempt": 1,
+          "backend": "hip:AMD Radeon RX 7900 XTX",
+          "backend_matches": true,
+          "outcome": "route_complete",
+          "returncode": 0,
+          "timed_out": false,
+          "wall_seconds": 292.1250994829461,
+          "last_iteration": {
+            "iteration": 67,
+            "wires": 146760,
+            "overused": 0,
+            "overuse": 0
+          },
+          "reached_zero_overuse": true,
+          "tool_complete": true,
+          "signoff": true,
+          "artifacts": {
+            "core.rbf": true,
+            "routed.json": true,
+            "timing.json": true
+          },
+          "analogue_timing": {
+            "fmax": {
+              "machine.ram.pixel_clk": {
+                "achieved": 96.02458953857422,
+                "constraint": 74.25006866455078,
+                "meets_constraint": true
+              },
+              "system_clock.faithful.clocks[0]": {
+                "achieved": 52.89605712890625,
+                "constraint": 52.22477340698242,
+                "meets_constraint": true
+              },
+              "system_clock.faithful.clocks[1]": {
+                "achieved": 207.38282775878906,
+                "constraint": 12.288031578063965,
+                "meets_constraint": true
+              }
+            },
+            "gates": {
+              "machine.ram.pixel_clk": {
+                "required": 74.25,
+                "achieved": 96.02458953857422,
+                "passes": true
+              },
+              "system_clock.faithful.clocks[0]": {
+                "required": 52.224,
+                "achieved": 52.89605712890625,
+                "passes": true
+              },
+              "system_clock.faithful.clocks[1]": {
+                "required": 12.288,
+                "achieved": 207.38282775878906,
+                "passes": true
+              }
+            },
+            "signoff_pass": true,
+            "fes_timing_pass": true
+          },
+          "table_fmax": {
+            "machine.ram.pixel_clk": 94.64,
+            "system_clock.faithful.clocks[0]": 51.31,
+            "system_clock.faithful.clocks[1]": 203.75
+          },
+          "rbf_sha256": "b87ba69855e9a711e45107271447f7095b902d769bd63e841af220569aac760b",
+          "repeat_matches": null,
+          "errors": [],
+          "raw_log": "runs/fixed-retained/seed-4-run-1/nextpnr.log",
+          "raw_log_sha256": "035cc16e02d02e1ad76624e04f4b34d9f5f108a25ac43ad5d23a484d4fdf69d0",
+          "route_complete_marker": true,
+          "actual_route_complete": true,
+          "test_passed": true,
+          "route_qualification_passed": true,
+          "first_initial_zero_iteration": 137,
+          "first_zero_overuse_iteration": 137,
+          "last_logged_route_checksum": "0x3f4f6b70"
+        },
+        {
+          "seed": 4,
+          "attempt": 2,
+          "backend": "hip:AMD Radeon RX 7900 XTX",
+          "backend_matches": true,
+          "outcome": "route_complete",
+          "returncode": 0,
+          "timed_out": false,
+          "wall_seconds": 289.88286458700895,
+          "last_iteration": {
+            "iteration": 67,
+            "wires": 146760,
+            "overused": 0,
+            "overuse": 0
+          },
+          "reached_zero_overuse": true,
+          "tool_complete": true,
+          "signoff": true,
+          "artifacts": {
+            "core.rbf": true,
+            "routed.json": true,
+            "timing.json": true
+          },
+          "analogue_timing": {
+            "fmax": {
+              "machine.ram.pixel_clk": {
+                "achieved": 96.02458953857422,
+                "constraint": 74.25006866455078,
+                "meets_constraint": true
+              },
+              "system_clock.faithful.clocks[0]": {
+                "achieved": 52.89605712890625,
+                "constraint": 52.22477340698242,
+                "meets_constraint": true
+              },
+              "system_clock.faithful.clocks[1]": {
+                "achieved": 207.38282775878906,
+                "constraint": 12.288031578063965,
+                "meets_constraint": true
+              }
+            },
+            "gates": {
+              "machine.ram.pixel_clk": {
+                "required": 74.25,
+                "achieved": 96.02458953857422,
+                "passes": true
+              },
+              "system_clock.faithful.clocks[0]": {
+                "required": 52.224,
+                "achieved": 52.89605712890625,
+                "passes": true
+              },
+              "system_clock.faithful.clocks[1]": {
+                "required": 12.288,
+                "achieved": 207.38282775878906,
+                "passes": true
+              }
+            },
+            "signoff_pass": true,
+            "fes_timing_pass": true
+          },
+          "table_fmax": {
+            "machine.ram.pixel_clk": 94.64,
+            "system_clock.faithful.clocks[0]": 51.31,
+            "system_clock.faithful.clocks[1]": 203.75
+          },
+          "rbf_sha256": "b87ba69855e9a711e45107271447f7095b902d769bd63e841af220569aac760b",
+          "repeat_matches": true,
+          "errors": [],
+          "raw_log": "runs/fixed-retained/seed-4-run-2/nextpnr.log",
+          "raw_log_sha256": "6c4fe7c6c63ec16552616e269e8fc89181634d32fda6427ae484e4ac5fab4605",
+          "route_complete_marker": true,
+          "actual_route_complete": true,
+          "test_passed": true,
+          "route_qualification_passed": true,
+          "first_initial_zero_iteration": 137,
+          "first_zero_overuse_iteration": 137,
+          "last_logged_route_checksum": "0x3f4f6b70"
+        }
+      ],
+      "postprocess_validation": {
+        "reason": "Use Mistral whole-picosecond period precision for expected clock constraints; compiler outputs unchanged.",
+        "validator_sha256": "f21addf15dc8ae235c27e98c277bea85eca29cf7e5caa066f1b2a4bac1d2d3a5",
+        "prior_summary": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/summary-before-clock-period-validation.json",
+        "prior_summary_sha256": "2d57fc193bafeb11d61c397938374bfe65a89e04e7ae79de836a249c81f4af66",
+        "artifact_sha256": {
+          "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-1/nextpnr.log": "035cc16e02d02e1ad76624e04f4b34d9f5f108a25ac43ad5d23a484d4fdf69d0",
+          "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-1/routed.json": "840070aa93e9481539a59895355cf4889d6b1d73cb53b62fdb097c4b4186c0cb",
+          "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-1/core.rbf": "b87ba69855e9a711e45107271447f7095b902d769bd63e841af220569aac760b",
+          "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-1/timing.json": "83b3b9652fc6c3c6ed8c73bc72409e5ac16f0ba1893b0df7abad5d2215193a22",
+          "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-2/nextpnr.log": "6c4fe7c6c63ec16552616e269e8fc89181634d32fda6427ae484e4ac5fab4605",
+          "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-2/routed.json": "840070aa93e9481539a59895355cf4889d6b1d73cb53b62fdb097c4b4186c0cb",
+          "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-2/core.rbf": "b87ba69855e9a711e45107271447f7095b902d769bd63e841af220569aac760b",
+          "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-2/timing.json": "83b3b9652fc6c3c6ed8c73bc72409e5ac16f0ba1893b0df7abad5d2215193a22"
+        },
+        "artifacts_unchanged": true
+      },
+      "validation_history": {
+        "original_summary": "runs/fixed-retained/summary-before-clock-period-validation.json",
+        "original_summary_sha256": "2d57fc193bafeb11d61c397938374bfe65a89e04e7ae79de836a249c81f4af66",
+        "original_validation_passed": false,
+        "original_runner_exit": 1,
+        "original_runner_exit_basis": "The runner returns 0 iff its aggregate summary passed flag is true; the archived original summary was false.",
+        "original_compiler_returncodes": [
+          0,
+          0
+        ],
+        "original_validation_errors": [
+          [
+            "clock system_clock.faithful.clocks[0]: constraint differs from 52.224 MHz"
+          ],
+          [
+            "clock system_clock.faithful.clocks[0]: constraint differs from 52.224 MHz"
+          ]
+        ],
+        "corrected_validation_passed": true,
+        "validator_source": "mistral/tests/gpurouter/spectrum_plateau.py",
+        "validator_sha256": "f21addf15dc8ae235c27e98c277bea85eca29cf7e5caa066f1b2a4bac1d2d3a5",
+        "compiler_outputs_rerun": false,
+        "compiler_outputs_unchanged_verified": true,
+        "interpretation": "The original harness exit 1 was a false rejection of nominal clock constraints rounded to Mistral's whole-picosecond period precision. Both compiler runs returned 0. Read-only reassessment with the corrected period tolerance passed the saved results and repeat comparison; no compiler run or output was changed."
+      }
+    },
+    {
+      "id": "fixed-reconstructed",
+      "source_commit": "fdb8e11c57a7c4e1afa83f1864fc57f8dedaa08c",
+      "binary_path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/nextpnr-mistral",
+      "binary_sha256": "dede5ab70917aec964932c5b58ca5167d472306610eb330eb670dfa2a8394665",
+      "fixture": "reconstructed",
+      "fixture_hashes": {
+        "synth.json.gz": "437a5d5682a26473a2e59cee82de2b9c1c3b49e068ffac1affb8d7abed205365",
+        "constraints.qsf": "0661e5ca219a80d8b6053fb150e201bd3bae84dccaa376d9c49e2d79eb7f241a",
+        "clocks.sdc": "d719b08d2753416423427110d3b657ae63a445552c2dacc696b23290f3f1fbdd",
+        "synth.json": "70d0e0fe72686a8ee3d3097c5fe8413a2e61dd57163b84ee4e3d7f54cad5ed7a"
+      },
+      "fixture_manifest_sha256": "83074505433c50ca8cfe34054318bbe24a0236f98d1ee178751f6bb0ed3a029b",
+      "expected_failure": null,
+      "timeout_seconds": 1800.0,
+      "raw_summary": "runs/fixed-reconstructed/summary.json",
+      "raw_summary_sha256": "a99b37bfe500890c3b95b8974dd7aabb591ac7649650904ab2694b697b6b7794",
+      "planned_run_count": 2,
+      "recorded_run_count": 2,
+      "collection_complete": true,
+      "test_passed": true,
+      "runs": [
+        {
+          "seed": 2,
+          "attempt": 1,
+          "backend": "hip:AMD Radeon RX 7900 XTX",
+          "backend_matches": true,
+          "outcome": "route_complete",
+          "returncode": 0,
+          "timed_out": false,
+          "wall_seconds": 325.8044822230004,
+          "last_iteration": {
+            "iteration": 48,
+            "wires": 149892,
+            "overused": 0,
+            "overuse": 0
+          },
+          "reached_zero_overuse": true,
+          "tool_complete": true,
+          "signoff": true,
+          "artifacts": {
+            "core.rbf": true,
+            "routed.json": true,
+            "timing.json": true
+          },
+          "analogue_timing": {
+            "fmax": {
+              "machine.ram.pixel_clk": {
+                "achieved": 80.30838775634766,
+                "constraint": 74.25006866455078,
+                "meets_constraint": true
+              },
+              "system_clock.faithful.clocks[0]": {
+                "achieved": 52.211143493652344,
+                "constraint": 52.22477340698242,
+                "meets_constraint": false
+              },
+              "system_clock.faithful.clocks[1]": {
+                "achieved": 194.74195861816406,
+                "constraint": 12.288031578063965,
+                "meets_constraint": true
+              }
+            },
+            "gates": {
+              "machine.ram.pixel_clk": {
+                "required": 74.25,
+                "achieved": 80.30838775634766,
+                "passes": true
+              },
+              "system_clock.faithful.clocks[0]": {
+                "required": 52.224,
+                "achieved": 52.211143493652344,
+                "passes": false
+              },
+              "system_clock.faithful.clocks[1]": {
+                "required": 12.288,
+                "achieved": 194.74195861816406,
+                "passes": true
+              }
+            },
+            "signoff_pass": false,
+            "fes_timing_pass": false
+          },
+          "table_fmax": {
+            "machine.ram.pixel_clk": 79.2,
+            "system_clock.faithful.clocks[0]": 50.44,
+            "system_clock.faithful.clocks[1]": 190.91
+          },
+          "rbf_sha256": "5386a451030b074b33383dbd6325609a04f5fa3b6d1a0013c6cf2c319d4f5a8b",
+          "repeat_matches": null,
+          "errors": [],
+          "raw_log": "runs/fixed-reconstructed/seed-2-run-1/nextpnr.log",
+          "raw_log_sha256": "a0c9a0f6810d77e9b253693776465a66690b9b8ee747df8ae3dcabeb09f59271",
+          "route_complete_marker": true,
+          "actual_route_complete": true,
+          "test_passed": true,
+          "route_qualification_passed": true,
+          "first_initial_zero_iteration": 143,
+          "first_zero_overuse_iteration": 143,
+          "last_logged_route_checksum": "0xf6e5eada"
+        },
+        {
+          "seed": 2,
+          "attempt": 2,
+          "backend": "hip:AMD Radeon RX 7900 XTX",
+          "backend_matches": true,
+          "outcome": "route_complete",
+          "returncode": 0,
+          "timed_out": false,
+          "wall_seconds": 386.942474297015,
+          "last_iteration": {
+            "iteration": 48,
+            "wires": 149892,
+            "overused": 0,
+            "overuse": 0
+          },
+          "reached_zero_overuse": true,
+          "tool_complete": true,
+          "signoff": true,
+          "artifacts": {
+            "core.rbf": true,
+            "routed.json": true,
+            "timing.json": true
+          },
+          "analogue_timing": {
+            "fmax": {
+              "machine.ram.pixel_clk": {
+                "achieved": 80.30838775634766,
+                "constraint": 74.25006866455078,
+                "meets_constraint": true
+              },
+              "system_clock.faithful.clocks[0]": {
+                "achieved": 52.211143493652344,
+                "constraint": 52.22477340698242,
+                "meets_constraint": false
+              },
+              "system_clock.faithful.clocks[1]": {
+                "achieved": 194.74195861816406,
+                "constraint": 12.288031578063965,
+                "meets_constraint": true
+              }
+            },
+            "gates": {
+              "machine.ram.pixel_clk": {
+                "required": 74.25,
+                "achieved": 80.30838775634766,
+                "passes": true
+              },
+              "system_clock.faithful.clocks[0]": {
+                "required": 52.224,
+                "achieved": 52.211143493652344,
+                "passes": false
+              },
+              "system_clock.faithful.clocks[1]": {
+                "required": 12.288,
+                "achieved": 194.74195861816406,
+                "passes": true
+              }
+            },
+            "signoff_pass": false,
+            "fes_timing_pass": false
+          },
+          "table_fmax": {
+            "machine.ram.pixel_clk": 79.2,
+            "system_clock.faithful.clocks[0]": 50.44,
+            "system_clock.faithful.clocks[1]": 190.91
+          },
+          "rbf_sha256": "5386a451030b074b33383dbd6325609a04f5fa3b6d1a0013c6cf2c319d4f5a8b",
+          "repeat_matches": true,
+          "errors": [],
+          "raw_log": "runs/fixed-reconstructed/seed-2-run-2/nextpnr.log",
+          "raw_log_sha256": "eec03905b346710daf5ba8e113bf1ff67a0bcde158f540cbf5502c9917e7d95f",
+          "route_complete_marker": true,
+          "actual_route_complete": true,
+          "test_passed": true,
+          "route_qualification_passed": true,
+          "first_initial_zero_iteration": 143,
+          "first_zero_overuse_iteration": 143,
+          "last_logged_route_checksum": "0xf6e5eada"
+        }
+      ]
+    }
+  ],
+  "external_artifacts": [
+    {
+      "kind": "source_archive",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline-source.tar",
+      "sha256": "827073e41419c3fc61bd6e98b1975e7c7996fafa4ec505e51272cfaaa003f80a"
+    },
+    {
+      "kind": "binary",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/nextpnr-mistral",
+      "sha256": "e62f41204ca4c2c4a988c5ed2bd90028a3e48dfa54acb29f9ec963240d047924",
+      "size": 638377432,
+      "version_returncode": 0,
+      "version": "\"nextpnr-mistral\" -- Next Generation Place and Route (Version nextpnr-0.11.1-271-g0259c6dc)"
+    },
+    {
+      "kind": "configure-command.sh",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/configure-command.sh",
+      "sha256": "3d4ccc6a21c3301ab65975c9d9a6fa5fa2a699a8fc47200e0bdcbe25f1d25a26"
+    },
+    {
+      "kind": "configure.log",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/configure.log",
+      "sha256": "413ee8c55102df433b4ff9e5775be4d4d7684a97529d7930e03b544376d3ab31"
+    },
+    {
+      "kind": "build.log",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/build.log",
+      "sha256": "e780fc8e8bb4df15980a87c9996b28a94d25462fd03841efdcd4bb6a7a0d7e32"
+    },
+    {
+      "kind": "dependency-relink.log",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/dependency-relink.log",
+      "sha256": "f4be993b8a79b89bd9ddd5769dd11edef39054c9ac4ef23278b9b9e2c8ae3e0c"
+    },
+    {
+      "kind": "final-build-dry-run.log",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/final-build-dry-run.log",
+      "sha256": "ce1f179fd63dd7cbb2c7643a633a11fcd5065b853cb337d43e466493fda3ec04"
+    },
+    {
+      "kind": "CMakeCache.txt",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/CMakeCache.txt",
+      "sha256": "251fbfeb34f75171a9d89ffc820dcd0509e076ef8653f05b4dee0ef58f436491"
+    },
+    {
+      "kind": "compile_commands.json",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/compile_commands.json",
+      "sha256": "a7a91f69df4e85eedf169c3dacfbaeee423dcd31dcab94086cdb3bd65601ad48"
+    },
+    {
+      "kind": "source_archive",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed-source.tar",
+      "sha256": "ce6885ea6d32f4d811766d1e3526e95ffd5cb4453e10c49fb4a1647483e8db46"
+    },
+    {
+      "kind": "binary",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/nextpnr-mistral",
+      "sha256": "dede5ab70917aec964932c5b58ca5167d472306610eb330eb670dfa2a8394665",
+      "size": 638384096,
+      "version_returncode": 0,
+      "version": "\"nextpnr-mistral\" -- Next Generation Place and Route (Version nextpnr-0.11.1-272-gfdb8e11c)"
+    },
+    {
+      "kind": "configure-command.sh",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/configure-command.sh",
+      "sha256": "e105c058c5dcb940f4188e84d3f7d5e97363baf5921c43b1f02fd8c576bb0b01"
+    },
+    {
+      "kind": "configure.log",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/configure.log",
+      "sha256": "a554e6bd3b97970a53c313f6d0ffcfb8ef0ef6a9ab62a5e758d0b91561fbc7c9"
+    },
+    {
+      "kind": "build.log",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/build.log",
+      "sha256": "853d362599e685a4a4cdf1940b152d0949da305a193589bbccfd9f8183420944"
+    },
+    {
+      "kind": "dependency-relink.log",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/dependency-relink.log",
+      "sha256": "f4be993b8a79b89bd9ddd5769dd11edef39054c9ac4ef23278b9b9e2c8ae3e0c"
+    },
+    {
+      "kind": "final-build-dry-run.log",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/final-build-dry-run.log",
+      "sha256": "ba4edaf281fcb4602d3ad11ea9c044ea7c5d3a968d0ac2d7be05cc73af600ea9"
+    },
+    {
+      "kind": "CMakeCache.txt",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/CMakeCache.txt",
+      "sha256": "25257cb0f5a30565239864c49fcfb7ca058ee2cfca04da36dc3c9219e91a869a"
+    },
+    {
+      "kind": "compile_commands.json",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/compile_commands.json",
+      "sha256": "7644014d1376db4f8c2f35a5950e259413f5c61b52d411f700e241ed8ca43604"
+    },
+    {
+      "kind": "core.rbf",
+      "run": "fixed-retained/seed-4-run-1",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-1/core.rbf",
+      "sha256": "b87ba69855e9a711e45107271447f7095b902d769bd63e841af220569aac760b",
+      "size": 2578759
+    },
+    {
+      "kind": "routed.json",
+      "run": "fixed-retained/seed-4-run-1",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-1/routed.json",
+      "sha256": "840070aa93e9481539a59895355cf4889d6b1d73cb53b62fdb097c4b4186c0cb",
+      "size": 30081295
+    },
+    {
+      "kind": "timing.json",
+      "run": "fixed-retained/seed-4-run-1",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-1/timing.json",
+      "sha256": "83b3b9652fc6c3c6ed8c73bc72409e5ac16f0ba1893b0df7abad5d2215193a22",
+      "size": 2030689
+    },
+    {
+      "kind": "core.rbf",
+      "run": "fixed-retained/seed-4-run-2",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-2/core.rbf",
+      "sha256": "b87ba69855e9a711e45107271447f7095b902d769bd63e841af220569aac760b",
+      "size": 2578759
+    },
+    {
+      "kind": "routed.json",
+      "run": "fixed-retained/seed-4-run-2",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-2/routed.json",
+      "sha256": "840070aa93e9481539a59895355cf4889d6b1d73cb53b62fdb097c4b4186c0cb",
+      "size": 30081295
+    },
+    {
+      "kind": "timing.json",
+      "run": "fixed-retained/seed-4-run-2",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-retained/seed-4-run-2/timing.json",
+      "sha256": "83b3b9652fc6c3c6ed8c73bc72409e5ac16f0ba1893b0df7abad5d2215193a22",
+      "size": 2030689
+    },
+    {
+      "kind": "core.rbf",
+      "run": "fixed-reconstructed/seed-2-run-1",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-1/core.rbf",
+      "sha256": "5386a451030b074b33383dbd6325609a04f5fa3b6d1a0013c6cf2c319d4f5a8b",
+      "size": 2586067
+    },
+    {
+      "kind": "routed.json",
+      "run": "fixed-reconstructed/seed-2-run-1",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-1/routed.json",
+      "sha256": "6e178ea99ff6ef6ab4223693901f5d61f3ed3b593792077d2193060d4da9e749",
+      "size": 31021567
+    },
+    {
+      "kind": "timing.json",
+      "run": "fixed-reconstructed/seed-2-run-1",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-1/timing.json",
+      "sha256": "ffdf5274b9d91cbb7d23c73e616bf95456b254d7d3ff110c40575f4399fae61a",
+      "size": 2096906
+    },
+    {
+      "kind": "core.rbf",
+      "run": "fixed-reconstructed/seed-2-run-2",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-2/core.rbf",
+      "sha256": "5386a451030b074b33383dbd6325609a04f5fa3b6d1a0013c6cf2c319d4f5a8b",
+      "size": 2586067
+    },
+    {
+      "kind": "routed.json",
+      "run": "fixed-reconstructed/seed-2-run-2",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-2/routed.json",
+      "sha256": "6e178ea99ff6ef6ab4223693901f5d61f3ed3b593792077d2193060d4da9e749",
+      "size": 31021567
+    },
+    {
+      "kind": "timing.json",
+      "run": "fixed-reconstructed/seed-2-run-2",
+      "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-2/timing.json",
+      "sha256": "ffdf5274b9d91cbb7d23c73e616bf95456b254d7d3ff110c40575f4399fae61a",
+      "size": 2096906
+    }
+  ]
+}

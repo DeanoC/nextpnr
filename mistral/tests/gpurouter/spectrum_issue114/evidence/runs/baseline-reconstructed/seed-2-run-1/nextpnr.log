@@ -1,0 +1,356 @@
+Info: Initialising bels...
+Info: Initialising routing graph...
+Info:     imported 2740007 wires and 25465239 pips
+Info: constraining clock net 'FPGA_CLK1_50' to 50.00 MHz
+Info: FES reserved rect 'slot1' 24 1 28 18 (4338 bels)
+Info: FES reserved rect 'slot2' 24 21 28 38 (4338 bels)
+Info: FES reserved rect 'slot3' 24 41 28 58 (4338 bels)
+Info: FES reserved rect 'slot4' 24 61 28 78 (4338 bels)
+Info: Constraining IO 'system_clock.refclk_MISTRAL_IB_O' to pin PIN_V11 (bel MISTRAL_IO.32.0.0)
+Info: Constraining IO 'hdmi_sda_pad' to pin PIN_AA4 (bel MISTRAL_IO.4.0.2)
+Info: Constraining IO 'hdmi_scl_pad' to pin PIN_U10 (bel MISTRAL_IO.6.0.0)
+Info: Constraining IO 'HDMI_TX_VS_MISTRAL_OB_PAD' to pin PIN_V13 (bel MISTRAL_IO.60.0.1)
+Info: Constraining IO 'HDMI_TX_HS_MISTRAL_OB_PAD' to pin PIN_T8 (bel MISTRAL_IO.4.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_9' to pin PIN_Y4 (bel MISTRAL_IO.2.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_8' to pin PIN_AF10 (bel MISTRAL_IO.34.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_7' to pin PIN_Y5 (bel MISTRAL_IO.2.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_6' to pin PIN_AE11 (bel MISTRAL_IO.30.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_5' to pin PIN_AD10 (bel MISTRAL_IO.26.0.0)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_4' to pin PIN_AD11 (bel MISTRAL_IO.30.0.0)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_3' to pin PIN_Y8 (bel MISTRAL_IO.2.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_23' to pin PIN_AE8 (bel MISTRAL_IO.30.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_22' to pin PIN_AF9 (bel MISTRAL_IO.30.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_21' to pin PIN_AG6 (bel MISTRAL_IO.34.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_20' to pin PIN_AH6 (bel MISTRAL_IO.40.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_2' to pin PIN_W8 (bel MISTRAL_IO.2.0.0)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_19' to pin PIN_AH5 (bel MISTRAL_IO.40.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_18' to pin PIN_AH4 (bel MISTRAL_IO.38.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_17' to pin PIN_AH2 (bel MISTRAL_IO.36.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_16' to pin PIN_AE4 (bel MISTRAL_IO.26.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_15' to pin PIN_AF5 (bel MISTRAL_IO.32.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_14' to pin PIN_AF8 (bel MISTRAL_IO.28.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_13' to pin PIN_AF6 (bel MISTRAL_IO.32.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_12' to pin PIN_AE7 (bel MISTRAL_IO.28.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_11' to pin PIN_AB4 (bel MISTRAL_IO.4.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_10' to pin PIN_AE9 (bel MISTRAL_IO.26.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_1' to pin PIN_AE12 (bel MISTRAL_IO.38.0.0)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD' to pin PIN_AD12 (bel MISTRAL_IO.38.0.1)
+Info: Constraining IO 'HDMI_TX_DE_MISTRAL_OB_PAD' to pin PIN_AD19 (bel MISTRAL_IO.66.0.1)
+Info: Constraining IO 'HDMI_TX_CLK_MISTRAL_OB_PAD' to pin PIN_AG5 (bel MISTRAL_IO.38.0.2)
+Info: Constraining IO 'HDMI_SCLK_MISTRAL_OB_PAD' to pin PIN_T12 (bel MISTRAL_IO.36.0.1)
+Info: Constraining IO 'HDMI_MCLK_MISTRAL_OB_PAD' to pin PIN_U11 (bel MISTRAL_IO.28.0.1)
+Info: Constraining IO 'HDMI_LRCLK_MISTRAL_OB_PAD' to pin PIN_T11 (bel MISTRAL_IO.28.0.0)
+Info: Constraining IO 'HDMI_I2S_MISTRAL_OB_PAD' to pin PIN_T13 (bel MISTRAL_IO.36.0.0)
+Info: PLL 'video_clock.pll': fractional-N requested 74250000.000000 Hz, achieved 74249999.832439542 Hz, error -0.00225670649 ppm.
+Info: PLL 'video_clock.pll': 50 MHz -> 74.25 MHz, direct, M=8 N=1 C6=6, bel altera_pll.0.14.0
+Info: PLL 'system_clock.faithful.pll': fractional-N requested 52224000.000000 Hz, achieved 52224000.000569507 Hz, error 1.09050546e-05 ppm.
+Info: PLL 'system_clock.faithful.pll': fractional-N second requested 12288000.000000 Hz, achieved 12288000.000134002 Hz, error 1.09050546e-05 ppm.
+Info: PLL 'system_clock.faithful.pll': second output 12.288 MHz, C7=34.
+Info: PLL 'system_clock.faithful.pll': 50 MHz -> 52.224 MHz, direct, M=8 N=1 C6=8, bel altera_pll.0.31.0
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane9.
+Info: M10K 'machine.rom.lane9': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane8.
+Info: M10K 'machine.rom.lane8': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane7.
+Info: M10K 'machine.rom.lane7': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane6.
+Info: M10K 'machine.rom.lane6': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane5.
+Info: M10K 'machine.rom.lane5': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane4.
+Info: M10K 'machine.rom.lane4': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane3.
+Info: M10K 'machine.rom.lane3': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane2.
+Info: M10K 'machine.rom.lane2': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane15.
+Info: M10K 'machine.rom.lane15': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane14.
+Info: M10K 'machine.rom.lane14': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane13.
+Info: M10K 'machine.rom.lane13': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane12.
+Info: M10K 'machine.rom.lane12': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane11.
+Info: M10K 'machine.rom.lane11': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane10.
+Info: M10K 'machine.rom.lane10': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane1.
+Info: M10K 'machine.rom.lane1': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane0.
+Info: M10K 'machine.rom.lane0': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+
+Info: Device utilisation:
+Info: 	        MISTRAL_COMB:    6464/  83820     7%
+Info: 	          MISTRAL_FF:    2077/ 167640     1%
+Info: 	      MISTRAL_MUL9X9:       0/    336     0%
+Info: 	    MISTRAL_MUL18X18:       0/    112     0%
+Info: 	    MISTRAL_MUL27X27:       0/    112     0%
+Info: 	    MISTRAL_MUL18X19:       0/    112     0%
+Info: 	MISTRAL_MUL18X19_COMBINED:       0/    112     0%
+Info: 	          MISTRAL_IO:      35/    472     7%
+Info: 	          altera_pll:       2/      6    33%
+Info: 	      MISTRAL_CLKENA:       3/      8    37%
+Info: 	 cyclonev_oscillator:       0/      1     0%
+Info: 	cyclonev_hps_interface_mpu_general_purpose:       1/      1   100%
+Info: 	cyclonev_hps_interface_peripheral_i2c:       1/      4    25%
+Info: 	cyclonev_hps_interface_fpga2sdram:       0/      1     0%
+Info: 	        MISTRAL_M10K:     144/    553    26%
+
+Info: Placed 389 cells based on constraints.
+Info: Creating initial analytic placement for 7052 cells, random placement wirelen = 969375.
+Info:     at initial placer iter 0, wirelen = 15900
+Info:     at initial placer iter 1, wirelen = 14907
+Info:     at initial placer iter 2, wirelen = 15379
+Info:     at initial placer iter 3, wirelen = 15026
+Info: Running main analytical placer, max placement attempts per cell = 9520066.
+Info:     at iteration #1, type MISTRAL_COMB: wirelen solved = 24701, spread = 236207, legal = 236712; time = 0.09s
+Info:     at iteration #1, type MISTRAL_FF: wirelen solved = 207783, spread = 218825, legal = 224327; time = 0.80s
+Info:     at iteration #1, type MISTRAL_M10K: wirelen solved = 173693, spread = 250276, legal = 250394; time = 0.05s
+Info:     at iteration #1, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 250394, spread = 250394, legal = 254008; time = 0.04s
+Info:     at iteration #1, type ALL: wirelen solved = 15799, spread = 221128, legal = 229596; time = 0.42s
+Info:     at iteration #2, type MISTRAL_COMB: wirelen solved = 119801, spread = 228107, legal = 228955; time = 0.09s
+Info:     at iteration #2, type MISTRAL_FF: wirelen solved = 199955, spread = 200528, legal = 201635; time = 0.09s
+Info:     at iteration #2, type MISTRAL_M10K: wirelen solved = 180508, spread = 197389, legal = 198499; time = 0.05s
+Info:     at iteration #2, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 194315, spread = 194315, legal = 198499; time = 0.04s
+Info:     at iteration #2, type ALL: wirelen solved = 17761, spread = 190487, legal = 212971; time = 0.66s
+Info:     at iteration #3, type MISTRAL_COMB: wirelen solved = 106295, spread = 195268, legal = 196404; time = 0.10s
+Info:     at iteration #3, type MISTRAL_FF: wirelen solved = 165618, spread = 166301, legal = 167949; time = 0.11s
+Info:     at iteration #3, type MISTRAL_M10K: wirelen solved = 148215, spread = 164260, legal = 163338; time = 0.06s
+Info:     at iteration #3, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 159103, spread = 159103, legal = 163338; time = 0.05s
+Info:     at iteration #3, type ALL: wirelen solved = 17851, spread = 188983, legal = 200576; time = 0.40s
+Info:     at iteration #4, type MISTRAL_COMB: wirelen solved = 107835, spread = 203270, legal = 204489; time = 0.09s
+Info:     at iteration #4, type MISTRAL_FF: wirelen solved = 173242, spread = 173735, legal = 174860; time = 0.11s
+Info:     at iteration #4, type MISTRAL_M10K: wirelen solved = 151527, spread = 171678, legal = 171305; time = 0.06s
+Info:     at iteration #4, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 166949, spread = 166949, legal = 171305; time = 0.04s
+Info:     at iteration #4, type ALL: wirelen solved = 19621, spread = 191993, legal = 201756; time = 0.34s
+Info:     at iteration #5, type MISTRAL_COMB: wirelen solved = 108214, spread = 161602, legal = 163590; time = 0.10s
+Info:     at iteration #5, type MISTRAL_FF: wirelen solved = 148989, spread = 153469, legal = 155999; time = 0.17s
+Info:     at iteration #5, type MISTRAL_M10K: wirelen solved = 140518, spread = 158275, legal = 156306; time = 0.05s
+Info:     at iteration #5, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 152451, spread = 152451, legal = 156306; time = 0.09s
+Info:     at iteration #5, type ALL: wirelen solved = 21278, spread = 190766, legal = 200043; time = 0.31s
+Info:     at iteration #6, type MISTRAL_COMB: wirelen solved = 111367, spread = 228739, legal = 229526; time = 0.09s
+Info:     at iteration #6, type MISTRAL_FF: wirelen solved = 197426, spread = 198166, legal = 199786; time = 0.10s
+Info:     at iteration #6, type MISTRAL_M10K: wirelen solved = 175093, spread = 198234, legal = 198478; time = 0.06s
+Info:     at iteration #6, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 194481, spread = 194481, legal = 198478; time = 0.04s
+Info:     at iteration #6, type ALL: wirelen solved = 21436, spread = 181108, legal = 189094; time = 0.31s
+Info:     at iteration #7, type MISTRAL_COMB: wirelen solved = 104070, spread = 223820, legal = 224812; time = 0.10s
+Info:     at iteration #7, type MISTRAL_FF: wirelen solved = 186618, spread = 186777, legal = 187846; time = 0.08s
+Info:     at iteration #7, type MISTRAL_M10K: wirelen solved = 169667, spread = 188638, legal = 189740; time = 0.07s
+Info:     at iteration #7, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 185958, spread = 185958, legal = 189740; time = 0.07s
+Info:     at iteration #7, type ALL: wirelen solved = 22080, spread = 184621, legal = 197583; time = 0.34s
+Info:     at iteration #8, type MISTRAL_COMB: wirelen solved = 111437, spread = 180619, legal = 182064; time = 0.08s
+Info:     at iteration #8, type MISTRAL_FF: wirelen solved = 164705, spread = 164927, legal = 166042; time = 0.08s
+Info:     at iteration #8, type MISTRAL_M10K: wirelen solved = 151903, spread = 169800, legal = 170112; time = 0.06s
+Info:     at iteration #8, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 166367, spread = 166367, legal = 170112; time = 0.05s
+Info:     at iteration #8, type ALL: wirelen solved = 22510, spread = 184651, legal = 195286; time = 0.38s
+Info:     at iteration #9, type MISTRAL_COMB: wirelen solved = 102068, spread = 193901, legal = 194808; time = 0.10s
+Info:     at iteration #9, type MISTRAL_FF: wirelen solved = 161665, spread = 162108, legal = 162700; time = 0.08s
+Info:     at iteration #9, type MISTRAL_M10K: wirelen solved = 148485, spread = 166649, legal = 168191; time = 0.05s
+Info:     at iteration #9, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 164924, spread = 164924, legal = 168191; time = 0.04s
+Info:     at iteration #9, type ALL: wirelen solved = 23943, spread = 181014, legal = 193672; time = 0.58s
+Info:     at iteration #10, type MISTRAL_COMB: wirelen solved = 109719, spread = 203785, legal = 204257; time = 0.10s
+Info:     at iteration #10, type MISTRAL_FF: wirelen solved = 179111, spread = 179428, legal = 180817; time = 0.11s
+Info:     at iteration #10, type MISTRAL_M10K: wirelen solved = 159970, spread = 175839, legal = 176452; time = 0.06s
+Info:     at iteration #10, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 172523, spread = 172523, legal = 176452; time = 0.05s
+Info:     at iteration #10, type ALL: wirelen solved = 24820, spread = 183903, legal = 198789; time = 0.47s
+Info:     at iteration #11, type MISTRAL_COMB: wirelen solved = 105677, spread = 202136, legal = 203125; time = 0.09s
+Info:     at iteration #11, type MISTRAL_FF: wirelen solved = 179265, spread = 179929, legal = 181266; time = 0.09s
+Info:     at iteration #11, type MISTRAL_M10K: wirelen solved = 165108, spread = 174375, legal = 174902; time = 0.05s
+Info:     at iteration #11, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 170868, spread = 170868, legal = 174902; time = 0.05s
+Info:     at iteration #11, type ALL: wirelen solved = 23995, spread = 188698, legal = 197361; time = 0.37s
+Info: HeAP Placer Time: 9.91s
+Info:   of which solving equations: 4.61s
+Info:   of which spreading cells: 0.42s
+Info:   of which strict legalisation: 4.03s
+
+Info: Running simulated annealing placer for refinement.
+Info:   at iteration #1: temp = 0.000000, timing cost = 2436, wirelen = 189094
+Info:   at iteration #5: temp = 0.000000, timing cost = 1598, wirelen = 140304
+Info:   at iteration #10: temp = 0.000000, timing cost = 1591, wirelen = 129536
+Info:   at iteration #15: temp = 0.000000, timing cost = 1767, wirelen = 125390
+Info:   at iteration #20: temp = 0.000000, timing cost = 1743, wirelen = 122354
+Info:   at iteration #25: temp = 0.000000, timing cost = 1544, wirelen = 120866
+Info:   at iteration #30: temp = 0.000000, timing cost = 1667, wirelen = 120087
+Info:   at iteration #35: temp = 0.000000, timing cost = 1654, wirelen = 119683
+Info:   at iteration #40: temp = 0.000000, timing cost = 1662, wirelen = 119449
+Info:   at iteration #45: temp = 0.000000, timing cost = 1662, wirelen = 119309
+Info:   at iteration #46: temp = 0.000000, timing cost = 1654, wirelen = 119289 
+Info: SA placement time 9.52s
+
+Info: Max frequency for clock           'machine.ram.pixel_clk': 87.12 MHz (PASS at 74.25 MHz)
+Info: Max frequency for clock 'system_clock.faithful.clocks[0]': 45.98 MHz (FAIL at 52.22 MHz)
+Info: Max frequency for clock 'system_clock.faithful.clocks[1]': 205.47 MHz (PASS at 12.29 MHz)
+
+Info: Max delay <async>                                 -> posedge system_clock.faithful.clocks[1]: 4.25 ns
+Info: Max delay posedge system_clock.faithful.clocks[0] -> posedge machine.ram.pixel_clk          : 1.22 ns
+Info: Max delay posedge system_clock.faithful.clocks[0] -> posedge system_clock.faithful.clocks[1]: 1.53 ns
+Info: Max delay posedge system_clock.faithful.clocks[1] -> posedge system_clock.faithful.clocks[0]: 1.29 ns
+
+Info: Slack histogram:
+Info:  legend: * represents 36 endpoint(s)
+Info:          + represents [1,36) endpoint(s)
+Info: [ -2599,   1559) |*****+
+Info: [  1559,   5717) |*******************+
+Info: [  5717,   9875) |************************************************************ 
+Info: [  9875,  14033) |****************************************************+
+Info: [ 14033,  18191) |***************************************************+
+Info: [ 18191,  22349) |+
+Info: [ 22349,  26507) | 
+Info: [ 26507,  30665) | 
+Info: [ 30665,  34823) | 
+Info: [ 34823,  38981) | 
+Info: [ 38981,  43139) | 
+Info: [ 43139,  47297) | 
+Info: [ 47297,  51455) | 
+Info: [ 51455,  55613) | 
+Info: [ 55613,  59771) | 
+Info: [ 59771,  63929) | 
+Info: [ 63929,  68087) | 
+Info: [ 68087,  72245) | 
+Info: [ 72245,  76403) | 
+Info: [ 76403,  80561) |****+
+Info: Checksum: 0x364c89a2
+Info: Preparing LABs for routing...
+Info: Routing globals...
+Info:     routed net 'system_clock.faithful.clocks[0]' using global resources
+Info:     routed net 'machine.ram.pixel_clk' using global resources
+Info:     routed net 'system_clock.faithful.clocks[1]' using global resources
+Info: Running the GPU router...
+Info: Setting up routing resources...
+Info:     flattened 2740007 wires and 27175224 pips in 0.30s
+Info:     backend hip:AMD Radeon RX 7900 XTX ready in 0.07s (estimate 0.075 ns/x, 0.200 ns/y)
+Info: Running main router loop...
+Info:     iter=1 wires=135185 overused=14875 overuse=20780 tmgfail=0 nets=10139 batches=12 archfail=NA
+Info:     iter=2 wires=138991 overused=9214 overuse=11626 tmgfail=0 nets=4819 batches=12 archfail=NA
+Info:     iter=3 wires=141795 overused=5846 overuse=7169 tmgfail=0 nets=2925 batches=12 archfail=NA
+Info:     iter=4 wires=143024 overused=3728 overuse=4459 tmgfail=0 nets=1868 batches=12 archfail=NA
+Info:     iter=5 wires=143852 overused=2478 overuse=2903 tmgfail=0 nets=1236 batches=12 archfail=NA
+Info:     iter=6 wires=144584 overused=1664 overuse=1902 tmgfail=0 nets=861 batches=12 archfail=NA
+Info:     iter=7 wires=144943 overused=1137 overuse=1252 tmgfail=0 nets=639 batches=12 archfail=NA
+Info:     iter=8 wires=145177 overused=825 overuse=890 tmgfail=0 nets=476 batches=12 archfail=NA
+Info:     iter=9 wires=145499 overused=641 overuse=686 tmgfail=0 nets=373 batches=12 archfail=NA
+Info:     iter=10 wires=145702 overused=439 overuse=465 tmgfail=0 nets=311 batches=12 archfail=NA
+Info:     iter=11 wires=145792 overused=340 overuse=355 tmgfail=0 nets=247 batches=12 archfail=NA
+Info:     iter=12 wires=145894 overused=272 overuse=281 tmgfail=0 nets=207 batches=12 archfail=NA
+Info:     iter=13 wires=145968 overused=250 overuse=252 tmgfail=0 nets=183 batches=12 archfail=NA
+Info:     iter=14 wires=146167 overused=185 overuse=192 tmgfail=0 nets=163 batches=12 archfail=NA
+Info:     iter=15 wires=146125 overused=162 overuse=167 tmgfail=0 nets=120 batches=12 archfail=NA
+Info:     iter=16 wires=146161 overused=124 overuse=126 tmgfail=0 nets=101 batches=12 archfail=NA
+Info:     iter=17 wires=146179 overused=114 overuse=116 tmgfail=0 nets=97 batches=12 archfail=NA
+Info:     iter=18 wires=146190 overused=107 overuse=108 tmgfail=0 nets=89 batches=12 archfail=NA
+Info:     iter=19 wires=146239 overused=102 overuse=103 tmgfail=0 nets=84 batches=12 archfail=NA
+Info:     iter=20 wires=146275 overused=81 overuse=82 tmgfail=0 nets=76 batches=12 archfail=NA
+Info:     iter=21 wires=146303 overused=75 overuse=75 tmgfail=0 nets=64 batches=12 archfail=NA
+Info:     iter=22 wires=146289 overused=65 overuse=65 tmgfail=0 nets=60 batches=12 archfail=NA
+Info:     iter=23 wires=146323 overused=70 overuse=70 tmgfail=0 nets=57 batches=12 archfail=NA
+Info:     iter=24 wires=146317 overused=67 overuse=68 tmgfail=0 nets=56 batches=12 archfail=NA
+Info:     iter=25 wires=146345 overused=70 overuse=70 tmgfail=0 nets=52 batches=12 archfail=NA
+Info:     iter=26 wires=146321 overused=64 overuse=66 tmgfail=0 nets=54 batches=12 archfail=NA
+Info:     iter=27 wires=146335 overused=66 overuse=66 tmgfail=0 nets=51 batches=12 archfail=NA
+Info:     iter=28 wires=146347 overused=51 overuse=51 tmgfail=0 nets=47 batches=12 archfail=NA
+Info:     iter=29 wires=146364 overused=59 overuse=59 tmgfail=0 nets=44 batches=12 archfail=NA
+Info:     iter=30 wires=146376 overused=50 overuse=50 tmgfail=0 nets=41 batches=12 archfail=NA
+Info:     iter=31 wires=146396 overused=48 overuse=48 tmgfail=0 nets=38 batches=12 archfail=NA
+Info:     iter=32 wires=146382 overused=45 overuse=45 tmgfail=0 nets=37 batches=12 archfail=NA
+Info:     iter=33 wires=146409 overused=62 overuse=63 tmgfail=0 nets=36 batches=12 archfail=NA
+Info:     iter=34 wires=146379 overused=40 overuse=40 tmgfail=0 nets=35 batches=12 archfail=NA
+Info:     iter=35 wires=146420 overused=40 overuse=40 tmgfail=0 nets=36 batches=12 archfail=NA
+Info:     iter=36 wires=146411 overused=46 overuse=46 tmgfail=0 nets=34 batches=12 archfail=NA
+Info:     iter=37 wires=146405 overused=40 overuse=40 tmgfail=0 nets=34 batches=12 archfail=NA
+Info:     iter=38 wires=146422 overused=40 overuse=40 tmgfail=0 nets=34 batches=12 archfail=NA
+Info:     iter=39 wires=146426 overused=38 overuse=38 tmgfail=0 nets=32 batches=12 archfail=NA
+Info:     iter=40 wires=146425 overused=37 overuse=37 tmgfail=0 nets=32 batches=12 archfail=NA
+Info:     iter=41 wires=146454 overused=38 overuse=38 tmgfail=0 nets=32 batches=12 archfail=NA
+Info:     iter=42 wires=146449 overused=37 overuse=37 tmgfail=0 nets=31 batches=12 archfail=NA
+Info:     iter=43 wires=146461 overused=35 overuse=36 tmgfail=0 nets=31 batches=12 archfail=NA
+Info:     iter=44 wires=146458 overused=37 overuse=37 tmgfail=0 nets=30 batches=12 archfail=NA
+Info:     iter=45 wires=146453 overused=31 overuse=32 tmgfail=0 nets=29 batches=12 archfail=NA
+Info:     iter=46 wires=146439 overused=39 overuse=39 tmgfail=0 nets=29 batches=12 archfail=NA
+Info:     iter=47 wires=146458 overused=38 overuse=40 tmgfail=0 nets=29 batches=12 archfail=NA
+Info:     iter=48 wires=146462 overused=32 overuse=32 tmgfail=0 nets=29 batches=12 archfail=NA
+Info:     iter=49 wires=146486 overused=28 overuse=29 tmgfail=0 nets=28 batches=12 archfail=NA
+Info:     iter=50 wires=146465 overused=31 overuse=31 tmgfail=0 nets=26 batches=12 archfail=NA
+Info:     iter=51 wires=146478 overused=28 overuse=28 tmgfail=0 nets=26 batches=12 archfail=NA
+Info:     iter=52 wires=146479 overused=27 overuse=27 tmgfail=0 nets=25 batches=12 archfail=NA
+Info:     iter=53 wires=146500 overused=25 overuse=25 tmgfail=0 nets=24 batches=12 archfail=NA
+Info:     iter=54 wires=146508 overused=25 overuse=26 tmgfail=0 nets=23 batches=12 archfail=NA
+Info:     iter=55 wires=146521 overused=24 overuse=24 tmgfail=0 nets=22 batches=12 archfail=NA
+Info:     iter=56 wires=146511 overused=22 overuse=22 tmgfail=0 nets=22 batches=12 archfail=NA
+Info:     iter=57 wires=146512 overused=21 overuse=21 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=58 wires=146512 overused=21 overuse=21 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=59 wires=146512 overused=26 overuse=26 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=60 wires=146528 overused=23 overuse=23 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=61 wires=146512 overused=21 overuse=21 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=62 wires=146506 overused=21 overuse=21 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=63 wires=146491 overused=22 overuse=22 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=64 wires=146501 overused=22 overuse=22 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=65 wires=146511 overused=20 overuse=20 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=66 wires=146503 overused=21 overuse=21 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=67 wires=146520 overused=22 overuse=22 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=68 wires=146523 overused=22 overuse=22 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=69 wires=146519 overused=21 overuse=21 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=70 wires=146521 overused=21 overuse=21 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=71 wires=146516 overused=20 overuse=20 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=72 wires=146514 overused=23 overuse=23 tmgfail=0 nets=19 batches=12 archfail=NA
+Info:     iter=73 wires=146501 overused=20 overuse=20 tmgfail=0 nets=19 batches=12 archfail=NA
+Info:     iter=74 wires=146517 overused=21 overuse=21 tmgfail=0 nets=19 batches=12 archfail=NA
+Info:     iter=75 wires=146518 overused=22 overuse=22 tmgfail=0 nets=19 batches=12 archfail=NA
+Info:     iter=76 wires=146507 overused=20 overuse=20 tmgfail=0 nets=19 batches=12 archfail=NA
+Info:     iter=77 wires=146535 overused=18 overuse=18 tmgfail=0 nets=19 batches=12 archfail=NA
+Info:     iter=78 wires=146540 overused=20 overuse=20 tmgfail=0 nets=18 batches=12 archfail=NA
+Info:     iter=79 wires=146542 overused=19 overuse=19 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=80 wires=146537 overused=20 overuse=20 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=81 wires=146542 overused=21 overuse=21 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=82 wires=146544 overused=21 overuse=21 tmgfail=0 nets=16 batches=12 archfail=NA
+Info:     iter=83 wires=146538 overused=15 overuse=15 tmgfail=0 nets=16 batches=12 archfail=NA
+Info:     iter=84 wires=146531 overused=17 overuse=17 tmgfail=0 nets=15 batches=12 archfail=NA
+Info:     iter=85 wires=146535 overused=16 overuse=16 tmgfail=0 nets=15 batches=12 archfail=NA
+Info:     iter=86 wires=146537 overused=16 overuse=16 tmgfail=0 nets=14 batches=12 archfail=NA
+Info:     iter=87 wires=146551 overused=15 overuse=15 tmgfail=0 nets=14 batches=12 archfail=NA
+Info:     iter=88 wires=146583 overused=8 overuse=8 tmgfail=0 nets=15 batches=12 archfail=NA
+Info:     iter=89 wires=146608 overused=7 overuse=7 tmgfail=0 nets=8 batches=8 archfail=NA
+Info:     iter=90 wires=146616 overused=6 overuse=6 tmgfail=0 nets=7 batches=7 archfail=NA
+Info:     iter=91 wires=146632 overused=6 overuse=6 tmgfail=0 nets=6 batches=6 archfail=NA
+Info:     iter=92 wires=146648 overused=7 overuse=7 tmgfail=0 nets=6 batches=6 archfail=NA
+Info:     iter=93 wires=146660 overused=7 overuse=7 tmgfail=0 nets=6 batches=6 archfail=NA
+Info:     iter=94 wires=146673 overused=3 overuse=3 tmgfail=0 nets=6 batches=6 archfail=NA
+Info:     iter=95 wires=146679 overused=3 overuse=3 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=96 wires=146684 overused=3 overuse=3 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=97 wires=146678 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=98 wires=146681 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=99 wires=146693 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:         stalled: wire TD.12.29.36 occ=2 reserved=-1 used by machine.cpu_illegal(count=1) machine.ram.video_offset_MISTRAL_FF_DATAIN_1_Q_MISTRAL_ALUT5_Q_1_E[1](count=1)
+Info:         stalled: wire TD.2.40.8 occ=2 reserved=-1 used by gp_mailbox.total[0](count=1) gp_mailbox.begin_staged_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_C_Q_MISTRAL_ALUT5_Q_4_D_MISTRAL_ALUT5_Q_1_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_2_D_MISTRAL_ALUT5_Q_1_E[0](count=1)
+Info:     iter=100 wires=146692 overused=3 overuse=3 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=101 wires=146710 overused=1 overuse=1 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=102 wires=146713 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=103 wires=146718 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=104 wires=146719 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=105 wires=146717 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=106 wires=146715 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=107 wires=146720 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=108 wires=146719 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=109 wires=146719 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=110 wires=146722 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=111 wires=146719 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=112 wires=146716 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=113 wires=146718 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=114 wires=146718 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=115 wires=146720 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=116 wires=146723 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=117 wires=146730 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=118 wires=146725 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=119 wires=146722 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=120 wires=146723 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     congestion has not improved from 1 overused wires in 20 iterations; accelerating present-congestion growth (x1.50)
+Info:     iter=121 wires=146726 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=122 wires=146730 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     congestion plateau at 1 overused wires did not clear (unfroze 0, 1 remain)
+Info:         stalled: wire TD.2.40.38 occ=2 reserved=-1 used by gp_mailbox.total[0](count=1) gp_mailbox.begin_staged_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_C_Q_MISTRAL_ALUT6_Q_1_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_1_E[2](count=1)
+Warning: GPU router did not converge (1 overused wires).
+Info: Routed Fmax (pip delay table) for clock 'machine.ram.pixel_clk': 101.18 MHz
+Info: Routed Fmax (pip delay table) for clock 'system_clock.faithful.clocks[0]': 46.41 MHz
+Info: Routed Fmax (pip delay table) for clock 'system_clock.faithful.clocks[1]': 192.72 MHz
+ERROR: Routing design failed.
+1 warning, 1 error

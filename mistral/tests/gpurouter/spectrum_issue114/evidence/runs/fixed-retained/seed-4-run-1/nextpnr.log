@@ -1,0 +1,1374 @@
+Info: Initialising bels...
+Info: Initialising routing graph...
+Info:     imported 2740007 wires and 25465239 pips
+Info: constraining clock net 'FPGA_CLK1_50' to 50.00 MHz
+Info: FES reserved rect 'slot1' 24 1 28 18 (4338 bels)
+Info: FES reserved rect 'slot2' 24 21 28 38 (4338 bels)
+Info: FES reserved rect 'slot3' 24 41 28 58 (4338 bels)
+Info: FES reserved rect 'slot4' 24 61 28 78 (4338 bels)
+Info: Constraining IO 'system_clock.refclk_MISTRAL_IB_O' to pin PIN_V11 (bel MISTRAL_IO.32.0.0)
+Info: Constraining IO 'hdmi_sda_pad' to pin PIN_AA4 (bel MISTRAL_IO.4.0.2)
+Info: Constraining IO 'hdmi_scl_pad' to pin PIN_U10 (bel MISTRAL_IO.6.0.0)
+Info: Constraining IO 'HDMI_TX_VS_MISTRAL_OB_PAD' to pin PIN_V13 (bel MISTRAL_IO.60.0.1)
+Info: Constraining IO 'HDMI_TX_HS_MISTRAL_OB_PAD' to pin PIN_T8 (bel MISTRAL_IO.4.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_9' to pin PIN_Y4 (bel MISTRAL_IO.2.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_8' to pin PIN_AF10 (bel MISTRAL_IO.34.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_7' to pin PIN_Y5 (bel MISTRAL_IO.2.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_6' to pin PIN_AE11 (bel MISTRAL_IO.30.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_5' to pin PIN_AD10 (bel MISTRAL_IO.26.0.0)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_4' to pin PIN_AD11 (bel MISTRAL_IO.30.0.0)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_3' to pin PIN_Y8 (bel MISTRAL_IO.2.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_23' to pin PIN_AE8 (bel MISTRAL_IO.30.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_22' to pin PIN_AF9 (bel MISTRAL_IO.30.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_21' to pin PIN_AG6 (bel MISTRAL_IO.34.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_20' to pin PIN_AH6 (bel MISTRAL_IO.40.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_2' to pin PIN_W8 (bel MISTRAL_IO.2.0.0)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_19' to pin PIN_AH5 (bel MISTRAL_IO.40.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_18' to pin PIN_AH4 (bel MISTRAL_IO.38.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_17' to pin PIN_AH2 (bel MISTRAL_IO.36.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_16' to pin PIN_AE4 (bel MISTRAL_IO.26.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_15' to pin PIN_AF5 (bel MISTRAL_IO.32.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_14' to pin PIN_AF8 (bel MISTRAL_IO.28.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_13' to pin PIN_AF6 (bel MISTRAL_IO.32.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_12' to pin PIN_AE7 (bel MISTRAL_IO.28.0.2)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_11' to pin PIN_AB4 (bel MISTRAL_IO.4.0.3)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_10' to pin PIN_AE9 (bel MISTRAL_IO.26.0.1)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD_1' to pin PIN_AE12 (bel MISTRAL_IO.38.0.0)
+Info: Constraining IO 'HDMI_TX_D_MISTRAL_OB_PAD' to pin PIN_AD12 (bel MISTRAL_IO.38.0.1)
+Info: Constraining IO 'HDMI_TX_DE_MISTRAL_OB_PAD' to pin PIN_AD19 (bel MISTRAL_IO.66.0.1)
+Info: Constraining IO 'HDMI_TX_CLK_MISTRAL_OB_PAD' to pin PIN_AG5 (bel MISTRAL_IO.38.0.2)
+Info: Constraining IO 'HDMI_SCLK_MISTRAL_OB_PAD' to pin PIN_T12 (bel MISTRAL_IO.36.0.1)
+Info: Constraining IO 'HDMI_MCLK_MISTRAL_OB_PAD' to pin PIN_U11 (bel MISTRAL_IO.28.0.1)
+Info: Constraining IO 'HDMI_LRCLK_MISTRAL_OB_PAD' to pin PIN_T11 (bel MISTRAL_IO.28.0.0)
+Info: Constraining IO 'HDMI_I2S_MISTRAL_OB_PAD' to pin PIN_T13 (bel MISTRAL_IO.36.0.0)
+Info: PLL 'video_clock.pll': fractional-N requested 74250000.000000 Hz, achieved 74249999.832439542 Hz, error -0.00225670649 ppm.
+Info: PLL 'video_clock.pll': 50 MHz -> 74.25 MHz, direct, M=8 N=1 C6=6, bel altera_pll.0.14.0
+Info: PLL 'system_clock.faithful.pll': fractional-N requested 52224000.000000 Hz, achieved 52224000.000569507 Hz, error 1.09050546e-05 ppm.
+Info: PLL 'system_clock.faithful.pll': fractional-N second requested 12288000.000000 Hz, achieved 12288000.000134002 Hz, error 1.09050546e-05 ppm.
+Info: PLL 'system_clock.faithful.pll': second output 12.288 MHz, C7=34.
+Info: PLL 'system_clock.faithful.pll': 50 MHz -> 52.224 MHz, direct, M=8 N=1 C6=8, bel altera_pll.0.31.0
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane9.
+Info: M10K 'machine.rom.lane9': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane8.
+Info: M10K 'machine.rom.lane8': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane7.
+Info: M10K 'machine.rom.lane7': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane6.
+Info: M10K 'machine.rom.lane6': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane5.
+Info: M10K 'machine.rom.lane5': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane4.
+Info: M10K 'machine.rom.lane4': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane3.
+Info: M10K 'machine.rom.lane3': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane2.
+Info: M10K 'machine.rom.lane2': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane15.
+Info: M10K 'machine.rom.lane15': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane14.
+Info: M10K 'machine.rom.lane14': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane13.
+Info: M10K 'machine.rom.lane13': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane12.
+Info: M10K 'machine.rom.lane12': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane11.
+Info: M10K 'machine.rom.lane11': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane10.
+Info: M10K 'machine.rom.lane10': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane1.
+Info: M10K 'machine.rom.lane1': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+Info: Setting up 10-bit address, 10-bit data M10K for machine.rom.lane0.
+Info: M10K 'machine.rom.lane0': async read clock 'system_clock.faithful.clocks[0]' selected from downstream consumer analysis.
+
+Info: Device utilisation:
+Info: 	        MISTRAL_COMB:    6567/  83820     7%
+Info: 	          MISTRAL_FF:    2077/ 167640     1%
+Info: 	      MISTRAL_MUL9X9:       0/    336     0%
+Info: 	    MISTRAL_MUL18X18:       0/    112     0%
+Info: 	    MISTRAL_MUL27X27:       0/    112     0%
+Info: 	    MISTRAL_MUL18X19:       0/    112     0%
+Info: 	MISTRAL_MUL18X19_COMBINED:       0/    112     0%
+Info: 	          MISTRAL_IO:      35/    472     7%
+Info: 	          altera_pll:       2/      6    33%
+Info: 	      MISTRAL_CLKENA:       3/      8    37%
+Info: 	 cyclonev_oscillator:       0/      1     0%
+Info: 	cyclonev_hps_interface_mpu_general_purpose:       1/      1   100%
+Info: 	cyclonev_hps_interface_peripheral_i2c:       1/      4    25%
+Info: 	cyclonev_hps_interface_fpga2sdram:       0/      1     0%
+Info: 	        MISTRAL_M10K:     144/    553    26%
+
+Info: Placed 389 cells based on constraints.
+Info: Creating initial analytic placement for 7139 cells, random placement wirelen = 982970.
+Info:     at initial placer iter 0, wirelen = 15909
+Info:     at initial placer iter 1, wirelen = 15032
+Info:     at initial placer iter 2, wirelen = 15347
+Info:     at initial placer iter 3, wirelen = 15050
+Info: Running main analytical placer, max placement attempts per cell = 9746112.
+Info:     at iteration #1, type MISTRAL_FF: wirelen solved = 19142, spread = 88649, legal = 88806; time = 0.08s
+Info:     at iteration #1, type MISTRAL_COMB: wirelen solved = 59291, spread = 155785, legal = 156967; time = 0.10s
+Info:     at iteration #1, type MISTRAL_M10K: wirelen solved = 135117, spread = 225484, legal = 224502; time = 0.04s
+Info:     at iteration #1, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 224278, spread = 224278, legal = 229037; time = 0.04s
+Info:     at iteration #1, type ALL: wirelen solved = 14850, spread = 204982, legal = 218532; time = 0.42s
+Info:     at iteration #2, type MISTRAL_FF: wirelen solved = 212828, spread = 213887, legal = 216217; time = 0.18s
+Info:     at iteration #2, type MISTRAL_COMB: wirelen solved = 116252, spread = 215825, legal = 217968; time = 0.10s
+Info:     at iteration #2, type MISTRAL_M10K: wirelen solved = 196906, spread = 216146, legal = 216931; time = 0.04s
+Info:     at iteration #2, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 212756, spread = 212756, legal = 216931; time = 0.04s
+Info:     at iteration #2, type ALL: wirelen solved = 17477, spread = 184525, legal = 201179; time = 0.61s
+Info:     at iteration #3, type MISTRAL_FF: wirelen solved = 197000, spread = 197578, legal = 201445; time = 0.33s
+Info:     at iteration #3, type MISTRAL_COMB: wirelen solved = 103217, spread = 151261, legal = 155515; time = 0.12s
+Info:     at iteration #3, type MISTRAL_M10K: wirelen solved = 140132, spread = 155842, legal = 155886; time = 0.05s
+Info:     at iteration #3, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 152458, spread = 152458, legal = 155886; time = 0.04s
+Info:     at iteration #3, type ALL: wirelen solved = 17603, spread = 170466, legal = 185293; time = 0.44s
+Info:     at iteration #4, type MISTRAL_FF: wirelen solved = 180360, spread = 189119, legal = 190935; time = 0.37s
+Info:     at iteration #4, type MISTRAL_COMB: wirelen solved = 107601, spread = 198633, legal = 200292; time = 0.11s
+Info:     at iteration #4, type MISTRAL_M10K: wirelen solved = 185135, spread = 200378, legal = 200649; time = 0.05s
+Info:     at iteration #4, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 197212, spread = 197212, legal = 200649; time = 0.04s
+Info:     at iteration #4, type ALL: wirelen solved = 18451, spread = 202032, legal = 209056; time = 0.30s
+Info:     at iteration #5, type MISTRAL_FF: wirelen solved = 205177, spread = 206246, legal = 209601; time = 0.20s
+Info:     at iteration #5, type MISTRAL_COMB: wirelen solved = 113338, spread = 192554, legal = 194208; time = 0.09s
+Info:     at iteration #5, type MISTRAL_M10K: wirelen solved = 169235, spread = 190662, legal = 190543; time = 0.04s
+Info:     at iteration #5, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 187284, spread = 187284, legal = 190543; time = 0.04s
+Info:     at iteration #5, type ALL: wirelen solved = 20658, spread = 188019, legal = 198609; time = 0.33s
+Info:     at iteration #6, type MISTRAL_FF: wirelen solved = 194704, spread = 197975, legal = 200585; time = 0.19s
+Info:     at iteration #6, type MISTRAL_COMB: wirelen solved = 104841, spread = 166930, legal = 168758; time = 0.09s
+Info:     at iteration #6, type MISTRAL_M10K: wirelen solved = 152066, spread = 180640, legal = 181815; time = 0.05s
+Info:     at iteration #6, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 178667, spread = 178667, legal = 181815; time = 0.04s
+Info:     at iteration #6, type ALL: wirelen solved = 20776, spread = 181894, legal = 195644; time = 0.39s
+Info:     at iteration #7, type MISTRAL_FF: wirelen solved = 191149, spread = 192475, legal = 196703; time = 0.28s
+Info:     at iteration #7, type MISTRAL_COMB: wirelen solved = 105496, spread = 197953, legal = 198822; time = 0.08s
+Info:     at iteration #7, type MISTRAL_M10K: wirelen solved = 178552, spread = 208469, legal = 208499; time = 0.04s
+Info:     at iteration #7, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 205567, spread = 205567, legal = 208499; time = 0.04s
+Info:     at iteration #7, type ALL: wirelen solved = 20647, spread = 174832, legal = 192116; time = 0.49s
+Info:     at iteration #8, type MISTRAL_FF: wirelen solved = 188678, spread = 189753, legal = 192401; time = 0.20s
+Info:     at iteration #8, type MISTRAL_COMB: wirelen solved = 95998, spread = 133549, legal = 136789; time = 0.10s
+Info:     at iteration #8, type MISTRAL_M10K: wirelen solved = 125632, spread = 153335, legal = 154976; time = 0.04s
+Info:     at iteration #8, type cyclonev_hps_interface_mpu_general_purpose: wirelen solved = 151518, spread = 151518, legal = 154976; time = 0.04s
+Info:     at iteration #8, type ALL: wirelen solved = 21283, spread = 166244, legal = 185759; time = 0.46s
+Info: HeAP Placer Time: 7.72s
+Info:   of which solving equations: 3.01s
+Info:   of which spreading cells: 0.27s
+Info:   of which strict legalisation: 3.88s
+
+Info: Running simulated annealing placer for refinement.
+Info:   at iteration #1: temp = 0.000000, timing cost = 1950, wirelen = 185293
+Info:   at iteration #5: temp = 0.000000, timing cost = 2151, wirelen = 126838
+Info:   at iteration #10: temp = 0.000000, timing cost = 2564, wirelen = 116549
+Info:   at iteration #15: temp = 0.000000, timing cost = 2239, wirelen = 111715
+Info:   at iteration #20: temp = 0.000000, timing cost = 2307, wirelen = 108834
+Info:   at iteration #25: temp = 0.000000, timing cost = 1924, wirelen = 106692
+Info:   at iteration #30: temp = 0.000000, timing cost = 2061, wirelen = 105882
+Info:   at iteration #35: temp = 0.000000, timing cost = 2013, wirelen = 105187
+Info:   at iteration #40: temp = 0.000000, timing cost = 2077, wirelen = 104900
+Info:   at iteration #44: temp = 0.000000, timing cost = 2033, wirelen = 104747 
+Info: SA placement time 8.79s
+
+Info: Max frequency for clock           'machine.ram.pixel_clk': 87.73 MHz (PASS at 74.25 MHz)
+Info: Max frequency for clock 'system_clock.faithful.clocks[0]': 46.20 MHz (FAIL at 52.22 MHz)
+Info: Max frequency for clock 'system_clock.faithful.clocks[1]': 184.43 MHz (PASS at 12.29 MHz)
+
+Info: Max delay <async>                                 -> posedge system_clock.faithful.clocks[1]: 4.66 ns
+Info: Max delay posedge system_clock.faithful.clocks[0] -> posedge machine.ram.pixel_clk          : 1.22 ns
+Info: Max delay posedge system_clock.faithful.clocks[0] -> posedge system_clock.faithful.clocks[1]: 1.53 ns
+Info: Max delay posedge system_clock.faithful.clocks[1] -> posedge system_clock.faithful.clocks[0]: 1.25 ns
+
+Info: Slack histogram:
+Info:  legend: * represents 47 endpoint(s)
+Info:          + represents [1,47) endpoint(s)
+Info: [ -2496,   1651) |***+
+Info: [  1651,   5798) |************+
+Info: [  5798,   9945) |************************************************************ 
+Info: [  9945,  14092) |********************************+
+Info: [ 14092,  18239) |************************************+
+Info: [ 18239,  22386) |+
+Info: [ 22386,  26533) | 
+Info: [ 26533,  30680) | 
+Info: [ 30680,  34827) | 
+Info: [ 34827,  38974) | 
+Info: [ 38974,  43121) | 
+Info: [ 43121,  47268) | 
+Info: [ 47268,  51415) | 
+Info: [ 51415,  55562) | 
+Info: [ 55562,  59709) | 
+Info: [ 59709,  63856) | 
+Info: [ 63856,  68003) | 
+Info: [ 68003,  72150) | 
+Info: [ 72150,  76297) |+
+Info: [ 76297,  80444) |***+
+Info: Checksum: 0xe8bf3a51
+Info: Preparing LABs for routing...
+Info: Routing globals...
+Info:     routed net 'system_clock.faithful.clocks[0]' using global resources
+Info:     routed net 'machine.ram.pixel_clk' using global resources
+Info:     routed net 'system_clock.faithful.clocks[1]' using global resources
+Info: Running the GPU router...
+Info: Setting up routing resources...
+Info:     flattened 2740007 wires and 27175224 pips in 0.28s
+Info:     backend hip:AMD Radeon RX 7900 XTX ready in 0.06s (estimate 0.075 ns/x, 0.200 ns/y)
+Info: Running main router loop...
+Info:     iter=1 wires=133556 overused=13726 overuse=19352 tmgfail=0 nets=10253 batches=12 archfail=NA
+Info:     iter=2 wires=137629 overused=8079 overuse=10181 tmgfail=0 nets=4495 batches=12 archfail=NA
+Info:     iter=3 wires=140414 overused=4785 overuse=5787 tmgfail=0 nets=2567 batches=12 archfail=NA
+Info:     iter=4 wires=141671 overused=2848 overuse=3352 tmgfail=0 nets=1559 batches=12 archfail=NA
+Info:     iter=5 wires=142277 overused=1824 overuse=2081 tmgfail=0 nets=963 batches=12 archfail=NA
+Info:     iter=6 wires=142871 overused=1218 overuse=1330 tmgfail=0 nets=673 batches=12 archfail=NA
+Info:     iter=7 wires=143111 overused=874 overuse=959 tmgfail=0 nets=501 batches=12 archfail=NA
+Info:     iter=8 wires=143384 overused=650 overuse=696 tmgfail=0 nets=386 batches=12 archfail=NA
+Info:     iter=9 wires=143667 overused=502 overuse=529 tmgfail=0 nets=307 batches=12 archfail=NA
+Info:     iter=10 wires=143803 overused=393 overuse=418 tmgfail=0 nets=259 batches=12 archfail=NA
+Info:     iter=11 wires=144029 overused=264 overuse=281 tmgfail=0 nets=208 batches=12 archfail=NA
+Info:     iter=12 wires=144079 overused=187 overuse=195 tmgfail=0 nets=160 batches=12 archfail=NA
+Info:     iter=13 wires=144156 overused=151 overuse=154 tmgfail=0 nets=132 batches=12 archfail=NA
+Info:     iter=14 wires=144172 overused=115 overuse=117 tmgfail=0 nets=111 batches=12 archfail=NA
+Info:     iter=15 wires=144262 overused=103 overuse=105 tmgfail=0 nets=93 batches=12 archfail=NA
+Info:     iter=16 wires=144376 overused=66 overuse=68 tmgfail=0 nets=76 batches=12 archfail=NA
+Info:     iter=17 wires=144402 overused=57 overuse=58 tmgfail=0 nets=55 batches=12 archfail=NA
+Info:     iter=18 wires=144381 overused=47 overuse=49 tmgfail=0 nets=44 batches=12 archfail=NA
+Info:     iter=19 wires=144402 overused=45 overuse=45 tmgfail=0 nets=42 batches=12 archfail=NA
+Info:     iter=20 wires=144412 overused=42 overuse=44 tmgfail=0 nets=36 batches=12 archfail=NA
+Info:     iter=21 wires=144410 overused=39 overuse=40 tmgfail=0 nets=35 batches=12 archfail=NA
+Info:     iter=22 wires=144419 overused=38 overuse=39 tmgfail=0 nets=35 batches=12 archfail=NA
+Info:     iter=23 wires=144425 overused=36 overuse=36 tmgfail=0 nets=33 batches=12 archfail=NA
+Info:     iter=24 wires=144405 overused=35 overuse=35 tmgfail=0 nets=31 batches=12 archfail=NA
+Info:     iter=25 wires=144428 overused=34 overuse=35 tmgfail=0 nets=31 batches=12 archfail=NA
+Info:     iter=26 wires=144427 overused=27 overuse=28 tmgfail=0 nets=28 batches=12 archfail=NA
+Info:     iter=27 wires=144434 overused=28 overuse=28 tmgfail=0 nets=27 batches=12 archfail=NA
+Info:     iter=28 wires=144443 overused=25 overuse=27 tmgfail=0 nets=27 batches=12 archfail=NA
+Info:     iter=29 wires=144463 overused=23 overuse=25 tmgfail=0 nets=24 batches=12 archfail=NA
+Info:     iter=30 wires=144453 overused=25 overuse=26 tmgfail=0 nets=22 batches=12 archfail=NA
+Info:     iter=31 wires=144458 overused=22 overuse=24 tmgfail=0 nets=22 batches=12 archfail=NA
+Info:     iter=32 wires=144464 overused=25 overuse=26 tmgfail=0 nets=22 batches=12 archfail=NA
+Info:     iter=33 wires=144445 overused=24 overuse=25 tmgfail=0 nets=21 batches=12 archfail=NA
+Info:     iter=34 wires=144462 overused=26 overuse=27 tmgfail=0 nets=21 batches=12 archfail=NA
+Info:     iter=35 wires=144447 overused=24 overuse=26 tmgfail=0 nets=21 batches=12 archfail=NA
+Info:     iter=36 wires=144452 overused=22 overuse=22 tmgfail=0 nets=23 batches=12 archfail=NA
+Info:     iter=37 wires=144460 overused=22 overuse=22 tmgfail=0 nets=21 batches=12 archfail=NA
+Info:     iter=38 wires=144471 overused=24 overuse=24 tmgfail=0 nets=21 batches=12 archfail=NA
+Info:     iter=39 wires=144464 overused=24 overuse=25 tmgfail=0 nets=21 batches=12 archfail=NA
+Info:     iter=40 wires=144463 overused=23 overuse=23 tmgfail=0 nets=22 batches=12 archfail=NA
+Info:     iter=41 wires=144471 overused=21 overuse=21 tmgfail=0 nets=21 batches=12 archfail=NA
+Info:     iter=42 wires=144451 overused=23 overuse=23 tmgfail=0 nets=21 batches=12 archfail=NA
+Info:     iter=43 wires=144454 overused=21 overuse=21 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=44 wires=144458 overused=21 overuse=21 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=45 wires=144477 overused=21 overuse=21 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=46 wires=144462 overused=22 overuse=22 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=47 wires=144463 overused=22 overuse=22 tmgfail=0 nets=20 batches=12 archfail=NA
+Info:     iter=48 wires=144481 overused=19 overuse=20 tmgfail=0 nets=19 batches=12 archfail=NA
+Info:     iter=49 wires=144468 overused=21 overuse=22 tmgfail=0 nets=19 batches=12 archfail=NA
+Info:     iter=50 wires=144471 overused=19 overuse=21 tmgfail=0 nets=19 batches=12 archfail=NA
+Info:     iter=51 wires=144459 overused=19 overuse=20 tmgfail=0 nets=19 batches=12 archfail=NA
+Info:     iter=52 wires=144469 overused=19 overuse=20 tmgfail=0 nets=19 batches=12 archfail=NA
+Info:     iter=53 wires=144465 overused=18 overuse=19 tmgfail=0 nets=19 batches=12 archfail=NA
+Info:     iter=54 wires=144472 overused=19 overuse=21 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=55 wires=144455 overused=16 overuse=17 tmgfail=0 nets=18 batches=12 archfail=NA
+Info:     iter=56 wires=144467 overused=16 overuse=17 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=57 wires=144469 overused=18 overuse=18 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=58 wires=144492 overused=17 overuse=17 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=59 wires=144472 overused=18 overuse=18 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=60 wires=144471 overused=18 overuse=18 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=61 wires=144468 overused=19 overuse=19 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=62 wires=144467 overused=19 overuse=19 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=63 wires=144474 overused=18 overuse=18 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=64 wires=144463 overused=17 overuse=17 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=65 wires=144472 overused=15 overuse=15 tmgfail=0 nets=16 batches=12 archfail=NA
+Info:     iter=66 wires=144474 overused=16 overuse=16 tmgfail=0 nets=15 batches=12 archfail=NA
+Info:     iter=67 wires=144488 overused=16 overuse=16 tmgfail=0 nets=16 batches=12 archfail=NA
+Info:     iter=68 wires=144493 overused=16 overuse=17 tmgfail=0 nets=16 batches=12 archfail=NA
+Info:     iter=69 wires=144523 overused=10 overuse=10 tmgfail=0 nets=15 batches=12 archfail=NA
+Info:     iter=70 wires=144530 overused=12 overuse=12 tmgfail=0 nets=10 batches=9 archfail=NA
+Info:     iter=71 wires=144546 overused=6 overuse=6 tmgfail=0 nets=11 batches=10 archfail=NA
+Info:     iter=72 wires=144553 overused=6 overuse=6 tmgfail=0 nets=5 batches=5 archfail=NA
+Info:     iter=73 wires=144548 overused=5 overuse=5 tmgfail=0 nets=6 batches=6 archfail=NA
+Info:     iter=74 wires=144564 overused=6 overuse=6 tmgfail=0 nets=5 batches=5 archfail=NA
+Info:     iter=75 wires=144565 overused=5 overuse=5 tmgfail=0 nets=6 batches=6 archfail=NA
+Info:     iter=76 wires=144561 overused=4 overuse=4 tmgfail=0 nets=5 batches=5 archfail=NA
+Info:     iter=77 wires=144571 overused=3 overuse=3 tmgfail=0 nets=4 batches=4 archfail=NA
+Info:     iter=78 wires=144573 overused=3 overuse=3 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=79 wires=144578 overused=3 overuse=3 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=80 wires=144576 overused=4 overuse=4 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=81 wires=144579 overused=3 overuse=3 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=82 wires=144579 overused=3 overuse=3 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=83 wires=144579 overused=3 overuse=3 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=84 wires=144578 overused=3 overuse=3 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=85 wires=144579 overused=2 overuse=2 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=86 wires=144579 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=87 wires=144577 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=88 wires=144580 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=89 wires=144583 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=90 wires=144585 overused=1 overuse=1 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=91 wires=144586 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=92 wires=144586 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=93 wires=144585 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=94 wires=144591 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=95 wires=144594 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=96 wires=144596 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=97 wires=144595 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=98 wires=144597 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=99 wires=144597 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:         stalled: wire TD.10.44.40 occ=2 reserved=-1 used by gp_mailbox.unit0_size[1](count=1) gp_mailbox.unit0_size[18](count=1)
+Info:     iter=100 wires=144599 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=101 wires=144605 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=102 wires=144604 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=103 wires=144612 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=104 wires=144608 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=105 wires=144608 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=106 wires=144614 overused=2 overuse=2 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=107 wires=144618 overused=1 overuse=1 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=108 wires=144618 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=109 wires=144619 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     congestion has not improved from 1 overused wires in 20 iterations; accelerating present-congestion growth (x1.50)
+Info:     iter=110 wires=144619 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=111 wires=144620 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=112 wires=144623 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=113 wires=144630 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=114 wires=144631 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=115 wires=144637 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=116 wires=144631 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=117 wires=144633 overused=2 overuse=2 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=118 wires=144637 overused=2 overuse=2 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=119 wires=144637 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=120 wires=144636 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=121 wires=144636 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=122 wires=144636 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=123 wires=144636 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=124 wires=144639 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=125 wires=144634 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=126 wires=144640 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=127 wires=144634 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=128 wires=144634 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=129 wires=144634 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     congestion has not improved from 1 overused wires in 40 iterations; accelerating present-congestion growth (x2.25)
+Info:     iter=130 wires=144634 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=131 wires=144640 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=132 wires=144640 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=133 wires=144640 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=134 wires=144642 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=135 wires=144640 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=136 wires=144641 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=137 wires=144641 overused=0 overuse=0 tmgfail=0 nets=1 batches=1 archfail=0
+Info:     timing repair peer-group: 543 failed arcs, none shared a same-band frozen path
+Info:     timing repair round 1: worst slack -7.562 ns, 2568 arcs below 0.300 ns, 2025 re-routed at pure delay, 543 not routable
+Info:     iter=138 wires=145826 overused=1089 overuse=1345 tmgfail=0 nets=872 batches=12 archfail=NA
+Info:     iter=139 wires=146334 overused=255 overuse=278 tmgfail=0 nets=356 batches=12 archfail=NA
+Info:     iter=140 wires=146452 overused=53 overuse=58 tmgfail=0 nets=121 batches=12 archfail=NA
+Info:     iter=141 wires=146491 overused=5 overuse=5 tmgfail=0 nets=26 batches=12 archfail=NA
+Info:     iter=142 wires=146495 overused=3 overuse=3 tmgfail=0 nets=5 batches=5 archfail=NA
+Info:     iter=143 wires=146495 overused=3 overuse=3 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=144 wires=146503 overused=3 overuse=3 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=145 wires=146507 overused=4 overuse=4 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=146 wires=146496 overused=3 overuse=3 tmgfail=0 nets=4 batches=4 archfail=NA
+Info:     iter=147 wires=146506 overused=2 overuse=2 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=148 wires=146508 overused=1 overuse=1 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=149 wires=146508 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=150 wires=146509 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=151 wires=146508 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=152 wires=146509 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=153 wires=146510 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=154 wires=146511 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=155 wires=146513 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=156 wires=146515 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     congestion has not improved from 0 overused wires in 20 iterations; accelerating present-congestion growth (x1.50)
+Info:     iter=157 wires=146515 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=158 wires=146517 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=159 wires=146514 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=160 wires=146516 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=161 wires=146516 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=162 wires=146513 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=163 wires=146514 overused=0 overuse=0 tmgfail=0 nets=1 batches=1 archfail=0
+Info:     timing repair unfroze 117 arcs that still fail slack
+Info:     timing repair peer-group: 25 failed arcs, none shared a same-band frozen path
+Info:     timing repair round 2: worst slack -1.219 ns, 204 arcs below 0.300 ns, 179 re-routed at pure delay, 25 not routable
+Info:     iter=164 wires=146640 overused=9 overuse=10 tmgfail=0 nets=88 batches=12 archfail=NA
+Info:     iter=165 wires=146650 overused=2 overuse=2 tmgfail=0 nets=8 batches=8 archfail=NA
+Info:     iter=166 wires=146653 overused=1 overuse=1 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=167 wires=146653 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=168 wires=146656 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=169 wires=146661 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=170 wires=146663 overused=0 overuse=0 tmgfail=0 nets=1 batches=1 archfail=0
+Info:     timing repair unfroze 11 arcs that still fail slack
+Info:     timing repair peer-group: 2 failed arcs, none shared a same-band frozen path
+Info:     timing repair round 3: worst slack -0.027 ns, 19 arcs below 0.300 ns, 17 re-routed at pure delay, 2 not routable
+Info:     iter=171 wires=146662 overused=0 overuse=0 tmgfail=0 nets=8 batches=8 archfail=0
+Info:     timing repair round 4: worst slack 0.777 ns, 35 arcs below 1.077 ns, 35 re-routed at pure delay, 0 not routable
+Info:     iter=172 wires=146722 overused=2 overuse=2 tmgfail=0 nets=45 batches=12 archfail=NA
+Info:     iter=173 wires=146723 overused=0 overuse=0 tmgfail=0 nets=1 batches=1 archfail=0
+Info:     timing repair round 5: worst slack 0.954 ns, 3 arcs below 1.254 ns, 3 re-routed at pure delay, 0 not routable
+Info:     iter=174 wires=146748 overused=1 overuse=1 tmgfail=0 nets=7 batches=7 archfail=NA
+Info:     iter=175 wires=146748 overused=2 overuse=2 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=176 wires=146748 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=177 wires=146748 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=178 wires=146748 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=179 wires=146748 overused=2 overuse=2 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=180 wires=146747 overused=1 overuse=1 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     congestion has not improved from 0 overused wires in 40 iterations; accelerating present-congestion growth (x2.25)
+Info:     iter=181 wires=146747 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=182 wires=146747 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=183 wires=146747 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=184 wires=146747 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=185 wires=146747 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=186 wires=146747 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=187 wires=146744 overused=0 overuse=0 tmgfail=0 nets=1 batches=1 archfail=0
+Info:     timing repair round 6: worst slack 0.954 ns did not improve on 0.954 ns
+Info:     stopping
+Info:     timing repair froze 2259 arcs (design WNS 0.954 ns)
+Info: GPU router time 250.05s (backend hip:AMD Radeon RX 7900 XTX: 2892 launches, 95456 arcs, 1038651307 wires expanded, 239.84s routing, 1.17s transfers)
+Info: Running router1 to check that route is legal...
+
+Info: Routing..
+Info: Setting up routing queue.
+Info: Routing 0 arcs.
+Info:            |   (re-)routed arcs  |   delta    | remaining|       time spent     |
+Info:    IterCnt |  w/ripup   wo/ripup |  w/r  wo/r |      arcs| batch(sec) total(sec)|
+Info:          0 |        0          0 |    0     0 |         0|       0.32       0.32|
+Info: Routing complete.
+Info: Router1 time 0.32s
+Info: Checksum: 0xdc303ea9
+
+Info: Critical path report for clock 'machine.ram.pixel_clk' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-to-q  0.73  0.73 Source video.v_MISTRAL_FF_Q_1.Q
+Info:    routing  1.62  2.35 Net video.v[0] (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.A
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:37.15-37.16
+Info:      logic  1.08  3.43 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.43 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.46 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.46 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.50 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.50 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.53 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.53 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.57 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.57 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.60 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.60 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.64 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.64 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.67 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.67 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.71 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.71 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.37  4.08 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO.SO
+Info:    routing  1.84  5.92 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO[1] (11,19) -> (21,19)
+Info:                          Sink video.prefetch_MISTRAL_ALUT4_Q.B
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.51  6.43 Source video.prefetch_MISTRAL_ALUT4_Q.Q
+Info:    routing  1.79  8.22 Net video.prefetch (21,19) -> (29,35)
+Info:                          Sink video.fetch_MISTRAL_ALUT3_B.C
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:53.10-53.18
+Info:      logic  0.10  8.31 Source video.fetch_MISTRAL_ALUT3_B.Q
+Info:    routing  2.00  10.31 Net video.fetch_MISTRAL_ALUT3_B_Q (29,35) -> (22,42)
+Info:                          Sink video.attr_hold_MISTRAL_FF_Q_3.ENA
+Info:      setup -0.20  10.12 Source video.attr_hold_MISTRAL_FF_Q_3.ENA
+Info: 2.87 ns logic, 7.24 ns routing
+
+Info: Critical path report for clock 'system_clock.faithful.clocks[0]' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-to-q  0.73  0.73 Source machine.faithful.cpu.bus.rdata_MISTRAL_FF_Q_2.Q
+Info:    routing  1.63  2.37 Net machine.faithful.cpu.bus.addr_MISTRAL_ALUT5_Q_2_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT4_C_Q[0] (28,40) -> (19,33)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT2_B_A_MISTRAL_ALUT4_B_C_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q_1.A
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  2.77 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT2_B_A_MISTRAL_ALUT4_B_C_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q_1.Q
+Info:    routing  1.12  3.88 Net machine.faithful.cpu.cpu.group_sel_MISTRAL_ALUT2_B_Q[3] (19,33) -> (19,33)
+Info:                          Sink machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_B_A_MISTRAL_ALUT4_D_1_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q.D
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  4.28 Source machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_B_A_MISTRAL_ALUT4_D_1_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q.Q
+Info:    routing  1.29  5.58 Net machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_B_A_MISTRAL_ALUT4_D_1_Q_MISTRAL_ALUT5_Q_1_E[0] (19,33) -> (17,36)
+Info:                          Sink machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_B_A_MISTRAL_ALUT4_D_1_Q_MISTRAL_ALUT5_Q_1.A
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.58  6.16 Source machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_B_A_MISTRAL_ALUT4_D_1_Q_MISTRAL_ALUT5_Q_1.Q
+Info:    routing  0.85  7.01 Net machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_B_A_MISTRAL_ALUT4_D_1_Q[5] (17,36) -> (18,35)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_Q_1_A_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT6_Q.F
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  7.10 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_Q_1_A_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT6_Q.Q
+Info:    routing  0.83  7.94 Net machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_A_Q_MISTRAL_ALUT4_C_Q[2] (18,35) -> (18,37)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.A
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  1.08  9.02 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  9.02 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (18,37) -> (18,37)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-common/rtl/z80/fes_z80_alu.sv:62.63-62.72
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  9.06 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  9.06 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (18,37) -> (18,37)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-common/rtl/z80/fes_z80_alu.sv:62.63-62.72
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  9.09 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  9.09 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI (18,37) -> (18,37)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-common/rtl/z80/fes_z80_alu.sv:62.63-62.72
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  9.12 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  9.12 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO_CI (18,37) -> (18,37)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO.CI
+Info:                          Defined in:
+Info:                               cores/fes-common/rtl/z80/fes_z80_alu.sv:62.63-62.72
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.37  9.49 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_F_MISTRAL_ALUT_ARITH_SO.SO
+Info:    routing  0.85  10.34 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q[5] (18,37) -> (17,35)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C.F
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  10.44 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C.Q
+Info:    routing  0.90  11.34 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q (17,35) -> (17,36)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B.B
+Info:      logic  1.06  12.40 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B.CO
+Info:    routing  0.00  12.40 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CO (17,36) -> (17,36)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT_ARITH_SO_1.CI
+Info:                          Defined in:
+Info:                               cores/fes-common/rtl/z80/fes_z80_alu.sv:104.29-106.46
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  12.43 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT_ARITH_SO_1.CO
+Info:    routing  0.00  12.43 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT_ARITH_SO_1_CO (17,36) -> (17,36)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT_ARITH_SO.CI
+Info:                          Defined in:
+Info:                               cores/fes-common/rtl/z80/fes_z80_alu.sv:104.29-106.46
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.37  12.80 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT_ARITH_SO.SO
+Info:    routing  1.25  14.05 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_C_Q_MISTRAL_ALUT4_Q_1_C_MISTRAL_ALUT5_Q_1_D_MISTRAL_ALUT5_E_Q[5] (17,36) -> (18,41)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_C_Q_MISTRAL_ALUT4_Q_1_C_MISTRAL_ALUT5_Q_1_D_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT6_B_C_MISTRAL_ALUT3_A.C
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  14.14 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_C_Q_MISTRAL_ALUT4_Q_1_C_MISTRAL_ALUT5_Q_1_D_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT6_B_C_MISTRAL_ALUT3_A.Q
+Info:    routing  0.83  14.98 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_C_Q_MISTRAL_ALUT4_Q_1_C_MISTRAL_ALUT5_Q_1_D_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT6_B_C_MISTRAL_ALUT3_A_Q[5] (18,41) -> (18,42)
+Info:                          Sink machine.faithful.cpu.cpu.alu.flags_in_MISTRAL_FF_Q_5_ENA_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT2_Q.B
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  15.07 Source machine.faithful.cpu.cpu.alu.flags_in_MISTRAL_FF_Q_5_ENA_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT2_Q.Q
+Info:    routing  1.01  16.09 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT4_C_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_6_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_Q_1_F_MISTRAL_ALUT5_Q_1_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_E_1_Q[4] (18,42) -> (21,43)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_1_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT6_Q.F
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  16.18 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_1_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT6_Q.Q
+Info:    routing  0.55  16.74 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_1_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT6_Q_E[4] (21,43) -> (21,43)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_1_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT6_Q.E
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  17.14 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_1_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT6_Q.Q
+Info:    routing  1.02  18.15 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_1_Q_MISTRAL_ALUT5_D_Q[7] (21,43) -> (21,40)
+Info:                          Sink machine.faithful.cpu.cpu.bc_MISTRAL_FF_Q_6$ROUTETHRU.A
+Info:      logic  0.10  18.25 Source machine.faithful.cpu.cpu.bc_MISTRAL_FF_Q_6$ROUTETHRU.Q
+Info:    routing  0.02  18.27 Net machine.faithful.cpu.cpu.bc_MISTRAL_FF_Q_6$ROUTETHRU$conn$Q (21,40) -> (21,40)
+Info:                          Sink machine.faithful.cpu.cpu.bc_MISTRAL_FF_Q_6.DATAIN
+Info:      setup -0.20  18.07 Source machine.faithful.cpu.cpu.bc_MISTRAL_FF_Q_6.DATAIN
+Info: 5.92 ns logic, 12.15 ns routing
+
+Info: Critical path report for clock 'system_clock.faithful.clocks[1]' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-to-q  0.73  0.73 Source normal_audio.audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT_ARITH_SO_5_B_MISTRAL_FF_Q_2.Q
+Info:    routing  1.29  2.02 Net normal_audio.audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT_ARITH_SO_4_B[1] (31,1) -> (29,1)
+Info:                          Sink normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q.D
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  2.42 Source normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q.Q
+Info:    routing  0.60  3.03 Net normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_E[4] (29,1) -> (29,1)
+Info:                          Sink normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q.E
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  3.12 Source normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q.Q
+Info:    routing  0.55  3.68 Net normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D[1] (29,1) -> (29,1)
+Info:                          Sink normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q.B
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.51  4.19 Source normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q.Q
+Info:    routing  0.55  4.74 Net normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B[3] (29,1) -> (31,1)
+Info:                          Sink normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT4_Q.D
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  4.84 Source normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT4_Q.Q
+Info:    routing  0.55  5.39 Net normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN (31,1) -> (33,1)
+Info:                          Sink normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU.A
+Info:      logic  0.10  5.49 Source normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU.Q
+Info:    routing  0.02  5.51 Net normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU$conn$Q (33,1) -> (33,1)
+Info:                          Sink normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q.DATAIN
+Info:      setup -0.20  5.31 Source normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q.DATAIN
+Info: 1.74 ns logic, 3.58 ns routing
+
+Info: Critical path report for cross-domain path '<async>' -> 'posedge system_clock.faithful.clocks[1]':
+Info:       type curr  total name
+Info:     source  0.00  0.00 Source system_clock.faithful.pll.locked
+Info:    routing  3.18  3.18 Net audio_locked (0,31) -> (33,3)
+Info:                          Sink normal_audio.audio.lock_sync_MISTRAL_FF_Q.ACLR
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      setup -0.20  2.98 Source normal_audio.audio.lock_sync_MISTRAL_FF_Q.ACLR
+Info: -0.20 ns logic, 3.18 ns routing
+
+Info: Critical path report for cross-domain path 'posedge system_clock.faithful.clocks[0]' -> 'posedge machine.ram.pixel_clk':
+Info:       type curr  total name
+Info:   clk-to-q  0.73  0.73 Source video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q.Q
+Info:    routing  0.55  1.28 Net video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q_DATAIN (31,23) -> (30,23)
+Info:                          Sink video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU.A
+Info:      logic  0.10  1.38 Source video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU.Q
+Info:    routing  0.02  1.40 Net video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU$conn$Q (30,23) -> (30,23)
+Info:                          Sink video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q.DATAIN
+Info:      setup -0.20  1.21 Source video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q.DATAIN
+Info: 0.63 ns logic, 0.57 ns routing
+
+Info: Critical path report for cross-domain path 'posedge system_clock.faithful.clocks[0]' -> 'posedge system_clock.faithful.clocks[1]':
+Info:       type curr  total name
+Info:   clk-to-q  0.73  0.73 Source normal_audio.audio.held_sample_MISTRAL_FF_Q_2.Q
+Info:    routing  1.24  1.97 Net normal_audio.audio.held_sample[21] (30,5) -> (31,5)
+Info:                          Sink normal_audio.audio.pcm_MISTRAL_FF_Q_21$ROUTETHRU.A
+Info:                          Defined in:
+Info:                               cores/fes-common/rtl/fes_audio_output.v:13.16-13.27
+Info:      logic  0.10  2.07 Source normal_audio.audio.pcm_MISTRAL_FF_Q_21$ROUTETHRU.Q
+Info:    routing  0.02  2.09 Net normal_audio.audio.pcm_MISTRAL_FF_Q_21$ROUTETHRU$conn$Q (31,5) -> (31,5)
+Info:                          Sink normal_audio.audio.pcm_MISTRAL_FF_Q_21.DATAIN
+Info:      setup -0.20  1.89 Source normal_audio.audio.pcm_MISTRAL_FF_Q_21.DATAIN
+Info: 0.63 ns logic, 1.26 ns routing
+
+Info: Critical path report for cross-domain path 'posedge system_clock.faithful.clocks[1]' -> 'posedge system_clock.faithful.clocks[0]':
+Info:       type curr  total name
+Info:   clk-to-q  0.73  0.73 Source normal_audio.audio.request_MISTRAL_FF_Q.Q
+Info:    routing  0.60  1.33 Net normal_audio.audio.request (31,4) -> (33,4)
+Info:                          Sink normal_audio.audio.request_meta_MISTRAL_FF_Q$ROUTETHRU.A
+Info:                          Defined in:
+Info:                               cores/fes-common/rtl/fes_audio_output.v:10.9-10.16
+Info:      logic  0.10  1.43 Source normal_audio.audio.request_meta_MISTRAL_FF_Q$ROUTETHRU.Q
+Info:    routing  0.02  1.45 Net normal_audio.audio.request_meta_MISTRAL_FF_Q$ROUTETHRU$conn$Q (33,4) -> (33,4)
+Info:                          Sink normal_audio.audio.request_meta_MISTRAL_FF_Q.DATAIN
+Info:      setup -0.20  1.25 Source normal_audio.audio.request_meta_MISTRAL_FF_Q.DATAIN
+Info: 0.63 ns logic, 0.62 ns routing
+
+Info: Max frequency for clock           'machine.ram.pixel_clk': 98.83 MHz (PASS at 74.25 MHz)
+Info: Max frequency for clock 'system_clock.faithful.clocks[0]': 55.33 MHz (PASS at 52.22 MHz)
+Info: Max frequency for clock 'system_clock.faithful.clocks[1]': 188.18 MHz (PASS at 12.29 MHz)
+
+Info: Max delay <async>                                 -> posedge system_clock.faithful.clocks[1]: 2.98 ns
+Info: Max delay posedge system_clock.faithful.clocks[0] -> posedge machine.ram.pixel_clk          : 1.21 ns
+Info: Max delay posedge system_clock.faithful.clocks[0] -> posedge system_clock.faithful.clocks[1]: 1.89 ns
+Info: Max delay posedge system_clock.faithful.clocks[1] -> posedge system_clock.faithful.clocks[0]: 1.25 ns
+
+Info: Slack histogram:
+Info:  legend: * represents 42 endpoint(s)
+Info:          + represents [1,42) endpoint(s)
+Info: [  1074,   5027) |*************+
+Info: [  5027,   8980) |*****************************************+
+Info: [  8980,  12933) |************************************************************ 
+Info: [ 12933,  16886) |************************************+
+Info: [ 16886,  20839) |***********+
+Info: [ 20839,  24792) | 
+Info: [ 24792,  28745) | 
+Info: [ 28745,  32698) | 
+Info: [ 32698,  36651) | 
+Info: [ 36651,  40604) | 
+Info: [ 40604,  44557) | 
+Info: [ 44557,  48510) | 
+Info: [ 48510,  52463) | 
+Info: [ 52463,  56416) | 
+Info: [ 56416,  60369) | 
+Info: [ 60369,  64322) | 
+Info: [ 64322,  68275) | 
+Info: [ 68275,  72228) | 
+Info: [ 72228,  76181) |+
+Info: [ 76181,  80134) |***+
+Info: Analogue signoff check: worst clock slack -0.116 ns (machine.ram.pixel_clk 96.02 MHz, system_clock.faithful.clocks[0] 51.91 MHz, system_clock.faithful.clocks[1] 207.38 MHz) in 1.64s
+Info: Setting up the GPU router for candidate routes...
+Info: Setting up routing resources...
+Info:     flattened 2740007 wires and 27175224 pips in 0.36s
+Info:     backend hip:AMD Radeon RX 7900 XTX ready in 0.03s (estimate 0.075 ns/x, 0.200 ns/y)
+Info:     analogue candidate selection: 17 of 27 failing sinks tried with 39 candidates, 3 nets re-routed (0 candidates refused by the Arch), worst-sink slack gained 0.376 ns in total, 0.95s (0.30s searching, 0.06s simulating)
+Info: Analogue signoff repair round 1: worst clock slack -0.012 ns (machine.ram.pixel_clk 96.02 MHz, system_clock.faithful.clocks[0] 52.19 MHz, system_clock.faithful.clocks[1] 207.38 MHz) in 1.71s
+Info: Setting up the GPU router for candidate routes...
+Info: Setting up routing resources...
+Info:     flattened 2740007 wires and 27175224 pips in 0.36s
+Info:     backend hip:AMD Radeon RX 7900 XTX ready in 0.03s (estimate 0.075 ns/x, 0.200 ns/y)
+Info:     analogue candidate selection: 8 of 11 failing sinks tried with 18 candidates, 0 nets re-routed (0 candidates refused by the Arch), worst-sink slack gained 0.000 ns in total, 0.85s (0.25s searching, 0.03s simulating)
+Info:     re-routing 52 nets with arcs below 0.300 ns analogue slack (118124 pips observed in 2.28s)
+Info: Running the GPU router...
+Info: Setting up routing resources...
+Info:     flattened 2740007 wires and 27175224 pips in 0.34s
+Info:     backend hip:AMD Radeon RX 7900 XTX ready in 0.03s (estimate 0.075 ns/x, 0.200 ns/y)
+Info: Running main router loop...
+Info:     iter=1 wires=146458 overused=315 overuse=319 tmgfail=0 nets=46 batches=12 archfail=NA
+Info:     iter=2 wires=146514 overused=134 overuse=134 tmgfail=0 nets=57 batches=12 archfail=NA
+Info:     iter=3 wires=146539 overused=102 overuse=102 tmgfail=0 nets=46 batches=12 archfail=NA
+Info:     iter=4 wires=146562 overused=81 overuse=81 tmgfail=0 nets=41 batches=12 archfail=NA
+Info:     iter=5 wires=146593 overused=82 overuse=83 tmgfail=0 nets=39 batches=12 archfail=NA
+Info:     iter=6 wires=146599 overused=67 overuse=69 tmgfail=0 nets=36 batches=12 archfail=NA
+Info:     iter=7 wires=146600 overused=55 overuse=55 tmgfail=0 nets=32 batches=12 archfail=NA
+Info:     iter=8 wires=146617 overused=51 overuse=51 tmgfail=0 nets=28 batches=12 archfail=NA
+Info:     iter=9 wires=146614 overused=40 overuse=41 tmgfail=0 nets=28 batches=12 archfail=NA
+Info:     iter=10 wires=146625 overused=27 overuse=27 tmgfail=0 nets=26 batches=12 archfail=NA
+Info:     iter=11 wires=146624 overused=25 overuse=25 tmgfail=0 nets=21 batches=12 archfail=NA
+Info:     iter=12 wires=146629 overused=21 overuse=21 tmgfail=0 nets=18 batches=12 archfail=NA
+Info:     iter=13 wires=146629 overused=22 overuse=22 tmgfail=0 nets=17 batches=12 archfail=NA
+Info:     iter=14 wires=146630 overused=19 overuse=19 tmgfail=0 nets=16 batches=12 archfail=NA
+Info:     iter=15 wires=146635 overused=15 overuse=15 tmgfail=0 nets=14 batches=12 archfail=NA
+Info:     iter=16 wires=146652 overused=16 overuse=16 tmgfail=0 nets=15 batches=12 archfail=NA
+Info:     iter=17 wires=146666 overused=15 overuse=15 tmgfail=0 nets=16 batches=12 archfail=NA
+Info:     iter=18 wires=146667 overused=12 overuse=12 tmgfail=0 nets=10 batches=9 archfail=NA
+Info:     iter=19 wires=146661 overused=13 overuse=13 tmgfail=0 nets=12 batches=12 archfail=NA
+Info:     iter=20 wires=146659 overused=10 overuse=10 tmgfail=0 nets=12 batches=12 archfail=NA
+Info:     iter=21 wires=146660 overused=9 overuse=9 tmgfail=0 nets=10 batches=9 archfail=NA
+Info:     iter=22 wires=146674 overused=8 overuse=8 tmgfail=0 nets=8 batches=8 archfail=NA
+Info:     iter=23 wires=146682 overused=12 overuse=12 tmgfail=0 nets=8 batches=8 archfail=NA
+Info:     iter=24 wires=146676 overused=5 overuse=5 tmgfail=0 nets=11 batches=11 archfail=NA
+Info:     iter=25 wires=146680 overused=4 overuse=4 tmgfail=0 nets=5 batches=5 archfail=NA
+Info:     iter=26 wires=146682 overused=4 overuse=4 tmgfail=0 nets=4 batches=4 archfail=NA
+Info:     iter=27 wires=146684 overused=5 overuse=5 tmgfail=0 nets=4 batches=4 archfail=NA
+Info:     iter=28 wires=146682 overused=3 overuse=3 tmgfail=0 nets=5 batches=5 archfail=NA
+Info:     iter=29 wires=146682 overused=3 overuse=3 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=30 wires=146682 overused=3 overuse=3 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=31 wires=146686 overused=2 overuse=2 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=32 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=33 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=34 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=35 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=36 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=37 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=38 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=39 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=40 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=41 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=42 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=43 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=44 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=45 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=46 wires=146686 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=47 wires=146688 overused=1 overuse=1 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=48 wires=146688 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=49 wires=146688 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=50 wires=146688 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=51 wires=146688 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=52 wires=146688 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=53 wires=146689 overused=0 overuse=0 tmgfail=0 nets=1 batches=1 archfail=0
+Info:     timing repair round 1: worst slack -0.374 ns, 45 arcs below 0.300 ns, 45 re-routed at pure delay, 0 not routable
+Info:     iter=54 wires=146735 overused=8 overuse=8 tmgfail=0 nets=29 batches=12 archfail=NA
+Info:     iter=55 wires=146736 overused=4 overuse=4 tmgfail=0 nets=5 batches=5 archfail=NA
+Info:     iter=56 wires=146747 overused=0 overuse=0 tmgfail=0 nets=4 batches=4 archfail=0
+Info:     timing repair round 2: worst slack -0.961 ns did not improve on -0.374 ns
+Info:     restoring the routing of the best round
+Info:     retrying with reversed repair order because worst slack still fails
+Info:     timing repair round 2: worst slack -0.374 ns, 45 arcs below 0.300 ns, 45 re-routed at pure delay, 0 not routable
+Info:     iter=57 wires=146744 overused=9 overuse=9 tmgfail=0 nets=32 batches=12 archfail=NA
+Info:     iter=58 wires=146741 overused=5 overuse=5 tmgfail=0 nets=6 batches=6 archfail=NA
+Info:     iter=59 wires=146753 overused=3 overuse=3 tmgfail=0 nets=5 batches=5 archfail=NA
+Info:     iter=60 wires=146753 overused=3 overuse=3 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=61 wires=146757 overused=2 overuse=2 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=62 wires=146755 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=63 wires=146757 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=64 wires=146758 overused=1 overuse=1 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:     iter=65 wires=146758 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=66 wires=146758 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=67 wires=146760 overused=0 overuse=0 tmgfail=0 nets=1 batches=1 archfail=0
+Info:     timing repair round 3: worst slack -0.461 ns did not improve on -0.374 ns
+Info:     restoring the routing of the best round
+Info:     stopping after a reversed-order retry
+Info:     timing repair froze 90 arcs (design WNS -0.374 ns)
+Info: GPU router time 5.48s (backend hip:AMD Radeon RX 7900 XTX: 498 launches, 3055 arcs, 8197559 wires expanded, 2.54s routing, 0.22s transfers)
+Info: Running router1 to check that route is legal...
+
+Info: Routing..
+Info: Setting up routing queue.
+Info: Routing 0 arcs.
+Info:            |   (re-)routed arcs  |   delta    | remaining|       time spent     |
+Info:    IterCnt |  w/ripup   wo/ripup |  w/r  wo/r |      arcs| batch(sec) total(sec)|
+Info:          0 |        0          0 |    0     0 |         0|       0.28       0.28|
+Info: Routing complete.
+Info: Router1 time 0.28s
+Info: Checksum: 0x3f4f6b70
+
+Info: Critical path report for clock 'machine.ram.pixel_clk' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-skew  0.10  0.10 Net machine.ram.pixel_clk (11,19) -> (22,42)
+Info:                          Sink video.attr_hold_MISTRAL_FF_Q_3.CLK
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_ram.v:14.24-14.33
+Info:   clk-to-q  0.73  0.83 Source video.v_MISTRAL_FF_Q_1.Q
+Info:    routing  1.62  2.45 Net video.v[0] (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.A
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:37.15-37.16
+Info:      logic  1.08  3.53 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.53 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.57 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.57 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.60 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.60 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.64 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.64 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.67 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.67 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.71 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.71 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.74 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.74 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.78 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.78 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.81 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.81 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.37  4.18 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO.SO
+Info:    routing  2.01  6.19 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO[1] (11,19) -> (21,19)
+Info:                          Sink video.prefetch_MISTRAL_ALUT4_Q.B
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.51  6.71 Source video.prefetch_MISTRAL_ALUT4_Q.Q
+Info:    routing  1.81  8.51 Net video.prefetch (21,19) -> (29,35)
+Info:                          Sink video.fetch_MISTRAL_ALUT3_B.C
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:53.10-53.18
+Info:      logic  0.10  8.61 Source video.fetch_MISTRAL_ALUT3_B.Q
+Info:    routing  2.18  10.79 Net video.fetch_MISTRAL_ALUT3_B_Q (29,35) -> (22,42)
+Info:                          Sink video.attr_hold_MISTRAL_FF_Q_3.ENA
+Info:      setup -0.20  10.60 Source video.attr_hold_MISTRAL_FF_Q_3.ENA
+Info: 2.87 ns logic, 7.72 ns routing
+
+Info: Critical path report for clock 'system_clock.faithful.clocks[0]' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-skew  0.06  0.06 Net system_clock.faithful.clocks[0] (28,40) -> (23,34)
+Info:                          Sink machine.faithful.cpu.cpu.de_MISTRAL_FF_Q_7.CLK
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_system_pll.v:16.20-16.26
+Info:   clk-to-q  0.73  0.79 Source machine.faithful.cpu.bus.rdata_MISTRAL_FF_Q_2.Q
+Info:    routing  2.38  3.17 Net machine.faithful.cpu.bus.addr_MISTRAL_ALUT5_Q_2_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT4_C_Q[0] (28,40) -> (16,31)
+Info:                          Sink machine.faithful.cpu.cpu.im_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT6_Q.C
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.51  3.68 Source machine.faithful.cpu.cpu.im_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT6_Q.Q
+Info:    routing  0.68  4.36 Net machine.faithful.cpu.cpu.im_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_Q_B[2] (16,31) -> (18,31)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT2_B_A_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT4_Q.C
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  4.76 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT2_B_A_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT4_Q.Q
+Info:    routing  0.81  5.57 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT2_B_A_MISTRAL_ALUT4_B_Q[3] (18,31) -> (15,32)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT2_B_A_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_D.D
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  5.97 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT2_B_A_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_D.Q
+Info:    routing  2.21  8.18 Net machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q[1] (15,32) -> (16,33)
+Info:                          Sink machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_A_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q.A
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  8.58 Source machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_A_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q.Q
+Info:    routing  2.52  11.10 Net machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT3_A_Q[3] (16,33) -> (17,41)
+Info:                          Sink machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT2_A_Q_MISTRAL_ALUT2_Q.A
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  11.50 Source machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT2_A_Q_MISTRAL_ALUT2_Q.Q
+Info:    routing  2.23  13.73 Net machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT2_A_Q[1] (17,41) -> (18,37)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q.C
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.51  14.24 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q.Q
+Info:    routing  1.07  15.32 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO[4] (18,37) -> (19,41)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT6_F.E
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  15.72 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT6_F.Q
+Info:    routing  0.92  16.63 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q[3] (19,41) -> (19,45)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D.F
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  16.73 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D.Q
+Info:    routing  0.10  16.83 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_C_Q[2] (19,45) -> (19,45)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT3_C.B
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  17.23 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT3_C.Q
+Info:    routing  1.43  18.66 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_1_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_Q_D[4] (19,45) -> (23,38)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_D.E
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  18.76 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_D.Q
+Info:    routing  0.99  19.74 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_D_Q[2] (23,38) -> (23,34)
+Info:                          Sink machine.faithful.cpu.cpu.de_MISTRAL_FF_Q_7.DATAIN
+Info:      setup -0.20  19.55 Source machine.faithful.cpu.cpu.de_MISTRAL_FF_Q_7.DATAIN
+Info: 4.15 ns logic, 15.40 ns routing
+
+Info: Critical path report for clock 'system_clock.faithful.clocks[1]' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-skew  0.00  0.00 Net system_clock.faithful.clocks[1] (31,1) -> (33,1)
+Info:                          Sink normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q.CLK
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_system_pll.v:16.20-16.26
+Info:   clk-to-q  0.73  0.74 Source normal_audio.audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT_ARITH_SO_5_B_MISTRAL_FF_Q_2.Q
+Info:    routing  1.31  2.05 Net normal_audio.audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT_ARITH_SO_4_B[1] (31,1) -> (29,1)
+Info:                          Sink normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q.D
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  2.45 Source normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q.Q
+Info:    routing  0.48  2.93 Net normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_E[4] (29,1) -> (29,1)
+Info:                          Sink normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q.E
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  3.03 Source normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q.Q
+Info:    routing  0.41  3.44 Net normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D[1] (29,1) -> (29,1)
+Info:                          Sink normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q.B
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.51  3.95 Source normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q.Q
+Info:    routing  0.44  4.39 Net normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B[3] (29,1) -> (31,1)
+Info:                          Sink normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT4_Q.D
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  4.49 Source normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT4_Q.Q
+Info:    routing  0.52  5.01 Net normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN (31,1) -> (33,1)
+Info:                          Sink normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU.A
+Info:      logic  0.10  5.11 Source normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU.Q
+Info:    routing  0.00  5.11 Net normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU$conn$Q (33,1) -> (33,1)
+Info:                          Sink normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q.DATAIN
+Info:      setup -0.20  4.91 Source normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q.DATAIN
+Info: 1.74 ns logic, 3.17 ns routing
+
+Info: Critical path report for cross-domain path '<async>' -> 'posedge system_clock.faithful.clocks[1]':
+Info:       type curr  total name
+Info:     source  0.00  0.00 Source system_clock.faithful.pll.locked
+Info:    routing  4.30  4.30 Net audio_locked (0,31) -> (33,3)
+Info:                          Sink normal_audio.audio.lock_sync_MISTRAL_FF_Q.ACLR
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      setup -0.20  4.11 Source normal_audio.audio.lock_sync_MISTRAL_FF_Q.ACLR
+Info: -0.20 ns logic, 4.30 ns routing
+
+Info: Critical path report for cross-domain path 'posedge system_clock.faithful.clocks[0]' -> 'posedge machine.ram.pixel_clk':
+Info:       type curr  total name
+Info:   clk-to-q  0.73  0.73 Source video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q.Q
+Info:    routing  0.41  1.14 Net video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q_DATAIN (31,23) -> (30,23)
+Info:                          Sink video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU.A
+Info:      logic  0.10  1.24 Source video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU.Q
+Info:    routing  0.00  1.24 Net video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU$conn$Q (30,23) -> (30,23)
+Info:                          Sink video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q.DATAIN
+Info:      setup -0.20  1.04 Source video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q.DATAIN
+Info: 0.63 ns logic, 0.41 ns routing
+
+Info: Critical path report for cross-domain path 'posedge system_clock.faithful.clocks[0]' -> 'posedge system_clock.faithful.clocks[1]':
+Info:       type curr  total name
+Info:   clk-to-q  0.73  0.73 Source gp_mailbox.unit0_state_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT5_D_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT3_C_Q_MISTRAL_FF_ENA.Q
+Info:    routing  1.47  2.20 Net audio_mix.cpu_cycle_MISTRAL_ALUT2_A_Q_MISTRAL_ALUT5_Q_E[1] (15,37) -> (29,37)
+Info:                          Sink normal_audio.audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q.DATAIN
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      setup -0.20  2.00 Source normal_audio.audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q.DATAIN
+Info: 0.54 ns logic, 1.47 ns routing
+
+Info: Critical path report for cross-domain path 'posedge system_clock.faithful.clocks[1]' -> 'posedge system_clock.faithful.clocks[0]':
+Info:       type curr  total name
+Info:   clk-to-q  0.73  0.73 Source normal_audio.audio.request_MISTRAL_FF_Q.Q
+Info:    routing  0.61  1.34 Net normal_audio.audio.request (31,4) -> (33,4)
+Info:                          Sink normal_audio.audio.request_meta_MISTRAL_FF_Q$ROUTETHRU.A
+Info:                          Defined in:
+Info:                               cores/fes-common/rtl/fes_audio_output.v:10.9-10.16
+Info:      logic  0.10  1.44 Source normal_audio.audio.request_meta_MISTRAL_FF_Q$ROUTETHRU.Q
+Info:    routing  0.00  1.44 Net normal_audio.audio.request_meta_MISTRAL_FF_Q$ROUTETHRU$conn$Q (33,4) -> (33,4)
+Info:                          Sink normal_audio.audio.request_meta_MISTRAL_FF_Q.DATAIN
+Info:      setup -0.20  1.24 Source normal_audio.audio.request_meta_MISTRAL_FF_Q.DATAIN
+Info: 0.63 ns logic, 0.61 ns routing
+
+Info: Max frequency for clock           'machine.ram.pixel_clk': 96.02 MHz (PASS at 74.25 MHz)
+Warning: Max frequency for clock 'system_clock.faithful.clocks[0]': 51.22 MHz (FAIL at 52.22 MHz)
+Info: Max frequency for clock 'system_clock.faithful.clocks[1]': 207.38 MHz (PASS at 12.29 MHz)
+
+Info: Max delay <async>                                 -> posedge system_clock.faithful.clocks[1]: 4.11 ns
+Info: Max delay posedge system_clock.faithful.clocks[0] -> posedge machine.ram.pixel_clk          : 1.04 ns
+Info: Max delay posedge system_clock.faithful.clocks[0] -> posedge system_clock.faithful.clocks[1]: 2.00 ns
+Info: Max delay posedge system_clock.faithful.clocks[1] -> posedge system_clock.faithful.clocks[0]: 1.24 ns
+
+Info: Slack histogram:
+Info:  legend: * represents 47 endpoint(s)
+Info:          + represents [1,47) endpoint(s)
+Info: [  -374,   3658) |*********+
+Info: [  3658,   7690) |************************+
+Info: [  7690,  11722) |************************************************************ 
+Info: [ 11722,  15754) |*********************************+
+Info: [ 15754,  19786) |****************+
+Info: [ 19786,  23818) | 
+Info: [ 23818,  27850) | 
+Info: [ 27850,  31882) | 
+Info: [ 31882,  35914) | 
+Info: [ 35914,  39946) | 
+Info: [ 39946,  43978) | 
+Info: [ 43978,  48010) | 
+Info: [ 48010,  52042) | 
+Info: [ 52042,  56074) | 
+Info: [ 56074,  60106) | 
+Info: [ 60106,  64138) | 
+Info: [ 64138,  68170) | 
+Info: [ 68170,  72202) | 
+Info: [ 72202,  76234) | 
+Info: [ 76234,  80266) |***+
+Info:     re-route made 4 of 52 nets slower at their worst sink; gave 0 their old route back (0.000 ns of sink slack), 4 could not have it (wires taken), 1.41s
+Info: Analogue signoff repair round 2: worst clock slack 0.243 ns (machine.ram.pixel_clk 96.02 MHz, system_clock.faithful.clocks[0] 52.90 MHz, system_clock.faithful.clocks[1] 207.38 MHz) in 1.71s
+Info: Routed Fmax (pip delay table) for clock 'machine.ram.pixel_clk': 94.64 MHz
+Info: Routed Fmax (pip delay table) for clock 'system_clock.faithful.clocks[0]': 51.31 MHz
+Info: Routed Fmax (pip delay table) for clock 'system_clock.faithful.clocks[1]': 203.75 MHz
+Info: Running signoff timing analysis...
+
+Info: Critical path report for clock 'machine.ram.pixel_clk' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-skew  0.10  0.10 Net machine.ram.pixel_clk (11,19) -> (22,42)
+Info:                          Sink video.attr_hold_MISTRAL_FF_Q_3.CLK
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_ram.v:14.24-14.33
+Info:   clk-to-q  0.73  0.83 Source video.v_MISTRAL_FF_Q_1.Q
+Info:    routing  1.59  2.42 Net video.v[0] (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.A
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:37.15-37.16
+Info:      logic  1.08  3.50 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.50 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.54 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.54 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.57 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.57 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.61 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.61 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.64 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.64 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.68 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.68 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.71 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.71 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.75 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.75 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.04  3.78 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO.CO
+Info:    routing  0.00  3.78 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CI (11,19) -> (11,19)
+Info:                          Sink video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO.CI
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:51.26-51.40
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114
+Info:      logic  0.37  4.15 Source video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO.SO
+Info:    routing  1.98  6.13 Net video.ahead_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO[1] (11,19) -> (21,19)
+Info:                          Sink video.prefetch_MISTRAL_ALUT4_Q.B
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.51  6.64 Source video.prefetch_MISTRAL_ALUT4_Q.Q
+Info:    routing  1.79  8.43 Net video.prefetch (21,19) -> (29,35)
+Info:                          Sink video.fetch_MISTRAL_ALUT3_B.C
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_video.v:53.10-53.18
+Info:      logic  0.10  8.53 Source video.fetch_MISTRAL_ALUT3_B.Q
+Info:    routing  2.08  10.61 Net video.fetch_MISTRAL_ALUT3_B_Q (29,35) -> (22,42)
+Info:                          Sink video.attr_hold_MISTRAL_FF_Q_3.ENA
+Info:      setup -0.20  10.41 Source video.attr_hold_MISTRAL_FF_Q_3.ENA
+Info: 2.87 ns logic, 7.54 ns routing
+
+Info: Critical path report for clock 'system_clock.faithful.clocks[0]' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-skew  0.05  0.05 Net system_clock.faithful.clocks[0] (28,40) -> (23,34)
+Info:                          Sink machine.faithful.cpu.cpu.de_MISTRAL_FF_Q_7.CLK
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_system_pll.v:16.20-16.26
+Info:   clk-to-q  0.73  0.79 Source machine.faithful.cpu.bus.rdata_MISTRAL_FF_Q_2.Q
+Info:    routing  2.19  2.97 Net machine.faithful.cpu.bus.addr_MISTRAL_ALUT5_Q_2_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT4_C_Q[0] (28,40) -> (19,33)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT2_B_A_MISTRAL_ALUT4_B_C_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q_1.A
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  3.37 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT2_B_A_MISTRAL_ALUT4_B_C_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q_1.Q
+Info:    routing  0.87  4.24 Net machine.faithful.cpu.cpu.group_sel_MISTRAL_ALUT2_B_Q[3] (19,33) -> (18,31)
+Info:                          Sink machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT3_Q.B
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  4.64 Source machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT3_Q.Q
+Info:    routing  0.72  5.36 Net machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT3_B_Q[2] (18,31) -> (16,30)
+Info:                          Sink machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT6_F.C
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.51  5.87 Source machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT6_F.Q
+Info:    routing  2.12  8.00 Net machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT6_F_Q[5] (16,30) -> (16,35)
+Info:                          Sink machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_A_Q_MISTRAL_ALUT2_B.A
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  8.40 Source machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_A_Q_MISTRAL_ALUT2_B.Q
+Info:    routing  2.45  10.85 Net machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_A_Q_MISTRAL_ALUT2_B_Q[1] (16,35) -> (17,41)
+Info:                          Sink machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT2_A_Q_MISTRAL_ALUT2_Q.B
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  10.94 Source machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT2_A_Q_MISTRAL_ALUT2_Q.Q
+Info:    routing  2.19  13.14 Net machine.faithful.cpu.cpu.ld_air_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT2_A_Q[1] (17,41) -> (18,37)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q.C
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.51  13.65 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q.Q
+Info:    routing  1.06  14.71 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO[4] (18,37) -> (19,41)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT6_F.E
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  15.11 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT6_F.Q
+Info:    routing  0.90  16.01 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q[3] (19,41) -> (19,45)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D.F
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  16.11 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D.Q
+Info:    routing  0.10  16.21 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_C_Q[2] (19,45) -> (19,45)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT3_C.B
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  16.61 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT3_C.Q
+Info:    routing  1.43  18.03 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_1_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_Q_D[4] (19,45) -> (23,38)
+Info:                          Sink machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_D.E
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  18.13 Source machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_D.Q
+Info:    routing  0.97  19.10 Net machine.faithful.cpu.cpu.state_MISTRAL_FF_Q_18_DATAIN_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_D_Q[2] (23,38) -> (23,34)
+Info:                          Sink machine.faithful.cpu.cpu.de_MISTRAL_FF_Q_7.DATAIN
+Info:      setup -0.20  18.91 Source machine.faithful.cpu.cpu.de_MISTRAL_FF_Q_7.DATAIN
+Info: 3.85 ns logic, 15.06 ns routing
+
+Info: Critical path report for clock 'system_clock.faithful.clocks[1]' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-skew  0.00  0.00 Net system_clock.faithful.clocks[1] (31,1) -> (33,1)
+Info:                          Sink normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q.CLK
+Info:                          Defined in:
+Info:                               cores/fes-spectrum/rtl/spectrum_system_pll.v:16.20-16.26
+Info:   clk-to-q  0.73  0.74 Source normal_audio.audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT_ARITH_SO_5_B_MISTRAL_FF_Q_2.Q
+Info:    routing  1.29  2.02 Net normal_audio.audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT_ARITH_SO_4_B[1] (31,1) -> (29,1)
+Info:                          Sink normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q.D
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.40  2.42 Source normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q.Q
+Info:    routing  0.47  2.90 Net normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_E[4] (29,1) -> (29,1)
+Info:                          Sink normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q.E
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  2.99 Source normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q.Q
+Info:    routing  0.40  3.39 Net normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q_D[1] (29,1) -> (29,1)
+Info:                          Sink normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q.B
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.51  3.90 Source normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT4_Q.Q
+Info:    routing  0.43  4.34 Net normal_audio.audio.serializer.sample_tick_MISTRAL_ALUT4_Q_B[3] (29,1) -> (31,1)
+Info:                          Sink normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT4_Q.D
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      logic  0.10  4.43 Source normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT4_Q.Q
+Info:    routing  0.49  4.92 Net normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN (31,1) -> (33,1)
+Info:                          Sink normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU.A
+Info:      logic  0.10  5.02 Source normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU.Q
+Info:    routing  0.00  5.02 Net normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU$conn$Q (33,1) -> (33,1)
+Info:                          Sink normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q.DATAIN
+Info:      setup -0.20  4.82 Source normal_audio.audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q.DATAIN
+Info: 1.74 ns logic, 3.08 ns routing
+
+Info: Critical path report for cross-domain path '<async>' -> 'posedge system_clock.faithful.clocks[1]':
+Info:       type curr  total name
+Info:     source  0.00  0.00 Source system_clock.faithful.pll.locked
+Info:    routing  4.30  4.30 Net audio_locked (0,31) -> (33,3)
+Info:                          Sink normal_audio.audio.lock_sync_MISTRAL_FF_Q.ACLR
+Info:                          Defined in:
+Info:                               /repro/toolchain/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20
+Info:      setup -0.20  4.11 Source normal_audio.audio.lock_sync_MISTRAL_FF_Q.ACLR
+Info: -0.20 ns logic, 4.30 ns routing
+
+Info: Critical path report for cross-domain path 'posedge system_clock.faithful.clocks[0]' -> 'posedge machine.ram.pixel_clk':
+Info:       type curr  total name
+Info:   clk-to-q  0.73  0.73 Source video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q.Q
+Info:    routing  0.39  1.12 Net video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q_DATAIN (31,23) -> (30,23)
+Info:                          Sink video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU.A
+Info:      logic  0.10  1.22 Source video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU.Q
+Info:    routing  0.00  1.22 Net video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU$conn$Q (30,23) -> (30,23)
+Info:                          Sink video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q.DATAIN
+Info:      setup -0.20  1.02 Source video.pixel_rgb_MISTRAL_ALUT5_Q_5_C_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q.DATAIN
+Info: 0.63 ns logic, 0.39 ns routing
+
+Info: Critical path report for cross-domain path 'posedge system_clock.faithful.clocks[0]' -> 'posedge system_clock.faithful.clocks[1]':
+Info:       type curr  total name
+Info:   clk-to-q  0.73  0.73 Source normal_audio.audio.held_sample_MISTRAL_FF_Q_2.Q
+Info:    routing  1.14  1.87 Net normal_audio.audio.held_sample[21] (30,5) -> (31,5)
+Info:                          Sink normal_audio.audio.pcm_MISTRAL_FF_Q_21$ROUTETHRU.A
+Info:                          Defined in:
+Info:                               cores/fes-common/rtl/fes_audio_output.v:13.16-13.27
+Info:      logic  0.10  1.97 Source normal_audio.audio.pcm_MISTRAL_FF_Q_21$ROUTETHRU.Q
+Info:    routing  0.00  1.97 Net normal_audio.audio.pcm_MISTRAL_FF_Q_21$ROUTETHRU$conn$Q (31,5) -> (31,5)
+Info:                          Sink normal_audio.audio.pcm_MISTRAL_FF_Q_21.DATAIN
+Info:      setup -0.20  1.77 Source normal_audio.audio.pcm_MISTRAL_FF_Q_21.DATAIN
+Info: 0.63 ns logic, 1.14 ns routing
+
+Info: Critical path report for cross-domain path 'posedge system_clock.faithful.clocks[1]' -> 'posedge system_clock.faithful.clocks[0]':
+Info:       type curr  total name
+Info:   clk-to-q  0.73  0.73 Source normal_audio.audio.request_MISTRAL_FF_Q.Q
+Info:    routing  0.57  1.30 Net normal_audio.audio.request (31,4) -> (33,4)
+Info:                          Sink normal_audio.audio.request_meta_MISTRAL_FF_Q$ROUTETHRU.A
+Info:                          Defined in:
+Info:                               cores/fes-common/rtl/fes_audio_output.v:10.9-10.16
+Info:      logic  0.10  1.40 Source normal_audio.audio.request_meta_MISTRAL_FF_Q$ROUTETHRU.Q
+Info:    routing  0.00  1.40 Net normal_audio.audio.request_meta_MISTRAL_FF_Q$ROUTETHRU$conn$Q (33,4) -> (33,4)
+Info:                          Sink normal_audio.audio.request_meta_MISTRAL_FF_Q.DATAIN
+Info:      setup -0.20  1.20 Source normal_audio.audio.request_meta_MISTRAL_FF_Q.DATAIN
+Info: 0.63 ns logic, 0.57 ns routing
+
+Info: Max frequency for clock           'machine.ram.pixel_clk': 96.02 MHz (PASS at 74.25 MHz)
+Info: Max frequency for clock 'system_clock.faithful.clocks[0]': 52.90 MHz (PASS at 52.22 MHz)
+Info: Max frequency for clock 'system_clock.faithful.clocks[1]': 207.38 MHz (PASS at 12.29 MHz)
+
+Info: Max delay <async>                                 -> posedge system_clock.faithful.clocks[1]: 4.11 ns
+Info: Max delay posedge system_clock.faithful.clocks[0] -> posedge machine.ram.pixel_clk          : 1.02 ns
+Info: Max delay posedge system_clock.faithful.clocks[0] -> posedge system_clock.faithful.clocks[1]: 1.77 ns
+Info: Max delay posedge system_clock.faithful.clocks[1] -> posedge system_clock.faithful.clocks[0]: 1.20 ns
+
+Info: Slack histogram:
+Info:  legend: * represents 45 endpoint(s)
+Info:          + represents [1,45) endpoint(s)
+Info: [   243,   4244) |***********+
+Info: [  4244,   8245) |********************************+
+Info: [  8245,  12246) |************************************************************ 
+Info: [ 12246,  16247) |***********************************+
+Info: [ 16247,  20248) |**************+
+Info: [ 20248,  24249) | 
+Info: [ 24249,  28250) | 
+Info: [ 28250,  32251) | 
+Info: [ 32251,  36252) | 
+Info: [ 36252,  40253) | 
+Info: [ 40253,  44254) | 
+Info: [ 44254,  48255) | 
+Info: [ 48255,  52256) | 
+Info: [ 52256,  56257) | 
+Info: [ 56257,  60258) | 
+Info: [ 60258,  64259) | 
+Info: [ 64259,  68260) | 
+Info: [ 68260,  72261) | 
+Info: [ 72261,  76262) | 
+Info: [ 76262,  80263) |***+
+
+1 warning, 0 errors
+
+Info: Program finished normally.

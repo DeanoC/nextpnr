@@ -1,0 +1,318 @@
+diff --git a/common/route/gpu/congestion_plateau.h b/common/route/gpu/congestion_plateau.h
+new file mode 100644
+index 00000000..5c523014
+--- /dev/null
++++ b/common/route/gpu/congestion_plateau.h
+@@ -0,0 +1,44 @@
++/*
++ * Copyright (C) 2026 Deano Calver
++ * SPDX-License-Identifier: MIT
++ */
++
++#ifndef GPUROUTE_CONGESTION_PLATEAU_H
++#define GPUROUTE_CONGESTION_PLATEAU_H
++
++namespace gpuroute {
++
++// Early termination for negotiation attempts that started with frozen
++// timing-repair arcs. Ordinary initial routing retains its iteration budget.
++class CongestionPlateau
++{
++    bool repair_attempt = false;
++    int tiny_overuse_iters = 0;
++
++  public:
++    void begin(bool has_frozen_arcs)
++    {
++        repair_attempt = has_frozen_arcs;
++        clear_tiny();
++    }
++
++    void clear_tiny() { tiny_overuse_iters = 0; }
++
++    bool saturated(int overused_wires, int failed_nets) const
++    {
++        return repair_attempt && overused_wires > 0 && overused_wires <= 8 && failed_nets <= 8;
++    }
++
++    bool tiny(int overused_wires)
++    {
++        if (overused_wires > 0 && overused_wires <= 4)
++            ++tiny_overuse_iters;
++        else
++            clear_tiny();
++        return repair_attempt && tiny_overuse_iters >= 30;
++    }
++};
++
++} // namespace gpuroute
++
++#endif
+diff --git a/common/route/gpurouter.cc b/common/route/gpurouter.cc
+index 6e9f85b6..bf85bd04 100644
+--- a/common/route/gpurouter.cc
++++ b/common/route/gpurouter.cc
+@@ -42,6 +42,7 @@
+ #include <thread>
+ #include <tuple>
+ 
++#include "gpu/congestion_plateau.h"
+ #include "gpu/gpuroute_backend.h"
+ #include "log.h"
+ #include "nextpnr.h"
+@@ -1378,23 +1379,29 @@ struct GpuRouter
+     // zero so the fast congestion schedule is not thrown away on the
+     // partial improvement that follows an escape.
+     int plateau_escapes = 0;
+-    // Iterations spent at four or fewer overused wires since the last time
+-    // the count was higher. A negotiation that sits there is not making
+-    // progress even when an earlier zero is still the recorded minimum.
+-    int tiny_overuse_iters = 0;
++    gpuroute::CongestionPlateau congestion_plateau;
+     float cong_stall_boost = 1.0f;
+ 
+     // Negotiated-congestion loop over the nets in route_queue until no wire
+     // is overused (and, with --tmg-ripup, no arc fails slack). Returns
+-    // false when a one- or two-wire plateau survives a soft-reservation
+-    // escape; the caller either aborts or puts a known-legal routing back.
++    // false when an attempt that started with frozen repair arcs cannot
++    // escape a small plateau; initial routing keeps the normal max_iter
++    // budget and congestion growth even when only one conflict remains.
+     bool negotiate()
+     {
+         // Each call is a fresh attempt (initial routing, or re-negotiation
+         // after timing repair). An escape budget left over from a previous
+         // attempt would fail this one on its first saturated plateau.
+         plateau_escapes = 0;
+-        tiny_overuse_iters = 0;
++        // Snapshot actual timing-repair state, not pre-routed globals or
++        // hard reservations. No arcs become frozen during negotiation, but
++        // thawing its last frozen arc must not discard the repair budget.
++        bool has_frozen_arcs = false;
++        for (const auto &nd : nets)
++            for (const auto &arcs : nd.arcs)
++                for (const auto &ad : arcs)
++                    has_frozen_arcs |= ad.frozen;
++        congestion_plateau.begin(has_frozen_arcs);
+         do {
+             auto istart = Clock::now();
+             gpu_time = 0.0;
+@@ -1493,7 +1500,7 @@ struct GpuRouter
+                     log_info("    congestion has not improved from %d overused wires in %d iterations; "
+                              "accelerating present-congestion growth (x%.2f)\n",
+                              best_overused, overused_stall, cong_stall_boost);
+-                } else if (overused_wires <= 8 && int(failed_nets.size()) <= 8) {
++                } else if (congestion_plateau.saturated(overused_wires, int(failed_nets.size()))) {
+                     // Present-congestion cost is already growing as fast as
+                     // it is allowed to, and the overused wires are not held
+                     // by frozen arcs. Timing repair can still have soft-
+@@ -1513,16 +1520,10 @@ struct GpuRouter
+             // waiting out the boost ceiling burns the whole attempt. Try
+             // the soft-reservation escape once, then hand the decision
+             // back to the caller.
+-            if (overused_wires > 4)
+-                tiny_overuse_iters = 0;
+-            else if (overused_wires > 0)
+-                ++tiny_overuse_iters;
+-            else
+-                tiny_overuse_iters = 0;
+-            if (tiny_overuse_iters >= 30 && overused_wires > 0) {
++            if (congestion_plateau.tiny(overused_wires)) {
+                 if (!escape_soft_plateau())
+                     return false;
+-                tiny_overuse_iters = 0;
++                congestion_plateau.clear_tiny();
+             }
+ 
+             int tmgfail = 0;
+@@ -1734,7 +1735,7 @@ struct GpuRouter
+             cong_stall_boost = 1.0f;
+             best_overused = 0;
+             overused_stall = 0;
+-            tiny_overuse_iters = 0;
++            congestion_plateau.clear_tiny();
+             log_info("    congestion plateau at %d overused wires cleared by ignoring soft reservations "
+                      "(unfroze %d timing-repair arcs)\n",
+                      before, opened);
+diff --git a/common/route/gpurouter.h b/common/route/gpurouter.h
+index dd95bdad..201c83c7 100644
+--- a/common/route/gpurouter.h
++++ b/common/route/gpurouter.h
+@@ -44,9 +44,9 @@ struct GpuRouterCfg
+     // stuck swapping the same local wire (e.g. two cells placed with a
+     // shared LAB-internal conflict) can otherwise cycle for a very long
+     // time under the plain additive schedule. This only accelerates
+-    // convergence. A small plateau that remains once the boost is at its
+-    // ceiling is handed to the soft-reservation escape in the negotiation
+-    // loop; max_iter still bounds every other case.
++    // convergence. In an attempt that began with frozen timing-repair arcs,
++    // a small plateau at the boost ceiling is handed to the soft-reservation
++    // escape. Initial routing retains its normal max_iter budget.
+     int congestion_stall_iters;
+     float congestion_stall_boost;
+     // Ceiling on the compounded boost multiplier. A genuine hard conflict
+@@ -54,9 +54,9 @@ struct GpuRouterCfg
+     // with a reserved/frozen wire) does not respond to any amount of
+     // present-congestion cost, so letting the multiplier compound without
+     // bound just produces absurd weights and log noise. Once the multiplier
+-    // is at this ceiling, a handful of still-overused wires are routed
+-    // again with soft timing-repair reservations ignored; a plateau that
+-    // still does not move stops the run instead of waiting for max_iter.
++    // is at this ceiling during a frozen timing-repair attempt, a handful
++    // of still-overused wires are routed again with soft reservations
++    // ignored; a plateau that still does not move ends that attempt.
+     float congestion_stall_boost_max;
+     // Weight of the A* estimate; > 1 trades optimality for speed
+     float estimate_weight;
+diff --git a/docs/gpurouter.md b/docs/gpurouter.md
+index a1cfe3de..a97eb192 100644
+--- a/docs/gpurouter.md
++++ b/docs/gpurouter.md
+@@ -127,15 +127,23 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
+    Likewise an arc that finds no route at all, even
+    without a bounding box, is routed once more ignoring soft reservations
+    and the frozen arcs it then displaces are unfrozen whatever their
+-   slack, instead of the run failing. When four or fewer wires have stayed
+-   overused for 30 iterations, or the boost is already at its ceiling on a
+-   plateau of at most eight wires, the stuck nets are routed one at a time
++   slack, instead of the run failing. For a negotiation attempt that began
++   with frozen timing-repair arcs, when four or fewer wires have stayed
++   overused for 30 consecutive iterations, or the boost is already at its
++   ceiling on a plateau of at most eight wires and eight nets, the stuck
++   nets are routed one at a time
+    with soft reservations ignored. Frozen arcs on a path that avoids the
+    overuse are unfrozen, whatever their slack. If that does not clear the
+    wires, a re-negotiation started by timing repair restores the legal
+    pre-repair routing and stops, instead of running on to `maxIter`. The
+-   initial negotiation still fails the run, because there is no earlier
+-   legal routing to restore.
++   initial negotiation has no frozen repair arcs and no earlier legal
++   routing to restore: it keeps the normal congestion growth and `maxIter`
++   budget instead of taking either early-exit shortcut. Hard reservations
++   and pre-routed globals do not enable those shortcuts. Eligibility is
++   captured at the start of each negotiation, so thawing the last repaired
++   arc during an attempt does not discard its repair stopping rule. The
++   thirty-iteration counter resets at zero overuse, above four overused
++   wires, after a successful escape, and at the start of each attempt.
+ 5. **Lanes.** A batch first runs in the *small* lane (many concurrent nets,
+    2^16-entry hash tables). Arcs whose search outgrows that scratch retry in
+    the *large* lane (few concurrent nets, 2^22 entries, enough for the whole
+diff --git a/mistral/tests/gpurouter/README-congestion-plateau.md b/mistral/tests/gpurouter/README-congestion-plateau.md
+new file mode 100644
+index 00000000..3d26f77b
+--- /dev/null
++++ b/mistral/tests/gpurouter/README-congestion-plateau.md
+@@ -0,0 +1,23 @@
++# GPU congestion plateau regression
++
++The standalone test executes the production stopping policy without a chip
++database, GPU, or nextpnr build:
++
++```sh
++g++ -std=c++11 -Wall -Wextra -Werror -I . \
++    mistral/tests/gpurouter/congestion_plateau.cc \
++    -o /tmp/nextpnr-congestion-plateau-test
++/tmp/nextpnr-congestion-plateau-test
++```
++
++Run from the nextpnr source root. The test supplies occupancy sequences to
++check that initial negotiation retains its configured iteration budget beyond
++both early-exit conditions. It also checks the frozen-repair shortcuts,
++counter resets, and eligibility reset between negotiation attempts.
++
++Before the frozen-at-entry guard, four initial-routing cases fail. The
++triggering RAM-test route reached one unreserved shared wire, with no frozen
++arcs, and aborted after iteration 67 because the thirty-iteration shortcut
++was applied to initial negotiation. The focused test proves the stopping
++rule; routing that complete design is still required to establish convergence
++or timing improvement.
+diff --git a/mistral/tests/gpurouter/congestion_plateau.cc b/mistral/tests/gpurouter/congestion_plateau.cc
+new file mode 100644
+index 00000000..af497e9e
+--- /dev/null
++++ b/mistral/tests/gpurouter/congestion_plateau.cc
+@@ -0,0 +1,84 @@
++// Standalone regression for the production GPU-router stopping policy.
++#include "common/route/gpu/congestion_plateau.h"
++
++#include <cstdio>
++
++static int failures = 0;
++
++static void require(bool condition, const char *message)
++{
++    if (!condition) {
++        std::fprintf(stderr, "FAIL: %s\n", message);
++        ++failures;
++    }
++}
++
++// Return the iteration that requests an early escape, or zero when the
++// configured budget expires. Occupancy is supplied independently of routing:
++// these tests cover stopping policy, not whether a physical graph is routable.
++static int plateau_until_budget(gpuroute::CongestionPlateau &policy, int overused, int budget, int boost_ceiling_at)
++{
++    for (int iter = 1; iter <= budget; ++iter) {
++        if (iter >= boost_ceiling_at && policy.saturated(overused, 2))
++            return iter;
++        if (policy.tiny(overused))
++            return iter;
++    }
++    return 0;
++}
++
++int main()
++{
++    gpuroute::CongestionPlateau policy;
++    policy.begin(false);
++    require(plateau_until_budget(policy, 1, 100, 80) == 0,
++            "initial routing must continue beyond the tiny plateau and boost ceiling to its budget");
++    policy.begin(false);
++    require(plateau_until_budget(policy, 5, 100, 20) == 0,
++            "initial routing must retain its budget when only the boost-ceiling shortcut applies");
++
++    // Pre-routed/global hard reservations do not set ArcData::frozen. They
++    // must not turn an initial negotiation into a timing-repair attempt.
++    policy.begin(false);
++    require(plateau_until_budget(policy, 2, 200, 1) == 0,
++            "zero frozen arcs must retain the budget even with hard reservations");
++
++    policy.begin(true);
++    require(plateau_until_budget(policy, 1, 100, 80) == 30,
++            "timing repair must retain its existing tiny-plateau shortcut");
++    policy.begin(true);
++    require(plateau_until_budget(policy, 5, 100, 20) == 20,
++            "timing repair must retain the saturated-congestion shortcut");
++
++    policy.begin(true);
++    for (int i = 0; i < 29; ++i)
++        require(!policy.tiny(1), "repair must not escape before thirty consecutive tiny iterations");
++    require(!policy.tiny(0), "legal routing must clear the tiny-plateau counter");
++    for (int i = 0; i < 29; ++i)
++        require(!policy.tiny(4), "a recovered route must get a fresh plateau interval");
++    require(!policy.tiny(5), "larger congestion must clear the tiny-plateau counter");
++    require(plateau_until_budget(policy, 2, 30, 80) == 30,
++            "small congestion must get thirty iterations after larger congestion");
++
++    // Thawing occurs within an attempt, without begin(): the attempt retains
++    // its repair budget even if its final frozen arc was released meanwhile.
++    policy.begin(true);
++    for (int i = 0; i < 20; ++i)
++        require(!policy.tiny(1), "repair must still negotiate before thawing");
++    require(plateau_until_budget(policy, 1, 10, 80) == 10,
++            "thawing during repair must not disable its plateau escape");
++    policy.clear_tiny();
++    require(plateau_until_budget(policy, 1, 30, 80) == 30,
++            "successful escape must restart the tiny-plateau interval");
++    policy.begin(false);
++    require(plateau_until_budget(policy, 1, 100, 1) == 0,
++            "a later negotiation without frozen arcs must not inherit repair eligibility");
++    policy.begin(true);
++    require(!policy.saturated(0, 0) && !policy.saturated(9, 2) && !policy.saturated(1, 9),
++            "the boost-ceiling shortcut must remain bounded to small nonzero congestion");
++
++    if (failures != 0)
++        return 1;
++    std::puts("PASS: GPU congestion plateau policy");
++    return 0;
++}

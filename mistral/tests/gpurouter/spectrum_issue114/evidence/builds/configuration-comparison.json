@@ -1,0 +1,14 @@
+{
+  "baseline": {
+    "CMAKE_EXPORT_COMPILE_COMMANDS": {
+      "original": "",
+      "rebuilt": "ON"
+    }
+  },
+  "fixed": {
+    "CMAKE_EXPORT_COMPILE_COMMANDS": {
+      "original": "",
+      "rebuilt": "ON"
+    }
+  }
+}
