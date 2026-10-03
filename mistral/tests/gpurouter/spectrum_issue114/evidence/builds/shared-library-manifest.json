@@ -1,0 +1,26 @@
+{
+  "mistral": {
+    "source": "/home/deano/fes/out/cache/misteross-toolchains/slots/2e5173721849eea2192ecb067b449243b80c8cc072095cd5ae48298ae23eea27/install/lib/libmistral.a",
+    "sha256": "71bf9e5b60ae844e6a5dd12693fd9b41094510f278b952374c8ce4e994ae5e31",
+    "source_commit": "7ed06e21c18b047ec5c6d6a7e85e5ea2c8827039",
+    "origin": "authenticated original toolchain cache install"
+  },
+  "hip": {
+    "source": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/shared-libraries/libnextpnr_gpuroute_device.a",
+    "sha256": "a7379a98d49f0a398550adead098e1827ee73e0713e95f0cd6bc075dac9b7ea6",
+    "source_commit": "0259c6dc1c46dd46fe79f3923a17ad36d2513421",
+    "origin": "fresh matched baseline build; original toolchain HIP archive no longer exists",
+    "source_files_sha256": {
+      "gpuroute_hip.hip": "a7cea925f594abb7e3864caec4774dc09f157ef5a18fae20761505dd13d4f1f0",
+      "gpuroute_kernel.cuh": "405c80aa688e5aa944c27a7e192d1ceb6b747cac4558769b1ab0736bf78f37d5",
+      "gpuroute_backend.h": "e357caa6ead01a1b199c41e5db4b330f2104ece3147874d5e3e4f3beae342b12",
+      "gpuroute_compat.h": "4e2f0aff3ad621b98a0f1c16df2a36ad72ddfe0ced0fbbf7d39a68345d193403"
+    },
+    "architectures": [
+      "gfx1100",
+      "gfx1201"
+    ],
+    "hip_compiler": "/opt/rocm/core-7.14/lib/llvm/bin/clang++",
+    "compile_commands_json": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/compile_commands.json"
+  }
+}

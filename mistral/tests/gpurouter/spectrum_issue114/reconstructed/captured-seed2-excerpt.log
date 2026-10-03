@@ -1,0 +1,16 @@
+# Captured excerpt from the original deb0f18d GPU0 seed2/weight2000/critexp5 run.
+# Original full log was removed by the next producer invocation; this is not a complete log.
+Info:     iter=99 wires=146693 overused=2 overuse=2 tmgfail=0 nets=2 batches=2 archfail=NA
+Info:         stalled: wire TD.2.40.8 occ=2 reserved=-1 used by gp_mailbox.total[0](count=1) gp_mailbox.begin_staged_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_C_Q_MISTRAL_ALUT5_Q_4_D_MISTRAL_ALUT5_Q_1_C_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT5_Q_2_D_MISTRAL_ALUT5_Q_1_E[0](count=1)
+Info:     iter=101 wires=146710 overused=1 overuse=1 tmgfail=0 nets=3 batches=3 archfail=NA
+Info:     iter=102 wires=146713 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=120 wires=146723 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     congestion has not improved from 1 overused wires in 20 iterations; accelerating present-congestion growth (x1.50)
+Info:     iter=121 wires=146726 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     iter=122 wires=146730 overused=1 overuse=1 tmgfail=0 nets=1 batches=1 archfail=NA
+Info:     congestion plateau at 1 overused wires did not clear (unfroze 0, 1 remain)
+Info:         stalled: wire TD.2.40.38 occ=2 reserved=-1 used by gp_mailbox.total[0](count=1) gp_mailbox.begin_staged_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT5_C_Q_MISTRAL_ALUT6_Q_1_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_1_E[2](count=1)
+Warning: GPU router did not converge (1 overused wires).
+ERROR: Routing design failed.
+1 warning, 1 error
+search_placer_qor: tool failed with exit 125

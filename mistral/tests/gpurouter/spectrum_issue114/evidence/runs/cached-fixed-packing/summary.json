@@ -1,0 +1,88 @@
+{
+  "fixture": "/home/deano/kepler/worktrees/nextpnr-114-mistral-gpu-router-qualify-54cde5d3/mistral/tests/gpurouter/spectrum_issue114/retained",
+  "fixture_hashes": {
+    "synth.json.gz": "943b3fedbce0b7bbc1bca8af3bb21f4e78e4edac7205e172c477122e0be28021",
+    "socket.qsf": "0661e5ca219a80d8b6053fb150e201bd3bae84dccaa376d9c49e2d79eb7f241a",
+    "clocks.sdc": "d719b08d2753416423427110d3b657ae63a445552c2dacc696b23290f3f1fbdd",
+    "synth.json": "01c8e412c0a48b79897f80bdcf8948ea8946a104ec7f95c06689b261c60fb671"
+  },
+  "fixture_manifest_sha256": "96929dcf1552a981366f0587a12a9897931feb76d48490040994b1def0dce9d9",
+  "nextpnr": "/home/deano/fes/out/cache/misteross-toolchains/slots/1e3827e592617f41dbbaa2fad1c64ce7377a16c73eab03a83c7d3e7af602758e/install/bin/nextpnr-mistral",
+  "nextpnr_sha256": "8f2a93c75ebdc7de141a6344dbf3174bf6c950c3cd4c41a4632578aa5f7d8121",
+  "expected_failure": "packing",
+  "timeout_seconds": 1800.0,
+  "runs": [
+    {
+      "returncode": 125,
+      "timed_out": false,
+      "outcome": "packing_rejected",
+      "backend": null,
+      "last_iteration": null,
+      "reached_zero_overuse": false,
+      "route_complete": false,
+      "tool_complete": false,
+      "signoff": false,
+      "last_logged_route_checksum": null,
+      "table_fmax": {},
+      "tool_errors": [
+        "ERROR: M10K 'machine.rom.lane9': Cyclone V M10K does not support asynchronous reads; use MLAB, logic, or a registered M10K read."
+      ],
+      "seed": 4,
+      "command": [
+        "/home/deano/fes/out/cache/misteross-toolchains/slots/1e3827e592617f41dbbaa2fad1c64ce7377a16c73eab03a83c7d3e7af602758e/install/bin/nextpnr-mistral",
+        "--json",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/cached-fixed-packing/synth.json",
+        "--device",
+        "5CSEBA6U23I7",
+        "--qsf",
+        "/home/deano/kepler/worktrees/nextpnr-114-mistral-gpu-router-qualify-54cde5d3/mistral/tests/gpurouter/spectrum_issue114/retained/socket.qsf",
+        "--sdc",
+        "/home/deano/kepler/worktrees/nextpnr-114-mistral-gpu-router-qualify-54cde5d3/mistral/tests/gpurouter/spectrum_issue114/retained/clocks.sdc",
+        "--freq",
+        "74.25",
+        "--seed",
+        "4",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--report",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/cached-fixed-packing/seed-4-run-1/timing.json",
+        "--write",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/cached-fixed-packing/seed-4-run-1/routed.json",
+        "--rbf",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/cached-fixed-packing/seed-4-run-1/core.rbf",
+        "--compress-rbf",
+        "--detailed-timing-report",
+        "--timing-allow-fail"
+      ],
+      "log": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/cached-fixed-packing/seed-4-run-1/nextpnr.log",
+      "wall_seconds": 4.732428913004696,
+      "rbf_sha256": null,
+      "backend_matches": false,
+      "artifacts": {
+        "core.rbf": false,
+        "routed.json": false,
+        "timing.json": false
+      },
+      "analogue_timing": {
+        "fmax": {},
+        "gates": {},
+        "signoff_pass": null,
+        "fes_timing_pass": null
+      },
+      "timing_evidence_errors": [
+        "invalid timing report: [Errno 2] No such file or directory: '/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/cached-fixed-packing/seed-4-run-1/timing.json'"
+      ],
+      "errors": [],
+      "passed": true,
+      "attempt": 1,
+      "repeat_matches": null
+    }
+  ],
+  "passed": true
+}

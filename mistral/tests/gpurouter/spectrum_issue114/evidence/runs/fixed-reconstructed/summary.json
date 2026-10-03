@@ -1,0 +1,235 @@
+{
+  "fixture": "/home/deano/kepler/worktrees/nextpnr-114-mistral-gpu-router-qualify-54cde5d3/mistral/tests/gpurouter/spectrum_issue114/reconstructed",
+  "fixture_hashes": {
+    "synth.json.gz": "437a5d5682a26473a2e59cee82de2b9c1c3b49e068ffac1affb8d7abed205365",
+    "constraints.qsf": "0661e5ca219a80d8b6053fb150e201bd3bae84dccaa376d9c49e2d79eb7f241a",
+    "clocks.sdc": "d719b08d2753416423427110d3b657ae63a445552c2dacc696b23290f3f1fbdd",
+    "synth.json": "70d0e0fe72686a8ee3d3097c5fe8413a2e61dd57163b84ee4e3d7f54cad5ed7a"
+  },
+  "fixture_manifest_sha256": "83074505433c50ca8cfe34054318bbe24a0236f98d1ee178751f6bb0ed3a029b",
+  "nextpnr": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/nextpnr-mistral",
+  "nextpnr_sha256": "dede5ab70917aec964932c5b58ca5167d472306610eb330eb670dfa2a8394665",
+  "expected_failure": null,
+  "timeout_seconds": 1800.0,
+  "runs": [
+    {
+      "returncode": 0,
+      "timed_out": false,
+      "outcome": "route_complete",
+      "backend": "hip:AMD Radeon RX 7900 XTX",
+      "last_iteration": {
+        "iteration": 48,
+        "wires": 149892,
+        "overused": 0,
+        "overuse": 0
+      },
+      "reached_zero_overuse": true,
+      "route_complete": true,
+      "tool_complete": true,
+      "signoff": true,
+      "last_logged_route_checksum": "0xf6e5eada",
+      "table_fmax": {
+        "machine.ram.pixel_clk": 79.2,
+        "system_clock.faithful.clocks[0]": 50.44,
+        "system_clock.faithful.clocks[1]": 190.91
+      },
+      "tool_errors": [],
+      "seed": 2,
+      "command": [
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/nextpnr-mistral",
+        "--json",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/synth.json",
+        "--device",
+        "5CSEBA6U23I7",
+        "--qsf",
+        "/home/deano/kepler/worktrees/nextpnr-114-mistral-gpu-router-qualify-54cde5d3/mistral/tests/gpurouter/spectrum_issue114/reconstructed/constraints.qsf",
+        "--sdc",
+        "/home/deano/kepler/worktrees/nextpnr-114-mistral-gpu-router-qualify-54cde5d3/mistral/tests/gpurouter/spectrum_issue114/reconstructed/clocks.sdc",
+        "--freq",
+        "74.25",
+        "--seed",
+        "2",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--report",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-1/timing.json",
+        "--write",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-1/routed.json",
+        "--rbf",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-1/core.rbf",
+        "--compress-rbf",
+        "--detailed-timing-report",
+        "--timing-allow-fail"
+      ],
+      "log": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-1/nextpnr.log",
+      "wall_seconds": 325.8044822230004,
+      "spawn_error": null,
+      "errors": [],
+      "rbf_sha256": "5386a451030b074b33383dbd6325609a04f5fa3b6d1a0013c6cf2c319d4f5a8b",
+      "repeat_matches": null,
+      "backend_matches": true,
+      "artifacts": {
+        "core.rbf": true,
+        "routed.json": true,
+        "timing.json": true
+      },
+      "analogue_timing": {
+        "fmax": {
+          "machine.ram.pixel_clk": {
+            "achieved": 80.30838775634766,
+            "constraint": 74.25006866455078,
+            "meets_constraint": true
+          },
+          "system_clock.faithful.clocks[0]": {
+            "achieved": 52.211143493652344,
+            "constraint": 52.22477340698242,
+            "meets_constraint": false
+          },
+          "system_clock.faithful.clocks[1]": {
+            "achieved": 194.74195861816406,
+            "constraint": 12.288031578063965,
+            "meets_constraint": true
+          }
+        },
+        "gates": {
+          "machine.ram.pixel_clk": {
+            "required": 74.25,
+            "achieved": 80.30838775634766,
+            "passes": true
+          },
+          "system_clock.faithful.clocks[0]": {
+            "required": 52.224,
+            "achieved": 52.211143493652344,
+            "passes": false
+          },
+          "system_clock.faithful.clocks[1]": {
+            "required": 12.288,
+            "achieved": 194.74195861816406,
+            "passes": true
+          }
+        },
+        "signoff_pass": false,
+        "fes_timing_pass": false
+      },
+      "timing_evidence_errors": [],
+      "passed": true,
+      "attempt": 1
+    },
+    {
+      "returncode": 0,
+      "timed_out": false,
+      "outcome": "route_complete",
+      "backend": "hip:AMD Radeon RX 7900 XTX",
+      "last_iteration": {
+        "iteration": 48,
+        "wires": 149892,
+        "overused": 0,
+        "overuse": 0
+      },
+      "reached_zero_overuse": true,
+      "route_complete": true,
+      "tool_complete": true,
+      "signoff": true,
+      "last_logged_route_checksum": "0xf6e5eada",
+      "table_fmax": {
+        "machine.ram.pixel_clk": 79.2,
+        "system_clock.faithful.clocks[0]": 50.44,
+        "system_clock.faithful.clocks[1]": 190.91
+      },
+      "tool_errors": [],
+      "seed": 2,
+      "command": [
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/nextpnr-mistral",
+        "--json",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/synth.json",
+        "--device",
+        "5CSEBA6U23I7",
+        "--qsf",
+        "/home/deano/kepler/worktrees/nextpnr-114-mistral-gpu-router-qualify-54cde5d3/mistral/tests/gpurouter/spectrum_issue114/reconstructed/constraints.qsf",
+        "--sdc",
+        "/home/deano/kepler/worktrees/nextpnr-114-mistral-gpu-router-qualify-54cde5d3/mistral/tests/gpurouter/spectrum_issue114/reconstructed/clocks.sdc",
+        "--freq",
+        "74.25",
+        "--seed",
+        "2",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--report",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-2/timing.json",
+        "--write",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-2/routed.json",
+        "--rbf",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-2/core.rbf",
+        "--compress-rbf",
+        "--detailed-timing-report",
+        "--timing-allow-fail"
+      ],
+      "log": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/fixed-reconstructed/seed-2-run-2/nextpnr.log",
+      "wall_seconds": 386.942474297015,
+      "spawn_error": null,
+      "errors": [],
+      "rbf_sha256": "5386a451030b074b33383dbd6325609a04f5fa3b6d1a0013c6cf2c319d4f5a8b",
+      "repeat_matches": true,
+      "backend_matches": true,
+      "artifacts": {
+        "core.rbf": true,
+        "routed.json": true,
+        "timing.json": true
+      },
+      "analogue_timing": {
+        "fmax": {
+          "machine.ram.pixel_clk": {
+            "achieved": 80.30838775634766,
+            "constraint": 74.25006866455078,
+            "meets_constraint": true
+          },
+          "system_clock.faithful.clocks[0]": {
+            "achieved": 52.211143493652344,
+            "constraint": 52.22477340698242,
+            "meets_constraint": false
+          },
+          "system_clock.faithful.clocks[1]": {
+            "achieved": 194.74195861816406,
+            "constraint": 12.288031578063965,
+            "meets_constraint": true
+          }
+        },
+        "gates": {
+          "machine.ram.pixel_clk": {
+            "required": 74.25,
+            "achieved": 80.30838775634766,
+            "passes": true
+          },
+          "system_clock.faithful.clocks[0]": {
+            "required": 52.224,
+            "achieved": 52.211143493652344,
+            "passes": false
+          },
+          "system_clock.faithful.clocks[1]": {
+            "required": 12.288,
+            "achieved": 194.74195861816406,
+            "passes": true
+          }
+        },
+        "signoff_pass": false,
+        "fes_timing_pass": false
+      },
+      "timing_evidence_errors": [],
+      "passed": true,
+      "attempt": 2
+    }
+  ],
+  "passed": true
+}

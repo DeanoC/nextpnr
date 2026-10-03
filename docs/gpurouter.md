@@ -358,6 +358,16 @@ ColecoVision cores with `--extra-arg` for the placer settings of their
 recipes. `--arc-dump` writes the per-hop table and analogue delays of
 every routed arc.
 
+The Spectrum issue 114 fixtures and `mistral/tests/gpurouter/spectrum_plateau.py`
+qualify the initial-negotiation stopping policy independently of timing closure.
+The runner preserves failed and timed-out attempts, requires completed legal
+routing and final analogue timing evidence for a routing pass, and reports the
+three clock gates separately. These historical inputs contain asynchronous
+M10K reads rejected by the current packer; compare `0259c6dc` with only the
+`53e1ad42` policy fix backported onto it. See
+[`spectrum_issue114/README.md`](../mistral/tests/gpurouter/spectrum_issue114/README.md)
+for provenance, replay commands and the qualification results.
+
 Results on the development machine (Radeon RX 7900 XTX, ROCm 7.14, 24-core
 host, nextpnr fd862a2c base, misteross fixtures as of 2026-09-12). Fmax is
 the post-route table-model value the final report prints; router time is

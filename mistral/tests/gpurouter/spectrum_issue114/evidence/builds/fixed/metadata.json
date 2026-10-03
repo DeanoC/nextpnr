@@ -1,0 +1,192 @@
+{
+  "role": "fixed",
+  "source_path": "/home/deano/kepler/worktrees/nextpnr-qualify-114-spectrum-fixed-54cde5d3",
+  "source_commit": "fdb8e11c57a7c4e1afa83f1864fc57f8dedaa08c",
+  "source_tree": "43f03e34ddf895cd7b2f9d56ba897c5c9f9ccb7b",
+  "source_archive_sha256": "ce6885ea6d32f4d811766d1e3526e95ffd5cb4453e10c49fb4a1647483e8db46",
+  "source_status": "",
+  "configure_argv": [
+    "/usr/bin/cmake",
+    "-S",
+    "/home/deano/kepler/worktrees/nextpnr-qualify-114-spectrum-fixed-54cde5d3",
+    "-B",
+    "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed",
+    "-G",
+    "Ninja",
+    "-DARCH=mistral",
+    "-DBUILD_GUI=OFF",
+    "-DBUILD_PYTHON=OFF",
+    "-DBUILD_RUST=OFF",
+    "-DBUILD_TESTS=OFF",
+    "-DCMAKE_BUILD_TYPE=Release",
+    "-DGPU_ROUTER=HIP",
+    "-DCMAKE_HIP_ARCHITECTURES=gfx1100;gfx1201",
+    "-DCMAKE_CXX_COMPILER=/usr/bin/c++",
+    "-DCMAKE_C_COMPILER=/usr/bin/cc",
+    "-DCMAKE_HIP_COMPILER=/opt/rocm/core-7.14/lib/llvm/bin/clang++",
+    "-Dhip_DIR=/opt/rocm/lib/cmake/hip",
+    "-DUSE_OPENMP=OFF",
+    "-DUSE_IPO=OFF",
+    "-DSTATIC_BUILD=OFF",
+    "-DEXTERNAL_CHIPDB=OFF",
+    "-DCOMPRESSION_LEVEL=1",
+    "-DMISTRAL_ROOT=/home/deano/fes/out/cache/misteross-toolchains/slots/2e5173721849eea2192ecb067b449243b80c8cc072095cd5ae48298ae23eea27/src/mistral",
+    "-DCMAKE_INSTALL_PREFIX=/home/deano/fes/out/cache/misteross-toolchains/slots/2e5173721849eea2192ecb067b449243b80c8cc072095cd5ae48298ae23eea27/install",
+    "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+  ],
+  "build_argv": [
+    "/usr/bin/cmake",
+    "--build",
+    "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed",
+    "--target",
+    "nextpnr-mistral",
+    "--parallel",
+    "8"
+  ],
+  "cmake_install_is_not_run": true,
+  "compiler": {
+    "c++": {
+      "path": "/usr/bin/c++",
+      "resolved_path": "/usr/bin/x86_64-linux-gnu-g++-14",
+      "sha256": "6b3696e4dcb85e1c949c732a02befa50e3983ecf94ce7e8e58d9d503b954b79d",
+      "version": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+      "original_sha256": "6b3696e4dcb85e1c949c732a02befa50e3983ecf94ce7e8e58d9d503b954b79d",
+      "matches_original": true
+    },
+    "cc": {
+      "path": "/usr/bin/cc",
+      "resolved_path": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "sha256": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+      "version": "cc (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+      "original_sha256": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+      "matches_original": true
+    },
+    "hipcc": {
+      "path": "/opt/rocm/core-7.14/bin/hipcc",
+      "resolved_path": "/opt/rocm/core-7.14/bin/hipcc",
+      "sha256": "d92839ed940e685fd15b8c60744d9f30efa65102e49e0babd655045219be371d",
+      "version": "HIP version: 7.14.60850-0000000\nAMD clang version 23.0.0git (https://github.com/ROCm/llvm-project.git 46fcb339fb61119b337f973c7ca9e710a319fdd0+PATCHED:440716f8b87be9d8e20ed910e10e5b6d14d57cf6)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /opt/rocm/core-7.14/lib/llvm/bin\n",
+      "original_sha256": "d92839ed940e685fd15b8c60744d9f30efa65102e49e0babd655045219be371d",
+      "matches_original": true
+    },
+    "hip-clang++": {
+      "path": "/opt/rocm/core-7.14/lib/llvm/bin/clang++",
+      "resolved_path": "/opt/rocm/core-7.14/lib/llvm/bin/clang-23",
+      "sha256": "285156b3fa956dfc0c6b22f87d35ac27aab5a093190a85a0e0a71123654b9657",
+      "version": "AMD clang version 23.0.0git (https://github.com/ROCm/llvm-project.git 46fcb339fb61119b337f973c7ca9e710a319fdd0+PATCHED:440716f8b87be9d8e20ed910e10e5b6d14d57cf6)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /opt/rocm/core-7.14/lib/llvm/bin\n",
+      "original_sha256": null,
+      "matches_original": null
+    },
+    "cmake": {
+      "path": "/usr/bin/cmake",
+      "resolved_path": "/usr/bin/cmake",
+      "sha256": "9a2692f4d712265eb29c90c3366bfc40df400ea586b0477edabbcf3bae745dc1",
+      "version": "cmake version 3.31.6\n\nCMake suite maintained and supported by Kitware (kitware.com/cmake).\n",
+      "original_sha256": "9a2692f4d712265eb29c90c3366bfc40df400ea586b0477edabbcf3bae745dc1",
+      "matches_original": true
+    },
+    "ninja": {
+      "path": "/usr/bin/ninja",
+      "resolved_path": "/usr/bin/ninja",
+      "sha256": "e8e646527e23aa7a66d0f04b86b89f1bb2f25edcc1c5e402a0989e5364c8779b",
+      "version": "1.12.1\n",
+      "original_sha256": "e8e646527e23aa7a66d0f04b86b89f1bb2f25edcc1c5e402a0989e5364c8779b",
+      "matches_original": true
+    }
+  },
+  "original_cache": {
+    "slot": "/home/deano/fes/out/cache/misteross-toolchains/slots/2e5173721849eea2192ecb067b449243b80c8cc072095cd5ae48298ae23eea27",
+    "configuration": {
+      "gpu-router": "HIP",
+      "hip-architectures": "gfx1100;gfx1201"
+    },
+    "ready_sha256": "fe65a050def29a6db5fe0a15a0079fbc59ac8ab3c80d643e7e60a677cc3ba59e",
+    "cmake_cache_sha256": "74b6dd38836e27741f44c2301e5ca50372159419f8e3fbc72e88c9c7083d3b06",
+    "nextpnr": {
+      "binary": "bin/nextpnr-mistral",
+      "commit": "0259c6dc1c46dd46fe79f3923a17ad36d2513421",
+      "identity": "\"nextpnr-mistral\" -- Next Generation Place and Route (Version nextpnr-0.11.1-271-g0259c6dc)",
+      "path": "install/bin/nextpnr-mistral",
+      "sha256": "f3f8ae8c781fa93e6db5f844863234b7faac8506228ff88c37596e38173f6d37"
+    }
+  },
+  "mistral": {
+    "source": "/home/deano/fes/out/cache/misteross-toolchains/slots/2e5173721849eea2192ecb067b449243b80c8cc072095cd5ae48298ae23eea27/src/mistral",
+    "commit": "7ed06e21c18b047ec5c6d6a7e85e5ea2c8827039",
+    "installed_lib_sha256": "71bf9e5b60ae844e6a5dd12693fd9b41094510f278b952374c8ce4e994ae5e31",
+    "installed_lib_reused": true,
+    "compression_level": 1,
+    "linked_lib_sha256": "71bf9e5b60ae844e6a5dd12693fd9b41094510f278b952374c8ce4e994ae5e31"
+  },
+  "backport": {
+    "original_commit": "53e1ad42b3fc3bb016a6dbbddfe3fc292f98b98c",
+    "parent": "0259c6dc1c46dd46fe79f3923a17ad36d2513421",
+    "diff_sha256": "d5c8e8edd0eb9faca7927ff15c0a68ba76199cdaa9ab2b9d9e605dce66e416cc",
+    "patch_id": "db1909870cfb92a84f254f378b036936aded7cc0",
+    "original_patch_id": "db1909870cfb92a84f254f378b036936aded7cc0",
+    "patch_id_matches_original": true
+  },
+  "dependency_artifact_reuse": {
+    "mistral": {
+      "source": "/home/deano/fes/out/cache/misteross-toolchains/slots/2e5173721849eea2192ecb067b449243b80c8cc072095cd5ae48298ae23eea27/install/lib/libmistral.a",
+      "sha256": "71bf9e5b60ae844e6a5dd12693fd9b41094510f278b952374c8ce4e994ae5e31",
+      "source_commit": "7ed06e21c18b047ec5c6d6a7e85e5ea2c8827039",
+      "origin": "authenticated original toolchain cache install"
+    },
+    "hip": {
+      "source": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/shared-libraries/libnextpnr_gpuroute_device.a",
+      "sha256": "a7379a98d49f0a398550adead098e1827ee73e0713e95f0cd6bc075dac9b7ea6",
+      "source_commit": "0259c6dc1c46dd46fe79f3923a17ad36d2513421",
+      "origin": "fresh matched baseline build; original toolchain HIP archive no longer exists",
+      "source_files_sha256": {
+        "gpuroute_hip.hip": "a7cea925f594abb7e3864caec4774dc09f157ef5a18fae20761505dd13d4f1f0",
+        "gpuroute_kernel.cuh": "405c80aa688e5aa944c27a7e192d1ceb6b747cac4558769b1ab0736bf78f37d5",
+        "gpuroute_backend.h": "e357caa6ead01a1b199c41e5db4b330f2104ece3147874d5e3e4f3beae342b12",
+        "gpuroute_compat.h": "4e2f0aff3ad621b98a0f1c16df2a36ad72ddfe0ced0fbbf7d39a68345d193403"
+      },
+      "architectures": [
+        "gfx1100",
+        "gfx1201"
+      ],
+      "hip_compiler": "/opt/rocm/core-7.14/lib/llvm/bin/clang++",
+      "compile_commands_json": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/baseline/compile_commands.json"
+    }
+  },
+  "binary_before_dependency_reuse": {
+    "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/nextpnr-mistral.before-dependency-reuse",
+    "sha256": "12bd0b360a0fe42e1b1338c155758b54bcc6884358ed3d3c092bccbe010c73e7",
+    "size": 645987288,
+    "version_returncode": 0,
+    "version": "\"nextpnr-mistral\" -- Next Generation Place and Route (Version nextpnr-0.11.1-272-gfdb8e11c)"
+  },
+  "dependency_relink_argv": [
+    "/usr/bin/ninja",
+    "-C",
+    "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed",
+    "nextpnr-mistral",
+    "-j8"
+  ],
+  "binary": {
+    "path": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/builds/fixed/nextpnr-mistral",
+    "sha256": "dede5ab70917aec964932c5b58ca5167d472306610eb330eb670dfa2a8394665",
+    "size": 638384096,
+    "version_returncode": 0,
+    "version": "\"nextpnr-mistral\" -- Next Generation Place and Route (Version nextpnr-0.11.1-272-gfdb8e11c)"
+  },
+  "dependency_relink_returncode": 0,
+  "build_returncode": 0,
+  "dependency_relink_log": "ninja: Entering directory `.'\n[1/1] Linking CXX executable nextpnr-mistral\n",
+  "hip_linked_lib_sha256": "a7379a98d49f0a398550adead098e1827ee73e0713e95f0cd6bc075dac9b7ea6",
+  "gpu_source_files_sha256": {
+    "common/route/gpu/congestion_plateau.h": "64bf575528513fa1870a4a345c99d8a5d23e1093774b56c383bac685e64b8477",
+    "common/route/gpu/gpuroute_backend.h": "e357caa6ead01a1b199c41e5db4b330f2104ece3147874d5e3e4f3beae342b12",
+    "common/route/gpu/gpuroute_compat.h": "4e2f0aff3ad621b98a0f1c16df2a36ad72ddfe0ced0fbbf7d39a68345d193403",
+    "common/route/gpu/gpuroute_cpu.cc": "5bd53133da099f5f395ff8cd45310fc6d7385bfd88910d82e2368ef9832952c1",
+    "common/route/gpu/gpuroute_cuda.cu": "a13406ea52de69b6e1610216838029a749ef3ddc2fa8899e3637ee9858cf2732",
+    "common/route/gpu/gpuroute_hip.hip": "a7cea925f594abb7e3864caec4774dc09f157ef5a18fae20761505dd13d4f1f0",
+    "common/route/gpu/gpuroute_kernel.cuh": "405c80aa688e5aa944c27a7e192d1ceb6b747cac4558769b1ab0736bf78f37d5",
+    "common/route/gpu/gpuroute_nodevice.cc": "f6646468c7781ac5b85a0b77459377783149d41284f974a96f0b6ecf8c40b648"
+  },
+  "source_status_after_build": "",
+  "final_build_up_to_date": true
+}

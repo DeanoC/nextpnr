@@ -1,0 +1,94 @@
+{
+  "fixture": "/home/deano/kepler/worktrees/nextpnr-114-mistral-gpu-router-qualify-54cde5d3/mistral/tests/gpurouter/spectrum_issue114/retained",
+  "fixture_hashes": {
+    "synth.json.gz": "943b3fedbce0b7bbc1bca8af3bb21f4e78e4edac7205e172c477122e0be28021",
+    "socket.qsf": "0661e5ca219a80d8b6053fb150e201bd3bae84dccaa376d9c49e2d79eb7f241a",
+    "clocks.sdc": "d719b08d2753416423427110d3b657ae63a445552c2dacc696b23290f3f1fbdd",
+    "synth.json": "01c8e412c0a48b79897f80bdcf8948ea8946a104ec7f95c06689b261c60fb671"
+  },
+  "fixture_manifest_sha256": "96929dcf1552a981366f0587a12a9897931feb76d48490040994b1def0dce9d9",
+  "nextpnr": "/home/deano/fes/out/cache/misteross-toolchains/slots/2e5173721849eea2192ecb067b449243b80c8cc072095cd5ae48298ae23eea27/install/bin/nextpnr-mistral",
+  "nextpnr_sha256": "f3f8ae8c781fa93e6db5f844863234b7faac8506228ff88c37596e38173f6d37",
+  "expected_failure": "plateau",
+  "timeout_seconds": 1800.0,
+  "runs": [
+    {
+      "returncode": 125,
+      "timed_out": false,
+      "outcome": "initial_plateau",
+      "backend": "hip:AMD Radeon RX 7900 XTX",
+      "last_iteration": {
+        "iteration": 104,
+        "wires": 144608,
+        "overused": 1,
+        "overuse": 1
+      },
+      "reached_zero_overuse": false,
+      "route_complete": false,
+      "tool_complete": false,
+      "signoff": false,
+      "checksum": "0xe8bf3a51",
+      "table_fmax": {
+        "machine.ram.pixel_clk": 95.76,
+        "system_clock.faithful.clocks[0]": 48.25,
+        "system_clock.faithful.clocks[1]": 178.28
+      },
+      "tool_errors": [
+        "ERROR: Routing design failed."
+      ],
+      "seed": 4,
+      "command": [
+        "/home/deano/fes/out/cache/misteross-toolchains/slots/2e5173721849eea2192ecb067b449243b80c8cc072095cd5ae48298ae23eea27/install/bin/nextpnr-mistral",
+        "--json",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/original-retained/synth.json",
+        "--device",
+        "5CSEBA6U23I7",
+        "--qsf",
+        "/home/deano/kepler/worktrees/nextpnr-114-mistral-gpu-router-qualify-54cde5d3/mistral/tests/gpurouter/spectrum_issue114/retained/socket.qsf",
+        "--sdc",
+        "/home/deano/kepler/worktrees/nextpnr-114-mistral-gpu-router-qualify-54cde5d3/mistral/tests/gpurouter/spectrum_issue114/retained/clocks.sdc",
+        "--freq",
+        "74.25",
+        "--seed",
+        "4",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--report",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/original-retained/seed-4-run-1/timing.json",
+        "--write",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/original-retained/seed-4-run-1/routed.json",
+        "--rbf",
+        "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/original-retained/seed-4-run-1/core.rbf",
+        "--compress-rbf",
+        "--detailed-timing-report",
+        "--timing-allow-fail"
+      ],
+      "log": "/home/deano/kepler/tasks/e3548df3-b35f-4717-abf9-8cb7b63b7dc4/qualification/runs/original-retained/seed-4-run-1/nextpnr.log",
+      "wall_seconds": 220.14951320085675,
+      "rbf_sha256": null,
+      "backend_matches": true,
+      "artifacts": {
+        "core.rbf": false,
+        "routed.json": false,
+        "timing.json": false
+      },
+      "analogue_timing": {
+        "fmax": {},
+        "gates": {},
+        "signoff_pass": null,
+        "fes_timing_pass": null
+      },
+      "errors": [],
+      "passed": true,
+      "attempt": 1,
+      "repeat_matches": null
+    }
+  ],
+  "passed": true
+}

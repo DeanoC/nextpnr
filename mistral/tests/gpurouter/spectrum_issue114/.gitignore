@@ -1,0 +1,7 @@
+# Keep fixture provenance and qualification summaries visible despite *.json.
+!/retained/fixture.json
+!/retained/provenance.json
+!/retained/build-inputs.json
+!/reconstructed/fixture.json
+!/reconstructed/provenance.json
+!/evidence/**/*.json

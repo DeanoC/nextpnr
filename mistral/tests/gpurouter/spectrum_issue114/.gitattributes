@@ -1,0 +1,4 @@
+# Preserve byte-for-byte tool logs, including histogram/placer trailing spaces.
+**/*.log whitespace=-blank-at-eol
+# Unified patches contain significant single-space context lines.
+evidence/builds/fixed/backport.patch whitespace=-blank-at-eol
