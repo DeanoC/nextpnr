@@ -148,7 +148,7 @@ struct GpuRouterCfg
 
 // Returns true when the whole design routed (and, as with router2, after the
 // result has been checked by router1).
-bool gpurouter(Context *ctx, const GpuRouterCfg &cfg);
+bool gpurouter(Context *ctx, const GpuRouterCfg &cfg, bool consume_telemetry = true);
 
 // An alternative routing tree for one net produced by GpuCandidateRouter:
 // every wire the net uses with the pip that drives it (PipId() for the

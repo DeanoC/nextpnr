@@ -43,6 +43,7 @@ TERMINAL_STATUSES = {
     "timeout",
     "cancelled",
     "launch_error",
+    "runner_error",
 }
 PREFIX_FEATURES = {
     "elapsed_seconds", "phase", "attempt", "round", "work", "searches", "node_expansions", "traversals",
@@ -179,6 +180,7 @@ def validate_collection_manifest(document: Mapping[str, Any]) -> Dict[str, Any]:
     command = document["command"]
     if not isinstance(command, list) or not command or not all(isinstance(arg, str) for arg in command):
         raise ValueError("command must be a non-empty argv string array")
+    _validate_seed_binding(command, Path(command[0]).name)
     seeds = document["seeds"]
     if not isinstance(seeds, list) or not seeds or any(isinstance(seed, (dict, list, bool)) for seed in seeds):
         raise ValueError("seeds must be a non-empty scalar array")
@@ -296,6 +298,15 @@ def _option_values(argv: Sequence[str], option: str) -> List[str]:
         elif argument.startswith(option + "="):
             values.append(argument.partition("=")[2])
     return values
+
+
+def _validate_seed_binding(argv: Sequence[str], binary_name: str) -> None:
+    if binary_name.startswith("nextpnr"):
+        option_argv = argv[:argv.index("--")] if "--" in argv else argv
+        if _option_values(option_argv, "--seed") != ["{seed}"]:
+            raise ValueError("nextpnr collection requires exactly one --seed {seed} binding before --")
+    elif "{seed}" not in argv[1:]:
+        raise ValueError("collection command requires an exact {seed} argv binding")
 
 
 def _resolved_binary(argv0: str, cwd: Optional[str], environment: Mapping[str, str]) -> Optional[Path]:
@@ -562,6 +573,12 @@ class Collector:
             self._input_roles[str(resolved)] = item["role"]
             records.append(record)
         return records
+
+    def _validate_seed_binding(self) -> None:
+        if self._frozen_binary is None:
+            raise RuntimeError("cohort executable was not frozen")
+        _validate_seed_binding(self.manifest["command"],
+                               Path(self._frozen_binary["resolved_path"]).name)
 
     def _validate_implicit_runtime_inputs(self) -> None:
         if self._frozen_binary is None:
@@ -864,6 +881,7 @@ class Collector:
         try:
             self._frozen_binary = self._snapshot_binary()
             self._frozen_inputs = self._snapshot_inputs()
+            self._validate_seed_binding()
             self._validate_implicit_runtime_inputs()
             self._validate_known_input_options()
             specs = self.plan()
@@ -1177,6 +1195,8 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
                             "mapped_design_id", "constraint_family", "seed", "status",
                             "duration_seconds", "outcome_observed_seconds", "observations",
                             "outcome"), "run")
+        if not isinstance(run["status"], str) or run["status"] not in TERMINAL_STATUSES:
+            raise ValueError("run status must be a supported terminal status")
         duration = _positive_number(run["duration_seconds"], "duration_seconds")
         observations = run["observations"]
         if not isinstance(observations, list):

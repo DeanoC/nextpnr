@@ -3031,8 +3031,12 @@ struct GpuRouter
 
 } // namespace
 
-bool gpurouter(Context *ctx, const GpuRouterCfg &cfg)
+bool gpurouter(Context *ctx, const GpuRouterCfg &cfg, bool consume_telemetry)
 {
+    if (consume_telemetry) {
+        ctx->settings.erase(ctx->id("gpurouter/telemetryPath"));
+        ctx->settings.erase(ctx->id("gpurouter/telemetrySeed"));
+    }
     GpuRouter rt(ctx, cfg);
     return rt();
 }

@@ -128,6 +128,12 @@ class DatasetTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "finite numeric"):
                 seed_racing.validate_dataset(document)
 
+    def test_dataset_rejects_unknown_terminal_status(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        document["runs"][0]["status"] = "complete"
+        with self.assertRaisesRegex(ValueError, "supported terminal"):
+            seed_racing.validate_dataset(document)
+
     def test_truncated_jsonl_retains_only_valid_prefix(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "telemetry.jsonl"
@@ -232,6 +238,8 @@ class DatasetTests(unittest.TestCase):
 
 class CollectorTests(unittest.TestCase):
     def manifest(self, temporary, command, per_run=2, repeats=1, seeds=None):
+        if isinstance(command, list) and command and "{seed}" not in command:
+            command = list(command) + ["{seed}"]
         input_path = Path(temporary) / "netlist.json"
         input_path.write_text("frozen", encoding="utf-8")
         return {
@@ -585,14 +593,14 @@ class CollectorTests(unittest.TestCase):
             runner = Path(temporary) / "nextpnr-himbaechel"
             runner.write_text("#!" + sys.executable + "\nimport sys\n", encoding="utf-8")
             runner.chmod(0o755)
-            manifest = self.manifest(temporary, [str(runner)])
+            manifest = self.manifest(temporary, [str(runner), "--seed", "{seed}"])
             with self.assertRaisesRegex(ValueError, "requires exactly one explicit --chipdb"):
                 seed_racing.Collector(manifest, Path(temporary) / "missing-chipdb").run()
 
             chipdb = Path(temporary) / "chipdb.bin"
             chipdb.write_text("chipdb", encoding="utf-8")
             manifest["inputs"] = [{"path": str(chipdb), "role": "chipdb"}]
-            manifest["command"] = [str(runner), "--chipdb=" + str(chipdb)]
+            manifest["command"] = [str(runner), "--seed={seed}", "--chipdb=" + str(chipdb)]
             result = seed_racing.Collector(manifest, Path(temporary) / "frozen-chipdb").run()[0]
             run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
             immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
@@ -673,7 +681,7 @@ class CollectorTests(unittest.TestCase):
             runner = Path(temporary) / "nextpnr-generic"
             runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
             runner.chmod(0o755)
-            manifest = self.manifest(temporary, [str(runner), "--json", "netlist.json"])
+            manifest = self.manifest(temporary, [str(runner), "--seed={seed}", "--json", "netlist.json"])
             with self.assertRaisesRegex(ValueError, "--json must be declared"):
                 seed_racing.Collector(manifest, Path(temporary) / "runs").run()
 
@@ -770,27 +778,45 @@ class CollectorTests(unittest.TestCase):
             self.assertEqual([clock["available"] for clock in result["outcome"]["analogue_clocks"]],
                              [False, False])
 
+    def test_manifest_requires_nextpnr_seed_option_binding(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            for command in (["nextpnr-generic"],
+                            ["nextpnr-generic", "--json", "output-{seed}.json"],
+                            ["nextpnr-generic", "--seed", "1"],
+                            ["nextpnr-generic", "--", "--seed", "{seed}"]):
+                manifest = self.manifest(temporary, command)
+                with self.assertRaisesRegex(ValueError, "--seed"):
+                    seed_racing.validate_collection_manifest(manifest)
+            manifest = self.manifest(
+                temporary, ["nextpnr-generic", "--seed={seed}"])
+            seed_racing.validate_collection_manifest(manifest)
+            manifest = self.manifest(temporary, ["wrapper", "{seed}"])
+            seed_racing.validate_collection_manifest(manifest)
+            manifest["command"] = ["wrapper", "output-{seed}.json"]
+            with self.assertRaisesRegex(ValueError, "exact.*seed"):
+                seed_racing.validate_collection_manifest(manifest)
+
     def test_manifest_rejects_shell_string_and_unsafe_artifact(self):
         with tempfile.TemporaryDirectory() as temporary:
             manifest = self.manifest(temporary, "nextpnr --seed 1")
             with self.assertRaisesRegex(ValueError, "argv"):
                 seed_racing.validate_collection_manifest(manifest)
-            manifest = self.manifest(temporary, ["nextpnr"])
+            manifest = self.manifest(temporary, [sys.executable, "-c", "pass", "{seed}"])
             manifest["artifacts"] = {"escape": "../input.json"}
             with self.assertRaisesRegex(ValueError, "within"):
                 seed_racing.validate_collection_manifest(manifest)
             for reserved in ("stdout", "stderr"):
-                manifest = self.manifest(temporary, ["nextpnr"])
+                manifest = self.manifest(temporary, [sys.executable, "-c", "pass", "{seed}"])
                 manifest["artifacts"] = {reserved: "custom.log"}
                 with self.assertRaisesRegex(ValueError, "reserved"):
                     seed_racing.validate_collection_manifest(manifest)
             for overlapping in ({"x": "."}, {"x": "stdout.log/child"},
                                 {"x": "artifact", "y": "artifact/child"}):
-                manifest = self.manifest(temporary, ["nextpnr"])
+                manifest = self.manifest(temporary, [sys.executable, "-c", "pass", "{seed}"])
                 manifest["artifacts"] = overlapping
                 with self.assertRaisesRegex(ValueError, "overlap"):
                     seed_racing.validate_collection_manifest(manifest)
-            manifest = self.manifest(temporary, ["nextpnr"])
+            manifest = self.manifest(temporary, [sys.executable, "-c", "pass", "{seed}"])
             manifest["required_clocks"] = ["clk", "clk"]
             with self.assertRaisesRegex(ValueError, "unique"):
                 seed_racing.validate_collection_manifest(manifest)

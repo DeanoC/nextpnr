@@ -59,7 +59,7 @@
     },
     {
       "run_id": "crash", "cohort_id": "synthetic", "cohort_fingerprint_sha256": "b99684126f1315a81bc403408de8600df9fd4165f1cffd70b02989245eb8d8df", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 100, "replicate": 1,
-      "status": "crash", "duration_seconds": 6, "outcome_observed_seconds": 6,
+      "status": "process_failure", "duration_seconds": 6, "outcome_observed_seconds": 6,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 9, "unrouted_connections": 4, "recent_progress": 0}],
       "outcome": {"legal_route": false, "required_clocks": ["clk"], "analogue_clocks": []}
     },

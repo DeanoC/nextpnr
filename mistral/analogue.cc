@@ -636,7 +636,7 @@ bool Arch::analogue_repair()
             // The top-level router has already closed its complete stream;
             // analogue repair helpers must not reopen the exclusive path.
             cfg.telemetry_path.clear();
-            result = gpurouter(ctx, cfg);
+            result = gpurouter(ctx, cfg, false);
         } catch (log_execution_error_exception &) {
             // Keep the best legal routing rather than failing the design.
             log_warning("analogue repair round %d could not route; keeping the best earlier round\n", round + 1);
