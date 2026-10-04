@@ -37,6 +37,9 @@ unbounded in-memory trace. A missing `run_end` or a truncated final line is an
 incomplete trace; the collector preserves the raw exit code/signal and
 classifies timeout, cancellation, crash, routing failure, analogue timing
 failure, and success independently.
+The collector requires a valid terminal record for routing classification and
+checks every manifest `required_clocks` entry in the final report. Process
+exit zero alone is never a successful outcome.
 
 The bounded collector and evaluator contract is documented in
 [seed-racing-tools.md](seed-racing-tools.md).

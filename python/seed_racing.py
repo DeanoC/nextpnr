@@ -30,6 +30,9 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 SCHEMA_VERSION = 1
 TERMINAL_STATUSES = {
     "completed",
+    "incomplete_evidence",
+    "routing_failure",
+    "analogue_timing_failure",
     "process_failure",
     "timeout",
     "cancelled",
@@ -131,6 +134,11 @@ def validate_collection_manifest(document: Mapping[str, Any]) -> Dict[str, Any]:
     environment = document.get("environment", {})
     if not isinstance(environment, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in environment.items()):
         raise ValueError("environment must be an explicit string map")
+    required_clocks = document.get("required_clocks", [])
+    if (not isinstance(required_clocks, list) or
+            not all(isinstance(name, str) and name for name in required_clocks) or
+            len(set(required_clocks)) != len(required_clocks)):
+        raise ValueError("required_clocks must be a unique string array")
     return {
         "schema_version": SCHEMA_VERSION,
         "cohort": dict(cohort),
@@ -141,6 +149,7 @@ def validate_collection_manifest(document: Mapping[str, Any]) -> Dict[str, Any]:
         "inputs": [dict(item) for item in inputs],
         "artifacts": dict(artifacts),
         "environment": dict(environment),
+        "required_clocks": list(required_clocks),
         "cwd": document.get("cwd"),
         "provenance": dict(document.get("provenance", {})),
     }
@@ -221,6 +230,7 @@ class Collector:
         self._active: Dict[str, subprocess.Popen[Any]] = {}
         self._cancelled_runs = set()
         self._frozen_inputs: Optional[List[Dict[str, Any]]] = None
+        self._frozen_binary: Optional[Dict[str, Any]] = None
         self._input_replacements: Dict[str, str] = {}
         self._lock = threading.Lock()
         self._cancelled = threading.Event()
@@ -244,8 +254,29 @@ class Collector:
                 }
                 argv = _expand_argv(self.manifest["command"], fields)
                 argv = [_rewrite_input_argument(argument, self._input_replacements) for argument in argv]
+                if self._frozen_binary is not None:
+                    argv[0] = self._frozen_binary["snapshot_path"]
                 specs.append(RunSpec(run_id, seed, repeat, directory, tuple(argv)))
         return specs
+
+    def _snapshot_binary(self) -> Dict[str, Any]:
+        environment = _child_environment(self.manifest["environment"])
+        resolved = _resolved_binary(self.manifest["command"][0], self.manifest["cwd"], environment)
+        if resolved is None:
+            raise ValueError(f"cannot resolve cohort executable: {self.manifest['command'][0]}")
+        snapshot_root = self.output_root / f"cohort-binary-{uuid.uuid4().hex}"
+        snapshot_root.mkdir(parents=True, exist_ok=False)
+        snapshot = snapshot_root / _safe_component(resolved.name)
+        with resolved.open("rb") as source, snapshot.open("xb") as destination:
+            source_mode = os.fstat(source.fileno()).st_mode
+            shutil.copyfileobj(source, destination)
+        snapshot.chmod(source_mode & 0o555)
+        return {
+            "requested_path": self.manifest["command"][0],
+            "resolved_path": str(resolved),
+            "snapshot_path": str(snapshot),
+            "sha256": sha256_file(snapshot),
+        }
 
     def _snapshot_inputs(self) -> List[Dict[str, Any]]:
         snapshot_root = self.output_root / f"cohort-inputs-{uuid.uuid4().hex}"
@@ -279,10 +310,9 @@ class Collector:
             return {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat, "status": "not_started_total_budget"}
         spec.directory.mkdir(parents=True, exist_ok=False)
         environment = _child_environment(self.manifest["environment"])
-        binary = _resolved_binary(spec.argv[0], self.manifest["cwd"], environment)
         started_wall = time.time()
-        if self._frozen_inputs is None:
-            raise RuntimeError("collector inputs were not frozen before launch")
+        if self._frozen_inputs is None or self._frozen_binary is None:
+            raise RuntimeError("collector inputs and executable were not frozen before launch")
         immutable = {
             "schema_version": SCHEMA_VERSION,
             "run_id": spec.run_id,
@@ -295,7 +325,7 @@ class Collector:
             "limits": self.manifest["limits"],
             "provenance": self.manifest["provenance"],
             "inputs": self._frozen_inputs,
-            "binary": {"path": str(binary) if binary else None, "sha256": sha256_file(binary) if binary else None},
+            "binary": self._frozen_binary,
             "artifacts": self.manifest["artifacts"],
             "started_unix_seconds": started_wall,
         }
@@ -350,6 +380,7 @@ class Collector:
             path = spec.directory / relative
             artifacts[name] = {"path": str(path), "sha256": sha256_file(path) if path.is_file() else None, "available": path.is_file()}
         result["artifacts"] = artifacts
+        result = classify_collected_result(result, artifacts, self.manifest["required_clocks"])
         _json_dump(spec.directory / "result.json", result)
         return result
 
@@ -369,6 +400,7 @@ class Collector:
             specs = self.plan()
             return [{"run_id": s.run_id, "seed": s.seed, "repeat": s.repeat, "directory": str(s.directory), "argv": list(s.argv), "status": "dry_run"} for s in specs]
         self.output_root.mkdir(parents=True, exist_ok=True)
+        self._frozen_binary = self._snapshot_binary()
         self._frozen_inputs = self._snapshot_inputs()
         specs = self.plan()
         deadline = time.monotonic() + self.manifest["limits"]["total_seconds"]
@@ -468,6 +500,139 @@ def load_jsonl(path: Path) -> Tuple[List[Dict[str, Any]], bool]:
                 truncated = True
                 break
     return records, truncated or not terminal_seen or bool(phase_stack)
+
+
+def _finite_number(value: Any) -> bool:
+    return (not isinstance(value, bool) and isinstance(value, (int, float)) and
+            math.isfinite(float(value)))
+
+
+def _final_timing_evidence(path: Optional[Path], required_clocks: Sequence[str]) -> Dict[str, Any]:
+    evidence: Dict[str, Any] = {
+        "required_clocks": list(required_clocks),
+        "analogue_clocks": [],
+        "analogue_timing_pass": None,
+        "reason": None,
+    }
+    if not required_clocks:
+        evidence["reason"] = "required_clocks_not_declared"
+        return evidence
+    if path is None or not path.is_file():
+        evidence["reason"] = "final_report_missing"
+        return evidence
+    try:
+        with path.open(encoding="utf-8") as stream:
+            report = json.load(stream)
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        evidence["reason"] = "final_report_invalid"
+        return evidence
+    normalized = report.get("outcome") if isinstance(report, dict) else None
+    if isinstance(normalized, dict) and isinstance(normalized.get("analogue_clocks"), list):
+        by_name: Dict[str, Dict[str, Any]] = {}
+        duplicate_names = set()
+        for clock in normalized["analogue_clocks"]:
+            if not isinstance(clock, dict) or not isinstance(clock.get("name"), str):
+                continue
+            if clock["name"] in by_name:
+                duplicate_names.add(clock["name"])
+            else:
+                by_name[clock["name"]] = clock
+        clocks = []
+        for name in required_clocks:
+            source = by_name.get(name)
+            available = (name not in duplicate_names and source is not None and
+                         source.get("available") is True and
+                         _finite_number(source.get("setup_wns_ns")) and
+                         _finite_number(source.get("hold_wns_ns")))
+            clock = {"name": name, "available": available}
+            if available:
+                clock.update({"setup_wns_ns": float(source["setup_wns_ns"]),
+                              "hold_wns_ns": float(source["hold_wns_ns"])})
+            clocks.append(clock)
+        evidence["analogue_clocks"] = clocks
+        if all(clock["available"] for clock in clocks):
+            evidence["analogue_timing_pass"] = all(
+                min(clock["setup_wns_ns"], clock["hold_wns_ns"]) >= 0 for clock in clocks)
+        else:
+            evidence["reason"] = "required_clock_timing_missing"
+        return evidence
+    fmax = report.get("fmax") if isinstance(report, dict) else None
+    if not isinstance(fmax, dict):
+        evidence["reason"] = "final_report_timing_missing"
+        return evidence
+    clocks = []
+    for name in required_clocks:
+        source = fmax.get(name)
+        available = (isinstance(source, dict) and _finite_number(source.get("achieved")) and
+                     _finite_number(source.get("constraint")) and
+                     float(source["achieved"]) > 0 and float(source["constraint"]) > 0)
+        clock = {"name": name, "available": available, "hold_available": False}
+        if available:
+            achieved, constraint = float(source["achieved"]), float(source["constraint"])
+            clock.update({"achieved_mhz": achieved, "constraint_mhz": constraint,
+                          "setup_wns_ns": 1000.0 / constraint - 1000.0 / achieved})
+        clocks.append(clock)
+    evidence["analogue_clocks"] = clocks
+    if all(clock["available"] for clock in clocks):
+        if not all(clock["setup_wns_ns"] >= 0 for clock in clocks):
+            evidence["analogue_timing_pass"] = False
+        evidence["reason"] = "hold_not_available_in_standard_report"
+    else:
+        evidence["reason"] = "required_clock_timing_missing"
+    return evidence
+
+
+def classify_collected_result(result: Mapping[str, Any], artifacts: Mapping[str, Any],
+                              required_clocks: Sequence[str]) -> Dict[str, Any]:
+    classified = dict(result)
+    process_status = classified["status"]
+    classified["process_status"] = process_status
+    telemetry_info = artifacts.get("telemetry")
+    telemetry_path = (Path(telemetry_info["path"]) if isinstance(telemetry_info, dict) and
+                      telemetry_info.get("available") is True else None)
+    records: List[Dict[str, Any]] = []
+    telemetry_incomplete = True
+    if telemetry_path is not None:
+        try:
+            records, telemetry_incomplete = load_jsonl(telemetry_path)
+        except (OSError, UnicodeError):
+            pass
+    terminal = records[-1] if records and records[-1].get("event") == "run_end" else None
+    routing_legal = terminal.get("routing_legal") if isinstance(terminal, dict) else None
+    if not isinstance(routing_legal, bool):
+        routing_legal = None
+        telemetry_incomplete = True
+    report_info = artifacts.get("final_report")
+    report_path = (Path(report_info["path"]) if isinstance(report_info, dict) and
+                   report_info.get("available") is True else None)
+    timing = _final_timing_evidence(report_path, required_clocks)
+    outcome = {
+        "telemetry_complete": not telemetry_incomplete,
+        "legal_route": routing_legal,
+        "required_clocks": timing["required_clocks"],
+        "analogue_clocks": timing["analogue_clocks"],
+        "analogue_timing_pass": timing["analogue_timing_pass"],
+        "timing_evidence_reason": timing["reason"],
+    }
+    outcome["evidence_complete"] = (
+        outcome["telemetry_complete"] and routing_legal is not None and
+        timing["analogue_timing_pass"] is not None)
+    classified["outcome"] = outcome
+    if process_status in {"timeout", "cancelled", "launch_error"}:
+        classification = process_status
+    elif routing_legal is False:
+        classification = "routing_failure"
+    elif routing_legal is True and timing["analogue_timing_pass"] is False:
+        classification = "analogue_timing_failure"
+    elif process_status == "process_failure":
+        classification = "process_failure"
+    elif not outcome["evidence_complete"]:
+        classification = "incomplete_evidence"
+    else:
+        classification = "completed"
+    classified["status"] = classification
+    classified["outcome_classification"] = classification
+    return classified
 
 
 def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:

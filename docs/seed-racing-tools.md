@@ -16,6 +16,8 @@ manifest has schema version 1 and contains:
   `concurrency`);
 - `inputs`: exact mapped netlist, constraints, included constraints, memory
   initialization, or other inputs to hash;
+- `required_clocks`: every clock whose final timing constraint must pass,
+  using the exact final-report clock names;
 - `artifacts`: names mapped to paths relative to each unique run directory;
 - an explicit environment allowlist and provenance object. Children receive
   only that map plus the recorded platform-minimum environment (`PATH`,
@@ -34,9 +36,20 @@ Declared cohort inputs are copied once into read-only, uniquely named snapshots
 before submission. Exact input-path argv entries and `--option=PATH` values are
 rewritten to those snapshots, and every run records the snapshot path and hash,
 so an external producer cannot replace bytes between a hash check and the
-child's open. A
-missing input or output is recorded as unavailable; it is not silently
-substituted.
+child's open. A missing input or output is recorded as unavailable; it is not
+silently substituted.
+
+The command executable is resolved and copied once to a read-only cohort
+snapshot before workers are submitted. Every run launches that same snapshot
+and records its original path, snapshot path, and SHA-256. The collector keeps
+the raw process lifecycle in `process_status`, then classifies the run from
+the `telemetry` and `final_report` artifacts. A valid terminal `run_end`
+determines routing legality. Every declared required clock must have finite
+final report evidence; a failing clock is `analogue_timing_failure`, an
+illegal route is `routing_failure`, and missing or truncated evidence is
+`incomplete_evidence`. A standard nextpnr `fmax` report can establish a
+setup failure, but cannot establish success because it lacks hold evidence; a
+normalized `outcome.analogue_clocks` report supplies both setup and hold WNS.
 
 ## Evaluation dataset
 

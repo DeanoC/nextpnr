@@ -181,6 +181,7 @@ class CollectorTests(unittest.TestCase):
             "limits": {"per_run_seconds": per_run, "total_seconds": 5, "concurrency": 2},
             "inputs": [{"path": str(input_path), "role": "mapped_netlist"}],
             "artifacts": {"final_report": "report.json", "telemetry": "telemetry.jsonl"},
+            "required_clocks": ["clk"],
             "environment": {"SEED_RACING_TEST": "1"},
             "provenance": {"source_revision": "test", "dirty": False}
         }
@@ -202,7 +203,8 @@ class CollectorTests(unittest.TestCase):
             code = "import pathlib,sys; print('stdout-'+sys.argv[1]); print('stderr', file=sys.stderr); pathlib.Path(sys.argv[2]).write_text('report')"
             manifest = self.manifest(temporary, [sys.executable, "-c", code, "{seed}", "{report}"], seeds=[2, 3])
             results = seed_racing.Collector(manifest, output).run()
-            self.assertEqual([item["status"] for item in results], ["completed", "completed"])
+            self.assertEqual([item["status"] for item in results],
+                             ["incomplete_evidence", "incomplete_evidence"])
             for result in results:
                 run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
                 immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
@@ -324,7 +326,7 @@ class CollectorTests(unittest.TestCase):
             results = seed_racing.Collector(manifest, output).run()
             self.assertEqual(launches.read_text(encoding="utf-8"), "123")
             self.assertEqual([result["status"] for result in results],
-                             ["completed", "completed", "completed"])
+                             ["incomplete_evidence", "incomplete_evidence", "incomplete_evidence"])
             self.assertEqual([path.read_text(encoding="utf-8") for path in sorted(reports.iterdir())],
                              ["frozen", "frozen", "frozen"])
             for result in results:
@@ -355,7 +357,7 @@ class CollectorTests(unittest.TestCase):
             results = seed_racing.Collector(manifest, output).run()
             self.assertEqual(launches.read_text(encoding="utf-8"), "123")
             self.assertEqual([result["status"] for result in results],
-                             ["completed", "completed", "completed"])
+                             ["incomplete_evidence", "incomplete_evidence", "incomplete_evidence"])
             self.assertEqual([path.read_text(encoding="utf-8") for path in sorted(reports.iterdir())],
                              ["frozen", "frozen", "frozen"])
             for result in results:
@@ -363,6 +365,108 @@ class CollectorTests(unittest.TestCase):
                 immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
                 snapshot = immutable["inputs"][0]["snapshot_path"]
                 self.assertIn("--json=" + snapshot, immutable["argv"])
+
+    def test_collection_freezes_executable_once_for_whole_cohort(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            runner = Path(temporary) / "runner"
+            observed = Path(temporary) / "observed"
+            observed.mkdir()
+            script = (
+                "#!" + sys.executable + "\n"
+                "import json,pathlib,sys\n"
+                "seed,original,observed,telemetry,report=sys.argv[1:]\n"
+                "pathlib.Path(original).write_text('#!/bin/sh\\nexit 99\\n') if seed == '1' else None\n"
+                "pathlib.Path(observed,seed).write_text('frozen')\n"
+                "start={'schema_version':1,'sequence':0,'run_id':'r','event':'run_start','phase':None,'attempt':None,'elapsed_s':0}\n"
+                "end={'schema_version':1,'sequence':1,'run_id':'r','event':'run_end','phase':None,'attempt':None,'elapsed_s':1,'routing_legal':True}\n"
+                "pathlib.Path(telemetry).write_text(json.dumps(start)+'\\n'+json.dumps(end)+'\\n')\n"
+                "clock={'name':'clk','available':True,'setup_wns_ns':0.1,'hold_wns_ns':0.1}\n"
+                "pathlib.Path(report).write_text(json.dumps({'outcome':{'analogue_clocks':[clock]}}))\n"
+            )
+            runner.write_text(script, encoding="utf-8")
+            runner.chmod(0o755)
+            manifest = self.manifest(temporary, [str(runner), "{seed}", str(runner), str(observed),
+                                                  "{telemetry}", "{report}"], seeds=[1, 2, 3])
+            manifest["limits"]["concurrency"] = 1
+            results = seed_racing.Collector(manifest, output).run()
+            self.assertEqual([result["status"] for result in results],
+                             ["completed", "completed", "completed"])
+            self.assertEqual([path.read_text(encoding="utf-8") for path in sorted(observed.iterdir())],
+                             ["frozen", "frozen", "frozen"])
+            snapshots = set()
+            hashes = set()
+            for result in results:
+                run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
+                immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+                binary = immutable["binary"]
+                self.assertEqual(binary["resolved_path"], str(runner.resolve()))
+                self.assertEqual(immutable["argv"][0], binary["snapshot_path"])
+                self.assertEqual(binary["sha256"],
+                                 seed_racing.sha256_file(Path(binary["snapshot_path"])))
+                snapshots.add(binary["snapshot_path"])
+                hashes.add(binary["sha256"])
+            self.assertEqual(len(snapshots), 1)
+            self.assertEqual(len(hashes), 1)
+
+    def test_collection_classifies_route_timing_incomplete_and_process_outcomes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            code = "\n".join([
+                "import json,pathlib,sys",
+                "seed=int(sys.argv[1]); telemetry=pathlib.Path(sys.argv[2]); report=pathlib.Path(sys.argv[3])",
+                "start={'schema_version':1,'sequence':0,'run_id':'r','event':'run_start','phase':None,'attempt':None,'elapsed_s':0}",
+                "telemetry.write_text(json.dumps(start)+'\\n') if seed != 5 else None",
+                "end={'schema_version':1,'sequence':1,'run_id':'r','event':'run_end','phase':None,'attempt':None,'elapsed_s':1,'routing_legal':seed != 3}",
+                "telemetry.write_text(telemetry.read_text()+json.dumps(end)+'\\n') if seed not in (4,5) else None",
+                "clock={'name':'clk','available':True,'setup_wns_ns':-0.1 if seed == 2 else 0.1,'hold_wns_ns':0.1}",
+                "normalized={'outcome':{'analogue_clocks':[clock]}}",
+                "fmax={'fmax':{'clk':{'achieved':90 if seed == 6 else 110,'constraint':100}}}",
+                "report.write_text(json.dumps(fmax if seed in (6,7) else normalized)) if seed != 5 else None",
+                "sys.exit(1 if seed in (3,5) else 0)",
+            ])
+            code = code.replace("{", "{{").replace("}", "}}")
+            manifest = self.manifest(temporary, [sys.executable, "-c", code, "{seed}",
+                                                 "{telemetry}", "{report}"],
+                                     seeds=[1, 2, 3, 4, 5, 6, 7])
+            results = seed_racing.Collector(manifest, output).run()
+            self.assertEqual([result["status"] for result in results],
+                             ["completed", "analogue_timing_failure", "routing_failure",
+                              "incomplete_evidence", "process_failure",
+                              "analogue_timing_failure", "incomplete_evidence"])
+            self.assertEqual(results[0]["outcome"]["legal_route"], True)
+            self.assertEqual(results[0]["outcome"]["analogue_timing_pass"], True)
+            self.assertEqual(results[1]["process_status"], "completed")
+            self.assertEqual(results[1]["outcome"]["analogue_timing_pass"], False)
+            self.assertEqual(results[2]["process_status"], "process_failure")
+            self.assertFalse(results[2]["outcome"]["legal_route"])
+            self.assertFalse(results[3]["outcome"]["telemetry_complete"])
+            self.assertFalse(results[3]["outcome"]["evidence_complete"])
+            self.assertEqual(results[6]["outcome"]["timing_evidence_reason"],
+                             "hold_not_available_in_standard_report")
+
+    def test_collection_requires_unique_timing_for_every_required_clock(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            code = "\n".join([
+                "import json,pathlib,sys",
+                "start={'schema_version':1,'sequence':0,'run_id':'r','event':'run_start','phase':None,'attempt':None,'elapsed_s':0}",
+                "end={'schema_version':1,'sequence':1,'run_id':'r','event':'run_end','phase':None,'attempt':None,'elapsed_s':1,'routing_legal':True}",
+                "pathlib.Path(sys.argv[1]).write_text(json.dumps(start)+'\\n'+json.dumps(end)+'\\n')",
+                "clock={'name':'clk','available':True,'setup_wns_ns':0.1,'hold_wns_ns':0.1}",
+                "pathlib.Path(sys.argv[2]).write_text(json.dumps({'outcome':{'analogue_clocks':[clock,clock]}}))",
+            ])
+            code = code.replace("{", "{{").replace("}", "}}")
+            manifest = self.manifest(temporary, [sys.executable, "-c", code,
+                                                 "{telemetry}", "{report}"])
+            manifest["required_clocks"] = ["clk", "related"]
+            result = seed_racing.Collector(manifest, output).run()[0]
+            self.assertEqual(result["status"], "incomplete_evidence")
+            self.assertEqual(result["outcome"]["timing_evidence_reason"],
+                             "required_clock_timing_missing")
+            self.assertEqual(result["outcome"]["required_clocks"], ["clk", "related"])
+            self.assertEqual([clock["available"] for clock in result["outcome"]["analogue_clocks"]],
+                             [False, False])
 
     def test_manifest_rejects_shell_string_and_unsafe_artifact(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -372,6 +476,10 @@ class CollectorTests(unittest.TestCase):
             manifest = self.manifest(temporary, ["nextpnr"])
             manifest["artifacts"] = {"escape": "../input.json"}
             with self.assertRaisesRegex(ValueError, "within"):
+                seed_racing.validate_collection_manifest(manifest)
+            manifest = self.manifest(temporary, ["nextpnr"])
+            manifest["required_clocks"] = ["clk", "clk"]
+            with self.assertRaisesRegex(ValueError, "unique"):
                 seed_racing.validate_collection_manifest(manifest)
 
 
