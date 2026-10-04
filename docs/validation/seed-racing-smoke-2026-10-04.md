@@ -98,11 +98,17 @@ before routing on the existing unsupported frozen-pin diagnostic
 `Invalid frozen physical pin for gate.ena`; it did not alter telemetry and
 was not treated as PNR evidence.
 
+A no-device generic build then routed the supported `generic/examples`
+design through the GPU router's CPU-reference backend with telemetry enabled.
+Its ten-record complete trace labeled both `analogue_timing_model` and
+`analogue_timing_pass` unavailable with reason
+`not_available_for_architecture`; it contained no Mistral/downstream label.
+
 ## Tests and limits
 
 - `nextpnr-heap-control-set-test`: passed.
 - `nextpnr-gpuroute-telemetry-test`: passed (2 tests).
-- `mistral/tests/seed_racing_test.py`: 14 passed.
+- `mistral/tests/seed_racing_test.py`: 20 passed.
 - `mistral/tests/gpurouter/spectrum_plateau_test.py`: 8 passed.
 - The monolithic `nextpnr-mistral-test` started 220 tests; its first 81 tests
   passed, then the process was OOM-killed after 343.57 seconds at about 22.7

@@ -30,10 +30,12 @@ binary, preserves exit codes/signals/timeouts, and terminates only the fresh
 child process group it owns. Cancellation gates future launches before it
 terminates active groups, so queued jobs cannot start after interruption. The
 collector writes the complete terminal summary before propagating an interrupt.
-Declared cohort inputs are hashed once before submission and checked again
-under the launch gate; a change aborts the remaining cohort instead of mixing
-input bytes under one comparison. A missing input or output is recorded as
-unavailable; it is not silently substituted.
+Declared cohort inputs are copied once into read-only, uniquely named snapshots
+before submission. Exact input-path argv entries are rewritten to those
+snapshots, and every run records the snapshot path and hash, so an external
+producer cannot replace bytes between a hash check and the child's open. A
+missing input or output is recorded as unavailable; it is not silently
+substituted.
 
 ## Evaluation dataset
 
@@ -43,7 +45,9 @@ successive-halving schedules over fully observed traces. Checkpoints are fixed
 elapsed times, not fractions of eventual duration. Only the allowlisted prefix
 observation at or before a checkpoint is visible to ranking. Numeric router
 seeds and seed-bearing run IDs are excluded; an independent scheduler RNG
-breaks ties and selects exploratory survivors.
+breaks ties and selects exploratory survivors. Runs that finish by a checkpoint
+leave the active ranking pool: terminal successes are retained immediately and
+terminal failures are recorded but cannot consume a promotion slot.
 
 Each run's `outcome` separates `legal_route` from final analogue timing. It
 must list every expected setup/related-clock constraint in `required_clocks` and

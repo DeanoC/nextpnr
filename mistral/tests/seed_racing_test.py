@@ -62,6 +62,20 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(ideal["cost_model"], "ideal_resumable_simulation")
         self.assertEqual(restart["cost_model"], "restart_execution")
 
+    def test_halving_records_terminal_successes_and_drops_terminal_failures(self):
+        terminal_success = dict(self.by_id["late-winner"], run_id="terminal-success", duration_seconds=2)
+        terminal_failure = dict(self.by_id["early-leader-late-failure"],
+                                run_id="terminal-failure", duration_seconds=3)
+        active = dict(self.by_id["late-winner"], run_id="active", duration_seconds=10)
+        result = seed_racing.successive_halving(
+            [terminal_success, terminal_failure, active], [5], [1], 0, 9, restart=False)
+        self.assertTrue(result["at_least_one_success"])
+        self.assertIn("terminal-success", result["retained"])
+        self.assertNotIn("terminal-failure", result["retained"])
+        self.assertEqual(result["stages"][0]["terminal_successes"], ["terminal-success"])
+        self.assertEqual(result["stages"][0]["terminal_failures"], ["terminal-failure"])
+        self.assertEqual(result["stages"][0]["promoted"], ["active"])
+
     def test_exploration_survivor_and_scheduler_are_reproducible(self):
         first = seed_racing.successive_halving(self.runs, [5], [3], 1, 1234, restart=False)
         second = seed_racing.successive_halving(self.runs, [5], [3], 1, 1234, restart=False)
@@ -290,23 +304,35 @@ class CollectorTests(unittest.TestCase):
             self.assertEqual([result["status"] for result in results], ["cancelled", "cancelled"])
             self.assertEqual(results[1]["termination_reason"], "collector_cancelled_before_submission")
 
-    def test_collection_aborts_if_a_frozen_input_changes(self):
+    def test_collection_uses_immutable_input_snapshot(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "runs"
             launches = Path(temporary) / "launches"
             manifest = self.manifest(temporary, [], seeds=[1, 2, 3])
             input_path = Path(manifest["inputs"][0]["path"])
+            reports = Path(temporary) / "reports"
+            reports.mkdir()
             code = ("import pathlib,sys; "
                     "launches=pathlib.Path(sys.argv[2]); "
                     "launches.write_text(launches.read_text()+sys.argv[1] if launches.exists() else sys.argv[1]); "
-                    "pathlib.Path(sys.argv[3]).write_text('changed') if sys.argv[1]=='1' else None")
-            manifest["command"] = [sys.executable, "-c", code, "{seed}", str(launches), str(input_path)]
+                    "source=pathlib.Path(" + repr(str(input_path)) + "); "
+                    "source.write_text('changed') if sys.argv[1]=='1' else None; "
+                    "pathlib.Path(sys.argv[4]+'/'+sys.argv[1]).write_text(pathlib.Path(sys.argv[3]).read_text())")
+            manifest["command"] = [sys.executable, "-c", code, "{seed}", str(launches),
+                                   str(input_path), str(reports)]
             manifest["limits"]["concurrency"] = 1
             results = seed_racing.Collector(manifest, output).run()
-            self.assertEqual(launches.read_text(encoding="utf-8"), "1")
+            self.assertEqual(launches.read_text(encoding="utf-8"), "123")
             self.assertEqual([result["status"] for result in results],
-                             ["completed", "launch_error", "cancelled"])
-            self.assertEqual(results[1]["termination_reason"], "cohort_input_changed_before_launch")
+                             ["completed", "completed", "completed"])
+            self.assertEqual([path.read_text(encoding="utf-8") for path in sorted(reports.iterdir())],
+                             ["frozen", "frozen", "frozen"])
+            for result in results:
+                run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
+                immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+                self.assertEqual(len(immutable["inputs"][0]["sha256"]), 64)
+                self.assertNotEqual(immutable["inputs"][0]["resolved_path"],
+                                    immutable["inputs"][0]["snapshot_path"])
 
     def test_manifest_rejects_shell_string_and_unsafe_artifact(self):
         with tempfile.TemporaryDirectory() as temporary:

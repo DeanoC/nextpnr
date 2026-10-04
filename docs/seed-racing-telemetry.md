@@ -23,8 +23,9 @@ negotiation event stream. Each negotiation iteration records occupancy,
 excess occupancy, table-model timing (when enabled), work counts, batching,
 and elapsed time. Timing repair emits `repair_round` events and its own phase
 boundaries. `run_end` reports router1 legality separately from
-`analogue_timing_pass`, which is null with reason `downstream_phase`: Mistral's
-analogue multi-clock signoff and repair happen after the common GPU router
+`analogue_timing_pass`, which is null with reason `downstream_phase` for
+Mistral and `not_available_for_architecture` elsewhere. Mistral's analogue
+multi-clock signoff and repair happen after the common GPU router
 returns and remain authoritative. The offline evaluator consumes a separately
 normalized final outcome without converting one Fmax or table WNS into
 analogue success. Downstream Mistral analogue candidate searches and full

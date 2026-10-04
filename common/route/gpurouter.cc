@@ -68,6 +68,7 @@ struct GpuRouter
     std::unique_ptr<gpuroute::Backend> cpu_backend; // CPU lane for tiny batches, if distinct
     std::unique_ptr<gpuroute::Backend> verify_backend; // exact reference for repair searches (diagnostic)
     std::unique_ptr<gpuroute::Telemetry> telemetry;
+    bool mistral_analogue_downstream = false;
     int negotiation_attempt = 0;
     int repair_attempt = 0;
     int64_t verify_launched = 0, verify_arcs = 0, verify_worse = 0, verify_better = 0, verify_unref = 0;
@@ -78,6 +79,7 @@ struct GpuRouter
 
     GpuRouter(Context *ctx, const GpuRouterCfg &cfg) : ctx(ctx), cfg(cfg), tmg(ctx)
     {
+        mistral_analogue_downstream = std::string(ctx->archId().c_str(ctx)) == "mistral";
         tmg.setup_only = false;
         tmg.with_clock_skew = true;
         tmg.setup();
@@ -2911,7 +2913,11 @@ struct GpuRouter
                 fields.push_back(gpuroute::Telemetry::Field::null_value("seed", "not_explicit"));
             else
                 fields.push_back(gpuroute::Telemetry::Field::string("seed", cfg.telemetry_seed));
-            fields.push_back(gpuroute::Telemetry::Field::string("analogue_timing_model", "mistral_downstream"));
+            if (mistral_analogue_downstream)
+                fields.push_back(gpuroute::Telemetry::Field::string("analogue_timing_model", "mistral_downstream"));
+            else
+                fields.push_back(gpuroute::Telemetry::Field::null_value("analogue_timing_model",
+                                                                        "not_available_for_architecture"));
             telemetry->emit("run_start", "", -1, fields);
         }
         log_info("Running the GPU router...\n");
@@ -2936,7 +2942,10 @@ struct GpuRouter
                 telemetry->emit("run_end", "", -1,
                                 {gpuroute::Telemetry::Field::string("status", "routing_failure"),
                                  gpuroute::Telemetry::Field::boolean_value("routing_legal", false),
-                                 gpuroute::Telemetry::Field::null_value("analogue_timing_pass", "downstream_phase")});
+                                 gpuroute::Telemetry::Field::null_value("analogue_timing_pass",
+                                                                        mistral_analogue_downstream
+                                                                                ? "downstream_phase"
+                                                                                : "not_available_for_architecture")});
             return false;
         }
         if (timing_driven && cfg.repair_rounds > 0)
@@ -2971,7 +2980,10 @@ struct GpuRouter
                     telemetry->emit("run_end", "", -1,
                                     {gpuroute::Telemetry::Field::string("status", "architecture_binding_failure"),
                                      gpuroute::Telemetry::Field::boolean_value("routing_legal", false),
-                                     gpuroute::Telemetry::Field::null_value("analogue_timing_pass", "downstream_phase")});
+                                     gpuroute::Telemetry::Field::null_value(
+                                             "analogue_timing_pass", mistral_analogue_downstream
+                                                                             ? "downstream_phase"
+                                                                             : "not_available_for_architecture")});
                 return false;
             }
             // The re-routed nets took congestion-costed routes after the
@@ -3009,7 +3021,10 @@ struct GpuRouter
             telemetry->emit("run_end", "", -1,
                             {gpuroute::Telemetry::Field::string("status", legal ? "routing_legal" : "routing_illegal"),
                              gpuroute::Telemetry::Field::boolean_value("routing_legal", legal),
-                             gpuroute::Telemetry::Field::null_value("analogue_timing_pass", "downstream_phase")});
+                             gpuroute::Telemetry::Field::null_value("analogue_timing_pass",
+                                                                    mistral_analogue_downstream
+                                                                            ? "downstream_phase"
+                                                                            : "not_available_for_architecture")});
         return legal;
     }
 };

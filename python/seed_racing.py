@@ -208,6 +208,7 @@ class Collector:
         self._active: Dict[str, subprocess.Popen[Any]] = {}
         self._cancelled_runs = set()
         self._frozen_inputs: Optional[List[Dict[str, Any]]] = None
+        self._input_replacements: Dict[str, str] = {}
         self._lock = threading.Lock()
         self._cancelled = threading.Event()
 
@@ -228,17 +229,31 @@ class Collector:
                     "telemetry": str(directory / "telemetry.jsonl"),
                     "report": str(directory / "report.json"),
                 }
-                specs.append(RunSpec(run_id, seed, repeat, directory, tuple(_expand_argv(self.manifest["command"], fields))))
+                argv = _expand_argv(self.manifest["command"], fields)
+                argv = [self._input_replacements.get(argument, argument) for argument in argv]
+                specs.append(RunSpec(run_id, seed, repeat, directory, tuple(argv)))
         return specs
 
-    def _input_records(self) -> List[Dict[str, Any]]:
+    def _snapshot_inputs(self) -> List[Dict[str, Any]]:
+        snapshot_root = self.output_root / f"cohort-inputs-{uuid.uuid4().hex}"
+        snapshot_root.mkdir(parents=True, exist_ok=False)
         records = []
         base = Path(self.manifest["cwd"] or os.getcwd())
-        for item in self.manifest["inputs"]:
+        for index, item in enumerate(self.manifest["inputs"]):
             path = Path(item["path"])
             resolved = (base / path).resolve() if not path.is_absolute() else path.resolve()
             record = dict(item)
-            record.update({"resolved_path": str(resolved), "sha256": sha256_file(resolved) if resolved.is_file() else None})
+            if resolved.is_file():
+                snapshot = snapshot_root / f"{index:04d}-{_safe_component(resolved.name)}"
+                with resolved.open("rb") as source, snapshot.open("xb") as destination:
+                    shutil.copyfileobj(source, destination)
+                snapshot.chmod(0o444)
+                digest = sha256_file(snapshot)
+                record.update({"resolved_path": str(resolved), "snapshot_path": str(snapshot), "sha256": digest})
+                self._input_replacements[item["path"]] = str(snapshot)
+                self._input_replacements[str(resolved)] = str(snapshot)
+            else:
+                record.update({"resolved_path": str(resolved), "snapshot_path": None, "sha256": None})
             records.append(record)
         return records
 
@@ -282,11 +297,6 @@ class Collector:
                     if self._cancelled.is_set():
                         result.update({"status": "cancelled",
                                        "termination_reason": "collector_cancelled_before_launch"})
-                    elif self._input_records() != self._frozen_inputs:
-                        self._cancelled.set()
-                        result.update({"status": "launch_error",
-                                       "termination_reason": "cohort_input_changed_before_launch",
-                                       "error": "declared cohort input changed after collection started"})
                     else:
                         process = subprocess.Popen(
                             list(spec.argv), cwd=self.manifest["cwd"], env=environment, stdout=stdout, stderr=stderr,
@@ -342,11 +352,12 @@ class Collector:
             _terminate_owned_child(process)
 
     def run(self, dry_run: bool = False) -> List[Dict[str, Any]]:
-        specs = self.plan()
         if dry_run:
+            specs = self.plan()
             return [{"run_id": s.run_id, "seed": s.seed, "repeat": s.repeat, "directory": str(s.directory), "argv": list(s.argv), "status": "dry_run"} for s in specs]
         self.output_root.mkdir(parents=True, exist_ok=True)
-        self._frozen_inputs = self._input_records()
+        self._frozen_inputs = self._snapshot_inputs()
+        specs = self.plan()
         deadline = time.monotonic() + self.manifest["limits"]["total_seconds"]
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.manifest["limits"]["concurrency"])
         future_specs = []
@@ -571,6 +582,7 @@ def successive_halving(
         raise ValueError("exploratory_survivors cannot be negative")
     rng = random.Random(scheduler_seed)
     survivors = list(runs)
+    terminal_successes = []
     stage_records, aggregate = [], 0.0
     prior_checkpoint = 0.0
     for checkpoint, quota in zip(checkpoints, quotas):
@@ -579,10 +591,13 @@ def successive_halving(
             aggregate += sum(min(run["duration_seconds"], checkpoint) for run in evaluated)
         else:
             aggregate += sum(max(0.0, min(run["duration_seconds"], checkpoint) - min(run["duration_seconds"], prior_checkpoint)) for run in evaluated)
-        aggregate += score_overhead_seconds * len(evaluated)
+        terminal = [run for run in evaluated if run["duration_seconds"] <= checkpoint]
+        terminal_successes.extend(run for run in terminal if run["success"])
+        active = [run for run in evaluated if run["duration_seconds"] > checkpoint]
+        aggregate += score_overhead_seconds * len(active)
         # An independent scheduler RNG breaks score ties. Neither numeric seed nor
         # seed-bearing run IDs are visible to ranking.
-        scored = [(heuristic_score(observation_at(run, checkpoint)), rng.random(), run) for run in evaluated]
+        scored = [(heuristic_score(observation_at(run, checkpoint)), rng.random(), run) for run in active]
         scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
         keep = min(quota, len(scored))
         explore = min(exploratory_survivors, keep)
@@ -591,14 +606,24 @@ def successive_halving(
         remaining = [run for _, _, run in scored[ranked_count:] if run not in ranked]
         explored = rng.sample(remaining, min(explore, len(remaining)))
         survivors = ranked + explored
-        stage_records.append({"checkpoint": checkpoint, "evaluated": [run["run_id"] for run in evaluated], "promoted": [run["run_id"] for run in survivors], "exploratory": [run["run_id"] for run in explored]})
+        stage_records.append({
+            "checkpoint": checkpoint,
+            "evaluated": [run["run_id"] for run in evaluated],
+            "terminal_successes": [run["run_id"] for run in terminal if run["success"]],
+            "terminal_failures": [run["run_id"] for run in terminal if not run["success"]],
+            "promoted": [run["run_id"] for run in survivors],
+            "exploratory": [run["run_id"] for run in explored],
+        })
         prior_checkpoint = checkpoint
     if restart:
         aggregate += sum(run["duration_seconds"] for run in survivors)
     else:
         aggregate += sum(max(0.0, run["duration_seconds"] - min(run["duration_seconds"], prior_checkpoint)) for run in survivors)
-    metrics = _metrics(survivors, runs, aggregate, aggregate, "restart_execution" if restart else "ideal_resumable_simulation")
-    metrics.update({"policy": "successive_halving", "scheduler_seed": scheduler_seed, "stages": stage_records, "retained": [run["run_id"] for run in survivors]})
+    retained = terminal_successes + survivors
+    metrics = _metrics(retained, runs, aggregate, aggregate,
+                       "restart_execution" if restart else "ideal_resumable_simulation")
+    metrics.update({"policy": "successive_halving", "scheduler_seed": scheduler_seed, "stages": stage_records,
+                    "retained": [run["run_id"] for run in retained]})
     return metrics
 
 
