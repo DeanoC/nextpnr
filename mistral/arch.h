@@ -644,6 +644,23 @@ struct Arch : BaseArch<ArchRanges>
     bool is_io_cell(IdString cell_type) const;                   // io.cc
     BelId get_io_pin_bel(const CycloneV::pin_info_t *pin) const; // io.cc
 
+    // Per-pin electrical options from Quartus instance assignments (IO_STANDARD,
+    // CURRENT_STRENGTH_NEW, SLEW_RATE, WEAK_PULL_UP_RESISTOR, bus hold, clamp
+    // diode and the D1/D3/D5/D5_OE delay chains), checked against Quartus
+    // 17.0.2 decodes for the 3.3 V banks. Unset delays are -1.
+    struct IoElectrical
+    {
+        bool lvcmos = false;
+        CycloneV::bmux_type_t drive_strength = CycloneV::V3P3_LVTTL_16MA_LVCMOS_2MA;
+        bool slow_slew = false;
+        bool weak_pullup = false;
+        bool bus_hold = false;
+        bool clamp_diode = false;
+        int d1_delay = -1, d3_delay = -1, d5_delay = -1, d5_oe_delay = -1;
+    };
+    IoElectrical get_io_electrical(const CellInfo *cell) const; // io.cc
+    void check_io_electrical() const;                           // io.cc
+
     // -------------------------------------------------
 
     bool is_clkbuf_cell(IdString cell_type) const; // globals.cc
@@ -704,7 +721,18 @@ struct Arch : BaseArch<ArchRanges>
 
     // List of IO constraints, used by QSF parser
     dict<IdString, dict<IdString, Property>> io_attr;
-    void read_qsf(std::istream &in); // qsf.cc
+    // Instance assignments whose -to target uses Quartus '*' or '?'
+    // wildcards, in file order. Applied to matching top-level ports before
+    // bus-wide and exact assignments, so the most specific one wins.
+    struct IoAttrPattern
+    {
+        std::string target;
+        IdString name;
+        Property value;
+    };
+    std::vector<IoAttrPattern> io_attr_patterns;
+    void read_qsf(std::istream &in);                       // qsf.cc
+    void apply_io_attrs(IdString port, CellInfo *cell);    // qsf.cc
 
     // Static expansion slot(s): HeAP may not place unconstrained cells on
     // these BELs. Explicit BEL cells, FES_SLOT cells tagged for the owning

@@ -1,0 +1,55 @@
+set_location_assignment PIN_V11 -to clk
+set_location_assignment PIN_V12 -to i_plain
+set_location_assignment PIN_E8 -to i_pullup
+set_location_assignment PIN_W12 -to i_bushold
+set_location_assignment PIN_D11 -to i_clamp
+set_location_assignment PIN_D8 -to i_lvcmos
+set_location_assignment PIN_C12 -to i_d3
+set_location_assignment PIN_D12 -to i_d1reg
+set_location_assignment PIN_Y15 -to o_plain
+set_location_assignment PIN_AC24 -to o_4ma
+set_location_assignment PIN_AA15 -to o_8ma
+set_location_assignment PIN_AF28 -to o_min
+set_location_assignment PIN_AD26 -to o_slow
+set_location_assignment PIN_AG28 -to o_lvcmos
+set_location_assignment PIN_AF27 -to o_clamp
+set_location_assignment PIN_AE25 -to o_pullup
+set_location_assignment PIN_AG26 -to o_bushold
+set_location_assignment PIN_AH27 -to o_d5
+set_location_assignment PIN_AG25 -to o_d5max
+set_location_assignment PIN_AH26 -to o_reg_d5
+set_location_assignment PIN_AH24 -to b_d3_d5
+set_location_assignment PIN_AF25 -to b_slow4
+set_location_assignment PIN_AG23 -to b_pullup
+set_location_assignment PIN_AF23 -to t_oe
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to clk
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to i_*
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to o_*
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to b_*
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to t_oe
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to i_pullup
+set_instance_assignment -name ENABLE_BUS_HOLD_CIRCUITRY ON -to i_bushold
+set_instance_assignment -name CLAMPING_DIODE ON -to i_clamp
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to i_lvcmos
+set_instance_assignment -name D3_DELAY 5 -to i_d3
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to i_d1reg
+set_instance_assignment -name D1_DELAY 4 -to i_d1reg
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to o_4ma
+set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to o_8ma
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to o_min
+set_instance_assignment -name SLEW_RATE 0 -to o_slow
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to o_lvcmos
+set_instance_assignment -name CURRENT_STRENGTH_NEW 2MA -to o_lvcmos
+set_instance_assignment -name CLAMPING_DIODE ON -to o_clamp
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to o_pullup
+set_instance_assignment -name ENABLE_BUS_HOLD_CIRCUITRY ON -to o_bushold
+set_instance_assignment -name D5_DELAY 9 -to o_d5
+set_instance_assignment -name D5_DELAY 31 -to o_d5max
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to o_reg_d5
+set_instance_assignment -name D5_DELAY 3 -to o_reg_d5
+set_instance_assignment -name D3_DELAY 4 -to b_d3_d5
+set_instance_assignment -name D5_DELAY 9 -to b_d3_d5
+set_instance_assignment -name SLEW_RATE 0 -to b_slow4
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to b_slow4
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to b_pullup
+set_instance_assignment -name D5_OE_DELAY 6 -to t_oe

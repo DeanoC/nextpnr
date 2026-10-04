@@ -1,0 +1,27 @@
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEBA6U23I7
+set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name VERILOG_FILE ../bus.v
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name GENERATE_RBF_FILE ON
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION OFF
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+set_location_assignment PIN_V12 -to d[0]
+set_location_assignment PIN_E8 -to d[1]
+set_location_assignment PIN_W12 -to d[2]
+set_location_assignment PIN_D11 -to d[3]
+set_location_assignment PIN_Y15 -to q[0]
+set_location_assignment PIN_AC24 -to q[1]
+set_location_assignment PIN_AA15 -to q[2]
+set_location_assignment PIN_AD26 -to q[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to *
+set_instance_assignment -name SLEW_RATE 0 -to q[*]
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to q
+set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to q[2]
+set_instance_assignment -name SLEW_RATE 1 -to q[3]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to d
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to d[1]
+set_instance_assignment -name D3_DELAY 2 -to d?2?
+
+set_global_assignment -name LAST_QUARTUS_VERSION "17.0.2 Lite Edition"

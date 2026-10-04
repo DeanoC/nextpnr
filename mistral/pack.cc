@@ -393,11 +393,7 @@ struct MistralPacker
                 log_info("Trimming port '%s' as it is unused.\n", ctx->nameOf(port.first));
             } else {
                 // Copy attributes to real IO buffer
-                if (ctx->io_attr.count(port.first)) {
-                    for (auto &kv : ctx->io_attr.at(port.first)) {
-                        top_port.cell->attrs[kv.first] = kv.second;
-                    }
-                }
+                ctx->apply_io_attrs(port.first, top_port.cell);
                 // Make sure that top level net is set correctly
                 port.second.net = top_port.cell->ports.at(top_port.port).net;
             }
@@ -2737,6 +2733,7 @@ struct MistralPacker
         pack_sdr_outputs();
         pack_ddr_outputs();
         pack_ddr_bidir();
+        ctx->check_io_electrical();
         setup_clock_enables();
         setup_plls();
         fold_inverted_pll_clock_buffers();

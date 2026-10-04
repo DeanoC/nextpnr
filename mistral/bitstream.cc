@@ -349,10 +349,32 @@ struct MistralBitgen
         bool is_input = (ci->type.in(id_MISTRAL_IB, id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR) ||
                          (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr));
         auto pos = CycloneV::xycoords{x, y};
-        // TODO: configurable pull, IO standard, etc
-        cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_WEAK_PULLUP, bi, false);
+        const Arch::IoElectrical io = ctx->get_io_electrical(ci);
+        cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_WEAK_PULLUP, bi, io.weak_pullup);
+        if (io.bus_hold)
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_BUS_HOLD, bi, true));
+        if (io.clamp_diode)
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_PCI_DIODE_CLAMP, bi, true));
+        auto delay_lane = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
+        auto set_delay = [&](CycloneV::bmux_type_t mux, int value) {
+            if (value < 0)
+                return;
+            if (!delay_lane)
+                log_error("IO '%s': pad has no DQS16 lane for its delay chain.\n", ctx->nameOf(ci));
+            NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, delay_lane.p(), mux, delay_lane.bi(), value));
+        };
         if (is_output) {
-            cv->bmux_m_set(CycloneV::GPIO, pos, CycloneV::DRIVE_STRENGTH, bi, CycloneV::V3P3_LVTTL_16MA_LVCMOS_2MA);
+            if (!cv->bmux_m_set(CycloneV::GPIO, pos, CycloneV::DRIVE_STRENGTH, bi, io.drive_strength) &&
+                io.drive_strength != CycloneV::V3P3_LVTTL_16MA_LVCMOS_2MA)
+                log_error("IO '%s': this pad has no %s drive-strength setting.\n", ctx->nameOf(ci),
+                          io.drive_strength == CycloneV::V3P3_LVTTL_4MA ? "4 mA" : "8 mA");
+            if (io.slow_slew) {
+#ifndef MISTRAL_MULTIBIT_BOOL_SET
+                log_error("SLEW_RATE 0 requires Mistral with the multi-bit boolean setter "
+                          "(MISTRAL_MULTIBIT_BOOL_SET); rebuild nextpnr against it.\n");
+#endif
+                NPNR_ASSERT(cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::SLEW_RATE_SLOW, bi, true));
+            }
             // DIS turns off the pad's input buffer.  Keep the database input
             // default when a bidirectional cell consumes O so external pad
             // state still reaches the fabric or an HPS peripheral.
@@ -401,6 +423,12 @@ struct MistralBitgen
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RB_FIFO_WCLK_EN, lane, true));
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RB_FIFO_WCLK_INV, lane, true));
         }
+        // Explicit delay-chain assignments override the defaults written above.
+        set_delay(CycloneV::RB_T1_SEL_IREG_CFF_DELAY, ci->type == id_MISTRAL_SDRIN ? io.d1_delay : -1);
+        set_delay(CycloneV::SET_T3_FOR_CDATA0IN, io.d3_delay);
+        set_delay(CycloneV::SET_T3_FOR_CDATA1IN, io.d3_delay);
+        set_delay(CycloneV::RB_T9_SEL_OREG_DFF_DELAY, io.d5_delay);
+        set_delay(CycloneV::RB_T9_SEL_EREG_CFF_DELAY, io.d5_oe_delay);
         // There seem to be two mirrored OEIN inversion bits for constant OE for inputs/outputs. This might be to
         // prevent a single bitflip from turning inputs to outputs and messing up other devices on the boards, notably
         // ECP5 does similar. OEIN.0 inverted for outputs; OEIN.1 for inputs
