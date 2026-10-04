@@ -358,6 +358,22 @@ class CollectorTests(unittest.TestCase):
             self.assertEqual(first[0]["argv"][-2], "4")
             self.assertTrue(set(item["run_id"] for item in first).isdisjoint(item["run_id"] for item in second))
 
+    def test_collection_rejects_loader_controls_and_randomized_seed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-generic"
+            self.python_elf_runner(runner)
+            for name in ("LD_AUDIT", "LD_PRELOAD", "LD_LIBRARY_PATH", "GLIBC_TUNABLES"):
+                with self.subTest(environment=name):
+                    manifest = self.manifest(
+                        temporary, [str(runner), "--seed", "{seed}"])
+                    manifest["environment"][name] = "mutable.so"
+                    with self.assertRaisesRegex(ValueError, "dynamic-loader environment"):
+                        seed_racing.Collector(manifest, Path(temporary) / name)
+            manifest = self.manifest(
+                temporary, [str(runner), "--seed", "{seed}", "--randomize-seed"])
+            with self.assertRaisesRegex(ValueError, "forbids --randomize-seed"):
+                seed_racing.Collector(manifest, Path(temporary) / "randomized")
+
     def test_collection_captures_output_manifests_hashes_and_failures(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "runs"

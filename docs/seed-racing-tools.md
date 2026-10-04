@@ -30,7 +30,8 @@ manifest has schema version 1 and contains:
   runtime share tree. Children receive
   only that map plus the recorded platform-minimum environment (`PATH`,
   deterministic `LC_ALL=C`); ambient GPU visibility, thread-count, loader, and
-  routing controls are not inherited.
+  routing controls are not inherited. Explicit `LD_*` and `GLIBC_TUNABLES`
+  settings are rejected because they can inject code outside the sealed closure.
 
 Command arguments may use `{seed}`, `{repeat}`, `{run_id}`, `{run_dir}`,
 `{telemetry}`, and `{report}`. The collector creates every run directory
@@ -41,6 +42,8 @@ terminates active groups, waits through the graceful interval, forcibly clears
 remaining descendants, and reaps the leader, so queued or forked work cannot
 continue after interruption. The collector writes the complete terminal
 summary before propagating an interrupt.
+`--randomize-seed` is forbidden because it would replace the seed bound by the
+manifest while leaving the result labeled with the planned value.
 Declared cohort inputs must exist and be regular files. On Linux they are
 copied once before submission into sealed in-memory descriptors and passed to
 every child through `/proc/self/fd` paths. The readable files beside collection

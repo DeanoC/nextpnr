@@ -268,6 +268,12 @@ def validate_collection_manifest(document: Mapping[str, Any]) -> Dict[str, Any]:
     environment = document.get("environment", {})
     if not isinstance(environment, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in environment.items()):
         raise ValueError("environment must be an explicit string map")
+    loader_controls = sorted(
+        name for name in environment if name.startswith("LD_") or name == "GLIBC_TUNABLES")
+    if loader_controls:
+        raise ValueError(
+            "dynamic-loader environment controls are unsupported for frozen collection: " +
+            ", ".join(loader_controls))
     required_clocks = document.get("required_clocks", [])
     if (not isinstance(required_clocks, list) or
             not all(isinstance(name, str) and name for name in required_clocks) or
@@ -346,8 +352,11 @@ def _option_values(argv: Sequence[str], option: str) -> List[str]:
 
 
 def _validate_seed_binding(argv: Sequence[str], binary_name: str) -> None:
+    option_argv = argv[:argv.index("--")] if "--" in argv else argv
+    if any(argument == "--randomize-seed" or argument.startswith("--randomize-seed=")
+           for argument in option_argv):
+        raise ValueError("seed-racing collection forbids --randomize-seed")
     if binary_name.startswith("nextpnr"):
-        option_argv = argv[:argv.index("--")] if "--" in argv else argv
         if _option_values(option_argv, "--seed") != ["{seed}"]:
             raise ValueError("nextpnr collection requires exactly one --seed {seed} binding before --")
     elif "{seed}" not in argv[1:]:
