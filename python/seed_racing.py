@@ -61,9 +61,15 @@ if os.name == "nt":  # Minimum variables required to create ordinary Windows chi
 
 
 def _positive_number(value: Any, field: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f"{field} must be a positive finite number")
-    return float(value)
+    try:
+        number = float(value)
+    except (OverflowError, ValueError):
+        raise ValueError(f"{field} must be a positive finite number") from None
+    if not math.isfinite(number) or number <= 0:
+        raise ValueError(f"{field} must be a positive finite number")
+    return number
 
 
 def _positive_int(value: Any, field: str) -> int:
@@ -689,7 +695,7 @@ class Collector:
                 if record is None:
                     continue
                 try:
-                    document = json.loads(Path(record["snapshot_path"]).read_text(encoding="utf-8"))
+                    document = json.loads(Path(record["launch_path"]).read_text(encoding="utf-8"))
                 except (OSError, UnicodeError, json.JSONDecodeError) as error:
                     raise ValueError(f"cannot audit router settings in {option} input: {value}") from error
                 pending = [document]
@@ -1208,8 +1214,8 @@ class Collector:
 
 
 def _finite_json_tree(value: Any) -> bool:
-    if isinstance(value, float):
-        return math.isfinite(value)
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return _finite_number(value)
     if isinstance(value, list):
         return all(_finite_json_tree(item) for item in value)
     if isinstance(value, dict):
@@ -1246,8 +1252,7 @@ def load_jsonl(path: Path) -> Tuple[List[Dict[str, Any]], bool]:
                         terminal_seen):
                     raise ValueError
                 elapsed = value.get("elapsed_s")
-                if (isinstance(elapsed, bool) or not isinstance(elapsed, (int, float)) or
-                        not math.isfinite(elapsed) or elapsed < 0 or elapsed < prior_elapsed):
+                if (not _finite_number(elapsed) or elapsed < 0 or elapsed < prior_elapsed):
                     raise ValueError
                 if run_id is None:
                     run_id = value["run_id"]
@@ -1454,7 +1459,7 @@ def classify_collected_result(result: Mapping[str, Any], artifacts: Mapping[str,
     timing_gate_pass = terminal.get("timing_gate_pass") if timing_gate_present else None
     if not isinstance(timing_gate_pass, bool):
         timing_gate_pass = None
-        if timing_gate_present and routing_legal is True:
+        if routing_legal is True:
             telemetry_incomplete = True
     report_info = artifacts.get("final_report")
     report_path = (Path(report_info["path"]) if isinstance(report_info, dict) and
@@ -1638,8 +1643,7 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
         missing_required = [name for name in required_clocks if name not in clock_by_name]
         required_records = [clock_by_name[name] for name in required_clocks if name in clock_by_name]
         def finite_metric(value: Any) -> bool:
-            return (not isinstance(value, bool) and isinstance(value, (int, float)) and
-                    math.isfinite(float(value)))
+            return _finite_number(value)
         timing_available = (not missing_required and len(required_records) == len(required_clocks) and
                             all(clock.get("available") is True and finite_metric(clock.get("setup_wns_ns")) and
                                 finite_metric(clock.get("hold_wns_ns")) for clock in required_records))

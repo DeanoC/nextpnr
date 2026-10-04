@@ -128,6 +128,17 @@ class DatasetTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "finite numeric"):
                 seed_racing.validate_dataset(document)
 
+    def test_oversized_numeric_fields_raise_validation_errors(self):
+        enormous = 10 ** 10000
+        for field in ("duration_seconds", "outcome_observed_seconds"):
+            document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+            document["runs"][0][field] = enormous
+            with self.assertRaisesRegex(ValueError, "positive finite"):
+                seed_racing.validate_dataset(document)
+        with self.assertRaisesRegex(ValueError, "positive finite"):
+            seed_racing.successive_halving(
+                self.runs, [5], [1], 0, 1, restart=False, budget_seconds=enormous)
+
     def test_dataset_accepts_timing_constraint_failure(self):
         document = json.loads(FIXTURE.read_text(encoding="utf-8"))
         document["runs"][0]["status"] = "timing_constraint_failure"
@@ -580,7 +591,7 @@ class CollectorTests(unittest.TestCase):
                 "pathlib.Path(original).write_text('#!/bin/sh\\nexit 99\\n') if seed == '1' else None\n"
                 "pathlib.Path(observed,seed).write_text('frozen')\n"
                 "start={'schema_version':1,'sequence':0,'run_id':'r','event':'run_start','phase':None,'attempt':None,'elapsed_s':0}\n"
-                "end={'schema_version':1,'sequence':1,'run_id':'r','event':'run_end','phase':None,'attempt':None,'elapsed_s':1,'routing_legal':True}\n"
+                "end={'schema_version':1,'sequence':1,'run_id':'r','event':'run_end','phase':None,'attempt':None,'elapsed_s':1,'routing_legal':True,'timing_gate_pass':True}\n"
                 "pathlib.Path(telemetry).write_text(json.dumps(start)+'\\n'+json.dumps(end)+'\\n')\n"
                 "clock={'name':'clk','available':True,'setup_wns_ns':0.1,'hold_wns_ns':0.1}\n"
                 "pathlib.Path(report).write_text(json.dumps({'outcome':{'analogue_clocks':[clock]}}))\n"
@@ -859,6 +870,7 @@ class CollectorTests(unittest.TestCase):
                 "start={'schema_version':1,'sequence':0,'run_id':'r','event':'run_start','phase':None,'attempt':None,'elapsed_s':0}",
                 "telemetry.write_text(json.dumps(start)+'\\n') if seed != 5 else None",
                 "end={'schema_version':1,'sequence':1,'run_id':'r','event':'run_end','phase':None,'attempt':None,'elapsed_s':1,'routing_legal':seed != 3,'timing_gate_pass':'invalid' if seed == 9 else seed != 8,'status':'timing_constraint_failure' if seed == 8 else 'routing_legal'}",
+                "end.pop('timing_gate_pass') if seed == 10 else None",
                 "telemetry.write_text(telemetry.read_text()+json.dumps(end)+'\\n') if seed not in (4,5) else None",
                 "clock={'name':'clk','available':True,'setup_wns_ns':-0.1 if seed == 2 else 0.1,'hold_wns_ns':0.1}",
                 "normalized={'outcome':{'analogue_clocks':[clock]}}",
@@ -869,13 +881,14 @@ class CollectorTests(unittest.TestCase):
             code = code.replace("{", "{{").replace("}", "}}")
             manifest = self.manifest(temporary, [sys.executable, "-c", code, "{seed}",
                                                  "{telemetry}", "{report}"],
-                                     seeds=[1, 2, 3, 4, 5, 6, 7, 8, 9])
+                                     seeds=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
             results = seed_racing.Collector(manifest, output).run()
             self.assertEqual([result["status"] for result in results],
                              ["completed", "analogue_timing_failure", "routing_failure",
                               "incomplete_evidence", "process_failure",
                               "analogue_timing_failure", "incomplete_evidence",
-                              "timing_constraint_failure", "incomplete_evidence"])
+                              "timing_constraint_failure", "incomplete_evidence",
+                              "incomplete_evidence"])
             self.assertEqual(results[0]["outcome"]["legal_route"], True)
             self.assertEqual(results[0]["outcome"]["analogue_timing_pass"], True)
             self.assertEqual(results[1]["process_status"], "completed")
@@ -1064,6 +1077,30 @@ if seed == 4: sys.exit(1)
             with self.assertRaisesRegex(ValueError, "overrides declared router"):
                 seed_racing.Collector(manifest, Path(temporary) / "json-runs").run()
 
+    def test_router_audit_reads_the_sealed_input_not_the_display_copy(self):
+        class DisplayTamperingCollector(seed_racing.Collector):
+            def _snapshot_inputs(self):
+                records = super()._snapshot_inputs()
+                display = Path(records[0]["snapshot_path"])
+                display.chmod(0o644)
+                display.write_text(json.dumps({"settings": {"router": "gpu"}}),
+                                   encoding="utf-8")
+                return records
+
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-generic"
+            runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
+            runner.chmod(0o755)
+            design = Path(temporary) / "design.json"
+            design.write_text(json.dumps({"settings": {"router": "router2"}}),
+                              encoding="utf-8")
+            manifest = self.manifest(
+                temporary, [str(runner), "--router", "gpu", "--seed", "{seed}",
+                            "--gpu-telemetry", "{telemetry}", "--json", str(design)])
+            manifest["inputs"] = [{"path": str(design), "role": "mapped_netlist"}]
+            with self.assertRaisesRegex(ValueError, "overrides declared router"):
+                DisplayTamperingCollector(manifest, Path(temporary) / "sealed-audit").run()
+
     def test_gpu_identity_exempts_only_explicitly_never_launched_runs(self):
         with tempfile.TemporaryDirectory() as temporary:
             runner = Path(temporary) / "nextpnr-generic"
@@ -1135,6 +1172,13 @@ if seed == 4: sys.exit(1)
             manifest = self.manifest(temporary, [sys.executable, "-c", "pass", "{seed}"])
             manifest["required_clocks"] = ["clk", "clk"]
             with self.assertRaisesRegex(ValueError, "unique"):
+                seed_racing.validate_collection_manifest(manifest)
+
+    def test_manifest_rejects_oversized_numeric_limit(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = self.manifest(temporary, [sys.executable, "-c", "pass", "{seed}"])
+            manifest["limits"]["per_run_seconds"] = 10 ** 10000
+            with self.assertRaisesRegex(ValueError, "positive finite"):
                 seed_racing.validate_collection_manifest(manifest)
 
 
