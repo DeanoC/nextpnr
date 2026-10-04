@@ -1,0 +1,33 @@
+set_location_assignment PIN_V11 -to clk
+set_location_assignment PIN_V12 -to d[0]
+set_location_assignment PIN_E8 -to d[1]
+set_location_assignment PIN_W12 -to d[2]
+set_location_assignment PIN_D11 -to d[3]
+set_location_assignment PIN_D8 -to d[4]
+set_location_assignment PIN_AH13 -to d[5]
+set_location_assignment PIN_AF7 -to d[6]
+set_location_assignment PIN_AH14 -to d[7]
+set_location_assignment PIN_AF4 -to ce
+set_location_assignment PIN_AH3 -to rst_a
+set_location_assignment PIN_AH27 -to p1
+set_location_assignment PIN_AG25 -to p2
+set_location_assignment PIN_AH26 -to p3
+set_location_assignment PIN_AH24 -to p4
+set_location_assignment PIN_AF25 -to p5
+set_location_assignment PIN_AG23 -to p6
+set_location_assignment PIN_AF23 -to p7
+set_location_assignment PIN_AG24 -to p8
+set_location_assignment PIN_Y15 -to q[0]
+set_location_assignment PIN_AC24 -to q[1]
+set_location_assignment PIN_AA15 -to q[2]
+set_location_assignment PIN_AD26 -to q[3]
+set_location_assignment PIN_AG28 -to q[4]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to p1
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to p2
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to p3
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to p4
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to p5
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to p6
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to p7
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to p8
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to p8

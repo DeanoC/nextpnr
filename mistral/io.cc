@@ -52,6 +52,14 @@ void Arch::create_gpio(int x, int y)
         }
         if (has_port(CycloneV::GPIO, x, y, z, CycloneV::DATAIN, 2))
             add_bel_pin(bel, id_Q_L, PORT_OUT, get_port(CycloneV::GPIO, x, y, z, CycloneV::DATAIN, 2));
+        // I/O register clock enables (input; output and OE) and the pad's
+        // shared asynchronous clear.
+        if (has_port(CycloneV::GPIO, x, y, z, CycloneV::CEIN))
+            add_bel_pin(bel, id_CEIN, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::CEIN));
+        if (has_port(CycloneV::GPIO, x, y, z, CycloneV::CEOUT))
+            add_bel_pin(bel, id_CEOUT, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::CEOUT));
+        if (has_port(CycloneV::GPIO, x, y, z, CycloneV::ACLR))
+            add_bel_pin(bel, id_ACLR, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::ACLR));
         bel_data(bel).block_index = z;
     }
 }
@@ -65,6 +73,7 @@ bool Arch::is_io_cell(IdString cell_type) const
     case ID_MISTRAL_DDRIN:
     case ID_MISTRAL_OB:
     case ID_MISTRAL_SDROUT:
+    case ID_MISTRAL_SDRIO:
     case ID_MISTRAL_DDROUT:
     case ID_MISTRAL_DDRBIDIR:
     case ID_MISTRAL_IO:

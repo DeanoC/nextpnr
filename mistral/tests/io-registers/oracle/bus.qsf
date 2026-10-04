@@ -1,0 +1,29 @@
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEBA6U23I7
+set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name VERILOG_FILE ../bus.v
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name GENERATE_RBF_FILE ON
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION OFF
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+set_global_assignment -name VERILOG_MACRO "QUARTUS=1"
+set_global_assignment -name SDC_FILE ../clocks.sdc
+set_location_assignment PIN_V11 -to clk
+set_location_assignment PIN_AF4 -to rst_n
+set_location_assignment PIN_AH3 -to ce_n
+set_location_assignment PIN_V12 -to d[0]
+set_location_assignment PIN_E8 -to d[1]
+set_location_assignment PIN_W12 -to d[2]
+set_location_assignment PIN_D11 -to d[3]
+set_location_assignment PIN_AH27 -to dq[0]
+set_location_assignment PIN_AG25 -to dq[1]
+set_location_assignment PIN_AH26 -to dq[2]
+set_location_assignment PIN_AF25 -to dq[3]
+set_location_assignment PIN_Y15 -to q[0]
+set_location_assignment PIN_AC24 -to q[1]
+set_location_assignment PIN_AA15 -to q[2]
+set_location_assignment PIN_AD26 -to q[3]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to dq[*]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to dq[*]
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to dq[*]

@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cstring>
 #include <deque>
+#include <functional>
 #include <map>
 #include <set>
 
@@ -437,13 +438,266 @@ struct MistralPacker
         }
     }
 
+    // Controls a GPIO register can absorb from a MISTRAL_FF: a clock enable
+    // (CEIN for the input register, CEOUT shared by the output and OE
+    // registers) and the pad's shared active-high ACLR. Each control input of
+    // the pad has a programmable inverter. Sync clear/load and parameters
+    // have no I/O register equivalent and are rejected.
+    struct IoRegControls
+    {
+        NetInfo *ena = nullptr;
+        bool ena_inv = false;
+        NetInfo *aclr = nullptr;
+        bool aclr_inv = false;
+    };
+
+    IoRegControls io_register_controls(CellInfo *ff, const std::function<void(const char *)> &fail)
+    {
+        IoRegControls ctl;
+        if (!ff->params.empty())
+            fail("unsupported register parameters");
+        auto source = [&](IdString port, NetInfo *&net, bool &inv) {
+            CellPinState state = get_pin_needed_muxval(ff, port);
+            if (state == PIN_SIG) {
+                net = ff->getPort(port);
+            } else if (state == PIN_INV) {
+                net = ff->getPort(port)->driver.cell->getPort(id_A);
+                inv = true;
+                if (!net || !net->driver.cell)
+                    fail("register control inverter has no driven input");
+            }
+            return state;
+        };
+        if (source(id_ENA, ctl.ena, ctl.ena_inv) == PIN_0)
+            fail("register clock enable is tied low");
+        // MISTRAL_FF clears when ACLR is low; the pad's ACLR is active high.
+        if (source(id_ACLR, ctl.aclr, ctl.aclr_inv) == PIN_0)
+            fail("register asynchronous clear is held active");
+        if (ctl.aclr)
+            ctl.aclr_inv = !ctl.aclr_inv;
+        for (auto port : {id_SCLR, id_SLOAD})
+            if (get_pin_needed_muxval(ff, port) != PIN_0)
+                fail("synchronous clear and load have no I/O register equivalent");
+        return ctl;
+    }
+
+    void connect_io_control(CellInfo *io, IdString port, NetInfo *net, bool inv,
+                            const std::function<void(const char *)> &fail)
+    {
+        IdString inv_param = ctx->idf("IOREG_%s_INV", port.c_str(ctx));
+        if (NetInfo *existing = io->getPort(port)) {
+            if (existing != net || int_or_default(io->params, inv_param, 0) != int(inv))
+                fail("registers on one pad must share the same clock enable and clear");
+            return;
+        }
+        if (!io->ports.count(port))
+            io->addInput(port);
+        io->connectPort(port, net);
+        io->params[inv_param] = Property(inv ? 1 : 0);
+    }
+
+    // Validate an I/O register clock and return a global-buffered copy.
+    NetInfo *io_register_clock(CellInfo *ff, CellInfo *io, const char *suffix,
+                               const std::function<void(const char *)> &fail)
+    {
+        NetInfo *clock = ff->getPort(id_CLK);
+        if (!clock || !clock->driver.cell || clock->driver.cell->type.in(id_GND, id_VCC, id_MISTRAL_CONST))
+            fail("register clock must be driven and nonconstant");
+        NetInfo *source = clock;
+        if (ctx->is_clkbuf_cell(source->driver.cell->type)) {
+            if (source->driver.port != id_Q)
+                fail("clock buffer must drive Q");
+            source = source->driver.cell->getPort(id_A);
+        }
+        if (!source || !source->driver.cell ||
+            source->driver.cell->type.in(id_MISTRAL_NOT, id_GND, id_VCC, id_MISTRAL_CONST))
+            fail("require a noninverted clock source");
+        if (!ctx->is_clkbuf_cell(clock->driver.cell->type)) {
+            CellInfo *buffer = nullptr;
+            for (const auto &user : clock->users)
+                if (user.cell->type == id_MISTRAL_CLKBUF && user.port == id_A) {
+                    buffer = user.cell;
+                    break;
+                }
+            if (!buffer) {
+                buffer = ctx->createCell(ctx->idf("%s$%s_clkbuf", ctx->nameOf(io), suffix), id_MISTRAL_CLKBUF);
+                buffer->addInput(id_A);
+                buffer->addOutput(id_Q);
+                buffer->connectPort(id_A, clock);
+                buffer->connectPort(id_Q, ctx->createNet(ctx->idf("%s$%s_clock", ctx->nameOf(io), suffix)));
+            }
+            clock = buffer->getPort(id_Q);
+        }
+        if (!clock || !clock->driver.cell)
+            fail("clock buffer must have a connected Q output");
+        return clock;
+    }
+
+    bool io_register_requested(CellInfo *io, IdString key)
+    {
+        auto it = io->attrs.find(key);
+        if (it == io->attrs.end())
+            return false;
+        if (it->second.is_string && it->second.as_string() == "OFF")
+            return false;
+        if (!it->second.is_string || it->second.as_string() != "ON")
+            log_error("%s on '%s' must be ON or OFF.\n", key.c_str(ctx), ctx->nameOf(io));
+        return true;
+    }
+
+    // FAST_INPUT_REGISTER, FAST_OUTPUT_REGISTER and FAST_OUTPUT_ENABLE_REGISTER
+    // on a bidirectional or tri-state pad: absorb the requested MISTRAL_FFs
+    // into the GPIO input, output and OE registers. A register whose Q feeds
+    // several pads requesting the same register is copied into each, as
+    // Quartus duplicates it.
+    void pack_sdr_bidir()
+    {
+        const IdString req_in = ctx->id("FAST_INPUT_REGISTER"), req_out = ctx->id("FAST_OUTPUT_REGISTER"),
+                       req_oe = ctx->id("FAST_OUTPUT_ENABLE_REGISTER");
+        std::vector<CellInfo *> pads;
+        for (auto &entry : ctx->cells) {
+            CellInfo *io = entry.second.get();
+            if (io->type.in(id_MISTRAL_IB, id_MISTRAL_OB) && io_register_requested(io, req_oe))
+                log_warning("FAST_OUTPUT_ENABLE_REGISTER on '%s' is ignored: the pad has no output enable.\n",
+                            ctx->nameOf(io));
+            if (io->type == id_MISTRAL_IO && (io_register_requested(io, req_in) ||
+                                              io_register_requested(io, req_out) ||
+                                              io_register_requested(io, req_oe)))
+                pads.push_back(io);
+        }
+        pool<IdString> absorbed;
+        for (CellInfo *io : pads) {
+            auto fail = [&](const char *reason) { log_error("Registered I/O '%s': %s.\n", ctx->nameOf(io), reason); };
+            const bool in = io_register_requested(io, req_in), out = io_register_requested(io, req_out),
+                       oe = io_register_requested(io, req_oe);
+            auto loc = ctx->getBelLocation(io->bel);
+            int bi = ctx->bel_data(io->bel).block_index;
+            auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1});
+            if (!dqs || !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKOUT, 0) ||
+                !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::CLKIN, 0) ||
+                !ctx->has_port(CycloneV::GPIO, loc.x, loc.y, bi, CycloneV::DATAIN, 3))
+                fail("selected pad has no supported I/O register path");
+
+            auto driving_ff = [&](IdString port, IdString request, const char *what) {
+                NetInfo *net = io->getPort(port);
+                if (!net || !net->driver.cell || net->driver.cell->type != id_MISTRAL_FF || net->driver.port != id_Q)
+                    fail(what);
+                for (const auto &user : net->users)
+                    if (user.cell->type.in(id_MISTRAL_IO, id_MISTRAL_SDRIO) && user.port == port &&
+                        io_register_requested(user.cell, request))
+                        continue;
+                    else
+                        fail("a packed register's Q may only drive pads requesting the same I/O register");
+                return net->driver.cell;
+            };
+            CellInfo *out_ff = out ? driving_ff(id_I, req_out, "FAST_OUTPUT_REGISTER requires the pad data to come "
+                                                              "directly from a MISTRAL_FF")
+                                   : nullptr;
+            CellInfo *oe_ff = oe ? driving_ff(id_OE, req_oe, "FAST_OUTPUT_ENABLE_REGISTER requires the pad enable "
+                                                            "to come directly from a MISTRAL_FF")
+                                 : nullptr;
+            CellInfo *in_ff = nullptr;
+            if (in) {
+                NetInfo *data = io->getPort(id_O);
+                if (!data || data->users.entries() != 1)
+                    fail("FAST_INPUT_REGISTER requires the pad input to drive exactly one register data input");
+                auto user = *data->users.begin();
+                if (user.cell->type != id_MISTRAL_FF || user.port != id_DATAIN || !user.cell->getPort(id_Q))
+                    fail("FAST_INPUT_REGISTER requires a directly connected MISTRAL_FF");
+                in_ff = user.cell;
+            }
+
+            NetInfo *out_clock = nullptr;
+            for (CellInfo *ff : {out_ff, oe_ff}) {
+                if (!ff)
+                    continue;
+                if (out_clock && ff->getPort(id_CLK) != (out_ff ? out_ff : oe_ff)->getPort(id_CLK))
+                    fail("output and output-enable registers must share one clock");
+                out_clock = io_register_clock(ff, io, "sdr", fail);
+            }
+            NetInfo *in_clock = in_ff ? io_register_clock(in_ff, io, "sdr", fail) : nullptr;
+
+            auto attach = [&](CellInfo *ff, const char *reg, IdString ce_port) {
+                IoRegControls ctl = io_register_controls(ff, fail);
+                if (ctl.ena) {
+                    connect_io_control(io, ce_port, ctl.ena, ctl.ena_inv, fail);
+                    io->params[ctx->idf("IOREG_%s_CE", reg)] = Property(1);
+                }
+                if (ctl.aclr) {
+                    connect_io_control(io, id_ACLR, ctl.aclr, ctl.aclr_inv, fail);
+                    io->params[ctx->idf("IOREG_%s_ACLR", reg)] = Property(1);
+                }
+            };
+            if (out_ff)
+                attach(out_ff, "OUT", id_CEOUT);
+            if (oe_ff)
+                attach(oe_ff, "OE", id_CEOUT);
+            if (in_ff)
+                attach(in_ff, "IN", id_CEIN);
+
+            auto take_data = [&](CellInfo *ff, IdString port) {
+                NetInfo *d = ff->getPort(id_DATAIN);
+                if (!d || !d->driver.cell)
+                    fail("register data must be driven");
+                io->disconnectPort(port);
+                io->connectPort(port, d);
+                absorbed.insert(ff->name);
+            };
+            if (out_ff)
+                take_data(out_ff, id_I);
+            if (oe_ff)
+                take_data(oe_ff, id_OE);
+            if (in_ff) {
+                NetInfo *data = io->getPort(id_O), *q = in_ff->getPort(id_Q);
+                io->disconnectPort(id_O);
+                io->ports.erase(id_O);
+                in_ff->disconnectPort(id_Q);
+                io->addOutput(id_Q);
+                io->connectPort(id_Q, q);
+                for (auto &port : in_ff->ports)
+                    in_ff->disconnectPort(port.first);
+                ctx->nets.erase(data->name);
+                ctx->cells.erase(in_ff->name);
+            }
+            if (out_clock) {
+                io->addInput(id_CLK);
+                io->connectPort(id_CLK, out_clock);
+            }
+            if (in_clock) {
+                io->addInput(id_CLKIN);
+                io->connectPort(id_CLKIN, in_clock);
+            }
+            io->params[ctx->id("IOREG_IN")] = Property(in ? 1 : 0);
+            io->params[ctx->id("IOREG_OUT")] = Property(out ? 1 : 0);
+            io->params[ctx->id("IOREG_OE")] = Property(oe ? 1 : 0);
+            io->type = id_MISTRAL_SDRIO;
+            log_info("Packed%s%s%s I/O register%s into %s.\n", in ? " input" : "", out ? " output" : "",
+                     oe ? " output-enable" : "", (in + out + oe) > 1 ? "s" : "", ctx->nameOfBel(io->bel));
+        }
+        // Remove output and OE registers once every pad has its own copy.
+        for (IdString name : absorbed) {
+            CellInfo *ff = ctx->cells.at(name).get();
+            NetInfo *q = ff->getPort(id_Q);
+            if (q && !q->users.empty())
+                continue;
+            for (auto &port : ff->ports)
+                ff->disconnectPort(port.first);
+            if (q)
+                ctx->nets.erase(q->name);
+            ctx->cells.erase(name);
+        }
+        if (!pads.empty())
+            log_warning("Bidirectional I/O registers: setup/hold, clock-to-pad and clock-to-Q timing are "
+                        "uncharacterized; reported fabric Fmax does not establish interface timing closure.\n");
+    }
+
     void pack_sdr_outputs()
     {
         std::vector<CellInfo *> outputs;
         IdString request = ctx->id("FAST_OUTPUT_REGISTER");
         for (auto &entry : ctx->cells) {
             auto *io = entry.second.get();
-            if (!io->attrs.count(request)) continue;
+            if (!io->attrs.count(request) || io->type == id_MISTRAL_SDRIO) continue;
             const auto &value = io->attrs.at(request);
             if (value.is_string && value.as_string() == "OFF") continue;
             if (!value.is_string || value.as_string() != "ON")
@@ -460,12 +714,7 @@ struct MistralPacker
                 out->users.entries() != 1)
                 fail("require a directly connected MISTRAL_FF with no other Q consumers");
             CellInfo *ff = out->driver.cell;
-            if (!ff->params.empty()) fail("unsupported register parameters");
-            for (auto port : {id_ENA, id_ACLR, id_SCLR, id_SLOAD}) {
-                bool high = port.in(id_ENA, id_ACLR);
-                if (!ff->getPort(port) || get_pin_needed_muxval(ff, port) != (high ? PIN_1 : PIN_0))
-                    fail("require constant ENA/ACLR high and SCLR/SLOAD low");
-            }
+            IoRegControls ctl = io_register_controls(ff, fail);
             NetInfo *data = ff->getPort(id_DATAIN), *clock = ff->getPort(id_CLK);
             if (!data || !data->driver.cell) fail("register data must be driven");
             if (!clock || !clock->driver.cell || clock->driver.cell->type.in(id_GND, id_VCC, id_MISTRAL_CONST))
@@ -501,6 +750,14 @@ struct MistralPacker
             io->type = id_MISTRAL_SDROUT;
             io->addInput(id_CLK);
             io->connectPort(id_CLK, clock);
+            if (ctl.ena) {
+                connect_io_control(io, id_CEOUT, ctl.ena, ctl.ena_inv, fail);
+                io->params[ctx->id("IOREG_OUT_CE")] = Property(1);
+            }
+            if (ctl.aclr) {
+                connect_io_control(io, id_ACLR, ctl.aclr, ctl.aclr_inv, fail);
+                io->params[ctx->id("IOREG_OUT_ACLR")] = Property(1);
+            }
             for (auto &port : ff->ports) ff->disconnectPort(port.first);
             log_info("Packed SDR output register '%s' into %s.\n", ctx->nameOf(ff), ctx->nameOfBel(io->bel));
             ctx->nets.erase(out->name);
@@ -517,7 +774,7 @@ struct MistralPacker
         IdString request = ctx->id("FAST_INPUT_REGISTER");
         for (auto &entry : ctx->cells) {
             auto *ib = entry.second.get();
-            if (!ib->attrs.count(request))
+            if (!ib->attrs.count(request) || ib->type == id_MISTRAL_SDRIO)
                 continue;
             const auto &value = ib->attrs.at(request);
             if (value.is_string && value.as_string() == "OFF")
@@ -539,13 +796,7 @@ struct MistralPacker
             CellInfo *ff = data_user.cell;
             if (ff->getPort(id_DATAIN) != data)
                 fail("register data must be driven by this input buffer");
-            if (!ff->params.empty())
-                fail("unsupported register parameters");
-            for (auto port : {id_ENA, id_ACLR, id_SCLR, id_SLOAD}) {
-                bool high = port.in(id_ENA, id_ACLR);
-                if (!ff->getPort(port) || get_pin_needed_muxval(ff, port) != (high ? PIN_1 : PIN_0))
-                    fail("require constant ENA/ACLR high and SCLR/SLOAD low");
-            }
+            IoRegControls ctl = io_register_controls(ff, fail);
             NetInfo *captured = ff->getPort(id_Q);
             NetInfo *clock = ff->getPort(id_CLK);
             if (!captured)
@@ -595,6 +846,14 @@ struct MistralPacker
             ib->connectPort(id_CLK, clock);
             ib->pin_data[id_CLK].bel_pins = {ctx->id("CLKIN")};
             ib->type = id_MISTRAL_SDRIN;
+            if (ctl.ena) {
+                connect_io_control(ib, id_CEIN, ctl.ena, ctl.ena_inv, fail);
+                ib->params[ctx->id("IOREG_IN_CE")] = Property(1);
+            }
+            if (ctl.aclr) {
+                connect_io_control(ib, id_ACLR, ctl.aclr, ctl.aclr_inv, fail);
+                ib->params[ctx->id("IOREG_IN_ACLR")] = Property(1);
+            }
             for (auto &port : ff->ports)
                 ff->disconnectPort(port.first);
             log_info("Packed SDR input register '%s' into %s.\n", ctx->nameOf(ff), ctx->nameOfBel(ib->bel));
@@ -2729,6 +2988,7 @@ struct MistralPacker
         pack_io();
         pack_altiobufs();
         pack_ddr_inputs();
+        pack_sdr_bidir();
         pack_sdr_inputs();
         pack_sdr_outputs();
         pack_ddr_outputs();

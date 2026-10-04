@@ -66,8 +66,16 @@ run([a.mistral_cv, "decomp", "5CSEBA6U23I7", o / "top.rbf", o / "top.bt"], o / "
 bt = (o / "top.bt").read_text()
 oracle = json.loads((f / "oracle/mapping.json").read_text())
 assert oracle["device"] == "5CSEBA6U23I7"
+# The decoder prints no route line when the pad's clock DCMUX keeps its
+# default TCLK input, so check the routed clock reaches that DCMUX instead.
+netnames = json.loads((o / "routed.json").read_text())["modules"]["top"]["netnames"]
+clock_routing = " ".join(n.get("attributes", {}).get("ROUTING", "") for n in netnames.values())
 for route in oracle["routes"]:
-    assert route in bt, route
+    m = re.match(r"GPIO\.(\d+)\.(\d+)\.\d+:CLKIN\.0$", route)
+    if m:
+        assert f"DCMUX.{int(m.group(1))}.{int(m.group(2))}." in clock_routing, route
+    else:
+        assert route in bt, route
 dqs_settings = dict(re.findall(r"^s DQS16\.060\.000:(\S+\.0) (\S+)", bt, re.MULTILINE))
 assert dqs_settings == oracle["settings"], dqs_settings
 print("PASS: one SDR input register, GPIO DATAIN.3/CLKIN.0 and DQS FIFO clock settings")
@@ -105,9 +113,8 @@ def variant(name, expected, edit=None, qsf=None, expect_failure=True):
         assert any(cell["type"] == "MISTRAL_FF" for cell in cells.values())
 
 
-variant("enable", "constant ENA/ACLR", lambda _design, ff: ff["connections"].update(ENA=[6]))
-variant("reset", "constant ENA/ACLR", lambda _design, ff: ff["connections"].update(ACLR=["0"]))
-variant("load", "constant ENA/ACLR", lambda _design, ff: ff["connections"].update(SLOAD=[6]))
+variant("reset", "asynchronous clear is held active", lambda _design, ff: ff["connections"].update(ACLR=["0"]))
+variant("load", "synchronous clear and load have no I/O register equivalent", lambda _design, ff: ff["connections"].update(SLOAD=[6]))
 variant("clock", "register clock must be driven", lambda _design, ff: ff["connections"].update(CLK=["0"]))
 variant("parameter", "unsupported register parameters", lambda _design, ff: ff["parameters"].update(UNSUPPORTED="1"))
 
@@ -156,4 +163,4 @@ for command in ("set_input_delay", "set_output_delay"):
     )
     assert "Unsupported SDC command '" + command + "'" in (o / (command + ".log")).read_text()
 
-print("PASS: SDR input opt-out and seven unsupported input/clock/control requests")
+print("PASS: SDR input opt-out and six unsupported input/clock/control requests")
