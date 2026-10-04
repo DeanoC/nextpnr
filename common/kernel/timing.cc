@@ -78,7 +78,9 @@ static delay_t multicycle_extra(const Context *ctx, IdString launch, IdString ca
     if (exception == nullptr || exception->setup_multiplier <= 1)
         return 0;
     IdString clock = exception->start ? launch : capture;
-    return (exception->setup_multiplier - 1) * ctx->nets.at(clock)->clkconstr->period.minDelay();
+    // A clock with no create_clock (and no generated constraint) has a null
+    // clkconstr. clock_period falls back to the target frequency.
+    return (exception->setup_multiplier - 1) * clock_period(ctx, clock);
 }
 
 static delay_t clock_interval(const Context *ctx, IdString launch, IdString capture, ClockEdge launch_edge,
@@ -1561,6 +1563,10 @@ std::vector<CriticalPath> TimingAnalyser::get_min_delay_violations()
                 if (launch_id == async_clock_id || (launch_id != capture_id && !related_clocks && !phase_locked)) {
                     continue;
                 }
+                // Setup already drops these pairs in timed_clocks(). Hold must
+                // do the same, including phase-related and same-clock cuts.
+                if (ctx->sdc_clock_false(launch_clock, capture_clock))
+                    continue;
 
                 delay_t clock_to_clock = 0;
                 if (related_clocks) {

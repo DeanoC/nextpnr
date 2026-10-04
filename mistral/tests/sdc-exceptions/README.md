@@ -9,10 +9,13 @@ during packing are covered.
 `-logically_exclusive`, and `-physically_exclusive`. All four cut timing
 between clocks in different groups. One `-group` is exclusive with every
 clock outside it. `set_false_path` between clocks cuts only the named
-direction. `set_multicycle_path -setup N` widens the setup window by `N - 1`
-capture periods (`-start` uses the launch period). Hold stays on the
-single-cycle edge: `-hold` is accepted and ignored, including when it shares
-a command with `-setup`. Cell, pin, and net multicycle targets are rejected.
+direction. Both commands cut hold as well as setup, including a false path
+from a clock to itself and a phase-related pair. `set_multicycle_path -setup N`
+widens the setup window by `N - 1` capture periods (`-start` uses the launch
+period). A clock with no constraint uses the target period, so the exception
+does not crash. Hold stays on the single-cycle edge: `-hold` is accepted and
+ignored, including when it shares a command with `-setup`. Cell, pin, and net
+multicycle targets are rejected.
 
 The fixture is two phase-related 50 MHz PLL outputs (0° and 90°) on
 `5CSEBA6U23I7`, with a deep path on `clocks[0]` and crossings both ways.
