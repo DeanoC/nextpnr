@@ -207,6 +207,14 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "run_id.*unique"):
             seed_racing.validate_dataset(document)
 
+    def test_dataset_rejects_unhashable_run_identity_fields_cleanly(self):
+        for field in ("cohort_id", "mapped_design_id", "constraint_family"):
+            with self.subTest(field=field):
+                document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+                document["runs"][0][field] = []
+                with self.assertRaisesRegex(ValueError, "must be non-empty strings"):
+                    seed_racing.validate_dataset(document)
+
     def test_truncated_jsonl_retains_only_valid_prefix(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "telemetry.jsonl"
@@ -941,6 +949,30 @@ class CollectorTests(unittest.TestCase):
     def test_collection_rejects_standalone_elf_interpreters(self):
         with self.assertRaisesRegex(ValueError, "native nextpnr ELF executable"):
             VALIDATE_COLLECTION_EXECUTABLE(Path(sys.executable).resolve())
+
+    def test_collection_rejects_python_enabled_nextpnr(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-test"
+            self.python_elf_runner(runner)
+            with self.assertRaisesRegex(ValueError, "BUILD_PYTHON=OFF"):
+                VALIDATE_COLLECTION_EXECUTABLE(runner)
+
+    def test_collection_rejects_replaced_artifact_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            runner = root / "runner"
+            self.compile_c_runner(
+                runner,
+                '#include <stdio.h>\n#include <unistd.h>\n'
+                'int main(int argc,char **argv){FILE*f=fopen(argv[1],"w");'
+                'fputs("trusted",f);fclose(f);char p[4096];'
+                'snprintf(p,sizeof(p),"%s/report.json",argv[2]);unlink(p);'
+                'f=fopen(p,"w");fputs("forged",f);fclose(f);return 0;}\n')
+            manifest = self.manifest(
+                temporary, [str(runner), "{report}", "{run_dir}"])
+            result = seed_racing.Collector(manifest, root / "runs").run()[0]
+            self.assertEqual(result["status"], "runner_error")
+            self.assertRegex(result["error"], "artifact path was replaced")
 
     def test_static_elf_runtime_evidence_accepts_ldd_static_diagnostic(self):
         executable = Path("/bin/true").resolve()

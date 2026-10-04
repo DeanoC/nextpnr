@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import contextlib
 import ctypes
 import hashlib
 import json
@@ -18,6 +19,7 @@ import os
 import select
 import shutil
 import signal
+import stat
 import struct
 import subprocess
 import sys
@@ -115,26 +117,29 @@ def _descriptor_number_path(descriptor: int) -> str:
     raise RuntimeError("immutable seed-race snapshots require /proc/self/fd")
 
 
-def _copy_to_readonly_descriptor(source_path: Path, snapshot_path: Optional[Path],
-                                 mode_mask: int) -> BinaryIO:
-    """Copy stable source bytes into a sealed memfd and a display-only file."""
+def _copy_stream_to_readonly_descriptor(source: BinaryIO, source_name: str,
+                                        snapshot_path: Optional[Path],
+                                        mode_mask: int) -> BinaryIO:
+    """Copy an already-open stable source into a sealed memfd."""
     if fcntl is None or not hasattr(os, "memfd_create"):
         raise RuntimeError("immutable seed-race snapshots require Linux memfd seals")
     descriptor = os.memfd_create(
-        "nextpnr-seed-race-" + _safe_component(source_path.name),
+        "nextpnr-seed-race-" + _safe_component(Path(source_name).name),
         flags=os.MFD_ALLOW_SEALING,
     )
     destination = os.fdopen(descriptor, "w+b")
     try:
-        with source_path.open("rb") as source:
-            before = os.fstat(source.fileno())
-            shutil.copyfileobj(source, destination)
-            after = os.fstat(source.fileno())
+        source.flush()
+        before = os.fstat(source.fileno())
+        source.seek(0)
+        shutil.copyfileobj(source, destination)
+        after = os.fstat(source.fileno())
+        source.seek(0)
         stable_fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
         if any(getattr(before, field) != getattr(after, field) for field in stable_fields):
-            raise RuntimeError(f"source changed while snapshotting: {source_path}")
+            raise RuntimeError(f"source changed while snapshotting: {source_name}")
         if destination.tell() != before.st_size:
-            raise RuntimeError(f"source size changed while snapshotting: {source_path}")
+            raise RuntimeError(f"source size changed while snapshotting: {source_name}")
         destination.flush()
         os.fchmod(destination.fileno(), before.st_mode & mode_mask)
         destination.seek(0)
@@ -147,12 +152,33 @@ def _copy_to_readonly_descriptor(source_path: Path, snapshot_path: Optional[Path
         seals = fcntl.F_SEAL_SEAL | fcntl.F_SEAL_SHRINK | fcntl.F_SEAL_GROW | fcntl.F_SEAL_WRITE
         fcntl.fcntl(destination.fileno(), fcntl.F_ADD_SEALS, seals)
         if fcntl.fcntl(destination.fileno(), fcntl.F_GET_SEALS) & seals != seals:
-            raise RuntimeError(f"unable to seal snapshot: {source_path}")
+            raise RuntimeError(f"unable to seal snapshot: {source_name}")
         destination.seek(0)
     except BaseException:
         destination.close()
         raise
     return destination
+
+
+def _copy_to_readonly_descriptor(source_path: Path, snapshot_path: Optional[Path],
+                                 mode_mask: int) -> BinaryIO:
+    """Copy stable source bytes into a sealed memfd and a display-only file."""
+    with source_path.open("rb") as source:
+        return _copy_stream_to_readonly_descriptor(
+            source, str(source_path), snapshot_path, mode_mask)
+
+
+def _file_contains_any(path: Path, needles: Sequence[bytes]) -> bool:
+    """Search a large binary without loading it all into memory."""
+    overlap = max(map(len, needles)) - 1
+    tail = b""
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            window = tail + block
+            if any(needle in window for needle in needles):
+                return True
+            tail = window[-overlap:] if overlap else b""
+    return False
 
 
 def _watch_tree_mutations(root: Path) -> int:
@@ -379,6 +405,10 @@ def _validate_collection_executable(executable: Path) -> None:
         raise ValueError(
             "collection requires a native nextpnr ELF executable; standalone language "
             "interpreters and generic launchers have unbounded implicit module/resource inputs")
+    if _file_contains_any(executable, (b"Py_InitializeFromConfig\x00", b"Py_Initialize\x00")):
+        raise ValueError(
+            "collection requires nextpnr built with BUILD_PYTHON=OFF; embedded Python "
+            "loads implicit standard-library, site, and extension-module inputs")
 
 
 def _child_environment(explicit: Mapping[str, str]) -> Dict[str, str]:
@@ -1041,6 +1071,35 @@ class Collector:
         spec.directory.mkdir(parents=True, exist_ok=False)
         for relative in self.manifest["artifacts"].values():
             (spec.directory / relative).parent.mkdir(parents=True, exist_ok=True)
+        artifact_paths = {"stdout": spec.directory / "stdout.log",
+                          "stderr": spec.directory / "stderr.log"}
+        artifact_paths.update({name: spec.directory / relative
+                               for name, relative in self.manifest["artifacts"].items()})
+        artifact_sources: Dict[str, BinaryIO] = {}
+        artifact_initial_stats: Dict[str, os.stat_result] = {}
+        try:
+            for name, path in artifact_paths.items():
+                stream = path.open("x+b")
+                artifact_sources[name] = stream
+                artifact_initial_stats[name] = os.fstat(stream.fileno())
+        except BaseException:
+            for stream in artifact_sources.values():
+                stream.close()
+            raise
+        artifact_replacements = {
+            str(path): _descriptor_path(artifact_sources[name])
+            for name, path in artifact_paths.items() if name not in {"stdout", "stderr"}
+        }
+
+        def rewrite_artifact(argument: str) -> str:
+            if argument in artifact_replacements:
+                return artifact_replacements[argument]
+            prefix, separator, value = argument.partition("=")
+            if separator and value in artifact_replacements:
+                return prefix + separator + artifact_replacements[value]
+            return argument
+
+        execution_spec_argv = tuple(rewrite_artifact(argument) for argument in spec.argv)
         if self._child_environment is None:
             raise RuntimeError("cohort environment was not frozen")
         environment = dict(self._child_environment)
@@ -1055,8 +1114,8 @@ class Collector:
             "seed": spec.seed,
             "replicate_index": spec.repeat,
             "argv": list(spec.argv),
-            "execution_argv": (self._runtime_launch_prefix + list(spec.argv[1:])
-                               if self._runtime_launch_prefix else list(spec.argv)),
+            "execution_argv": (self._runtime_launch_prefix + list(execution_spec_argv[1:])
+                               if self._runtime_launch_prefix else list(execution_spec_argv)),
             "cwd": str(Path(self.manifest["cwd"] or os.getcwd()).resolve()),
             "environment": environment,
             "limits": self.manifest["limits"],
@@ -1072,11 +1131,12 @@ class Collector:
         manifest_sha256 = sha256_file(manifest_path)
         result: Dict[str, Any] = {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
                                   "process_started": False}
-        stdout_path, stderr_path = spec.directory / "stdout.log", spec.directory / "stderr.log"
+        stdout_path, stderr_path = artifact_paths["stdout"], artifact_paths["stderr"]
         started = time.monotonic()
         process: Optional[subprocess.Popen[Any]] = None
         try:
-            with stdout_path.open("wb") as stdout, stderr_path.open("wb") as stderr:
+            stdout, stderr = artifact_sources["stdout"], artifact_sources["stderr"]
+            with contextlib.nullcontext():
                 with self._lock:
                     if self._cancelled.is_set():
                         result.update({"status": "cancelled",
@@ -1085,15 +1145,16 @@ class Collector:
                         result.update({"status": "not_started_total_budget",
                                        "termination_reason": "total_budget_expired_before_launch"})
                     else:
-                        execution_argv = self._runtime_launch_prefix + list(spec.argv[1:])
+                        execution_argv = self._runtime_launch_prefix + list(execution_spec_argv[1:])
                         execution_path = (execution_argv[0] if self._runtime_launch_prefix
                                           else self._binary_launch_path)
                         process = subprocess.Popen(
-                            execution_argv if self._runtime_launch_prefix else list(spec.argv),
+                            execution_argv if self._runtime_launch_prefix else list(execution_spec_argv),
                             cwd=self.manifest["cwd"], env=environment, stdout=stdout, stderr=stderr,
                             executable=execution_path,
                             pass_fds=(tuple(stream.fileno() for stream in self._snapshot_streams) +
-                                      tuple(self._snapshot_fds)),
+                                      tuple(self._snapshot_fds) +
+                                      tuple(stream.fileno() for stream in artifact_sources.values())),
                             start_new_session=True,
                         )
                         result["process_started"] = True
@@ -1160,19 +1221,28 @@ class Collector:
         artifact_streams = []
         artifacts = {}
         evidence_artifacts = {}
-        artifact_paths = {"stdout": stdout_path, "stderr": stderr_path}
-        artifact_paths.update({name: spec.directory / relative
-                               for name, relative in self.manifest["artifacts"].items()})
         try:
             for name, path in artifact_paths.items():
-                if not path.exists():
+                source = artifact_sources[name]
+                anchored = os.fstat(source.fileno())
+                try:
+                    visible = path.stat(follow_symlinks=False)
+                except FileNotFoundError as error:
+                    raise RuntimeError(f"artifact path was removed while collecting: {path}") from error
+                if (visible.st_dev, visible.st_ino) != (anchored.st_dev, anchored.st_ino):
+                    raise RuntimeError(f"artifact path was replaced while collecting: {path}")
+                initial = artifact_initial_stats[name]
+                produced = (name in {"stdout", "stderr"} or anchored.st_size != initial.st_size or
+                            anchored.st_mtime_ns != initial.st_mtime_ns or
+                            anchored.st_ctime_ns != initial.st_ctime_ns)
+                if not produced:
                     artifacts[name] = {"path": str(path), "sha256": None,
                                        "available": False}
                     evidence_artifacts[name] = dict(artifacts[name])
                     continue
-                if path.is_symlink() or not path.is_file():
+                if not stat.S_ISREG(anchored.st_mode):
                     raise RuntimeError(f"artifact is not a regular non-symlink file: {path}")
-                frozen = _copy_to_readonly_descriptor(path, None, 0o444)
+                frozen = _copy_stream_to_readonly_descriptor(source, str(path), None, 0o444)
                 artifact_streams.append(frozen)
                 digest = _sha256_stream(frozen)
                 artifacts[name] = {"path": str(path), "sha256": digest, "available": True}
@@ -1186,6 +1256,8 @@ class Collector:
             return result
         finally:
             for stream in artifact_streams:
+                stream.close()
+            for stream in artifact_sources.values():
                 stream.close()
 
     def _bind_execution_identity(self, results: Sequence[Mapping[str, Any]]) -> Optional[Dict[str, str]]:
@@ -1678,6 +1750,10 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
         if not isinstance(run["run_id"], str) or not run["run_id"] or run["run_id"] in run_ids:
             raise ValueError("run_id values must be non-empty and unique")
         run_ids.add(run["run_id"])
+        if not all(isinstance(run[name], str) and run[name] for name in
+                   ("cohort_id", "mapped_design_id", "constraint_family")):
+            raise ValueError(
+                "run cohort_id, mapped_design_id, and constraint_family must be non-empty strings")
         if not isinstance(run["status"], str) or run["status"] not in TERMINAL_STATUSES:
             raise ValueError("run status must be a supported terminal status")
         duration = _positive_number(run["duration_seconds"], "duration_seconds")

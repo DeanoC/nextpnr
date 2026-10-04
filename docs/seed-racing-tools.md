@@ -35,8 +35,12 @@ manifest has schema version 1 and contains:
 
 Command arguments may use `{seed}`, `{repeat}`, `{run_id}`, `{run_dir}`,
 `{telemetry}`, and `{report}`. The collector creates every run directory
-exclusively, captures stdout/stderr, hashes available artifacts and the resolved
-binary, preserves exit codes/signals/timeouts, and terminates only the fresh
+exclusively and opens every declared output before launch. Worker output argv
+is rewritten to inherited `/proc/self/fd` paths; after the process group is
+quiescent, the collector hashes those same open objects and rejects any removed
+or replaced display path. This prevents a pathname swap between worker exit and
+evidence capture. The collector captures stdout/stderr, preserves exit
+codes/signals/timeouts, and terminates only the fresh
 child process group it owns. Cancellation gates future launches before it
 terminates active groups, waits through the graceful interval, forcibly clears
 remaining descendants, and reaps the leader, so queued or forked work cannot
@@ -77,7 +81,8 @@ usable for ordinary GPU routing, but their telemetry is explicitly unattested
 because those runtimes do not expose the exact device UUID; seed-racing
 collection rejects that backend identity.
 
-The command executable is resolved and copied once into a sealed descriptor
+The command executable must be built with `BUILD_PYTHON=OFF`, is resolved, and
+is copied once into a sealed descriptor
 before workers are submitted. Every run executes that descriptor and records
 its original path, display snapshot path, descriptor launch path, and SHA-256.
 On Linux nextpnr installations, an executable-relative share tree is copied into
@@ -91,9 +96,10 @@ closure is copied and content-checked into individually sealed descriptors befor
 submission. Each worker is invoked by the sealed dynamic-loader descriptor with
 the sealed library descriptors explicitly preloaded, so later pathname swaps
 cannot alter the bytes consumed by another worker. The command must be a native
-`nextpnr` ELF executable; shebang commands, standalone language interpreters,
-generic launchers, and nextpnr Python hooks are rejected because their implicit
-module/resource search trees cannot be bounded.
+`nextpnr` ELF executable; Python-enabled nextpnr builds, shebang commands,
+standalone language interpreters, generic launchers, and nextpnr Python hooks
+are rejected because their implicit module/resource search trees cannot be
+bounded.
 A recognized statically linked ELF binds the executable itself without inventing
 a loader dependency. Dynamic closure freezing currently requires the glibc
 `ld-linux` interface and fails closed for another loader. Runtime content identity is derived before submission and
