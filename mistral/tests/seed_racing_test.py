@@ -18,6 +18,7 @@ import seed_racing
 
 
 FIXTURE = ROOT / "mistral" / "tests" / "seed_racing" / "synthetic.json"
+VALIDATE_COLLECTION_EXECUTABLE = seed_racing._validate_collection_executable
 
 
 class DatasetTests(unittest.TestCase):
@@ -303,6 +304,13 @@ class DatasetTests(unittest.TestCase):
 
 
 class CollectorTests(unittest.TestCase):
+    def setUp(self):
+        # Most collector tests use copied Python binaries as compact synthetic
+        # workers. Product collection rejects these generic launchers.
+        patcher = mock.patch.object(seed_racing, "_validate_collection_executable")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def python_elf_runner(self, path):
         seed_racing.shutil.copy2(Path(sys.executable).resolve(), path)
         path.chmod(0o755)
@@ -759,9 +767,9 @@ class CollectorTests(unittest.TestCase):
             (share_dir / "resource").write_text("runtime-data", encoding="utf-8")
             runner = binary_dir / "runner"
             self.compile_c_runner(runner,
-                '#include <stdio.h>\n#include <stdlib.h>\n#include <sys/stat.h>\nint main(){char p[4096];snprintf(p,sizeof(p),"%s/share/resource",getenv("NEXTPNR_EXECUTABLE_DIR"));chmod(p,0644);FILE*f=fopen(p,"w");fputs("mutated",f);return 0;}\n')
+                '#include <stdio.h>\n#include <stdlib.h>\n#include <sys/stat.h>\nint main(){char p[4096];snprintf(p,sizeof(p),"%s/share/resource",getenv("NEXTPNR_EXECUTABLE_DIR"));chmod(p,0644);FILE*f=fopen(p,"w");fputs("mutated",f);fclose(f);f=fopen(p,"w");fputs("runtime-data",f);fclose(f);chmod(p,0444);return 0;}\n')
             manifest = self.manifest(temporary, [str(runner)])
-            with self.assertRaisesRegex(RuntimeError, "runtime environment changed"):
+            with self.assertRaisesRegex(RuntimeError, "runtime share tree was mutated"):
                 seed_racing.Collector(manifest, output).run()
 
     def test_himbaechel_requires_one_declared_explicit_chipdb(self):
@@ -889,8 +897,12 @@ class CollectorTests(unittest.TestCase):
             script = Path(temporary) / "runner"
             script.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
             environment = seed_racing._child_environment({})
-            with self.assertRaisesRegex(ValueError, "shebang executables"):
+            with self.assertRaisesRegex(ValueError, "shebang"):
                 seed_racing._runtime_environment_evidence(script, environment)
+
+    def test_collection_rejects_standalone_elf_interpreters(self):
+        with self.assertRaisesRegex(ValueError, "native nextpnr ELF executable"):
+            VALIDATE_COLLECTION_EXECUTABLE(Path(sys.executable).resolve())
 
     def test_static_elf_runtime_evidence_accepts_ldd_static_diagnostic(self):
         executable = Path("/bin/true").resolve()
@@ -1105,7 +1117,7 @@ if seed == 4: sys.exit(1)
             manifest = self.manifest(
                 temporary, [str(runner), "--seed", "{seed}", "--",
                             "--router", "gpu", "--gpu-telemetry", "{telemetry}"])
-            with self.assertRaisesRegex(ValueError, "explicit --router"):
+            with self.assertRaisesRegex(ValueError, "positional Python scripts"):
                 seed_racing.Collector(manifest, Path(temporary) / "runs").run()
 
     def test_gpu_capable_collection_rejects_router_overrides(self):
@@ -1118,7 +1130,7 @@ if seed == 4: sys.exit(1)
                 temporary, [str(runner), "--router", "router2", "--seed", "{seed}",
                             "--pre-route", str(hook)])
             manifest["inputs"] = [{"path": str(hook), "role": "python_hook"}]
-            with self.assertRaisesRegex(ValueError, "route-mutating Python hook"):
+            with self.assertRaisesRegex(ValueError, "Python hook.*unsupported"):
                 seed_racing.Collector(manifest, Path(temporary) / "hook-runs").run()
 
             design = Path(temporary) / "design.json"

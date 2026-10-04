@@ -1410,13 +1410,24 @@ void TimingAnalyser::build_crit_path_reports()
         auto &launch = domains.at(dp.key.launch).key;
         auto &capture = domains.at(dp.key.capture).key;
 
-        if (!timed_clocks(ctx, launch.clock, capture.clock) || launch.is_async())
-            continue;
+        const bool ordinary_timed = timed_clocks(ctx, launch.clock, capture.clock);
+        const bool physically_related = clock_delays.count(std::make_pair(launch.clock, capture.clock));
+        const bool ignored_related =
+                bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
+                launch.clock != capture.clock;
+        if (!launch.is_async() && (ordinary_timed || (physically_related && !ignored_related))) {
+            const delay_t setup_window = ordinary_timed
+                                                   ? dp.period.minDelay()
+                                                   : std::min(clock_period(ctx, launch.clock),
+                                                              clock_period(ctx, capture.clock));
+            const delay_t setup_slack = setup_window + dp.worst_setup_slack;
+            auto inserted_slack = result.clock_setup_slack.emplace(launch.clock, setup_slack);
+            if (!inserted_slack.second)
+                inserted_slack.first->second = std::min(inserted_slack.first->second, setup_slack);
+        }
 
-        const delay_t setup_slack = dp.period.minDelay() + dp.worst_setup_slack;
-        auto inserted_slack = result.clock_setup_slack.emplace(launch.clock, setup_slack);
-        if (!inserted_slack.second)
-            inserted_slack.first->second = std::min(inserted_slack.first->second, setup_slack);
+        if (!ordinary_timed || launch.is_async())
+            continue;
 
         auto path_delay = delay_by_domain.at(i);
 

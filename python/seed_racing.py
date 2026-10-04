@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import ctypes
 import hashlib
 import json
 import math
@@ -57,6 +58,8 @@ PREFIX_FEATURES = {
 }
 BASE_ENVIRONMENT_VARIABLES = ("PATH",)
 TERMINATION_GRACE_SECONDS = 2.0
+INOTIFY_MUTATION_EVENTS = (0x00000002 | 0x00000004 | 0x00000008 | 0x00000040 | 0x00000080 |
+                           0x00000100 | 0x00000200 | 0x00000400 | 0x00000800)
 if os.name == "nt":  # Minimum variables required to create ordinary Windows child processes.
     BASE_ENVIRONMENT_VARIABLES += ("COMSPEC", "PATHEXT", "SYSTEMROOT", "WINDIR")
 
@@ -149,6 +152,35 @@ def _copy_to_readonly_descriptor(source_path: Path, snapshot_path: Optional[Path
         destination.close()
         raise
     return destination
+
+
+def _watch_tree_mutations(root: Path) -> int:
+    """Watch a display tree so owner chmod/swap/restore attacks fail closed."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    descriptor = libc.inotify_init1(os.O_NONBLOCK | os.O_CLOEXEC)
+    if descriptor < 0:
+        raise OSError(ctypes.get_errno(), "inotify_init1 failed")
+    try:
+        directories = [root] + sorted(
+            (item for item in root.rglob("*") if item.is_dir()), key=str)
+        for path in directories:
+            if libc.inotify_add_watch(
+                    descriptor, os.fsencode(path), INOTIFY_MUTATION_EVENTS) < 0:
+                raise OSError(
+                    ctypes.get_errno(), f"cannot watch frozen runtime directory: {path}")
+    except BaseException:
+        os.close(descriptor)
+        raise
+    return descriptor
+
+
+def _tree_was_not_mutated(descriptor: Optional[int]) -> bool:
+    if descriptor is None:
+        return True
+    try:
+        return not os.read(descriptor, 65536)
+    except BlockingIOError:
+        return True
 
 
 def _json_dump(path: Path, value: Any) -> None:
@@ -331,6 +363,14 @@ def _resolved_binary(argv0: str, cwd: Optional[str], environment: Mapping[str, s
     return Path(found).resolve() if found else None
 
 
+def _validate_collection_executable(executable: Path) -> None:
+    """Keep the collector scoped to native nextpnr executables."""
+    if not executable.name.startswith("nextpnr"):
+        raise ValueError(
+            "collection requires a native nextpnr ELF executable; standalone language "
+            "interpreters and generic launchers have unbounded implicit module/resource inputs")
+
+
 def _child_environment(explicit: Mapping[str, str]) -> Dict[str, str]:
     """Build the complete recorded child environment without ambient routing controls."""
     environment = {name: os.environ[name] for name in BASE_ENVIRONMENT_VARIABLES if name in os.environ}
@@ -382,27 +422,27 @@ def _elf_interpreter(path: Path) -> Optional[Path]:
     return None
 
 def _runtime_environment_evidence(executable: Path, environment: Mapping[str, str],
-                                  share_directory: Optional[Path] = None) -> Dict[str, Any]:
+                                  share_directory: Optional[Path] = None,
+                                  recorded_executable: Optional[Path] = None,
+                                  pass_fds: Sequence[int] = ()) -> Dict[str, Any]:
     """Derive content-addressed loader/library/platform evidence for execution."""
-    runtime_binaries = {executable}
+    recorded_executable = recorded_executable or executable
     with executable.open("rb") as stream:
         prefix = stream.read(4096)
     if not prefix.startswith(b"\x7fELF"):
         raise ValueError(
-            "shebang executables are not reproducible collection commands; invoke the ELF "
-            "interpreter directly and declare every script/module input")
-    paths = set(runtime_binaries)
-    for linked_binary in runtime_binaries:
-        completed = subprocess.run(
-            ["ldd", str(linked_binary)], env=dict(environment), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, text=True, check=False)
-        if completed.returncode != 0:
-            diagnostic = (completed.stdout + "\n" + completed.stderr).lower()
-            if "not a dynamic executable" in diagnostic or "statically linked" in diagnostic:
-                continue
+            "collection requires a native nextpnr ELF executable; shebang commands are unsupported")
+    paths = set()
+    completed = subprocess.run(
+        ["ldd", str(executable)], env=dict(environment), stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, text=True, check=False, pass_fds=tuple(pass_fds))
+    if completed.returncode != 0:
+        diagnostic = (completed.stdout + "\n" + completed.stderr).lower()
+        if "not a dynamic executable" not in diagnostic and "statically linked" not in diagnostic:
             raise ValueError(
-                f"cannot derive runtime dependencies for {linked_binary}: "
+                f"cannot derive runtime dependencies for {recorded_executable}: "
                 f"{completed.stderr.strip()}")
+    else:
         for line in completed.stdout.splitlines():
             words = line.strip().split()
             candidate = None
@@ -411,10 +451,10 @@ def _runtime_environment_evidence(executable: Path, environment: Mapping[str, st
             elif words:
                 candidate = words[0]
             if candidate and candidate.startswith("/") and Path(candidate).is_file():
-                resolved_candidate = Path(candidate).resolve()
-                paths.add(resolved_candidate)
-    files = [{"path": str(path), "sha256": sha256_file(path)}
-             for path in sorted(paths, key=str)]
+                paths.add(Path(candidate).resolve())
+    files = [{"path": str(recorded_executable), "sha256": sha256_file(executable)}]
+    files.extend({"path": str(path), "sha256": sha256_file(path)}
+                 for path in sorted(paths, key=str))
     if share_directory is not None:
         for path in sorted(share_directory.rglob("*"), key=str):
             if path.is_file():
@@ -437,8 +477,8 @@ def _runtime_environment_evidence(executable: Path, environment: Mapping[str, st
         paths.add(dynamic_loader)
         if not any(item["path"] == str(dynamic_loader) for item in files):
             files.append({"path": str(dynamic_loader), "sha256": sha256_file(dynamic_loader)})
-    manifest = {"runtime_binary": str(executable),
-                "launchers": sorted(str(path) for path in runtime_binaries), "files": files,
+    manifest = {"runtime_binary": str(recorded_executable),
+                "launchers": [str(recorded_executable)], "files": files,
                 "execution": {
                     "kind": "elf",
                     "dynamic_loader": str(dynamic_loader) if dynamic_loader is not None else None,
@@ -583,6 +623,7 @@ class Collector:
         self._runtime_evidence: Optional[Dict[str, Any]] = None
         self._runtime_sealed_files: List[Dict[str, str]] = []
         self._runtime_sealed_root: Optional[Path] = None
+        self._runtime_share_watch: Optional[int] = None
         self._cohort_lock: Optional[BinaryIO] = None
         self._lock = threading.Lock()
         self._cancelled = threading.Event()
@@ -622,6 +663,7 @@ class Collector:
         resolved = _resolved_binary(self.manifest["command"][0], self.manifest["cwd"], environment)
         if resolved is None:
             raise ValueError(f"cannot resolve cohort executable: {self.manifest['command'][0]}")
+        _validate_collection_executable(resolved)
         snapshot_root = self.output_root / f"cohort-binary-{uuid.uuid4().hex}"
         snapshot_root.mkdir(parents=True, exist_ok=False)
         snapshot_bin = snapshot_root / "bin"
@@ -640,10 +682,14 @@ class Collector:
         if source_share is not None:
             snapshot_share = snapshot_bin / "share"
             shutil.copytree(source_share, snapshot_share, symlinks=False)
-        self._runtime_evidence = _runtime_environment_evidence(resolved, environment, source_share)
+        self._runtime_evidence = _runtime_environment_evidence(
+            Path(self._binary_launch_path), environment, source_share,
+            recorded_executable=resolved, pass_fds=(frozen.fileno(),))
         execution = self._runtime_evidence["manifest"]["execution"]
         expected_runtime_hashes = {
             item["path"]: item["sha256"] for item in self._runtime_evidence["manifest"]["files"]}
+        if _sha256_stream(frozen) != expected_runtime_hashes.get(str(resolved)):
+            raise RuntimeError("cohort executable changed while deriving its runtime closure")
         sealed_runtime: Dict[str, str] = {}
         for source_text in execution["dependency_paths"]:
             source = Path(source_text)
@@ -662,6 +708,7 @@ class Collector:
             for path in snapshot_share.rglob("*"):
                 path.chmod(0o555 if path.is_dir() else 0o444)
             snapshot_share.chmod(0o555)
+            self._runtime_share_watch = _watch_tree_mutations(snapshot_share)
         snapshot_bin.chmod(0o555)
         runtime_directory_fd = os.open(snapshot_bin, os.O_RDONLY | os.O_DIRECTORY)
         self._snapshot_fds.append(runtime_directory_fd)
@@ -807,6 +854,11 @@ class Collector:
     def _validate_known_input_options(self) -> None:
         if self._frozen_binary is None:
             raise RuntimeError("cohort executable was not frozen")
+        if "--" in self.manifest["command"] and \
+                self.manifest["command"].index("--") + 1 < len(self.manifest["command"]):
+            raise ValueError(
+                "nextpnr positional Python scripts are unsupported because imported modules "
+                "and interpreter resources cannot be bounded")
         input_options = {
             "--json": "mapped_netlist", "--sdc": "constraints", "--qsf": "constraints",
             "--chipdb": "chipdb", "--pcf": "constraints", "--pdc": "constraints",
@@ -826,6 +878,10 @@ class Collector:
         base = Path(self.manifest["cwd"] or os.getcwd())
         for option, expected_role in input_options.items():
             for value in _option_values(self.manifest["command"], option):
+                if expected_role == "python_hook":
+                    raise ValueError(
+                        f"nextpnr Python hook {option} is unsupported because imported modules "
+                        "and interpreter resources cannot be bounded")
                 path = Path(value)
                 resolved = (base / path).resolve() if not path.is_absolute() else path.resolve()
                 if value not in self._input_replacements and str(resolved) not in self._input_replacements:
@@ -867,6 +923,9 @@ class Collector:
         for descriptor in self._snapshot_fds:
             os.close(descriptor)
         self._snapshot_fds.clear()
+        if self._runtime_share_watch is not None:
+            os.close(self._runtime_share_watch)
+            self._runtime_share_watch = None
 
     def _validate_declared_inputs_bound(self, specs: Sequence[RunSpec]) -> None:
         for record in self._frozen_inputs or []:
@@ -1246,6 +1305,8 @@ class Collector:
                                     "repeat": spec.repeat, "status": "runner_error",
                                     "error": f"{type(error).__name__}: {error}"})
             try:
+                if not _tree_was_not_mutated(self._runtime_share_watch):
+                    raise RuntimeError("runtime share tree was mutated during cohort collection")
                 if not _verify_runtime_environment_evidence(
                         self._runtime_evidence, self._runtime_sealed_files,
                         self._runtime_sealed_root):

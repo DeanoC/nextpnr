@@ -117,6 +117,31 @@ class TimingReportPathsTest : public ::testing::Test
         return net;
     }
 
+    NetInfo *physically_related_clock(const std::string &name)
+    {
+        auto *root = ctx->createNet(ctx->id(name + "$root"));
+        bind_clock_source(root, name + "$root_source");
+        auto branch = [&](NetInfo *output, const std::string &branch_name) {
+            auto *cell = ctx->createCell(ctx->id(branch_name), id_MISTRAL_ALUT2);
+            cell->params[id_LUT] = Property(int64_t(0xA), 4);
+            cell->addInput(id_A); cell->addInput(id_B); cell->addOutput(id_Q);
+            cell->connectPort(id_A, root); cell->connectPort(id_B, root); cell->connectPort(id_Q, output);
+            ctx->assignArchInfo();
+            for (auto bel : ctx->getBels()) {
+                if (!ctx->checkBelAvail(bel) || !ctx->isValidBelForCellType(cell->type, bel)) continue;
+                ctx->bindBel(bel, cell, STRENGTH_USER);
+                if (ctx->isBelLocationValid(bel)) return;
+                ctx->unbindBel(bel);
+            }
+            FAIL() << "No legal related-clock branch BEL for " << branch_name;
+        };
+        auto *related = ctx->createNet(ctx->id(name)); related->is_global = true;
+        related->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+        branch(clock, name + "$primary_branch");
+        branch(related, name + "$related_branch");
+        return related;
+    }
+
     CellInfo *other_launch(NetInfo *net)
     {
         auto *cell = ff("independent_launch");
@@ -357,6 +382,28 @@ TEST_F(TimingReportPathsTest, JsonReportCarriesCompleteHoldSlackAndExplicitModel
     EXPECT_TRUE(clock_summary["hold_wns_ns"].is_number());
     ctx->timing_result_is_final_analogue = true;
     EXPECT_TRUE(parse_report()["timing_summary"]["final_analogue_model"].bool_value());
+}
+
+TEST_F(TimingReportPathsTest, PhysicallyRelatedOnlyLaunchClockCarriesFinalSlacks)
+{
+    auto *related_clock = physically_related_clock("related_clock");
+    auto *related_launch = other_launch(related_clock);
+    related_launch->disconnectPort(id_DATAIN);
+    auto *endpoint = rising.front(); auto *logic = cone.at(endpoint->name);
+    for (auto pin : {id_A, id_B}) {
+        logic->disconnectPort(pin); logic->connectPort(pin, related_launch->getPort(id_Q));
+    }
+    ctx->assignArchInfo();
+    timing_analysis(ctx.get(), false, true, false, false, true);
+    ASSERT_FALSE(ctx->timing_result.clock_fmax.count(related_clock->name));
+    ASSERT_TRUE(ctx->timing_result.clock_setup_slack.count(related_clock->name));
+    ASSERT_TRUE(ctx->timing_result.clock_hold_slack.count(related_clock->name));
+    std::ostringstream out; ctx->writeJsonReport(out);
+    std::string error; auto document = json11::Json::parse(out.str(), error);
+    ASSERT_TRUE(error.empty()) << error;
+    const auto summary = document["timing_summary"]["clocks"][related_clock->name.str(ctx.get())];
+    EXPECT_TRUE(summary["setup_wns_ns"].is_number());
+    EXPECT_TRUE(summary["hold_wns_ns"].is_number());
 }
 
 TEST_F(TimingReportPathsTest, InvalidPublicLimitsFailWithoutChangingResults)
