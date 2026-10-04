@@ -44,6 +44,7 @@ TERMINAL_STATUSES = {
     "process_failure",
     "timeout",
     "cancelled",
+    "not_started_total_budget",
     "launch_error",
     "runner_error",
 }
@@ -882,6 +883,10 @@ class Collector:
                     raise ValueError(
                         f"nextpnr Python hook {option} is unsupported because imported modules "
                         "and interpreter resources cannot be bounded")
+                if expected_role == "remap_plan":
+                    raise ValueError(
+                        f"nextpnr remap plan {option} is unsupported because its nested report "
+                        "paths cannot be descriptor-bound")
                 path = Path(value)
                 resolved = (base / path).resolve() if not path.is_absolute() else path.resolve()
                 if value not in self._input_replacements and str(resolved) not in self._input_replacements:

@@ -195,6 +195,12 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "supported terminal"):
             seed_racing.validate_dataset(document)
 
+    def test_dataset_accepts_total_budget_censoring_as_unsuccessful(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        document["runs"][0]["status"] = "not_started_total_budget"
+        normalized = seed_racing.validate_dataset(document)
+        self.assertFalse(normalized[0]["success"])
+
     def test_dataset_rejects_duplicate_run_ids(self):
         document = json.loads(FIXTURE.read_text(encoding="utf-8"))
         document["runs"][1]["run_id"] = document["runs"][0]["run_id"]
@@ -881,6 +887,22 @@ class CollectorTests(unittest.TestCase):
             manifest = self.manifest(temporary, [str(runner), "--seed={seed}", "--json", "netlist.json"])
             with self.assertRaisesRegex(ValueError, "--json must be declared"):
                 seed_racing.Collector(manifest, Path(temporary) / "runs").run()
+
+    def test_collection_rejects_remap_plans_with_nested_report_paths(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-mistral"
+            self.python_elf_runner(runner)
+            plan = Path(temporary) / "plan.json"
+            plan.write_text('{"report":"mutable-report.json"}', encoding="utf-8")
+            for option in ("--remap-plan", "--remap-post-plan", "--remap-comb-plan"):
+                with self.subTest(option=option):
+                    manifest = self.manifest(
+                        temporary, [str(runner), "-c", "pass", "--router", "router2",
+                                    "--seed", "{seed}", option, str(plan)])
+                    manifest["inputs"] = [{"path": str(plan), "role": "remap_plan"}]
+                    with self.assertRaisesRegex(ValueError, "remap plan.*unsupported"):
+                        seed_racing.Collector(
+                            manifest, Path(temporary) / option.removeprefix("--")).run()
 
     def test_expanded_seed_file_argument_must_be_declared(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -55,7 +55,8 @@ recorded as unavailable.
 Known nextpnr input-bearing options (`--json`, constraint formats, chipdb,
 and read input) must resolve to declared inputs with their
 corresponding roles (`mapped_netlist`, `constraints`, `chipdb`, `design_input`,
-`timing_report`, or `remap_plan`). Python hooks are rejected because their
+or `timing_report`). Remap-plan options are rejected because their nested report
+paths cannot be redirected safely. Python hooks are rejected because their
 transitive module/resource imports cannot be bounded by a direct file snapshot.
 Mistral's experimental
 `NEXTPNR_MISTRAL_*` environment controls are rejected because some encode
