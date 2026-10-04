@@ -320,6 +320,9 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target)
     const float saved_prior = pip_delay_prior;
     pip_delay_prior = search_prior;
     GpuRouterCfg cfg(ctx);
+    // The top-level router owns the exclusive telemetry stream. Candidate
+    // searches are downstream helpers and must not try to create it again.
+    cfg.telemetry_path.clear();
     GpuCandidateRouter cr(ctx, cfg);
     pip_delay_prior = saved_prior;
 
@@ -630,6 +633,9 @@ bool Arch::analogue_repair()
         try {
             GpuRouterCfg cfg(ctx);
             cfg.legality_timing_gate = !signoff_after_route;
+            // The top-level router has already closed its complete stream;
+            // analogue repair helpers must not reopen the exclusive path.
+            cfg.telemetry_path.clear();
             result = gpurouter(ctx, cfg);
         } catch (log_execution_error_exception &) {
             // Keep the best legal routing rather than failing the design.

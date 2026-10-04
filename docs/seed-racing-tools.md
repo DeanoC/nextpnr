@@ -17,13 +17,19 @@ manifest has schema version 1 and contains:
 - `inputs`: exact mapped netlist, constraints, included constraints, memory
   initialization, or other inputs to hash;
 - `artifacts`: names mapped to paths relative to each unique run directory;
-- an explicit environment allowlist and provenance object.
+- an explicit environment allowlist and provenance object. Children receive
+  only that map plus the recorded platform-minimum environment (`PATH`,
+  deterministic `LC_ALL=C` on POSIX, and the standard process-creation
+  variables on Windows); ambient GPU visibility, thread-count, loader, and
+  routing controls are not inherited.
 
 Command arguments may use `{seed}`, `{repeat}`, `{run_id}`, `{run_dir}`,
 `{telemetry}`, and `{report}`. The collector creates every run directory
 exclusively, captures stdout/stderr, hashes available artifacts and the resolved
 binary, preserves exit codes/signals/timeouts, and terminates only the fresh
-child process group it owns. A missing input or output is recorded as
+child process group it owns. Cancellation gates future launches before it
+terminates active groups, so queued jobs cannot start after interruption. A
+missing input or output is recorded as
 unavailable; it is not silently substituted.
 
 ## Evaluation dataset

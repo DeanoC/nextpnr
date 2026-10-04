@@ -27,7 +27,8 @@ boundaries. `run_end` reports router1 legality separately from
 analogue multi-clock signoff and repair happen after the common GPU router
 returns and remain authoritative. The offline evaluator consumes a separately
 normalized final outcome without converting one Fmax or table WNS into
-analogue success.
+analogue success. Downstream Mistral analogue candidate searches and full
+re-route helpers do not reopen the top-level router's exclusive telemetry path.
 
 Telemetry only observes existing state. It owns no router state, calls no RNG,
 does not run extra timing analysis, flushes each bounded record, and retains no

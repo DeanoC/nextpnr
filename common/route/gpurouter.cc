@@ -1559,20 +1559,28 @@ struct GpuRouter
             }
 
             int tmgfail = 0;
-            if (timing_driven)
+            int table_failing_endpoints = 0;
+            if (timing_driven) {
                 tmg.run(false);
+                if (cfg.perf_profile || telemetry) {
+                    for (auto ni : nets_by_udata)
+                        for (auto &usr : ni->users) {
+                            float sl = tmg.get_setup_slack(CellPortKey(usr));
+                            if (sl != std::numeric_limits<float>::lowest() && sl != std::numeric_limits<float>::max() &&
+                                sl < 0)
+                                ++table_failing_endpoints;
+                        }
+                }
+            }
             if (timing_driven && cfg.perf_profile) {
                 float min_slack = std::numeric_limits<float>::max();
-                int neg = 0;
                 for (auto ni : nets_by_udata)
                     for (auto &usr : ni->users) {
                         float sl = tmg.get_setup_slack(CellPortKey(usr));
                         min_slack = std::min(min_slack, sl);
-                        if (sl < 0)
-                            neg++;
                     }
                 log_info("        min setup slack %.3f ns, %d arcs with negative slack\n",
-                         ctx->getDelayNS(delay_t(min_slack)), neg);
+                         ctx->getDelayNS(delay_t(min_slack)), table_failing_endpoints);
             }
             if (timing_driven_ripup && iter < 1500) {
                 for (size_t i = 0; i < nets_by_udata.size(); i++) {
@@ -1613,7 +1621,6 @@ struct GpuRouter
                         gpuroute::Telemetry::Field::integer_value("total_wire_use", total_wire_use),
                         gpuroute::Telemetry::Field::integer_value("overused_wires", overused_wires),
                         gpuroute::Telemetry::Field::integer_value("total_excess_occupancy", total_overuse),
-                        gpuroute::Telemetry::Field::integer_value("table_failing_endpoints", tmgfail),
                         gpuroute::Telemetry::Field::integer_value("routed_nets", int64_t(ntasks)),
                         gpuroute::Telemetry::Field::integer_value("batches", int64_t(batches.size())),
                         gpuroute::Telemetry::Field::number_value("current_congestion_weight", curr_cong_weight),
@@ -1621,6 +1628,8 @@ struct GpuRouter
                         gpuroute::Telemetry::Field::integer_value("backend_nodes_expanded_cumulative", bs.wires_expanded),
                         gpuroute::Telemetry::Field::number_value("iteration_elapsed_s", secs_since(istart))};
                 if (timing_driven) {
+                    fields.push_back(gpuroute::Telemetry::Field::integer_value("table_failing_endpoints",
+                                                                               table_failing_endpoints));
                     float wns = design_wns();
                     if (wns == std::numeric_limits<float>::max() ||
                         wns == std::numeric_limits<float>::lowest())
@@ -1628,8 +1637,11 @@ struct GpuRouter
                     else
                         fields.push_back(gpuroute::Telemetry::Field::number_value(
                                 "table_wns_ns", ctx->getDelayNS(delay_t(wns))));
-                } else
+                } else {
+                    fields.push_back(
+                            gpuroute::Telemetry::Field::null_value("table_failing_endpoints", "timing_disabled"));
                     fields.push_back(gpuroute::Telemetry::Field::null_value("table_wns_ns", "timing_disabled"));
+                }
                 telemetry->emit("iteration", "negotiation", attempt, fields);
             }
             if (cfg.perf_profile) {

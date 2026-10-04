@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 import json
+import os
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -133,6 +137,22 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(len(records), 4)
             self.assertTrue(truncated)
 
+    def test_jsonl_without_terminal_event_is_incomplete(self):
+        start = {"schema_version": 1, "sequence": 0, "run_id": "r", "event": "run_start",
+                 "phase": None, "attempt": None, "elapsed_s": 0}
+        phase = {"schema_version": 1, "sequence": 1, "run_id": "r", "event": "phase_start",
+                 "phase": "setup", "attempt": 0, "elapsed_s": 1}
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "telemetry.jsonl"
+            path.write_text(json.dumps(start) + "\n", encoding="utf-8")
+            records, incomplete = seed_racing.load_jsonl(path)
+            self.assertEqual(records, [start])
+            self.assertTrue(incomplete)
+            path.write_text(json.dumps(start) + "\n" + json.dumps(phase) + "\n", encoding="utf-8")
+            records, incomplete = seed_racing.load_jsonl(path)
+            self.assertEqual(records, [start, phase])
+            self.assertTrue(incomplete)
+
 
 class CollectorTests(unittest.TestCase):
     def manifest(self, temporary, command, per_run=2, repeats=1, seeds=None):
@@ -186,6 +206,47 @@ class CollectorTests(unittest.TestCase):
             result = seed_racing.Collector(manifest, output).run()[0]
             self.assertEqual(result["status"], "timeout")
             self.assertEqual(result["termination_reason"], "per_run_timeout")
+
+    def test_child_environment_excludes_unrecorded_parent_variables(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            code = ("import json,os,pathlib,sys; "
+                    "pathlib.Path(sys.argv[1]).write_text(json.dumps(dict(os.environ)))")
+            manifest = self.manifest(temporary, [sys.executable, "-c", code, "{report}"])
+            with mock.patch.dict(os.environ, {"UNRECORDED_ROUTER_CONTROL": "must-not-leak"}, clear=False):
+                result = seed_racing.Collector(manifest, output).run()[0]
+            run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
+            child = json.loads((run_dir / "report.json").read_text(encoding="utf-8"))
+            recorded = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))["environment"]
+            self.assertNotIn("UNRECORDED_ROUTER_CONTROL", child)
+            self.assertEqual(child, recorded)
+            self.assertEqual(child["SEED_RACING_TEST"], "1")
+
+    def test_cancel_prevents_queued_runs_from_launching(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            launches = Path(temporary) / "launches"
+            code = ("import pathlib,sys,time; "
+                    "p=pathlib.Path(sys.argv[1]); "
+                    "p.write_text(p.read_text()+'x' if p.exists() else 'x'); "
+                    "time.sleep(30)")
+            manifest = self.manifest(temporary, [sys.executable, "-c", code, str(launches)],
+                                     per_run=2, seeds=[1, 2, 3])
+            manifest["limits"]["concurrency"] = 1
+            collector = seed_racing.Collector(manifest, output)
+            completed = []
+            worker = threading.Thread(target=lambda: completed.extend(collector.run()))
+            worker.start()
+            deadline = time.monotonic() + 2
+            while not launches.exists() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertTrue(launches.exists())
+            collector.cancel()
+            worker.join(timeout=5)
+            self.assertFalse(worker.is_alive())
+            self.assertEqual(launches.read_text(encoding="utf-8"), "x")
+            self.assertEqual([result["status"] for result in completed],
+                             ["cancelled", "cancelled", "cancelled"])
 
     def test_manifest_rejects_shell_string_and_unsafe_artifact(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -44,6 +44,9 @@ PREFIX_FEATURES = {
     "displaced_connections", "frozen_connections", "repair_improvement", "timing_model", "analogue_wns_ns",
     "analogue_tns_ns", "analogue_clocks",
 }
+BASE_ENVIRONMENT_VARIABLES = ("PATH",)
+if os.name == "nt":  # Minimum variables required to create ordinary Windows child processes.
+    BASE_ENVIRONMENT_VARIABLES += ("COMSPEC", "PATHEXT", "SYSTEMROOT", "WINDIR")
 
 
 def _positive_number(value: Any, field: str) -> float:
@@ -163,6 +166,15 @@ def _resolved_binary(argv0: str, cwd: Optional[str], environment: Mapping[str, s
     return Path(found).resolve() if found else None
 
 
+def _child_environment(explicit: Mapping[str, str]) -> Dict[str, str]:
+    """Build the complete recorded child environment without ambient routing controls."""
+    environment = {name: os.environ[name] for name in BASE_ENVIRONMENT_VARIABLES if name in os.environ}
+    if os.name != "nt":
+        environment["LC_ALL"] = "C"
+    environment.update(explicit)
+    return environment
+
+
 def _terminate_owned_child(process: subprocess.Popen[Any]) -> None:
     """Terminate only the fresh process group created for this child."""
     if process.poll() is not None:
@@ -194,7 +206,9 @@ class Collector:
         self.manifest = validate_collection_manifest(manifest)
         self.output_root = output_root.resolve()
         self._active: Dict[str, subprocess.Popen[Any]] = {}
+        self._cancelled_runs = set()
         self._lock = threading.Lock()
+        self._cancelled = threading.Event()
 
     def plan(self) -> List[RunSpec]:
         cohort_id = _safe_component(self.manifest["cohort"]["id"])
@@ -228,12 +242,14 @@ class Collector:
         return records
 
     def _run_one(self, spec: RunSpec, deadline: float) -> Dict[str, Any]:
+        if self._cancelled.is_set():
+            return {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat, "status": "cancelled",
+                    "termination_reason": "collector_cancelled_before_launch"}
         now = time.monotonic()
         if now >= deadline:
             return {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat, "status": "not_started_total_budget"}
         spec.directory.mkdir(parents=True, exist_ok=False)
-        environment = os.environ.copy()
-        environment.update(self.manifest["environment"])
+        environment = _child_environment(self.manifest["environment"])
         binary = _resolved_binary(spec.argv[0], self.manifest["cwd"], environment)
         started_wall = time.time()
         immutable = {
@@ -244,7 +260,7 @@ class Collector:
             "replicate_index": spec.repeat,
             "argv": list(spec.argv),
             "cwd": str(Path(self.manifest["cwd"] or os.getcwd()).resolve()),
-            "environment": self.manifest["environment"],
+            "environment": environment,
             "limits": self.manifest["limits"],
             "provenance": self.manifest["provenance"],
             "inputs": self._input_records(),
@@ -259,20 +275,36 @@ class Collector:
         process: Optional[subprocess.Popen[Any]] = None
         try:
             with stdout_path.open("wb") as stdout, stderr_path.open("wb") as stderr:
-                process = subprocess.Popen(
-                    list(spec.argv), cwd=self.manifest["cwd"], env=environment, stdout=stdout, stderr=stderr,
-                    start_new_session=(os.name == "posix"),
-                )
                 with self._lock:
-                    self._active[spec.run_id] = process
-                timeout = min(self.manifest["limits"]["per_run_seconds"], max(0.001, deadline - time.monotonic()))
-                try:
-                    return_code = process.wait(timeout=timeout)
-                    result.update({"status": "completed" if return_code == 0 else "process_failure", "return_code": return_code, "signal": -return_code if return_code < 0 else None})
-                except subprocess.TimeoutExpired:
-                    _terminate_owned_child(process)
-                    reason = "total_budget" if time.monotonic() >= deadline else "per_run_timeout"
-                    result.update({"status": "timeout", "termination_reason": reason, "return_code": process.returncode, "signal": -process.returncode if process.returncode and process.returncode < 0 else None})
+                    if self._cancelled.is_set():
+                        result.update({"status": "cancelled",
+                                       "termination_reason": "collector_cancelled_before_launch"})
+                    else:
+                        process = subprocess.Popen(
+                            list(spec.argv), cwd=self.manifest["cwd"], env=environment, stdout=stdout, stderr=stderr,
+                            start_new_session=(os.name == "posix"),
+                        )
+                        self._active[spec.run_id] = process
+                if process is not None:
+                    timeout = min(self.manifest["limits"]["per_run_seconds"],
+                                  max(0.001, deadline - time.monotonic()))
+                    try:
+                        return_code = process.wait(timeout=timeout)
+                        with self._lock:
+                            cancelled = spec.run_id in self._cancelled_runs
+                        status = ("cancelled" if cancelled else
+                                  "completed" if return_code == 0 else "process_failure")
+                        result.update({"status": status, "return_code": return_code,
+                                       "signal": -return_code if return_code < 0 else None})
+                        if status == "cancelled":
+                            result["termination_reason"] = "collector_cancelled"
+                    except subprocess.TimeoutExpired:
+                        _terminate_owned_child(process)
+                        reason = "total_budget" if time.monotonic() >= deadline else "per_run_timeout"
+                        result.update({"status": "timeout", "termination_reason": reason,
+                                       "return_code": process.returncode,
+                                       "signal": -process.returncode if process.returncode and process.returncode < 0
+                                       else None})
         except OSError as error:
             result.update({"status": "launch_error", "error": f"{type(error).__name__}: {error}"})
         finally:
@@ -292,7 +324,12 @@ class Collector:
 
     def cancel(self) -> None:
         with self._lock:
-            processes = list(self._active.values())
+            self._cancelled.set()
+            processes = []
+            for run_id, process in self._active.items():
+                if process.poll() is None:
+                    self._cancelled_runs.add(run_id)
+                    processes.append(process)
         for process in processes:
             _terminate_owned_child(process)
 
@@ -303,17 +340,23 @@ class Collector:
         self.output_root.mkdir(parents=True, exist_ok=True)
         deadline = time.monotonic() + self.manifest["limits"]["total_seconds"]
         results = []
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.manifest["limits"]["concurrency"])
+        future_specs = []
         try:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.manifest["limits"]["concurrency"]) as executor:
-                future_specs = [(executor.submit(self._run_one, spec, deadline), spec) for spec in specs]
-                for future, spec in future_specs:
-                    try:
-                        results.append(future.result())
-                    except Exception as error:  # preserve other completed runs
-                        results.append({"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat, "status": "runner_error", "error": f"{type(error).__name__}: {error}"})
+            future_specs = [(executor.submit(self._run_one, spec, deadline), spec) for spec in specs]
+            for future, spec in future_specs:
+                try:
+                    results.append(future.result())
+                except Exception as error:  # preserve other completed runs
+                    results.append({"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
+                                    "status": "runner_error", "error": f"{type(error).__name__}: {error}"})
         except KeyboardInterrupt:
             self.cancel()
+            for future, _spec in future_specs:
+                future.cancel()
             raise
+        finally:
+            executor.shutdown(wait=True, cancel_futures=self._cancelled.is_set())
         summary = {"schema_version": SCHEMA_VERSION, "cohort": self.manifest["cohort"], "results": results}
         _json_dump(self.output_root / f"collection-{uuid.uuid4().hex}.json", summary)
         return results
@@ -368,7 +411,7 @@ def load_jsonl(path: Path) -> Tuple[List[Dict[str, Any]], bool]:
             except (json.JSONDecodeError, ValueError):
                 truncated = True
                 break
-    return records, truncated
+    return records, truncated or not terminal_seen or bool(phase_stack)
 
 
 def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
