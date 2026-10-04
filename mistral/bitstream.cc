@@ -998,6 +998,7 @@ struct MistralBitgen
         write_routing();
         write_cells();
         write_labs();
+        ctx->write_control_bitstream();
         ctx->bitstream_configured = true;
     }
 };
