@@ -1537,11 +1537,15 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
     if not isinstance(cohort_identities, dict):
         raise ValueError("dataset.cohort_identities must bind every cohort fingerprint")
     normalized = []
+    run_ids = set()
     for run in document["runs"]:
         _require_keys(run, ("run_id", "cohort_id", "cohort_fingerprint_sha256",
                             "mapped_design_id", "constraint_family", "seed", "status",
                             "duration_seconds", "outcome_observed_seconds", "observations",
                             "outcome"), "run")
+        if not isinstance(run["run_id"], str) or not run["run_id"] or run["run_id"] in run_ids:
+            raise ValueError("run_id values must be non-empty and unique")
+        run_ids.add(run["run_id"])
         if not isinstance(run["status"], str) or run["status"] not in TERMINAL_STATUSES:
             raise ValueError("run status must be a supported terminal status")
         duration = _positive_number(run["duration_seconds"], "duration_seconds")

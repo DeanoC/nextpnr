@@ -194,6 +194,12 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "supported terminal"):
             seed_racing.validate_dataset(document)
 
+    def test_dataset_rejects_duplicate_run_ids(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        document["runs"][1]["run_id"] = document["runs"][0]["run_id"]
+        with self.assertRaisesRegex(ValueError, "run_id.*unique"):
+            seed_racing.validate_dataset(document)
+
     def test_truncated_jsonl_retains_only_valid_prefix(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "telemetry.jsonl"
