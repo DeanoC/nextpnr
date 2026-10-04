@@ -76,8 +76,9 @@ before workers are submitted. Every run executes that descriptor and records
 its original path, display snapshot path, descriptor launch path, and SHA-256.
 On Linux nextpnr installations, an executable-relative share tree is copied into
 the frozen cohort runtime, made read-only, content-bound in runtime evidence,
-re-enumerated after all workers, and selected through
-`NEXTPNR_EXECUTABLE_DIR`. Collection fails closed without Linux
+re-enumerated after all workers, and selected through an inherited directory
+descriptor in `NEXTPNR_EXECUTABLE_DIR`; replacing its display path cannot
+redirect later workers. Collection fails closed without Linux
 sealed descriptors, pidfds, and `/proc`. The executable's dynamic dependency
 closure is not copied. Dynamically linked launches bind that discovered closure;
 a recognized statically linked ELF binds the executable itself without inventing

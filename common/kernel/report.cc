@@ -266,14 +266,18 @@ void Context::writeJsonReport(std::ostream &out) const
                 {"achieved", kv.second.achieved},
                 {"constraint", kv.second.constraint},
         };
-        auto setup = timing_result.clock_setup_slack.find(kv.first);
-        auto hold = timing_result.clock_hold_slack.find(kv.first);
-        if (setup != timing_result.clock_setup_slack.end() && hold != timing_result.clock_hold_slack.end()) {
-            timing_clock_json[kv.first.str(this)] = Json::object{
-                    {"setup_wns_ns", getDelayNS(setup->second)},
-                    {"hold_wns_ns", getDelayNS(hold->second)},
-            };
-        }
+    }
+    // The timing gate also enforces physically/phase-related cross-clock paths,
+    // which can exist without a same-clock Fmax entry. The slack maps are the
+    // authoritative aggregation for every enforced launch clock.
+    for (const auto &setup : timing_result.clock_setup_slack) {
+        auto hold = timing_result.clock_hold_slack.find(setup.first);
+        if (hold == timing_result.clock_hold_slack.end())
+            continue;
+        timing_clock_json[setup.first.str(this)] = Json::object{
+                {"setup_wns_ns", getDelayNS(setup.second)},
+                {"hold_wns_ns", getDelayNS(hold->second)},
+        };
     }
 
     Json::object jsonRoot{

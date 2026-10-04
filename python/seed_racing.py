@@ -97,9 +97,13 @@ def _sha256_stream(stream: BinaryIO) -> str:
 
 def _descriptor_path(stream: BinaryIO) -> str:
     """Return a child-visible path for an inherited, already-open descriptor."""
+    return _descriptor_number_path(stream.fileno())
+
+
+def _descriptor_number_path(descriptor: int) -> str:
+    """Return a child-visible path for an inherited descriptor number."""
     if not sys.platform.startswith("linux"):
         raise RuntimeError("immutable seed-race snapshots require Linux sealed descriptors")
-    descriptor = stream.fileno()
     candidate = Path("/proc/self/fd") / str(descriptor)
     if candidate.exists():
         return str(candidate)
@@ -545,6 +549,7 @@ class Collector:
         self._input_replacements: Dict[str, str] = {}
         self._input_roles: Dict[str, str] = {}
         self._snapshot_streams: List[BinaryIO] = []
+        self._snapshot_fds: List[int] = []
         self._binary_launch_path: Optional[str] = None
         self._runtime_environment: Dict[str, str] = {}
         self._child_environment: Optional[Dict[str, str]] = None
@@ -609,7 +614,6 @@ class Collector:
         if source_share is not None:
             snapshot_share = snapshot_bin / "share"
             shutil.copytree(source_share, snapshot_share, symlinks=False)
-        self._runtime_environment["NEXTPNR_EXECUTABLE_DIR"] = str(snapshot_bin)
         self._runtime_evidence = _runtime_environment_evidence(resolved, environment, source_share)
         if source_share is not None:
             source_files = {str(path.relative_to(source_share)): sha256_file(path)
@@ -618,13 +622,20 @@ class Collector:
                               for path in snapshot_share.rglob("*") if path.is_file()}
             if source_files != snapshot_files:
                 raise RuntimeError("runtime share tree changed while it was snapshotted")
-            self._runtime_sealed_files = [
-                {"path": str(snapshot_share / relative), "sha256": digest}
-                for relative, digest in sorted(snapshot_files.items())]
-            self._runtime_sealed_root = snapshot_share
             for path in snapshot_share.rglob("*"):
                 path.chmod(0o555 if path.is_dir() else 0o444)
             snapshot_share.chmod(0o555)
+        snapshot_bin.chmod(0o555)
+        runtime_directory_fd = os.open(snapshot_bin, os.O_RDONLY | os.O_DIRECTORY)
+        self._snapshot_fds.append(runtime_directory_fd)
+        runtime_directory = Path(_descriptor_number_path(runtime_directory_fd))
+        self._runtime_environment["NEXTPNR_EXECUTABLE_DIR"] = str(runtime_directory)
+        if snapshot_share is not None:
+            consumed_share = runtime_directory / "share"
+            self._runtime_sealed_files = [
+                {"path": str(consumed_share / relative), "sha256": digest}
+                for relative, digest in sorted(snapshot_files.items())]
+            self._runtime_sealed_root = consumed_share
         self.manifest["provenance"]["runtime_environment_id"] = \
             self._runtime_evidence["runtime_environment_id"]
         return {
@@ -802,6 +813,9 @@ class Collector:
         for stream in self._snapshot_streams:
             stream.close()
         self._snapshot_streams.clear()
+        for descriptor in self._snapshot_fds:
+            os.close(descriptor)
+        self._snapshot_fds.clear()
 
     def _validate_declared_inputs_bound(self, specs: Sequence[RunSpec]) -> None:
         for record in self._frozen_inputs or []:
@@ -948,7 +962,8 @@ class Collector:
                         process = subprocess.Popen(
                             list(spec.argv), cwd=self.manifest["cwd"], env=environment, stdout=stdout, stderr=stderr,
                             executable=self._binary_launch_path,
-                            pass_fds=tuple(stream.fileno() for stream in self._snapshot_streams),
+                            pass_fds=(tuple(stream.fileno() for stream in self._snapshot_streams) +
+                                      tuple(self._snapshot_fds)),
                             start_new_session=True,
                         )
                         result["process_started"] = True

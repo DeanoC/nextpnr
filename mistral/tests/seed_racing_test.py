@@ -677,10 +677,36 @@ class CollectorTests(unittest.TestCase):
             self.assertEqual(immutable["binary"]["runtime_executable_dir"], str(binary_dir.resolve()))
             sealed_dir = Path(immutable["environment"]["NEXTPNR_EXECUTABLE_DIR"])
             self.assertNotEqual(sealed_dir, binary_dir.resolve())
-            self.assertTrue(str(sealed_dir).startswith(str(output)))
+            self.assertTrue(str(sealed_dir).startswith("/proc/self/fd/"))
             runtime_files = immutable["binary"]["runtime_environment"]["manifest"]["files"]
             self.assertIn(str((share_dir / "resource").resolve()),
                           [item["path"] for item in runtime_files])
+
+    def test_runtime_share_uses_directory_descriptor_after_path_replacement(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            binary_dir = Path(temporary) / "bin"
+            share_dir = binary_dir / "share"
+            share_dir.mkdir(parents=True)
+            (share_dir / "resource").write_text("runtime-data", encoding="utf-8")
+            runner = binary_dir / "runner"
+            runner.write_text(
+                "#!" + sys.executable + "\n"
+                "import os,pathlib,sys\n"
+                "root=pathlib.Path(os.environ['NEXTPNR_EXECUTABLE_DIR'])\n"
+                "display_bin=root.resolve(); snapshot_root=display_bin.parent\n"
+                "moved=snapshot_root.with_name(snapshot_root.name+'-moved')\n"
+                "snapshot_root.rename(moved)\n"
+                "(display_bin/'share').mkdir(parents=True)\n"
+                "(display_bin/'share'/'resource').write_text('replacement')\n"
+                "pathlib.Path(sys.argv[1]).write_text((root/'share'/'resource').read_text())\n",
+                encoding="utf-8")
+            runner.chmod(0o755)
+            manifest = self.manifest(temporary, [str(runner), "{report}"])
+            result = seed_racing.Collector(manifest, output).run()[0]
+            run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
+            self.assertEqual((run_dir / "report.json").read_text(encoding="utf-8"),
+                             "runtime-data")
 
     def test_collection_rejects_mutated_sealed_share_tree(self):
         with tempfile.TemporaryDirectory() as temporary:

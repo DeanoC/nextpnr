@@ -347,6 +347,14 @@ TEST_F(TimingReportPathsTest, JsonReportCarriesCompleteHoldSlackAndExplicitModel
                      ctx->getDelayNS(ctx->timing_result.clock_setup_slack.at(clock->name)));
     EXPECT_DOUBLE_EQ(clock_summary["hold_wns_ns"].number_value(),
                      ctx->getDelayNS(ctx->timing_result.clock_hold_slack.at(clock->name)));
+    // Related-clock-only timing can have complete enforced slacks without a
+    // same-clock Fmax record; the final report must retain that evidence.
+    ctx->timing_result.clock_fmax.clear();
+    document = parse_report();
+    EXPECT_TRUE(document["fmax"].object_items().empty());
+    clock_summary = document["timing_summary"]["clocks"][clock->name.str(ctx.get())];
+    EXPECT_TRUE(clock_summary["setup_wns_ns"].is_number());
+    EXPECT_TRUE(clock_summary["hold_wns_ns"].is_number());
     ctx->timing_result_is_final_analogue = true;
     EXPECT_TRUE(parse_report()["timing_summary"]["final_analogue_model"].bool_value());
 }
