@@ -334,6 +334,36 @@ class CollectorTests(unittest.TestCase):
                 self.assertNotEqual(immutable["inputs"][0]["resolved_path"],
                                     immutable["inputs"][0]["snapshot_path"])
 
+    def test_collection_rewrites_embedded_input_option_to_snapshot(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            launches = Path(temporary) / "launches"
+            manifest = self.manifest(temporary, [], seeds=[1, 2, 3])
+            input_path = Path(manifest["inputs"][0]["path"])
+            reports = Path(temporary) / "reports"
+            reports.mkdir()
+            code = ("import pathlib,sys; "
+                    "launches=pathlib.Path(sys.argv[2]); "
+                    "launches.write_text(launches.read_text()+sys.argv[1] if launches.exists() else sys.argv[1]); "
+                    "source=pathlib.Path(" + repr(str(input_path)) + "); "
+                    "source.write_text('changed') if sys.argv[1]=='1' else None; "
+                    "mapped=pathlib.Path(sys.argv[3].split('=',1)[1]); "
+                    "pathlib.Path(sys.argv[4]+'/'+sys.argv[1]).write_text(mapped.read_text())")
+            manifest["command"] = [sys.executable, "-c", code, "{seed}", str(launches),
+                                   "--json=" + str(input_path), str(reports)]
+            manifest["limits"]["concurrency"] = 1
+            results = seed_racing.Collector(manifest, output).run()
+            self.assertEqual(launches.read_text(encoding="utf-8"), "123")
+            self.assertEqual([result["status"] for result in results],
+                             ["completed", "completed", "completed"])
+            self.assertEqual([path.read_text(encoding="utf-8") for path in sorted(reports.iterdir())],
+                             ["frozen", "frozen", "frozen"])
+            for result in results:
+                run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
+                immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+                snapshot = immutable["inputs"][0]["snapshot_path"]
+                self.assertIn("--json=" + snapshot, immutable["argv"])
+
     def test_manifest_rejects_shell_string_and_unsafe_artifact(self):
         with tempfile.TemporaryDirectory() as temporary:
             manifest = self.manifest(temporary, "nextpnr --seed 1")

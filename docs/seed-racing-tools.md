@@ -31,9 +31,10 @@ child process group it owns. Cancellation gates future launches before it
 terminates active groups, so queued jobs cannot start after interruption. The
 collector writes the complete terminal summary before propagating an interrupt.
 Declared cohort inputs are copied once into read-only, uniquely named snapshots
-before submission. Exact input-path argv entries are rewritten to those
-snapshots, and every run records the snapshot path and hash, so an external
-producer cannot replace bytes between a hash check and the child's open. A
+before submission. Exact input-path argv entries and `--option=PATH` values are
+rewritten to those snapshots, and every run records the snapshot path and hash,
+so an external producer cannot replace bytes between a hash check and the
+child's open. A
 missing input or output is recorded as unavailable; it is not silently
 substituted.
 

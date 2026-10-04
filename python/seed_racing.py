@@ -156,6 +156,19 @@ def _expand_argv(template: Sequence[str], fields: Mapping[str, str]) -> List[str
     return result
 
 
+def _rewrite_input_argument(argument: str, replacements: Mapping[str, str]) -> str:
+    """Redirect direct input arguments, including --option=PATH forms, to snapshots."""
+    replacement = replacements.get(argument)
+    if replacement is not None:
+        return replacement
+    option, separator, value = argument.partition("=")
+    if separator:
+        replacement = replacements.get(value)
+        if replacement is not None:
+            return option + separator + replacement
+    return argument
+
+
 def _resolved_binary(argv0: str, cwd: Optional[str], environment: Mapping[str, str]) -> Optional[Path]:
     candidate = Path(argv0)
     if candidate.is_absolute() or candidate.parent != Path("."):
@@ -230,7 +243,7 @@ class Collector:
                     "report": str(directory / "report.json"),
                 }
                 argv = _expand_argv(self.manifest["command"], fields)
-                argv = [self._input_replacements.get(argument, argument) for argument in argv]
+                argv = [_rewrite_input_argument(argument, self._input_replacements) for argument in argv]
                 specs.append(RunSpec(run_id, seed, repeat, directory, tuple(argv)))
         return specs
 
