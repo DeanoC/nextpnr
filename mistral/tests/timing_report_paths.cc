@@ -450,6 +450,50 @@ TEST_F(TimingReportPathsTest, PhaseRelatedEndpointRetainsItsActualSetupAndHoldWi
     ctx->check();
 }
 
+TEST_F(TimingReportPathsTest, RelatedClockOnlyReportUsesNetConstraintsAndFailsClosedWhenAllowed)
+{
+    auto *phase_clock = other_clock("phase_clock_only");
+    phase_clock->clkconstr->period = DelayPair(20000);
+    TimingResult result;
+    CriticalPath report;
+    report.clock_pair.start = ClockEvent{clock->name, RISING_EDGE};
+    report.clock_pair.end = ClockEvent{phase_clock->name, RISING_EDGE};
+    report.max_delay = 10000;
+    CriticalPath::Segment segment;
+    segment.type = CriticalPath::Segment::Type::CLK_TO_CLK;
+    segment.delay = 13333;
+    report.segments.push_back(segment);
+    result.xclock_paths.push_back(report);
+    ASSERT_TRUE(result.clock_fmax.empty());
+
+    ctx->settings[ctx->id("timing/allowFail")] = true;
+    EXPECT_FALSE(ctx->log_timing_results(result, false, true, false, true));
+
+    result.clock_fmax[phase_clock->name] = ClockFmax{75.0f, 50.0f};
+    EXPECT_FALSE(ctx->log_timing_results(result, false, true, false, true));
+    result.clock_fmax[clock->name] = ClockFmax{75.0f, 100.0f};
+    EXPECT_FALSE(ctx->log_timing_results(result, false, true, false, true));
+
+    ctx->settings[ctx->id("timing/ignoreRelClk")] = true;
+    EXPECT_TRUE(ctx->log_timing_results(result, false, true, false, true));
+}
+
+TEST_F(TimingReportPathsTest, AllowedHoldViolationStillFailsTheTimingGate)
+{
+    TimingResult result;
+    result.min_delay_violations.emplace_back();
+    ctx->settings[ctx->id("timing/allowFail")] = true;
+    EXPECT_FALSE(ctx->log_timing_results(result, false, true, false, true));
+    EXPECT_TRUE(ctx->log_timing_results(result, false, false, false, false));
+
+    CriticalPath cross_clock_hold;
+    cross_clock_hold.clock_pair.start = ClockEvent{clock->name, RISING_EDGE};
+    cross_clock_hold.clock_pair.end = ClockEvent{ctx->id("other_clock"), RISING_EDGE};
+    result.min_delay_violations = {cross_clock_hold};
+    ctx->settings[ctx->id("timing/ignoreRelClk")] = true;
+    EXPECT_TRUE(ctx->log_timing_results(result, false, false, false, true));
+}
+
 TEST_F(TimingReportPathsTest, UnknownClocksAsyncLaunchesAndIncompleteAnalysisFailClosed)
 {
     bind_clock_source(clock, "primary_clock_source");
