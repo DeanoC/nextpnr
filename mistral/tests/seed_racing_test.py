@@ -142,7 +142,8 @@ class DatasetTests(unittest.TestCase):
             runtime_manifest, sort_keys=True, separators=(",", ":")).encode()
         runtime_id = "sha256:" + seed_racing.hashlib.sha256(runtime_encoded).hexdigest()
         identity["manifest"]["execution_identity"] = {
-            "backend": "cuda:0:0000:01:00.0:GPU", "runtime_environment_id": runtime_id
+            "backend": "cuda:" + "a" * 32 + ":0000:01:00.0:GPU",
+            "runtime_environment_id": runtime_id
         }
         identity["manifest"]["provenance"] = {"runtime_environment_id": runtime_id}
         identity["manifest"]["binary"] = {
@@ -943,7 +944,7 @@ class CollectorTests(unittest.TestCase):
 import json, pathlib, sys
 def option(name): return sys.argv[sys.argv.index(name) + 1]
 seed = int(option('--seed'))
-backend = 'cuda:0:0000:01:00.0:GPU-A' if seed == 1 else 'cuda:1:0000:02:00.0:GPU-B'
+backend = 'cuda:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0000:01:00.0:GPU-A' if seed == 1 else 'cuda:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:0000:02:00.0:GPU-B'
 assert not (pathlib.Path(option('--gpu-telemetry')).parent / 'result.json').exists()
 phase_end = {'schema_version':1,'sequence':2,'run_id':'r','event':'phase_end','phase':'setup','attempt':0,'elapsed_s':0.2}
 if seed not in (3, 4): phase_end['backend'] = backend
@@ -1008,7 +1009,8 @@ if seed == 4: sys.exit(1)
                 self.manifest(temporary, generic_command, seeds=[1]),
                 Path(temporary) / "generic-gpu").run()[0]
             self.assertEqual(generic_result["cohort_identity"]["manifest"][
-                "execution_identity"]["backend"], "cuda:0:0000:01:00.0:GPU-A")
+                "execution_identity"]["backend"],
+                "cuda:" + "a" * 32 + ":0000:01:00.0:GPU-A")
 
             non_cli_gpu_command = command[:1] + command[3:]
             manifest = self.manifest(temporary, non_cli_gpu_command, seeds=[1])
@@ -1077,6 +1079,20 @@ if seed == 4: sys.exit(1)
             with self.assertRaisesRegex(RuntimeError, "no attested execution backend"):
                 collector._bind_execution_identity([
                     {"run_id": "launched", "status": "timeout", "process_started": True}])
+            with self.assertRaisesRegex(RuntimeError, "lacks exact device attestation"):
+                collector._bind_execution_identity([{
+                    "run_id": "old-hip", "status": "completed", "process_started": True,
+                    "outcome": {"execution_backend":
+                                "hip:unattested-ordinal-0:0000:01:00.0:GPU"},
+                }])
+            for backend in ("hip:ordinal-0:0000:01:00.0:GPU",
+                            "hip:garbage:0000:01:00.0:GPU",
+                            "cuda:" + "0" * 32 + ":0000:01:00.0:GPU"):
+                with self.assertRaisesRegex(RuntimeError, "lacks exact device attestation"):
+                    collector._bind_execution_identity([{
+                        "run_id": "inexact", "status": "completed", "process_started": True,
+                        "outcome": {"execution_backend": backend},
+                    }])
 
     def test_manifest_requires_nextpnr_seed_option_binding(self):
         with tempfile.TemporaryDirectory() as temporary:

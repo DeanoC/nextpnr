@@ -66,7 +66,10 @@ one explicit `--router`; `gpu` additionally requires exactly one
 `--gpu-telemetry {telemetry}` binding. These bindings must occur before
 `--`. Route-mutating Python hooks and JSON/read inputs whose settings override
 the declared router are rejected. Explicit `router1`/`router2` CPU collections
-do not require GPU backend attestation.
+do not require GPU backend attestation. HIP runtimes older than version 6 remain
+usable for ordinary GPU routing, but their telemetry is explicitly unattested
+because those runtimes do not expose the exact device UUID; seed-racing
+collection rejects that backend identity.
 
 The command executable is resolved and copied once into a sealed descriptor
 before workers are submitted. Every run executes that descriptor and records

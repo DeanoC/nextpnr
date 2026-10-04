@@ -1056,9 +1056,13 @@ class Collector:
         if len(backends) != 1:
             raise RuntimeError(
                 f"GPU cohort observed multiple execution backends: {sorted(backends)}")
+        backend = next(iter(backends))
+        if not _exact_execution_backend(backend):
+            raise RuntimeError(
+                f"GPU cohort backend lacks exact device attestation: {backend}")
         if self._runtime_evidence is None:
             raise RuntimeError("runtime environment evidence is unavailable")
-        return {"backend": next(iter(backends)),
+        return {"backend": backend,
                 "runtime_environment_id": self._runtime_evidence["runtime_environment_id"]}
 
     def _write_final_results(self, results: Sequence[Dict[str, Any]],
@@ -1294,6 +1298,21 @@ def _finite_number(value: Any) -> bool:
         return math.isfinite(float(value))
     except (OverflowError, ValueError):
         return False
+
+
+def _exact_execution_backend(value: Any) -> bool:
+    if value == "cpu-reference":
+        return True
+    if not isinstance(value, str):
+        return False
+    fields = value.split(":", 3)
+    if len(fields) != 4 or fields[0] not in {"cuda", "hip"}:
+        return False
+    device_uuid = fields[1]
+    return (len(device_uuid) == 32 and
+            all(character in "0123456789abcdefABCDEF" for character in device_uuid) and
+            any(character != "0" for character in device_uuid) and
+            bool(fields[2]) and bool(fields[3]))
 
 
 def _final_timing_evidence(path: Optional[Path], required_clocks: Sequence[str]) -> Dict[str, Any]:
@@ -1575,6 +1594,8 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
                     not execution_identity["backend"] or
                     observed_backend != execution_identity["backend"]):
                 raise ValueError("GPU run execution backend is not bound by its cohort identity")
+            if not _exact_execution_backend(observed_backend):
+                raise ValueError("GPU run execution backend lacks exact device attestation")
             runtime_id = execution_identity.get("runtime_environment_id")
             runtime_binary = identity_manifest.get("binary")
             runtime_evidence = (runtime_binary.get("runtime_environment")

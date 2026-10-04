@@ -742,8 +742,11 @@ class DeviceBackend : public Backend
                 std::snprintf(uuid + (2 * i), 3, "%02x", static_cast<unsigned char>(prop.uuid.bytes[i]));
             const std::string stable_id = uuid;
 #else
-            error = "exact GPU UUID is unavailable with this HIP runtime; use HIP 6 or newer";
-            return false;
+            // Preserve ordinary GPU routing on HIP runtimes predating UUID
+            // support. Telemetry labels this identity as non-attestable so
+            // provenance-sensitive collectors can reject it without changing
+            // default router behavior.
+            const std::string stable_id = "unattested-ordinal-" + std::to_string(device_);
 #endif
             name_ = std::string(GPUROUTE_BACKEND_NAME) + ":" + stable_id + ":" + pci_bus_id + ":" + prop.name;
             n_wires_ = graph.n_wires;
