@@ -384,36 +384,13 @@ def _elf_interpreter(path: Path) -> Optional[Path]:
 def _runtime_environment_evidence(executable: Path, environment: Mapping[str, str],
                                   share_directory: Optional[Path] = None) -> Dict[str, Any]:
     """Derive content-addressed loader/library/platform evidence for execution."""
-    runtime_binary = executable
-    interpreter_arguments: List[str] = []
-    execution_kind = "elf"
     runtime_binaries = {executable}
-    dependency_aliases: Dict[str, set] = {str(executable): {executable.name}}
     with executable.open("rb") as stream:
         prefix = stream.read(4096)
     if not prefix.startswith(b"\x7fELF"):
-        execution_kind = "script"
-        first_line = prefix.splitlines()[0].decode("utf-8", errors="replace") if prefix else ""
-        if not first_line.startswith("#!"):
-            raise ValueError(f"cohort executable is neither ELF nor a shebang script: {executable}")
-        shebang = first_line[2:].strip().split()
-        launcher = Path(shebang[0]).resolve()
-        runtime_binary = launcher
-        if launcher.name == "env":
-            command_index = next((index for index, word in enumerate(shebang[1:], 1)
-                                  if not word.startswith("-")), None)
-            command = shebang[command_index] if command_index is not None else None
-            found = shutil.which(command, path=environment.get("PATH")) if command else None
-            if found is None:
-                raise ValueError(f"cannot resolve env shebang interpreter for {executable}")
-            runtime_binary = Path(found).resolve()
-            interpreter_arguments = shebang[command_index + 1:]
-        else:
-            interpreter_arguments = shebang[1:]
-        runtime_binaries = {launcher, runtime_binary}
-        dependency_aliases = {str(path): {path.name} for path in runtime_binaries}
-        if not runtime_binary.is_file():
-            raise ValueError(f"cannot resolve script interpreter for {executable}")
+        raise ValueError(
+            "shebang executables are not reproducible collection commands; invoke the ELF "
+            "interpreter directly and declare every script/module input")
     paths = set(runtime_binaries)
     for linked_binary in runtime_binaries:
         completed = subprocess.run(
@@ -436,8 +413,6 @@ def _runtime_environment_evidence(executable: Path, environment: Mapping[str, st
             if candidate and candidate.startswith("/") and Path(candidate).is_file():
                 resolved_candidate = Path(candidate).resolve()
                 paths.add(resolved_candidate)
-                dependency_aliases.setdefault(str(resolved_candidate), set()).add(
-                    Path(candidate).name)
     files = [{"path": str(path), "sha256": sha256_file(path)}
              for path in sorted(paths, key=str)]
     if share_directory is not None:
@@ -457,20 +432,17 @@ def _runtime_environment_evidence(executable: Path, environment: Mapping[str, st
             continue
         files.append({"path": str(path), "sha256": digest})
     uname = os.uname()
-    dynamic_loader = _elf_interpreter(runtime_binary)
+    dynamic_loader = _elf_interpreter(executable)
     if dynamic_loader is not None:
         paths.add(dynamic_loader)
-        dependency_aliases.setdefault(str(dynamic_loader), set()).add(dynamic_loader.name)
         if not any(item["path"] == str(dynamic_loader) for item in files):
             files.append({"path": str(dynamic_loader), "sha256": sha256_file(dynamic_loader)})
-    manifest = {"runtime_binary": str(runtime_binary),
+    manifest = {"runtime_binary": str(executable),
                 "launchers": sorted(str(path) for path in runtime_binaries), "files": files,
-                "execution": {"kind": execution_kind,
-                              "interpreter_arguments": interpreter_arguments,
-                              "dynamic_loader": str(dynamic_loader) if dynamic_loader is not None else None,
-                              "dependency_paths": sorted(str(path) for path in paths),
-                              "dependency_aliases": {
-                                  path: sorted(names) for path, names in sorted(dependency_aliases.items())}},
+                "execution": {
+                    "kind": "elf",
+                    "dynamic_loader": str(dynamic_loader) if dynamic_loader is not None else None,
+                    "dependency_paths": sorted(str(path) for path in paths)},
                 "platform": {"sysname": uname.sysname, "release": uname.release,
                              "machine": uname.machine},
                 "cpu": _cpu_identity()}
@@ -672,29 +644,14 @@ class Collector:
         execution = self._runtime_evidence["manifest"]["execution"]
         expected_runtime_hashes = {
             item["path"]: item["sha256"] for item in self._runtime_evidence["manifest"]["files"]}
-        runtime_snapshot = snapshot_bin / "runtime"
-        runtime_snapshot.mkdir()
-        copied_runtime: Dict[str, Path] = {}
+        sealed_runtime: Dict[str, str] = {}
         for source_text in execution["dependency_paths"]:
             source = Path(source_text)
-            destination = runtime_snapshot / source.name
-            if destination.exists():
-                if sha256_file(destination) != sha256_file(source):
-                    raise RuntimeError(f"runtime dependency basename collision: {source.name}")
-            else:
-                shutil.copyfile(source, destination)
-                destination.chmod(0o555)
-            if sha256_file(destination) != expected_runtime_hashes.get(str(source)):
+            frozen_runtime = _copy_to_readonly_descriptor(source, None, 0o555)
+            self._snapshot_streams.append(frozen_runtime)
+            if _sha256_stream(frozen_runtime) != expected_runtime_hashes.get(str(source)):
                 raise RuntimeError(f"runtime dependency changed while snapshotting: {source}")
-            copied_runtime[str(source)] = destination
-            for alias in execution["dependency_aliases"].get(str(source), []):
-                alias_path = runtime_snapshot / alias
-                if alias_path != destination:
-                    if alias_path.exists() and sha256_file(alias_path) != sha256_file(destination):
-                        raise RuntimeError(f"runtime dependency alias collision: {alias}")
-                    if not alias_path.exists():
-                        os.link(destination, alias_path)
-        runtime_snapshot.chmod(0o555)
+            sealed_runtime[str(source)] = _descriptor_path(frozen_runtime)
         if source_share is not None:
             source_files = {str(path.relative_to(source_share)): sha256_file(path)
                             for path in source_share.rglob("*") if path.is_file()}
@@ -710,27 +667,20 @@ class Collector:
         self._snapshot_fds.append(runtime_directory_fd)
         runtime_directory = Path(_descriptor_number_path(runtime_directory_fd))
         self._runtime_environment["NEXTPNR_EXECUTABLE_DIR"] = str(runtime_directory)
-        consumed_runtime = runtime_directory / "runtime"
-        self._runtime_sealed_files = [
-            {"path": str(consumed_runtime / path.name), "sha256": sha256_file(path)}
-            for path in sorted(runtime_snapshot.iterdir(), key=str) if path.is_file()]
         dynamic_loader = execution["dynamic_loader"]
         if dynamic_loader is not None:
             if not Path(dynamic_loader).name.startswith("ld-linux"):
                 raise RuntimeError(
                     f"unsupported dynamic loader for frozen collection: {dynamic_loader}")
-            loader = str(consumed_runtime / copied_runtime[dynamic_loader].name)
+            loader = sealed_runtime[dynamic_loader]
             original_runtime_binary = self._runtime_evidence["manifest"]["runtime_binary"]
-            runtime_binary = str(consumed_runtime / copied_runtime[original_runtime_binary].name)
-            target = self._binary_launch_path
-            if execution["kind"] == "script":
-                target = runtime_binary
-                self._runtime_launch_prefix = [loader, "--argv0", original_runtime_binary,
-                                               "--library-path", str(consumed_runtime), target] + \
-                    execution["interpreter_arguments"] + [self._binary_launch_path]
-            else:
-                self._runtime_launch_prefix = [loader, "--argv0", str(resolved),
-                                               "--library-path", str(consumed_runtime), target]
+            preload = [sealed_runtime[path] for path in execution["dependency_paths"]
+                       if path not in {dynamic_loader, original_runtime_binary, str(resolved)}]
+            loader_options = ["--argv0", original_runtime_binary, "--inhibit-cache"]
+            if preload:
+                loader_options += ["--preload", ":".join(preload)]
+            loader_options[1] = str(resolved)
+            self._runtime_launch_prefix = [loader] + loader_options + [self._binary_launch_path]
         if snapshot_share is not None:
             consumed_share = runtime_directory / "share"
             self._runtime_sealed_files.extend(

@@ -303,6 +303,15 @@ class DatasetTests(unittest.TestCase):
 
 
 class CollectorTests(unittest.TestCase):
+    def python_elf_runner(self, path):
+        seed_racing.shutil.copy2(Path(sys.executable).resolve(), path)
+        path.chmod(0o755)
+
+    def compile_c_runner(self, path, source):
+        source_path = path.with_suffix(".c")
+        source_path.write_text(source, encoding="utf-8")
+        seed_racing.subprocess.run(["cc", str(source_path), "-o", str(path)], check=True)
+
     def manifest(self, temporary, command, per_run=2, repeats=1, seeds=None):
         if isinstance(command, list) and command and "{seed}" not in command:
             command = list(command) + ["{seed}"]
@@ -588,13 +597,17 @@ class CollectorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "runs"
             runner = Path(temporary) / "runner"
+            backup = Path(temporary) / "runner-backup"
             observed = Path(temporary) / "observed"
             observed.mkdir()
             script = (
-                "#!" + sys.executable + "\n"
                 "import json,pathlib,sys\n"
-                "seed,original,observed,telemetry,report=sys.argv[1:]\n"
-                "pathlib.Path(original).write_text('#!/bin/sh\\nexit 99\\n') if seed == '1' else None\n"
+                "seed,observed,telemetry,report=sys.argv[1:]\n"
+                f"runner=pathlib.Path({str(runner)!r}); backup=pathlib.Path({str(backup)!r})\n"
+                "runner.rename(backup) if seed == '1' else None\n"
+                "runner.write_text('changed') if seed == '1' else None\n"
+                "runner.unlink() if seed == '3' else None\n"
+                "backup.rename(runner) if seed == '3' else None\n"
                 "pathlib.Path(observed,seed).write_text('frozen')\n"
                 "start={'schema_version':1,'sequence':0,'run_id':'r','event':'run_start','phase':None,'attempt':None,'elapsed_s':0}\n"
                 "end={'schema_version':1,'sequence':1,'run_id':'r','event':'run_end','phase':None,'attempt':None,'elapsed_s':1,'routing_legal':True,'timing_gate_pass':True}\n"
@@ -602,9 +615,9 @@ class CollectorTests(unittest.TestCase):
                 "clock={'name':'clk','available':True,'setup_wns_ns':0.1,'hold_wns_ns':0.1}\n"
                 "pathlib.Path(report).write_text(json.dumps({'outcome':{'analogue_clocks':[clock]}}))\n"
             )
-            runner.write_text(script, encoding="utf-8")
-            runner.chmod(0o755)
-            manifest = self.manifest(temporary, [str(runner), "{seed}", str(runner), str(observed),
+            self.python_elf_runner(runner)
+            script = script.replace("{", "{{").replace("}", "}}")
+            manifest = self.manifest(temporary, [str(runner), "-c", script, "{seed}", str(observed),
                                                   "{telemetry}", "{report}"], seeds=[1, 2, 3])
             manifest["limits"]["concurrency"] = 1
             results = seed_racing.Collector(manifest, output).run()
@@ -636,7 +649,6 @@ class CollectorTests(unittest.TestCase):
             observed = Path(temporary) / "observed"
             observed.mkdir()
             script = (
-                "#!" + sys.executable + "\n"
                 "import json,pathlib,sys\n"
                 "seed,observed,input_path,run_dir=sys.argv[1:]\n"
                 "manifest=json.loads(pathlib.Path(run_dir,'manifest.json').read_text())\n"
@@ -647,10 +659,9 @@ class CollectorTests(unittest.TestCase):
                 " snapshot.chmod(0o644); snapshot.write_text('changed')\n"
                 "pathlib.Path(observed,seed).write_text(pathlib.Path(input_path).read_text())\n"
             )
-            runner.write_text(script, encoding="utf-8")
-            runner.chmod(0o755)
+            self.python_elf_runner(runner)
             manifest = self.manifest(
-                temporary, [str(runner), "{seed}", str(observed), str(input_path), "{run_dir}"],
+                temporary, [str(runner), "-c", script, "{seed}", str(observed), str(input_path), "{run_dir}"],
                 seeds=[1, 2, 3])
             manifest["inputs"] = [{"path": str(input_path), "role": "mapped_netlist"}]
             manifest["limits"]["concurrency"] = 1
@@ -668,13 +679,8 @@ class CollectorTests(unittest.TestCase):
             share_dir.mkdir(parents=True)
             (share_dir / "resource").write_text("runtime-data", encoding="utf-8")
             runner = binary_dir / "runner"
-            runner.write_text(
-                "#!" + sys.executable + "\n"
-                "import os,pathlib,sys\n"
-                "root=pathlib.Path(os.environ['NEXTPNR_EXECUTABLE_DIR'])\n"
-                "pathlib.Path(sys.argv[1]).write_text((root/'share'/'resource').read_text())\n",
-                encoding="utf-8")
-            runner.chmod(0o755)
+            self.compile_c_runner(runner,
+                '#include <stdio.h>\n#include <stdlib.h>\nint main(int argc,char **argv){char p[4096],b[64];snprintf(p,sizeof(p),"%s/share/resource",getenv("NEXTPNR_EXECUTABLE_DIR"));FILE*i=fopen(p,"r"),*o=fopen(argv[1],"w");fgets(b,sizeof(b),i);fputs(b,o);return 0;}\n')
             manifest = self.manifest(temporary, [str(runner), "{report}"])
             result = seed_racing.Collector(manifest, output).run()[0]
             run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
@@ -696,18 +702,8 @@ class CollectorTests(unittest.TestCase):
             share_dir.mkdir(parents=True)
             (share_dir / "resource").write_text("runtime-data", encoding="utf-8")
             runner = binary_dir / "runner"
-            runner.write_text(
-                "#!" + sys.executable + "\n"
-                "import os,pathlib,sys\n"
-                "root=pathlib.Path(os.environ['NEXTPNR_EXECUTABLE_DIR'])\n"
-                "display_bin=root.resolve(); snapshot_root=display_bin.parent\n"
-                "moved=snapshot_root.with_name(snapshot_root.name+'-moved')\n"
-                "snapshot_root.rename(moved)\n"
-                "(display_bin/'share').mkdir(parents=True)\n"
-                "(display_bin/'share'/'resource').write_text('replacement')\n"
-                "pathlib.Path(sys.argv[1]).write_text((root/'share'/'resource').read_text())\n",
-                encoding="utf-8")
-            runner.chmod(0o755)
+            self.compile_c_runner(runner,
+                '#include <stdio.h>\n#include <stdlib.h>\nint main(int argc,char **argv){char p[4096],b[64];snprintf(p,sizeof(p),"%s/share/resource",getenv("NEXTPNR_EXECUTABLE_DIR"));FILE*i=fopen(p,"r"),*o=fopen(argv[1],"w");fgets(b,sizeof(b),i);fputs(b,o);return 0;}\n')
             manifest = self.manifest(temporary, [str(runner), "{report}"])
             result = seed_racing.Collector(manifest, output).run()[0]
             run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
@@ -762,14 +758,8 @@ class CollectorTests(unittest.TestCase):
             share_dir.mkdir(parents=True)
             (share_dir / "resource").write_text("runtime-data", encoding="utf-8")
             runner = binary_dir / "runner"
-            runner.write_text(
-                "#!" + sys.executable + "\n"
-                "import os,pathlib\n"
-                "path=pathlib.Path(os.environ['NEXTPNR_EXECUTABLE_DIR'])/'share'/'resource'\n"
-                "path.chmod(0o644); path.write_text('mutated')\n"
-                "path.parent.chmod(0o755); (path.parent/'added').write_text('extra')\n",
-                encoding="utf-8")
-            runner.chmod(0o755)
+            self.compile_c_runner(runner,
+                '#include <stdio.h>\n#include <stdlib.h>\n#include <sys/stat.h>\nint main(){char p[4096];snprintf(p,sizeof(p),"%s/share/resource",getenv("NEXTPNR_EXECUTABLE_DIR"));chmod(p,0644);FILE*f=fopen(p,"w");fputs("mutated",f);return 0;}\n')
             manifest = self.manifest(temporary, [str(runner)])
             with self.assertRaisesRegex(RuntimeError, "runtime environment changed"):
                 seed_racing.Collector(manifest, output).run()
@@ -777,8 +767,7 @@ class CollectorTests(unittest.TestCase):
     def test_himbaechel_requires_one_declared_explicit_chipdb(self):
         with tempfile.TemporaryDirectory() as temporary:
             runner = Path(temporary) / "nextpnr-himbaechel"
-            runner.write_text("#!" + sys.executable + "\nimport sys\n", encoding="utf-8")
-            runner.chmod(0o755)
+            self.python_elf_runner(runner)
             manifest = self.manifest(temporary, [str(runner), "--seed", "{seed}"])
             with self.assertRaisesRegex(ValueError, "requires exactly one explicit --chipdb"):
                 seed_racing.Collector(manifest, Path(temporary) / "missing-chipdb").run()
@@ -880,8 +869,7 @@ class CollectorTests(unittest.TestCase):
     def test_nextpnr_known_input_option_must_be_declared(self):
         with tempfile.TemporaryDirectory() as temporary:
             runner = Path(temporary) / "nextpnr-generic"
-            runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
-            runner.chmod(0o755)
+            self.python_elf_runner(runner)
             manifest = self.manifest(temporary, [str(runner), "--seed={seed}", "--json", "netlist.json"])
             with self.assertRaisesRegex(ValueError, "--json must be declared"):
                 seed_racing.Collector(manifest, Path(temporary) / "runs").run()
@@ -896,18 +884,13 @@ class CollectorTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "expanded command file argument"):
                 seed_racing.Collector(manifest, Path(temporary) / "runs").run()
 
-    def test_runtime_evidence_resolves_env_shebang_interpreter(self):
+    def test_runtime_evidence_rejects_shebang_executables(self):
         with tempfile.TemporaryDirectory() as temporary:
             script = Path(temporary) / "runner"
             script.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
             environment = seed_racing._child_environment({})
-            evidence = seed_racing._runtime_environment_evidence(script, environment)
-            expected = str(Path(seed_racing.shutil.which("python3", path=environment["PATH"])).resolve())
-            self.assertEqual(evidence["manifest"]["runtime_binary"], expected)
-            self.assertIn(str(Path("/usr/bin/env").resolve()), evidence["manifest"]["launchers"])
-            self.assertTrue(seed_racing._verify_runtime_environment_evidence(evidence))
-            evidence["runtime_environment_id"] = "sha256:" + "0" * 64
-            self.assertFalse(seed_racing._verify_runtime_environment_evidence(evidence))
+            with self.assertRaisesRegex(ValueError, "shebang executables"):
+                seed_racing._runtime_environment_evidence(script, environment)
 
     def test_static_elf_runtime_evidence_accepts_ldd_static_diagnostic(self):
         executable = Path("/bin/true").resolve()
@@ -1025,8 +1008,7 @@ class CollectorTests(unittest.TestCase):
     def test_gpu_collection_fingerprints_actual_backend_and_rejects_mixed_devices(self):
         with tempfile.TemporaryDirectory() as temporary:
             runner = Path(temporary) / "nextpnr-mistral"
-            runner.write_text("""#!/usr/bin/env python3
-import json, pathlib, sys
+            runner_code = """import json, pathlib, sys
 def option(name): return sys.argv[sys.argv.index(name) + 1]
 seed = int(option('--seed'))
 backend = 'cuda:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0000:01:00.0:GPU-A' if seed == 1 else 'cuda:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:0000:02:00.0:GPU-B'
@@ -1042,9 +1024,10 @@ pathlib.Path(option('--gpu-telemetry')).write_text(''.join(json.dumps(r) + '\\n'
 clock = {'name':'clk','available':True,'setup_wns_ns':0.1,'hold_wns_ns':0.1}
 pathlib.Path(option('--report')).write_text(json.dumps({'outcome':{'analogue_clocks':[clock]}}))
 if seed == 4: sys.exit(1)
-""", encoding="utf-8")
-            runner.chmod(0o755)
-            command = [str(runner), "--router", "gpu", "--seed", "{seed}",
+"""
+            runner_code = runner_code.replace("{", "{{").replace("}", "}}")
+            self.python_elf_runner(runner)
+            command = [str(runner), "-c", runner_code, "--router", "gpu", "--seed", "{seed}",
                        "--gpu-telemetry", "{telemetry}", "--report", "{report}"]
             manifest = self.manifest(temporary, command, seeds=[1, 2])
             output = Path(temporary) / "mixed"
@@ -1066,16 +1049,16 @@ if seed == 4: sys.exit(1)
                 seed_racing.Collector(manifest, output).run()
             self.assertTrue(any(output.glob("collection-failure-*.json")))
 
-            unverifiable_command = command[:5] + command[7:]
+            telemetry_index = command.index("--gpu-telemetry")
+            unverifiable_command = command[:telemetry_index] + command[telemetry_index + 2:]
             manifest = self.manifest(temporary, unverifiable_command, seeds=[1])
             with self.assertRaisesRegex(ValueError, "--gpu-telemetry"):
                 seed_racing.Collector(manifest, Path(temporary) / "unverifiable").run()
 
             timeout_runner = Path(temporary) / "nextpnr-generic"
-            timeout_runner.write_text("#!" + sys.executable + "\nimport time; time.sleep(2)\n",
-                                      encoding="utf-8")
-            timeout_runner.chmod(0o755)
-            timeout_command = [str(timeout_runner), "--router", "gpu", "--seed", "{seed}",
+            self.python_elf_runner(timeout_runner)
+            timeout_command = [str(timeout_runner), "-c", "import time; time.sleep(2)",
+                               "--router", "gpu", "--seed", "{seed}",
                                "--gpu-telemetry", "{telemetry}"]
             timeout_manifest = self.manifest(temporary, timeout_command, per_run=0.1)
             with self.assertRaisesRegex(RuntimeError, "no attested execution backend"):
@@ -1086,9 +1069,9 @@ if seed == 4: sys.exit(1)
             self.assertEqual(timeout_failure["results"][0]["process_status"], "timeout")
 
             generic_runner = Path(temporary) / "nextpnr-generic-good"
-            generic_runner.write_text(runner.read_text(encoding="utf-8"), encoding="utf-8")
-            generic_runner.chmod(0o755)
-            generic_command = [str(generic_runner), "--router", "gpu", "--seed", "{seed}",
+            self.python_elf_runner(generic_runner)
+            generic_command = [str(generic_runner), "-c", runner_code,
+                               "--router", "gpu", "--seed", "{seed}",
                                "--gpu-telemetry", "{telemetry}", "--report", "{report}"]
             generic_result = seed_racing.Collector(
                 self.manifest(temporary, generic_command, seeds=[1]),
@@ -1097,7 +1080,8 @@ if seed == 4: sys.exit(1)
                 "execution_identity"]["backend"],
                 "cuda:" + "a" * 32 + ":0000:01:00.0:GPU-A")
 
-            non_cli_gpu_command = command[:1] + command[3:]
+            router_index = command.index("--router")
+            non_cli_gpu_command = command[:router_index] + command[router_index + 2:]
             manifest = self.manifest(temporary, non_cli_gpu_command, seeds=[1])
             with self.assertRaisesRegex(ValueError, "explicit --router"):
                 seed_racing.Collector(manifest, Path(temporary) / "implicit-router").run()
@@ -1105,9 +1089,8 @@ if seed == 4: sys.exit(1)
     def test_explicit_cpu_mistral_collection_does_not_require_gpu_attestation(self):
         with tempfile.TemporaryDirectory() as temporary:
             runner = Path(temporary) / "nextpnr-mistral"
-            runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
-            runner.chmod(0o755)
-            manifest = self.manifest(temporary, [str(runner), "--router", "router2",
+            self.python_elf_runner(runner)
+            manifest = self.manifest(temporary, [str(runner), "-c", "pass", "--router", "router2",
                                                  "--seed", "{seed}"])
             result = seed_racing.Collector(
                 manifest, Path(temporary) / "cpu-mistral").run()[0]
@@ -1118,8 +1101,7 @@ if seed == 4: sys.exit(1)
     def test_gpu_capable_router_binding_ignores_tokens_after_double_dash(self):
         with tempfile.TemporaryDirectory() as temporary:
             runner = Path(temporary) / "nextpnr-generic"
-            runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
-            runner.chmod(0o755)
+            self.python_elf_runner(runner)
             manifest = self.manifest(
                 temporary, [str(runner), "--seed", "{seed}", "--",
                             "--router", "gpu", "--gpu-telemetry", "{telemetry}"])
@@ -1129,8 +1111,7 @@ if seed == 4: sys.exit(1)
     def test_gpu_capable_collection_rejects_router_overrides(self):
         with tempfile.TemporaryDirectory() as temporary:
             runner = Path(temporary) / "nextpnr-generic"
-            runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
-            runner.chmod(0o755)
+            self.python_elf_runner(runner)
             hook = Path(temporary) / "hook.py"
             hook.write_text("ctx.settings['router'] = 'gpu'\n", encoding="utf-8")
             manifest = self.manifest(
@@ -1161,8 +1142,7 @@ if seed == 4: sys.exit(1)
 
         with tempfile.TemporaryDirectory() as temporary:
             runner = Path(temporary) / "nextpnr-generic"
-            runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
-            runner.chmod(0o755)
+            self.python_elf_runner(runner)
             design = Path(temporary) / "design.json"
             design.write_text(json.dumps({"settings": {"router": "router2"}}),
                               encoding="utf-8")
@@ -1176,8 +1156,7 @@ if seed == 4: sys.exit(1)
     def test_gpu_identity_exempts_only_explicitly_never_launched_runs(self):
         with tempfile.TemporaryDirectory() as temporary:
             runner = Path(temporary) / "nextpnr-generic"
-            runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
-            runner.chmod(0o755)
+            self.python_elf_runner(runner)
             manifest = self.manifest(temporary, [str(runner), "--router", "gpu",
                                                  "--seed", "{seed}",
                                                  "--gpu-telemetry", "{telemetry}"])

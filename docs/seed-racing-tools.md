@@ -25,7 +25,7 @@ manifest has schema version 1 and contains:
 - an explicit environment allowlist and provenance object containing
   `source_revision`, boolean `dirty`, and an immutable
   `runtime_environment_id: auto`; the collector replaces it with a derived
-  SHA-256 manifest for the interpreter/ELF loader, linked libraries, available
+  SHA-256 manifest for the ELF loader, linked libraries, available
   NVIDIA driver identity, OS release, and
   runtime share tree. Children receive
   only that map plus the recorded platform-minimum environment (`PATH`,
@@ -80,9 +80,12 @@ re-enumerated after all workers, and selected through an inherited directory
 descriptor in `NEXTPNR_EXECUTABLE_DIR`; replacing its display path cannot
 redirect later workers. Collection fails closed without Linux
 sealed descriptors, pidfds, and `/proc`. The executable's dynamic dependency
-closure is copied and content-checked before submission. Each worker is invoked
-by the frozen dynamic loader against the descriptor-anchored frozen library
-directory; shebang commands similarly use the frozen interpreter and closure.
+closure is copied and content-checked into individually sealed descriptors before
+submission. Each worker is invoked by the sealed dynamic-loader descriptor with
+the sealed library descriptors explicitly preloaded, so later pathname swaps
+cannot alter the bytes consumed by another worker. Shebang executables are
+rejected: invoke an ELF interpreter directly and declare every script, module,
+or other resource it consumes as a cohort input.
 A recognized statically linked ELF binds the executable itself without inventing
 a loader dependency. Dynamic closure freezing currently requires the glibc
 `ld-linux` interface and fails closed for another loader. Runtime content identity is derived before submission and
