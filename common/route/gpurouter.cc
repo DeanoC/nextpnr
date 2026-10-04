@@ -44,6 +44,7 @@
 
 #include "gpu/congestion_plateau.h"
 #include "gpu/gpuroute_backend.h"
+#include "gpu/gpuroute_telemetry.h"
 #include "log.h"
 #include "nextpnr.h"
 #include "nextpnr_assertions.h"
@@ -66,6 +67,9 @@ struct GpuRouter
     std::unique_ptr<gpuroute::Backend> backend;     // device (or CPU fallback)
     std::unique_ptr<gpuroute::Backend> cpu_backend; // CPU lane for tiny batches, if distinct
     std::unique_ptr<gpuroute::Backend> verify_backend; // exact reference for repair searches (diagnostic)
+    std::unique_ptr<gpuroute::Telemetry> telemetry;
+    int negotiation_attempt = 0;
+    int repair_attempt = 0;
     int64_t verify_launched = 0, verify_arcs = 0, verify_worse = 0, verify_better = 0, verify_unref = 0;
     double verify_excess = 0.0, verify_max = 0.0, verify_secs = 0.0;
 
@@ -77,6 +81,11 @@ struct GpuRouter
         tmg.setup_only = false;
         tmg.with_clock_skew = true;
         tmg.setup();
+        if (!cfg.telemetry_path.empty()) {
+            uint64_t seed = ctx->setting<uint64_t>("seed", 0);
+            telemetry = std::make_unique<gpuroute::Telemetry>(cfg.telemetry_path,
+                                                              gpuroute::Telemetry::make_run_id(seed));
+        }
     }
 
     // ------------------------------------------------------------------
@@ -1389,6 +1398,10 @@ struct GpuRouter
     // budget and congestion growth even when only one conflict remains.
     bool negotiate()
     {
+        const int attempt = ++negotiation_attempt;
+        if (telemetry)
+            telemetry->emit("phase_start", "negotiation", attempt,
+                            {gpuroute::Telemetry::Field::integer_value("first_iteration", iter)});
         // Each call is a fresh attempt (initial routing, or re-negotiation
         // after timing repair). An escape budget left over from a previous
         // attempt would fail this one on its first saturated plateau.
@@ -1513,10 +1526,19 @@ struct GpuRouter
                     // reserved every alternate, so the stuck nets keep the
                     // only unreserved path and share it. Route them one at
                     // a time with those reservations ignored.
-                    if (plateau_escapes >= 1)
-                        return give_up_plateau("still congested after releasing timing-repair reservations");
-                    if (!escape_soft_plateau())
+                    if (plateau_escapes >= 1) {
+                        bool result = give_up_plateau("still congested after releasing timing-repair reservations");
+                        if (telemetry)
+                            telemetry->emit("phase_end", "negotiation", attempt,
+                                            {gpuroute::Telemetry::Field::string("status", "plateau")});
+                        return result;
+                    }
+                    if (!escape_soft_plateau()) {
+                        if (telemetry)
+                            telemetry->emit("phase_end", "negotiation", attempt,
+                                            {gpuroute::Telemetry::Field::string("status", "plateau")});
                         return false;
+                    }
                 }
             }
 
@@ -1527,8 +1549,12 @@ struct GpuRouter
             // the soft-reservation escape once, then hand the decision
             // back to the caller.
             if (congestion_plateau.tiny(overused_wires)) {
-                if (!escape_soft_plateau())
+                if (!escape_soft_plateau()) {
+                    if (telemetry)
+                        telemetry->emit("phase_end", "negotiation", attempt,
+                                        {gpuroute::Telemetry::Field::string("status", "plateau")});
                     return false;
+                }
                 congestion_plateau.clear_tiny();
             }
 
@@ -1580,6 +1606,32 @@ struct GpuRouter
             log_info("    iter=%d wires=%d overused=%d overuse=%d tmgfail=%d nets=%zu batches=%zu archfail=%s\n", iter,
                      total_wire_use, overused_wires, total_overuse, tmgfail, ntasks, batches.size(),
                      (overused_wires > 0 || tmgfail > 0) ? "NA" : std::to_string(arch_fail).c_str());
+            if (telemetry) {
+                const auto &bs = backend->stats();
+                std::vector<gpuroute::Telemetry::Field> fields{
+                        gpuroute::Telemetry::Field::integer_value("iteration", iter),
+                        gpuroute::Telemetry::Field::integer_value("total_wire_use", total_wire_use),
+                        gpuroute::Telemetry::Field::integer_value("overused_wires", overused_wires),
+                        gpuroute::Telemetry::Field::integer_value("total_excess_occupancy", total_overuse),
+                        gpuroute::Telemetry::Field::integer_value("table_failing_endpoints", tmgfail),
+                        gpuroute::Telemetry::Field::integer_value("routed_nets", int64_t(ntasks)),
+                        gpuroute::Telemetry::Field::integer_value("batches", int64_t(batches.size())),
+                        gpuroute::Telemetry::Field::number_value("current_congestion_weight", curr_cong_weight),
+                        gpuroute::Telemetry::Field::integer_value("backend_arcs_cumulative", bs.arcs_routed),
+                        gpuroute::Telemetry::Field::integer_value("backend_nodes_expanded_cumulative", bs.wires_expanded),
+                        gpuroute::Telemetry::Field::number_value("iteration_elapsed_s", secs_since(istart))};
+                if (timing_driven) {
+                    float wns = design_wns();
+                    if (wns == std::numeric_limits<float>::max() ||
+                        wns == std::numeric_limits<float>::lowest())
+                        fields.push_back(gpuroute::Telemetry::Field::null_value("table_wns_ns", "unavailable"));
+                    else
+                        fields.push_back(gpuroute::Telemetry::Field::number_value(
+                                "table_wns_ns", ctx->getDelayNS(delay_t(wns))));
+                } else
+                    fields.push_back(gpuroute::Telemetry::Field::null_value("table_wns_ns", "timing_disabled"));
+                telemetry->emit("iteration", "negotiation", attempt, fields);
+            }
             if (cfg.perf_profile) {
                 const auto &bs = backend->stats();
                 log_info("        iteration %.3fs of which backend %.3fs; %lld arcs, %lld wires expanded\n",
@@ -1597,6 +1649,10 @@ struct GpuRouter
                 log_error("GPU router did not converge after %d iterations (%d overused wires).\n", cfg.max_iter,
                           overused_wires);
         } while (!failed_nets.empty());
+        if (telemetry)
+            telemetry->emit("phase_end", "negotiation", attempt,
+                            {gpuroute::Telemetry::Field::string("status", "converged"),
+                             gpuroute::Telemetry::Field::integer_value("last_iteration", iter - 1)});
         return true;
     }
 
@@ -2170,6 +2226,9 @@ struct GpuRouter
     // negotiation loop moves the displaced non-critical arcs instead.
     void timing_repair()
     {
+        const int attempt = ++repair_attempt;
+        if (telemetry)
+            telemetry->emit("phase_start", "timing_repair", attempt, {});
         int repaired_total = 0, improve_rounds = 0;
         float best_wns = std::numeric_limits<float>::lowest();
         bool reverse_repair = false;
@@ -2206,6 +2265,17 @@ struct GpuRouter
         for (int round = 1; round <= cfg.repair_rounds; round++) {
             refresh_timing();
             float wns = design_wns();
+            if (telemetry) {
+                std::vector<gpuroute::Telemetry::Field> fields{
+                        gpuroute::Telemetry::Field::integer_value("round", round)};
+                if (wns == std::numeric_limits<float>::max() ||
+                    wns == std::numeric_limits<float>::lowest())
+                    fields.push_back(gpuroute::Telemetry::Field::null_value("table_wns_ns", "unavailable"));
+                else
+                    fields.push_back(gpuroute::Telemetry::Field::number_value(
+                            "table_wns_ns", ctx->getDelayNS(delay_t(wns))));
+                telemetry->emit("repair_round", "timing_repair", attempt, fields);
+            }
             if (wns == std::numeric_limits<float>::max())
                 break;
             if (round > 1 && wns <= best_wns + 1.0f) {
@@ -2409,6 +2479,9 @@ struct GpuRouter
             log_info("    timing repair froze %d arcs (design WNS %.3f ns)\n", repaired_total,
                      ctx->getDelayNS(delay_t(design_wns())));
         }
+        if (telemetry)
+            telemetry->emit("phase_end", "timing_repair", attempt,
+                            {gpuroute::Telemetry::Field::integer_value("repaired_arcs", repaired_total)});
     }
 
     // ------------------------------------------------------------------
@@ -2820,8 +2893,18 @@ struct GpuRouter
     bool operator()()
     {
         auto rstart = Clock::now();
+        if (telemetry)
+            telemetry->emit("run_start", "", -1,
+                            {gpuroute::Telemetry::Field::string(
+                                     "seed", std::to_string(ctx->setting<uint64_t>("seed", 0))),
+                             gpuroute::Telemetry::Field::string("analogue_timing_model", "mistral_downstream")});
         log_info("Running the GPU router...\n");
+        if (telemetry)
+            telemetry->emit("phase_start", "setup", 0, {});
         setup_all();
+        if (telemetry)
+            telemetry->emit("phase_end", "setup", 0,
+                            {gpuroute::Telemetry::Field::string("backend", backend->name())});
 
         std::unique_lock<Context> lock{*ctx};
 
@@ -2833,6 +2916,11 @@ struct GpuRouter
             tmg.run(true);
         if (!negotiate()) {
             log_warning("GPU router did not converge (%d overused wires).\n", overused_wires);
+            if (telemetry)
+                telemetry->emit("run_end", "", -1,
+                                {gpuroute::Telemetry::Field::string("status", "routing_failure"),
+                                 gpuroute::Telemetry::Field::boolean_value("routing_legal", false),
+                                 gpuroute::Telemetry::Field::null_value("analogue_timing_pass", "downstream_phase")});
             return false;
         }
         if (timing_driven && cfg.repair_rounds > 0)
@@ -2863,6 +2951,11 @@ struct GpuRouter
             if (!negotiate()) {
                 log_warning("GPU router did not converge after an architecture bind rejection (%d overused wires).\n",
                             overused_wires);
+                if (telemetry)
+                    telemetry->emit("run_end", "", -1,
+                                    {gpuroute::Telemetry::Field::string("status", "architecture_binding_failure"),
+                                     gpuroute::Telemetry::Field::boolean_value("routing_legal", false),
+                                     gpuroute::Telemetry::Field::null_value("analogue_timing_pass", "downstream_phase")});
                 return false;
             }
             // The re-routed nets took congestion-costed routes after the
@@ -2895,7 +2988,13 @@ struct GpuRouter
         lock.unlock();
         Router1Cfg legality(ctx);
         legality.timingGate = cfg.legality_timing_gate;
-        return router1(ctx, legality);
+        bool legal = router1(ctx, legality);
+        if (telemetry)
+            telemetry->emit("run_end", "", -1,
+                            {gpuroute::Telemetry::Field::string("status", legal ? "routing_legal" : "routing_illegal"),
+                             gpuroute::Telemetry::Field::boolean_value("routing_legal", legal),
+                             gpuroute::Telemetry::Field::null_value("analogue_timing_pass", "downstream_phase")});
+        return legal;
     }
 };
 
@@ -2977,6 +3076,7 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     device = ctx->setting<int>("gpurouter/device", -1);
     cpu_backend = ctx->setting<bool>("gpurouter/cpu", false);
     perf_profile = ctx->setting<bool>("gpurouter/perfProfile", false);
+    telemetry_path = ctx->setting<std::string>("gpurouter/telemetryPath", std::string());
     max_iter = ctx->setting<int>("gpurouter/maxIter", 2000);
 }
 

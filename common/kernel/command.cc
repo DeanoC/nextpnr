@@ -400,6 +400,8 @@ po::options_description CommandHandler::getGeneralOptions()
     general.add_options()("gpu-device", po::value<int>(), "GPU device index for --router gpu (default: most compute units)");
     general.add_options()("gpu-cpu", "run --router gpu on the sequential CPU reference backend");
     general.add_options()("gpu-perf", "print GPU router timing and backend statistics");
+    general.add_options()("gpu-telemetry", po::value<std::string>(),
+                          "write opt-in GPU router telemetry as versioned JSONL (refuses existing files)");
     general.add_options()("gpu-batches", po::value<int>(), "GPU router: bounding-box-disjoint batches per iteration");
     general.add_options()("gpu-opt", po::value<std::vector<std::string>>(),
                           "GPU router tuning setting as name=value (sets gpurouter/<name>; see docs/gpurouter.md)");
@@ -544,6 +546,8 @@ void CommandHandler::setupContext(Context *ctx)
         ctx->settings[ctx->id("gpurouter/cpu")] = true;
     if (vm.count("gpu-perf"))
         ctx->settings[ctx->id("gpurouter/perfProfile")] = true;
+    if (vm.count("gpu-telemetry"))
+        ctx->settings[ctx->id("gpurouter/telemetryPath")] = vm["gpu-telemetry"].as<std::string>();
     if (vm.count("gpu-batches"))
         ctx->settings[ctx->id("gpurouter/maxBatches")] = vm["gpu-batches"].as<int>();
     if (vm.count("gpu-opt")) {

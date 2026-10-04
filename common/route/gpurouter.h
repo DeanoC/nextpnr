@@ -137,6 +137,8 @@ struct GpuRouterCfg
     bool cpu_backend;
     // Print per-iteration timing and backend statistics
     bool perf_profile;
+    // Empty disables telemetry. The writer creates this path exclusively.
+    std::string telemetry_path;
     // Stop after this many iterations without convergence
     int max_iter;
 };
