@@ -714,6 +714,46 @@ class CollectorTests(unittest.TestCase):
             self.assertEqual((run_dir / "report.json").read_text(encoding="utf-8"),
                              "runtime-data")
 
+    def test_workers_use_frozen_shared_library_after_original_is_swapped_and_restored(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            original = root / "libmutable.so"
+            replacement = root / "libreplacement.so"
+            backup = root / "libbackup.so"
+            output = root / "observed"
+            output.mkdir()
+            source = root / "library.c"
+            source.write_text('const char *value(void) { return VALUE; }\n', encoding="utf-8")
+            for destination, value in ((original, '"frozen"'), (replacement, '"replacement"')):
+                seed_racing.subprocess.run(
+                    ["cc", "-shared", "-fPIC", f"-DVALUE={value}", str(source), "-o",
+                     str(destination)], check=True)
+            runner_source = root / "runner.c"
+            runner_source.write_text(
+                "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n"
+                "extern const char *value(void);\n"
+                f'static const char *original = "{original}";\n'
+                f'static const char *replacement = "{replacement}";\n'
+                f'static const char *backup = "{backup}";\n'
+                "int main(int argc, char **argv) {\n"
+                " char path[4096]; snprintf(path, sizeof(path), \"%s/%s\", argv[2], argv[1]);\n"
+                " FILE *f=fopen(path, \"w\"); fputs(value(), f); fclose(f);\n"
+                " if (atoi(argv[1]) == 1) { rename(original, backup); rename(replacement, original); }\n"
+                " else { unlink(original); rename(backup, original); }\n"
+                " return 0; }\n", encoding="utf-8")
+            runner = root / "runner"
+            seed_racing.subprocess.run(
+                ["cc", str(runner_source), "-L", str(root), "-lmutable",
+                 "-Wl,-rpath," + str(root), "-o", str(runner)], check=True)
+            manifest = self.manifest(temporary, [str(runner), "{seed}", str(output)],
+                                     seeds=[1, 2])
+            manifest["limits"]["concurrency"] = 1
+            results = seed_racing.Collector(manifest, root / "runs").run()
+            self.assertEqual([result["process_status"] for result in results],
+                             ["completed", "completed"])
+            self.assertEqual([path.read_text(encoding="utf-8")
+                              for path in sorted(output.iterdir())], ["frozen", "frozen"])
+
     def test_collection_rejects_mutated_sealed_share_tree(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "runs"

@@ -80,9 +80,12 @@ re-enumerated after all workers, and selected through an inherited directory
 descriptor in `NEXTPNR_EXECUTABLE_DIR`; replacing its display path cannot
 redirect later workers. Collection fails closed without Linux
 sealed descriptors, pidfds, and `/proc`. The executable's dynamic dependency
-closure is not copied. Dynamically linked launches bind that discovered closure;
-a recognized statically linked ELF binds the executable itself without inventing
-a loader dependency. Its content identity is derived before submission and
+closure is copied and content-checked before submission. Each worker is invoked
+by the frozen dynamic loader against the descriptor-anchored frozen library
+directory; shebang commands similarly use the frozen interpreter and closure.
+A recognized statically linked ELF binds the executable itself without inventing
+a loader dependency. Dynamic closure freezing currently requires the glibc
+`ld-linux` interface and fails closed for another loader. Runtime content identity is derived before submission and
 verified again after all workers finish; any change rejects the cohort. The collector keeps
 the raw process lifecycle in `process_status`, then classifies the run from
 the `telemetry` and `final_report` artifacts. A valid terminal `run_end`
