@@ -1641,7 +1641,7 @@ CellInfo *TimingAnalyser::cell_info(const CellPortKey &key) { return ctx->cells.
 
 PortInfo &TimingAnalyser::port_info(const CellPortKey &key) { return ctx->cells.at(key.cell)->ports.at(key.port); }
 
-void timing_analysis(Context *ctx, bool print_slack_histogram, bool print_fmax, bool print_path, bool warn_on_failure,
+bool timing_analysis(Context *ctx, bool print_slack_histogram, bool print_fmax, bool print_path, bool warn_on_failure,
                      bool update_results)
 {
     TimingAnalyser tmg(ctx);
@@ -1656,10 +1656,13 @@ void timing_analysis(Context *ctx, bool print_slack_histogram, bool print_fmax, 
         log_info("Timing report includes %zu additional registered setup endpoint paths (limit %d per domain pair).\n",
                  result.report_setup_paths.size(), ctx->timing_report_paths);
     }
-    ctx->log_timing_results(result, print_slack_histogram, print_fmax, print_path, warn_on_failure);
+    bool timing_constraints_met =
+            ctx->log_timing_results(result, print_slack_histogram, print_fmax, print_path, warn_on_failure);
 
     if (update_results)
         ctx->timing_result = result;
+
+    return timing_constraints_met;
 }
 
 NEXTPNR_NAMESPACE_END

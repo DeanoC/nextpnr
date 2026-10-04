@@ -38,6 +38,7 @@ TERMINAL_STATUSES = {
     "completed",
     "incomplete_evidence",
     "routing_failure",
+    "timing_constraint_failure",
     "analogue_timing_failure",
     "process_failure",
     "timeout",
@@ -723,7 +724,9 @@ class Collector:
                     "termination_reason": "collector_cancelled_before_launch"}
         now = time.monotonic()
         if now >= deadline:
-            return {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat, "status": "not_started_total_budget"}
+            return {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
+                    "status": "not_started_total_budget",
+                    "termination_reason": "total_budget_expired_before_run_setup"}
         spec.directory.mkdir(parents=True, exist_ok=False)
         for relative in self.manifest["artifacts"].values():
             (spec.directory / relative).parent.mkdir(parents=True, exist_ok=True)
@@ -764,6 +767,9 @@ class Collector:
                     if self._cancelled.is_set():
                         result.update({"status": "cancelled",
                                        "termination_reason": "collector_cancelled_before_launch"})
+                    elif time.monotonic() >= deadline:
+                        result.update({"status": "not_started_total_budget",
+                                       "termination_reason": "total_budget_expired_before_launch"})
                     else:
                         process = subprocess.Popen(
                             list(spec.argv), cwd=self.manifest["cwd"], env=environment, stdout=stdout, stderr=stderr,
@@ -1133,6 +1139,12 @@ def classify_collected_result(result: Mapping[str, Any], artifacts: Mapping[str,
     if not isinstance(routing_legal, bool):
         routing_legal = None
         telemetry_incomplete = True
+    timing_gate_present = isinstance(terminal, dict) and "timing_gate_pass" in terminal
+    timing_gate_pass = terminal.get("timing_gate_pass") if timing_gate_present else None
+    if not isinstance(timing_gate_pass, bool):
+        timing_gate_pass = None
+        if timing_gate_present and routing_legal is True:
+            telemetry_incomplete = True
     report_info = artifacts.get("final_report")
     report_path = (Path(report_info["path"]) if isinstance(report_info, dict) and
                    report_info.get("available") is True else None)
@@ -1140,6 +1152,7 @@ def classify_collected_result(result: Mapping[str, Any], artifacts: Mapping[str,
     outcome = {
         "telemetry_complete": not telemetry_incomplete,
         "legal_route": routing_legal,
+        "timing_gate_pass": timing_gate_pass,
         "required_clocks": timing["required_clocks"],
         "analogue_clocks": timing["analogue_clocks"],
         "analogue_timing_pass": timing["analogue_timing_pass"],
@@ -1149,10 +1162,12 @@ def classify_collected_result(result: Mapping[str, Any], artifacts: Mapping[str,
         outcome["telemetry_complete"] and routing_legal is not None and
         timing["analogue_timing_pass"] is not None)
     classified["outcome"] = outcome
-    if process_status in {"timeout", "cancelled", "launch_error"}:
+    if process_status in {"timeout", "cancelled", "launch_error", "not_started_total_budget"}:
         classification = process_status
     elif routing_legal is False:
         classification = "routing_failure"
+    elif routing_legal is True and timing_gate_pass is False:
+        classification = "timing_constraint_failure"
     elif routing_legal is True and timing["analogue_timing_pass"] is False:
         classification = "analogue_timing_failure"
     elif process_status == "process_failure":

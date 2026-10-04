@@ -22,8 +22,10 @@ The initial events are `run_start`, setup `phase_start`/`phase_end`, and a
 negotiation event stream. Each negotiation iteration records occupancy,
 excess occupancy, table-model timing (when enabled), work counts, batching,
 and elapsed time. Timing repair emits `repair_round` events and its own phase
-boundaries. `run_end` reports router1 legality separately from
-`analogue_timing_pass`, which is null with reason `downstream_phase` for
+boundaries. `run_end` reports structural router1 legality in `routing_legal` and the
+enabled table-model constraint gate in `timing_gate_pass`. A structurally legal
+route that misses that gate has status `timing_constraint_failure`, not
+`routing_illegal`. Both remain separate from `analogue_timing_pass`, which is null with reason `downstream_phase` for
 Mistral and `not_available_for_architecture` elsewhere. Mistral's analogue
 multi-clock signoff and repair happen after the common GPU router
 returns and remain authoritative. The offline evaluator consumes a separately

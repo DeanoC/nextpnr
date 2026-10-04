@@ -128,6 +128,11 @@ class DatasetTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "finite numeric"):
                 seed_racing.validate_dataset(document)
 
+    def test_dataset_accepts_timing_constraint_failure(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        document["runs"][0]["status"] = "timing_constraint_failure"
+        seed_racing.validate_dataset(document)
+
     def test_dataset_rejects_unknown_terminal_status(self):
         document = json.loads(FIXTURE.read_text(encoding="utf-8"))
         document["runs"][0]["status"] = "complete"
@@ -357,6 +362,36 @@ class CollectorTests(unittest.TestCase):
             self.assertNotIn("UNRECORDED_ROUTER_CONTROL", child)
             self.assertEqual(child, recorded)
             self.assertEqual(child["SEED_RACING_TEST"], "1")
+
+    def test_expired_total_budget_does_not_start_run_setup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            manifest = self.manifest(temporary, [sys.executable, "-c", "pass"])
+            collector = seed_racing.Collector(manifest, output)
+            spec = collector.plan()[0]
+            result = collector._run_one(spec, -1.0)
+            self.assertEqual(result["status"], "not_started_total_budget")
+            self.assertEqual(result["termination_reason"],
+                             "total_budget_expired_before_run_setup")
+            self.assertFalse(spec.directory.exists())
+
+    def test_total_budget_is_rechecked_immediately_before_launch(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            marker = Path(temporary) / "launched"
+            code = ("import pathlib,sys; "
+                    "pathlib.Path(sys.argv[1]).write_text(\"launched\")")
+            manifest = self.manifest(temporary, [sys.executable, "-c", code, str(marker)])
+
+            def clock():
+                return 10.0 if list(output.rglob("manifest.json")) else 0.0
+
+            with mock.patch.object(seed_racing.time, "monotonic", side_effect=clock):
+                result = seed_racing.Collector(manifest, output).run()[0]
+            self.assertEqual(result["status"], "not_started_total_budget")
+            self.assertEqual(result["termination_reason"],
+                             "total_budget_expired_before_launch")
+            self.assertFalse(marker.exists())
 
     def test_cancel_prevents_queued_runs_from_launching(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -727,23 +762,24 @@ class CollectorTests(unittest.TestCase):
                 "seed=int(sys.argv[1]); telemetry=pathlib.Path(sys.argv[2]); report=pathlib.Path(sys.argv[3])",
                 "start={'schema_version':1,'sequence':0,'run_id':'r','event':'run_start','phase':None,'attempt':None,'elapsed_s':0}",
                 "telemetry.write_text(json.dumps(start)+'\\n') if seed != 5 else None",
-                "end={'schema_version':1,'sequence':1,'run_id':'r','event':'run_end','phase':None,'attempt':None,'elapsed_s':1,'routing_legal':seed != 3}",
+                "end={'schema_version':1,'sequence':1,'run_id':'r','event':'run_end','phase':None,'attempt':None,'elapsed_s':1,'routing_legal':seed != 3,'timing_gate_pass':'invalid' if seed == 9 else seed != 8,'status':'timing_constraint_failure' if seed == 8 else 'routing_legal'}",
                 "telemetry.write_text(telemetry.read_text()+json.dumps(end)+'\\n') if seed not in (4,5) else None",
                 "clock={'name':'clk','available':True,'setup_wns_ns':-0.1 if seed == 2 else 0.1,'hold_wns_ns':0.1}",
                 "normalized={'outcome':{'analogue_clocks':[clock]}}",
                 "fmax={'fmax':{'clk':{'achieved':90 if seed == 6 else 110,'constraint':100}}}",
                 "report.write_text(json.dumps(fmax if seed in (6,7) else normalized)) if seed != 5 else None",
-                "sys.exit(1 if seed in (3,5) else 0)",
+                "sys.exit(1 if seed in (3,5,8) else 0)",
             ])
             code = code.replace("{", "{{").replace("}", "}}")
             manifest = self.manifest(temporary, [sys.executable, "-c", code, "{seed}",
                                                  "{telemetry}", "{report}"],
-                                     seeds=[1, 2, 3, 4, 5, 6, 7])
+                                     seeds=[1, 2, 3, 4, 5, 6, 7, 8, 9])
             results = seed_racing.Collector(manifest, output).run()
             self.assertEqual([result["status"] for result in results],
                              ["completed", "analogue_timing_failure", "routing_failure",
                               "incomplete_evidence", "process_failure",
-                              "analogue_timing_failure", "incomplete_evidence"])
+                              "analogue_timing_failure", "incomplete_evidence",
+                              "timing_constraint_failure", "incomplete_evidence"])
             self.assertEqual(results[0]["outcome"]["legal_route"], True)
             self.assertEqual(results[0]["outcome"]["analogue_timing_pass"], True)
             self.assertEqual(results[1]["process_status"], "completed")

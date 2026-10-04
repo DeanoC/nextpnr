@@ -74,7 +74,8 @@ closure is not copied. Its content identity is derived before submission and
 verified again after all workers finish; any change rejects the cohort. The collector keeps
 the raw process lifecycle in `process_status`, then classifies the run from
 the `telemetry` and `final_report` artifacts. A valid terminal `run_end`
-determines routing legality. Every declared required clock must have finite
+determines routing legality and separately records the table-model timing gate;
+a legal route that misses that enabled gate is `timing_constraint_failure`. Every declared required clock must have finite
 final report evidence; a failing clock is `analogue_timing_failure`, an
 illegal route is `routing_failure`, and missing or truncated evidence is
 `incomplete_evidence`. A standard nextpnr `fmax` report can establish a

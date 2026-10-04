@@ -201,15 +201,16 @@ static void log_crit_paths(const Context *ctx, TimingResult &result)
     }
 }
 
-static void log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
+static bool log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
 {
     log_break();
 
+    bool all_passed = true;
     bool allow_fail = bool_or_default(ctx->settings, ctx->id("timing/allowFail"), false);
 
-    if (result.clock_paths.empty() && result.clock_paths.empty()) {
+    if (result.clock_paths.empty() && result.xclock_paths.empty()) {
         log_info("No Fmax available; no interior timing paths found in design.\n");
-        return;
+        return true;
     }
 
     unsigned max_width = 0;
@@ -223,6 +224,7 @@ static void log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
         float fmax = result.clock_fmax[clock.first].achieved;
         float target = result.clock_fmax[clock.first].constraint;
         bool passed = target < fmax;
+        all_passed = all_passed && (!warn_on_failure || passed || allow_fail);
 
         if (!warn_on_failure || passed)
             log_info("Max frequency for clock %*s'%s': %.02f MHz (%s at %.02f MHz)\n", width, "", clock_name.c_str(),
@@ -305,6 +307,8 @@ static void log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
             }
 
             bool passed = target < fmax;
+            bool ignore_related = bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false);
+            all_passed = all_passed && (!warn_on_failure || passed || allow_fail || ignore_related);
 
             auto ev_a = clock_event_name(ctx, report.clock_pair.start, max_width_xca);
             auto ev_b = clock_event_name(ctx, report.clock_pair.end, max_width_xcb);
@@ -312,7 +316,7 @@ static void log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
             if (!warn_on_failure || passed)
                 log_info("Max frequency for %s -> %s: %.02f MHz (%s at %.02f MHz)\n", ev_a.c_str(), ev_b.c_str(), fmax,
                          passed ? "PASS" : "FAIL", target);
-            else if (allow_fail || bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false))
+            else if (allow_fail || ignore_related)
                 log_warning("Max frequency for  %s -> %s: %.02f MHz (%s at %.02f MHz)\n", ev_a.c_str(), ev_b.c_str(),
                             fmax, passed ? "PASS" : "FAIL", target);
             else
@@ -362,6 +366,7 @@ static void log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
         log_info("Max delay %s -> %s: %0.02f ns\n", ev_a.c_str(), ev_b.c_str(), ctx->getDelayNS(path_delay));
     }
     log_break();
+    return all_passed;
 }
 
 static void log_histogram(Context *ctx, TimingResult &result)
@@ -404,17 +409,19 @@ static void log_histogram(Context *ctx, TimingResult &result)
                  (bins[i] * bar_width) % max_freq > 0 ? '+' : ' ');
 }
 
-void Context::log_timing_results(TimingResult &result, bool print_histogram, bool print_fmax, bool print_path,
+bool Context::log_timing_results(TimingResult &result, bool print_histogram, bool print_fmax, bool print_path,
                                  bool warn_on_failure)
 {
+    bool timing_constraints_met = true;
     if (print_path)
         log_crit_paths(this, result);
 
     if (print_fmax)
-        log_fmax(this, result, warn_on_failure);
+        timing_constraints_met = log_fmax(this, result, warn_on_failure);
 
     if (print_histogram && !result.slack_histogram.empty())
         log_histogram(this, result);
+    return timing_constraints_met;
 }
 
 NEXTPNR_NAMESPACE_END

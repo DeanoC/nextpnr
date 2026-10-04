@@ -101,7 +101,7 @@ struct Context : Arch, DeterministicRNG
     void writeJsonReport(std::ostream &out) const;
 
     // provided by timing_log.cc
-    void log_timing_results(TimingResult &result, bool print_histogram, bool print_fmax, bool print_path,
+    bool log_timing_results(TimingResult &result, bool print_histogram, bool print_fmax, bool print_path,
                             bool warn_on_failure);
 
     // provided by sdc.cc

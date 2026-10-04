@@ -3016,16 +3016,24 @@ struct GpuRouter
         lock.unlock();
         Router1Cfg legality(ctx);
         legality.timingGate = cfg.legality_timing_gate;
-        bool legal = router1(ctx, legality);
+        bool routing_legal = false, timing_gate_pass = false;
+        bool accepted = router1(ctx, legality, &routing_legal, &timing_gate_pass);
         if (telemetry)
             telemetry->emit("run_end", "", -1,
-                            {gpuroute::Telemetry::Field::string("status", legal ? "routing_legal" : "routing_illegal"),
-                             gpuroute::Telemetry::Field::boolean_value("routing_legal", legal),
+                            {gpuroute::Telemetry::Field::string(
+                                     "status", !routing_legal ? "routing_illegal"
+                                                               : timing_gate_pass ? "routing_legal"
+                                                                                  : "timing_constraint_failure"),
+                             gpuroute::Telemetry::Field::boolean_value("routing_legal", routing_legal),
+                             routing_legal
+                                     ? gpuroute::Telemetry::Field::boolean_value("timing_gate_pass", timing_gate_pass)
+                                     : gpuroute::Telemetry::Field::null_value("timing_gate_pass",
+                                                                              "routing_not_legal"),
                              gpuroute::Telemetry::Field::null_value("analogue_timing_pass",
                                                                     mistral_analogue_downstream
                                                                             ? "downstream_phase"
                                                                             : "not_available_for_architecture")});
-        return legal;
+        return accepted;
     }
 };
 
