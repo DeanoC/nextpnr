@@ -8,7 +8,7 @@
         {"elapsed_seconds": 5, "phase": "route", "overused_wires": 1, "unrouted_connections": 0, "recent_progress": 8, "table_wns_ns": 0.5},
         {"elapsed_seconds": 10, "phase": "route", "overused_wires": 20, "unrouted_connections": 4, "recent_progress": -5, "table_wns_ns": -2.0}
       ],
-      "outcome": {"legal_route": false, "analogue_clocks": [{"name": "clk", "available": true, "setup_wns_ns": 1, "hold_wns_ns": 1}]}
+      "outcome": {"legal_route": false, "required_clocks": ["clk"], "analogue_clocks": [{"name": "clk", "available": true, "setup_wns_ns": 1, "hold_wns_ns": 1}]}
     },
     {
       "run_id": "late-winner", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 3, "replicate": 1,
@@ -17,43 +17,43 @@
         {"elapsed_seconds": 5, "phase": "route", "overused_wires": 12, "unrouted_connections": 6, "recent_progress": 1, "table_wns_ns": -4.0},
         {"elapsed_seconds": 10, "phase": "repair", "overused_wires": 0, "unrouted_connections": 0, "recent_progress": 12, "table_wns_ns": 0.1}
       ],
-      "outcome": {"legal_route": true, "analogue_clocks": [{"name": "clk", "available": true, "setup_wns_ns": 0.3, "hold_wns_ns": 0.1}]}
+      "outcome": {"legal_route": true, "required_clocks": ["clk"], "analogue_clocks": [{"name": "clk", "available": true, "setup_wns_ns": 0.3, "hold_wns_ns": 0.1}]}
     },
     {
       "run_id": "legal-analogue-failure", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 44, "replicate": 1,
       "status": "completed", "duration_seconds": 16,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 0, "unrouted_connections": 0, "recent_progress": 2, "table_wns_ns": -0.2}],
-      "outcome": {"legal_route": true, "analogue_clocks": [{"name": "clk", "available": true, "setup_wns_ns": -0.1, "hold_wns_ns": 0.2}]}
+      "outcome": {"legal_route": true, "required_clocks": ["clk"], "analogue_clocks": [{"name": "clk", "available": true, "setup_wns_ns": -0.1, "hold_wns_ns": 0.2}]}
     },
     {
       "run_id": "table-analogue-disagreement", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 8, "replicate": 1,
       "status": "completed", "duration_seconds": 17,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 0, "unrouted_connections": 0, "recent_progress": 2, "table_wns_ns": 2.0}],
-      "outcome": {"legal_route": true, "analogue_clocks": [{"name": "clk", "available": true, "setup_wns_ns": -0.5, "hold_wns_ns": 0.2}]}
+      "outcome": {"legal_route": true, "required_clocks": ["clk"], "analogue_clocks": [{"name": "clk", "available": true, "setup_wns_ns": -0.5, "hold_wns_ns": 0.2}]}
     },
     {
       "run_id": "multi-clock-failure", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 7, "replicate": 1,
       "status": "completed", "duration_seconds": 18,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 0, "unrouted_connections": 0, "recent_progress": 2}],
-      "outcome": {"legal_route": true, "analogue_clocks": [{"name": "fast", "available": true, "setup_wns_ns": 1.2, "hold_wns_ns": 0.2}, {"name": "slow", "available": true, "setup_wns_ns": -0.1, "hold_wns_ns": 0.1}]}
+      "outcome": {"legal_route": true, "required_clocks": ["fast", "slow"], "analogue_clocks": [{"name": "fast", "available": true, "setup_wns_ns": 1.2, "hold_wns_ns": 0.2}, {"name": "slow", "available": true, "setup_wns_ns": -0.1, "hold_wns_ns": 0.1}]}
     },
     {
       "run_id": "timeout-truncated", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 1, "replicate": 1,
       "status": "timeout", "duration_seconds": 11,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 9, "unrouted_connections": 4, "recent_progress": 0}],
-      "outcome": {"legal_route": false, "analogue_clocks": []}
+      "outcome": {"legal_route": false, "required_clocks": ["clk"], "analogue_clocks": []}
     },
     {
       "run_id": "crash", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 100, "replicate": 1,
       "status": "crash", "duration_seconds": 6,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 9, "unrouted_connections": 4, "recent_progress": 0}],
-      "outcome": {"legal_route": false, "analogue_clocks": []}
+      "outcome": {"legal_route": false, "required_clocks": ["clk"], "analogue_clocks": []}
     },
     {
       "run_id": "no-timing-data", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 55, "replicate": 1,
       "status": "completed", "duration_seconds": 12,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 0, "unrouted_connections": 0, "recent_progress": 1}],
-      "outcome": {"legal_route": true, "analogue_clocks": [{"name": "clk", "available": false, "reason": "not emitted"}]}
+      "outcome": {"legal_route": true, "required_clocks": ["clk"], "analogue_clocks": [{"name": "clk", "available": false, "reason": "not emitted"}]}
     }
   ]
 }

@@ -20,9 +20,9 @@ and elapsed time. Timing repair emits `repair_round` events and its own phase
 boundaries. `run_end` reports router1 legality separately from
 `analogue_timing_pass`, which is null with reason `downstream_phase`: Mistral's
 analogue multi-clock signoff and repair happen after the common GPU router
-returns and remain authoritative. The sweep collector joins the eventual
-report/signoff outcome without converting one Fmax or table WNS into analogue
-success.
+returns and remain authoritative. The offline evaluator consumes a separately
+normalized final outcome without converting one Fmax or table WNS into
+analogue success.
 
 Telemetry only observes existing state. It owns no router state, calls no RNG,
 does not run extra timing analysis, flushes each bounded record, and retains no
@@ -30,3 +30,6 @@ unbounded in-memory trace. A missing `run_end` or a truncated final line is an
 incomplete trace; the collector preserves the raw exit code/signal and
 classifies timeout, cancellation, crash, routing failure, analogue timing
 failure, and success independently.
+
+The bounded collector and evaluator contract is documented in
+[seed-racing-tools.md](seed-racing-tools.md).

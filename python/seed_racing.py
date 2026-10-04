@@ -320,17 +320,51 @@ class Collector:
 
 
 def load_jsonl(path: Path) -> Tuple[List[Dict[str, Any]], bool]:
-    """Load valid JSONL records; return whether an invalid/truncated line was seen."""
+    """Load a valid telemetry prefix and flag truncation or schema/order errors."""
     records, truncated = [], False
+    expected_sequence = 0
+    prior_elapsed = -math.inf
+    run_id = None
+    terminal_seen = False
+    phase_stack: List[Tuple[str, int]] = []
     with path.open("r", encoding="utf-8") as stream:
         for line in stream:
             if not line.strip():
                 continue
             try:
                 value = json.loads(line)
-                if not isinstance(value, dict):
+                if (not isinstance(value, dict) or value.get("schema_version") != SCHEMA_VERSION or
+                        value.get("sequence") != expected_sequence or not isinstance(value.get("run_id"), str) or
+                        not isinstance(value.get("event"), str) or terminal_seen):
+                    raise ValueError
+                elapsed = value.get("elapsed_s")
+                if (isinstance(elapsed, bool) or not isinstance(elapsed, (int, float)) or
+                        not math.isfinite(elapsed) or elapsed < prior_elapsed):
+                    raise ValueError
+                if run_id is None:
+                    run_id = value["run_id"]
+                elif value["run_id"] != run_id:
+                    raise ValueError
+                event, phase, attempt = value["event"], value.get("phase"), value.get("attempt")
+                if expected_sequence == 0 and event != "run_start":
+                    raise ValueError
+                if event == "phase_start":
+                    if not isinstance(phase, str) or isinstance(attempt, bool) or not isinstance(attempt, int):
+                        raise ValueError
+                    phase_stack.append((phase, attempt))
+                elif event == "phase_end":
+                    if not phase_stack or phase_stack[-1] != (phase, attempt):
+                        raise ValueError
+                    phase_stack.pop()
+                elif event == "run_end":
+                    if phase_stack:
+                        raise ValueError
+                elif phase is not None and (phase, attempt) not in phase_stack:
                     raise ValueError
                 records.append(value)
+                expected_sequence += 1
+                prior_elapsed = float(elapsed)
+                terminal_seen = value["event"] == "run_end"
             except (json.JSONDecodeError, ValueError):
                 truncated = True
                 break
@@ -361,18 +395,42 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
         if not isinstance(outcome, dict):
             raise ValueError("outcome must be an object")
         legal = outcome.get("legal_route") is True
+        required_clocks = outcome.get("required_clocks")
+        if (not isinstance(required_clocks, list) or not required_clocks or
+                not all(isinstance(name, str) and name for name in required_clocks) or
+                len(set(required_clocks)) != len(required_clocks)):
+            raise ValueError("outcome.required_clocks must be a non-empty unique string array")
         clocks = outcome.get("analogue_clocks")
-        if not isinstance(clocks, list) or not clocks:
+        clock_by_name = {}
+        if isinstance(clocks, list):
+            for clock in clocks:
+                if not isinstance(clock, dict) or not isinstance(clock.get("name"), str):
+                    raise ValueError("each analogue clock needs a string name")
+                if clock["name"] in clock_by_name:
+                    raise ValueError("analogue clock names must be unique")
+                clock_by_name[clock["name"]] = clock
+        missing_required = [name for name in required_clocks if name not in clock_by_name]
+        required_records = [clock_by_name[name] for name in required_clocks if name in clock_by_name]
+        def finite_metric(value: Any) -> bool:
+            return (not isinstance(value, bool) and isinstance(value, (int, float)) and
+                    math.isfinite(float(value)))
+        timing_available = (not missing_required and len(required_records) == len(required_clocks) and
+                            all(clock.get("available") is True and finite_metric(clock.get("setup_wns_ns")) and
+                                finite_metric(clock.get("hold_wns_ns")) for clock in required_records))
+        if not timing_available:
             analogue_pass = False
-            timing_available = False
             final_margin = None
         else:
-            timing_available = all(clock.get("available") is True and isinstance(clock.get("setup_wns_ns"), (int, float)) and isinstance(clock.get("hold_wns_ns"), (int, float)) for clock in clocks)
-            margins = [min(float(clock["setup_wns_ns"]), float(clock["hold_wns_ns"])) for clock in clocks] if timing_available else []
-            analogue_pass = timing_available and all(margin >= 0 for margin in margins)
-            final_margin = min(margins) if margins else None
+            margins = [min(float(clock["setup_wns_ns"]), float(clock["hold_wns_ns"]))
+                       for clock in required_records]
+            analogue_pass = all(margin >= 0 for margin in margins)
+            final_margin = min(margins)
         copy = dict(run)
-        copy.update({"duration_seconds": duration, "observations": clean, "success": legal and analogue_pass and run["status"] == "completed", "legal_route": legal, "analogue_timing_pass": analogue_pass, "timing_available": timing_available, "final_multi_clock_margin_ns": final_margin})
+        copy.update({"duration_seconds": duration, "observations": clean,
+                     "success": legal and analogue_pass and run["status"] == "completed",
+                     "legal_route": legal, "analogue_timing_pass": analogue_pass,
+                     "timing_available": timing_available, "missing_required_clocks": missing_required,
+                     "final_multi_clock_margin_ns": final_margin})
         normalized.append(copy)
     return normalized
 

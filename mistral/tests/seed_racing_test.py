@@ -29,6 +29,16 @@ class DatasetTests(unittest.TestCase):
         self.assertFalse(self.by_id["no-timing-data"]["timing_available"])
         self.assertTrue(self.by_id["late-winner"]["success"])
 
+    def test_omitted_required_clock_cannot_be_a_success(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        winner = next(run for run in document["runs"] if run["run_id"] == "late-winner")
+        winner["outcome"]["required_clocks"].append("related:clk->memory")
+        result = seed_racing.validate_dataset(document)
+        winner = next(run for run in result if run["run_id"] == "late-winner")
+        self.assertFalse(winner["timing_available"])
+        self.assertFalse(winner["success"])
+        self.assertEqual(winner["missing_required_clocks"], ["related:clk->memory"])
+
     def test_prefix_hides_seed_final_and_future_observations(self):
         run = dict(self.by_id["late-winner"])
         run["observations"] = [dict(item) for item in run["observations"]]
@@ -81,10 +91,47 @@ class DatasetTests(unittest.TestCase):
     def test_truncated_jsonl_retains_only_valid_prefix(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "telemetry.jsonl"
-            path.write_text('{"seq": 0}\n{"seq":', encoding="utf-8")
+            path.write_text('{"schema_version":1,"sequence":0,"run_id":"r","event":"run_start","elapsed_s":0}\n{"sequence":', encoding="utf-8")
             records, truncated = seed_racing.load_jsonl(path)
-        self.assertEqual(records, [{"seq": 0}])
+        self.assertEqual(len(records), 1)
         self.assertTrue(truncated)
+
+    def test_jsonl_rejects_sequence_run_and_time_regressions(self):
+        cases = [
+            '{"schema_version":1,"sequence":2,"run_id":"r","event":"iteration","elapsed_s":1}',
+            '{"schema_version":1,"sequence":1,"run_id":"other","event":"iteration","elapsed_s":1}',
+            '{"schema_version":1,"sequence":1,"run_id":"r","event":"iteration","elapsed_s":-1}',
+        ]
+        first = '{"schema_version":1,"sequence":0,"run_id":"r","event":"run_start","elapsed_s":0}'
+        with tempfile.TemporaryDirectory() as temporary:
+            for index, invalid in enumerate(cases):
+                path = Path(temporary) / f"telemetry-{index}.jsonl"
+                path.write_text(first + "\n" + invalid + "\n", encoding="utf-8")
+                records, truncated = seed_racing.load_jsonl(path)
+                self.assertEqual(len(records), 1)
+                self.assertTrue(truncated)
+
+    def test_jsonl_preserves_nested_phase_attempts(self):
+        events = [
+            {"schema_version": 1, "sequence": 0, "run_id": "r", "event": "run_start", "phase": None, "attempt": None, "elapsed_s": 0},
+            {"schema_version": 1, "sequence": 1, "run_id": "r", "event": "phase_start", "phase": "repair", "attempt": 1, "elapsed_s": 1},
+            {"schema_version": 1, "sequence": 2, "run_id": "r", "event": "phase_start", "phase": "negotiation", "attempt": 2, "elapsed_s": 2},
+            {"schema_version": 1, "sequence": 3, "run_id": "r", "event": "iteration", "phase": "negotiation", "attempt": 2, "elapsed_s": 3},
+            {"schema_version": 1, "sequence": 4, "run_id": "r", "event": "phase_end", "phase": "negotiation", "attempt": 2, "elapsed_s": 4},
+            {"schema_version": 1, "sequence": 5, "run_id": "r", "event": "phase_end", "phase": "repair", "attempt": 1, "elapsed_s": 5},
+            {"schema_version": 1, "sequence": 6, "run_id": "r", "event": "run_end", "phase": None, "attempt": None, "elapsed_s": 6},
+        ]
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "telemetry.jsonl"
+            path.write_text("".join(json.dumps(event) + "\n" for event in events), encoding="utf-8")
+            records, truncated = seed_racing.load_jsonl(path)
+            self.assertEqual(records, events)
+            self.assertFalse(truncated)
+            events[4]["attempt"] = 9
+            path.write_text("".join(json.dumps(event) + "\n" for event in events), encoding="utf-8")
+            records, truncated = seed_racing.load_jsonl(path)
+            self.assertEqual(len(records), 4)
+            self.assertTrue(truncated)
 
 
 class CollectorTests(unittest.TestCase):
