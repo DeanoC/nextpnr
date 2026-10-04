@@ -10,6 +10,7 @@
 #include <tuple>
 #include <vector>
 #include "gtest/gtest.h"
+#include "json11.hpp"
 #include "jsonwrite.h"
 #include "log.h"
 #include "nextpnr.h"
@@ -326,6 +327,30 @@ TEST_F(TimingReportPathsTest, FinalRefreshClearsExtrasWithoutChangingLegacyOrNat
     EXPECT_EQ(graph, netlist());
 }
 
+TEST_F(TimingReportPathsTest, JsonReportCarriesCompleteHoldSlackAndExplicitModel)
+{
+    timing_analysis(ctx.get(), false, true, false, false, true);
+    ASSERT_TRUE(ctx->timing_result.clock_setup_slack.count(clock->name));
+    ASSERT_TRUE(ctx->timing_result.clock_hold_slack.count(clock->name));
+    auto parse_report = [&]() {
+        std::ostringstream out; ctx->writeJsonReport(out);
+        std::string error; auto document = json11::Json::parse(out.str(), error);
+        EXPECT_TRUE(error.empty()) << error;
+        return document;
+    };
+    auto document = parse_report();
+    EXPECT_FALSE(document["timing_summary"]["final_analogue_model"].bool_value());
+    auto clock_summary = document["timing_summary"]["clocks"][clock->name.str(ctx.get())];
+    EXPECT_TRUE(clock_summary["setup_wns_ns"].is_number());
+    EXPECT_TRUE(clock_summary["hold_wns_ns"].is_number());
+    EXPECT_DOUBLE_EQ(clock_summary["setup_wns_ns"].number_value(),
+                     ctx->getDelayNS(ctx->timing_result.clock_setup_slack.at(clock->name)));
+    EXPECT_DOUBLE_EQ(clock_summary["hold_wns_ns"].number_value(),
+                     ctx->getDelayNS(ctx->timing_result.clock_hold_slack.at(clock->name)));
+    ctx->timing_result_is_final_analogue = true;
+    EXPECT_TRUE(parse_report()["timing_summary"]["final_analogue_model"].bool_value());
+}
+
 TEST_F(TimingReportPathsTest, InvalidPublicLimitsFailWithoutChangingResults)
 {
     TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
@@ -428,7 +453,8 @@ TEST_F(TimingReportPathsTest, PhaseRelatedEndpointRetainsItsActualSetupAndHoldWi
     bind_clock_source(clock, "primary_clock_source");
     clock->clkconstr->phase_group = ctx->id("shared_pll_phase");
     auto *phase_clock = other_clock("phase_clock");
-    phase_clock->clkconstr->phase_shift = 2500;
+    phase_clock->clkconstr->phase_shift = 1000;
+    ctx->settings[ctx->id("timing/ignoreRelClk")] = true;
     auto *endpoint = rising.front();
     endpoint->disconnectPort(id_CLK); endpoint->connectPort(id_CLK, phase_clock);
     ctx->assignArchInfo();
@@ -441,12 +467,15 @@ TEST_F(TimingReportPathsTest, PhaseRelatedEndpointRetainsItsActualSetupAndHoldWi
     ASSERT_TRUE(row.setup_timed); ASSERT_TRUE(row.hold_related);
     ASSERT_TRUE(row.setup_window.has_value()); ASSERT_TRUE(row.setup_margin.has_value());
     ASSERT_TRUE(row.hold_margin.has_value());
-    EXPECT_EQ(*row.setup_window, 2500); // rising launch to the actual +2.5ns capture edge
+    EXPECT_EQ(*row.setup_window, 1000); // rising launch to the actual +1ns capture edge
     EXPECT_EQ(row.max_path_delay, path_delay(native_setup_path(timing, endpoint, row)));
-    EXPECT_EQ(*row.setup_margin, 2500 - row.max_path_delay);
+    EXPECT_EQ(*row.setup_margin, 1000 - row.max_path_delay);
     EXPECT_EQ(*row.hold_margin, row.min_path_delay);
     EXPECT_FLOAT_EQ(timing.get_setup_slack(CellPortKey(endpoint->name, id_DATAIN)), float(*row.setup_margin));
-    EXPECT_GT(row.min_path_delay, 7500); // previous capture edge contributes period minus interval
+    ASSERT_TRUE(timing.get_timing_result().clock_setup_slack.count(clock->name));
+    // ignoreRelClk does not exempt this timed phase relation from the setup/Fmax gate.
+    EXPECT_EQ(timing.get_timing_result().clock_setup_slack.at(clock->name), *row.setup_margin);
+    EXPECT_GT(row.min_path_delay, 9000); // previous capture edge contributes period minus interval
     ctx->check();
 }
 

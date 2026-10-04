@@ -14,7 +14,6 @@ import hashlib
 import json
 import math
 import os
-import random
 import select
 import shutil
 import signal
@@ -291,11 +290,12 @@ def _rewrite_input_argument(argument: str, replacements: Mapping[str, str], base
 
 def _option_values(argv: Sequence[str], option: str) -> List[str]:
     values = []
-    for index, argument in enumerate(argv):
+    option_argv = argv[:argv.index("--")] if "--" in argv else argv
+    for index, argument in enumerate(option_argv):
         if argument == option:
-            if index + 1 >= len(argv):
+            if index + 1 >= len(option_argv):
                 raise ValueError(f"{option} requires a value")
-            values.append(argv[index + 1])
+            values.append(option_argv[index + 1])
         elif argument.startswith(option + "="):
             values.append(argument.partition("=")[2])
     return values
@@ -344,8 +344,8 @@ def _cpu_identity() -> Dict[str, str]:
         pass
     return identity
 
-def _runtime_environment_evidence(executable: Path,
-                                  environment: Mapping[str, str]) -> Dict[str, Any]:
+def _runtime_environment_evidence(executable: Path, environment: Mapping[str, str],
+                                  share_directory: Optional[Path] = None) -> Dict[str, Any]:
     """Derive content-addressed loader/library/platform evidence for execution."""
     runtime_binary = executable
     runtime_binaries = {executable}
@@ -373,6 +373,9 @@ def _runtime_environment_evidence(executable: Path,
             ["ldd", str(linked_binary)], env=dict(environment), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, text=True, check=False)
         if completed.returncode != 0:
+            diagnostic = (completed.stdout + "\n" + completed.stderr).lower()
+            if "not a dynamic executable" in diagnostic or "statically linked" in diagnostic:
+                continue
             raise ValueError(
                 f"cannot derive runtime dependencies for {linked_binary}: "
                 f"{completed.stderr.strip()}")
@@ -387,6 +390,10 @@ def _runtime_environment_evidence(executable: Path,
                 paths.add(Path(candidate).resolve())
     files = [{"path": str(path), "sha256": sha256_file(path)}
              for path in sorted(paths, key=str)]
+    if share_directory is not None:
+        for path in sorted(share_directory.rglob("*"), key=str):
+            if path.is_file():
+                files.append({"path": str(path.resolve()), "sha256": sha256_file(path)})
     optional_system_paths = (
         Path("/etc/os-release"), Path("/sys/devices/system/cpu/online"),
         Path("/sys/devices/virtual/dmi/id/product_uuid"),
@@ -411,7 +418,10 @@ def _runtime_environment_evidence(executable: Path,
             "manifest": manifest}
 
 
-def _verify_runtime_environment_evidence(evidence: Mapping[str, Any]) -> bool:
+def _verify_runtime_environment_evidence(
+        evidence: Mapping[str, Any],
+        sealed_files: Sequence[Mapping[str, str]] = (),
+        sealed_root: Optional[Path] = None) -> bool:
     manifest = evidence.get("manifest")
     if not isinstance(manifest, dict) or not isinstance(manifest.get("files"), list):
         return False
@@ -426,6 +436,18 @@ def _verify_runtime_environment_evidence(evidence: Mapping[str, Any]) -> bool:
             return False
         path = Path(item["path"])
         if not path.is_file() or sha256_file(path) != item["sha256"]:
+            return False
+    for item in sealed_files:
+        if (not isinstance(item, Mapping) or not isinstance(item.get("path"), str) or
+                not isinstance(item.get("sha256"), str)):
+            return False
+        path = Path(item["path"])
+        if not path.is_file() or sha256_file(path) != item["sha256"]:
+            return False
+    if sealed_root is not None:
+        expected = {item["path"] for item in sealed_files}
+        actual = {str(path) for path in sealed_root.rglob("*") if path.is_file()}
+        if actual != expected:
             return False
     uname = os.uname()
     return (manifest.get("platform") == {
@@ -522,6 +544,8 @@ class Collector:
         self._child_environment: Optional[Dict[str, str]] = None
         self._cohort_identity: Optional[Dict[str, Any]] = None
         self._runtime_evidence: Optional[Dict[str, Any]] = None
+        self._runtime_sealed_files: List[Dict[str, str]] = []
+        self._runtime_sealed_root: Optional[Path] = None
         self._cohort_lock: Optional[BinaryIO] = None
         self._lock = threading.Lock()
         self._cancelled = threading.Event()
@@ -563,13 +587,38 @@ class Collector:
             raise ValueError(f"cannot resolve cohort executable: {self.manifest['command'][0]}")
         snapshot_root = self.output_root / f"cohort-binary-{uuid.uuid4().hex}"
         snapshot_root.mkdir(parents=True, exist_ok=False)
-        snapshot = snapshot_root / _safe_component(resolved.name)
+        snapshot_bin = snapshot_root / "bin"
+        snapshot_bin.mkdir()
+        snapshot = snapshot_bin / _safe_component(resolved.name)
         frozen = _copy_to_readonly_descriptor(resolved, snapshot, 0o555)
         self._snapshot_streams.append(frozen)
         self._binary_launch_path = _descriptor_path(frozen)
         executable_dir = resolved.parent
-        self._runtime_environment["NEXTPNR_EXECUTABLE_DIR"] = str(executable_dir)
-        self._runtime_evidence = _runtime_environment_evidence(resolved, environment)
+        share_candidates = [executable_dir / "share"]
+        if resolved.name.startswith("nextpnr"):
+            share_candidates.extend((executable_dir.parent / "share" / "nextpnr",
+                                     executable_dir.parent / "share"))
+        source_share = next((path.resolve() for path in share_candidates if path.is_dir()), None)
+        snapshot_share = None
+        if source_share is not None:
+            snapshot_share = snapshot_bin / "share"
+            shutil.copytree(source_share, snapshot_share, symlinks=False)
+        self._runtime_environment["NEXTPNR_EXECUTABLE_DIR"] = str(snapshot_bin)
+        self._runtime_evidence = _runtime_environment_evidence(resolved, environment, source_share)
+        if source_share is not None:
+            source_files = {str(path.relative_to(source_share)): sha256_file(path)
+                            for path in source_share.rglob("*") if path.is_file()}
+            snapshot_files = {str(path.relative_to(snapshot_share)): sha256_file(path)
+                              for path in snapshot_share.rglob("*") if path.is_file()}
+            if source_files != snapshot_files:
+                raise RuntimeError("runtime share tree changed while it was snapshotted")
+            self._runtime_sealed_files = [
+                {"path": str(snapshot_share / relative), "sha256": digest}
+                for relative, digest in sorted(snapshot_files.items())]
+            self._runtime_sealed_root = snapshot_share
+            for path in snapshot_share.rglob("*"):
+                path.chmod(0o555 if path.is_dir() else 0o444)
+            snapshot_share.chmod(0o555)
         self.manifest["provenance"]["runtime_environment_id"] = \
             self._runtime_evidence["runtime_environment_id"]
         return {
@@ -579,6 +628,7 @@ class Collector:
             "launch_path": self._binary_launch_path,
             "sha256": _sha256_stream(frozen),
             "runtime_executable_dir": str(executable_dir),
+            "runtime_share_directory": str(source_share) if source_share is not None else None,
             "runtime_environment": self._runtime_evidence,
         }
 
@@ -608,11 +658,52 @@ class Collector:
         return records
 
     def _requires_execution_identity(self) -> bool:
+        return _option_values(self.manifest["command"], "--router") == ["gpu"]
+
+    def _validate_router_binding(self) -> None:
         if self._frozen_binary is None:
-            return False
+            raise RuntimeError("cohort executable was not frozen")
         binary_name = Path(self._frozen_binary["resolved_path"]).name
-        return (binary_name.startswith("nextpnr-mistral") or
-                self.manifest["architecture"] == "mistral")
+        gpu_capable = (binary_name.startswith(("nextpnr-mistral", "nextpnr-generic")) or
+                       self.manifest["architecture"] in {"mistral", "generic"})
+        if gpu_capable and len(_option_values(self.manifest["command"], "--router")) != 1:
+            raise ValueError(
+                "GPU-capable nextpnr collection requires exactly one explicit --router binding")
+        if not gpu_capable:
+            return
+        command = self.manifest["command"]
+        if "--" in command and command.index("--") + 1 < len(command):
+            raise ValueError("GPU-capable collection forbids positional Python run scripts")
+        for option in ("--run", "--pre-pack", "--pre-place", "--pre-route"):
+            if _option_values(command, option):
+                raise ValueError(
+                    f"GPU-capable collection forbids route-mutating Python hook {option}")
+        declared_router = _option_values(command, "--router")[0]
+        for option in ("--json", "--read"):
+            for value in _option_values(command, option):
+                base = Path(self.manifest["cwd"] or os.getcwd())
+                path = Path(value)
+                resolved = (base / path).resolve() if not path.is_absolute() else path.resolve()
+                record = next((item for item in (self._frozen_inputs or [])
+                               if item["resolved_path"] == str(resolved)), None)
+                if record is None:
+                    continue
+                try:
+                    document = json.loads(Path(record["snapshot_path"]).read_text(encoding="utf-8"))
+                except (OSError, UnicodeError, json.JSONDecodeError) as error:
+                    raise ValueError(f"cannot audit router settings in {option} input: {value}") from error
+                pending = [document]
+                while pending:
+                    node = pending.pop()
+                    if isinstance(node, dict):
+                        settings = node.get("settings")
+                        if isinstance(settings, dict) and "router" in settings and \
+                                str(settings["router"]) != declared_router:
+                            raise ValueError(
+                                f"{option} input overrides declared router {declared_router!r}")
+                        pending.extend(node.values())
+                    elif isinstance(node, list):
+                        pending.extend(node)
 
     def _validate_telemetry_binding(self) -> None:
         if not self._requires_execution_identity():
@@ -721,12 +812,14 @@ class Collector:
             raise RuntimeError("cohort evidence was not frozen")
         binary = {name: self._frozen_binary[name] for name in
                   ("requested_path", "resolved_path", "sha256", "runtime_executable_dir",
-                   "runtime_environment")}
+                   "runtime_share_directory", "runtime_environment")}
         inputs = [{name: item.get(name) for name in
                    ("path", "resolved_path", "role", "sha256")}
                   for item in self._frozen_inputs]
         environment = dict(self._child_environment)
         environment.update(self._runtime_environment)
+        if "NEXTPNR_EXECUTABLE_DIR" in environment:
+            environment["NEXTPNR_EXECUTABLE_DIR"] = "$SEALED_COHORT_RUNTIME/bin"
         record = {
             "schema_version": SCHEMA_VERSION,
             "cohort": self.manifest["cohort"],
@@ -795,11 +888,11 @@ class Collector:
     def _run_one(self, spec: RunSpec, deadline: float) -> Dict[str, Any]:
         if self._cancelled.is_set():
             return {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat, "status": "cancelled",
-                    "termination_reason": "collector_cancelled_before_launch"}
+                    "process_started": False, "termination_reason": "collector_cancelled_before_launch"}
         now = time.monotonic()
         if now >= deadline:
             return {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
-                    "status": "not_started_total_budget",
+                    "status": "not_started_total_budget", "process_started": False,
                     "termination_reason": "total_budget_expired_before_run_setup"}
         spec.directory.mkdir(parents=True, exist_ok=False)
         for relative in self.manifest["artifacts"].values():
@@ -831,7 +924,8 @@ class Collector:
         manifest_path = spec.directory / "manifest.json"
         _json_dump(manifest_path, immutable)
         manifest_sha256 = sha256_file(manifest_path)
-        result: Dict[str, Any] = {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat}
+        result: Dict[str, Any] = {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
+                                  "process_started": False}
         stdout_path, stderr_path = spec.directory / "stdout.log", spec.directory / "stderr.log"
         started = time.monotonic()
         process: Optional[subprocess.Popen[Any]] = None
@@ -851,6 +945,7 @@ class Collector:
                             pass_fds=tuple(stream.fileno() for stream in self._snapshot_streams),
                             start_new_session=True,
                         )
+                        result["process_started"] = True
                         self._active[spec.run_id] = process
                 if process is not None:
                     timeout = min(self.manifest["limits"]["per_run_seconds"],
@@ -947,19 +1042,17 @@ class Collector:
                     if isinstance(result.get("outcome"), dict) else None for result in results]
         backends = {backend for backend in observed if isinstance(backend, str) and backend}
         required = self._requires_execution_identity()
+        launched = [result for result in results if result.get("process_started") is not False]
         if not backends:
-            if required:
-                raise RuntimeError("Mistral cohort has no attested execution backend")
+            if required and launched:
+                raise RuntimeError("GPU cohort has no attested execution backend")
             return None
-        unattested_exempt = {"cancelled", "timeout", "launch_error",
-                             "not_started_total_budget"}
         missing_required = [result.get("run_id") for result, backend in zip(results, observed)
                             if (not isinstance(backend, str) or not backend) and
-                            result.get("process_status", result.get("status")) not in
-                            unattested_exempt]
+                            result.get("process_started") is not False]
         if missing_required:
             raise RuntimeError(
-                f"Mistral runs lack execution backend attestation: {missing_required}")
+                f"launched GPU runs lack execution backend attestation: {missing_required}")
         if len(backends) != 1:
             raise RuntimeError(
                 f"GPU cohort observed multiple execution backends: {sorted(backends)}")
@@ -1019,6 +1112,7 @@ class Collector:
             self._validate_seed_binding()
             self._validate_implicit_runtime_inputs()
             self._validate_known_input_options()
+            self._validate_router_binding()
             self._validate_telemetry_binding()
             specs = self.plan()
             self._validate_declared_inputs_bound(specs)
@@ -1054,12 +1148,13 @@ class Collector:
                 if future is None:
                     results.append({"run_id": spec.run_id, "seed": spec.seed,
                                     "repeat": spec.repeat, "status": "cancelled",
-                                    "termination_reason":
+                                    "process_started": False, "termination_reason":
                                     "collector_cancelled_before_submission"})
                     continue
                 if future.cancelled():
                     results.append({"run_id": spec.run_id, "seed": spec.seed,
                                     "repeat": spec.repeat, "status": "cancelled",
+                                    "process_started": False,
                                     "termination_reason": "collector_cancelled_before_launch"})
                     continue
                 try:
@@ -1069,7 +1164,9 @@ class Collector:
                                     "repeat": spec.repeat, "status": "runner_error",
                                     "error": f"{type(error).__name__}: {error}"})
             try:
-                if not _verify_runtime_environment_evidence(self._runtime_evidence):
+                if not _verify_runtime_environment_evidence(
+                        self._runtime_evidence, self._runtime_sealed_files,
+                        self._runtime_sealed_root):
                     raise RuntimeError("runtime environment changed during cohort collection")
                 execution_identity = self._bind_execution_identity(results)
             except BaseException as error:
@@ -1244,7 +1341,34 @@ def _final_timing_evidence(path: Optional[Path], required_clocks: Sequence[str])
         evidence["analogue_clocks"] = clocks
         if all(clock["available"] for clock in clocks):
             evidence["analogue_timing_pass"] = all(
-                min(clock["setup_wns_ns"], clock["hold_wns_ns"]) >= 0 for clock in clocks)
+                min(clock["setup_wns_ns"], clock["hold_wns_ns"]) > 0 for clock in clocks)
+        else:
+            evidence["reason"] = "required_clock_timing_missing"
+        return evidence
+    summary = report.get("timing_summary") if isinstance(report, dict) else None
+    if isinstance(summary, dict):
+        if summary.get("final_analogue_model") is not True:
+            evidence["reason"] = "report_is_not_final_analogue_model"
+            return evidence
+        sources = summary.get("clocks")
+        if not isinstance(sources, dict):
+            evidence["reason"] = "final_report_timing_missing"
+            return evidence
+        clocks = []
+        for name in required_clocks:
+            source = sources.get(name)
+            available = (isinstance(source, dict) and
+                         _finite_number(source.get("setup_wns_ns")) and
+                         _finite_number(source.get("hold_wns_ns")))
+            clock = {"name": name, "available": available}
+            if available:
+                clock.update({"setup_wns_ns": float(source["setup_wns_ns"]),
+                              "hold_wns_ns": float(source["hold_wns_ns"])})
+            clocks.append(clock)
+        evidence["analogue_clocks"] = clocks
+        if all(clock["available"] for clock in clocks):
+            evidence["analogue_timing_pass"] = all(
+                min(clock["setup_wns_ns"], clock["hold_wns_ns"]) > 0 for clock in clocks)
         else:
             evidence["reason"] = "required_clock_timing_missing"
         return evidence
@@ -1266,7 +1390,7 @@ def _final_timing_evidence(path: Optional[Path], required_clocks: Sequence[str])
         clocks.append(clock)
     evidence["analogue_clocks"] = clocks
     if all(clock["available"] for clock in clocks):
-        if not all(clock["setup_wns_ns"] >= 0 for clock in clocks):
+        if not all(clock["setup_wns_ns"] > 0 for clock in clocks):
             evidence["analogue_timing_pass"] = False
         evidence["reason"] = "hold_not_available_in_standard_report"
     else:
@@ -1431,14 +1555,19 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
             raise ValueError("cohort identity fingerprint does not match its canonical manifest")
         identity_manifest = identity["manifest"]
         identity_command = identity_manifest.get("command")
-        direct_nextpnr = (isinstance(identity_command, list) and identity_command and
-                          isinstance(identity_command[0], str) and
-                          (Path(identity_command[0]).name.startswith("nextpnr-mistral") or
-                           identity_manifest.get("architecture") == "mistral"))
-        declared_gpu = (direct_nextpnr and
-                        _option_values(identity_command, "--router") == ["gpu"])
+        nextpnr_binary = (Path(identity_command[0]).name
+                          if isinstance(identity_command, list) and identity_command and
+                          isinstance(identity_command[0], str) else "")
+        router_values = (_option_values(identity_command, "--router")
+                         if isinstance(identity_command, list) else [])
+        gpu_capable = (nextpnr_binary.startswith(("nextpnr-mistral", "nextpnr-generic")) or
+                       identity_manifest.get("architecture") in {"mistral", "generic"})
+        if gpu_capable and len(router_values) != 1:
+            raise ValueError("GPU-capable nextpnr cohort identity lacks an explicit router")
+        declared_gpu = router_values == ["gpu"]
+        requires_execution_identity = declared_gpu
         observed_backend = outcome.get("execution_backend")
-        if direct_nextpnr or declared_gpu or "execution_identity" in identity_manifest or \
+        if requires_execution_identity or "execution_identity" in identity_manifest or \
                 isinstance(observed_backend, str):
             execution_identity = identity_manifest.get("execution_identity")
             if (not isinstance(execution_identity, dict) or
@@ -1499,7 +1628,7 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
         else:
             margins = [min(float(clock["setup_wns_ns"]), float(clock["hold_wns_ns"]))
                        for clock in required_records]
-            analogue_pass = all(margin >= 0 for margin in margins)
+            analogue_pass = all(margin > 0 for margin in margins)
             final_margin = min(margins)
         copy = dict(run)
         copy.update({"duration_seconds": duration, "outcome_observed_seconds": outcome_observed,
@@ -1558,6 +1687,12 @@ def _metrics(retained: Sequence[Mapping[str, Any]], population: Sequence[Mapping
     }
 
 
+def _scheduler_key(scheduler_seed: int, namespace: str, position: int) -> str:
+    """Portable pseudo-random ordering independent of Python's random module."""
+    value = f"seed-racing-scheduler-v1\0{scheduler_seed}\0{namespace}\0{position}"
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
 def successive_halving(
     runs: Sequence[Mapping[str, Any]], checkpoints: Sequence[float], quotas: Sequence[int],
     exploratory_survivors: int, scheduler_seed: int, restart: bool,
@@ -1574,13 +1709,12 @@ def successive_halving(
         raise ValueError("exploratory_survivors cannot be negative")
     budget_limit = (math.inf if budget_seconds is None else
                     _positive_number(budget_seconds, "budget_seconds"))
-    rng = random.Random(scheduler_seed)
     survivors = list(runs)
     terminal_successes = []
     stage_records, aggregate = [], 0.0
     prior_checkpoint = 0.0
     budget_exhausted = False
-    for checkpoint, quota in zip(checkpoints, quotas):
+    for stage_index, (checkpoint, quota) in enumerate(zip(checkpoints, quotas)):
         evaluated = list(survivors)
         if restart:
             stage_cost = sum(min(run["duration_seconds"], checkpoint) for run in evaluated)
@@ -1608,14 +1742,20 @@ def successive_halving(
         terminal_successes.extend(run for run in terminal if run["success"])
         # An independent scheduler RNG breaks score ties. Neither numeric seed nor
         # seed-bearing run IDs are visible to ranking.
-        scored = [(heuristic_score(observation_at(run, checkpoint)), rng.random(), run) for run in active]
+        scored = [(heuristic_score(observation_at(run, checkpoint)),
+                   _scheduler_key(scheduler_seed, f"tie:{stage_index}", position), run)
+                  for position, run in enumerate(active)]
         scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
         keep = min(quota, len(scored))
         explore = min(exploratory_survivors, keep)
         ranked_count = keep - explore
         ranked = [run for _, _, run in scored[:ranked_count]]
         remaining = [run for _, _, run in scored[ranked_count:] if run not in ranked]
-        explored = rng.sample(remaining, min(explore, len(remaining)))
+        remaining = sorted(
+            enumerate(remaining),
+            key=lambda item: _scheduler_key(
+                scheduler_seed, f"explore:{stage_index}", item[0]))
+        explored = [run for _, run in remaining[:min(explore, len(remaining))]]
         survivors = ranked + explored
         stage_records.append({
             "checkpoint": checkpoint,
@@ -1640,7 +1780,8 @@ def successive_halving(
     retained = terminal_successes + completed_survivors
     metrics = _metrics(retained, runs, aggregate, aggregate,
                        "restart_execution" if restart else "ideal_resumable_simulation")
-    metrics.update({"policy": "successive_halving", "scheduler_seed": scheduler_seed, "stages": stage_records,
+    metrics.update({"policy": "successive_halving", "scheduler_seed": scheduler_seed,
+                    "scheduler_algorithm": "sha256-order-v1", "stages": stage_records,
                     "retained": [run["run_id"] for run in retained],
                     "budget_seconds": budget_seconds,
                     "budget_remaining_seconds": (None if budget_seconds is None else
@@ -1651,8 +1792,9 @@ def successive_halving(
 
 def random_full_run_baseline(runs: Sequence[Mapping[str, Any]], budget_seconds: float, scheduler_seed: int) -> Dict[str, Any]:
     _positive_number(budget_seconds, "budget_seconds")
-    order = list(runs)
-    random.Random(scheduler_seed).shuffle(order)
+    order = [run for _, run in sorted(
+        enumerate(runs),
+        key=lambda item: _scheduler_key(scheduler_seed, "full-run", item[0]))]
     completed, consumed, first_success = [], 0.0, None
     for run in order:
         if consumed + run["duration_seconds"] > budget_seconds:
@@ -1664,6 +1806,7 @@ def random_full_run_baseline(runs: Sequence[Mapping[str, Any]], budget_seconds: 
             first_success = consumed
     metrics = _metrics(completed, runs, consumed, consumed, "observed_full_run_serial")
     metrics.update({"policy": "random_full_run", "scheduler_seed": scheduler_seed,
+                    "scheduler_algorithm": "sha256-order-v1",
                     "order": [run["run_id"] for run in order],
                     "completed": [run["run_id"] for run in completed],
                     "time_to_first_success_seconds": first_success,

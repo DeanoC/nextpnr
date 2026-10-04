@@ -1413,6 +1413,11 @@ void TimingAnalyser::build_crit_path_reports()
         if (!timed_clocks(ctx, launch.clock, capture.clock) || launch.is_async())
             continue;
 
+        const delay_t setup_slack = dp.period.minDelay() + dp.worst_setup_slack;
+        auto inserted_slack = result.clock_setup_slack.emplace(launch.clock, setup_slack);
+        if (!inserted_slack.second)
+            inserted_slack.first->second = std::min(inserted_slack.first->second, setup_slack);
+
         auto path_delay = delay_by_domain.at(i);
 
         double Fmax;
@@ -1551,6 +1556,15 @@ std::vector<CriticalPath> TimingAnalyser::get_min_delay_violations()
                     hold_slack += clock_period(ctx, launch_clock) -
                                   clock_interval(ctx, launch_clock, capture_clock, launch.key.edge, capture.key.edge);
 
+                const bool ignored_related =
+                        bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
+                        launch_clock != capture_clock;
+                if (!ignored_related) {
+                    auto inserted = result.clock_hold_slack.emplace(launch_clock, hold_slack);
+                    if (!inserted.second)
+                        inserted.first->second = std::min(inserted.first->second, hold_slack);
+                }
+
                 if (hold_slack <= 0) {
                     auto report = build_critical_path_report(dom_pair_id, ep.first, false);
                     violations.emplace_back(report);
@@ -1644,6 +1658,8 @@ PortInfo &TimingAnalyser::port_info(const CellPortKey &key) { return ctx->cells.
 bool timing_analysis(Context *ctx, bool print_slack_histogram, bool print_fmax, bool print_path, bool warn_on_failure,
                      bool update_results)
 {
+    if (update_results)
+        ctx->timing_result_is_final_analogue = false;
     TimingAnalyser tmg(ctx);
     tmg.setup_only = false;
     tmg.with_clock_skew = true;

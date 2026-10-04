@@ -38,6 +38,9 @@ struct Context : Arch, DeterministicRNG
     bool disable_critical_path_source_print = false;
     // True when detailed per-net timing is to be stored / reported
     bool detailed_timing_report = false;
+    // True only when the current timing_result came from architecture final analogue signoff.
+    // This is transient provenance and must not be serialized as a design setting.
+    bool timing_result_is_final_analogue = false;
     // Volatile diagnostic limit; never changes placement or serialized settings.
     int timing_report_paths = 1;
 

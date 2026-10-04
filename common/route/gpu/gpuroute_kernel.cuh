@@ -742,7 +742,8 @@ class DeviceBackend : public Backend
                 std::snprintf(uuid + (2 * i), 3, "%02x", static_cast<unsigned char>(prop.uuid.bytes[i]));
             const std::string stable_id = uuid;
 #else
-            const std::string stable_id = "ordinal-" + std::to_string(device_);
+            error = "exact GPU UUID is unavailable with this HIP runtime; use HIP 6 or newer";
+            return false;
 #endif
             name_ = std::string(GPUROUTE_BACKEND_NAME) + ":" + stable_id + ":" + pci_bus_id + ":" + prop.name;
             n_wires_ = graph.n_wires;

@@ -61,16 +61,24 @@ untyped path/prefix inputs. Nested includes are not discovered automatically; us
 flattened direct input files or treat that collection as unsupported.
 Any existing file named directly in argv—including a positional Python
 `run` script—must also be declared, even when its option is not in the known
-schema.
+schema. GPU-capable Mistral and generic nextpnr collections must bind exactly
+one explicit `--router`; `gpu` additionally requires exactly one
+`--gpu-telemetry {telemetry}` binding. These bindings must occur before
+`--`. Route-mutating Python hooks and JSON/read inputs whose settings override
+the declared router are rejected. Explicit `router1`/`router2` CPU collections
+do not require GPU backend attestation.
 
 The command executable is resolved and copied once into a sealed descriptor
 before workers are submitted. Every run executes that descriptor and records
 its original path, display snapshot path, descriptor launch path, and SHA-256.
-On Linux nextpnr installations, the original executable directory is supplied
-through the recorded `NEXTPNR_EXECUTABLE_DIR` override, so the normal relative
-share-directory search remains valid. Collection fails closed without Linux
+On Linux nextpnr installations, an executable-relative share tree is copied into
+the frozen cohort runtime, made read-only, content-bound in runtime evidence,
+re-enumerated after all workers, and selected through
+`NEXTPNR_EXECUTABLE_DIR`. Collection fails closed without Linux
 sealed descriptors, pidfds, and `/proc`. The executable's dynamic dependency
-closure is not copied. Its content identity is derived before submission and
+closure is not copied. Dynamically linked launches bind that discovered closure;
+a recognized statically linked ELF binds the executable itself without inventing
+a loader dependency. Its content identity is derived before submission and
 verified again after all workers finish; any change rejects the cohort. The collector keeps
 the raw process lifecycle in `process_status`, then classifies the run from
 the `telemetry` and `final_report` artifacts. A valid terminal `run_end`
@@ -79,8 +87,12 @@ a legal route that misses that enabled gate is `timing_constraint_failure`. Ever
 final report evidence; a failing clock is `analogue_timing_failure`, an
 illegal route is `routing_failure`, and missing or truncated evidence is
 `incomplete_evidence`. A standard nextpnr `fmax` report can establish a
-setup failure, but cannot establish success because it lacks hold evidence; a
-normalized `outcome.analogue_clocks` report supplies both setup and hold WNS.
+setup failure, but cannot establish success because it lacks hold evidence. The
+built-in `timing_summary` supplies exact setup and hold WNS, but the collector
+accepts it as final only when `final_analogue_model` is true after Mistral RBF
+signoff; table-model reports remain incomplete. A normalized
+`outcome.analogue_clocks` report may also supply both values. Zero slack fails,
+matching nextpnr's strict timing gate; constraints ignored by the configured timing gate are excluded from the summary.
 
 Because Himbaechel chip databases are architecture inputs separate from the
 executable, a `nextpnr-himbaechel` collection must pass exactly one explicit
@@ -89,14 +101,16 @@ The collector then redirects the chipdb option to the same descriptor-backed
 snapshot as other cohort inputs; implicit mutable installation chipdbs are
 rejected before worker submission.
 
-Before submission the collector writes `cohort-<id>.json`. Its canonical
+Before submission the collector locks the cohort name and constructs a basis
+identity. After every worker has terminated and runtime/backend evidence has
+been verified, it atomically publishes `cohort-<id>.json`. Its canonical
 SHA-256 identity binds the cohort labels, command template, working directory,
 frozen environment, source/runtime provenance, executable digest,
 declared-input digests, artifact layout, required clocks, architecture, and
 execution limits. Reusing a cohort ID with a
-different bound identity fails closed. Each run manifest embeds that identity;
-the collection summary records it together with run-manifest and result-file
-hashes.
+different bound identity fails closed. Each immutable run manifest embeds the
+basis identity; each final result and the collection summary bind the published
+execution-aware identity together with run-manifest and result-file hashes.
 
 ## Evaluation dataset
 
@@ -115,8 +129,9 @@ elapsed times, not fractions of eventual duration. Only the allowlisted prefix
 observation at or before a checkpoint is visible to ranking. A run's final
 outcome becomes visible only at its explicit `outcome_observed_seconds`, not
 from its eventual duration or final label. Numeric router
-seeds and seed-bearing run IDs are excluded; an independent scheduler RNG
-breaks ties and selects exploratory survivors. Runs that finish by a checkpoint
+seeds and seed-bearing run IDs are excluded. The specified
+`sha256-order-v1` scheduler ordering breaks ties and selects exploratory
+survivors reproducibly across Python versions. Runs that finish by a checkpoint
 leave the active ranking pool: terminal successes are retained immediately and
 terminal failures are recorded but cannot consume a promotion slot.
 

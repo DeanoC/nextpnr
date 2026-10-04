@@ -663,8 +663,32 @@ class CollectorTests(unittest.TestCase):
             immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual((run_dir / "report.json").read_text(encoding="utf-8"), "runtime-data")
             self.assertEqual(immutable["binary"]["runtime_executable_dir"], str(binary_dir.resolve()))
-            self.assertEqual(immutable["environment"]["NEXTPNR_EXECUTABLE_DIR"],
-                             str(binary_dir.resolve()))
+            sealed_dir = Path(immutable["environment"]["NEXTPNR_EXECUTABLE_DIR"])
+            self.assertNotEqual(sealed_dir, binary_dir.resolve())
+            self.assertTrue(str(sealed_dir).startswith(str(output)))
+            runtime_files = immutable["binary"]["runtime_environment"]["manifest"]["files"]
+            self.assertIn(str((share_dir / "resource").resolve()),
+                          [item["path"] for item in runtime_files])
+
+    def test_collection_rejects_mutated_sealed_share_tree(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            binary_dir = Path(temporary) / "bin"
+            share_dir = binary_dir / "share"
+            share_dir.mkdir(parents=True)
+            (share_dir / "resource").write_text("runtime-data", encoding="utf-8")
+            runner = binary_dir / "runner"
+            runner.write_text(
+                "#!" + sys.executable + "\n"
+                "import os,pathlib\n"
+                "path=pathlib.Path(os.environ['NEXTPNR_EXECUTABLE_DIR'])/'share'/'resource'\n"
+                "path.chmod(0o644); path.write_text('mutated')\n"
+                "path.parent.chmod(0o755); (path.parent/'added').write_text('extra')\n",
+                encoding="utf-8")
+            runner.chmod(0o755)
+            manifest = self.manifest(temporary, [str(runner)])
+            with self.assertRaisesRegex(RuntimeError, "runtime environment changed"):
+                seed_racing.Collector(manifest, output).run()
 
     def test_himbaechel_requires_one_declared_explicit_chipdb(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -801,6 +825,16 @@ class CollectorTests(unittest.TestCase):
             evidence["runtime_environment_id"] = "sha256:" + "0" * 64
             self.assertFalse(seed_racing._verify_runtime_environment_evidence(evidence))
 
+    def test_static_elf_runtime_evidence_accepts_ldd_static_diagnostic(self):
+        executable = Path("/bin/true").resolve()
+        completed = seed_racing.subprocess.CompletedProcess(
+            ["ldd", str(executable)], 1, "", "not a dynamic executable\n")
+        with mock.patch.object(seed_racing.subprocess, "run", return_value=completed):
+            evidence = seed_racing._runtime_environment_evidence(
+                executable, seed_racing._child_environment({}))
+        files = evidence["manifest"]["files"]
+        self.assertIn(str(executable), [item["path"] for item in files])
+
     def test_normal_leader_exit_kills_residual_process_group(self):
         with tempfile.TemporaryDirectory() as temporary:
             marker = Path(temporary) / "descendant-wrote"
@@ -851,6 +885,33 @@ class CollectorTests(unittest.TestCase):
             self.assertFalse(results[3]["outcome"]["evidence_complete"])
             self.assertEqual(results[6]["outcome"]["timing_evidence_reason"],
                              "hold_not_available_in_standard_report")
+
+    def test_builtin_timing_summary_requires_final_analogue_model_and_hold(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            report = Path(temporary) / "report.json"
+            clocks = {"clk": {"setup_wns_ns": 0.2, "hold_wns_ns": 0.1}}
+            report.write_text(json.dumps({"timing_summary": {
+                "final_analogue_model": False, "clocks": clocks}}))
+            evidence = seed_racing._final_timing_evidence(report, ["clk"])
+            self.assertIsNone(evidence["analogue_timing_pass"])
+            self.assertEqual(evidence["reason"], "report_is_not_final_analogue_model")
+            report.write_text(json.dumps({"timing_summary": {
+                "final_analogue_model": True, "clocks": clocks}}))
+            evidence = seed_racing._final_timing_evidence(report, ["clk"])
+            self.assertTrue(evidence["analogue_timing_pass"])
+            self.assertEqual(evidence["analogue_clocks"][0]["hold_wns_ns"], 0.1)
+            clocks["clk"]["setup_wns_ns"] = 0.0
+            report.write_text(json.dumps({"timing_summary": {
+                "final_analogue_model": True, "clocks": clocks}}))
+            self.assertFalse(seed_racing._final_timing_evidence(
+                report, ["clk"])["analogue_timing_pass"])
+            clocks["clk"]["setup_wns_ns"] = 0.2
+            del clocks["clk"]["hold_wns_ns"]
+            report.write_text(json.dumps({"timing_summary": {
+                "final_analogue_model": True, "clocks": clocks}}))
+            evidence = seed_racing._final_timing_evidence(report, ["clk"])
+            self.assertIsNone(evidence["analogue_timing_pass"])
+            self.assertEqual(evidence["reason"], "required_clock_timing_missing")
 
     def test_collection_requires_unique_timing_for_every_required_clock(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -924,17 +985,98 @@ if seed == 4: sys.exit(1)
             with self.assertRaisesRegex(ValueError, "--gpu-telemetry"):
                 seed_racing.Collector(manifest, Path(temporary) / "unverifiable").run()
 
+            timeout_runner = Path(temporary) / "nextpnr-generic"
+            timeout_runner.write_text("#!" + sys.executable + "\nimport time; time.sleep(2)\n",
+                                      encoding="utf-8")
+            timeout_runner.chmod(0o755)
+            timeout_command = [str(timeout_runner), "--router", "gpu", "--seed", "{seed}",
+                               "--gpu-telemetry", "{telemetry}"]
+            timeout_manifest = self.manifest(temporary, timeout_command, per_run=0.1)
+            with self.assertRaisesRegex(RuntimeError, "no attested execution backend"):
+                seed_racing.Collector(timeout_manifest, Path(temporary) / "generic-timeout").run()
+            timeout_failure = json.loads(next(
+                (Path(temporary) / "generic-timeout").glob("collection-failure-*.json")).read_text())
+            self.assertTrue(timeout_failure["results"][0]["process_started"])
+            self.assertEqual(timeout_failure["results"][0]["process_status"], "timeout")
+
+            generic_runner = Path(temporary) / "nextpnr-generic-good"
+            generic_runner.write_text(runner.read_text(encoding="utf-8"), encoding="utf-8")
+            generic_runner.chmod(0o755)
+            generic_command = [str(generic_runner), "--router", "gpu", "--seed", "{seed}",
+                               "--gpu-telemetry", "{telemetry}", "--report", "{report}"]
+            generic_result = seed_racing.Collector(
+                self.manifest(temporary, generic_command, seeds=[1]),
+                Path(temporary) / "generic-gpu").run()[0]
+            self.assertEqual(generic_result["cohort_identity"]["manifest"][
+                "execution_identity"]["backend"], "cuda:0:0000:01:00.0:GPU-A")
+
             non_cli_gpu_command = command[:1] + command[3:]
             manifest = self.manifest(temporary, non_cli_gpu_command, seeds=[1])
-            output = Path(temporary) / "single"
-            result = seed_racing.Collector(manifest, output).run()[0]
-            identity = result["cohort_identity"]
-            self.assertEqual(identity["manifest"]["execution_identity"]["backend"],
-                             "cuda:0:0000:01:00.0:GPU-A")
-            run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
-            persisted = json.loads((run_dir / "result.json").read_text())
-            self.assertEqual(persisted["cohort_identity"], identity)
-            self.assertEqual(json.loads((output / "cohort-cohort.json").read_text()), identity)
+            with self.assertRaisesRegex(ValueError, "explicit --router"):
+                seed_racing.Collector(manifest, Path(temporary) / "implicit-router").run()
+
+    def test_explicit_cpu_mistral_collection_does_not_require_gpu_attestation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-mistral"
+            runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
+            runner.chmod(0o755)
+            manifest = self.manifest(temporary, [str(runner), "--router", "router2",
+                                                 "--seed", "{seed}"])
+            result = seed_racing.Collector(
+                manifest, Path(temporary) / "cpu-mistral").run()[0]
+            self.assertEqual(result["status"], "incomplete_evidence")
+            self.assertNotIn("execution_identity",
+                             result["cohort_identity"]["manifest"])
+
+    def test_gpu_capable_router_binding_ignores_tokens_after_double_dash(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-generic"
+            runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
+            runner.chmod(0o755)
+            manifest = self.manifest(
+                temporary, [str(runner), "--seed", "{seed}", "--",
+                            "--router", "gpu", "--gpu-telemetry", "{telemetry}"])
+            with self.assertRaisesRegex(ValueError, "explicit --router"):
+                seed_racing.Collector(manifest, Path(temporary) / "runs").run()
+
+    def test_gpu_capable_collection_rejects_router_overrides(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-generic"
+            runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
+            runner.chmod(0o755)
+            hook = Path(temporary) / "hook.py"
+            hook.write_text("ctx.settings['router'] = 'gpu'\n", encoding="utf-8")
+            manifest = self.manifest(
+                temporary, [str(runner), "--router", "router2", "--seed", "{seed}",
+                            "--pre-route", str(hook)])
+            manifest["inputs"] = [{"path": str(hook), "role": "python_hook"}]
+            with self.assertRaisesRegex(ValueError, "route-mutating Python hook"):
+                seed_racing.Collector(manifest, Path(temporary) / "hook-runs").run()
+
+            design = Path(temporary) / "design.json"
+            design.write_text(json.dumps({"settings": {"router": "gpu"}}), encoding="utf-8")
+            manifest = self.manifest(
+                temporary, [str(runner), "--router", "router2", "--seed", "{seed}",
+                            "--json", str(design)])
+            manifest["inputs"] = [{"path": str(design), "role": "mapped_netlist"}]
+            with self.assertRaisesRegex(ValueError, "overrides declared router"):
+                seed_racing.Collector(manifest, Path(temporary) / "json-runs").run()
+
+    def test_gpu_identity_exempts_only_explicitly_never_launched_runs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-generic"
+            runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
+            runner.chmod(0o755)
+            manifest = self.manifest(temporary, [str(runner), "--router", "gpu",
+                                                 "--seed", "{seed}",
+                                                 "--gpu-telemetry", "{telemetry}"])
+            collector = seed_racing.Collector(manifest, Path(temporary) / "runs")
+            collector._frozen_binary = {"resolved_path": str(runner)}
+            self.assertIsNone(collector._bind_execution_identity([
+                {"run_id": "never", "status": "cancelled", "process_started": False}]))
+            with self.assertRaisesRegex(RuntimeError, "no attested execution backend"):
+                collector._bind_execution_identity([
+                    {"run_id": "launched", "status": "timeout", "process_started": True}])
 
     def test_manifest_requires_nextpnr_seed_option_binding(self):
         with tempfile.TemporaryDirectory() as temporary:
