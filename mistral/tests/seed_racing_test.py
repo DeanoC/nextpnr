@@ -248,6 +248,66 @@ class CollectorTests(unittest.TestCase):
             self.assertEqual([result["status"] for result in completed],
                              ["cancelled", "cancelled", "cancelled"])
 
+    def test_interrupt_writes_cancelled_summary_before_reraising(self):
+        class InterruptingFuture:
+            def __init__(self):
+                self.was_cancelled = False
+
+            def result(self):
+                raise KeyboardInterrupt()
+
+            def cancel(self):
+                self.was_cancelled = True
+                return True
+
+            def cancelled(self):
+                return self.was_cancelled
+
+        class InterruptingExecutor:
+            def __init__(self, max_workers):
+                self.max_workers = max_workers
+                self.submissions = 0
+
+            def submit(self, _function, _spec, _deadline):
+                self.submissions += 1
+                if self.submissions == 2:
+                    raise KeyboardInterrupt()
+                return InterruptingFuture()
+
+            def shutdown(self, wait, cancel_futures):
+                self.shutdown_args = (wait, cancel_futures)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            manifest = self.manifest(temporary, [sys.executable, "-c", "pass"], seeds=[1, 2])
+            with mock.patch.object(seed_racing.concurrent.futures, "ThreadPoolExecutor",
+                                   InterruptingExecutor):
+                with self.assertRaises(KeyboardInterrupt):
+                    seed_racing.Collector(manifest, output).run()
+            summaries = list(output.glob("collection-*.json"))
+            self.assertEqual(len(summaries), 1)
+            results = json.loads(summaries[0].read_text(encoding="utf-8"))["results"]
+            self.assertEqual([result["status"] for result in results], ["cancelled", "cancelled"])
+            self.assertEqual(results[1]["termination_reason"], "collector_cancelled_before_submission")
+
+    def test_collection_aborts_if_a_frozen_input_changes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            launches = Path(temporary) / "launches"
+            manifest = self.manifest(temporary, [], seeds=[1, 2, 3])
+            input_path = Path(manifest["inputs"][0]["path"])
+            code = ("import pathlib,sys; "
+                    "launches=pathlib.Path(sys.argv[2]); "
+                    "launches.write_text(launches.read_text()+sys.argv[1] if launches.exists() else sys.argv[1]); "
+                    "pathlib.Path(sys.argv[3]).write_text('changed') if sys.argv[1]=='1' else None")
+            manifest["command"] = [sys.executable, "-c", code, "{seed}", str(launches), str(input_path)]
+            manifest["limits"]["concurrency"] = 1
+            results = seed_racing.Collector(manifest, output).run()
+            self.assertEqual(launches.read_text(encoding="utf-8"), "1")
+            self.assertEqual([result["status"] for result in results],
+                             ["completed", "launch_error", "cancelled"])
+            self.assertEqual(results[1]["termination_reason"], "cohort_input_changed_before_launch")
+
     def test_manifest_rejects_shell_string_and_unsafe_artifact(self):
         with tempfile.TemporaryDirectory() as temporary:
             manifest = self.manifest(temporary, "nextpnr --seed 1")

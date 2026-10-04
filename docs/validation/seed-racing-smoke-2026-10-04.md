@@ -58,6 +58,46 @@ binary was rebuilt after the four-run limit was reached; a no-pack/no-place/
 no-route serialization check preserved the maximum `uint64_t` requested seed
 `18446744073709551615` exactly. No fifth PNR run was made.
 
+## Additional user-authorized review confidence
+
+After the initial four-run limit, the user explicitly authorized a bounded
+extension to exercise the analogue helper paths fixed during review. The
+50 MHz design constraint, mapped input, seed, CUDA device and backend remained
+unchanged. Diagnostic repair margins were raised only to enter otherwise
+inactive helper code; these are not QoR measurements or changed signoff gates.
+
+Two telemetry-off and two telemetry-on runs used an 18 ns analogue repair
+target with one candidate-selection round. All four completed in 8.98-9.03
+seconds. Each entered candidate selection, re-routed two nets, and improved the
+worst analogue slack from +17.488 ns (398.09 MHz) to +18.003 ns (500.75 MHz).
+All final reports had SHA-256
+`59e10236232f1a6f13690fbc707ceea207b66ab20f23f91bc2f10e7751d7e1f2`;
+all compressed RBFs had SHA-256
+`5fb5378c543ba448a47a3afa36a6926fa27b97adf9b8ebf41c7adf3ba9c989b3`.
+
+One further matched telemetry-off/on pair disabled candidates and used a
+19 ns repair target to force the full analogue helper rerouter. Both runs
+completed in 9.28-9.34 seconds, re-routed 30 nets in a second GPU-router
+invocation, and retained legal final routing at +17.488 ns (398.09 MHz).
+Their reports matched at SHA-256
+`f2e646337942d2de4cb5756829fb0acf3529d0992a83159bd100ac3d66c4fc3f`;
+their RBFs matched at SHA-256
+`81c4aad14f3981892461ae1eb4e1403e04a8ff1c668919bd90eaf611910f1761`.
+Each of the three telemetry-on files has exactly 20 schema-v1 records, one
+`run_start`, one `run_end`, valid ordering/nesting, and a complete prefix.
+Thus neither auxiliary router reopened the top-level exclusive stream.
+
+The review fix for imported output-only settings was then rebuilt (binary
+SHA-256 `ccd8f258114ba31b096b540a74e46ace0410c9d340577db5514cf629ebad727f`).
+A copy of the mapped input was deliberately given an existing telemetry path
+and seed, then run without `--gpu-telemetry`. It completed in 8.08 seconds,
+left the existing telemetry file byte-identical, omitted both stale settings
+from its routed JSON, routed legally, and passed final analogue timing at
+398.09 MHz against 50 MHz. A separate attempted routed-JSON reload stopped
+before routing on the existing unsupported frozen-pin diagnostic
+`Invalid frozen physical pin for gate.ena`; it did not alter telemetry and
+was not treated as PNR evidence.
+
 ## Tests and limits
 
 - `nextpnr-heap-control-set-test`: passed.

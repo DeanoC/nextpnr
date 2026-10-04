@@ -207,6 +207,7 @@ class Collector:
         self.output_root = output_root.resolve()
         self._active: Dict[str, subprocess.Popen[Any]] = {}
         self._cancelled_runs = set()
+        self._frozen_inputs: Optional[List[Dict[str, Any]]] = None
         self._lock = threading.Lock()
         self._cancelled = threading.Event()
 
@@ -252,6 +253,8 @@ class Collector:
         environment = _child_environment(self.manifest["environment"])
         binary = _resolved_binary(spec.argv[0], self.manifest["cwd"], environment)
         started_wall = time.time()
+        if self._frozen_inputs is None:
+            raise RuntimeError("collector inputs were not frozen before launch")
         immutable = {
             "schema_version": SCHEMA_VERSION,
             "run_id": spec.run_id,
@@ -263,7 +266,7 @@ class Collector:
             "environment": environment,
             "limits": self.manifest["limits"],
             "provenance": self.manifest["provenance"],
-            "inputs": self._input_records(),
+            "inputs": self._frozen_inputs,
             "binary": {"path": str(binary) if binary else None, "sha256": sha256_file(binary) if binary else None},
             "artifacts": self.manifest["artifacts"],
             "started_unix_seconds": started_wall,
@@ -279,6 +282,11 @@ class Collector:
                     if self._cancelled.is_set():
                         result.update({"status": "cancelled",
                                        "termination_reason": "collector_cancelled_before_launch"})
+                    elif self._input_records() != self._frozen_inputs:
+                        self._cancelled.set()
+                        result.update({"status": "launch_error",
+                                       "termination_reason": "cohort_input_changed_before_launch",
+                                       "error": "declared cohort input changed after collection started"})
                     else:
                         process = subprocess.Popen(
                             list(spec.argv), cwd=self.manifest["cwd"], env=environment, stdout=stdout, stderr=stderr,
@@ -338,27 +346,51 @@ class Collector:
         if dry_run:
             return [{"run_id": s.run_id, "seed": s.seed, "repeat": s.repeat, "directory": str(s.directory), "argv": list(s.argv), "status": "dry_run"} for s in specs]
         self.output_root.mkdir(parents=True, exist_ok=True)
+        self._frozen_inputs = self._input_records()
         deadline = time.monotonic() + self.manifest["limits"]["total_seconds"]
-        results = []
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.manifest["limits"]["concurrency"])
         future_specs = []
+        futures_by_run = {}
+        interrupted = None
         try:
-            future_specs = [(executor.submit(self._run_one, spec, deadline), spec) for spec in specs]
-            for future, spec in future_specs:
+            for spec in specs:
+                future = executor.submit(self._run_one, spec, deadline)
+                future_specs.append((future, spec))
+                futures_by_run[spec.run_id] = future
+            for future, _spec in future_specs:
                 try:
-                    results.append(future.result())
-                except Exception as error:  # preserve other completed runs
-                    results.append({"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
-                                    "status": "runner_error", "error": f"{type(error).__name__}: {error}"})
-        except KeyboardInterrupt:
+                    future.result()
+                except Exception:
+                    pass  # gather every terminal state below
+        except KeyboardInterrupt as error:
+            interrupted = error
             self.cancel()
             for future, _spec in future_specs:
                 future.cancel()
-            raise
         finally:
             executor.shutdown(wait=True, cancel_futures=self._cancelled.is_set())
+        results = []
+        for spec in specs:
+            future = futures_by_run.get(spec.run_id)
+            if future is None:
+                results.append({"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
+                                "status": "cancelled",
+                                "termination_reason": "collector_cancelled_before_submission"})
+                continue
+            if future.cancelled():
+                results.append({"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
+                                "status": "cancelled",
+                                "termination_reason": "collector_cancelled_before_launch"})
+                continue
+            try:
+                results.append(future.result())
+            except Exception as error:  # preserve other completed runs
+                results.append({"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
+                                "status": "runner_error", "error": f"{type(error).__name__}: {error}"})
         summary = {"schema_version": SCHEMA_VERSION, "cohort": self.manifest["cohort"], "results": results}
         _json_dump(self.output_root / f"collection-{uuid.uuid4().hex}.json", summary)
+        if interrupted is not None:
+            raise interrupted
         return results
 
 

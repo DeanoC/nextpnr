@@ -605,14 +605,18 @@ void CommandHandler::setupContext(Context *ctx)
 
 void CommandHandler::restoreTelemetrySettings(Context *ctx)
 {
-    if (!vm.count("gpu-telemetry"))
+    IdString path_key = ctx->id("gpurouter/telemetryPath");
+    IdString seed_key = ctx->id("gpurouter/telemetrySeed");
+    if (!vm.count("gpu-telemetry")) {
+        ctx->settings.erase(path_key);
+        ctx->settings.erase(seed_key);
         return;
-    ctx->settings[ctx->id("gpurouter/telemetryPath")] = vm["gpu-telemetry"].as<std::string>();
-    IdString key = ctx->id("gpurouter/telemetrySeed");
+    }
+    ctx->settings[path_key] = vm["gpu-telemetry"].as<std::string>();
     if (telemetry_seed.empty())
-        ctx->settings.erase(key);
+        ctx->settings.erase(seed_key);
     else
-        ctx->settings[key] = telemetry_seed;
+        ctx->settings[seed_key] = telemetry_seed;
 }
 
 int CommandHandler::executeMain(std::unique_ptr<Context> ctx)

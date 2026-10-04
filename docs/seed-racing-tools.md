@@ -28,8 +28,11 @@ Command arguments may use `{seed}`, `{repeat}`, `{run_id}`, `{run_dir}`,
 exclusively, captures stdout/stderr, hashes available artifacts and the resolved
 binary, preserves exit codes/signals/timeouts, and terminates only the fresh
 child process group it owns. Cancellation gates future launches before it
-terminates active groups, so queued jobs cannot start after interruption. A
-missing input or output is recorded as
+terminates active groups, so queued jobs cannot start after interruption. The
+collector writes the complete terminal summary before propagating an interrupt.
+Declared cohort inputs are hashed once before submission and checked again
+under the launch gate; a change aborts the remaining cohort instead of mixing
+input bytes under one comparison. A missing input or output is recorded as
 unavailable; it is not silently substituted.
 
 ## Evaluation dataset
