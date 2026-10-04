@@ -113,8 +113,11 @@ reject("d3-output", "set_instance_assignment -name D3_DELAY 1 -to o_plain", "com
 reject("d5-input", "set_instance_assignment -name D5_DELAY 1 -to i_plain", "D5_DELAY is only supported")
 reject("d5oe-sdr", "set_instance_assignment -name D5_OE_DELAY 1 -to o_reg_d5", "D5_OE_DELAY is only supported")
 reject("d4", "set_instance_assignment -name D4_DELAY 1 -to i_plain", "D4_DELAY is not supported")
+reject("d3-fine", "set_instance_assignment -name D3_FINE_DELAY 1 -to i_plain", "D3_FINE_DELAY is not supported")
+reject("open-drain", "set_instance_assignment -name OPEN_DRAIN_OUTPUT ON -to o_plain",
+       "OPEN_DRAIN_OUTPUT is not supported")
 reject("wildcard-location", "set_location_assignment PIN_AH22 -to o_*", "not a wildcard")
-print("PASS: 14 invalid electrical requests rejected")
+print("PASS: 16 invalid electrical requests rejected")
 
 if a.reference_nextpnr:
     # Without electrical assignments the feature must not change any bit.

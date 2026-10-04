@@ -191,8 +191,9 @@ Arch::IoElectrical Arch::get_io_electrical(const CellInfo *cell) const
     delay("D3_DELAY", 7, io.d3_delay);
     delay("D5_DELAY", 31, io.d5_delay);
     delay("D5_OE_DELAY", 31, io.d5_oe_delay);
-    for (const char *name : {"D2_DELAY", "D4_DELAY", "D6_DELAY", "D1_FINE_DELAY", "D4_FINE_DELAY", "D5_FINE_DELAY",
-                             "D6_FINE_DELAY", "D5_OCT_DELAY", "D6_OCT_DELAY", "D6_OE_DELAY", "D6_OE_FINE_DELAY"})
+    for (const char *name : {"D2_DELAY", "D3_FINE_DELAY", "D4_DELAY", "D6_DELAY", "D1_FINE_DELAY", "D4_FINE_DELAY",
+                             "D5_FINE_DELAY", "D6_FINE_DELAY", "D5_OCT_DELAY", "D6_OCT_DELAY", "D6_OE_DELAY",
+                             "D6_OE_FINE_DELAY", "OPEN_DRAIN_OUTPUT"})
         if (attr(name, value))
             log_error("IO '%s': %s is not supported.\n", nameOf(cell), name);
     return io;
