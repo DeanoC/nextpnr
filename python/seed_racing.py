@@ -329,6 +329,21 @@ def _child_environment(explicit: Mapping[str, str]) -> Dict[str, str]:
     return environment
 
 
+def _cpu_identity() -> Dict[str, str]:
+    identity: Dict[str, str] = {}
+    try:
+        for line in Path("/proc/cpuinfo").read_text(encoding="utf-8").splitlines():
+            if not line.strip() and identity:
+                break
+            name, separator, value = line.partition(":")
+            key = name.strip()
+            if separator and key in {"vendor_id", "model name", "cpu family", "model",
+                                     "stepping", "microcode"}:
+                identity[key] = value.strip()
+    except (OSError, UnicodeError):
+        pass
+    return identity
+
 def _runtime_environment_evidence(executable: Path,
                                   environment: Mapping[str, str]) -> Dict[str, Any]:
     """Derive content-addressed loader/library/platform evidence for execution."""
@@ -370,16 +385,26 @@ def _runtime_environment_evidence(executable: Path,
                 candidate = words[0]
             if candidate and candidate.startswith("/") and Path(candidate).is_file():
                 paths.add(Path(candidate).resolve())
-    for system_path in (Path("/etc/os-release"), Path("/proc/driver/nvidia/version")):
-        if system_path.is_file():
-            paths.add(system_path)
     files = [{"path": str(path), "sha256": sha256_file(path)}
              for path in sorted(paths, key=str)]
+    optional_system_paths = (
+        Path("/etc/os-release"), Path("/sys/devices/system/cpu/online"),
+        Path("/sys/devices/virtual/dmi/id/product_uuid"),
+        Path("/proc/driver/nvidia/version"))
+    for path in optional_system_paths:
+        if not path.is_file():
+            continue
+        try:
+            digest = sha256_file(path)
+        except OSError:
+            continue
+        files.append({"path": str(path), "sha256": digest})
     uname = os.uname()
     manifest = {"runtime_binary": str(runtime_binary),
                 "launchers": sorted(str(path) for path in runtime_binaries), "files": files,
                 "platform": {"sysname": uname.sysname, "release": uname.release,
-                             "machine": uname.machine}}
+                             "machine": uname.machine},
+                "cpu": _cpu_identity()}
     encoded = json.dumps(manifest, sort_keys=True, separators=(",", ":"),
                          allow_nan=False).encode("utf-8")
     return {"runtime_environment_id": "sha256:" + hashlib.sha256(encoded).hexdigest(),
@@ -390,6 +415,11 @@ def _verify_runtime_environment_evidence(evidence: Mapping[str, Any]) -> bool:
     manifest = evidence.get("manifest")
     if not isinstance(manifest, dict) or not isinstance(manifest.get("files"), list):
         return False
+    encoded = json.dumps(manifest, sort_keys=True, separators=(",", ":"),
+                         allow_nan=False).encode("utf-8")
+    if evidence.get("runtime_environment_id") != \
+            "sha256:" + hashlib.sha256(encoded).hexdigest():
+        return False
     for item in manifest["files"]:
         if (not isinstance(item, dict) or not isinstance(item.get("path"), str) or
                 not isinstance(item.get("sha256"), str)):
@@ -398,8 +428,9 @@ def _verify_runtime_environment_evidence(evidence: Mapping[str, Any]) -> bool:
         if not path.is_file() or sha256_file(path) != item["sha256"]:
             return False
     uname = os.uname()
-    return manifest.get("platform") == {
-        "sysname": uname.sysname, "release": uname.release, "machine": uname.machine}
+    return (manifest.get("platform") == {
+        "sysname": uname.sysname, "release": uname.release, "machine": uname.machine} and
+            manifest.get("cpu") == _cpu_identity())
 
 
 def _terminate_owned_child(process: subprocess.Popen[Any], graceful: bool = True) -> None:
@@ -491,6 +522,7 @@ class Collector:
         self._child_environment: Optional[Dict[str, str]] = None
         self._cohort_identity: Optional[Dict[str, Any]] = None
         self._runtime_evidence: Optional[Dict[str, Any]] = None
+        self._cohort_lock: Optional[BinaryIO] = None
         self._lock = threading.Lock()
         self._cancelled = threading.Event()
 
@@ -574,6 +606,20 @@ class Collector:
             self._input_roles[str(resolved)] = item["role"]
             records.append(record)
         return records
+
+    def _requires_execution_identity(self) -> bool:
+        if self._frozen_binary is None:
+            return False
+        binary_name = Path(self._frozen_binary["resolved_path"]).name
+        return (binary_name.startswith("nextpnr-mistral") or
+                self.manifest["architecture"] == "mistral")
+
+    def _validate_telemetry_binding(self) -> None:
+        if not self._requires_execution_identity():
+            return
+        if _option_values(self.manifest["command"], "--gpu-telemetry") != ["{telemetry}"]:
+            raise ValueError(
+                "direct nextpnr collection requires exactly one --gpu-telemetry {telemetry} binding")
 
     def _validate_seed_binding(self) -> None:
         if self._frozen_binary is None:
@@ -670,7 +716,7 @@ class Collector:
                     raise ValueError(
                         f"declared input is not bound to every command argv: {record['path']}")
 
-    def _build_cohort_identity(self) -> Dict[str, Any]:
+    def _build_cohort_identity(self, execution_identity: Optional[Mapping[str, str]] = None) -> Dict[str, Any]:
         if self._frozen_binary is None or self._frozen_inputs is None or self._child_environment is None:
             raise RuntimeError("cohort evidence was not frozen")
         binary = {name: self._frozen_binary[name] for name in
@@ -695,28 +741,56 @@ class Collector:
             "required_clocks": self.manifest["required_clocks"],
             "limits": self.manifest["limits"],
         }
+        if execution_identity is not None:
+            record["execution_identity"] = dict(execution_identity)
         encoded = json.dumps(record, sort_keys=True, separators=(",", ":"),
                              allow_nan=False).encode("utf-8")
         return {"fingerprint_sha256": hashlib.sha256(encoded).hexdigest(),
                 "manifest": record}
 
-    def _claim_cohort_identity(self) -> None:
+    def _cohort_identity_path(self) -> Path:
+        return self.output_root / f"cohort-{_safe_component(self.manifest['cohort']['id'])}.json"
+
+    def _lock_and_check_cohort_identity(self) -> Optional[Dict[str, Any]]:
+        if fcntl is None:
+            raise RuntimeError("cohort collection requires POSIX file locking")
+        if self._cohort_identity is None:
+            raise RuntimeError("cohort identity basis was not built")
+        lock_path = self._cohort_identity_path().with_suffix(".lock")
+        self._cohort_lock = lock_path.open("a+b")
+        fcntl.flock(self._cohort_lock.fileno(), fcntl.LOCK_EX)
+        path = self._cohort_identity_path()
+        if not path.exists():
+            return None
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            raise ValueError(f"existing cohort identity is unreadable: {path}") from error
+        existing_manifest = existing.get("manifest") if isinstance(existing, dict) else None
+        if not isinstance(existing_manifest, dict):
+            raise ValueError(f"existing cohort identity is invalid: {path}")
+        encoded = json.dumps(existing_manifest, sort_keys=True, separators=(",", ":"),
+                             allow_nan=False).encode("utf-8")
+        fingerprint = existing.get("fingerprint_sha256")
+        if (not isinstance(fingerprint, str) or
+                hashlib.sha256(encoded).hexdigest() != fingerprint):
+            raise ValueError(f"existing cohort identity fingerprint is invalid: {path}")
+        existing_basis = dict(existing_manifest)
+        existing_basis.pop("execution_identity", None)
+        if existing_basis != self._cohort_identity["manifest"]:
+            raise ValueError(
+                f"cohort id {self.manifest['cohort']['id']!r} already has a different fingerprint")
+        return existing
+
+    def _claim_cohort_identity(self, existing: Optional[Mapping[str, Any]]) -> None:
         if self._cohort_identity is None:
             raise RuntimeError("cohort identity was not built")
-        path = self.output_root / f"cohort-{_safe_component(self.manifest['cohort']['id'])}.json"
-        try:
-            with path.open("x", encoding="utf-8") as stream:
-                json.dump(self._cohort_identity, stream, indent=2, sort_keys=True,
-                          allow_nan=False)
-                stream.write("\n")
-        except FileExistsError:
-            try:
-                existing = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, UnicodeError, json.JSONDecodeError) as error:
-                raise ValueError(f"existing cohort identity is unreadable: {path}") from error
+        if existing is not None:
             if existing != self._cohort_identity:
                 raise ValueError(
-                    f"cohort id {self.manifest['cohort']['id']!r} already has a different fingerprint")
+                    f"cohort id {self.manifest['cohort']['id']!r} already has a different execution identity")
+            return
+        _json_dump(self._cohort_identity_path(), self._cohort_identity)
 
     def _run_one(self, spec: RunSpec, deadline: float) -> Dict[str, Any]:
         if self._cancelled.is_set():
@@ -751,7 +825,7 @@ class Collector:
             "inputs": self._frozen_inputs,
             "binary": self._frozen_binary,
             "artifacts": self.manifest["artifacts"],
-            "cohort_identity": self._cohort_identity,
+            "cohort_identity_basis": self._cohort_identity,
             "started_unix_seconds": started_wall,
         }
         manifest_path = spec.directory / "manifest.json"
@@ -861,14 +935,69 @@ class Collector:
             result["artifacts"] = artifacts
             result["manifest_sha256"] = manifest_sha256
             result = classify_collected_result(
-                result, evidence_artifacts, self.manifest["required_clocks"])
-            result_path = spec.directory / "result.json"
-            _json_dump(result_path, result)
-            result["result_sha256"] = sha256_file(result_path)
+                result, evidence_artifacts, self.manifest["required_clocks"],
+                self._requires_execution_identity())
             return result
         finally:
             for stream in artifact_streams:
                 stream.close()
+
+    def _bind_execution_identity(self, results: Sequence[Mapping[str, Any]]) -> Optional[Dict[str, str]]:
+        observed = [result.get("outcome", {}).get("execution_backend")
+                    if isinstance(result.get("outcome"), dict) else None for result in results]
+        backends = {backend for backend in observed if isinstance(backend, str) and backend}
+        required = self._requires_execution_identity()
+        if not backends:
+            if required:
+                raise RuntimeError("Mistral cohort has no attested execution backend")
+            return None
+        unattested_exempt = {"cancelled", "timeout", "launch_error",
+                             "not_started_total_budget"}
+        missing_required = [result.get("run_id") for result, backend in zip(results, observed)
+                            if (not isinstance(backend, str) or not backend) and
+                            result.get("process_status", result.get("status")) not in
+                            unattested_exempt]
+        if missing_required:
+            raise RuntimeError(
+                f"Mistral runs lack execution backend attestation: {missing_required}")
+        if len(backends) != 1:
+            raise RuntimeError(
+                f"GPU cohort observed multiple execution backends: {sorted(backends)}")
+        if self._runtime_evidence is None:
+            raise RuntimeError("runtime environment evidence is unavailable")
+        return {"backend": next(iter(backends)),
+                "runtime_environment_id": self._runtime_evidence["runtime_environment_id"]}
+
+    def _write_final_results(self, results: Sequence[Dict[str, Any]],
+                             specs: Sequence[RunSpec]) -> None:
+        if self._cohort_identity is None:
+            raise RuntimeError("cohort identity was not finalized")
+        directories = {spec.run_id: spec.directory for spec in specs}
+        expected_backend = self._cohort_identity["manifest"].get(
+            "execution_identity", {}).get("backend")
+        for result in results:
+            observed_backend = (result.get("outcome", {}).get("execution_backend")
+                                if isinstance(result.get("outcome"), dict) else None)
+            if self._requires_execution_identity() or expected_backend is not None:
+                result["execution_identity_verified"] = (
+                    isinstance(observed_backend, str) and observed_backend == expected_backend)
+            result["cohort_identity"] = self._cohort_identity
+            directory = directories.get(result["run_id"])
+            if directory is None or not directory.is_dir():
+                continue
+            path = directory / "result.json"
+            payload = dict(result)
+            payload.pop("result_sha256", None)
+            _json_dump(path, payload)
+            result["result_sha256"] = sha256_file(path)
+
+    def _write_failure_summary(self, results: Sequence[Mapping[str, Any]], error: BaseException) -> None:
+        summary = {"schema_version": SCHEMA_VERSION,
+                   "cohort": self.manifest["cohort"],
+                   "cohort_identity_basis": self._cohort_identity,
+                   "results": list(results),
+                   "collection_error": f"{type(error).__name__}: {error}"}
+        _json_dump(self.output_root / f"collection-failure-{uuid.uuid4().hex}.json", summary)
 
     def cancel(self) -> None:
         with self._lock:
@@ -890,11 +1019,12 @@ class Collector:
             self._validate_seed_binding()
             self._validate_implicit_runtime_inputs()
             self._validate_known_input_options()
+            self._validate_telemetry_binding()
             specs = self.plan()
             self._validate_declared_inputs_bound(specs)
             self._validate_no_undeclared_file_arguments(specs)
             self._cohort_identity = self._build_cohort_identity()
-            self._claim_cohort_identity()
+            existing_identity = self._lock_and_check_cohort_identity()
             deadline = time.monotonic() + self.manifest["limits"]["total_seconds"]
             executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self.manifest["limits"]["concurrency"])
@@ -938,16 +1068,41 @@ class Collector:
                     results.append({"run_id": spec.run_id, "seed": spec.seed,
                                     "repeat": spec.repeat, "status": "runner_error",
                                     "error": f"{type(error).__name__}: {error}"})
+            try:
+                if not _verify_runtime_environment_evidence(self._runtime_evidence):
+                    raise RuntimeError("runtime environment changed during cohort collection")
+                execution_identity = self._bind_execution_identity(results)
+            except BaseException as error:
+                self._write_failure_summary(results, error)
+                if interrupted is not None:
+                    raise interrupted
+                raise
+            try:
+                if execution_identity is not None:
+                    self._cohort_identity = self._build_cohort_identity(execution_identity)
+                elif existing_identity is not None:
+                    self._cohort_identity = dict(existing_identity)
+                claimable = (existing_identity is not None or execution_identity is not None or
+                             not self._requires_execution_identity())
+                if claimable:
+                    self._claim_cohort_identity(existing_identity)
+                self._write_final_results(results, specs)
+            except BaseException as error:
+                self._write_failure_summary(results, error)
+                if interrupted is not None:
+                    raise interrupted
+                raise
             summary = {"schema_version": SCHEMA_VERSION,
                        "cohort": self.manifest["cohort"],
                        "cohort_identity": self._cohort_identity, "results": results}
-            if not _verify_runtime_environment_evidence(self._runtime_evidence):
-                raise RuntimeError("runtime environment changed during cohort collection")
             _json_dump(self.output_root / f"collection-{uuid.uuid4().hex}.json", summary)
             if interrupted is not None:
                 raise interrupted
             return results
         finally:
+            if self._cohort_lock is not None:
+                self._cohort_lock.close()
+                self._cohort_lock = None
             self._close_snapshots()
 
 
@@ -1120,7 +1275,8 @@ def _final_timing_evidence(path: Optional[Path], required_clocks: Sequence[str])
 
 
 def classify_collected_result(result: Mapping[str, Any], artifacts: Mapping[str, Any],
-                              required_clocks: Sequence[str]) -> Dict[str, Any]:
+                              required_clocks: Sequence[str],
+                              require_execution_backend: bool = False) -> Dict[str, Any]:
     classified = dict(result)
     process_status = classified["status"]
     classified["process_status"] = process_status
@@ -1135,6 +1291,18 @@ def classify_collected_result(result: Mapping[str, Any], artifacts: Mapping[str,
         except (OSError, UnicodeError):
             pass
     terminal = records[-1] if records and records[-1].get("event") == "run_end" else None
+    setup_records = [record for record in records
+                     if record.get("event") == "phase_end" and record.get("phase") == "setup"]
+    setup_backends = [record.get("backend") for record in setup_records]
+    unique_backends = {backend for backend in setup_backends
+                       if isinstance(backend, str) and backend}
+    execution_backend = None
+    if (setup_records and len(unique_backends) == 1 and
+            len(setup_backends) == len([backend for backend in setup_backends
+                                        if isinstance(backend, str) and backend])):
+        execution_backend = next(iter(unique_backends))
+    elif require_execution_backend or setup_records:
+        telemetry_incomplete = True
     routing_legal = terminal.get("routing_legal") if isinstance(terminal, dict) else None
     if not isinstance(routing_legal, bool):
         routing_legal = None
@@ -1153,6 +1321,7 @@ def classify_collected_result(result: Mapping[str, Any], artifacts: Mapping[str,
         "telemetry_complete": not telemetry_incomplete,
         "legal_route": routing_legal,
         "timing_gate_pass": timing_gate_pass,
+        "execution_backend": execution_backend,
         "required_clocks": timing["required_clocks"],
         "analogue_clocks": timing["analogue_clocks"],
         "analogue_timing_pass": timing["analogue_timing_pass"],
@@ -1260,7 +1429,47 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
                              allow_nan=False).encode("utf-8")
         if hashlib.sha256(encoded).hexdigest() != fingerprint:
             raise ValueError("cohort identity fingerprint does not match its canonical manifest")
-        identity_cohort = identity["manifest"].get("cohort")
+        identity_manifest = identity["manifest"]
+        identity_command = identity_manifest.get("command")
+        direct_nextpnr = (isinstance(identity_command, list) and identity_command and
+                          isinstance(identity_command[0], str) and
+                          (Path(identity_command[0]).name.startswith("nextpnr-mistral") or
+                           identity_manifest.get("architecture") == "mistral"))
+        declared_gpu = (direct_nextpnr and
+                        _option_values(identity_command, "--router") == ["gpu"])
+        observed_backend = outcome.get("execution_backend")
+        if direct_nextpnr or declared_gpu or "execution_identity" in identity_manifest or \
+                isinstance(observed_backend, str):
+            execution_identity = identity_manifest.get("execution_identity")
+            if (not isinstance(execution_identity, dict) or
+                    not isinstance(execution_identity.get("backend"), str) or
+                    not execution_identity["backend"] or
+                    observed_backend != execution_identity["backend"]):
+                raise ValueError("GPU run execution backend is not bound by its cohort identity")
+            runtime_id = execution_identity.get("runtime_environment_id")
+            runtime_binary = identity_manifest.get("binary")
+            runtime_evidence = (runtime_binary.get("runtime_environment")
+                                if isinstance(runtime_binary, dict) else None)
+            runtime_manifest = (runtime_evidence.get("manifest")
+                                if isinstance(runtime_evidence, dict) else None)
+            runtime_manifest_id = None
+            if isinstance(runtime_manifest, dict):
+                runtime_encoded = json.dumps(
+                    runtime_manifest, sort_keys=True, separators=(",", ":"),
+                    allow_nan=False).encode("utf-8")
+                runtime_manifest_id = "sha256:" + hashlib.sha256(runtime_encoded).hexdigest()
+            provenance = identity_manifest.get("provenance")
+            if (not isinstance(runtime_id, str) or not runtime_id.startswith("sha256:") or
+                    len(runtime_id) != 71 or
+                    any(character not in "0123456789abcdef" for character in runtime_id[7:]) or
+                    not isinstance(runtime_evidence, dict) or
+                    runtime_evidence.get("runtime_environment_id") != runtime_id or
+                    runtime_manifest_id != runtime_id or
+                    not isinstance(provenance, dict) or
+                    provenance.get("runtime_environment_id") != runtime_id):
+                raise ValueError(
+                    "GPU run runtime environment is not cross-bound by its cohort identity")
+        identity_cohort = identity_manifest.get("cohort")
         if (not isinstance(identity_cohort, dict) or
                 identity_cohort.get("id") != run["cohort_id"] or
                 identity_cohort.get("mapped_design_id") != run["mapped_design_id"] or

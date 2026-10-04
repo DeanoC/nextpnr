@@ -133,6 +133,49 @@ class DatasetTests(unittest.TestCase):
         document["runs"][0]["status"] = "timing_constraint_failure"
         seed_racing.validate_dataset(document)
 
+    def test_dataset_binds_gpu_runs_to_the_cohort_execution_backend(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        identity = document["cohort_identities"]["synthetic"]
+        identity["manifest"]["command"] = ["nextpnr-mistral", "--router", "gpu"]
+        runtime_manifest = {"runtime_binary": "/test/nextpnr", "files": []}
+        runtime_encoded = json.dumps(
+            runtime_manifest, sort_keys=True, separators=(",", ":")).encode()
+        runtime_id = "sha256:" + seed_racing.hashlib.sha256(runtime_encoded).hexdigest()
+        identity["manifest"]["execution_identity"] = {
+            "backend": "cuda:0:0000:01:00.0:GPU", "runtime_environment_id": runtime_id
+        }
+        identity["manifest"]["provenance"] = {"runtime_environment_id": runtime_id}
+        identity["manifest"]["binary"] = {
+            "runtime_environment": {"runtime_environment_id": runtime_id,
+                                    "manifest": runtime_manifest}}
+        encoded = json.dumps(identity["manifest"], sort_keys=True, separators=(",", ":")).encode()
+        identity["fingerprint_sha256"] = seed_racing.hashlib.sha256(encoded).hexdigest()
+        for run in document["runs"]:
+            if run["cohort_id"] == "synthetic":
+                run["cohort_fingerprint_sha256"] = identity["fingerprint_sha256"]
+                run["outcome"]["execution_backend"] = identity["manifest"]["execution_identity"]["backend"]
+        seed_racing.validate_dataset(document)
+        document["runs"][0]["outcome"]["execution_backend"] = "cpu-reference"
+        with self.assertRaisesRegex(ValueError, "execution backend"):
+            seed_racing.validate_dataset(document)
+        del document["runs"][0]["outcome"]["execution_backend"]
+        with self.assertRaisesRegex(ValueError, "execution backend"):
+            seed_racing.validate_dataset(document)
+        document["runs"][0]["outcome"]["execution_backend"] = \
+            identity["manifest"]["execution_identity"]["backend"]
+        forged_runtime_id = "sha256:" + "b" * 64
+        identity["manifest"]["execution_identity"]["runtime_environment_id"] = forged_runtime_id
+        identity["manifest"]["provenance"]["runtime_environment_id"] = forged_runtime_id
+        identity["manifest"]["binary"]["runtime_environment"][
+            "runtime_environment_id"] = forged_runtime_id
+        encoded = json.dumps(identity["manifest"], sort_keys=True, separators=(",", ":")).encode()
+        identity["fingerprint_sha256"] = seed_racing.hashlib.sha256(encoded).hexdigest()
+        for run in document["runs"]:
+            if run["cohort_id"] == "synthetic":
+                run["cohort_fingerprint_sha256"] = identity["fingerprint_sha256"]
+        with self.assertRaisesRegex(ValueError, "runtime environment"):
+            seed_racing.validate_dataset(document)
+
     def test_dataset_rejects_unknown_terminal_status(self):
         document = json.loads(FIXTURE.read_text(encoding="utf-8"))
         document["runs"][0]["status"] = "complete"
@@ -290,7 +333,7 @@ class CollectorTests(unittest.TestCase):
                 immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
                 self.assertEqual(immutable["seed"], result["seed"])
                 self.assertEqual(len(immutable["inputs"][0]["sha256"]), 64)
-                self.assertEqual(len(immutable["cohort_identity"]["fingerprint_sha256"]), 64)
+                self.assertEqual(len(immutable["cohort_identity_basis"]["fingerprint_sha256"]), 64)
                 self.assertEqual(result["manifest_sha256"],
                                  seed_racing.sha256_file(run_dir / "manifest.json"))
                 self.assertEqual(result["result_sha256"],
@@ -697,9 +740,24 @@ class CollectorTests(unittest.TestCase):
             output = Path(temporary) / "runs"
             first = self.manifest(temporary, [sys.executable, "-c", "pass"])
             seed_racing.Collector(first, output).run()
-            second = self.manifest(temporary, [sys.executable, "-c", "print('different')"])
+            marker = Path(temporary) / "must-not-run"
+            code = f"import pathlib; pathlib.Path({str(marker)!r}).write_text('ran')"
+            second = self.manifest(temporary, [sys.executable, "-c", code])
             with self.assertRaisesRegex(ValueError, "different fingerprint"):
                 seed_racing.Collector(second, output).run()
+            self.assertFalse(marker.exists())
+
+    def test_runtime_change_fails_before_final_publication(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            manifest = self.manifest(temporary, [sys.executable, "-c", "pass"])
+            with mock.patch.object(seed_racing, "_verify_runtime_environment_evidence",
+                                   return_value=False):
+                with self.assertRaisesRegex(RuntimeError, "runtime environment changed"):
+                    seed_racing.Collector(manifest, output).run()
+            self.assertFalse((output / "cohort-cohort.json").exists())
+            self.assertEqual(len(list(output.glob("collection-failure-*.json"))), 1)
+            self.assertFalse(any(output.glob("cohort/*/result.json")))
 
     def test_collection_identity_binds_execution_limits(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -739,6 +797,9 @@ class CollectorTests(unittest.TestCase):
             expected = str(Path(seed_racing.shutil.which("python3", path=environment["PATH"])).resolve())
             self.assertEqual(evidence["manifest"]["runtime_binary"], expected)
             self.assertIn(str(Path("/usr/bin/env").resolve()), evidence["manifest"]["launchers"])
+            self.assertTrue(seed_racing._verify_runtime_environment_evidence(evidence))
+            evidence["runtime_environment_id"] = "sha256:" + "0" * 64
+            self.assertFalse(seed_racing._verify_runtime_environment_evidence(evidence))
 
     def test_normal_leader_exit_kills_residual_process_group(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -813,6 +874,67 @@ class CollectorTests(unittest.TestCase):
             self.assertEqual(result["outcome"]["required_clocks"], ["clk", "related"])
             self.assertEqual([clock["available"] for clock in result["outcome"]["analogue_clocks"]],
                              [False, False])
+
+    def test_gpu_collection_fingerprints_actual_backend_and_rejects_mixed_devices(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-mistral"
+            runner.write_text("""#!/usr/bin/env python3
+import json, pathlib, sys
+def option(name): return sys.argv[sys.argv.index(name) + 1]
+seed = int(option('--seed'))
+backend = 'cuda:0:0000:01:00.0:GPU-A' if seed == 1 else 'cuda:1:0000:02:00.0:GPU-B'
+assert not (pathlib.Path(option('--gpu-telemetry')).parent / 'result.json').exists()
+phase_end = {'schema_version':1,'sequence':2,'run_id':'r','event':'phase_end','phase':'setup','attempt':0,'elapsed_s':0.2}
+if seed not in (3, 4): phase_end['backend'] = backend
+records = [
+ {'schema_version':1,'sequence':0,'run_id':'r','event':'run_start','phase':None,'attempt':None,'elapsed_s':0},
+ {'schema_version':1,'sequence':1,'run_id':'r','event':'phase_start','phase':'setup','attempt':0,'elapsed_s':0.1},
+ phase_end,
+ {'schema_version':1,'sequence':3,'run_id':'r','event':'run_end','phase':None,'attempt':None,'elapsed_s':1,'routing_legal':True,'timing_gate_pass':True,'status':'routing_legal'}]
+pathlib.Path(option('--gpu-telemetry')).write_text(''.join(json.dumps(r) + '\\n' for r in records))
+clock = {'name':'clk','available':True,'setup_wns_ns':0.1,'hold_wns_ns':0.1}
+pathlib.Path(option('--report')).write_text(json.dumps({'outcome':{'analogue_clocks':[clock]}}))
+if seed == 4: sys.exit(1)
+""", encoding="utf-8")
+            runner.chmod(0o755)
+            command = [str(runner), "--router", "gpu", "--seed", "{seed}",
+                       "--gpu-telemetry", "{telemetry}", "--report", "{report}"]
+            manifest = self.manifest(temporary, command, seeds=[1, 2])
+            output = Path(temporary) / "mixed"
+            with self.assertRaisesRegex(RuntimeError, "observed multiple execution backends"):
+                seed_racing.Collector(manifest, output).run()
+            self.assertFalse((output / "cohort-cohort.json").exists())
+
+            manifest = self.manifest(temporary, command, seeds=[1, 3])
+            output = Path(temporary) / "missing"
+            with self.assertRaisesRegex(RuntimeError, "lack execution backend attestation"):
+                seed_racing.Collector(manifest, output).run()
+            self.assertFalse((output / "cohort-cohort.json").exists())
+            failure = json.loads(next(output.glob("collection-failure-*.json")).read_text())
+            self.assertEqual(len(failure["results"]), 2)
+
+            manifest = self.manifest(temporary, command, seeds=[1, 4])
+            output = Path(temporary) / "missing-failure"
+            with self.assertRaisesRegex(RuntimeError, "lack execution backend attestation"):
+                seed_racing.Collector(manifest, output).run()
+            self.assertTrue(any(output.glob("collection-failure-*.json")))
+
+            unverifiable_command = command[:5] + command[7:]
+            manifest = self.manifest(temporary, unverifiable_command, seeds=[1])
+            with self.assertRaisesRegex(ValueError, "--gpu-telemetry"):
+                seed_racing.Collector(manifest, Path(temporary) / "unverifiable").run()
+
+            non_cli_gpu_command = command[:1] + command[3:]
+            manifest = self.manifest(temporary, non_cli_gpu_command, seeds=[1])
+            output = Path(temporary) / "single"
+            result = seed_racing.Collector(manifest, output).run()[0]
+            identity = result["cohort_identity"]
+            self.assertEqual(identity["manifest"]["execution_identity"]["backend"],
+                             "cuda:0:0000:01:00.0:GPU-A")
+            run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
+            persisted = json.loads((run_dir / "result.json").read_text())
+            self.assertEqual(persisted["cohort_identity"], identity)
+            self.assertEqual(json.loads((output / "cohort-cohort.json").read_text()), identity)
 
     def test_manifest_requires_nextpnr_seed_option_binding(self):
         with tempfile.TemporaryDirectory() as temporary:
