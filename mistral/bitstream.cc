@@ -20,7 +20,7 @@
 #include "log.h"
 #include "nextpnr.h"
 #include "dsp.h"
-#include "pll.h"
+#include "pll_cell.h"
 #include "timing.h"
 #include "util.h"
 
@@ -411,6 +411,10 @@ struct MistralBitgen
     void write_clkbuf_cell(CellInfo *ci, int x, int y, int bi)
     {
         auto pos = CycloneV::xycoords{x, y};
+        // Subblocks 4..7 are the PLL-dedicated vertical (CMUXVG) lanes.
+        const CycloneV::block_type_t cmux = bi >= 4 ? CycloneV::CMUXVG : CycloneV::CMUXHG;
+        if (bi >= 4)
+            bi -= 4;
         auto net = ci->getPort(id_A);
         auto input = ctx->getBelPinWire(ci->bel, id_A);
         int select = 0x1b;
@@ -419,136 +423,99 @@ struct MistralBitgen
             if (ctx->pll_clock_select.count(pip))
                 select = ctx->pll_clock_select.at(pip);
         }
-        NPNR_ASSERT(cv->bmux_r_set(CycloneV::CMUXHG, pos, CycloneV::INPUT_SEL, bi, select));
-        cv->bmux_m_set(CycloneV::CMUXHG, pos, CycloneV::TESTSYN_ENOUT_SELECT, bi, CycloneV::PRE_SYNENB);
+        NPNR_ASSERT(cv->bmux_r_set(cmux, pos, CycloneV::INPUT_SEL, bi, select));
+        cv->bmux_m_set(cmux, pos, CycloneV::TESTSYN_ENOUT_SELECT, bi, CycloneV::PRE_SYNENB);
         if (ci->type == id_MISTRAL_CLKENA) {
             std::string register_mode = str_or_default(ci->params, ctx->id("ena_register_mode"), "falling edge");
-            NPNR_ASSERT(cv->bmux_m_set(CycloneV::CMUXHG, pos, CycloneV::ENABLE_REGISTER_MODE, bi,
+            NPNR_ASSERT(cv->bmux_m_set(cmux, pos, CycloneV::ENABLE_REGISTER_MODE, bi,
                                       register_mode == "double register" ? CycloneV::REG2_ENOUT : CycloneV::REG1_ENOUT));
-            NPNR_ASSERT(cv->bmux_n_set(CycloneV::CMUXHG, pos, CycloneV::ENABLE_REGISTER_POWER_UP, bi,
+            NPNR_ASSERT(cv->bmux_n_set(cmux, pos, CycloneV::ENABLE_REGISTER_POWER_UP, bi,
                                       str_or_default(ci->params, ctx->id("ena_register_power_up"), "high") == "low" ? 0 : 1));
         }
     }
 
     void write_pll_cell(CellInfo *ci, int x, int y)
     {
+        using namespace mistral_pll_solver;
         auto pos = CycloneV::xycoords{x, y};
         auto raw = [&](CycloneV::bmux_type_t mux, uint64_t value, int index = 0) {
             NPNR_ASSERT(cv->bmux_r_set(CycloneV::FPLL, pos, mux, index, value));
         };
-        auto flag = [&](CycloneV::bmux_type_t mux, bool value) {
-            NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, mux, 0, value));
+        auto flag = [&](CycloneV::bmux_type_t mux, bool value, int index = 0) {
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, mux, index, value));
         };
         auto ref = ci->getPort(id_refclk);
         auto pip = ref->wires.at(ctx->getBelPinWire(ci->bel, id_refclk)).pip;
         raw(CycloneV::CLKIN_0_SRC, ctx->pll_ref_select.at(pip));
-        int reference_mhz = mistral_pll::parse_mhz(ci->params.at(ctx->id("reference_clock_frequency")).as_string());
-        int duty0 = int_or_default(ci->params, ctx->id("duty_cycle0"), 50);
-        int duty1 = int_or_default(ci->params, ctx->id("duty_cycle1"), 50);
-        auto config = mistral_pll::select_hz(mistral_pll::parse_output_hz(
-                ci->params.at(ctx->id("output_clock_frequency0")).as_string()), reference_mhz, duty0);
-        bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
-        if (fractional && int_or_default(ci->params, ctx->id("number_of_clocks"), 1) == 1) {
-            config = mistral_pll::select_fractional(mistral_pll::parse_output_hz(
-                    ci->params.at(ctx->id("output_clock_frequency0")).as_string()), reference_mhz);
-        }
-        int c1 = 0;
-        if (int_or_default(ci->params, ctx->id("number_of_clocks"), 1) >= 2) {
-            auto hz0 = mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency0")).as_string());
-            auto hz1 = mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency1")).as_string());
-            auto dual = fractional ? mistral_pll::select_fractional_dual(hz0, hz1, reference_mhz) :
-                                     mistral_pll::select_dual_hz(hz0, hz1, reference_mhz, duty0, duty1);
-            NPNR_ASSERT(dual);
-            config = dual->feedback;
-            c1 = dual->c1;
-        }
-        int clocks = int_or_default(ci->params, ctx->id("number_of_clocks"), 1);
-        std::optional<mistral_pll::MultiConfig> multi;
-        std::array<int, 4> duties{duty0, duty1, 50, 50};
-        if (clocks >= 3) {
-            std::array<int64_t, 4> hz{};
-            for (int i = 0; i < clocks; ++i)
-                hz[i] = mistral_pll::parse_output_hz(ci->params.at(ctx->idf("output_clock_frequency%d", i)).as_string());
-            for (int i = 2; i < clocks; ++i)
-                duties[i] = int_or_default(ci->params, ctx->idf("duty_cycle%d", i), 50);
-            multi = mistral_pll::select_multi_hz(hz, clocks, reference_mhz, duties);
-            NPNR_ASSERT(multi);
-            config = multi->feedback;
-            c1 = multi->counters[1];
-        }
-        NPNR_ASSERT(config);
-        if (c1) {
-            auto counts = mistral_pll::duty_counts(c1, duty1);
-            NPNR_ASSERT(counts);
-            raw(CycloneV::DPRIO0_CNT_HI_DIV, counts->high, 7);
-            raw(CycloneV::DPRIO0_CNT_LO_DIV, counts->low, 7);
-            auto phase = mistral_pll::select_phase(str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps"),
-                    mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency0")).as_string()));
-            NPNR_ASSERT(phase);
-            if (phase->shift_ps) {
-                raw(CycloneV::CNT_PRESET, phase->c_preset, 7);
-                raw(CycloneV::CNT_PH_MUX_PRESET, phase->c_phase_preset, 7);
+        // Packing validated the request; the solver is deterministic.
+        MistralPllRequest req;
+        NPNR_ASSERT(mistral_pll_parse(ctx, ci, req).empty());
+        Result solved = solve(req.ref_hz, req.fractional, req.outputs);
+        NPNR_ASSERT(solved.solution);
+        const Solution &sol = *solved.solution;
+        std::vector<int> counters;
+        {
+            std::string list = str_or_default(ci->attrs, ctx->id("MISTRAL_PLL_COUNTERS"), "");
+            size_t start = 0;
+            while (start < list.size()) {
+                size_t comma = list.find(',', start);
+                counters.push_back(std::stoi(list.substr(start, comma - start)));
+                start = comma == std::string::npos ? list.size() : comma + 1;
             }
-            NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
-                                      7, counts->odd));
-            raw(CycloneV::CNT_IN_SRC, 0, 7);
-            flag(CycloneV::C7_COUT_EN, true);
         }
-        for (int i = 2; i < clocks; ++i) {
-            int counter = i == 2 ? 5 : 8;
-            auto counts = mistral_pll::duty_counts(multi->counters[i], duties[i]);
-            NPNR_ASSERT(counts);
-            raw(CycloneV::DPRIO0_CNT_HI_DIV, counts->high, counter);
-            raw(CycloneV::DPRIO0_CNT_LO_DIV, counts->low, counter);
-            NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
-                                      counter, counts->odd));
-            auto phase = mistral_pll::select_phase(
-                    str_or_default(ci->params, ctx->idf("phase_shift%d", i), "0 ps"),
-                    mistral_pll::parse_output_hz(ci->params.at(ctx->id("output_clock_frequency0")).as_string()));
-            NPNR_ASSERT(phase);
-            if (phase->shift_ps) {
-                raw(CycloneV::CNT_PRESET, phase->c_preset, counter);
-                raw(CycloneV::CNT_PH_MUX_PRESET, phase->c_phase_preset, counter);
+        NPNR_ASSERT(int(counters.size()) == req.clocks);
+        static const std::array<CycloneV::bmux_type_t, 9> cout_en{
+                CycloneV::C0_COUT_EN, CycloneV::C1_COUT_EN, CycloneV::C2_COUT_EN, CycloneV::C3_COUT_EN,
+                CycloneV::C4_COUT_EN, CycloneV::C5_COUT_EN, CycloneV::C6_COUT_EN, CycloneV::C7_COUT_EN,
+                CycloneV::C8_COUT_EN};
+        bool upper_counter = false;
+        for (int i = 0; i < req.clocks; ++i) {
+            const CounterSetting &cs = sol.outputs[i];
+            int counter = counters[i];
+            upper_counter |= counter >= 4;
+            raw(CycloneV::DPRIO0_CNT_HI_DIV, cs.high & 0xff, counter);
+            raw(CycloneV::DPRIO0_CNT_LO_DIV, cs.low & 0xff, counter);
+            flag(CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN, cs.odd, counter);
+            if (cs.bypass)
+                flag(CycloneV::BYPASS_EN, true, counter);
+            if (cs.preset != 1 || cs.phase_mux != 0) {
+                raw(CycloneV::CNT_PRESET, cs.preset, counter);
+                raw(CycloneV::CNT_PH_MUX_PRESET, cs.phase_mux, counter);
             }
             raw(CycloneV::CNT_IN_SRC, 0, counter);
-            flag(i == 2 ? CycloneV::C5_COUT_EN : CycloneV::C8_COUT_EN, true);
+            flag(cout_en[counter], true);
         }
-        raw(CycloneV::M_CNT_HI_DIV_SETTING, (config->m + 1) / 2);
-        raw(CycloneV::M_CNT_LO_DIV_SETTING, config->m / 2);
-        // Fractional profiles may use an odd integer part of M. Quartus
-        // enables the even-duty correction for those divide values; keep the
-        // established even-M profiles at their default without emitting a
-        // redundant zero.
-        if (fractional && (config->m & 1))
+        raw(CycloneV::M_CNT_HI_DIV_SETTING, (sol.m + 1) / 2);
+        raw(CycloneV::M_CNT_LO_DIV_SETTING, sol.m / 2);
+        if (sol.m_odd)
             flag(CycloneV::M_CNT_ODD_DIV_DUTY_EN, true);
-        raw(CycloneV::N_CNT_HI_DIV_SETTING, fractional ? 0 : (config->n + 1) / 2);
-        raw(CycloneV::N_CNT_LO_DIV_SETTING, fractional ? 0 : config->n / 2);
-        if (fractional) {
+        if (sol.n_bypass) {
             flag(CycloneV::N_CNT_BYPASS_EN, true);
-            raw(CycloneV::DSM_OUT_SEL, 1);
+            raw(CycloneV::N_CNT_HI_DIV_SETTING, 0);
+            raw(CycloneV::N_CNT_LO_DIV_SETTING, 0);
+        } else {
+            // N has no duty-cycle correction, including odd N.
+            raw(CycloneV::N_CNT_HI_DIV_SETTING, (sol.n + 1) / 2);
+            raw(CycloneV::N_CNT_LO_DIV_SETTING, sol.n / 2);
         }
-        // N has no duty-cycle correction, including the checked odd N=5.
-        auto counts = mistral_pll::duty_counts(config->c, duty0);
-        NPNR_ASSERT(counts);
-        raw(CycloneV::DPRIO0_CNT_HI_DIV, counts->high, 6);
-        raw(CycloneV::DPRIO0_CNT_LO_DIV, counts->low, 6);
-        NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, pos, CycloneV::DPRIO0_CNT_ODD_DIV_EVEN_DUTY_EN,
-                                  6, counts->odd));
-        raw(CycloneV::M_CNT_LO_PRESET_SETTING, config->m_low_preset);
-        raw(CycloneV::M_CNT_PH_MUX_PRESET_SETTING, config->m_phase_preset);
-        raw(CycloneV::CNT_IN_SRC, 0, 6);
+        if (sol.fractional)
+            raw(CycloneV::DSM_OUT_SEL, 1);
+        raw(CycloneV::M_CNT_LO_PRESET_SETTING, sol.m_low_preset);
+        raw(CycloneV::M_CNT_PH_MUX_PRESET_SETTING, sol.m_phase_preset);
         raw(CycloneV::FBCLK_MUX_2, 1);
-        raw(CycloneV::VCO_DIV, 0);
+        raw(CycloneV::VCO_DIV, sol.vco_div_setting);
         raw(CycloneV::TCLK_SEL, 0);
-        raw(CycloneV::BWCTRL, config->bandwidth);
-        raw(CycloneV::CP_CURRENT, config->charge_pump);
-        raw(CycloneV::FRACTIONAL_DIVISION_SETTING, config->fraction);
+        raw(CycloneV::BWCTRL, sol.bwctrl);
+        raw(CycloneV::CP_CURRENT, sol.cp_current);
+        raw(CycloneV::FRACTIONAL_DIVISION_SETTING, sol.k);
         raw(CycloneV::LOCK_FILTER_CFG_SETTING, 0x19);
         raw(CycloneV::UNLOCK_FILTER_CFG_SETTING, 2);
         flag(CycloneV::CTRL_OVERRIDE_SETTING, false);
         flag(CycloneV::NREVERT_INVERT, true);
-        flag(CycloneV::C6_COUT_EN, true);
-        flag(CycloneV::VCO0PH_EN, true);
+        // Quartus enables VCO phase 0 only when a counter from C4..C8 is used
+        // (observed at FPLL (89,0), whose C0..C3 reach global clocks).
+        if (upper_counter)
+            flag(CycloneV::VCO0PH_EN, true);
         for (auto mux : {CycloneV::VCO_PH0_EN, CycloneV::VCO_PH1_EN, CycloneV::VCO_PH2_EN, CycloneV::VCO_PH3_EN,
                          CycloneV::VCO_PH4_EN, CycloneV::VCO_PH5_EN, CycloneV::VCO_PH6_EN, CycloneV::VCO_PH7_EN})
             flag(mux, true);
@@ -557,10 +524,9 @@ struct MistralBitgen
         // fabric rst. Only the unconnected, folded-low case needs inversion.
         NPNR_ASSERT(cv->inv_set(cv->rc2ri(find_rnode(CycloneV::FPLL, pos, CycloneV::NRESET0)),
                                ci->getPort(id_rst) == nullptr));
-        // The fixed 5CSEBA6U23I7/V11 profile also requires the unused
-        // auxiliary bandgap at (0,73) powered down. This is outside the
-        // selected FPLL's PRAM: omitting it gives no lock and no output on
-        // hardware despite identical settings at (0,14). See the PLL test.
+        // Quartus powers down the unused auxiliary bandgap at FPLL (0,73)
+        // whenever a PLL is used, including when (0,73) itself is the PLL.
+        // Omitting it gave no lock on hardware; see the PLL test README.
         NPNR_ASSERT(cv->bmux_b_set(CycloneV::FPLL, CycloneV::xycoords{0, 73},
                                   CycloneV::PL_AUX_BG_POWERDOWN, 0, true));
     }

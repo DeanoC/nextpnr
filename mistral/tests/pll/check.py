@@ -56,26 +56,26 @@ def main():
     assert "s FPLL.000.073:PL_AUX_BG_POWERDOWN 1" in bt
     assert "PLL_FEEDBACK_ENABLE" not in bt
     assert "o OPT_B ffffff40.2dffffff" in bt
-    for name, parameter, value in (("frequency", "output_clock_frequency0", "7.0 MHz"),
-                                   ("mode", "operation_mode", "normal"),
-                                   ("fractional", "fractional_vco_multiplier", "true"),
-                                   ("phase", "phase_shift0", "100 ps"),
-                                   ("duty", "duty_cycle0", format(40, "032b")),
-                                   ("count", "number_of_clocks", format(5, "032b"))):
+    # The general solver accepts every configuration Quartus implements
+    # (mistral/tests/pll/solver.py); these remain unsupported and must fail.
+    for name, parameter, value, expected in (
+            ("frequency", "output_clock_frequency0", "7.0000001 MHz", "at most six decimal places"),
+            ("too-fast", "output_clock_frequency0", "600.0 MHz", "exceed the -7 global clock limit"),
+            ("mode", "operation_mode", "normal", "unsupported parameter"),
+            ("fractional", "fractional_vco_multiplier", "true", "fractional-N mode supports reference clocks"),
+            ("phase", "phase_shift0", "-100 ps", "unsupported PLL output frequency/duty/phase"),
+            ("duty", "duty_cycle0", format(0, "032b"), "duty cycle must be an integer percent"),
+            ("count", "number_of_clocks", format(10, "032b"), "number_of_clocks must")):
         invalid = copy.deepcopy(design)
         pll = invalid["modules"]["top"]["cells"]["pll"]
         pll["parameters"][parameter] = value
         if name == "fractional":
-            # 25 MHz output is now a valid generic fractional rate; use the
-            # unsupported reference to exercise the fractional-only guard.
+            # 25 MHz is a valid generic fractional rate; use an unsupported
+            # reference to exercise the fractional-only guard.
             pll["parameters"]["reference_clock_frequency"] = "25.0 MHz"
         path = out / f"invalid-{name}.json"
         path.write_text(json.dumps(invalid))
         log = run(command + ["--json", str(path)], out / f"invalid-{name}.log", success=False)
-        expected = {"frequency": "unsupported PLL output frequency",
-                    "count": "number_of_clocks must",
-                    "duty": "unsupported PLL output frequency/duty",
-                    "fractional": "fractional-N selector requires"}.get(name, "unsupported parameter")
         assert expected in log, log
     for name in ("reset", "fanout", "port"):
         invalid = copy.deepcopy(design)
@@ -112,7 +112,7 @@ def main():
     invalid_command = command.copy()
     invalid_command[invalid_command.index("--qsf") + 1] = str(qsf)
     log = run(invalid_command + ["--json", str(out / "synth.json")], out / "invalid-reference-pin.log", success=False)
-    assert "dedicated reference from PIN_V11" in log, log
+    assert "has no dedicated clock path to an FPLL" in log, log
     digest = hashlib.sha256((out / "top.rbf").read_bytes()).hexdigest()
     print(f"PASS: one PLL, 25 MHz generated clock, direct C6 configuration; RBF sha256 {digest}")
 

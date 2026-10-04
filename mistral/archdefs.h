@@ -79,8 +79,11 @@ struct BelId
     BelId(CycloneV::xycoords _pos, uint16_t _z) : pos{_pos}, z{_z} {}
 
     // xycoords is used for X/Y, nextpnr-cyclonev uses its own Z coordinate system.
+    // z == 0xffff is the only invalid value. Tile (0,0) bel 0 is the corner
+    // FPLL, so an all-zero BelId would be a real site and could not mean
+    // "unbound" (bind, availability and pll_output_wire all use BelId()).
     CycloneV::xycoords pos{};
-    uint16_t z = 0;
+    uint16_t z = 0xffff;
 
     bool operator==(const BelId &other) const { return pos == other.pos && z == other.z; }
     bool operator!=(const BelId &other) const { return pos != other.pos || z != other.z; }

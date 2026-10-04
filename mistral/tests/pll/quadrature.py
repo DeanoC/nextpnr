@@ -160,26 +160,18 @@ def main(phases=(0, 10, 20, 30), profile=None, reference_mhz=50, output_mhz=25, 
                   out / f"invalid-{name}.log", success=False)
         assert "ERROR" in log and any(reason in log for reason in reasons), log
 
-    invalid_phases = (100, int(period_ns * 250) + 1, -int(period_ns * 250), int(period_ns * 1000))
-    if output_mhz == 50:
-        invalid_phases += (2501,)
+    # The general solver accepts any phase Quartus realises (VCO/8 steps,
+    # 5 ps tolerance, any reference/duty/frequency it implements); negative
+    # and beyond-preset phases and unrealisable references remain rejected.
+    invalid_phases = (-int(period_ns * 250), 1000000)
     for name, changes in (
-        ("phase0", {"phase_shift0": "10000 ps"}),
         *[(f"phase{i}-{value}", {f"phase_shift{i}": f"{value} ps"})
           for i in range(1, count) for value in invalid_phases],
         ("reference", {"reference_clock_frequency": "26 MHz"}),
-        ("fractional", {"fractional_vco_multiplier": "true"}),
-        *[(f"duty{i}", {f"duty_cycle{i}": format(25, "032b")}) for i in range(count)],
-        *[(f"frequency{i}", {f"output_clock_frequency{i}": f"{50 if output_mhz == 25 else 25} MHz"}) for i in range(count)],
     ):
         invalid = copy.deepcopy(design)
         invalid["modules"]["top"]["cells"]["pll"]["parameters"].update(changes)
-        reject(name, invalid, ("phase", "quadrature", "reference frequency"))
-    if output_mhz in (50, 100):
-        for unsupported_reference in (25, 100):
-            invalid = copy.deepcopy(design)
-            invalid["modules"]["top"]["cells"]["pll"]["parameters"]["reference_clock_frequency"] = f"{unsupported_reference} MHz"
-            reject(f"shifted{output_mhz}-reference{unsupported_reference}", invalid, ("phase", "reference"))
+        reject(name, invalid, ("phase", "reference"))
     conflict_reference = out / "conflict-reference.sdc"
     conflict_reference.write_text(f"create_clock -period {2000 / reference_mhz:g} [get_ports {{FPGA_CLK1_50}}]\n")
     custom = command.copy()

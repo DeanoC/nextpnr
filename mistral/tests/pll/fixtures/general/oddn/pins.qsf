@@ -1,0 +1,2 @@
+set_location_assignment PIN_V12 -to CLK_V12
+set_location_assignment PIN_W15 -to LED

@@ -173,7 +173,7 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
     if (cell->type == id_altera_pll) {
         if (port == id_refclk)
             return TMG_CLOCK_INPUT;
-        if (port == id_outclk || port == id("outclk[1]") || port == id("outclk[2]") || port == id("outclk[3]"))
+        if (port == id_outclk || port.str(this).rfind("outclk[", 0) == 0)
             return TMG_GEN_CLOCK;
         // Asynchronous control endpoint; no PLL recovery/removal model.
         if (port == id_rst)

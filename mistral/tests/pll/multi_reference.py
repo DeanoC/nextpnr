@@ -59,7 +59,7 @@ def main():
                     params[f"output_clock_frequency{output}"] = "25 MHz"
                     params[f"duty_cycle{output}"] = format(50, "032b")
                     params[f"phase_shift{output}"] = "0 ps"
-                params[f"phase_shift{index}"] = "100 ps"
+                params[f"phase_shift{index}"] = "-100 ps"  # negative phases are not modelled
                 path = case / f"invalid-reference-phase{index}.json"
                 path.write_text(json.dumps(invalid))
                 log = run(command + ["--json", str(path)], path.with_suffix(".log"), success=False)

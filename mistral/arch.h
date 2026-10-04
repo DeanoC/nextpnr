@@ -444,6 +444,11 @@ struct Arch : BaseArch<ArchRanges>
     {
         if (is_pip_blocked(pip))
             return false;
+        if (WireId(pip.src).is_nextpnr_created() && pll_private_pips.count(pip) &&
+            !(net && net->driver.cell && net->driver.cell->type == id_altera_pll))
+            return false;
+        if (WireId(pip.dst).is_nextpnr_created() && pll_private_ref_pips.count(pip) && !net_feeds_pll(net))
+            return false;
         if (!fes_pip_preserves_cram(pip))
             return false;
         if (fes_fence_active && fes_has_reserved_rect && net != nullptr) {
@@ -607,7 +612,21 @@ struct Arch : BaseArch<ArchRanges>
     void create_dsp(int x, int y);                     // dsp.cc
     void create_plls();                               // globals.cc
     dict<PipId, int> pll_ref_select, pll_clock_select;
-    dict<BelId, std::array<std::vector<BelId>, 4>> pll_clock_bels;
+    dict<BelId, std::array<std::vector<BelId>, 9>> pll_clock_bels; // per FPLL counter C0..C8
+    WireId pll_output_wire(const CellInfo *pll, IdString port) const; // mapped counter wire
+    // Edges added after the original ones are hidden from nets that cannot
+    // use them: counter edges from nets not driven by a PLL, reference edges
+    // from nets without a PLL sink.
+    pool<PipId> pll_private_pips, pll_private_ref_pips;
+    static bool net_feeds_pll(const NetInfo *net)
+    {
+        if (net == nullptr)
+            return false;
+        for (auto &user : net->users)
+            if (user.cell && user.cell->type == id_altera_pll)
+                return true;
+        return false;
+    }
     void create_gpio(int x, int y);                    // io.cc
     void create_clkbuf(int x, int y);                  // globals.cc
     void create_control(int x, int y);                 // globals.cc

@@ -1,0 +1,3 @@
+pll_audio 0 31 6
+pll_core 89 0 6,7,5
+pll_hdmi 0 14 6

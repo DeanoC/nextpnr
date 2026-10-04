@@ -119,16 +119,20 @@ def main():
     assert "i FPLL.000.014:NRESET0 1" not in bt
     assert any(line.startswith("r ") and "FPLL.000.014:NRESET0" in line for line in bt.splitlines())
     for name, parameter, value, expected in (
-        ("unsupported-reference", "reference_clock_frequency", "26.0 MHz",
-         "reference frequency must be 25, 50 or 100 MHz"),
-        ("missing-frequency1", "output_clock_frequency1", None, "explicit output_clock_frequency1 is required"),
-        ("five-outputs", "number_of_clocks", format(5, "032b"), "number_of_clocks must be 1, 2, 3 or 4"),
-        ("unsupported-pair", "output_clock_frequency1", "7.0 MHz", "unsupported dual PLL frequencies"),
-        ("incompatible-pair", "output_clock_frequency1", "32.0 MHz", "unsupported dual PLL frequencies"),
-        ("malformed-decimal", "output_clock_frequency1", "12..5 MHz", "unsupported dual PLL frequencies"),
-        ("excess-precision", "output_clock_frequency1", "12.5000001 MHz", "unsupported dual PLL frequencies"),
-        ("inexact-divider", "output_clock_frequency1", "12.500001 MHz", "unsupported dual PLL frequencies"),
-        ("phase1", "phase_shift1", "100 ps", "phase_shift1 must be zero or a checked phase shift"),
+        # The general solver accepts every pair Quartus implements; these
+        # remain unsupported (no Quartus VCO, malformed or uncharacterised).
+        # 400 MHz is outside both the integer (5..320 MHz) and fractional
+        # (50..100 MHz) reference ranges, so the solver rejects it before the
+        # unchanged 50 MHz SDC is compared. A later case covers that conflict.
+        ("unsupported-reference", "reference_clock_frequency", "400.0 MHz", "unsupported PLL output frequency"),
+        ("missing-frequency1", "output_clock_frequency1", None, "explicit parameter 'output_clock_frequency1' is required"),
+        ("ten-outputs", "number_of_clocks", format(10, "032b"), "number_of_clocks must be an integer from 1 to 9"),
+        ("unsupported-pair", "output_clock_frequency1", "7.0000001 MHz", "at most six decimal places"),
+        ("incompatible-pair", "output_clock_frequency1", "25.0007 MHz", "unsupported PLL output frequency"),
+        ("malformed-decimal", "output_clock_frequency1", "12..5 MHz", "at most six decimal places"),
+        ("excess-precision", "output_clock_frequency1", "12.5000001 MHz", "at most six decimal places"),
+        ("inexact-divider", "output_clock_frequency1", "12.5007 MHz", "unsupported PLL output frequency"),
+        ("phase1", "phase_shift1", "-100 ps", "unsupported PLL output frequency/duty/phase"),
     ):
         if args.skip_negative:
             continue
