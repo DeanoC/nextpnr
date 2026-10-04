@@ -196,6 +196,8 @@ reject("duplicate", "The device has one cyclonev_chipidblock", duplicate)
 reject("tdoutap", "Quartus rejects the tdoutap port", move_port("cyclonev_jtag", "tdouser", "tdoutap"))
 reject("unknown-port", "port bogus is not supported", move_port("cyclonev_chipidblock", "shiftnld", "bogus"))
 reject("jtag-pin", "port tck is the dedicated JTAG pin", jtag_tck_from_logic)
+reject("jtag-location", "dedicated JTAG pin and cannot take location assignment",
+       assignments=["set_location_assignment PIN_W15 -to altera_reserved_tdo"])
 reject("divider", "oscillator_divider must be", set_param("cyclonev_crcblock", "oscillator_divider", "3"))
 reject("crc-param", "triple_adj_err_correction must be",
        set_param("cyclonev_crcblock", "triple_adj_err_correction", "true"))
@@ -214,4 +216,4 @@ for name, assignments, expected in (
     extra = ["set_location_assignment PIN_AA20 -to LED[7]"] if name == "pin-conflict" else []
     reject(name, expected, assignments=["set_global_assignment -name " + x for x in assignments] + extra,
            source=blinky)
-print("PASS: 17 unsupported atoms, connections, parameters and option values rejected")
+print("PASS: 18 unsupported atoms, connections, parameters and option values rejected")

@@ -197,6 +197,16 @@ void detach_dedicated_jtag_pins(Context *ctx, CellInfo *jtag)
                 log_error("cyclonev_jtag '%s': port %s is the dedicated JTAG pin; connect it directly to a top-level "
                           "port or leave it unconnected.\n",
                           ctx->nameOf(jtag), name);
+            // prepare_io trims this port, which would drop a QSF location and
+            // leave the requested pad undriven. Reject it before disconnecting.
+            CellInfo *top = tdo ? (*net->users.begin()).cell : net->driver.cell;
+            auto attrs = ctx->io_attr.find(top->name);
+            if (attrs != ctx->io_attr.end() && attrs->second.count(id_LOC)) {
+                const Property &loc = attrs->second.at(id_LOC);
+                log_error("cyclonev_jtag '%s': port %s is a dedicated JTAG pin and cannot take location "
+                          "assignment %s.\n",
+                          ctx->nameOf(jtag), ctx->nameOf(top), loc.c_str());
+            }
             jtag->disconnectPort(port);
         }
         jtag->ports.erase(port);
