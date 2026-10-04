@@ -1,8 +1,8 @@
 # SDRAM DQM pad and synchronous-control isolation
 
 This host fixture addresses [nextpnr #125](https://github.com/DeanoC/nextpnr/issues/125).
-It puts separate lower/upper mask registers on AG13/AF13, the actual SDRAM
-DQM pads, and pins the native fabric registers to the sealed ST shell's
+It puts separate lower/upper mask registers on AG13/AF13, the shell's named
+SDRAM_DQML/DQMH outputs, and pins the native fabric registers to the sealed ST shell's
 LAB 42,3 top/bottom halves. It does not contain a CPU or an SDRAM controller.
 
 The `sclr` case uses a shared synchronous clear, exercising the backend's
@@ -42,7 +42,16 @@ investigation, not classified as an output fault. Both shared-clear variants
 set per-register SLOAD enable with global SLOAD disabled, consistent with the
 backend workaround; Quartus chooses DIN1 for SCLR while native routes DIN3.
 
-The independent byte-preservation diagnostic belongs in FES
+The MiSTer addon schematic wires chip DQML/DQMH to A11/A12, rather than
+the shell's separate AG13/AF13 outputs. See the
+[schematic](https://github.com/MiSTer-devel/Hardware_MiSTer/blob/master/releases/sdram_xsds_3.0.pdf)
+and [reference controller](https://github.com/MiSTer-devel/GBA_MiSTer/blob/master/rtl/sdram.sv).
+This fixture isolates the outputs originally suspected in the issue; it does
+not model the addon's multiplexed row/DQM wiring. The uncorrected FES RAMTEST
+Quartus 100 MHz build reproduced BE10 `3CC7` -> `3CC7` instead of `3C5A` on
+both authorized kits. A nextpnr-specific cause does not explain that control.
+
+The independent byte-preservation diagnostic and shared-pin correction belong in FES
 `sources/misteross/cores/fes-ramtest`, using the existing controller's
 BYTE_MASK_ENABLED path. Its host simulation and a decoded RBF do not prove
 physical SDRAM acceptance. The next isolation is a matched RAMTEST run or
