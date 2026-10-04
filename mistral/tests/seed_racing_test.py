@@ -363,8 +363,8 @@ class CollectorTests(unittest.TestCase):
             for result in results:
                 run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
                 immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
-                snapshot = immutable["inputs"][0]["snapshot_path"]
-                self.assertIn("--json=" + snapshot, immutable["argv"])
+                launch_path = immutable["inputs"][0]["launch_path"]
+                self.assertIn("--json=" + launch_path, immutable["argv"])
 
     def test_collection_freezes_executable_once_for_whole_cohort(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -408,6 +408,79 @@ class CollectorTests(unittest.TestCase):
                 hashes.add(binary["sha256"])
             self.assertEqual(len(snapshots), 1)
             self.assertEqual(len(hashes), 1)
+
+    def test_collection_uses_open_descriptors_after_snapshot_paths_are_replaced(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            runner = Path(temporary) / "runner"
+            input_path = Path(temporary) / "netlist.json"
+            input_path.write_text("frozen", encoding="utf-8")
+            observed = Path(temporary) / "observed"
+            observed.mkdir()
+            script = (
+                "#!" + sys.executable + "\n"
+                "import json,pathlib,sys\n"
+                "seed,observed,input_path,run_dir=sys.argv[1:]\n"
+                "manifest=json.loads(pathlib.Path(run_dir,'manifest.json').read_text())\n"
+                "if seed == '1':\n"
+                " binary=pathlib.Path(manifest['binary']['snapshot_path'])\n"
+                " binary.unlink(); binary.write_text('#!/bin/sh\\nexit 99\\n')\n"
+                " snapshot=pathlib.Path(manifest['inputs'][0]['snapshot_path'])\n"
+                " snapshot.unlink(); snapshot.write_text('changed')\n"
+                "pathlib.Path(observed,seed).write_text(pathlib.Path(input_path).read_text())\n"
+            )
+            runner.write_text(script, encoding="utf-8")
+            runner.chmod(0o755)
+            manifest = self.manifest(
+                temporary, [str(runner), "{seed}", str(observed), str(input_path), "{run_dir}"],
+                seeds=[1, 2, 3])
+            manifest["inputs"] = [{"path": str(input_path), "role": "mapped_netlist"}]
+            manifest["limits"]["concurrency"] = 1
+            results = seed_racing.Collector(manifest, output).run()
+            self.assertEqual([result["status"] for result in results],
+                             ["incomplete_evidence", "incomplete_evidence", "incomplete_evidence"])
+            self.assertEqual([path.read_text(encoding="utf-8") for path in sorted(observed.iterdir())],
+                             ["frozen", "frozen", "frozen"])
+
+    def test_collection_preserves_executable_relative_share_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            binary_dir = Path(temporary) / "bin"
+            share_dir = binary_dir / "share"
+            share_dir.mkdir(parents=True)
+            (share_dir / "resource").write_text("runtime-data", encoding="utf-8")
+            runner = binary_dir / "runner"
+            runner.write_text(
+                "#!" + sys.executable + "\n"
+                "import os,pathlib,sys\n"
+                "root=pathlib.Path(os.environ['NEXTPNR_EXECUTABLE_DIR'])\n"
+                "pathlib.Path(sys.argv[1]).write_text((root/'share'/'resource').read_text())\n",
+                encoding="utf-8")
+            runner.chmod(0o755)
+            manifest = self.manifest(temporary, [str(runner), "{report}"])
+            result = seed_racing.Collector(manifest, output).run()[0]
+            run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
+            immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual((run_dir / "report.json").read_text(encoding="utf-8"), "runtime-data")
+            self.assertEqual(immutable["binary"]["runtime_executable_dir"], str(binary_dir.resolve()))
+            self.assertEqual(immutable["environment"]["NEXTPNR_EXECUTABLE_DIR"],
+                             str(binary_dir.resolve()))
+
+    def test_collection_rejects_missing_declared_input_before_submission(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            marker = Path(temporary) / "launched"
+            manifest = self.manifest(
+                temporary,
+                [sys.executable, "-c",
+                 "import pathlib,sys; pathlib.Path(sys.argv[1]).write_text('launched')",
+                 str(marker)])
+            manifest["inputs"] = [{"path": str(Path(temporary) / "missing.json"),
+                                   "role": "mapped_netlist"}]
+            with self.assertRaisesRegex(ValueError, "cannot snapshot declared cohort input"):
+                seed_racing.Collector(manifest, output).run()
+            self.assertFalse(marker.exists())
+            self.assertFalse(list(output.glob("cohort/seed-*")))
 
     def test_collection_classifies_route_timing_incomplete_and_process_outcomes(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -24,7 +24,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, BinaryIO, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 
 SCHEMA_VERSION = 1
@@ -70,6 +70,47 @@ def sha256_file(path: Path) -> str:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _sha256_stream(stream: BinaryIO) -> str:
+    digest = hashlib.sha256()
+    stream.seek(0)
+    for block in iter(lambda: stream.read(1024 * 1024), b""):
+        digest.update(block)
+    stream.seek(0)
+    return digest.hexdigest()
+
+
+def _descriptor_path(stream: BinaryIO) -> str:
+    """Return a child-visible path for an inherited, already-open descriptor."""
+    if os.name != "posix":
+        raise RuntimeError("immutable seed-race snapshots require POSIX descriptor passing")
+    descriptor = stream.fileno()
+    for root in (Path("/proc/self/fd"), Path("/dev/fd")):
+        candidate = root / str(descriptor)
+        if candidate.exists():
+            return str(candidate)
+    raise RuntimeError("immutable seed-race snapshots require /proc/self/fd or /dev/fd")
+
+
+def _copy_to_readonly_descriptor(source_path: Path, snapshot_path: Path,
+                                 mode_mask: int) -> BinaryIO:
+    """Create a snapshot and retain its inode without reopening its mutable pathname."""
+    destination = snapshot_path.open("xb+")
+    try:
+        with source_path.open("rb") as source:
+            source_mode = os.fstat(source.fileno()).st_mode
+            shutil.copyfileobj(source, destination)
+        destination.flush()
+        os.fsync(destination.fileno())
+        os.fchmod(destination.fileno(), source_mode & mode_mask)
+        read_fd = os.open(_descriptor_path(destination), os.O_RDONLY)
+        frozen = os.fdopen(read_fd, "rb")
+    except BaseException:
+        destination.close()
+        raise
+    destination.close()
+    return frozen
 
 
 def _json_dump(path: Path, value: Any) -> None:
@@ -232,6 +273,9 @@ class Collector:
         self._frozen_inputs: Optional[List[Dict[str, Any]]] = None
         self._frozen_binary: Optional[Dict[str, Any]] = None
         self._input_replacements: Dict[str, str] = {}
+        self._snapshot_streams: List[BinaryIO] = []
+        self._binary_launch_path: Optional[str] = None
+        self._runtime_environment: Dict[str, str] = {}
         self._lock = threading.Lock()
         self._cancelled = threading.Event()
 
@@ -267,15 +311,18 @@ class Collector:
         snapshot_root = self.output_root / f"cohort-binary-{uuid.uuid4().hex}"
         snapshot_root.mkdir(parents=True, exist_ok=False)
         snapshot = snapshot_root / _safe_component(resolved.name)
-        with resolved.open("rb") as source, snapshot.open("xb") as destination:
-            source_mode = os.fstat(source.fileno()).st_mode
-            shutil.copyfileobj(source, destination)
-        snapshot.chmod(source_mode & 0o555)
+        frozen = _copy_to_readonly_descriptor(resolved, snapshot, 0o555)
+        self._snapshot_streams.append(frozen)
+        self._binary_launch_path = _descriptor_path(frozen)
+        executable_dir = resolved.parent
+        self._runtime_environment["NEXTPNR_EXECUTABLE_DIR"] = str(executable_dir)
         return {
             "requested_path": self.manifest["command"][0],
             "resolved_path": str(resolved),
             "snapshot_path": str(snapshot),
-            "sha256": sha256_file(snapshot),
+            "launch_path": self._binary_launch_path,
+            "sha256": _sha256_stream(frozen),
+            "runtime_executable_dir": str(executable_dir),
         }
 
     def _snapshot_inputs(self) -> List[Dict[str, Any]]:
@@ -287,19 +334,24 @@ class Collector:
             path = Path(item["path"])
             resolved = (base / path).resolve() if not path.is_absolute() else path.resolve()
             record = dict(item)
-            if resolved.is_file():
-                snapshot = snapshot_root / f"{index:04d}-{_safe_component(resolved.name)}"
-                with resolved.open("rb") as source, snapshot.open("xb") as destination:
-                    shutil.copyfileobj(source, destination)
-                snapshot.chmod(0o444)
-                digest = sha256_file(snapshot)
-                record.update({"resolved_path": str(resolved), "snapshot_path": str(snapshot), "sha256": digest})
-                self._input_replacements[item["path"]] = str(snapshot)
-                self._input_replacements[str(resolved)] = str(snapshot)
-            else:
-                record.update({"resolved_path": str(resolved), "snapshot_path": None, "sha256": None})
+            if not resolved.is_file():
+                raise ValueError(f"cannot snapshot declared cohort input: {item['path']}")
+            snapshot = snapshot_root / f"{index:04d}-{_safe_component(resolved.name)}"
+            frozen = _copy_to_readonly_descriptor(resolved, snapshot, 0o444)
+            self._snapshot_streams.append(frozen)
+            stable_path = _descriptor_path(frozen)
+            digest = _sha256_stream(frozen)
+            record.update({"resolved_path": str(resolved), "snapshot_path": str(snapshot),
+                           "launch_path": stable_path, "sha256": digest})
+            self._input_replacements[item["path"]] = stable_path
+            self._input_replacements[str(resolved)] = stable_path
             records.append(record)
         return records
+
+    def _close_snapshots(self) -> None:
+        for stream in self._snapshot_streams:
+            stream.close()
+        self._snapshot_streams.clear()
 
     def _run_one(self, spec: RunSpec, deadline: float) -> Dict[str, Any]:
         if self._cancelled.is_set():
@@ -309,7 +361,7 @@ class Collector:
         if now >= deadline:
             return {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat, "status": "not_started_total_budget"}
         spec.directory.mkdir(parents=True, exist_ok=False)
-        environment = _child_environment(self.manifest["environment"])
+        environment = _child_environment({**self.manifest["environment"], **self._runtime_environment})
         started_wall = time.time()
         if self._frozen_inputs is None or self._frozen_binary is None:
             raise RuntimeError("collector inputs and executable were not frozen before launch")
@@ -343,7 +395,9 @@ class Collector:
                     else:
                         process = subprocess.Popen(
                             list(spec.argv), cwd=self.manifest["cwd"], env=environment, stdout=stdout, stderr=stderr,
-                            start_new_session=(os.name == "posix"),
+                            executable=self._binary_launch_path,
+                            pass_fds=tuple(stream.fileno() for stream in self._snapshot_streams),
+                            start_new_session=True,
                         )
                         self._active[spec.run_id] = process
                 if process is not None:
@@ -400,8 +454,12 @@ class Collector:
             specs = self.plan()
             return [{"run_id": s.run_id, "seed": s.seed, "repeat": s.repeat, "directory": str(s.directory), "argv": list(s.argv), "status": "dry_run"} for s in specs]
         self.output_root.mkdir(parents=True, exist_ok=True)
-        self._frozen_binary = self._snapshot_binary()
-        self._frozen_inputs = self._snapshot_inputs()
+        try:
+            self._frozen_binary = self._snapshot_binary()
+            self._frozen_inputs = self._snapshot_inputs()
+        except BaseException:
+            self._close_snapshots()
+            raise
         specs = self.plan()
         deadline = time.monotonic() + self.manifest["limits"]["total_seconds"]
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.manifest["limits"]["concurrency"])
@@ -445,6 +503,7 @@ class Collector:
                                 "status": "runner_error", "error": f"{type(error).__name__}: {error}"})
         summary = {"schema_version": SCHEMA_VERSION, "cohort": self.manifest["cohort"], "results": results}
         _json_dump(self.output_root / f"collection-{uuid.uuid4().hex}.json", summary)
+        self._close_snapshots()
         if interrupted is not None:
             raise interrupted
         return results

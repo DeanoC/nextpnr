@@ -32,16 +32,23 @@ binary, preserves exit codes/signals/timeouts, and terminates only the fresh
 child process group it owns. Cancellation gates future launches before it
 terminates active groups, so queued jobs cannot start after interruption. The
 collector writes the complete terminal summary before propagating an interrupt.
-Declared cohort inputs are copied once into read-only, uniquely named snapshots
-before submission. Exact input-path argv entries and `--option=PATH` values are
-rewritten to those snapshots, and every run records the snapshot path and hash,
-so an external producer cannot replace bytes between a hash check and the
-child's open. A missing input or output is recorded as unavailable; it is not
-silently substituted.
+Declared cohort inputs must exist and be regular files. They are copied once
+before submission, kept open read-only, and passed to every child through
+inherited descriptor paths. Exact input-path argv entries and `--option=PATH`
+values are rewritten to those stable descriptors, and every run records the
+display snapshot path, launch path, and hash. Replacing a snapshot pathname
+therefore cannot change the bytes consumed by later workers. A declared input
+that cannot be snapshotted aborts the cohort before submission; a missing output
+is recorded as unavailable.
 
-The command executable is resolved and copied once to a read-only cohort
-snapshot before workers are submitted. Every run launches that same snapshot
-and records its original path, snapshot path, and SHA-256. The collector keeps
+The command executable is resolved and copied once to a cohort snapshot before
+workers are submitted. Every run executes the same open descriptor and records
+its original path, display snapshot path, descriptor launch path, and SHA-256.
+On POSIX nextpnr installations, the original executable directory is supplied
+through the recorded `NEXTPNR_EXECUTABLE_DIR` override, so the normal relative
+share-directory search (and compiled fallback) still finds Himbaechel chipdbs.
+Collection fails closed on platforms without inherited descriptor paths. The
+collector keeps
 the raw process lifecycle in `process_status`, then classifies the run from
 the `telemetry` and `final_report` artifacts. A valid terminal `run_end`
 determines routing legality. Every declared required clock must have finite

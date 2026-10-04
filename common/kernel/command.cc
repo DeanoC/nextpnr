@@ -183,7 +183,17 @@ void init_share_dirname() { npnr_share_dirname = "/share/"; }
 #else
 void init_share_dirname()
 {
-    std::string proc_self_path = proc_self_dirname();
+    const char *executable_dir_override = getenv("NEXTPNR_EXECUTABLE_DIR");
+    std::string proc_self_path;
+    if (executable_dir_override != nullptr && executable_dir_override[0] != '\0') {
+        proc_self_path = executable_dir_override;
+        if (proc_self_path.back() != '/')
+            proc_self_path += '/';
+        if (!check_file_exists(proc_self_path, true))
+            log_error("NEXTPNR_EXECUTABLE_DIR does not name an accessible directory: %s\n", executable_dir_override);
+    } else {
+        proc_self_path = proc_self_dirname();
+    }
 
     for (const std::string &proc_share_path : {
                  proc_self_path + "share/",

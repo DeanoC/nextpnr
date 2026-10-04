@@ -108,8 +108,16 @@ Its ten-record complete trace labeled both `analogue_timing_model` and
 
 - `nextpnr-heap-control-set-test`: passed.
 - `nextpnr-gpuroute-telemetry-test`: passed (2 tests).
-- `mistral/tests/seed_racing_test.py`: 20 passed.
+- `mistral/tests/seed_racing_test.py`: 27 passed in each of five consecutive
+  runs. This includes replacing the executable and input snapshot pathnames
+  after the first worker, while all three sequential workers still execute and
+  consume the original descriptor-backed bytes; missing declared inputs abort
+  before submission.
 - `mistral/tests/gpurouter/spectrum_plateau_test.py`: 8 passed.
+- A fresh `ARCH=himbaechel`, `HIMBAECHEL_UARCH=example` build completed.
+  Its build-tree binary ran through the collector from `/proc/self/fd` and
+  reported the `example` uarch while using the recorded original executable
+  directory for runtime share/chipdb discovery.
 - The monolithic `nextpnr-mistral-test` started 220 tests; its first 81 tests
   passed, then the process was OOM-killed after 343.57 seconds at about 22.7
   GiB RSS on a 23 GiB host with no swap. This was not an assertion failure.
