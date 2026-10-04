@@ -143,4 +143,8 @@ path = o / "reject-comb.qsf"
 path.write_text(base + "set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to p3\n")
 log = route(pads, path, "reject-comb", success=False)
 assert "requires the pad data to come directly from a MISTRAL_FF" in log, log[-2000:]
-print("PASS: five unsupported I/O register requests rejected")
+path = o / "d1-bidir.qsf"
+path.write_text(base + "set_instance_assignment -name D1_DELAY 4 -to p3\n")
+log = route(pads, path, "d1-bidir", success=False)
+assert "D1_DELAY on a bidirectional FAST_INPUT_REGISTER is not encoded" in log, log[-2000:]
+print("PASS: six unsupported I/O register requests rejected")

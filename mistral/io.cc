@@ -225,6 +225,11 @@ void Arch::check_io_electrical() const
             if (ci->type.in(id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR))
                 log_error("IO '%s': D1_DELAY is only supported with FAST_INPUT_REGISTER, not a DDR input.\n",
                           nameOf(ci));
+            // A bidirectional FAST_INPUT_REGISTER is MISTRAL_SDRIO. The D1 chain
+            // is only written for MISTRAL_SDRIN, so accepting it would drop the delay.
+            if (ci->type == id_MISTRAL_SDRIO)
+                log_error("IO '%s': D1_DELAY on a bidirectional FAST_INPUT_REGISTER is not encoded.\n",
+                          nameOf(ci));
             log_warning("IO '%s': D1_DELAY applies only to an input register and is ignored.\n", nameOf(ci));
         }
         if (io.d3_delay >= 0 && !comb_input)
