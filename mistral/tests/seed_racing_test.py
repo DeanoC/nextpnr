@@ -120,6 +120,14 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(censored["completed"], [])
         self.assertFalse(censored["at_least_one_success"])
 
+    def test_dataset_rejects_non_numeric_observation_time(self):
+        self.assertIsInstance(self.runs[0]["observations"][0]["elapsed_seconds"], float)
+        for invalid in ("5", 10 ** 10000):
+            document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+            document["runs"][0]["observations"][0]["elapsed_seconds"] = invalid
+            with self.assertRaisesRegex(ValueError, "finite numeric"):
+                seed_racing.validate_dataset(document)
+
     def test_truncated_jsonl_retains_only_valid_prefix(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "telemetry.jsonl"
@@ -278,6 +286,21 @@ class CollectorTests(unittest.TestCase):
                 self.assertIn("stdout-", (run_dir / "stdout.log").read_text(encoding="utf-8"))
                 self.assertIn("stderr", (run_dir / "stderr.log").read_text(encoding="utf-8"))
             self.assertNotEqual(Path(results[0]["artifacts"]["stdout"]["path"]).parent, Path(results[1]["artifacts"]["stdout"]["path"]).parent)
+
+    def test_collection_creates_nested_artifact_directories(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            code = "import pathlib,sys; pathlib.Path(sys.argv[1]).write_text('report')"
+            manifest = self.manifest(
+                temporary, [sys.executable, "-c", code, "{report}"])
+            manifest["artifacts"] = {
+                "final_report": "reports/final/report.json",
+                "telemetry": "logs/router/telemetry.jsonl",
+            }
+            result = seed_racing.Collector(manifest, output).run()[0]
+            self.assertTrue(Path(result["artifacts"]["final_report"]["path"]).is_file())
+            self.assertTrue((Path(result["artifacts"]["stdout"]["path"]).parent /
+                             "logs/router").is_dir())
 
     def test_timeout_terminates_owned_child_and_records_status(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -756,6 +779,17 @@ class CollectorTests(unittest.TestCase):
             manifest["artifacts"] = {"escape": "../input.json"}
             with self.assertRaisesRegex(ValueError, "within"):
                 seed_racing.validate_collection_manifest(manifest)
+            for reserved in ("stdout", "stderr"):
+                manifest = self.manifest(temporary, ["nextpnr"])
+                manifest["artifacts"] = {reserved: "custom.log"}
+                with self.assertRaisesRegex(ValueError, "reserved"):
+                    seed_racing.validate_collection_manifest(manifest)
+            for overlapping in ({"x": "."}, {"x": "stdout.log/child"},
+                                {"x": "artifact", "y": "artifact/child"}):
+                manifest = self.manifest(temporary, ["nextpnr"])
+                manifest["artifacts"] = overlapping
+                with self.assertRaisesRegex(ValueError, "overlap"):
+                    seed_racing.validate_collection_manifest(manifest)
             manifest = self.manifest(temporary, ["nextpnr"])
             manifest["required_clocks"] = ["clk", "clk"]
             with self.assertRaisesRegex(ValueError, "unique"):

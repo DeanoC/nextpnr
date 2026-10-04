@@ -200,16 +200,25 @@ def validate_collection_manifest(document: Mapping[str, Any]) -> Dict[str, Any]:
                 not isinstance(item.get("role"), str) or not item.get("role")):
             raise ValueError("each input needs non-empty string path and role")
     artifacts = document.get("artifacts", {})
-    if not isinstance(artifacts, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in artifacts.items()):
+    if (not isinstance(artifacts, dict) or
+            not all(isinstance(k, str) and k and isinstance(v, str) and v
+                    for k, v in artifacts.items())):
         raise ValueError("artifacts must map names to relative paths")
+    if {"stdout", "stderr"}.intersection(artifacts):
+        raise ValueError("stdout and stderr are reserved collector artifact names")
     for relative in artifacts.values():
         if Path(relative).is_absolute() or ".." in Path(relative).parts:
             raise ValueError("artifact paths must stay within a run directory")
-    normalized_artifacts = [str(Path(relative)) for relative in artifacts.values()]
-    if len(set(normalized_artifacts)) != len(normalized_artifacts):
-        raise ValueError("artifact paths must be unique")
-    if {"manifest.json", "result.json", "stdout.log", "stderr.log"}.intersection(normalized_artifacts):
-        raise ValueError("artifact paths cannot replace collector evidence files")
+    normalized_artifacts = [Path(relative) for relative in artifacts.values()]
+    reserved_artifacts = [Path(name) for name in
+                          ("manifest.json", "result.json", "stdout.log", "stderr.log")]
+    all_artifacts = normalized_artifacts + reserved_artifacts
+    if any(path == Path(".") for path in normalized_artifacts):
+        raise ValueError("artifact paths must not overlap run directories or evidence files")
+    for index, path in enumerate(all_artifacts):
+        for other in all_artifacts[index + 1:]:
+            if path == other or path in other.parents or other in path.parents:
+                raise ValueError("artifact paths must not overlap each other or collector evidence files")
     environment = document.get("environment", {})
     if not isinstance(environment, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in environment.items()):
         raise ValueError("environment must be an explicit string map")
@@ -699,6 +708,8 @@ class Collector:
         if now >= deadline:
             return {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat, "status": "not_started_total_budget"}
         spec.directory.mkdir(parents=True, exist_ok=False)
+        for relative in self.manifest["artifacts"].values():
+            (spec.directory / relative).parent.mkdir(parents=True, exist_ok=True)
         if self._child_environment is None:
             raise RuntimeError("cohort environment was not frozen")
         environment = dict(self._child_environment)
@@ -1001,8 +1012,12 @@ def load_jsonl(path: Path) -> Tuple[List[Dict[str, Any]], bool]:
 
 
 def _finite_number(value: Any) -> bool:
-    return (not isinstance(value, bool) and isinstance(value, (int, float)) and
-            math.isfinite(float(value)))
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(float(value))
+    except (OverflowError, ValueError):
+        return False
 
 
 def _final_timing_evidence(path: Optional[Path], required_clocks: Sequence[str]) -> Dict[str, Any]:
@@ -1171,11 +1186,15 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
         for observation in observations:
             if not isinstance(observation, dict) or "elapsed_seconds" not in observation:
                 raise ValueError("each observation needs elapsed_seconds")
+            if not _finite_number(observation["elapsed_seconds"]):
+                raise ValueError("observation times must be finite numeric values")
             elapsed = float(observation["elapsed_seconds"])
-            if not math.isfinite(elapsed) or elapsed < prior or elapsed < 0 or elapsed > duration:
+            if elapsed < prior or elapsed < 0 or elapsed > duration:
                 raise ValueError("observation times must be finite, monotonic, and within duration")
             prior = elapsed
-            clean.append(dict(observation))
+            normalized_observation = dict(observation)
+            normalized_observation["elapsed_seconds"] = elapsed
+            clean.append(normalized_observation)
         outcome_observed = _positive_number(run["outcome_observed_seconds"],
                                             "outcome_observed_seconds")
         if outcome_observed > duration or (clean and outcome_observed < clean[-1]["elapsed_seconds"]):
