@@ -80,7 +80,9 @@ struct BelId
 
     // xycoords is used for X/Y, nextpnr-cyclonev uses its own Z coordinate system.
     CycloneV::xycoords pos{};
-    uint16_t z = 0;
+    // (0, 0, 0) is a real BEL on devices with a control block at the origin.
+    // Keep the invalid ID outside the range of tile-local BEL indices.
+    uint16_t z = std::numeric_limits<uint16_t>::max();
 
     bool operator==(const BelId &other) const { return pos == other.pos && z == other.z; }
     bool operator!=(const BelId &other) const { return pos != other.pos || z != other.z; }
