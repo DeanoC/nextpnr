@@ -64,7 +64,21 @@ static bool phase_related(const Context *ctx, IdString launch, IdString capture)
 
 static bool timed_clocks(const Context *ctx, IdString launch, IdString capture)
 {
+    // SDC set_clock_groups and clock-level set_false_path cut a pair.
+    if (ctx->sdc_clock_false(launch, capture))
+        return false;
     return launch == capture || phase_related(ctx, launch, capture);
+}
+
+// Extra setup time granted by a clock-level set_multicycle_path -setup N:
+// N - 1 periods of the capture clock (or of the launch clock with -start).
+static delay_t multicycle_extra(const Context *ctx, IdString launch, IdString capture)
+{
+    const auto *exception = ctx->sdc_clock_multicycle(launch, capture);
+    if (exception == nullptr || exception->setup_multiplier <= 1)
+        return 0;
+    IdString clock = exception->start ? launch : capture;
+    return (exception->setup_multiplier - 1) * ctx->nets.at(clock)->clkconstr->period.minDelay();
 }
 
 static delay_t clock_interval(const Context *ctx, IdString launch, IdString capture, ClockEdge launch_edge,
@@ -381,10 +395,13 @@ void TimingAnalyser::setup_port_domains()
     for (auto &dp : domain_pairs) {
         auto &launch_data = domains.at(dp.key.launch);
         auto &capture_data = domains.at(dp.key.capture);
-        if (!timed_clocks(ctx, launch_data.key.clock, capture_data.key.clock))
+        dp.timed = timed_clocks(ctx, launch_data.key.clock, capture_data.key.clock);
+        if (!dp.timed)
             continue;
+        dp.multicycle_extra = multicycle_extra(ctx, launch_data.key.clock, capture_data.key.clock);
         dp.period = DelayPair(clock_interval(ctx, launch_data.key.clock, capture_data.key.clock, launch_data.key.edge,
-                                             capture_data.key.edge));
+                                             capture_data.key.edge) +
+                              dp.multicycle_extra);
     }
 }
 
@@ -812,10 +829,11 @@ void TimingAnalyser::compute_slack()
             pdp.second.setup_slack = 0 - (arr.value.maxDelay() - req.value.minDelay() + clock_to_clock);
             if (!setup_only)
                 pdp.second.hold_slack = arr.value.minDelay() - req.value.maxDelay() + clock_to_clock;
+            // Hold keeps the single-cycle relationship under a multicycle.
             if (!setup_only && phase_related(ctx, launch_clock, capture_clock))
-                pdp.second.hold_slack += clock_period(ctx, launch_clock) - dp.period.minDelay();
+                pdp.second.hold_slack += clock_period(ctx, launch_clock) - (dp.period.minDelay() - dp.multicycle_extra);
             pdp.second.max_path_length = arr.path_length + req.path_length;
-            if (timed_clocks(ctx, launch_clock, capture_clock))
+            if (dp.timed)
                 pd.worst_setup_slack = std::min(pd.worst_setup_slack, dp.period.minDelay() + pdp.second.setup_slack);
             dp.worst_setup_slack = std::min(dp.worst_setup_slack, pdp.second.setup_slack);
             if (!setup_only) {
@@ -1216,7 +1234,8 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
         }
     }
     if (!launch.is_async() && timed_clocks(ctx, launch.clock, capture.clock))
-        report.max_delay = clock_interval(ctx, launch.clock, capture.clock, launch.edge, capture.edge);
+        report.max_delay = clock_interval(ctx, launch.clock, capture.clock, launch.edge, capture.edge) +
+                           multicycle_extra(ctx, launch.clock, capture.clock);
 
     auto crit_path_rev = walk_crit_path(domain_pair, endpoint, longest_path);
     auto crit_path = boost::adaptors::reverse(crit_path_rev);
@@ -1417,11 +1436,13 @@ void TimingAnalyser::build_crit_path_reports()
 
         double Fmax;
 
-        if (launch.clock == capture.clock && launch.edge == capture.edge)
+        // dp.period is the launch-to-capture window, including any SDC
+        // multicycle relaxation.
+        if (launch.clock == capture.clock && launch.edge == capture.edge && dp.multicycle_extra == 0)
             Fmax = 1000 / ctx->getDelayNS(path_delay);
         else
-            Fmax = 1000.0 * double(clock_interval(ctx, launch.clock, capture.clock, launch.edge, capture.edge)) /
-                   double(clock_period(ctx, launch.clock)) / ctx->getDelayNS(path_delay);
+            Fmax = 1000.0 * double(dp.period.minDelay()) / double(clock_period(ctx, launch.clock)) /
+                   ctx->getDelayNS(path_delay);
 
         if (!clock_fmax.count(launch.clock) || Fmax < clock_fmax.at(launch.clock).achieved) {
             float target = ctx->setting<float>("target_freq") / 1e6;
