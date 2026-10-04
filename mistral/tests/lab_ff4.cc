@@ -240,6 +240,26 @@ TEST(LabFf4, SecondClockNeedsClkb)
     EXPECT_FALSE(t.lab_legal());
 }
 
+TEST(LabFf4, FabricClockStaysOnClkaWithoutClkb)
+{
+    // Three enables need DATAIN[2], DATAIN[3] and DATAIN[0]. A fabric clock also needs DATAIN[0] on CLKA.
+    // CLKB would free DATAIN[0], but that pip is absent unless --mistral-clkb is on; reserving it asserted.
+    auto place = [](Lab &t) {
+        t.ctx->lab_ff4 = true;
+        t.place_ff(t.ff("clk", "d0", "", "e0"), 0, 0);
+        t.place_ff(t.ff("clk", "d1", "", "e1"), 1, 0);
+        t.place_ff(t.ff("clk", "d2", "", "e2"), 2, 0);
+    };
+    Lab t;
+    place(t);
+    EXPECT_FALSE(t.lab_legal());
+    t.ctx->assign_control_sets(t.lab());
+    Lab u(true);
+    place(u);
+    EXPECT_TRUE(u.lab_legal());
+    u.ctx->assign_control_sets(u.lab());
+}
+
 TEST(LabFf4, AtMostThreeClockEnablePairs)
 {
     Lab t(true);

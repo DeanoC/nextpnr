@@ -855,8 +855,9 @@ struct LabPairWorker
         if (open_aclr && aclr[0].net != nullptr && aclr[1].net != nullptr)
             return false;
         // Try both CLKA/CLKB orders, then every placement of the pairs on the three hardware pairs, keeping the first
-        // that fits the DATAIN lines. A lone clock tries CLKA first, the only source the default model uses.
-        for (int swap = 0; swap < 2; swap++) {
+        // that fits the DATAIN lines. Without --mistral-clkb the only clock source is CLKA (DATAIN[0] / CLKIN[0]);
+        // swap 1 would park a fabric clock on CLKB and assign_control_sets would reserve a pip that was never added.
+        for (int swap = 0; swap < (max_clocks > 1 ? 2 : 1); swap++) {
             if (swap == 1 && clocks.empty())
                 break;
             std::array<const NetInfo *, 2> src{};
