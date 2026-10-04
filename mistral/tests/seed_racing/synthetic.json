@@ -1,9 +1,23 @@
 {
   "schema_version": 1,
+  "required_clocks": [
+    {"mapped_design_id": "map-a", "constraint_family": "clocks-a", "clocks": ["clk"]},
+    {"mapped_design_id": "map-a", "constraint_family": "clocks-multi", "clocks": ["fast", "slow"]}
+  ],
+  "cohort_identities": {
+    "synthetic": {
+      "fingerprint_sha256": "b99684126f1315a81bc403408de8600df9fd4165f1cffd70b02989245eb8d8df",
+      "manifest": {"cohort": {"id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a"}, "required_clocks": ["clk"]}
+    },
+    "synthetic-multi": {
+      "fingerprint_sha256": "a3cc51040ed2e9bd547f412765eed5034f1d5dd147e6dd414a894b0a4b312ea1",
+      "manifest": {"cohort": {"id": "synthetic-multi", "mapped_design_id": "map-a", "constraint_family": "clocks-multi"}, "required_clocks": ["fast", "slow"]}
+    }
+  },
   "runs": [
     {
-      "run_id": "early-leader-late-failure", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 9001, "replicate": 1,
-      "status": "completed", "duration_seconds": 20,
+      "run_id": "early-leader-late-failure", "cohort_id": "synthetic", "cohort_fingerprint_sha256": "b99684126f1315a81bc403408de8600df9fd4165f1cffd70b02989245eb8d8df", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 9001, "replicate": 1,
+      "status": "completed", "duration_seconds": 20, "outcome_observed_seconds": 20,
       "observations": [
         {"elapsed_seconds": 5, "phase": "route", "overused_wires": 1, "unrouted_connections": 0, "recent_progress": 8, "table_wns_ns": 0.5},
         {"elapsed_seconds": 10, "phase": "route", "overused_wires": 20, "unrouted_connections": 4, "recent_progress": -5, "table_wns_ns": -2.0}
@@ -11,8 +25,8 @@
       "outcome": {"legal_route": false, "required_clocks": ["clk"], "analogue_clocks": [{"name": "clk", "available": true, "setup_wns_ns": 1, "hold_wns_ns": 1}]}
     },
     {
-      "run_id": "late-winner", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 3, "replicate": 1,
-      "status": "completed", "duration_seconds": 20,
+      "run_id": "late-winner", "cohort_id": "synthetic", "cohort_fingerprint_sha256": "b99684126f1315a81bc403408de8600df9fd4165f1cffd70b02989245eb8d8df", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 3, "replicate": 1,
+      "status": "completed", "duration_seconds": 20, "outcome_observed_seconds": 20,
       "observations": [
         {"elapsed_seconds": 5, "phase": "route", "overused_wires": 12, "unrouted_connections": 6, "recent_progress": 1, "table_wns_ns": -4.0},
         {"elapsed_seconds": 10, "phase": "repair", "overused_wires": 0, "unrouted_connections": 0, "recent_progress": 12, "table_wns_ns": 0.1}
@@ -20,38 +34,38 @@
       "outcome": {"legal_route": true, "required_clocks": ["clk"], "analogue_clocks": [{"name": "clk", "available": true, "setup_wns_ns": 0.3, "hold_wns_ns": 0.1}]}
     },
     {
-      "run_id": "legal-analogue-failure", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 44, "replicate": 1,
-      "status": "completed", "duration_seconds": 16,
+      "run_id": "legal-analogue-failure", "cohort_id": "synthetic", "cohort_fingerprint_sha256": "b99684126f1315a81bc403408de8600df9fd4165f1cffd70b02989245eb8d8df", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 44, "replicate": 1,
+      "status": "completed", "duration_seconds": 16, "outcome_observed_seconds": 16,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 0, "unrouted_connections": 0, "recent_progress": 2, "table_wns_ns": -0.2}],
       "outcome": {"legal_route": true, "required_clocks": ["clk"], "analogue_clocks": [{"name": "clk", "available": true, "setup_wns_ns": -0.1, "hold_wns_ns": 0.2}]}
     },
     {
-      "run_id": "table-analogue-disagreement", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 8, "replicate": 1,
-      "status": "completed", "duration_seconds": 17,
+      "run_id": "table-analogue-disagreement", "cohort_id": "synthetic", "cohort_fingerprint_sha256": "b99684126f1315a81bc403408de8600df9fd4165f1cffd70b02989245eb8d8df", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 8, "replicate": 1,
+      "status": "completed", "duration_seconds": 17, "outcome_observed_seconds": 17,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 0, "unrouted_connections": 0, "recent_progress": 2, "table_wns_ns": 2.0}],
       "outcome": {"legal_route": true, "required_clocks": ["clk"], "analogue_clocks": [{"name": "clk", "available": true, "setup_wns_ns": -0.5, "hold_wns_ns": 0.2}]}
     },
     {
-      "run_id": "multi-clock-failure", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 7, "replicate": 1,
-      "status": "completed", "duration_seconds": 18,
+      "run_id": "multi-clock-failure", "cohort_id": "synthetic-multi", "cohort_fingerprint_sha256": "a3cc51040ed2e9bd547f412765eed5034f1d5dd147e6dd414a894b0a4b312ea1", "mapped_design_id": "map-a", "constraint_family": "clocks-multi", "seed": 7, "replicate": 1,
+      "status": "completed", "duration_seconds": 18, "outcome_observed_seconds": 18,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 0, "unrouted_connections": 0, "recent_progress": 2}],
       "outcome": {"legal_route": true, "required_clocks": ["fast", "slow"], "analogue_clocks": [{"name": "fast", "available": true, "setup_wns_ns": 1.2, "hold_wns_ns": 0.2}, {"name": "slow", "available": true, "setup_wns_ns": -0.1, "hold_wns_ns": 0.1}]}
     },
     {
-      "run_id": "timeout-truncated", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 1, "replicate": 1,
-      "status": "timeout", "duration_seconds": 11,
+      "run_id": "timeout-truncated", "cohort_id": "synthetic", "cohort_fingerprint_sha256": "b99684126f1315a81bc403408de8600df9fd4165f1cffd70b02989245eb8d8df", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 1, "replicate": 1,
+      "status": "timeout", "duration_seconds": 11, "outcome_observed_seconds": 11,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 9, "unrouted_connections": 4, "recent_progress": 0}],
       "outcome": {"legal_route": false, "required_clocks": ["clk"], "analogue_clocks": []}
     },
     {
-      "run_id": "crash", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 100, "replicate": 1,
-      "status": "crash", "duration_seconds": 6,
+      "run_id": "crash", "cohort_id": "synthetic", "cohort_fingerprint_sha256": "b99684126f1315a81bc403408de8600df9fd4165f1cffd70b02989245eb8d8df", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 100, "replicate": 1,
+      "status": "crash", "duration_seconds": 6, "outcome_observed_seconds": 6,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 9, "unrouted_connections": 4, "recent_progress": 0}],
       "outcome": {"legal_route": false, "required_clocks": ["clk"], "analogue_clocks": []}
     },
     {
-      "run_id": "no-timing-data", "cohort_id": "synthetic", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 55, "replicate": 1,
-      "status": "completed", "duration_seconds": 12,
+      "run_id": "no-timing-data", "cohort_id": "synthetic", "cohort_fingerprint_sha256": "b99684126f1315a81bc403408de8600df9fd4165f1cffd70b02989245eb8d8df", "mapped_design_id": "map-a", "constraint_family": "clocks-a", "seed": 55, "replicate": 1,
+      "status": "completed", "duration_seconds": 12, "outcome_observed_seconds": 12,
       "observations": [{"elapsed_seconds": 5, "phase": "route", "overused_wires": 0, "unrouted_connections": 0, "recent_progress": 1}],
       "outcome": {"legal_route": true, "required_clocks": ["clk"], "analogue_clocks": [{"name": "clk", "available": false, "reason": "not emitted"}]}
     }

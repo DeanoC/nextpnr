@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import signal
 import sys
 import tempfile
 import threading
@@ -35,13 +36,10 @@ class DatasetTests(unittest.TestCase):
 
     def test_omitted_required_clock_cannot_be_a_success(self):
         document = json.loads(FIXTURE.read_text(encoding="utf-8"))
-        winner = next(run for run in document["runs"] if run["run_id"] == "late-winner")
-        winner["outcome"]["required_clocks"].append("related:clk->memory")
-        result = seed_racing.validate_dataset(document)
-        winner = next(run for run in result if run["run_id"] == "late-winner")
-        self.assertFalse(winner["timing_available"])
-        self.assertFalse(winner["success"])
-        self.assertEqual(winner["missing_required_clocks"], ["related:clk->memory"])
+        winner = next(run for run in document["runs"] if run["run_id"] == "multi-clock-failure")
+        winner["outcome"]["required_clocks"] = ["fast"]
+        with self.assertRaisesRegex(ValueError, "does not match dataset declaration"):
+            seed_racing.validate_dataset(document)
 
     def test_prefix_hides_seed_final_and_future_observations(self):
         run = dict(self.by_id["late-winner"])
@@ -63,9 +61,11 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(restart["cost_model"], "restart_execution")
 
     def test_halving_records_terminal_successes_and_drops_terminal_failures(self):
-        terminal_success = dict(self.by_id["late-winner"], run_id="terminal-success", duration_seconds=2)
+        terminal_success = dict(self.by_id["late-winner"], run_id="terminal-success",
+                                duration_seconds=2, outcome_observed_seconds=2)
         terminal_failure = dict(self.by_id["early-leader-late-failure"],
-                                run_id="terminal-failure", duration_seconds=3)
+                                run_id="terminal-failure", duration_seconds=3,
+                                outcome_observed_seconds=3)
         active = dict(self.by_id["late-winner"], run_id="active", duration_seconds=10)
         result = seed_racing.successive_halving(
             [terminal_success, terminal_failure, active], [5], [1], 0, 9, restart=False)
@@ -75,6 +75,20 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(result["stages"][0]["terminal_successes"], ["terminal-success"])
         self.assertEqual(result["stages"][0]["terminal_failures"], ["terminal-failure"])
         self.assertEqual(result["stages"][0]["promoted"], ["active"])
+
+    def test_halving_never_exposes_outcome_before_observed_timestamp(self):
+        run = dict(self.by_id["late-winner"], duration_seconds=5,
+                   outcome_observed_seconds=5)
+        result = seed_racing.successive_halving([run], [4], [1], 0, 9, restart=False)
+        self.assertEqual(result["stages"][0]["terminal_successes"], [])
+        self.assertEqual(result["stages"][0]["promoted"], [run["run_id"]])
+
+    def test_halving_respects_shared_fixed_budget(self):
+        result = seed_racing.successive_halving(
+            self.runs, [5], [3], 0, 4, restart=True, budget_seconds=20)
+        self.assertLessEqual(result["aggregate_compute_seconds"], 20)
+        self.assertTrue(result["budget_exhausted"])
+        self.assertEqual(result["retained"], [])
 
     def test_exploration_survivor_and_scheduler_are_reproducible(self):
         first = seed_racing.successive_halving(self.runs, [5], [3], 1, 1234, restart=False)
@@ -129,15 +143,55 @@ class DatasetTests(unittest.TestCase):
                 self.assertEqual(len(records), 1)
                 self.assertTrue(truncated)
 
+    def test_jsonl_rejects_nonfinite_duplicate_start_and_outer_phase_events(self):
+        start = {"schema_version": 1, "sequence": 0, "run_id": "r",
+                 "event": "run_start", "phase": None, "attempt": None, "elapsed_s": 0}
+        phase = {"schema_version": 1, "sequence": 1, "run_id": "r",
+                 "event": "phase_start", "phase": "outer", "attempt": 1, "elapsed_s": 1}
+        invalid = [
+            dict(start, elapsed_s=-1),
+            dict(start, sequence=1, elapsed_s=1),
+            dict(phase, sequence=2, event="iteration", phase="inner", attempt=2,
+                 elapsed_s=2),
+        ]
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "telemetry.jsonl"
+            path.write_text(json.dumps(invalid[0]) + "\n", encoding="utf-8")
+            self.assertEqual(seed_racing.load_jsonl(path), ([], True))
+            path.write_text(json.dumps(start) + "\n" + json.dumps(invalid[1]) + "\n",
+                            encoding="utf-8")
+            self.assertEqual(len(seed_racing.load_jsonl(path)[0]), 1)
+            for invalid_record in (
+                    dict(start, schema_version=True),
+                    dict(start, sequence=False),
+                    dict(start, event="unknown")):
+                path.write_text(json.dumps(invalid_record) + "\n", encoding="utf-8")
+                self.assertEqual(seed_racing.load_jsonl(path), ([], True))
+            path.write_text(json.dumps(start) + "\n" + json.dumps(phase) + "\n" +
+                            json.dumps(invalid[2]) + "\n", encoding="utf-8")
+            self.assertEqual(len(seed_racing.load_jsonl(path)[0]), 2)
+            path.write_text(json.dumps(start) + "\n" +
+                            '{"schema_version":1,"sequence":1,"run_id":"r",'
+                            '"event":"iteration","elapsed_s":1,"metric":1e999}\n',
+                            encoding="utf-8")
+            self.assertEqual(len(seed_racing.load_jsonl(path)[0]), 1)
+
+    def test_heuristic_rejects_boolean_and_nonfinite_metrics(self):
+        score = seed_racing.heuristic_score({"overused_wires": True,
+                                             "unrouted_connections": float("nan"),
+                                             "recent_progress": float("inf")})
+        self.assertEqual(score[:3], (-float("inf"),) * 3)
+
     def test_jsonl_preserves_nested_phase_attempts(self):
         events = [
             {"schema_version": 1, "sequence": 0, "run_id": "r", "event": "run_start", "phase": None, "attempt": None, "elapsed_s": 0},
-            {"schema_version": 1, "sequence": 1, "run_id": "r", "event": "phase_start", "phase": "repair", "attempt": 1, "elapsed_s": 1},
+            {"schema_version": 1, "sequence": 1, "run_id": "r", "event": "phase_start", "phase": "timing_repair", "attempt": 1, "elapsed_s": 1},
             {"schema_version": 1, "sequence": 2, "run_id": "r", "event": "phase_start", "phase": "negotiation", "attempt": 2, "elapsed_s": 2},
             {"schema_version": 1, "sequence": 3, "run_id": "r", "event": "iteration", "phase": "negotiation", "attempt": 2, "elapsed_s": 3},
             {"schema_version": 1, "sequence": 4, "run_id": "r", "event": "phase_end", "phase": "negotiation", "attempt": 2, "elapsed_s": 4},
-            {"schema_version": 1, "sequence": 5, "run_id": "r", "event": "phase_end", "phase": "repair", "attempt": 1, "elapsed_s": 5},
-            {"schema_version": 1, "sequence": 6, "run_id": "r", "event": "run_end", "phase": None, "attempt": None, "elapsed_s": 6},
+            {"schema_version": 1, "sequence": 5, "run_id": "r", "event": "repair_round", "phase": "timing_repair", "attempt": 1, "elapsed_s": 5},
+            {"schema_version": 1, "sequence": 6, "run_id": "r", "event": "phase_end", "phase": "timing_repair", "attempt": 1, "elapsed_s": 6},
+            {"schema_version": 1, "sequence": 7, "run_id": "r", "event": "run_end", "phase": None, "attempt": None, "elapsed_s": 7},
         ]
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "telemetry.jsonl"
@@ -175,15 +229,17 @@ class CollectorTests(unittest.TestCase):
         return {
             "schema_version": 1,
             "cohort": {"id": "cohort", "design_id": "design", "mapped_design_id": "mapped-sha", "constraint_family": "constraints-sha"},
+            "architecture": "test",
             "command": command,
             "seeds": seeds or [1],
             "repeats": repeats,
             "limits": {"per_run_seconds": per_run, "total_seconds": 5, "concurrency": 2},
-            "inputs": [{"path": str(input_path), "role": "mapped_netlist"}],
+            "inputs": [],
             "artifacts": {"final_report": "report.json", "telemetry": "telemetry.jsonl"},
             "required_clocks": ["clk"],
             "environment": {"SEED_RACING_TEST": "1"},
-            "provenance": {"source_revision": "test", "dirty": False}
+            "provenance": {"source_revision": "test", "dirty": False,
+                           "runtime_environment_id": "auto"}
         }
 
     def test_dry_run_expands_argv_without_creating_or_overwriting(self):
@@ -201,7 +257,10 @@ class CollectorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "runs"
             code = "import pathlib,sys; print('stdout-'+sys.argv[1]); print('stderr', file=sys.stderr); pathlib.Path(sys.argv[2]).write_text('report')"
-            manifest = self.manifest(temporary, [sys.executable, "-c", code, "{seed}", "{report}"], seeds=[2, 3])
+            input_path = Path(temporary) / "netlist.json"
+            manifest = self.manifest(temporary, [sys.executable, "-c", code, "{seed}",
+                                                 "{report}", str(input_path)], seeds=[2, 3])
+            manifest["inputs"] = [{"path": str(input_path), "role": "mapped_netlist"}]
             results = seed_racing.Collector(manifest, output).run()
             self.assertEqual([item["status"] for item in results],
                              ["incomplete_evidence", "incomplete_evidence"])
@@ -210,6 +269,11 @@ class CollectorTests(unittest.TestCase):
                 immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
                 self.assertEqual(immutable["seed"], result["seed"])
                 self.assertEqual(len(immutable["inputs"][0]["sha256"]), 64)
+                self.assertEqual(len(immutable["cohort_identity"]["fingerprint_sha256"]), 64)
+                self.assertEqual(result["manifest_sha256"],
+                                 seed_racing.sha256_file(run_dir / "manifest.json"))
+                self.assertEqual(result["result_sha256"],
+                                 seed_racing.sha256_file(run_dir / "result.json"))
                 self.assertEqual(len(result["artifacts"]["final_report"]["sha256"]), 64)
                 self.assertIn("stdout-", (run_dir / "stdout.log").read_text(encoding="utf-8"))
                 self.assertIn("stderr", (run_dir / "stderr.log").read_text(encoding="utf-8"))
@@ -222,6 +286,31 @@ class CollectorTests(unittest.TestCase):
             result = seed_racing.Collector(manifest, output).run()[0]
             self.assertEqual(result["status"], "timeout")
             self.assertEqual(result["termination_reason"], "per_run_timeout")
+
+    def test_termination_tolerates_an_already_absent_process_group(self):
+        process = mock.Mock(pid=12345)
+        process.poll.return_value = None
+        process.wait.return_value = 0
+        with mock.patch.object(seed_racing.os, "killpg", side_effect=ProcessLookupError):
+            seed_racing._terminate_owned_child(process)
+        process.wait.assert_called_once_with(timeout=seed_racing.TERMINATION_GRACE_SECONDS)
+
+    def test_termination_kills_remaining_group_and_reaps_leader(self):
+        process = mock.Mock(pid=12345)
+        process.poll.return_value = 0
+        process.wait.return_value = -signal.SIGTERM
+        signals = []
+
+        def record_signal(_pid, sent_signal):
+            signals.append(sent_signal)
+
+        with mock.patch.object(seed_racing.os, "killpg", side_effect=record_signal), \
+                mock.patch.object(seed_racing, "_live_process_group_members",
+                                  side_effect=([12346], [12346], [], [])), \
+                mock.patch.object(seed_racing, "TERMINATION_GRACE_SECONDS", 0):
+            seed_racing._terminate_owned_child(process)
+        self.assertEqual(signals, [signal.SIGTERM, signal.SIGKILL])
+        process.wait.assert_called_once_with(timeout=0)
 
     def test_child_environment_excludes_unrecorded_parent_variables(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -311,7 +400,8 @@ class CollectorTests(unittest.TestCase):
             output = Path(temporary) / "runs"
             launches = Path(temporary) / "launches"
             manifest = self.manifest(temporary, [], seeds=[1, 2, 3])
-            input_path = Path(manifest["inputs"][0]["path"])
+            input_path = Path(temporary) / "netlist.json"
+            manifest["inputs"] = [{"path": str(input_path), "role": "mapped_netlist"}]
             reports = Path(temporary) / "reports"
             reports.mkdir()
             code = ("import pathlib,sys; "
@@ -341,7 +431,8 @@ class CollectorTests(unittest.TestCase):
             output = Path(temporary) / "runs"
             launches = Path(temporary) / "launches"
             manifest = self.manifest(temporary, [], seeds=[1, 2, 3])
-            input_path = Path(manifest["inputs"][0]["path"])
+            input_path = Path(temporary) / "netlist.json"
+            manifest["inputs"] = [{"path": str(input_path), "role": "mapped_netlist"}]
             reports = Path(temporary) / "reports"
             reports.mkdir()
             code = ("import pathlib,sys; "
@@ -424,9 +515,9 @@ class CollectorTests(unittest.TestCase):
                 "manifest=json.loads(pathlib.Path(run_dir,'manifest.json').read_text())\n"
                 "if seed == '1':\n"
                 " binary=pathlib.Path(manifest['binary']['snapshot_path'])\n"
-                " binary.unlink(); binary.write_text('#!/bin/sh\\nexit 99\\n')\n"
+                " binary.chmod(0o755); binary.write_text('#!/bin/sh\\nexit 99\\n')\n"
                 " snapshot=pathlib.Path(manifest['inputs'][0]['snapshot_path'])\n"
-                " snapshot.unlink(); snapshot.write_text('changed')\n"
+                " snapshot.chmod(0o644); snapshot.write_text('changed')\n"
                 "pathlib.Path(observed,seed).write_text(pathlib.Path(input_path).read_text())\n"
             )
             runner.write_text(script, encoding="utf-8")
@@ -466,6 +557,28 @@ class CollectorTests(unittest.TestCase):
             self.assertEqual(immutable["environment"]["NEXTPNR_EXECUTABLE_DIR"],
                              str(binary_dir.resolve()))
 
+    def test_himbaechel_requires_one_declared_explicit_chipdb(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-himbaechel"
+            runner.write_text("#!" + sys.executable + "\nimport sys\n", encoding="utf-8")
+            runner.chmod(0o755)
+            manifest = self.manifest(temporary, [str(runner)])
+            with self.assertRaisesRegex(ValueError, "requires exactly one explicit --chipdb"):
+                seed_racing.Collector(manifest, Path(temporary) / "missing-chipdb").run()
+
+            chipdb = Path(temporary) / "chipdb.bin"
+            chipdb.write_text("chipdb", encoding="utf-8")
+            manifest["inputs"] = [{"path": str(chipdb), "role": "chipdb"}]
+            manifest["command"] = [str(runner), "--chipdb=" + str(chipdb)]
+            result = seed_racing.Collector(manifest, Path(temporary) / "frozen-chipdb").run()[0]
+            run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
+            immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertIn("--chipdb=" + immutable["inputs"][0]["launch_path"], immutable["argv"])
+
+            manifest["inputs"] = []
+            with self.assertRaisesRegex(ValueError, "--chipdb must be declared"):
+                seed_racing.Collector(manifest, Path(temporary) / "undeclared-chipdb").run()
+
     def test_collection_rejects_missing_declared_input_before_submission(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "runs"
@@ -481,6 +594,99 @@ class CollectorTests(unittest.TestCase):
                 seed_racing.Collector(manifest, output).run()
             self.assertFalse(marker.exists())
             self.assertFalse(list(output.glob("cohort/seed-*")))
+
+    def test_collection_rejects_declared_but_unused_input_before_submission(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            marker = Path(temporary) / "launched"
+            input_path = Path(temporary) / "netlist.json"
+            manifest = self.manifest(
+                temporary,
+                [sys.executable, "-c",
+                 "import pathlib,sys; pathlib.Path(sys.argv[1]).write_text('launched')",
+                 str(marker)])
+            manifest["inputs"] = [{"path": str(input_path), "role": "mapped_netlist"}]
+            with self.assertRaisesRegex(ValueError, "not bound to every command argv"):
+                seed_racing.Collector(manifest, output).run()
+            self.assertFalse(marker.exists())
+
+    def test_collection_rewrites_equivalent_relative_input_spelling(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            input_path = Path(temporary) / "netlist.json"
+            observed = Path(temporary) / "observed"
+            manifest = self.manifest(
+                temporary,
+                [sys.executable, "-c",
+                 "import pathlib,sys; pathlib.Path(sys.argv[2]).write_text(pathlib.Path(sys.argv[1]).read_text())",
+                 "./netlist.json", str(observed)])
+            manifest["cwd"] = temporary
+            manifest["inputs"] = [{"path": "netlist.json", "role": "mapped_netlist"}]
+            result = seed_racing.Collector(manifest, output).run()[0]
+            self.assertEqual(result["status"], "incomplete_evidence")
+            self.assertEqual(observed.read_text(encoding="utf-8"), "frozen")
+
+    def test_collection_rejects_reused_cohort_id_with_different_identity(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            first = self.manifest(temporary, [sys.executable, "-c", "pass"])
+            seed_racing.Collector(first, output).run()
+            second = self.manifest(temporary, [sys.executable, "-c", "print('different')"])
+            with self.assertRaisesRegex(ValueError, "different fingerprint"):
+                seed_racing.Collector(second, output).run()
+
+    def test_collection_identity_binds_execution_limits(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "runs"
+            first = self.manifest(temporary, [sys.executable, "-c", "pass"])
+            seed_racing.Collector(first, output).run()
+            second = self.manifest(temporary, [sys.executable, "-c", "pass"])
+            second["limits"]["concurrency"] = 1
+            with self.assertRaisesRegex(ValueError, "different fingerprint"):
+                seed_racing.Collector(second, output).run()
+
+    def test_nextpnr_known_input_option_must_be_declared(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-generic"
+            runner.write_text("#!" + sys.executable + "\n", encoding="utf-8")
+            runner.chmod(0o755)
+            manifest = self.manifest(temporary, [str(runner), "--json", "netlist.json"])
+            with self.assertRaisesRegex(ValueError, "--json must be declared"):
+                seed_racing.Collector(manifest, Path(temporary) / "runs").run()
+
+    def test_expanded_seed_file_argument_must_be_declared(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            script = Path(temporary) / "mutable.py"
+            script.write_text("pass\n", encoding="utf-8")
+            manifest = self.manifest(
+                temporary, [sys.executable, "-c", "pass", "{seed}"],
+                seeds=[str(script)])
+            with self.assertRaisesRegex(ValueError, "expanded command file argument"):
+                seed_racing.Collector(manifest, Path(temporary) / "runs").run()
+
+    def test_runtime_evidence_resolves_env_shebang_interpreter(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            script = Path(temporary) / "runner"
+            script.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+            environment = seed_racing._child_environment({})
+            evidence = seed_racing._runtime_environment_evidence(script, environment)
+            expected = str(Path(seed_racing.shutil.which("python3", path=environment["PATH"])).resolve())
+            self.assertEqual(evidence["manifest"]["runtime_binary"], expected)
+            self.assertIn(str(Path("/usr/bin/env").resolve()), evidence["manifest"]["launchers"])
+
+    def test_normal_leader_exit_kills_residual_process_group(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            marker = Path(temporary) / "descendant-wrote"
+            child = ("import pathlib,signal,sys,time; "
+                     "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+                     "time.sleep(0.5); pathlib.Path(sys.argv[1]).write_text('bad')")
+            parent = ("import subprocess,sys; "
+                      f"subprocess.Popen([sys.executable, '-c', {child!r}, {str(marker)!r}])")
+            manifest = self.manifest(temporary, [sys.executable, "-c", parent])
+            result = seed_racing.Collector(manifest, Path(temporary) / "runs").run()[0]
+            self.assertEqual(result["process_status"], "completed")
+            time.sleep(0.6)
+            self.assertFalse(marker.exists())
 
     def test_collection_classifies_route_timing_incomplete_and_process_outcomes(self):
         with tempfile.TemporaryDirectory() as temporary:

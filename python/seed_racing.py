@@ -15,6 +15,7 @@ import json
 import math
 import os
 import random
+import select
 import shutil
 import signal
 import subprocess
@@ -25,6 +26,11 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - collection fails closed without Linux seals.
+    fcntl = None
 
 
 SCHEMA_VERSION = 1
@@ -48,6 +54,7 @@ PREFIX_FEATURES = {
     "analogue_tns_ns", "analogue_clocks",
 }
 BASE_ENVIRONMENT_VARIABLES = ("PATH",)
+TERMINATION_GRACE_SECONDS = 2.0
 if os.name == "nt":  # Minimum variables required to create ordinary Windows child processes.
     BASE_ENVIRONMENT_VARIABLES += ("COMSPEC", "PATHEXT", "SYSTEMROOT", "WINDIR")
 
@@ -83,34 +90,53 @@ def _sha256_stream(stream: BinaryIO) -> str:
 
 def _descriptor_path(stream: BinaryIO) -> str:
     """Return a child-visible path for an inherited, already-open descriptor."""
-    if os.name != "posix":
-        raise RuntimeError("immutable seed-race snapshots require POSIX descriptor passing")
+    if not sys.platform.startswith("linux"):
+        raise RuntimeError("immutable seed-race snapshots require Linux sealed descriptors")
     descriptor = stream.fileno()
-    for root in (Path("/proc/self/fd"), Path("/dev/fd")):
-        candidate = root / str(descriptor)
-        if candidate.exists():
-            return str(candidate)
-    raise RuntimeError("immutable seed-race snapshots require /proc/self/fd or /dev/fd")
+    candidate = Path("/proc/self/fd") / str(descriptor)
+    if candidate.exists():
+        return str(candidate)
+    raise RuntimeError("immutable seed-race snapshots require /proc/self/fd")
 
 
-def _copy_to_readonly_descriptor(source_path: Path, snapshot_path: Path,
+def _copy_to_readonly_descriptor(source_path: Path, snapshot_path: Optional[Path],
                                  mode_mask: int) -> BinaryIO:
-    """Create a snapshot and retain its inode without reopening its mutable pathname."""
-    destination = snapshot_path.open("xb+")
+    """Copy stable source bytes into a sealed memfd and a display-only file."""
+    if fcntl is None or not hasattr(os, "memfd_create"):
+        raise RuntimeError("immutable seed-race snapshots require Linux memfd seals")
+    descriptor = os.memfd_create(
+        "nextpnr-seed-race-" + _safe_component(source_path.name),
+        flags=os.MFD_ALLOW_SEALING,
+    )
+    destination = os.fdopen(descriptor, "w+b")
     try:
         with source_path.open("rb") as source:
-            source_mode = os.fstat(source.fileno()).st_mode
+            before = os.fstat(source.fileno())
             shutil.copyfileobj(source, destination)
+            after = os.fstat(source.fileno())
+        stable_fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+        if any(getattr(before, field) != getattr(after, field) for field in stable_fields):
+            raise RuntimeError(f"source changed while snapshotting: {source_path}")
+        if destination.tell() != before.st_size:
+            raise RuntimeError(f"source size changed while snapshotting: {source_path}")
         destination.flush()
-        os.fsync(destination.fileno())
-        os.fchmod(destination.fileno(), source_mode & mode_mask)
-        read_fd = os.open(_descriptor_path(destination), os.O_RDONLY)
-        frozen = os.fdopen(read_fd, "rb")
+        os.fchmod(destination.fileno(), before.st_mode & mode_mask)
+        destination.seek(0)
+        if snapshot_path is not None:
+            with snapshot_path.open("xb") as display:
+                shutil.copyfileobj(destination, display)
+                display.flush()
+                os.fsync(display.fileno())
+                os.fchmod(display.fileno(), before.st_mode & mode_mask)
+        seals = fcntl.F_SEAL_SEAL | fcntl.F_SEAL_SHRINK | fcntl.F_SEAL_GROW | fcntl.F_SEAL_WRITE
+        fcntl.fcntl(destination.fileno(), fcntl.F_ADD_SEALS, seals)
+        if fcntl.fcntl(destination.fileno(), fcntl.F_GET_SEALS) & seals != seals:
+            raise RuntimeError(f"unable to seal snapshot: {source_path}")
+        destination.seek(0)
     except BaseException:
         destination.close()
         raise
-    destination.close()
-    return frozen
+    return destination
 
 
 def _json_dump(path: Path, value: Any) -> None:
@@ -137,13 +163,19 @@ def _require_keys(mapping: Mapping[str, Any], keys: Iterable[str], context: str)
 
 def validate_collection_manifest(document: Mapping[str, Any]) -> Dict[str, Any]:
     """Validate and normalize a collection manifest without touching the filesystem."""
-    _require_keys(document, ("cohort", "command", "seeds", "repeats", "limits"), "manifest")
+    _require_keys(document, ("cohort", "architecture", "command", "seeds", "repeats", "limits"),
+                  "manifest")
     if document.get("schema_version", SCHEMA_VERSION) != SCHEMA_VERSION:
         raise ValueError("unsupported collection manifest schema_version")
     cohort = document["cohort"]
     if not isinstance(cohort, dict):
         raise ValueError("cohort must be an object")
     _require_keys(cohort, ("id", "design_id", "mapped_design_id", "constraint_family"), "cohort")
+    if not all(isinstance(cohort[name], str) and cohort[name] for name in
+               ("id", "design_id", "mapped_design_id", "constraint_family")):
+        raise ValueError("cohort identity fields must be non-empty strings")
+    if not isinstance(document["architecture"], str) or not document["architecture"]:
+        raise ValueError("architecture must be a non-empty string")
     command = document["command"]
     if not isinstance(command, list) or not command or not all(isinstance(arg, str) for arg in command):
         raise ValueError("command must be a non-empty argv string array")
@@ -164,14 +196,20 @@ def validate_collection_manifest(document: Mapping[str, Any]) -> Dict[str, Any]:
     if not isinstance(inputs, list):
         raise ValueError("inputs must be an array")
     for item in inputs:
-        if not isinstance(item, dict) or not isinstance(item.get("path"), str):
-            raise ValueError("each input needs a string path")
+        if (not isinstance(item, dict) or not isinstance(item.get("path"), str) or
+                not isinstance(item.get("role"), str) or not item.get("role")):
+            raise ValueError("each input needs non-empty string path and role")
     artifacts = document.get("artifacts", {})
     if not isinstance(artifacts, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in artifacts.items()):
         raise ValueError("artifacts must map names to relative paths")
     for relative in artifacts.values():
         if Path(relative).is_absolute() or ".." in Path(relative).parts:
             raise ValueError("artifact paths must stay within a run directory")
+    normalized_artifacts = [str(Path(relative)) for relative in artifacts.values()]
+    if len(set(normalized_artifacts)) != len(normalized_artifacts):
+        raise ValueError("artifact paths must be unique")
+    if {"manifest.json", "result.json", "stdout.log", "stderr.log"}.intersection(normalized_artifacts):
+        raise ValueError("artifact paths cannot replace collector evidence files")
     environment = document.get("environment", {})
     if not isinstance(environment, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in environment.items()):
         raise ValueError("environment must be an explicit string map")
@@ -180,9 +218,18 @@ def validate_collection_manifest(document: Mapping[str, Any]) -> Dict[str, Any]:
             not all(isinstance(name, str) and name for name in required_clocks) or
             len(set(required_clocks)) != len(required_clocks)):
         raise ValueError("required_clocks must be a unique string array")
+    provenance = document.get("provenance", {})
+    if (not isinstance(provenance, dict) or
+            not isinstance(provenance.get("source_revision"), str) or
+            not provenance.get("source_revision") or
+            not isinstance(provenance.get("dirty"), bool) or
+            provenance.get("runtime_environment_id") != "auto"):
+        raise ValueError(
+            "provenance requires source_revision, boolean dirty, and runtime_environment_id=auto")
     return {
         "schema_version": SCHEMA_VERSION,
         "cohort": dict(cohort),
+        "architecture": document["architecture"],
         "command": list(command),
         "seeds": list(seeds),
         "repeats": repeats,
@@ -192,7 +239,7 @@ def validate_collection_manifest(document: Mapping[str, Any]) -> Dict[str, Any]:
         "environment": dict(environment),
         "required_clocks": list(required_clocks),
         "cwd": document.get("cwd"),
-        "provenance": dict(document.get("provenance", {})),
+        "provenance": dict(provenance),
     }
 
 
@@ -206,17 +253,40 @@ def _expand_argv(template: Sequence[str], fields: Mapping[str, str]) -> List[str
     return result
 
 
-def _rewrite_input_argument(argument: str, replacements: Mapping[str, str]) -> str:
+def _rewrite_input_argument(argument: str, replacements: Mapping[str, str], base: Path) -> str:
     """Redirect direct input arguments, including --option=PATH forms, to snapshots."""
-    replacement = replacements.get(argument)
+    def replacement_for(value: str) -> Optional[str]:
+        replacement = replacements.get(value)
+        if replacement is not None:
+            return replacement
+        try:
+            path = Path(value)
+            resolved = (base / path).resolve() if not path.is_absolute() else path.resolve()
+            return replacements.get(str(resolved))
+        except (OSError, ValueError):
+            return None
+
+    replacement = replacement_for(argument)
     if replacement is not None:
         return replacement
     option, separator, value = argument.partition("=")
     if separator:
-        replacement = replacements.get(value)
+        replacement = replacement_for(value)
         if replacement is not None:
             return option + separator + replacement
     return argument
+
+
+def _option_values(argv: Sequence[str], option: str) -> List[str]:
+    values = []
+    for index, argument in enumerate(argv):
+        if argument == option:
+            if index + 1 >= len(argv):
+                raise ValueError(f"{option} requires a value")
+            values.append(argv[index + 1])
+        elif argument.startswith(option + "="):
+            values.append(argument.partition("=")[2])
+    return values
 
 
 def _resolved_binary(argv0: str, cwd: Optional[str], environment: Mapping[str, str]) -> Optional[Path]:
@@ -238,21 +308,141 @@ def _child_environment(explicit: Mapping[str, str]) -> Dict[str, str]:
     return environment
 
 
-def _terminate_owned_child(process: subprocess.Popen[Any]) -> None:
-    """Terminate only the fresh process group created for this child."""
-    if process.poll() is not None:
-        return
+def _runtime_environment_evidence(executable: Path,
+                                  environment: Mapping[str, str]) -> Dict[str, Any]:
+    """Derive content-addressed loader/library/platform evidence for execution."""
+    runtime_binary = executable
+    runtime_binaries = {executable}
+    with executable.open("rb") as stream:
+        prefix = stream.read(4096)
+    if not prefix.startswith(b"\x7fELF"):
+        first_line = prefix.splitlines()[0].decode("utf-8", errors="replace") if prefix else ""
+        if not first_line.startswith("#!"):
+            raise ValueError(f"cohort executable is neither ELF nor a shebang script: {executable}")
+        shebang = first_line[2:].strip().split()
+        launcher = Path(shebang[0]).resolve()
+        runtime_binary = launcher
+        if launcher.name == "env":
+            command = next((word for word in shebang[1:] if not word.startswith("-")), None)
+            found = shutil.which(command, path=environment.get("PATH")) if command else None
+            if found is None:
+                raise ValueError(f"cannot resolve env shebang interpreter for {executable}")
+            runtime_binary = Path(found).resolve()
+        runtime_binaries = {launcher, runtime_binary}
+        if not runtime_binary.is_file():
+            raise ValueError(f"cannot resolve script interpreter for {executable}")
+    paths = set(runtime_binaries)
+    for linked_binary in runtime_binaries:
+        completed = subprocess.run(
+            ["ldd", str(linked_binary)], env=dict(environment), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, text=True, check=False)
+        if completed.returncode != 0:
+            raise ValueError(
+                f"cannot derive runtime dependencies for {linked_binary}: "
+                f"{completed.stderr.strip()}")
+        for line in completed.stdout.splitlines():
+            words = line.strip().split()
+            candidate = None
+            if "=>" in words and words.index("=>") + 1 < len(words):
+                candidate = words[words.index("=>") + 1]
+            elif words:
+                candidate = words[0]
+            if candidate and candidate.startswith("/") and Path(candidate).is_file():
+                paths.add(Path(candidate).resolve())
+    for system_path in (Path("/etc/os-release"), Path("/proc/driver/nvidia/version")):
+        if system_path.is_file():
+            paths.add(system_path)
+    files = [{"path": str(path), "sha256": sha256_file(path)}
+             for path in sorted(paths, key=str)]
+    uname = os.uname()
+    manifest = {"runtime_binary": str(runtime_binary),
+                "launchers": sorted(str(path) for path in runtime_binaries), "files": files,
+                "platform": {"sysname": uname.sysname, "release": uname.release,
+                             "machine": uname.machine}}
+    encoded = json.dumps(manifest, sort_keys=True, separators=(",", ":"),
+                         allow_nan=False).encode("utf-8")
+    return {"runtime_environment_id": "sha256:" + hashlib.sha256(encoded).hexdigest(),
+            "manifest": manifest}
+
+
+def _verify_runtime_environment_evidence(evidence: Mapping[str, Any]) -> bool:
+    manifest = evidence.get("manifest")
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("files"), list):
+        return False
+    for item in manifest["files"]:
+        if (not isinstance(item, dict) or not isinstance(item.get("path"), str) or
+                not isinstance(item.get("sha256"), str)):
+            return False
+        path = Path(item["path"])
+        if not path.is_file() or sha256_file(path) != item["sha256"]:
+            return False
+    uname = os.uname()
+    return manifest.get("platform") == {
+        "sysname": uname.sysname, "release": uname.release, "machine": uname.machine}
+
+
+def _terminate_owned_child(process: subprocess.Popen[Any], graceful: bool = True) -> None:
+    """Terminate a still-PID-anchored child group and reap its leader."""
     if os.name == "posix":
-        os.killpg(process.pid, signal.SIGTERM)
-    else:  # pragma: no cover - exercised on Windows only
-        process.terminate()
-    try:
-        process.wait(timeout=2)
-    except subprocess.TimeoutExpired:
-        if os.name == "posix":
-            os.killpg(process.pid, signal.SIGKILL)
-        else:  # pragma: no cover
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        deadline = time.monotonic() + (TERMINATION_GRACE_SECONDS if graceful else 0.0)
+        while _live_process_group_members(process.pid) and time.monotonic() < deadline:
+            time.sleep(min(0.01, max(0.0, deadline - time.monotonic())))
+        if _live_process_group_members(process.pid):
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        quiescence_deadline = time.monotonic() + TERMINATION_GRACE_SECONDS
+        while (_live_process_group_members(process.pid) and
+               time.monotonic() < quiescence_deadline):
+            time.sleep(min(0.01, max(0.0, quiescence_deadline - time.monotonic())))
+        survivors = _live_process_group_members(process.pid)
+        if survivors:
+            raise RuntimeError(
+                f"owned process group {process.pid} did not quiesce: {survivors}")
+        try:
+            process.wait(timeout=TERMINATION_GRACE_SECONDS)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait()
+        return
+    if process.poll() is not None:  # pragma: no cover - exercised on Windows only
+        return
+    process.terminate()  # pragma: no cover
+    try:  # pragma: no cover
+        process.wait(timeout=TERMINATION_GRACE_SECONDS)
+    except subprocess.TimeoutExpired:  # pragma: no cover
+        try:
             process.kill()
+        finally:
+            process.wait()
+
+
+def _live_process_group_members(group_id: int) -> List[int]:
+    """Return non-zombie Linux members while the unreaped leader anchors PGID."""
+    members = []
+    proc = Path("/proc")
+    if not proc.is_dir():
+        raise RuntimeError("owned process-group verification requires Linux /proc")
+    for entry in proc.iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            stat = (entry / "stat").read_text(encoding="utf-8")
+            fields = stat[stat.rfind(")") + 2:].split()
+            state, process_group = fields[0], int(fields[2])
+        except (FileNotFoundError, ProcessLookupError, PermissionError, ValueError, IndexError):
+            continue
+        if process_group == group_id and state != "Z":
+            members.append(int(entry.name))
+    return members
 
 
 @dataclass(frozen=True)
@@ -273,14 +463,19 @@ class Collector:
         self._frozen_inputs: Optional[List[Dict[str, Any]]] = None
         self._frozen_binary: Optional[Dict[str, Any]] = None
         self._input_replacements: Dict[str, str] = {}
+        self._input_roles: Dict[str, str] = {}
         self._snapshot_streams: List[BinaryIO] = []
         self._binary_launch_path: Optional[str] = None
         self._runtime_environment: Dict[str, str] = {}
+        self._child_environment: Optional[Dict[str, str]] = None
+        self._cohort_identity: Optional[Dict[str, Any]] = None
+        self._runtime_evidence: Optional[Dict[str, Any]] = None
         self._lock = threading.Lock()
         self._cancelled = threading.Event()
 
     def plan(self) -> List[RunSpec]:
         cohort_id = _safe_component(self.manifest["cohort"]["id"])
+        command_base = Path(self.manifest["cwd"] or os.getcwd())
         specs = []
         for seed in self.manifest["seeds"]:
             for repeat in range(1, self.manifest["repeats"] + 1):
@@ -293,18 +488,23 @@ class Collector:
                     "repeat": str(repeat),
                     "run_id": run_id,
                     "run_dir": str(directory),
-                    "telemetry": str(directory / "telemetry.jsonl"),
-                    "report": str(directory / "report.json"),
+                    "telemetry": str(directory / self.manifest["artifacts"].get(
+                        "telemetry", "telemetry.jsonl")),
+                    "report": str(directory / self.manifest["artifacts"].get(
+                        "final_report", "report.json")),
                 }
                 argv = _expand_argv(self.manifest["command"], fields)
-                argv = [_rewrite_input_argument(argument, self._input_replacements) for argument in argv]
+                argv = [_rewrite_input_argument(argument, self._input_replacements, command_base)
+                        for argument in argv]
                 if self._frozen_binary is not None:
                     argv[0] = self._frozen_binary["snapshot_path"]
                 specs.append(RunSpec(run_id, seed, repeat, directory, tuple(argv)))
         return specs
 
     def _snapshot_binary(self) -> Dict[str, Any]:
-        environment = _child_environment(self.manifest["environment"])
+        if self._child_environment is None:
+            raise RuntimeError("cohort environment was not frozen")
+        environment = self._child_environment
         resolved = _resolved_binary(self.manifest["command"][0], self.manifest["cwd"], environment)
         if resolved is None:
             raise ValueError(f"cannot resolve cohort executable: {self.manifest['command'][0]}")
@@ -316,6 +516,9 @@ class Collector:
         self._binary_launch_path = _descriptor_path(frozen)
         executable_dir = resolved.parent
         self._runtime_environment["NEXTPNR_EXECUTABLE_DIR"] = str(executable_dir)
+        self._runtime_evidence = _runtime_environment_evidence(resolved, environment)
+        self.manifest["provenance"]["runtime_environment_id"] = \
+            self._runtime_evidence["runtime_environment_id"]
         return {
             "requested_path": self.manifest["command"][0],
             "resolved_path": str(resolved),
@@ -323,6 +526,7 @@ class Collector:
             "launch_path": self._binary_launch_path,
             "sha256": _sha256_stream(frozen),
             "runtime_executable_dir": str(executable_dir),
+            "runtime_environment": self._runtime_evidence,
         }
 
     def _snapshot_inputs(self) -> List[Dict[str, Any]]:
@@ -345,13 +549,147 @@ class Collector:
                            "launch_path": stable_path, "sha256": digest})
             self._input_replacements[item["path"]] = stable_path
             self._input_replacements[str(resolved)] = stable_path
+            self._input_roles[item["path"]] = item["role"]
+            self._input_roles[str(resolved)] = item["role"]
             records.append(record)
         return records
+
+    def _validate_implicit_runtime_inputs(self) -> None:
+        if self._frozen_binary is None:
+            raise RuntimeError("cohort executable was not frozen")
+        binary_name = Path(self._frozen_binary["resolved_path"]).name
+        if (self.manifest["architecture"] != "himbaechel" and
+                not binary_name.startswith("nextpnr-himbaechel")):
+            return
+        chipdb_values = _option_values(self.manifest["command"], "--chipdb")
+        if len(chipdb_values) != 1:
+            raise ValueError(
+                "nextpnr-himbaechel collection requires exactly one explicit --chipdb "
+                "declared in inputs")
+        chipdb = Path(chipdb_values[0])
+        base = Path(self.manifest["cwd"] or os.getcwd())
+        resolved = (base / chipdb).resolve() if not chipdb.is_absolute() else chipdb.resolve()
+        if chipdb_values[0] not in self._input_replacements and str(resolved) not in self._input_replacements:
+            raise ValueError("nextpnr-himbaechel --chipdb must be declared in inputs")
+
+    def _validate_known_input_options(self) -> None:
+        if self._frozen_binary is None:
+            raise RuntimeError("cohort executable was not frozen")
+        input_options = {
+            "--json": "mapped_netlist", "--sdc": "constraints", "--qsf": "constraints",
+            "--chipdb": "chipdb", "--pcf": "constraints", "--pdc": "constraints",
+            "--xdc": "constraints", "--cst": "constraints", "--lpf": "constraints",
+            "--read": "design_input", "--pre-pack": "python_hook",
+            "--pre-place": "python_hook", "--pre-route": "python_hook",
+            "--post-route": "python_hook", "--on-failure": "python_hook",
+            "--run": "python_hook", "--fes-cart": "mapped_netlist",
+            "--remap-critical": "timing_report", "--remap-plan": "remap_plan",
+            "--remap-post-plan": "remap_plan",
+            "--remap-comb-critical": "timing_report",
+            "--remap-comb-plan": "remap_plan",
+            "--remap-decompose-critical": "timing_report",
+            "--remap-lut-pair-critical": "timing_report",
+            "--remap-lut-driver-critical": "timing_report",
+        }
+        base = Path(self.manifest["cwd"] or os.getcwd())
+        for option, expected_role in input_options.items():
+            for value in _option_values(self.manifest["command"], option):
+                path = Path(value)
+                resolved = (base / path).resolve() if not path.is_absolute() else path.resolve()
+                if value not in self._input_replacements and str(resolved) not in self._input_replacements:
+                    raise ValueError(f"nextpnr input {option} must be declared in inputs: {value}")
+                role = self._input_roles.get(value, self._input_roles.get(str(resolved)))
+                if role != expected_role:
+                    raise ValueError(
+                        f"nextpnr input {option} requires role {expected_role!r}, got {role!r}")
+        if self.manifest["architecture"] == "mistral":
+            unsupported = sorted(name for name in self.manifest["environment"]
+                                 if name.startswith("NEXTPNR_MISTRAL_"))
+            if unsupported:
+                raise ValueError(
+                    "Mistral path/control environment is unsupported for frozen collection: " +
+                    ", ".join(unsupported))
+
+    def _validate_no_undeclared_file_arguments(self, specs: Sequence[RunSpec]) -> None:
+        base = Path(self.manifest["cwd"] or os.getcwd())
+        frozen_paths = set(self._input_replacements.values())
+        for spec in specs:
+            for index, argument in enumerate(spec.argv[1:], start=1):
+                value = argument.partition("=")[2] if "=" in argument else argument
+                if (not value or value.startswith("-") or value in frozen_paths or
+                        spec.argv[index - 1] == "-c"):
+                    continue
+                path = Path(value)
+                resolved = (base / path).resolve() if not path.is_absolute() else path.resolve()
+                if (self._frozen_binary is not None and
+                        str(resolved) == self._frozen_binary["resolved_path"]):
+                    continue
+                if resolved.is_file():
+                    raise ValueError(
+                        f"expanded command file argument must be declared in inputs: {value}")
 
     def _close_snapshots(self) -> None:
         for stream in self._snapshot_streams:
             stream.close()
         self._snapshot_streams.clear()
+
+    def _validate_declared_inputs_bound(self, specs: Sequence[RunSpec]) -> None:
+        for record in self._frozen_inputs or []:
+            launch_path = record["launch_path"]
+            for spec in specs:
+                values = [argument.partition("=")[2] if "=" in argument else argument
+                          for argument in spec.argv]
+                if launch_path not in values:
+                    raise ValueError(
+                        f"declared input is not bound to every command argv: {record['path']}")
+
+    def _build_cohort_identity(self) -> Dict[str, Any]:
+        if self._frozen_binary is None or self._frozen_inputs is None or self._child_environment is None:
+            raise RuntimeError("cohort evidence was not frozen")
+        binary = {name: self._frozen_binary[name] for name in
+                  ("requested_path", "resolved_path", "sha256", "runtime_executable_dir",
+                   "runtime_environment")}
+        inputs = [{name: item.get(name) for name in
+                   ("path", "resolved_path", "role", "sha256")}
+                  for item in self._frozen_inputs]
+        environment = dict(self._child_environment)
+        environment.update(self._runtime_environment)
+        record = {
+            "schema_version": SCHEMA_VERSION,
+            "cohort": self.manifest["cohort"],
+            "architecture": self.manifest["architecture"],
+            "command": self.manifest["command"],
+            "cwd": str(Path(self.manifest["cwd"] or os.getcwd()).resolve()),
+            "environment": environment,
+            "provenance": self.manifest["provenance"],
+            "binary": binary,
+            "inputs": inputs,
+            "artifacts": self.manifest["artifacts"],
+            "required_clocks": self.manifest["required_clocks"],
+            "limits": self.manifest["limits"],
+        }
+        encoded = json.dumps(record, sort_keys=True, separators=(",", ":"),
+                             allow_nan=False).encode("utf-8")
+        return {"fingerprint_sha256": hashlib.sha256(encoded).hexdigest(),
+                "manifest": record}
+
+    def _claim_cohort_identity(self) -> None:
+        if self._cohort_identity is None:
+            raise RuntimeError("cohort identity was not built")
+        path = self.output_root / f"cohort-{_safe_component(self.manifest['cohort']['id'])}.json"
+        try:
+            with path.open("x", encoding="utf-8") as stream:
+                json.dump(self._cohort_identity, stream, indent=2, sort_keys=True,
+                          allow_nan=False)
+                stream.write("\n")
+        except FileExistsError:
+            try:
+                existing = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError) as error:
+                raise ValueError(f"existing cohort identity is unreadable: {path}") from error
+            if existing != self._cohort_identity:
+                raise ValueError(
+                    f"cohort id {self.manifest['cohort']['id']!r} already has a different fingerprint")
 
     def _run_one(self, spec: RunSpec, deadline: float) -> Dict[str, Any]:
         if self._cancelled.is_set():
@@ -361,7 +699,10 @@ class Collector:
         if now >= deadline:
             return {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat, "status": "not_started_total_budget"}
         spec.directory.mkdir(parents=True, exist_ok=False)
-        environment = _child_environment({**self.manifest["environment"], **self._runtime_environment})
+        if self._child_environment is None:
+            raise RuntimeError("cohort environment was not frozen")
+        environment = dict(self._child_environment)
+        environment.update(self._runtime_environment)
         started_wall = time.time()
         if self._frozen_inputs is None or self._frozen_binary is None:
             raise RuntimeError("collector inputs and executable were not frozen before launch")
@@ -379,9 +720,12 @@ class Collector:
             "inputs": self._frozen_inputs,
             "binary": self._frozen_binary,
             "artifacts": self.manifest["artifacts"],
+            "cohort_identity": self._cohort_identity,
             "started_unix_seconds": started_wall,
         }
-        _json_dump(spec.directory / "manifest.json", immutable)
+        manifest_path = spec.directory / "manifest.json"
+        _json_dump(manifest_path, immutable)
+        manifest_sha256 = sha256_file(manifest_path)
         result: Dict[str, Any] = {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat}
         stdout_path, stderr_path = spec.directory / "stdout.log", spec.directory / "stderr.log"
         started = time.monotonic()
@@ -403,110 +747,183 @@ class Collector:
                 if process is not None:
                     timeout = min(self.manifest["limits"]["per_run_seconds"],
                                   max(0.001, deadline - time.monotonic()))
+                    wait_deadline = time.monotonic() + timeout
+                    pidfd = None
+                    group_quiesced = False
                     try:
-                        return_code = process.wait(timeout=timeout)
-                        with self._lock:
-                            cancelled = spec.run_id in self._cancelled_runs
-                        status = ("cancelled" if cancelled else
-                                  "completed" if return_code == 0 else "process_failure")
-                        result.update({"status": status, "return_code": return_code,
-                                       "signal": -return_code if return_code < 0 else None})
-                        if status == "cancelled":
-                            result["termination_reason"] = "collector_cancelled"
-                    except subprocess.TimeoutExpired:
-                        _terminate_owned_child(process)
-                        reason = "total_budget" if time.monotonic() >= deadline else "per_run_timeout"
-                        result.update({"status": "timeout", "termination_reason": reason,
-                                       "return_code": process.returncode,
-                                       "signal": -process.returncode if process.returncode and process.returncode < 0
-                                       else None})
+                        pidfd = os.pidfd_open(process.pid)
+                        while True:
+                            with self._lock:
+                                cancelled = spec.run_id in self._cancelled_runs
+                            if cancelled:
+                                _terminate_owned_child(process)
+                                group_quiesced = True
+                                result.update({"status": "cancelled",
+                                               "termination_reason": "collector_cancelled",
+                                               "return_code": process.returncode,
+                                               "signal": -process.returncode if process.returncode and
+                                               process.returncode < 0 else None})
+                                break
+                            remaining = wait_deadline - time.monotonic()
+                            if remaining <= 0:
+                                _terminate_owned_child(process)
+                                group_quiesced = True
+                                reason = ("total_budget" if time.monotonic() >= deadline
+                                          else "per_run_timeout")
+                                result.update({"status": "timeout", "termination_reason": reason,
+                                               "return_code": process.returncode,
+                                               "signal": -process.returncode if process.returncode and
+                                               process.returncode < 0 else None})
+                                break
+                            if select.select([pidfd], [], [], min(0.05, remaining))[0]:
+                                # The unreaped leader still anchors the process-group ID while
+                                # residual descendants are terminated and artifacts quiesce.
+                                _terminate_owned_child(process, graceful=False)
+                                group_quiesced = True
+                                with self._lock:
+                                    cancelled = spec.run_id in self._cancelled_runs
+                                return_code = process.returncode
+                                status = ("cancelled" if cancelled else
+                                          "completed" if return_code == 0 else "process_failure")
+                                result.update({"status": status, "return_code": return_code,
+                                               "signal": -return_code if return_code < 0 else None})
+                                if cancelled:
+                                    result["termination_reason"] = "collector_cancelled"
+                                break
+                    finally:
+                        if not group_quiesced:
+                            _terminate_owned_child(process, graceful=False)
+                        if pidfd is not None:
+                            os.close(pidfd)
         except OSError as error:
             result.update({"status": "launch_error", "error": f"{type(error).__name__}: {error}"})
         finally:
             with self._lock:
                 self._active.pop(spec.run_id, None)
         result["elapsed_seconds"] = time.monotonic() - started
-        artifacts = {
-            "stdout": {"path": str(stdout_path), "sha256": sha256_file(stdout_path)},
-            "stderr": {"path": str(stderr_path), "sha256": sha256_file(stderr_path)},
-        }
-        for name, relative in self.manifest["artifacts"].items():
-            path = spec.directory / relative
-            artifacts[name] = {"path": str(path), "sha256": sha256_file(path) if path.is_file() else None, "available": path.is_file()}
-        result["artifacts"] = artifacts
-        result = classify_collected_result(result, artifacts, self.manifest["required_clocks"])
-        _json_dump(spec.directory / "result.json", result)
-        return result
+        if sha256_file(manifest_path) != manifest_sha256:
+            raise RuntimeError("run manifest changed while the worker was active")
+        artifact_streams = []
+        artifacts = {}
+        evidence_artifacts = {}
+        artifact_paths = {"stdout": stdout_path, "stderr": stderr_path}
+        artifact_paths.update({name: spec.directory / relative
+                               for name, relative in self.manifest["artifacts"].items()})
+        try:
+            for name, path in artifact_paths.items():
+                if not path.exists():
+                    artifacts[name] = {"path": str(path), "sha256": None,
+                                       "available": False}
+                    evidence_artifacts[name] = dict(artifacts[name])
+                    continue
+                if path.is_symlink() or not path.is_file():
+                    raise RuntimeError(f"artifact is not a regular non-symlink file: {path}")
+                frozen = _copy_to_readonly_descriptor(path, None, 0o444)
+                artifact_streams.append(frozen)
+                digest = _sha256_stream(frozen)
+                artifacts[name] = {"path": str(path), "sha256": digest, "available": True}
+                evidence_artifacts[name] = {
+                    "path": _descriptor_path(frozen), "sha256": digest, "available": True}
+            result["artifacts"] = artifacts
+            result["manifest_sha256"] = manifest_sha256
+            result = classify_collected_result(
+                result, evidence_artifacts, self.manifest["required_clocks"])
+            result_path = spec.directory / "result.json"
+            _json_dump(result_path, result)
+            result["result_sha256"] = sha256_file(result_path)
+            return result
+        finally:
+            for stream in artifact_streams:
+                stream.close()
 
     def cancel(self) -> None:
         with self._lock:
             self._cancelled.set()
-            processes = []
             for run_id, process in self._active.items():
-                if process.poll() is None:
-                    self._cancelled_runs.add(run_id)
-                    processes.append(process)
-        for process in processes:
-            _terminate_owned_child(process)
+                self._cancelled_runs.add(run_id)
 
     def run(self, dry_run: bool = False) -> List[Dict[str, Any]]:
         if dry_run:
             specs = self.plan()
             return [{"run_id": s.run_id, "seed": s.seed, "repeat": s.repeat, "directory": str(s.directory), "argv": list(s.argv), "status": "dry_run"} for s in specs]
+        if not hasattr(os, "pidfd_open") or not Path("/proc").is_dir():
+            raise RuntimeError("collection requires Linux pidfds and /proc")
         self.output_root.mkdir(parents=True, exist_ok=True)
+        self._child_environment = _child_environment(self.manifest["environment"])
         try:
             self._frozen_binary = self._snapshot_binary()
             self._frozen_inputs = self._snapshot_inputs()
-        except BaseException:
-            self._close_snapshots()
-            raise
-        specs = self.plan()
-        deadline = time.monotonic() + self.manifest["limits"]["total_seconds"]
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.manifest["limits"]["concurrency"])
-        future_specs = []
-        futures_by_run = {}
-        interrupted = None
-        try:
-            for spec in specs:
-                future = executor.submit(self._run_one, spec, deadline)
-                future_specs.append((future, spec))
-                futures_by_run[spec.run_id] = future
-            for future, _spec in future_specs:
-                try:
-                    future.result()
-                except Exception:
-                    pass  # gather every terminal state below
-        except KeyboardInterrupt as error:
-            interrupted = error
-            self.cancel()
-            for future, _spec in future_specs:
-                future.cancel()
-        finally:
-            executor.shutdown(wait=True, cancel_futures=self._cancelled.is_set())
-        results = []
-        for spec in specs:
-            future = futures_by_run.get(spec.run_id)
-            if future is None:
-                results.append({"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
-                                "status": "cancelled",
-                                "termination_reason": "collector_cancelled_before_submission"})
-                continue
-            if future.cancelled():
-                results.append({"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
-                                "status": "cancelled",
-                                "termination_reason": "collector_cancelled_before_launch"})
-                continue
+            self._validate_implicit_runtime_inputs()
+            self._validate_known_input_options()
+            specs = self.plan()
+            self._validate_declared_inputs_bound(specs)
+            self._validate_no_undeclared_file_arguments(specs)
+            self._cohort_identity = self._build_cohort_identity()
+            self._claim_cohort_identity()
+            deadline = time.monotonic() + self.manifest["limits"]["total_seconds"]
+            executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.manifest["limits"]["concurrency"])
+            future_specs = []
+            futures_by_run = {}
+            interrupted = None
             try:
-                results.append(future.result())
-            except Exception as error:  # preserve other completed runs
-                results.append({"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
-                                "status": "runner_error", "error": f"{type(error).__name__}: {error}"})
-        summary = {"schema_version": SCHEMA_VERSION, "cohort": self.manifest["cohort"], "results": results}
-        _json_dump(self.output_root / f"collection-{uuid.uuid4().hex}.json", summary)
-        self._close_snapshots()
-        if interrupted is not None:
-            raise interrupted
-        return results
+                for spec in specs:
+                    future = executor.submit(self._run_one, spec, deadline)
+                    future_specs.append((future, spec))
+                    futures_by_run[spec.run_id] = future
+                for future, _spec in future_specs:
+                    try:
+                        future.result()
+                    except Exception:
+                        pass  # gather every terminal state below
+            except KeyboardInterrupt as error:
+                interrupted = error
+                self.cancel()
+                for future, _spec in future_specs:
+                    future.cancel()
+            finally:
+                executor.shutdown(wait=True, cancel_futures=self._cancelled.is_set())
+            results = []
+            for spec in specs:
+                future = futures_by_run.get(spec.run_id)
+                if future is None:
+                    results.append({"run_id": spec.run_id, "seed": spec.seed,
+                                    "repeat": spec.repeat, "status": "cancelled",
+                                    "termination_reason":
+                                    "collector_cancelled_before_submission"})
+                    continue
+                if future.cancelled():
+                    results.append({"run_id": spec.run_id, "seed": spec.seed,
+                                    "repeat": spec.repeat, "status": "cancelled",
+                                    "termination_reason": "collector_cancelled_before_launch"})
+                    continue
+                try:
+                    results.append(future.result())
+                except Exception as error:  # preserve other completed runs
+                    results.append({"run_id": spec.run_id, "seed": spec.seed,
+                                    "repeat": spec.repeat, "status": "runner_error",
+                                    "error": f"{type(error).__name__}: {error}"})
+            summary = {"schema_version": SCHEMA_VERSION,
+                       "cohort": self.manifest["cohort"],
+                       "cohort_identity": self._cohort_identity, "results": results}
+            if not _verify_runtime_environment_evidence(self._runtime_evidence):
+                raise RuntimeError("runtime environment changed during cohort collection")
+            _json_dump(self.output_root / f"collection-{uuid.uuid4().hex}.json", summary)
+            if interrupted is not None:
+                raise interrupted
+            return results
+        finally:
+            self._close_snapshots()
+
+
+def _finite_json_tree(value: Any) -> bool:
+    if isinstance(value, float):
+        return math.isfinite(value)
+    if isinstance(value, list):
+        return all(_finite_json_tree(item) for item in value)
+    if isinstance(value, dict):
+        return all(_finite_json_tree(item) for item in value.values())
+    return True
 
 
 def load_jsonl(path: Path) -> Tuple[List[Dict[str, Any]], bool]:
@@ -522,14 +939,24 @@ def load_jsonl(path: Path) -> Tuple[List[Dict[str, Any]], bool]:
             if not line.strip():
                 continue
             try:
-                value = json.loads(line)
-                if (not isinstance(value, dict) or value.get("schema_version") != SCHEMA_VERSION or
-                        value.get("sequence") != expected_sequence or not isinstance(value.get("run_id"), str) or
-                        not isinstance(value.get("event"), str) or terminal_seen):
+                value = json.loads(
+                    line, parse_constant=lambda token: (_ for _ in ()).throw(
+                        ValueError(f"non-finite JSON number: {token}")))
+                schema_version = value.get("schema_version") if isinstance(value, dict) else None
+                sequence = value.get("sequence") if isinstance(value, dict) else None
+                if (not isinstance(value, dict) or not _finite_json_tree(value) or
+                        isinstance(schema_version, bool) or not isinstance(schema_version, int) or
+                        schema_version != SCHEMA_VERSION or isinstance(sequence, bool) or
+                        not isinstance(sequence, int) or sequence != expected_sequence or
+                        not isinstance(value.get("run_id"), str) or not value["run_id"] or
+                        value.get("event") not in
+                        {"run_start", "phase_start", "iteration", "repair_round",
+                         "phase_end", "run_end"} or
+                        terminal_seen):
                     raise ValueError
                 elapsed = value.get("elapsed_s")
                 if (isinstance(elapsed, bool) or not isinstance(elapsed, (int, float)) or
-                        not math.isfinite(elapsed) or elapsed < prior_elapsed):
+                        not math.isfinite(elapsed) or elapsed < 0 or elapsed < prior_elapsed):
                     raise ValueError
                 if run_id is None:
                     run_id = value["run_id"]
@@ -538,19 +965,31 @@ def load_jsonl(path: Path) -> Tuple[List[Dict[str, Any]], bool]:
                 event, phase, attempt = value["event"], value.get("phase"), value.get("attempt")
                 if expected_sequence == 0 and event != "run_start":
                     raise ValueError
-                if event == "phase_start":
-                    if not isinstance(phase, str) or isinstance(attempt, bool) or not isinstance(attempt, int):
+                if expected_sequence != 0 and event == "run_start":
+                    raise ValueError
+                if event == "run_start":
+                    if phase is not None or attempt is not None:
+                        raise ValueError
+                elif event == "phase_start":
+                    if (not isinstance(phase, str) or not phase or isinstance(attempt, bool) or
+                            not isinstance(attempt, int) or attempt < 0):
                         raise ValueError
                     phase_stack.append((phase, attempt))
                 elif event == "phase_end":
-                    if not phase_stack or phase_stack[-1] != (phase, attempt):
+                    if (not isinstance(phase, str) or isinstance(attempt, bool) or
+                            not isinstance(attempt, int) or attempt < 0 or not phase_stack or
+                            phase_stack[-1] != (phase, attempt)):
                         raise ValueError
                     phase_stack.pop()
-                elif event == "run_end":
-                    if phase_stack:
+                elif event in {"iteration", "repair_round"}:
+                    if (not isinstance(phase, str) or not phase or isinstance(attempt, bool) or
+                            not isinstance(attempt, int) or attempt < 0 or not phase_stack or
+                            phase_stack[-1] != (phase, attempt) or
+                            (event == "repair_round" and phase != "timing_repair")):
                         raise ValueError
-                elif phase is not None and (phase, attempt) not in phase_stack:
-                    raise ValueError
+                elif event == "run_end":
+                    if phase_stack or phase is not None or attempt is not None:
+                        raise ValueError
                 records.append(value)
                 expected_sequence += 1
                 prior_elapsed = float(elapsed)
@@ -697,9 +1136,32 @@ def classify_collected_result(result: Mapping[str, Any], artifacts: Mapping[str,
 def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
     if document.get("schema_version", SCHEMA_VERSION) != SCHEMA_VERSION or not isinstance(document.get("runs"), list):
         raise ValueError("unsupported evaluator dataset")
+    required_declarations = document.get("required_clocks")
+    if not isinstance(required_declarations, list):
+        raise ValueError("dataset.required_clocks must be an array of design/constraint declarations")
+    required_by_design = {}
+    for declaration in required_declarations:
+        if not isinstance(declaration, dict):
+            raise ValueError("each required-clock declaration must be an object")
+        _require_keys(declaration, ("mapped_design_id", "constraint_family", "clocks"),
+                      "required-clock declaration")
+        key = (declaration["mapped_design_id"], declaration["constraint_family"])
+        names = declaration["clocks"]
+        if (not all(isinstance(item, str) and item for item in key) or key in required_by_design or
+                not isinstance(names, list) or not names or
+                not all(isinstance(name, str) and name for name in names) or
+                len(set(names)) != len(names)):
+            raise ValueError("required-clock declarations must be unique with non-empty clock arrays")
+        required_by_design[key] = list(names)
+    cohort_identities = document.get("cohort_identities")
+    if not isinstance(cohort_identities, dict):
+        raise ValueError("dataset.cohort_identities must bind every cohort fingerprint")
     normalized = []
     for run in document["runs"]:
-        _require_keys(run, ("run_id", "cohort_id", "mapped_design_id", "constraint_family", "seed", "status", "duration_seconds", "observations", "outcome"), "run")
+        _require_keys(run, ("run_id", "cohort_id", "cohort_fingerprint_sha256",
+                            "mapped_design_id", "constraint_family", "seed", "status",
+                            "duration_seconds", "outcome_observed_seconds", "observations",
+                            "outcome"), "run")
         duration = _positive_number(run["duration_seconds"], "duration_seconds")
         observations = run["observations"]
         if not isinstance(observations, list):
@@ -714,6 +1176,10 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
                 raise ValueError("observation times must be finite, monotonic, and within duration")
             prior = elapsed
             clean.append(dict(observation))
+        outcome_observed = _positive_number(run["outcome_observed_seconds"],
+                                            "outcome_observed_seconds")
+        if outcome_observed > duration or (clean and outcome_observed < clean[-1]["elapsed_seconds"]):
+            raise ValueError("outcome availability must follow observations and fit within duration")
         outcome = run["outcome"]
         if not isinstance(outcome, dict):
             raise ValueError("outcome must be an object")
@@ -723,6 +1189,30 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
                 not all(isinstance(name, str) and name for name in required_clocks) or
                 len(set(required_clocks)) != len(required_clocks)):
             raise ValueError("outcome.required_clocks must be a non-empty unique string array")
+        design_key = (run["mapped_design_id"], run["constraint_family"])
+        canonical_clocks = required_by_design.get(design_key)
+        if canonical_clocks is None:
+            raise ValueError(f"required clocks are not declared for {design_key!r}")
+        if required_clocks != canonical_clocks:
+            raise ValueError(
+                f"outcome.required_clocks does not match dataset declaration for {design_key!r}")
+        identity = cohort_identities.get(run["cohort_id"])
+        fingerprint = run["cohort_fingerprint_sha256"]
+        if (not isinstance(identity, dict) or not isinstance(fingerprint, str) or
+                identity.get("fingerprint_sha256") != fingerprint or
+                not isinstance(identity.get("manifest"), dict)):
+            raise ValueError("run cohort fingerprint is not bound by cohort_identities")
+        encoded = json.dumps(identity["manifest"], sort_keys=True, separators=(",", ":"),
+                             allow_nan=False).encode("utf-8")
+        if hashlib.sha256(encoded).hexdigest() != fingerprint:
+            raise ValueError("cohort identity fingerprint does not match its canonical manifest")
+        identity_cohort = identity["manifest"].get("cohort")
+        if (not isinstance(identity_cohort, dict) or
+                identity_cohort.get("id") != run["cohort_id"] or
+                identity_cohort.get("mapped_design_id") != run["mapped_design_id"] or
+                identity_cohort.get("constraint_family") != run["constraint_family"] or
+                identity["manifest"].get("required_clocks") != canonical_clocks):
+            raise ValueError("run design and required clocks do not match its cohort identity")
         clocks = outcome.get("analogue_clocks")
         clock_by_name = {}
         if isinstance(clocks, list):
@@ -749,7 +1239,8 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
             analogue_pass = all(margin >= 0 for margin in margins)
             final_margin = min(margins)
         copy = dict(run)
-        copy.update({"duration_seconds": duration, "observations": clean,
+        copy.update({"duration_seconds": duration, "outcome_observed_seconds": outcome_observed,
+                     "observations": clean,
                      "success": legal and analogue_pass and run["status"] == "completed",
                      "legal_route": legal, "analogue_timing_pass": analogue_pass,
                      "timing_available": timing_available, "missing_required_clocks": missing_required,
@@ -777,10 +1268,10 @@ def heuristic_score(observation: Optional[Mapping[str, Any]]) -> Tuple[float, ..
     progress = observation.get("recent_progress")
     table_wns = observation.get("table_wns_ns")
     return (
-        -float(overuse) if isinstance(overuse, (int, float)) else -math.inf,
-        -float(unrouted) if isinstance(unrouted, (int, float)) else -math.inf,
-        float(progress) if isinstance(progress, (int, float)) else -math.inf,
-        float(table_wns) if isinstance(table_wns, (int, float)) else -math.inf,
+        -float(overuse) if _finite_number(overuse) else -math.inf,
+        -float(unrouted) if _finite_number(unrouted) else -math.inf,
+        float(progress) if _finite_number(progress) else -math.inf,
+        float(table_wns) if _finite_number(table_wns) else -math.inf,
     )
 
 
@@ -808,6 +1299,7 @@ def successive_halving(
     runs: Sequence[Mapping[str, Any]], checkpoints: Sequence[float], quotas: Sequence[int],
     exploratory_survivors: int, scheduler_seed: int, restart: bool,
     score_overhead_seconds: float = 0.0,
+    budget_seconds: Optional[float] = None,
 ) -> Dict[str, Any]:
     if not checkpoints or len(checkpoints) != len(quotas):
         raise ValueError("checkpoints and quotas must be non-empty and equal length")
@@ -817,21 +1309,40 @@ def successive_halving(
         raise ValueError("quotas must be positive integers")
     if exploratory_survivors < 0:
         raise ValueError("exploratory_survivors cannot be negative")
+    budget_limit = (math.inf if budget_seconds is None else
+                    _positive_number(budget_seconds, "budget_seconds"))
     rng = random.Random(scheduler_seed)
     survivors = list(runs)
     terminal_successes = []
     stage_records, aggregate = [], 0.0
     prior_checkpoint = 0.0
+    budget_exhausted = False
     for checkpoint, quota in zip(checkpoints, quotas):
         evaluated = list(survivors)
         if restart:
-            aggregate += sum(min(run["duration_seconds"], checkpoint) for run in evaluated)
+            stage_cost = sum(min(run["duration_seconds"], checkpoint) for run in evaluated)
         else:
-            aggregate += sum(max(0.0, min(run["duration_seconds"], checkpoint) - min(run["duration_seconds"], prior_checkpoint)) for run in evaluated)
-        terminal = [run for run in evaluated if run["duration_seconds"] <= checkpoint]
+            stage_cost = sum(max(0.0, min(run["duration_seconds"], checkpoint) -
+                                 min(run["duration_seconds"], prior_checkpoint))
+                             for run in evaluated)
+        terminal = [run for run in evaluated
+                    if run.get("outcome_observed_seconds", run["duration_seconds"]) <= checkpoint]
+        active = [run for run in evaluated if run not in terminal]
+        stage_cost += score_overhead_seconds * len(active)
+        if aggregate + stage_cost > budget_limit:
+            censored = budget_limit - aggregate
+            aggregate = budget_limit
+            budget_exhausted = True
+            stage_records.append({"checkpoint": checkpoint,
+                                  "evaluated": [run["run_id"] for run in evaluated],
+                                  "budget_exhausted_before_stage": True,
+                                  "censored_compute_seconds": censored,
+                                  "terminal_successes": [], "terminal_failures": [],
+                                  "promoted": [], "exploratory": []})
+            survivors = []
+            break
+        aggregate += stage_cost
         terminal_successes.extend(run for run in terminal if run["success"])
-        active = [run for run in evaluated if run["duration_seconds"] > checkpoint]
-        aggregate += score_overhead_seconds * len(active)
         # An independent scheduler RNG breaks score ties. Neither numeric seed nor
         # seed-bearing run IDs are visible to ranking.
         scored = [(heuristic_score(observation_at(run, checkpoint)), rng.random(), run) for run in active]
@@ -852,15 +1363,26 @@ def successive_halving(
             "exploratory": [run["run_id"] for run in explored],
         })
         prior_checkpoint = checkpoint
-    if restart:
-        aggregate += sum(run["duration_seconds"] for run in survivors)
-    else:
-        aggregate += sum(max(0.0, run["duration_seconds"] - min(run["duration_seconds"], prior_checkpoint)) for run in survivors)
-    retained = terminal_successes + survivors
+    completed_survivors = []
+    for run in survivors:
+        final_cost = (run["duration_seconds"] if restart else
+                      max(0.0, run["duration_seconds"] -
+                          min(run["duration_seconds"], prior_checkpoint)))
+        if aggregate + final_cost > budget_limit:
+            aggregate = budget_limit
+            budget_exhausted = True
+            break
+        aggregate += final_cost
+        completed_survivors.append(run)
+    retained = terminal_successes + completed_survivors
     metrics = _metrics(retained, runs, aggregate, aggregate,
                        "restart_execution" if restart else "ideal_resumable_simulation")
     metrics.update({"policy": "successive_halving", "scheduler_seed": scheduler_seed, "stages": stage_records,
-                    "retained": [run["run_id"] for run in retained]})
+                    "retained": [run["run_id"] for run in retained],
+                    "budget_seconds": budget_seconds,
+                    "budget_remaining_seconds": (None if budget_seconds is None else
+                                                 max(0.0, budget_limit - aggregate)),
+                    "budget_exhausted": budget_exhausted})
     return metrics
 
 
@@ -878,7 +1400,13 @@ def random_full_run_baseline(runs: Sequence[Mapping[str, Any]], budget_seconds: 
         if first_success is None and run["success"]:
             first_success = consumed
     metrics = _metrics(completed, runs, consumed, consumed, "observed_full_run_serial")
-    metrics.update({"policy": "random_full_run", "scheduler_seed": scheduler_seed, "order": [run["run_id"] for run in order], "completed": [run["run_id"] for run in completed], "time_to_first_success_seconds": first_success})
+    metrics.update({"policy": "random_full_run", "scheduler_seed": scheduler_seed,
+                    "order": [run["run_id"] for run in order],
+                    "completed": [run["run_id"] for run in completed],
+                    "time_to_first_success_seconds": first_success,
+                    "budget_seconds": budget_seconds,
+                    "budget_remaining_seconds": max(0.0, budget_seconds - consumed),
+                    "budget_exhausted": len(completed) != len(order)})
     return metrics
 
 
@@ -889,8 +1417,8 @@ def evaluate(document: Mapping[str, Any], checkpoints: Sequence[float], quotas: 
         "schema_version": SCHEMA_VERSION,
         "evaluation_population": {"runs": len(runs), "cohorts": sorted({run["cohort_id"] for run in runs}), "mapped_design_constraint_families": sorted({f'{run["mapped_design_id"]}:{run["constraint_family"]}' for run in runs}), "scope": "single-design" if len({(run["mapped_design_id"], run["constraint_family"]) for run in runs}) == 1 else "cross-design-descriptive"},
         "random_full_run": [random_full_run_baseline(runs, budget, seed) for seed in scheduler_seeds],
-        "successive_halving_ideal": [successive_halving(runs, checkpoints, quotas, exploratory, seed, False) for seed in scheduler_seeds],
-        "successive_halving_restart": [successive_halving(runs, checkpoints, quotas, exploratory, seed, True) for seed in scheduler_seeds],
+        "successive_halving_ideal": [successive_halving(runs, checkpoints, quotas, exploratory, seed, False, budget_seconds=budget) for seed in scheduler_seeds],
+        "successive_halving_restart": [successive_halving(runs, checkpoints, quotas, exploratory, seed, True, budget_seconds=budget) for seed in scheduler_seeds],
     }
 
 

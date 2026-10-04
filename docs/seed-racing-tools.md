@@ -11,18 +11,25 @@ Run `python3 python/seed_racing.py collect MANIFEST --output DIRECTORY` or add
 manifest has schema version 1 and contains:
 
 - `cohort`: `id`, `design_id`, `mapped_design_id`, and `constraint_family`;
+- `architecture`: an explicit architecture identifier (including
+  `himbaechel` when that frontend is used), independent of the binary name;
 - `command`: an argv string array, never a shell command;
 - `seeds`, `repeats`, and `limits` (`per_run_seconds`, `total_seconds`, and
   `concurrency`);
 - `inputs`: exact mapped netlist, constraints, included constraints, memory
-  initialization, or other inputs to hash;
+  initialization, or other inputs to hash, each with a non-empty semantic
+  `role`;
 - `required_clocks`: every clock whose final timing constraint must pass,
   using the exact final-report clock names;
 - `artifacts`: names mapped to paths relative to each unique run directory;
-- an explicit environment allowlist and provenance object. Children receive
+- an explicit environment allowlist and provenance object containing
+  `source_revision`, boolean `dirty`, and an immutable
+  `runtime_environment_id: auto`; the collector replaces it with a derived
+  SHA-256 manifest for the interpreter/ELF loader, linked libraries, available
+  NVIDIA driver identity, OS release, and
+  runtime share tree. Children receive
   only that map plus the recorded platform-minimum environment (`PATH`,
-  deterministic `LC_ALL=C` on POSIX, and the standard process-creation
-  variables on Windows); ambient GPU visibility, thread-count, loader, and
+  deterministic `LC_ALL=C`); ambient GPU visibility, thread-count, loader, and
   routing controls are not inherited.
 
 Command arguments may use `{seed}`, `{repeat}`, `{run_id}`, `{run_dir}`,
@@ -30,25 +37,41 @@ Command arguments may use `{seed}`, `{repeat}`, `{run_id}`, `{run_dir}`,
 exclusively, captures stdout/stderr, hashes available artifacts and the resolved
 binary, preserves exit codes/signals/timeouts, and terminates only the fresh
 child process group it owns. Cancellation gates future launches before it
-terminates active groups, so queued jobs cannot start after interruption. The
-collector writes the complete terminal summary before propagating an interrupt.
-Declared cohort inputs must exist and be regular files. They are copied once
-before submission, kept open read-only, and passed to every child through
-inherited descriptor paths. Exact input-path argv entries and `--option=PATH`
-values are rewritten to those stable descriptors, and every run records the
-display snapshot path, launch path, and hash. Replacing a snapshot pathname
-therefore cannot change the bytes consumed by later workers. A declared input
-that cannot be snapshotted aborts the cohort before submission; a missing output
-is recorded as unavailable.
+terminates active groups, waits through the graceful interval, forcibly clears
+remaining descendants, and reaps the leader, so queued or forked work cannot
+continue after interruption. The collector writes the complete terminal
+summary before propagating an interrupt.
+Declared cohort inputs must exist and be regular files. On Linux they are
+copied once before submission into sealed in-memory descriptors and passed to
+every child through `/proc/self/fd` paths. The readable files beside collection
+output are display copies, not the bytes workers consume. The collector checks
+source identity, size, and timestamps around each copy and fails if a source
+changes during capture. Exact input-path argv entries, equivalent resolved path
+spellings, and `--option=PATH` values are rewritten to those descriptors. An
+input that cannot be snapshotted, or is declared but not bound into every
+worker command, aborts the cohort before submission. A missing output is
+recorded as unavailable.
 
-The command executable is resolved and copied once to a cohort snapshot before
-workers are submitted. Every run executes the same open descriptor and records
+Known nextpnr input-bearing options (`--json`, constraint formats, chipdb,
+read input, and Python hooks) must resolve to declared inputs with their
+corresponding roles (`mapped_netlist`, `constraints`, `chipdb`, `design_input`,
+`python_hook`, `timing_report`, or `remap_plan`). Mistral's experimental
+`NEXTPNR_MISTRAL_*` environment controls are rejected because some encode
+untyped path/prefix inputs. Nested includes are not discovered automatically; use
+flattened direct input files or treat that collection as unsupported.
+Any existing file named directly in argv—including a positional Python
+`run` script—must also be declared, even when its option is not in the known
+schema.
+
+The command executable is resolved and copied once into a sealed descriptor
+before workers are submitted. Every run executes that descriptor and records
 its original path, display snapshot path, descriptor launch path, and SHA-256.
-On POSIX nextpnr installations, the original executable directory is supplied
+On Linux nextpnr installations, the original executable directory is supplied
 through the recorded `NEXTPNR_EXECUTABLE_DIR` override, so the normal relative
-share-directory search (and compiled fallback) still finds Himbaechel chipdbs.
-Collection fails closed on platforms without inherited descriptor paths. The
-collector keeps
+share-directory search remains valid. Collection fails closed without Linux
+sealed descriptors, pidfds, and `/proc`. The executable's dynamic dependency
+closure is not copied. Its content identity is derived before submission and
+verified again after all workers finish; any change rejects the cohort. The collector keeps
 the raw process lifecycle in `process_status`, then classifies the run from
 the `telemetry` and `final_report` artifacts. A valid terminal `run_end`
 determines routing legality. Every declared required clock must have finite
@@ -58,13 +81,39 @@ illegal route is `routing_failure`, and missing or truncated evidence is
 setup failure, but cannot establish success because it lacks hold evidence; a
 normalized `outcome.analogue_clocks` report supplies both setup and hold WNS.
 
+Because Himbaechel chip databases are architecture inputs separate from the
+executable, a `nextpnr-himbaechel` collection must pass exactly one explicit
+`--chipdb PATH` (or `--chipdb=PATH`) and declare that file in `inputs`.
+The collector then redirects the chipdb option to the same descriptor-backed
+snapshot as other cohort inputs; implicit mutable installation chipdbs are
+rejected before worker submission.
+
+Before submission the collector writes `cohort-<id>.json`. Its canonical
+SHA-256 identity binds the cohort labels, command template, working directory,
+frozen environment, source/runtime provenance, executable digest,
+declared-input digests, artifact layout, required clocks, architecture, and
+execution limits. Reusing a cohort ID with a
+different bound identity fails closed. Each run manifest embeds that identity;
+the collection summary records it together with run-manifest and result-file
+hashes.
+
 ## Evaluation dataset
+
+The dataset declares canonical required clocks as an array of explicit
+`mapped_design_id`, `constraint_family`, and `clocks` records. Its
+`cohort_identities` map contains the collector's canonical identity records;
+every run supplies the matching `cohort_fingerprint_sha256`. The evaluator
+recomputes each identity hash and requires its design, constraint family, and
+clock list to match the run. A run cannot improve its classification by
+omitting a failing clock.
 
 `python3 python/seed_racing.py evaluate DATASET --checkpoints 5,10 --quotas
 8,2 --budget-seconds 600` replays random full-run and conservative
 successive-halving schedules over fully observed traces. Checkpoints are fixed
 elapsed times, not fractions of eventual duration. Only the allowlisted prefix
-observation at or before a checkpoint is visible to ranking. Numeric router
+observation at or before a checkpoint is visible to ranking. A run's final
+outcome becomes visible only at its explicit `outcome_observed_seconds`, not
+from its eventual duration or final label. Numeric router
 seeds and seed-bearing run IDs are excluded; an independent scheduler RNG
 breaks ties and selects exploratory survivors. Runs that finish by a checkpoint
 leave the active ranking pool: terminal successes are retained immediately and
@@ -80,6 +129,8 @@ name related-clock checks; they need not be literal clock-net names.
 
 Reports label ideal resumable replay as an optimistic simulation and report it
 separately from restart execution, which charges every repeated prefix plus the
-survivor's full rerun. Aggregate serial compute remains distinct from any
+survivor's full rerun. The same fixed aggregate-compute budget bounds the
+random, ideal-resumable, and restart policies; an unaffordable stage or final
+run is censored. Aggregate serial compute remains distinct from any
 future measured concurrent makespan. Synthetic results are diagnostics, not a
 performance claim.
