@@ -174,7 +174,7 @@ struct ControlSig
 
     bool connected() const { return net != nullptr; }
     bool operator==(const ControlSig &other) const { return net == other.net && inverted == other.inverted; }
-    bool operator!=(const ControlSig &other) const { return net == other.net && inverted == other.inverted; }
+    bool operator!=(const ControlSig &other) const { return !(*this == other); }
 };
 
 struct FFControlSet

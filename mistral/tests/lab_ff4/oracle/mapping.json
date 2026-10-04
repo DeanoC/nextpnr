@@ -1,0 +1,485 @@
+{
+  "cases": {
+    "clk2_alm": {
+      "facts": {
+        "ACLR0_INV": "0",
+        "ACLR0_SEL": "ACLR0",
+        "ACLR1_SEL": "DIN2",
+        "CLK0_INV": "0",
+        "CLK0_SEL": "CLKA",
+        "CLK1_INV": "0",
+        "CLK1_SEL": "CLKB",
+        "CLKA_SEL": "CIN0",
+        "CLKB_SEL": "CIN1",
+        "EN0_EN": "0",
+        "EN0_NINV": "1",
+        "EN1_EN": "0",
+        "EN1_NINV": "1",
+        "SCLR_DIS": "0",
+        "SLOAD_EN": "1",
+        "r[0]:clk_sel": "CLK0",
+        "r[0]:clr_sel": "0",
+        "r[0]:pkreg": "0",
+        "r[0]:sclr_dis": "1",
+        "r[1]:clk_sel": "CLK0",
+        "r[1]:clr_sel": "0",
+        "r[1]:pkreg": "1",
+        "r[1]:sclr_dis": "1",
+        "r[2]:clk_sel": "CLK1",
+        "r[2]:clr_sel": "0",
+        "r[2]:pkreg": "0",
+        "r[2]:sclr_dis": "1",
+        "r[3]:clk_sel": "CLK1",
+        "r[3]:clr_sel": "0",
+        "r[3]:pkreg": "1",
+        "r[3]:sclr_dis": "1"
+      },
+      "quartus_fit": {
+        "primary_logic_registers": 2,
+        "secondary_logic_registers": 2
+      },
+      "rbf_sha256": "d46bdb58e0d581ab9795e68389bdb75094d0d28402dc0c48dff71d7e57647405"
+    },
+    "clkinv_alm": {
+      "facts": {
+        "ACLR0_INV": "0",
+        "ACLR0_SEL": "ACLR0",
+        "ACLR1_SEL": "DIN2",
+        "CLK0_INV": "0",
+        "CLK0_SEL": "CLKA",
+        "CLK1_INV": "1",
+        "CLK1_SEL": "CLKA",
+        "CLKA_SEL": "CIN0",
+        "CLKB_SEL": "CIN1",
+        "EN0_EN": "0",
+        "EN0_NINV": "1",
+        "EN1_EN": "0",
+        "EN1_NINV": "1",
+        "SCLR_DIS": "0",
+        "SLOAD_EN": "1",
+        "r[0]:clk_sel": "CLK0",
+        "r[0]:clr_sel": "0",
+        "r[0]:pkreg": "0",
+        "r[0]:sclr_dis": "1",
+        "r[1]:clk_sel": "CLK0",
+        "r[1]:clr_sel": "0",
+        "r[1]:pkreg": "1",
+        "r[1]:sclr_dis": "1",
+        "r[2]:clk_sel": "CLK1",
+        "r[2]:clr_sel": "0",
+        "r[2]:pkreg": "0",
+        "r[2]:sclr_dis": "1",
+        "r[3]:clk_sel": "CLK1",
+        "r[3]:clr_sel": "0",
+        "r[3]:pkreg": "1",
+        "r[3]:sclr_dis": "1"
+      },
+      "quartus_fit": {
+        "primary_logic_registers": 2,
+        "secondary_logic_registers": 2
+      },
+      "rbf_sha256": "328de0d7f42bf3cad356fb5fe6a4d9690136342ba411b512791e426646911b0f"
+    },
+    "e_abba": {
+      "facts": {
+        "ACLR0_INV": "0",
+        "ACLR0_SEL": "ACLR0",
+        "ACLR1_SEL": "DIN2",
+        "CLK0_INV": "0",
+        "CLK0_SEL": "CLKA",
+        "CLK1_INV": "0",
+        "CLK1_SEL": "CLKA",
+        "CLKA_SEL": "CIN0",
+        "CLKB_SEL": "CIN1",
+        "EN0_EN": "1",
+        "EN0_NINV": "0",
+        "EN1_EN": "1",
+        "EN1_NINV": "0",
+        "SCLR_DIS": "0",
+        "SLOAD_EN": "1",
+        "r[0]:clk_sel": "CLK0",
+        "r[0]:clr_sel": "0",
+        "r[0]:pkreg": "0",
+        "r[0]:sclr_dis": "1",
+        "r[1]:clk_sel": "CLK1",
+        "r[1]:clr_sel": "0",
+        "r[1]:pkreg": "1",
+        "r[1]:sclr_dis": "1",
+        "r[2]:clk_sel": "CLK1",
+        "r[2]:clr_sel": "0",
+        "r[2]:pkreg": "1",
+        "r[2]:sclr_dis": "1",
+        "r[3]:clk_sel": "CLK0",
+        "r[3]:clr_sel": "0",
+        "r[3]:pkreg": "0",
+        "r[3]:sclr_dis": "1"
+      },
+      "quartus_fit": {
+        "primary_logic_registers": 2,
+        "secondary_logic_registers": 2
+      },
+      "rbf_sha256": "44db7edf994e435954e7f3350e91810f2349c3265d351ad921c0862410ac524b"
+    },
+    "ena3_alm": {
+      "facts": {
+        "ACLR0_INV": "0",
+        "ACLR0_SEL": "ACLR0",
+        "ACLR1_SEL": "DIN2",
+        "CLK0_INV": "0",
+        "CLK0_SEL": "CLKA",
+        "CLK1_INV": "0",
+        "CLK1_SEL": "CLKA",
+        "CLK2_INV": "0",
+        "CLK2_SEL": "CLKB",
+        "CLKA_SEL": "CIN0",
+        "CLKB_SEL": "CIN1",
+        "EN0_EN": "1",
+        "EN0_NINV": "0",
+        "EN1_EN": "1",
+        "EN1_NINV": "0",
+        "EN2_EN": "1",
+        "EN2_NINV": "0",
+        "SCLR_DIS": "0",
+        "SLOAD_EN": "1",
+        "r[0]:clk_sel": "CLK0",
+        "r[0]:clr_sel": "0",
+        "r[0]:pkreg": "0",
+        "r[0]:sclr_dis": "1",
+        "r[1]:clk_sel": "CLK0",
+        "r[1]:clr_sel": "0",
+        "r[1]:pkreg": "1",
+        "r[1]:sclr_dis": "1",
+        "r[2]:clk_sel": "CLK1",
+        "r[2]:clr_sel": "0",
+        "r[2]:pkreg": "0",
+        "r[2]:sclr_dis": "1",
+        "r[3]:clk_sel": "CLK1",
+        "r[3]:clr_sel": "0",
+        "r[3]:pkreg": "1",
+        "r[3]:sclr_dis": "1",
+        "r[4]:clk_sel": "CLK2",
+        "r[4]:clr_sel": "0",
+        "r[4]:pkreg": "1",
+        "r[4]:sclr_dis": "1",
+        "r[5]:clk_sel": "CLK2",
+        "r[5]:clr_sel": "0",
+        "r[5]:pkreg": "0",
+        "r[5]:sclr_dis": "1"
+      },
+      "quartus_fit": {
+        "primary_logic_registers": 3,
+        "secondary_logic_registers": 3
+      },
+      "rbf_sha256": "052d1b67257690aeed6b444394b481488da973254928f4d74b0a3641ec023289"
+    },
+    "g_abba": {
+      "facts": {
+        "ACLR0_INV": "0",
+        "ACLR0_SEL": "ACLR0",
+        "ACLR1_SEL": "DIN2",
+        "CLK0_INV": "0",
+        "CLK0_SEL": "CLKA",
+        "CLK1_INV": "0",
+        "CLK1_SEL": "CLKB",
+        "CLKA_SEL": "CIN0",
+        "CLKB_SEL": "CIN1",
+        "EN0_EN": "0",
+        "EN0_NINV": "1",
+        "EN1_EN": "0",
+        "EN1_NINV": "1",
+        "SCLR_DIS": "0",
+        "SLOAD_EN": "1",
+        "r[0]:clk_sel": "CLK0",
+        "r[0]:clr_sel": "0",
+        "r[0]:pkreg": "0",
+        "r[0]:sclr_dis": "1",
+        "r[1]:clk_sel": "CLK1",
+        "r[1]:clr_sel": "0",
+        "r[1]:pkreg": "1",
+        "r[1]:sclr_dis": "1",
+        "r[2]:clk_sel": "CLK1",
+        "r[2]:clr_sel": "0",
+        "r[2]:pkreg": "1",
+        "r[2]:sclr_dis": "1",
+        "r[3]:clk_sel": "CLK0",
+        "r[3]:clr_sel": "0",
+        "r[3]:pkreg": "0",
+        "r[3]:sclr_dis": "1"
+      },
+      "quartus_fit": {
+        "primary_logic_registers": 2,
+        "secondary_logic_registers": 2
+      },
+      "rbf_sha256": "e29d4d67b5a88353e43a8cc26339227d4553db889026512427ba80ca5962bc6e"
+    },
+    "i_pnnp": {
+      "facts": {
+        "ACLR0_INV": "0",
+        "ACLR0_SEL": "ACLR0",
+        "ACLR1_SEL": "DIN2",
+        "CLK0_INV": "0",
+        "CLK0_SEL": "CLKA",
+        "CLK1_INV": "1",
+        "CLK1_SEL": "CLKA",
+        "CLKA_SEL": "CIN0",
+        "CLKB_SEL": "CIN1",
+        "EN0_EN": "0",
+        "EN0_NINV": "1",
+        "EN1_EN": "0",
+        "EN1_NINV": "1",
+        "SCLR_DIS": "0",
+        "SLOAD_EN": "1",
+        "r[0]:clk_sel": "CLK0",
+        "r[0]:clr_sel": "0",
+        "r[0]:pkreg": "0",
+        "r[0]:sclr_dis": "1",
+        "r[1]:clk_sel": "CLK1",
+        "r[1]:clr_sel": "0",
+        "r[1]:pkreg": "1",
+        "r[1]:sclr_dis": "1",
+        "r[2]:clk_sel": "CLK1",
+        "r[2]:clr_sel": "0",
+        "r[2]:pkreg": "1",
+        "r[2]:sclr_dis": "1",
+        "r[3]:clk_sel": "CLK0",
+        "r[3]:clr_sel": "0",
+        "r[3]:pkreg": "0",
+        "r[3]:sclr_dis": "1"
+      },
+      "quartus_fit": {
+        "primary_logic_registers": 2,
+        "secondary_logic_registers": 2
+      },
+      "rbf_sha256": "a11c49a5878635a0b78e1e55dedd9d4cf8d5a974d76733bbb9d6c79c779ef882"
+    },
+    "loc4": {
+      "facts": {
+        "ACLR0_INV": "0",
+        "ACLR0_SEL": "ACLR0",
+        "ACLR1_SEL": "DIN2",
+        "CLK0_INV": "0",
+        "CLK0_SEL": "CLKA",
+        "CLKA_SEL": "CIN0",
+        "CLKB_SEL": "CIN1",
+        "EN0_EN": "0",
+        "EN0_NINV": "1",
+        "SCLR_DIS": "0",
+        "SLOAD_EN": "1",
+        "r[0]:clk_sel": "CLK0",
+        "r[0]:clr_sel": "0",
+        "r[0]:pkreg": "0",
+        "r[0]:sclr_dis": "1",
+        "r[1]:clk_sel": "CLK0",
+        "r[1]:clr_sel": "0",
+        "r[1]:pkreg": "1",
+        "r[1]:sclr_dis": "1",
+        "r[2]:clk_sel": "CLK0",
+        "r[2]:clr_sel": "0",
+        "r[2]:pkreg": "1",
+        "r[2]:sclr_dis": "1",
+        "r[3]:clk_sel": "CLK0",
+        "r[3]:clr_sel": "0",
+        "r[3]:pkreg": "0",
+        "r[3]:sclr_dis": "1"
+      },
+      "quartus_fit": {
+        "primary_logic_registers": 2,
+        "secondary_logic_registers": 2
+      },
+      "rbf_sha256": "6046d075279cf0f98796f3a3eafd9cd32ddd1741e85c7c706ec62ef5007e4b03"
+    },
+    "lutpk": {
+      "facts": {
+        "ACLR0_INV": "0",
+        "ACLR0_SEL": "ACLR0",
+        "ACLR1_SEL": "DIN2",
+        "CLK0_INV": "0",
+        "CLK0_SEL": "CLKA",
+        "CLKA_SEL": "CIN0",
+        "CLKB_SEL": "CIN1",
+        "EN0_EN": "0",
+        "EN0_NINV": "1",
+        "SCLR_DIS": "0",
+        "SLOAD_EN": "1",
+        "r0:clk_sel": "CLK0",
+        "r0:clr_sel": "0",
+        "r0:pkreg": "0",
+        "r0:sclr_dis": "1",
+        "r1:clk_sel": "CLK0",
+        "r1:clr_sel": "0",
+        "r1:pkreg": "1",
+        "r1:sclr_dis": "1",
+        "r2:clk_sel": "CLK0",
+        "r2:clr_sel": "0",
+        "r2:pkreg": "0",
+        "r2:sclr_dis": "1",
+        "r3:clk_sel": "CLK0",
+        "r3:clr_sel": "0",
+        "r3:pkreg": "1",
+        "r3:sclr_dis": "1"
+      },
+      "quartus_fit": {
+        "primary_logic_registers": 2,
+        "secondary_logic_registers": 2
+      },
+      "rbf_sha256": "2fbdd7ee831217acf398375d85b281be27f8e345c8c4a0bd76287659ac3e587f"
+    },
+    "r_abba": {
+      "facts": {
+        "ACLR0_INV": "1",
+        "ACLR0_SEL": "DIN3",
+        "ACLR1_INV": "1",
+        "ACLR1_SEL": "DIN2",
+        "CLK0_INV": "0",
+        "CLK0_SEL": "CLKA",
+        "CLKA_SEL": "CIN0",
+        "CLKB_SEL": "CIN1",
+        "EN0_EN": "0",
+        "EN0_NINV": "1",
+        "SCLR_DIS": "0",
+        "SLOAD_EN": "1",
+        "r[0]:clk_sel": "CLK0",
+        "r[0]:clr_sel": "0",
+        "r[0]:pkreg": "0",
+        "r[0]:sclr_dis": "1",
+        "r[1]:clk_sel": "CLK0",
+        "r[1]:clr_sel": "1",
+        "r[1]:pkreg": "1",
+        "r[1]:sclr_dis": "1",
+        "r[2]:clk_sel": "CLK0",
+        "r[2]:clr_sel": "1",
+        "r[2]:pkreg": "1",
+        "r[2]:sclr_dis": "1",
+        "r[3]:clk_sel": "CLK0",
+        "r[3]:clr_sel": "0",
+        "r[3]:pkreg": "0",
+        "r[3]:sclr_dis": "1"
+      },
+      "quartus_fit": {
+        "primary_logic_registers": 2,
+        "secondary_logic_registers": 2
+      },
+      "rbf_sha256": "963e1d37cd099554cd2631be730695d28f47b342a8193400edf0be4cd2647bdf"
+    },
+    "r_aooa": {
+      "facts": {
+        "ACLR0_INV": "1",
+        "ACLR0_SEL": "DIN3",
+        "ACLR1_INV": "0",
+        "ACLR1_SEL": "ACLR1",
+        "CLK0_INV": "0",
+        "CLK0_SEL": "CLKA",
+        "CLKA_SEL": "CIN0",
+        "CLKB_SEL": "CIN1",
+        "EN0_EN": "0",
+        "EN0_NINV": "1",
+        "SCLR_DIS": "0",
+        "SLOAD_EN": "1",
+        "r[0]:clk_sel": "CLK0",
+        "r[0]:clr_sel": "0",
+        "r[0]:pkreg": "0",
+        "r[0]:sclr_dis": "1",
+        "r[1]:clk_sel": "CLK0",
+        "r[1]:clr_sel": "1",
+        "r[1]:pkreg": "1",
+        "r[1]:sclr_dis": "1",
+        "r[2]:clk_sel": "CLK0",
+        "r[2]:clr_sel": "1",
+        "r[2]:pkreg": "1",
+        "r[2]:sclr_dis": "1",
+        "r[3]:clk_sel": "CLK0",
+        "r[3]:clr_sel": "0",
+        "r[3]:pkreg": "0",
+        "r[3]:sclr_dis": "1"
+      },
+      "quartus_fit": {
+        "primary_logic_registers": 2,
+        "secondary_logic_registers": 2
+      },
+      "rbf_sha256": "14cc426a1bb68d455e4a06358311c86fc2a46e255da35ea02cebd0db8132f1e2"
+    }
+  },
+  "device": "5CSEBA6U23I7",
+  "ff_sites": {
+    "FF_X30_Y20_N(6a+1)": "ALM a FF0: FFT0, TPKREG1, TCLK_SEL/TCLR_SEL",
+    "FF_X30_Y20_N(6a+2)": "ALM a FF1: FFT1 and FFT1L, TPKREG0, BCLK_SEL/BCLR_SEL",
+    "FF_X30_Y20_N(6a+4)": "ALM a FF2: FFB0, BPKREG1, BCLK_SEL/BCLR_SEL",
+    "FF_X30_Y20_N(6a+5)": "ALM a FF3: FFB1 and FFB1L, BPKREG0, TCLK_SEL/TCLR_SEL"
+  },
+  "lab": "LAB X30 Y20",
+  "rejected": {
+    "aclrg": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "clk2": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "clk2same": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "clk3_alm": [
+      "Error (170070): Cannot place logic cells assigned to one LAB into a single LAB",
+      "Info (170015): LAB legality constraint that was not satisfied: Too many distinct clock signals must be brought into a LAB.  Resources used: 3. Resources available: 2."
+    ],
+    "clkinv": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "e_aabb": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "ena3": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "g_aaab": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "g_aabb": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "g_abab": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "g_abbb": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "i_pnpn": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "i_ppnn": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "lutfan": [
+      "Error (170208): Cannot place 6 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "lutfan_local": [
+      "Error (170208): Cannot place 3 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "r_aabb": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "r_aaoo": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ],
+    "r_abab": [
+      "Error (170208): Cannot place 4 nodes into a single ALM",
+      "Info (170017): Cannot place nodes in a single ALM -- the ALM would be illegal because not all of the LUT and FF inputs are routable."
+    ]
+  },
+  "tool": "Quartus Prime Lite 17.0.2 Build602"
+}

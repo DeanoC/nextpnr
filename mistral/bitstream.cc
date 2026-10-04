@@ -876,10 +876,12 @@ struct MistralBitgen
             // PKREG (input selection)
             if (ctx->wires_connected(alm_data.sel_ef[i / 2], alm_data.ff_in[i]))
                 cv->bmux_b_set(block_type, pos, pkreg[i], alm, true);
-            // Control set
+            // Control set. The data path, SCLR_DIS and SLOAD_EN follow the half (i / 2), but TCLK_SEL/TCLR_SEL
+            // serve FF0 and FF3 and BCLK_SEL/BCLR_SEL serve FF1 and FF2.
+            const int group = ALMInfo::ctrl_group(i);
             // CLK+ENA
-            int ce_idx = alm_data.clk_ena_idx[i / 2];
-            cv->bmux_m_set(block_type, pos, clk_sel[i / 2], alm, clk_choice[ce_idx]);
+            int ce_idx = alm_data.clk_ena_idx[group];
+            cv->bmux_m_set(block_type, pos, clk_sel[group], alm, clk_choice[ce_idx]);
             if (ff->ffInfo.ctrlset.clk.inverted)
                 set_lab_clock_inversion(block_type, pos, clk_inv[ce_idx]);
             if (ff->getPort(id_ENA) != nullptr) { // not using ffInfo.ctrlset, this has a fake net always to
@@ -890,9 +892,9 @@ struct MistralBitgen
                 cv->bmux_b_set(block_type, pos, en_en[ce_idx], 0, false);
             }
             // ACLR. TCLR_SEL/BCLR_SEL are numeric, so a bool write does not land.
-            int aclr_idx = alm_data.aclr_idx[i / 2];
+            int aclr_idx = alm_data.aclr_idx[group];
             if (aclr_idx == 1)
-                NPNR_ASSERT(cv->bmux_n_set(block_type, pos, clr_sel[i / 2], alm, 1));
+                NPNR_ASSERT(cv->bmux_n_set(block_type, pos, clr_sel[group], alm, 1));
             if (ff->ffInfo.ctrlset.aclr.inverted)
                 cv->bmux_b_set(block_type, pos, aclr_inv[aclr_idx], 0, true);
             // SCLR
@@ -949,20 +951,19 @@ struct MistralBitgen
         bool open_on_slot[2] = {false, false};
         for (uint8_t alm = 0; alm < 10; alm++) {
             const auto &alm_data = lab_data.alms.at(alm);
-            for (int half = 0; half < 2; half++) {
-                for (int j = 0; j < 2; j++) {
-                    CellInfo *ff = ctx->getBoundBelCell(alm_data.ff_bels.at(half * 2 + j));
-                    if (ff == nullptr || ff->ffInfo.ctrlset.aclr.net != nullptr)
-                        continue;
-                    int slot = alm_data.aclr_idx[half];
-                    if (slot < 0 || slot > 1)
-                        continue;
-                    // A restored snapshot can still name a live slot. Refuse
-                    // it here so the DATAIN choice below cannot drive the pin.
-                    if (lab_data.aclr_used[slot])
-                        log_error("Open flip-flop %s still selects a live LAB clear.\n", ctx->nameOf(ff));
-                    open_on_slot[slot] = true;
-                }
+            for (int i = 0; i < 4; i++) {
+                CellInfo *ff = ctx->getBoundBelCell(alm_data.ff_bels.at(i));
+                if (ff == nullptr || ff->ffInfo.ctrlset.aclr.net != nullptr)
+                    continue;
+                // TCLR_SEL serves FF0 and FF3, BCLR_SEL serves FF1 and FF2
+                int slot = alm_data.aclr_idx[ALMInfo::ctrl_group(i)];
+                if (slot < 0 || slot > 1)
+                    continue;
+                // A restored snapshot can still name a live slot. Refuse
+                // it here so the DATAIN choice below cannot drive the pin.
+                if (lab_data.aclr_used[slot])
+                    log_error("Open flip-flop %s still selects a live LAB clear.\n", ctx->nameOf(ff));
+                open_on_slot[slot] = true;
             }
         }
         for (int i = 0; i < 2; i++) {
@@ -971,12 +972,26 @@ struct MistralBitgen
             else if (i == 0 || open_on_slot[i])
                 cv->bmux_m_set(block_type, pos, aclr_inp[i], 0, aclr_dedicated[i]);
         }
+        const WireId din0 = ctx->get_port(block_type, pos.x(), pos.y(), -1, CycloneV::DATAIN, 0);
         for (int i = 0; i < 3; i++) {
             // Check for fabric->clock routing
-            if (ctx->wires_connected(
-                        ctx->get_port(block_type, pos.x(), pos.y(), -1, CycloneV::DATAIN, 0),
-                        lab_data.clk_wires[i]))
+            if (ctx->wires_connected(din0, lab_data.clk_wires[i]))
                 cv->bmux_m_set(block_type, pos, CycloneV::CLKA_SEL, 0, CycloneV::DIN0);
+        }
+        if (ctx->args.lab_clkb && !lab_data.is_mlab) {
+            // --mistral-clkb: LAB clock k comes from CLKB (CLKk_SEL) when routed from CLKIN[1] or DATAIN[1], and CLKB
+            // takes the fabric when DATAIN[1] drives it (CLKB_SEL=DIN1); the same encodings Quartus uses.
+            const std::array<CycloneV::bmux_type_t, 3> clk_src{CycloneV::CLK0_SEL, CycloneV::CLK1_SEL,
+                                                               CycloneV::CLK2_SEL};
+            const WireId cin1 = ctx->get_port(block_type, pos.x(), pos.y(), -1, CycloneV::CLKIN, 1);
+            const WireId din1 = ctx->get_port(block_type, pos.x(), pos.y(), -1, CycloneV::DATAIN, 1);
+            for (int i = 0; i < 3; i++) {
+                bool fabric = ctx->wires_connected(din1, lab_data.clk_wires[i]);
+                if (fabric || ctx->wires_connected(cin1, lab_data.clk_wires[i]))
+                    NPNR_ASSERT(cv->bmux_m_set(block_type, pos, clk_src[i], 0, CycloneV::CLKB));
+                if (fabric)
+                    NPNR_ASSERT(cv->bmux_m_set(block_type, pos, CycloneV::CLKB_SEL, 0, CycloneV::DIN1));
+            }
         }
     }
 

@@ -38,6 +38,10 @@ struct TimingAnalyser;
 struct ArchArgs
 {
     std::string device;
+    // --mistral-clkb: model each LAB's second clock (CLKB) and per-pair clock
+    // polarity. This adds CLKIN[1]/DATAIN[1] pips into the LAB clock wires, so
+    // it must be known when the routing graph is built.
+    bool lab_clkb = false;
 };
 
 // These structures are used for fast ALM validity checking
@@ -54,8 +58,13 @@ struct ALMInfo
     bool l6_mode = false;
     bool carry_mode = false;
 
-    // Which CLK/ENA and ACLR is chosen for each half
+    // Which CLK/ENA and ACLR is chosen for each control group. The clock+enable
+    // (TCLK_SEL/BCLK_SEL) and async clear (TCLR_SEL/BCLR_SEL) selectors do not
+    // follow the ALM halves: group 0 (T*) drives FF0 and FF3, group 1 (B*)
+    // drives FF1 and FF2 (Quartus 17.0.2 oracles, mistral/tests/lab_ff4).
+    // Data, EF_SEL, PKREG, SCLR_DIS and SLOAD_EN do follow the halves.
     std::array<int, 2> clk_ena_idx{}, aclr_idx{};
+    static int ctrl_group(int ff) { return (ff == 0 || ff == 3) ? 0 : 1; }
 
     // For keeping track of how many inputs are currently being used, for the LAB routeability check
     int unique_input_count = 0;
@@ -617,9 +626,16 @@ struct Arch : BaseArch<ArchRanges>
 
     // -------------------------------------------------
 
+    // --mistral-ff4: also place flip-flops on the secondary registers (FF1/FF3)
+    // of each ALM. Off by default; set from the command line only.
+    bool lab_ff4 = false;
+
     bool is_comb_cell(IdString cell_type) const;        // lab.cc
     bool is_alm_legal(uint32_t lab, uint8_t alm) const; // lab.cc
+    bool ff4_has_sync_load(const FFControlSet &ctrlset) const;                                          // lab.cc
+    bool ff4_lut_feeds_only(const CellInfo *lut, const CellInfo *ff_a, const CellInfo *ff_b) const; // lab.cc
     bool is_lab_ctrlset_legal(uint32_t lab) const;      // lab.cc
+    bool lab_pair_model(uint32_t lab) const;            // lab.cc
     bool check_lab_input_count(uint32_t lab) const;     // lab.cc
     bool check_mlab_groups(uint32_t lab) const;         // lab.cc
 

@@ -94,6 +94,12 @@ po::options_description MistralCommandHandler::getArchOptions()
                             "name of the FES_RESERVED_RECT region this --fes-cart targets (default: cart)");
     specific.add_options()("fes-slot-clock", po::value<std::string>(), "exact shell clock net for FES cart cells");
     specific.add_options()("fes-cram-region", po::value<std::string>(), "half-open CRAM x0,y0,x1,y1 region for new scaffold routing");
+    specific.add_options()("mistral-ff4",
+                           "also place flip-flops on the two secondary registers of each ALM (opt-in, see "
+                           "mistral/tests/lab_ff4)");
+    specific.add_options()("mistral-clkb",
+                           "allow two clocks, or both edges of one clock, in a LAB using its CLKB source and per-pair "
+                           "clock inversion (opt-in, see mistral/tests/lab_ff4)");
 
     specific.add_options()("replicate-enables", po::value<int>(),
                            "replicate timing-critical LUT enables after placement (budget 0..8, default 0)");
@@ -156,6 +162,8 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
         log_error("device must be specified on the command line (e.g. --device 5CSEBA6U23I7)\n");
     }
     chipArgs.device = vm["device"].as<std::string>();
+    // The second LAB clock adds pips to the routing graph, so it is fixed before the graph is built.
+    chipArgs.lab_clkb = vm.count("mistral-clkb") != 0;
     auto ctx = std::unique_ptr<Context>(new Context(chipArgs));
     if (vm.count("compress-rbf"))
         ctx->settings[id_compress_rbf] = Property::State::S1;
@@ -165,6 +173,24 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
+    // LAB packing models are enabled only from the command line. A JSON written with one records it, and is refused
+    // without the same option: its placement (and, for CLKB, its routing) relies on that model.
+    auto lab_model = [&](const char *setting, const char *option) {
+        const bool requested = vm.count(option) != 0;
+        auto found = ctx->settings.find(ctx->id(setting));
+        bool recorded = false;
+        if (found != ctx->settings.end())
+            recorded = found->second.is_string ? found->second.as_string() == "1" : found->second.as_bool();
+        if (recorded && !requested)
+            log_error("This design was packed or placed with --%s; pass --%s again.\n", option, option);
+        if (requested)
+            ctx->settings[ctx->id(setting)] = Property::State::S1;
+        else if (found != ctx->settings.end())
+            ctx->settings.erase(found);
+        return requested;
+    };
+    ctx->lab_ff4 = lab_model("mistral/ff4", "mistral-ff4");
+    lab_model("mistral/clkb", "mistral-clkb");
     // Preload request bytes before packing or placement; saved settings cannot enable it.
     const char *capture_pipeline = std::getenv("NEXTPNR_MISTRAL_CAPTURE_PIPELINE_LOCALITY");
     if (capture_pipeline) {
