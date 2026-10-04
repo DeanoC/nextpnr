@@ -13,6 +13,11 @@ Negotiation attempts are numbered separately, so re-negotiation after repair
 does not masquerade as continuation of the initial loop. Missing metrics are
 `null` and carry a sibling `<name>_unavailable_reason`.
 
+`run_start.seed` is the original explicit `--seed` value, or the generated
+value from `--randomize-seed`, encoded as a decimal string so every `uint64_t`
+value remains exact. It is null with reason `not_explicit` when neither option
+was used. It is not the RNG's warmed or subsequently advanced internal state.
+
 The initial events are `run_start`, setup `phase_start`/`phase_end`, and a
 negotiation event stream. Each negotiation iteration records occupancy,
 excess occupancy, table-model timing (when enabled), work counts, batching,

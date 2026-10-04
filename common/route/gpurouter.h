@@ -139,6 +139,9 @@ struct GpuRouterCfg
     bool perf_profile;
     // Empty disables telemetry. The writer creates this path exclusively.
     std::string telemetry_path;
+    // Original explicit or randomized command seed. This is kept separate
+    // from the warmed/advanced RNG state serialized in the generic settings.
+    std::string telemetry_seed;
     // Stop after this many iterations without convergence
     int max_iter;
 };

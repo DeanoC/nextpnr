@@ -429,6 +429,7 @@ void script_terminate_handler()
 
 void CommandHandler::setupContext(Context *ctx)
 {
+    telemetry_seed.clear();
     if (ctx->settings.find(ctx->id("seed")) != ctx->settings.end())
         ctx->rngseed(ctx->setting<uint64_t>("seed"));
 
@@ -450,7 +451,9 @@ void CommandHandler::setupContext(Context *ctx)
     }
 
     if (vm.count("seed")) {
-        ctx->rngseed(vm["seed"].as<uint64_t>());
+        auto requested_seed = vm["seed"].as<uint64_t>();
+        ctx->rngseed(requested_seed);
+        telemetry_seed = std::to_string(requested_seed);
     }
 
     if (vm.count("threads")) {
@@ -462,6 +465,7 @@ void CommandHandler::setupContext(Context *ctx)
         std::uniform_int_distribution<uint64_t> distrib{1};
         auto seed = distrib(randDev);
         ctx->rngstate = seed;
+        telemetry_seed = std::to_string(seed);
         log_info("Generated random seed: %" PRIu64 "\n", seed);
     }
 
@@ -546,8 +550,6 @@ void CommandHandler::setupContext(Context *ctx)
         ctx->settings[ctx->id("gpurouter/cpu")] = true;
     if (vm.count("gpu-perf"))
         ctx->settings[ctx->id("gpurouter/perfProfile")] = true;
-    if (vm.count("gpu-telemetry"))
-        ctx->settings[ctx->id("gpurouter/telemetryPath")] = vm["gpu-telemetry"].as<std::string>();
     if (vm.count("gpu-batches"))
         ctx->settings[ctx->id("gpurouter/maxBatches")] = vm["gpu-batches"].as<int>();
     if (vm.count("gpu-opt")) {
@@ -601,6 +603,18 @@ void CommandHandler::setupContext(Context *ctx)
     }
 }
 
+void CommandHandler::restoreTelemetrySettings(Context *ctx)
+{
+    if (!vm.count("gpu-telemetry"))
+        return;
+    ctx->settings[ctx->id("gpurouter/telemetryPath")] = vm["gpu-telemetry"].as<std::string>();
+    IdString key = ctx->id("gpurouter/telemetrySeed");
+    if (telemetry_seed.empty())
+        ctx->settings.erase(key);
+    else
+        ctx->settings[key] = telemetry_seed;
+}
+
 int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
 {
     if (vm.count("on-failure")) {
@@ -642,6 +656,8 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
             // show error is handled by gui itself
         }
 
+        restoreTelemetrySettings(w.getContext());
+
         w.show();
 
         return a.exec();
@@ -662,6 +678,7 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
 
         customAfterLoad(ctx.get());
     }
+    restoreTelemetrySettings(ctx.get());
 
 #ifndef NO_PYTHON
     init_python(argv[0]);
@@ -804,6 +821,7 @@ void CommandHandler::load_json(Context *ctx, std::string filename)
         auto f = open_ifstream_and_log_error(filename, "JSON file");
         if (!parse_json(f, filename, ctx))
             log_error("Loading design failed.\n");
+        restoreTelemetrySettings(ctx);
     }
 }
 

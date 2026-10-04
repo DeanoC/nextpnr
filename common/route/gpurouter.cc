@@ -82,7 +82,7 @@ struct GpuRouter
         tmg.with_clock_skew = true;
         tmg.setup();
         if (!cfg.telemetry_path.empty()) {
-            uint64_t seed = ctx->setting<uint64_t>("seed", 0);
+            uint64_t seed = cfg.telemetry_seed.empty() ? 0 : std::stoull(cfg.telemetry_seed);
             telemetry = std::make_unique<gpuroute::Telemetry>(cfg.telemetry_path,
                                                               gpuroute::Telemetry::make_run_id(seed));
         }
@@ -2893,11 +2893,15 @@ struct GpuRouter
     bool operator()()
     {
         auto rstart = Clock::now();
-        if (telemetry)
-            telemetry->emit("run_start", "", -1,
-                            {gpuroute::Telemetry::Field::string(
-                                     "seed", std::to_string(ctx->setting<uint64_t>("seed", 0))),
-                             gpuroute::Telemetry::Field::string("analogue_timing_model", "mistral_downstream")});
+        if (telemetry) {
+            std::vector<gpuroute::Telemetry::Field> fields;
+            if (cfg.telemetry_seed.empty())
+                fields.push_back(gpuroute::Telemetry::Field::null_value("seed", "not_explicit"));
+            else
+                fields.push_back(gpuroute::Telemetry::Field::string("seed", cfg.telemetry_seed));
+            fields.push_back(gpuroute::Telemetry::Field::string("analogue_timing_model", "mistral_downstream"));
+            telemetry->emit("run_start", "", -1, fields);
+        }
         log_info("Running the GPU router...\n");
         if (telemetry)
             telemetry->emit("phase_start", "setup", 0, {});
@@ -3076,7 +3080,11 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     device = ctx->setting<int>("gpurouter/device", -1);
     cpu_backend = ctx->setting<bool>("gpurouter/cpu", false);
     perf_profile = ctx->setting<bool>("gpurouter/perfProfile", false);
-    telemetry_path = ctx->setting<std::string>("gpurouter/telemetryPath", std::string());
+    auto telemetry_setting = ctx->settings.find(ctx->id("gpurouter/telemetryPath"));
+    telemetry_path = telemetry_setting == ctx->settings.end() ? std::string() : telemetry_setting->second.as_string();
+    auto telemetry_seed_setting = ctx->settings.find(ctx->id("gpurouter/telemetrySeed"));
+    telemetry_seed =
+            telemetry_seed_setting == ctx->settings.end() ? std::string() : telemetry_seed_setting->second.as_string();
     max_iter = ctx->setting<int>("gpurouter/maxIter", 2000);
 }
 
