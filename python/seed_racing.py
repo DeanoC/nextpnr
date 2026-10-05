@@ -417,6 +417,14 @@ def _validate_collection_executable(executable: Path,
             "collection requires nextpnr built with BUILD_PYTHON=OFF; embedded Python "
             f"runtime {python_runtime} loads implicit standard-library, site, and "
             "extension-module inputs")
+    if not executable.name.startswith("nextpnr-mistral"):
+        raise ValueError(
+            "seed-racing collection currently supports only nextpnr-mistral because "
+            "other architectures lack authoritative final analogue timing evidence")
+    if not _file_contains_any(executable, (b"nextpnr.seed-racing.native.v1\x00",)):
+        raise ValueError(
+            "collection requires a native nextpnr build with the seed-racing contract; "
+            "a nextpnr-like filename is not executable authentication")
 
 
 def _child_environment(explicit: Mapping[str, str]) -> Dict[str, str]:
@@ -775,6 +783,20 @@ class RunSpec:
     argv: Tuple[str, ...]
 
 
+def _probe_native_contract(argv: Sequence[str], cwd: Optional[str],
+                           environment: Mapping[str, str], pass_fds: Sequence[int]) -> None:
+    try:
+        contract = subprocess.run(
+            list(argv), cwd=cwd, env=dict(environment), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, text=True, check=False, timeout=10,
+            pass_fds=tuple(pass_fds))
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ValueError("native nextpnr seed-racing contract probe failed") from error
+    if contract.returncode != 0 or contract.stdout != "nextpnr.seed-racing.native.v1\n":
+        raise ValueError(
+            "collection executable failed the native nextpnr seed-racing contract probe")
+
+
 class Collector:
     def __init__(self, manifest: Mapping[str, Any], output_root: Path):
         self.manifest = validate_collection_manifest(manifest)
@@ -911,6 +933,14 @@ class Collector:
                 loader_options += ["--preload", ":".join(preload)]
             loader_options[1] = str(resolved)
             self._runtime_launch_prefix = [loader] + loader_options + [self._binary_launch_path]
+        contract_argv = ((self._runtime_launch_prefix or [self._binary_launch_path]) +
+                         ["--seed-racing-contract"])
+        contract_environment = dict(environment)
+        contract_environment.update(self._runtime_environment)
+        _probe_native_contract(
+            contract_argv, self.manifest["cwd"], contract_environment,
+            tuple(stream.fileno() for stream in self._snapshot_streams) +
+            tuple(self._snapshot_fds))
         if snapshot_share is not None:
             consumed_share = runtime_directory / "share"
             self._runtime_sealed_files.extend(
@@ -962,8 +992,15 @@ class Collector:
         if self._frozen_binary is None:
             raise RuntimeError("cohort executable was not frozen")
         binary_name = Path(self._frozen_binary["resolved_path"]).name
-        gpu_capable = (binary_name.startswith(("nextpnr-mistral", "nextpnr-generic")) or
-                       self.manifest["architecture"] in {"mistral", "generic"})
+        if binary_name.startswith("nextpnr-generic"):
+            raise ValueError(
+                "seed-racing collection rejects nextpnr-generic because it does not emit "
+                "authoritative final analogue timing evidence")
+        if binary_name.startswith("nextpnr-mistral") and self.manifest["architecture"] != "mistral":
+            raise ValueError(
+                "nextpnr-mistral collection requires the manifest architecture 'mistral'")
+        gpu_capable = (binary_name.startswith("nextpnr-mistral") or
+                       self.manifest["architecture"] == "mistral")
         if gpu_capable and len(_option_values(self.manifest["command"], "--router")) != 1:
             raise ValueError(
                 "GPU-capable nextpnr collection requires exactly one explicit --router binding")
@@ -1081,7 +1118,8 @@ class Collector:
                 if role != expected_role:
                     raise ValueError(
                         f"nextpnr input {option} requires role {expected_role!r}, got {role!r}")
-        if self.manifest["architecture"] == "mistral":
+        binary_name = Path(self._frozen_binary["resolved_path"]).name
+        if binary_name.startswith("nextpnr-mistral") or self.manifest["architecture"] == "mistral":
             unsupported = sorted(name for name in self.manifest["environment"]
                                  if name.startswith("NEXTPNR_MISTRAL_"))
             if unsupported:

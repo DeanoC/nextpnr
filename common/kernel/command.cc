@@ -288,6 +288,10 @@ bool CommandHandler::executeBeforeContext()
                   << " -- Next Generation Place and Route (Version " GIT_DESCRIBE_STR ")\n";
         return true;
     }
+    if (vm.count("seed-racing-contract")) {
+        std::cout << "nextpnr.seed-racing.native.v1\n";
+        return true;
+    }
     validate();
 
     if (vm.count("quiet")) {
@@ -371,6 +375,7 @@ po::options_description CommandHandler::getGeneralOptions()
     general.add_options()("ignore-rel-clk", "ignore clock-to-clock relations in timing checks");
 
     general.add_options()("version,V", "show version");
+    general.add_options()("seed-racing-contract", "report nextpnr.seed-racing.native.v1 capability");
     general.add_options()("test", "check architecture database integrity");
     general.add_options()("freq", po::value<double>(), "set target frequency for design in MHz");
     general.add_options()("timing-allow-fail", "allow timing to fail in design");

@@ -19,6 +19,7 @@ import seed_racing
 
 FIXTURE = ROOT / "mistral" / "tests" / "seed_racing" / "synthetic.json"
 VALIDATE_COLLECTION_EXECUTABLE = seed_racing._validate_collection_executable
+PROBE_NATIVE_CONTRACT = seed_racing._probe_native_contract
 
 
 class DatasetTests(unittest.TestCase):
@@ -334,6 +335,9 @@ class CollectorTests(unittest.TestCase):
         patcher = mock.patch.object(seed_racing, "_validate_collection_executable")
         patcher.start()
         self.addCleanup(patcher.stop)
+        contract_patcher = mock.patch.object(seed_racing, "_probe_native_contract")
+        contract_patcher.start()
+        self.addCleanup(contract_patcher.stop)
 
     def python_elf_runner(self, path):
         seed_racing.shutil.copy2(Path(sys.executable).resolve(), path)
@@ -352,7 +356,8 @@ class CollectorTests(unittest.TestCase):
         return {
             "schema_version": 1,
             "cohort": {"id": "cohort", "design_id": "design", "mapped_design_id": "mapped-sha", "constraint_family": "constraints-sha"},
-            "architecture": "test",
+            "architecture": ("mistral" if isinstance(command, list) and command and
+                             Path(command[0]).name.startswith("nextpnr-mistral") else "test"),
             "command": command,
             "seeds": seeds or [1],
             "repeats": repeats,
@@ -972,6 +977,31 @@ class CollectorTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "BUILD_PYTHON=OFF"):
                 VALIDATE_COLLECTION_EXECUTABLE(runner, dependencies)
 
+    def test_collection_rejects_renamed_arbitrary_elf(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-mistral"
+            seed_racing.shutil.copy2(Path("/bin/true").resolve(), runner)
+            environment = seed_racing._child_environment({})
+            evidence = seed_racing._runtime_environment_evidence(runner, environment)
+            dependencies = tuple(
+                Path(path) for path in
+                evidence["manifest"]["execution"]["dependency_paths"])
+            with self.assertRaisesRegex(ValueError, "seed-racing contract"):
+                VALIDATE_COLLECTION_EXECUTABLE(runner, dependencies)
+
+    def test_collection_rejects_inert_contract_marker(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-mistral"
+            self.compile_c_runner(
+                runner,
+                '#include <stddef.h>\n'
+                'static const char marker[]="nextpnr.seed-racing.native.v1";\n'
+                'int main(void){volatile const char *p=marker;return p==NULL;}\n')
+            with self.assertRaisesRegex(ValueError, "contract probe"):
+                PROBE_NATIVE_CONTRACT(
+                    [str(runner), "--seed-racing-contract"], None,
+                    seed_racing._child_environment({}), ())
+
     def test_collection_rejects_replaced_artifact_path(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1181,7 +1211,7 @@ if seed == 4: sys.exit(1)
             with self.assertRaisesRegex(ValueError, "--gpu-telemetry"):
                 seed_racing.Collector(manifest, Path(temporary) / "unverifiable").run()
 
-            timeout_runner = Path(temporary) / "nextpnr-generic"
+            timeout_runner = Path(temporary) / "nextpnr-mistral-timeout"
             self.python_elf_runner(timeout_runner)
             timeout_command = [str(timeout_runner), "-c", "import time; time.sleep(2)",
                                "--router", "gpu", "--seed", "{seed}",
@@ -1199,12 +1229,10 @@ if seed == 4: sys.exit(1)
             generic_command = [str(generic_runner), "-c", runner_code,
                                "--router", "gpu", "--seed", "{seed}",
                                "--gpu-telemetry", "{telemetry}", "--report", "{report}"]
-            generic_result = seed_racing.Collector(
-                self.manifest(temporary, generic_command, seeds=[1]),
-                Path(temporary) / "generic-gpu").run()[0]
-            self.assertEqual(generic_result["cohort_identity"]["manifest"][
-                "execution_identity"]["backend"],
-                "cuda:" + "a" * 32 + ":0000:01:00.0:GPU-A")
+            with self.assertRaisesRegex(ValueError, "final analogue timing"):
+                seed_racing.Collector(
+                    self.manifest(temporary, generic_command, seeds=[1]),
+                    Path(temporary) / "generic-gpu").run()
 
             router_index = command.index("--router")
             non_cli_gpu_command = command[:router_index] + command[router_index + 2:]
@@ -1222,9 +1250,22 @@ if seed == 4: sys.exit(1)
                 seed_racing.Collector(
                     manifest, Path(temporary) / "cpu-mistral").run()
 
+    def test_mistral_environment_rejected_from_executable_identity(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-mistral"
+            self.python_elf_runner(runner)
+            manifest = self.manifest(
+                temporary, [str(runner), "--router", "gpu", "--seed", "{seed}",
+                            "--gpu-telemetry", "{telemetry}"])
+            manifest["environment"] = {
+                "NEXTPNR_MISTRAL_CAPTURE_LOCALITY": "/mutable/timing.json 64 24"}
+            manifest["architecture"] = "test"
+            with self.assertRaisesRegex(ValueError, "Mistral path/control environment"):
+                seed_racing.Collector(manifest, Path(temporary) / "runs").run()
+
     def test_gpu_capable_router_binding_ignores_tokens_after_double_dash(self):
         with tempfile.TemporaryDirectory() as temporary:
-            runner = Path(temporary) / "nextpnr-generic"
+            runner = Path(temporary) / "nextpnr-mistral"
             self.python_elf_runner(runner)
             manifest = self.manifest(
                 temporary, [str(runner), "--seed", "{seed}", "--",
@@ -1234,7 +1275,7 @@ if seed == 4: sys.exit(1)
 
     def test_gpu_capable_collection_rejects_router_overrides(self):
         with tempfile.TemporaryDirectory() as temporary:
-            runner = Path(temporary) / "nextpnr-generic"
+            runner = Path(temporary) / "nextpnr-mistral"
             self.python_elf_runner(runner)
             hook = Path(temporary) / "hook.py"
             hook.write_text("ctx.settings['router'] = 'gpu'\n", encoding="utf-8")
@@ -1265,7 +1306,7 @@ if seed == 4: sys.exit(1)
                 return records
 
         with tempfile.TemporaryDirectory() as temporary:
-            runner = Path(temporary) / "nextpnr-generic"
+            runner = Path(temporary) / "nextpnr-mistral"
             self.python_elf_runner(runner)
             design = Path(temporary) / "design.json"
             design.write_text(json.dumps({"settings": {"router": "router2"}}),

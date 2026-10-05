@@ -71,8 +71,10 @@ untyped path/prefix inputs. Nested includes are not discovered automatically; us
 flattened direct input files or treat that collection as unsupported.
 Any other existing file named directly in argv must also be declared, even when
 its option is not in the known schema; positional Python scripts are rejected.
-GPU-capable Mistral and generic nextpnr collections must bind exactly
-one explicit `--router`; `gpu` additionally requires exactly one
+Seed-racing collection currently accepts only native `nextpnr-mistral` cohorts,
+because the generic architecture does not emit authoritative final-analogue timing.
+The manifest architecture must be `mistral`. Collection must bind exactly one
+explicit `--router`; `gpu` additionally requires exactly one
 `--gpu-telemetry {telemetry}` binding. These bindings must occur before
 `--`. JSON/read inputs whose settings override the declared router are rejected.
 `router1` and `router2` collections are rejected because they do not emit the
@@ -82,10 +84,14 @@ usable for ordinary GPU routing, but their telemetry is explicitly unattested
 because those runtimes do not expose the exact device UUID; seed-racing
 collection rejects that backend identity.
 
-The command executable must be built with `BUILD_PYTHON=OFF`, is resolved, and
+The command executable must implement the versioned native seed-racing contract,
+must be built with `BUILD_PYTHON=OFF`, is resolved, and
 is copied once into a sealed descriptor
 before workers are submitted. Every run executes that descriptor and records
 its original path, display snapshot path, descriptor launch path, and SHA-256.
+Before accepting the cohort, the collector invokes `--seed-racing-contract`
+through the sealed loader, executable, and dependency descriptors and requires
+the exact versioned response; a matching filename or inert marker is insufficient.
 On Linux nextpnr installations, an executable-relative share tree is copied into
 the frozen cohort runtime, made read-only, content-bound in runtime evidence,
 watched recursively for any write/attribute/name mutation (including a later
