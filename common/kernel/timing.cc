@@ -52,7 +52,7 @@ static delay_t clock_interval(const Context *ctx, IdString clock, ClockEdge laun
     return clock_period(ctx, clock) / 2;
 }
 
-static bool phase_related(const Context *ctx, IdString launch, IdString capture)
+bool phase_related_clocks(const Context *ctx, IdString launch, IdString capture)
 {
     auto a = ctx->nets.find(launch), b = ctx->nets.find(capture);
     if (a == ctx->nets.end() || b == ctx->nets.end() || !a->second->clkconstr || !b->second->clkconstr)
@@ -67,7 +67,7 @@ static bool timed_clocks(const Context *ctx, IdString launch, IdString capture)
     // SDC set_clock_groups and clock-level set_false_path cut a pair.
     if (ctx->sdc_clock_false(launch, capture))
         return false;
-    return launch == capture || phase_related(ctx, launch, capture);
+    return launch == capture || phase_related_clocks(ctx, launch, capture);
 }
 
 // Extra setup time granted by a clock-level set_multicycle_path -setup N:
@@ -88,7 +88,7 @@ static delay_t clock_interval(const Context *ctx, IdString launch, IdString capt
 {
     if (launch == capture)
         return clock_interval(ctx, launch, launch_edge, capture_edge);
-    NPNR_ASSERT(phase_related(ctx, launch, capture));
+    NPNR_ASSERT(phase_related_clocks(ctx, launch, capture));
     const auto &ca = *ctx->nets.at(launch)->clkconstr, &cb = *ctx->nets.at(capture)->clkconstr;
     delay_t interval = cb.phase_shift - ca.phase_shift;
     if (capture_edge == FALLING_EDGE)
@@ -832,7 +832,7 @@ void TimingAnalyser::compute_slack()
             if (!setup_only)
                 pdp.second.hold_slack = arr.value.minDelay() - req.value.maxDelay() + clock_to_clock;
             // Hold keeps the single-cycle relationship under a multicycle.
-            if (!setup_only && phase_related(ctx, launch_clock, capture_clock))
+            if (!setup_only && phase_related_clocks(ctx, launch_clock, capture_clock))
                 pdp.second.hold_slack += clock_period(ctx, launch_clock) - (dp.period.minDelay() - dp.multicycle_extra);
             pdp.second.max_path_length = arr.path_length + req.path_length;
             if (dp.timed)
@@ -1114,7 +1114,7 @@ bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
             row.setup_timed = timed_clocks(ctx, launch.clock, capture.clock);
             row.hold_related = arrival.first == required.first ||
                                clock_delays.count(std::make_pair(launch.clock, capture.clock)) ||
-                               phase_related(ctx, launch.clock, capture.clock);
+                               phase_related_clocks(ctx, launch.clock, capture.clock);
             if (row.setup_timed) {
                 auto window = domain_pairs.at(pair->second).period.minDelay();
                 if (!finite(window) || window <= 0)
@@ -1296,7 +1296,7 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
     auto clock_pair = std::make_pair(launch.clock, capture.clock);
     auto related_clock = clock_delays.count(clock_pair) > 0;
     auto same_clock = launch.clock == capture.clock;
-    auto phase_locked = phase_related(ctx, launch.clock, capture.clock);
+    auto phase_locked = phase_related_clocks(ctx, launch.clock, capture.clock);
 
     if (related_clock) {
         delay_t clock_delay = clock_delays.at(clock_pair);
@@ -1431,7 +1431,23 @@ void TimingAnalyser::build_crit_path_reports()
         auto &launch = domains.at(dp.key.launch).key;
         auto &capture = domains.at(dp.key.capture).key;
 
-        if (!timed_clocks(ctx, launch.clock, capture.clock) || launch.is_async())
+        const bool ordinary_timed = timed_clocks(ctx, launch.clock, capture.clock);
+        const bool physically_related = clock_delays.count(std::make_pair(launch.clock, capture.clock));
+        const bool phase_locked = phase_related_clocks(ctx, launch.clock, capture.clock);
+        const bool ignored_related = bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
+                                     launch.clock != capture.clock && !phase_locked;
+        if (!launch.is_async() && (ordinary_timed || (physically_related && !ignored_related))) {
+            const delay_t setup_window = ordinary_timed
+                                                   ? dp.period.minDelay()
+                                                   : std::min(clock_period(ctx, launch.clock),
+                                                              clock_period(ctx, capture.clock));
+            const delay_t setup_slack = setup_window + dp.worst_setup_slack;
+            auto inserted_slack = result.clock_setup_slack.emplace(launch.clock, setup_slack);
+            if (!inserted_slack.second)
+                inserted_slack.first->second = std::min(inserted_slack.first->second, setup_slack);
+        }
+
+        if (!ordinary_timed || launch.is_async())
             continue;
 
         auto path_delay = delay_by_domain.at(i);
@@ -1558,7 +1574,7 @@ std::vector<CriticalPath> TimingAnalyser::get_min_delay_violations()
 
                 auto clocks = std::make_pair(launch_clock, capture_clock);
                 auto related_clocks = clock_delays.count(clocks) > 0;
-                auto phase_locked = phase_related(ctx, launch_clock, capture_clock);
+                auto phase_locked = phase_related_clocks(ctx, launch_clock, capture_clock);
 
                 if (launch_id == async_clock_id || (launch_id != capture_id && !related_clocks && !phase_locked)) {
                     continue;
@@ -1577,6 +1593,14 @@ std::vector<CriticalPath> TimingAnalyser::get_min_delay_violations()
                 if (phase_locked)
                     hold_slack += clock_period(ctx, launch_clock) -
                                   clock_interval(ctx, launch_clock, capture_clock, launch.key.edge, capture.key.edge);
+
+                const bool ignored_related = bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
+                                             launch_clock != capture_clock && !phase_locked;
+                if (!ignored_related) {
+                    auto inserted = result.clock_hold_slack.emplace(launch_clock, hold_slack);
+                    if (!inserted.second)
+                        inserted.first->second = std::min(inserted.first->second, hold_slack);
+                }
 
                 if (hold_slack <= 0) {
                     auto report = build_critical_path_report(dom_pair_id, ep.first, false);
@@ -1668,9 +1692,11 @@ CellInfo *TimingAnalyser::cell_info(const CellPortKey &key) { return ctx->cells.
 
 PortInfo &TimingAnalyser::port_info(const CellPortKey &key) { return ctx->cells.at(key.cell)->ports.at(key.port); }
 
-void timing_analysis(Context *ctx, bool print_slack_histogram, bool print_fmax, bool print_path, bool warn_on_failure,
+bool timing_analysis(Context *ctx, bool print_slack_histogram, bool print_fmax, bool print_path, bool warn_on_failure,
                      bool update_results)
 {
+    if (update_results)
+        ctx->timing_result_is_final_analogue = false;
     TimingAnalyser tmg(ctx);
     tmg.setup_only = false;
     tmg.with_clock_skew = true;
@@ -1683,10 +1709,13 @@ void timing_analysis(Context *ctx, bool print_slack_histogram, bool print_fmax, 
         log_info("Timing report includes %zu additional registered setup endpoint paths (limit %d per domain pair).\n",
                  result.report_setup_paths.size(), ctx->timing_report_paths);
     }
-    ctx->log_timing_results(result, print_slack_histogram, print_fmax, print_path, warn_on_failure);
+    bool timing_constraints_met =
+            ctx->log_timing_results(result, print_slack_histogram, print_fmax, print_path, warn_on_failure);
 
     if (update_results)
         ctx->timing_result = result;
+
+    return timing_constraints_met;
 }
 
 NEXTPNR_NAMESPACE_END
