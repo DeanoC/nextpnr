@@ -88,7 +88,9 @@ compile, all six FPLL sites, 16 references). The rules:
 - **Counters.** Duty in half VCO periods h: high = ceil(h/2), low = C − high,
   odd-duty bit = h odd; C = 1 uses counter bypass. Output i takes the first
   free counter in the order C6, C7, C5, C8, C4, C0..C3 that has a free lane;
-  site order FPLL (0,14), (0,31), (0,55), (89,0), (0,73), (0,0).
+  site order FPLL (0,14), (0,31), (0,55), (89,0), (0,73), (0,0). Extra
+  branches keep that choice when each still has a lane. Otherwise every
+  output is given the first counter in that order with a lane per branch.
 
 Quartus silently mis-implements some requests (for example integer
 148.5 MHz from 50 MHz needs M=297 and produces a 5 MHz clock); the solver
@@ -1464,7 +1466,12 @@ constraint, and reserves each counter's preferred primary lane before
 allocating additional branches. Ungated buffers take priority within a
 counter; other ordering follows cell names. Allocation checks all requested
 lanes before binding, and insufficient capacity produces a packing error.
-Existing single-branch profiles retain their lane preferences.
+Existing single-branch profiles retain their lane preferences. If the
+primary lanes cannot hold a later branch, counters are chosen again so
+each output gets one lane per branch. A W21 PLL with four outputs and a
+second branch on the first then uses C6 for both branches and C0 for the
+fourth output, instead of failing after C6/C7/C5/C8 take the four vertical
+lanes at FPLL (89,0).
 
 Branches of one counter receive a shared phase origin. Their downstream
 paths use the running-clock waveform even when a gate can suppress edges.
@@ -1476,6 +1483,8 @@ their PLL-wide phase relationship. ENA setup/hold remains uncharacterized.
 ```sh
 python3 mistral/tests/pll/clock_branches.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
   --mistral-cv "$MISTRAL_CV" --output /tmp/pll-clock-branches
+python3 mistral/tests/pll/lane_match.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --output /tmp/pll-lane-match
 ```
 
 The [portable Quartus reference](fixtures/clock-branches/README.md) confirms

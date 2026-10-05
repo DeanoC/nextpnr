@@ -2626,8 +2626,13 @@ struct MistralPacker
                 if (!ctx->pll_ref_select.count(PipId(pad.node, dst.node)) || !ctx->checkBelAvail(candidate))
                     continue;
                 const auto &links = ctx->pll_clock_bels.at(candidate);
-                // Assign a counter and a free clock-buffer lane to every
-                // primary branch first, then to the additional branches.
+                // Prefer one lane on C6/C7/C5/C8 for each primary branch, then
+                // place any further branches. That keeps an ungated buffer on
+                // the counter's established lane. At FPLL (89,0) those four
+                // counters share four vertical lanes, so a second branch can
+                // be left with no lane even though a later output would fit
+                // on a horizontal counter. Only then, give each output the
+                // first counter that has a lane for every branch.
                 std::vector<int> assign(clocks, -1);
                 std::vector<BelId> taken;
                 std::vector<std::pair<CellInfo *, BelId>> binds;
@@ -2646,6 +2651,23 @@ struct MistralPacker
                         if (b == BelId())
                             b = try_lane(counter, lane);
                     return b;
+                };
+                auto lanes_for = [&](int counter) {
+                    std::vector<BelId> lanes;
+                    auto add = [&](int lane) {
+                        BelId b = try_lane(counter, lane);
+                        if (b != BelId() && std::find(lanes.begin(), lanes.end(), b) == lanes.end())
+                            lanes.push_back(b);
+                    };
+                    add(preferred_lane(counter));
+                    for (int lane : lane_order)
+                        add(lane);
+                    return lanes;
+                };
+                auto reset_choice = [&]() {
+                    assign.assign(clocks, -1);
+                    taken.clear();
+                    binds.clear();
                 };
                 bool available = true;
                 for (int i = 0; i < clocks && available; ++i) {
@@ -2676,6 +2698,29 @@ struct MistralPacker
                             binds.emplace_back(branches[i][j], lane);
                         }
                     }
+                if (!available) {
+                    reset_choice();
+                    available = true;
+                    for (int i = 0; i < clocks && available; ++i) {
+                        bool placed = false;
+                        for (int counter : counter_order) {
+                            if (std::find(assign.begin(), assign.end(), counter) != assign.end())
+                                continue;
+                            std::vector<BelId> lanes = lanes_for(counter);
+                            if (lanes.size() < branches[i].size())
+                                continue;
+                            assign[i] = counter;
+                            for (size_t j = 0; j < branches[i].size(); ++j) {
+                                taken.push_back(lanes[j]);
+                                binds.emplace_back(branches[i][j], lanes[j]);
+                            }
+                            placed = true;
+                            break;
+                        }
+                        if (!placed)
+                            available = false;
+                    }
+                }
                 if (!available)
                     continue;
                 chosen = candidate;
