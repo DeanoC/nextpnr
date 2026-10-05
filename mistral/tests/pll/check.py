@@ -76,7 +76,16 @@ def main():
             ("count-65", "number_of_clocks", format(2 ** 64 + 1, "065b"),
              "number_of_clocks must be an integer from 1 to 9"),
             ("duty-65", "duty_cycle0", format(2 ** 64 + 50, "065b"),
-             "duty_cycle0 must be an integer percentage")):
+             "duty_cycle0 must be an integer percentage"),
+            # as_int64() treats x/z as zero. "x1" would pack as one clock, and
+            # "11001z" would pack as duty 50, either of which is also one more.
+            ("count-undef", "number_of_clocks", "x1",
+             "number_of_clocks must be an integer from 1 to 9"),
+            ("duty-undef", "duty_cycle0", "11001z",
+             "duty_cycle0 must be an integer percentage"),
+            # Leading-zero spellings are not the canonical parameter name.
+            ("duty-alias", "duty_cycle00", format(99, "032b"),
+             "unsupported parameter 'duty_cycle00'")):
         invalid = copy.deepcopy(design)
         pll = invalid["modules"]["top"]["cells"]["pll"]
         pll["parameters"][parameter] = value

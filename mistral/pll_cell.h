@@ -78,14 +78,15 @@ inline std::string mistral_pll_parse(const Context *ctx, const CellInfo *ci, Mis
         ok = true;
         if (it == ci->params.end())
             return fallback;
-        if (it->second.is_string) {
+        if (it->second.is_string || !it->second.is_fully_def()) {
             ok = false;
             return 0;
         }
-        // as_int64() keeps only the low 64 bits, and a cast to int keeps 32.
-        // 2^32+1 and 2^64+1 both become 1; 2^64+50 becomes 50. Reject a wider
-        // bit vector before that truncation, then any value that does not fit
-        // in int unchanged.
+        // as_int64() keeps only the low 64 bits and treats x/z as zero, and a
+        // cast to int keeps 32. 2^32+1 and 2^64+1 both become 1; 2^64+50 and a
+        // duty vector that could be 50 or 51 both become 50. Reject a wider or
+        // undefined bit vector before that conversion, then any value that
+        // does not fit in int unchanged.
         if (it->second.size() > 64) {
             ok = false;
             return 0;
@@ -167,8 +168,15 @@ inline std::string mistral_pll_parse(const Context *ctx, const CellInfo *ci, Mis
         bool indexed = false;
         for (const char *prefix : {"output_clock_frequency", "phase_shift", "duty_cycle"}) {
             size_t len = std::strlen(prefix);
-            if (name.compare(0, len, prefix) == 0 && name.size() > len && name.size() <= len + 2 &&
-                std::all_of(name.begin() + len, name.end(), ::isdigit) && std::stoi(name.substr(len)) < 18)
+            if (name.size() <= len || name.compare(0, len, prefix) != 0)
+                continue;
+            std::string suffix = name.substr(len);
+            // "duty_cycle08" parses as index 8 but is not the parameter the
+            // output loop reads, so it used to be ignored.
+            if (suffix.empty() || suffix.size() > 2 || (suffix.size() > 1 && suffix[0] == '0') ||
+                !std::all_of(suffix.begin(), suffix.end(), ::isdigit))
+                continue;
+            if (std::stoi(suffix) < 18)
                 indexed = true;
         }
         if (!indexed)
