@@ -74,19 +74,34 @@ This is an opt-in fitted reference envelope, not board or silicon signoff.
 The [characterization fixture](../mistral/tests/gpio-timing/README.md) records
 its raw evidence, coverage and limitations.
 
-Supported input capture is `MISTRAL_DDRIN` or `MISTRAL_SDRIO` with
-`IOREG_IN_DDR=1`, on the 16 tested DQ pins. Both capture edges have complete
-pad setup/hold checks. Supported output is `MISTRAL_SDROUT` on the tested
+Supported input capture is `MISTRAL_SDRIN`, `MISTRAL_DDRIN` or
+`MISTRAL_SDRIO` with `IOREG_IN=1`, on the 16 tested DQ pins. SDR capture
+has one rising-edge pad check; DDR capture (`IOREG_IN_DDR=1` in SDRIO) has
+independent checks for both capture edges. Supported output is `MISTRAL_SDROUT` on the tested
 DQ/address/bank/command/mask pins, or `MISTRAL_SDRIO` on DQ with both data
 and OE registered. Output timing includes the output buffer and declared load;
 `BOARD_MODEL_FAR_C` must specify a finite 0..30pF in farads (e.g. `3e-11`)
 or with suffix `P`/`p`. Every supported load uses the conservative 30pF late
 bound and a zero early bound. Load values are declarations, not measurements.
 
-Mixed registered/combinational data and OE, SDR input capture, DDR output,
-other pins/devices/electrical settings and nondefault delay chains have no
-complete pad model and reject external constraints. In particular, the
-forwarded SDRAM clock still needs its own qualified model and board budget.
+The same profile supports constant `MISTRAL_DDROUT` clock forwarding on
+AD20 with a declared supported load. It models both pad edges independently:
+`DDR_HIGH=1` makes the pad rise on the fabric rising edge; `DDR_HIGH=0` makes
+it rise on the fabric falling edge. Maximum mux-ingress-to-pad delays are
+5.400ns for fabric rising launches and 5.380ns for falling launches, with
+conservative zero early bounds. The native clock route is separate. The
+profile also enforces the primitive clock period/pulse requirements.
+
+These arcs allow output delay constraints and pad-edge timing reports; they
+do not automatically create an SDC generated clock on the output pad. SDRAM
+budgets referenced to the fabric clock must include the actual forwarded
+clock route, mux/pad latency and board propagation exactly once. A zero early
+bound is conservative and may prevent closure where a correlated corner
+model would pass. Clock waveform requirements at the memory chip remain a
+separate board-level check.
+
+Mixed registered/combinational data and OE, fabric-data DDR output, other pins/devices/electrical settings and nondefault delay chains
+have no complete pad model and reject external constraints.
 
 The common timing analyzer now has separate registered-pad read and write
 boundaries. Architectures provide complete external relationships through

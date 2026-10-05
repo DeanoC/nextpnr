@@ -55,7 +55,9 @@ def main():
     parser.add_argument('--quartus-bin', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--reuse-fits', action='store_true')
-    parser.add_argument('--variants', nargs='+', choices=['ddr', 'pads', 'bus', 'ddr-output-data', 'ramtest-pads'],
+    parser.add_argument('--variants', nargs='+',
+                        choices=['ddr', 'pads', 'bus', 'ddr-output-data', 'ramtest-pads',
+                                 'clock-forward', 'clock-forward-inverted', 'ramtest-sdr-pads'],
                         default=['ddr', 'pads', 'bus'])
     parser.add_argument('--output-load-pf', type=float, default=0,
                         help='External reference load on interface pads (not a board estimate)')
@@ -71,14 +73,32 @@ def main():
     evidence = {'classification': 'fitted reference evidence, not a production model or hardware signoff',
                 'device': '5CSEBA6U23I7', 'io_standard': '3.3-V LVTTL',
                 'output_load_pf': args.output_load_pf, 'all_transitions': args.all_transitions,
-                'ddr_output_pin': 'AD20' if args.variants == ['ramtest-pads'] else args.ddr_output_pin,
+                'ddr_output_pin': 'AD20' if all(v.startswith('ramtest-') or v.startswith('clock-forward')
+                                              for v in args.variants) else args.ddr_output_pin,
+                'forwarded_clock_polarities': {v: v.endswith('inverted') for v in args.variants
+                                              if v.startswith('clock-forward')},
                 'variants': {}}
     for variant in dict.fromkeys(args.variants):
         project = out / variant
         project.mkdir(parents=True, exist_ok=True)
-        if variant == 'ramtest-pads':
+        if variant in ['ramtest-pads', 'ramtest-sdr-pads']:
             rtl = (here/'ramtest-pads.v').read_text()
             qsf = (here/'ramtest-pads.qsf').read_text()
+            if variant == 'ramtest-sdr-pads':
+                start = rtl.index('        altddio_in #')
+                end = rtl.index('    end endgenerate', start)
+                rtl = rtl[:start] + ('        reg sample;\n        always @(posedge FPGA_CLK1_50) sample <= pin;\n'
+                                    '        assign q[2*i] = sample;\n        assign q[2*i+1] = sample;\n') + rtl[end:]
+                qsf = qsf.replace('VERILOG_FILE ramtest-pads.v', 'VERILOG_FILE ramtest-sdr-pads.v')
+                qsf += 'set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[*]\n'
+            clock_port = 'FPGA_CLK1_50'
+        elif variant.startswith('clock-forward'):
+            oracle = here.parent / 'ddr-output' / 'oracle'
+            rtl = (here.parent/'ddr-output'/'top.v').read_text().replace('MINIMAL=0', 'MINIMAL=1')
+            if variant.endswith('inverted'):
+                rtl = rtl.replace('INVERTED=0', 'INVERTED=1')
+            qsf = (oracle/'top.qsf').read_text().replace('VERILOG_FILE top.v', 'VERILOG_FILE '+variant+'.v')
+            qsf = qsf.replace('PIN_W15 -to DDR_OUT', 'PIN_AD20 -to DDR_OUT')
             clock_port = 'FPGA_CLK1_50'
         elif variant == 'ddr-output-data':
             oracle = here.parent / variant / 'oracle'
@@ -91,7 +111,7 @@ def main():
             qsf = (fixtures / 'oracle' / (variant+'.qsf')).read_text().replace(
                 '../'+variant+'.v', variant+'.v').replace('../clocks.sdc', 'clocks.sdc')
             clock_port = 'clk'
-        inputs = {variant+'.v': rtl, 'top.qsf': qsf,
+        inputs = {variant+'.v': rtl, 'top.qsf': qsf.rstrip()+'\n',
                   'top.qpf': 'PROJECT_REVISION = "top"\n',
                   'clocks.sdc': f'create_clock -period 10 -name memory [get_ports {clock_port}]\n'
                   f'set_input_delay -clock memory -min 0 [remove_from_collection [all_inputs] [get_ports {clock_port}]]\n'
@@ -100,7 +120,7 @@ def main():
                   'set_input_delay -clock memory -max 1 [get_ports {dq[*] p1 p2 p3}]\n'
                   'set_output_delay -clock memory -min 0 [all_outputs]\n'
                   'set_output_delay -clock memory -max 1 [all_outputs]\n'}
-        if variant == 'ramtest-pads':
+        if variant.startswith('ramtest-'):
             inputs['clocks.sdc'] = inputs['clocks.sdc'].replace('dq[*] p1 p2 p3', 'SDRAM_DQ[*]')
         if args.output_load_pf:
             # The obsolete OUTPUT_PIN_LOAD is ignored by TimeQuest 17.0.
@@ -108,6 +128,8 @@ def main():
             ports = {'ddr': ['dq[0]', 'dq[1]'],
                      'pads': ['p1', 'p2', 'p3', 'p4', 'p6', 'p8'],
                      'ddr-output-data': ['DDR_OUT'],
+                     'clock-forward': ['DDR_OUT'], 'clock-forward-inverted': ['DDR_OUT'],
+                     'ramtest-sdr-pads': re.findall(r'^set_location_assignment PIN_\w+ -to (SDRAM_\S+)$', qsf, re.M),
                      'ramtest-pads': re.findall(r'^set_location_assignment PIN_\w+ -to (SDRAM_\S+)$', qsf, re.M),
                      'bus': [f'dq[{i}]' for i in range(4)]}[variant]
             inputs['top.qsf'] += ''.join('set_instance_assignment -name BOARD_MODEL_FAR_C '
@@ -127,16 +149,18 @@ def main():
             fit = (project / 'output_files/top.fit.rpt').read_text(encoding='latin-1')
             if 'Ignored BOARD_MODEL_FAR_C' in fit:
                 raise ValueError('Quartus ignored the requested output load')
-        query = {'ddr-output-data': 'ddr-output-paths.tcl', 'ramtest-pads': 'ramtest-paths.tcl'}.get(variant, 'paths.tcl')
+        query = {'clock-forward': 'ddr-output-paths.tcl', 'clock-forward-inverted': 'ddr-output-paths.tcl',
+                 'ddr-output-data': 'ddr-output-paths.tcl', 'ramtest-pads': 'ramtest-paths.tcl',
+                 'ramtest-sdr-pads': 'ramtest-paths.tcl'}.get(variant, 'paths.tcl')
         query_text = (here/query).read_text()
         if args.all_transitions:
-            input_ports = 'SDRAM_DQ[*]' if variant == 'ramtest-pads' else 'dq[*] p1 p2 p3 p5 p7'
-            output_ports = {'ddr-output-data': 'DDR_OUT', 'ramtest-pads': 'SDRAM_*'}.get(
+            input_ports = 'SDRAM_DQ[*]' if variant.startswith('ramtest-') else 'dq[*] p1 p2 p3 p5 p7'
+            output_ports = {'clock-forward': 'DDR_OUT', 'clock-forward-inverted': 'DDR_OUT', 'ddr-output-data': 'DDR_OUT', 'ramtest-pads': 'SDRAM_*', 'ramtest-sdr-pads': 'SDRAM_*'}.get(
                 variant, 'dq[*] p1 p2 p3 p4 p6 p8')
             extra = ('foreach corner [get_available_operating_conditions] {\n'
                      '    set_operating_conditions $corner\n    update_timing_netlist\n'
                      '    foreach kind {setup hold} {\n    foreach transition {rise fall} {\n')
-            if variant != 'ddr-output-data':
+            if variant not in ['ddr-output-data', 'clock-forward', 'clock-forward-inverted']:
                 extra += ('        report_timing -$kind -${transition}_from [get_ports {'+input_ports+'}] '
                           '-npaths 500 -nworst 100 -detail full_path '
                           '-file $corner/input-$transition-$kind.rpt\n')

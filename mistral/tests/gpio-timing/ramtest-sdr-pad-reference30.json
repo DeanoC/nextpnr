@@ -1,0 +1,317 @@
+{
+  "classification": "fitted pad reference observations; not a production model or hardware signoff",
+  "clock_reference": "GPIO register clock or DDIO output mux routing ingress; upstream network excluded",
+  "device": "5CSEBA6U23I7",
+  "io_standard": "3.3-V LVTTL",
+  "forwarded_clock_polarities": {},
+  "all_transitions": true,
+  "ddr_output_pin": "AD20",
+  "output_load_pf": 30.0,
+  "bounds": {
+    "read_sdr_hold": {
+      "count": 192,
+      "minimum": {
+        "value_ps": -5804.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 731.0,
+        "data_local_ps": 6535.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "7_slow_1100mv_100c/input-fall-hold.rpt",
+        "source": "SDRAM_DQ[9]",
+        "target": "pads[9].sample",
+        "report_sha256": "a880a6f0caebb1b282f5ebc40df2ae85a4cfb474613c4a55eb274befa6722533"
+      },
+      "maximum": {
+        "value_ps": -2181.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 295.0,
+        "data_local_ps": 2476.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "MIN_fast_1100mv_-40c/input-hold.rpt",
+        "source": "SDRAM_DQ[11]",
+        "target": "pads[11].sample",
+        "report_sha256": "06e4a29329632eb7205888c5463989a6e7839e8f50510a1c7798acfe82d91f91"
+      }
+    },
+    "read_sdr_setup": {
+      "count": 192,
+      "minimum": {
+        "value_ps": 2358.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 273.0,
+        "data_local_ps": 2631.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "MIN_fast_1100mv_-40c/input-rise-setup.rpt",
+        "source": "SDRAM_DQ[11]",
+        "target": "pads[11].sample",
+        "report_sha256": "d51f2291a976094ef129d1c35c796d104b8a8a02d159e500e52abf3b9e1411af"
+      },
+      "maximum": {
+        "value_ps": 6433.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 656.0,
+        "data_local_ps": 7089.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "7_slow_1100mv_100c/input-fall-setup.rpt",
+        "source": "SDRAM_DQ[9]",
+        "target": "pads[9].sample",
+        "report_sha256": "4a1dc6005bf89881ec612fb212c18902f634709ef5a9fbbfc4152c36e4fbf184"
+      }
+    },
+    "write_data_early": {
+      "count": 456,
+      "minimum": {
+        "value_ps": 2472.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 340.0,
+        "data_local_ps": 2132.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-hold.rpt",
+        "source": "SDRAM_nWE~reg0",
+        "target": "SDRAM_nWE",
+        "report_sha256": "e32704001af081dcc364fce230ba3b56b116294710d889dd1def7f1077637f9d"
+      },
+      "maximum": {
+        "value_ps": 5133.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 828.0,
+        "data_local_ps": 4305.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "7_slow_1100mv_100c/output-rise-hold.rpt",
+        "source": "data_out[15]",
+        "target": "SDRAM_DQ[15]",
+        "report_sha256": "2e671241405f3f6c82b71373d7a50664130d2240b84f5987d45c63eceea06eb6"
+      }
+    },
+    "write_data_late": {
+      "count": 456,
+      "minimum": {
+        "value_ps": 2510.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 366.0,
+        "data_local_ps": 2144.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-setup.rpt",
+        "source": "SDRAM_nWE~reg0",
+        "target": "SDRAM_nWE",
+        "report_sha256": "9a54103d032a029eb5ad160a5ac4c490743414cd6d05cb3c7f1d63e1418ed803"
+      },
+      "maximum": {
+        "value_ps": 5276.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 918.0,
+        "data_local_ps": 4358.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "7_slow_1100mv_100c/output-rise-setup.rpt",
+        "source": "data_out[15]",
+        "target": "SDRAM_DQ[15]",
+        "report_sha256": "713e0295e044543972da8ae49db2e294fbfb45e3db23810d764b5cc76086a2c2"
+      }
+    },
+    "write_ddr_high_early": {
+      "count": 12,
+      "minimum": {
+        "value_ps": 2607.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 2607.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-hold.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "e32704001af081dcc364fce230ba3b56b116294710d889dd1def7f1077637f9d"
+      },
+      "maximum": {
+        "value_ps": 5227.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 5227.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "7_slow_1100mv_100c/output-rise-hold.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "2e671241405f3f6c82b71373d7a50664130d2240b84f5987d45c63eceea06eb6"
+      }
+    },
+    "write_ddr_high_late": {
+      "count": 12,
+      "minimum": {
+        "value_ps": 2650.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 2650.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-setup.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "9a54103d032a029eb5ad160a5ac4c490743414cd6d05cb3c7f1d63e1418ed803"
+      },
+      "maximum": {
+        "value_ps": 5391.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 5391.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "7_slow_1100mv_100c/output-rise-setup.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "713e0295e044543972da8ae49db2e294fbfb45e3db23810d764b5cc76086a2c2"
+      }
+    },
+    "write_ddr_low_early": {
+      "count": 12,
+      "minimum": {
+        "value_ps": 2603.0,
+        "clock_edge": "F",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 2603.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-hold.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "e32704001af081dcc364fce230ba3b56b116294710d889dd1def7f1077637f9d"
+      },
+      "maximum": {
+        "value_ps": 5209.0,
+        "clock_edge": "F",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 5209.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "7_slow_1100mv_100c/output-rise-hold.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "2e671241405f3f6c82b71373d7a50664130d2240b84f5987d45c63eceea06eb6"
+      }
+    },
+    "write_ddr_low_late": {
+      "count": 12,
+      "minimum": {
+        "value_ps": 2645.0,
+        "clock_edge": "F",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 2645.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-setup.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "9a54103d032a029eb5ad160a5ac4c490743414cd6d05cb3c7f1d63e1418ed803"
+      },
+      "maximum": {
+        "value_ps": 5372.0,
+        "clock_edge": "F",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 5372.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "7_slow_1100mv_100c/output-rise-setup.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "713e0295e044543972da8ae49db2e294fbfb45e3db23810d764b5cc76086a2c2"
+      }
+    },
+    "write_oe_early": {
+      "count": 192,
+      "minimum": {
+        "value_ps": 2545.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 412.0,
+        "data_local_ps": 2133.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-hold.rpt",
+        "source": "data_oe~_Duplicate_10",
+        "target": "SDRAM_DQ[9]",
+        "report_sha256": "e32704001af081dcc364fce230ba3b56b116294710d889dd1def7f1077637f9d"
+      },
+      "maximum": {
+        "value_ps": 5236.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 1004.0,
+        "data_local_ps": 4232.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "7_slow_1100mv_100c/output-rise-hold.rpt",
+        "source": "data_oe~_Duplicate_4",
+        "target": "SDRAM_DQ[3]",
+        "report_sha256": "2e671241405f3f6c82b71373d7a50664130d2240b84f5987d45c63eceea06eb6"
+      }
+    },
+    "write_oe_late": {
+      "count": 192,
+      "minimum": {
+        "value_ps": 2590.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 441.0,
+        "data_local_ps": 2149.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-setup.rpt",
+        "source": "data_oe~_Duplicate_10",
+        "target": "SDRAM_DQ[9]",
+        "report_sha256": "9a54103d032a029eb5ad160a5ac4c490743414cd6d05cb3c7f1d63e1418ed803"
+      },
+      "maximum": {
+        "value_ps": 5416.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 1109.0,
+        "data_local_ps": 4307.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "7_slow_1100mv_100c/output-rise-setup.rpt",
+        "source": "data_oe~_Duplicate_3",
+        "target": "SDRAM_DQ[2]",
+        "report_sha256": "713e0295e044543972da8ae49db2e294fbfb45e3db23810d764b5cc76086a2c2"
+      }
+    }
+  },
+  "input_hashes": {
+    "ramtest-sdr-pads": {
+      "clocks.sdc": "984afc9d14c2b3cdaa3263afeb96a967339a734992cfcdfd3e5fff5f65250d62",
+      "ramtest-sdr-pads.v": "3dbe0739ea8b1ff09bdeb3b49ca28aec4484052888de91c38de778e8e66bb2fa",
+      "top.qsf": "2646a7e6200420580707e117292451979129b4de615417d521d2645bf837e738"
+    }
+  }
+}

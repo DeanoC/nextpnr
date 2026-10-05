@@ -10,6 +10,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("yosys", "nextpnr", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
+    parser.add_argument("--sdr", action="store_true", help="Use the high-speed FES SDR capture pattern")
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
     out = args.output.resolve()
@@ -26,6 +27,18 @@ def main():
 
     synth = out / "synth.json"
     rtl = here.parent / "io-registers" / "ddr.v"
+    qsf = here / "pins.qsf"
+    if args.sdr:
+        text = rtl.read_text()
+        start = text.index('        altddio_in #')
+        end = text.index('    end endgenerate', start)
+        text = text[:start] + ('        reg sample;\n        always @(posedge clk) sample <= pin;\n'
+                              '        assign q[2*i] = sample;\n        assign q[2*i+1] = sample;\n') + text[end:]
+        rtl = out / "sdr.v"
+        rtl.write_text(text)
+        qsf = out / "sdr.qsf"
+        qsf.write_text((here / "pins.qsf").read_text() +
+                       "set_instance_assignment -name FAST_INPUT_REGISTER ON -to dq[*]\n")
     run([args.yosys.resolve(), "-p",
          f"read_verilog {rtl}; synth_intel_alm -nobram -nodsp -top top; write_json {synth}"], "synth")
     # Synthetic host regression budgets; these are not real SDRAM constraints.
@@ -45,7 +58,7 @@ def main():
         sdc = out / (name + ".sdc")
         sdc.write_text(text)
         command = [args.nextpnr.resolve(), "--device", "5CSEBA6U23I7", "--json", synth,
-                   "--qsf", here / "pins.qsf", "--sdc", sdc, "--seed", "1", "--router", "router2"]
+                   "--qsf", qsf, "--sdc", sdc, "--seed", "1", "--router", "router2"]
         if name == "clock-cut-fail":
             command += ["--timing-allow-fail"]
         if success:
@@ -60,7 +73,7 @@ def main():
          "--detailed-timing-report", "--rbf", out / "reload.rbf"], "reload")
     for filename in ("report.json", "reload.json"):
         report = json.loads((out / filename).read_text())
-        paths = json.dumps(report["critical_paths"])
+        paths = json.dumps(report["detailed_net_timings"])
         assert "PAD$timing$read$" in paths, filename
         assert "PAD$timing$write$" in paths, filename
         assert "$oe$" in paths, filename

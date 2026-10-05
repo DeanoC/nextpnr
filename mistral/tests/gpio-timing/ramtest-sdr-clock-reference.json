@@ -1,0 +1,286 @@
+{
+  "classification": "declared primitive clock checks; opaque DDR handoff remains without a path arc",
+  "node_count": 90,
+  "check_count": 1080,
+  "bounds": {
+    "DDIOINCELL_high_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "pads[2].sample",
+        "required_ps": 95.0,
+        "actual_ps": 5059.0,
+        "slack_ps": 4964.0
+      }
+    },
+    "DDIOINCELL_ingress_high_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "pads[2].sample",
+        "required_ps": 167.0,
+        "clock_inverted": false,
+        "primitive_type": "High Pulse Width",
+        "local_late_clock_ps": 731.0,
+        "local_early_clock_ps": 659.0
+      }
+    },
+    "DDIOINCELL_ingress_low_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "pads[3].sample",
+        "required_ps": 144.0,
+        "clock_inverted": false,
+        "primitive_type": "Low Pulse Width",
+        "local_late_clock_ps": 734.0,
+        "local_early_clock_ps": 656.0
+      }
+    },
+    "DDIOINCELL_ingress_period_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "pads[0].sample",
+        "required_ps": 1538.0,
+        "clock_inverted": null,
+        "primitive_type": "Min Period",
+        "local_late_clock_ps": null,
+        "local_early_clock_ps": null
+      }
+    },
+    "DDIOINCELL_low_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "pads[3].sample",
+        "required_ps": 66.0,
+        "actual_ps": 4895.0,
+        "slack_ps": 4829.0
+      }
+    },
+    "DDIOINCELL_period_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "pads[0].sample",
+        "required_ps": 1538.0,
+        "actual_ps": 10000.0,
+        "slack_ps": 8462.0
+      }
+    },
+    "DDIOOECELL_high_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "data_oe~_Duplicate_3",
+        "required_ps": 688.0,
+        "actual_ps": 5039.0,
+        "slack_ps": 4351.0
+      }
+    },
+    "DDIOOECELL_ingress_high_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "data_oe~_Duplicate_3",
+        "required_ps": 806.0,
+        "clock_inverted": false,
+        "primitive_type": "High Pulse Width",
+        "local_late_clock_ps": 1109.0,
+        "local_early_clock_ps": 991.0
+      }
+    },
+    "DDIOOECELL_ingress_low_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "data_oe~_Duplicate_4",
+        "required_ps": 778.0,
+        "clock_inverted": false,
+        "primitive_type": "Low Pulse Width",
+        "local_late_clock_ps": 1094.0,
+        "local_early_clock_ps": 1004.0
+      }
+    },
+    "DDIOOECELL_ingress_period_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "data_oe~_Duplicate_1",
+        "required_ps": 1538.0,
+        "clock_inverted": null,
+        "primitive_type": "Min Period",
+        "local_late_clock_ps": null,
+        "local_early_clock_ps": null
+      }
+    },
+    "DDIOOECELL_low_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "data_oe~_Duplicate_4",
+        "required_ps": 688.0,
+        "actual_ps": 4909.0,
+        "slack_ps": 4221.0
+      }
+    },
+    "DDIOOECELL_period_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "data_oe~_Duplicate_1",
+        "required_ps": 1538.0,
+        "actual_ps": 10000.0,
+        "slack_ps": 8462.0
+      }
+    },
+    "DDIOOUTCELL_high_ns": {
+      "count": 160,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "altddio_out:clk_pad|ddio_out_b2j:auto_generated|ddio_outa[0]~DFFHI0",
+        "required_ps": 689.0,
+        "actual_ps": 5046.0,
+        "slack_ps": 4357.0
+      }
+    },
+    "DDIOOUTCELL_ingress_high_ns": {
+      "count": 160,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "SDRAM_A[12]~reg0",
+        "required_ps": 790.0,
+        "clock_inverted": false,
+        "primitive_type": "High Pulse Width",
+        "local_late_clock_ps": 918.0,
+        "local_early_clock_ps": 816.0
+      }
+    },
+    "DDIOOUTCELL_ingress_low_ns": {
+      "count": 160,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "SDRAM_A[5]~reg0",
+        "required_ps": 767.0,
+        "clock_inverted": false,
+        "primitive_type": "Low Pulse Width",
+        "local_late_clock_ps": 894.0,
+        "local_early_clock_ps": 815.0
+      }
+    },
+    "DDIOOUTCELL_ingress_period_ns": {
+      "count": 160,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "SDRAM_A[0]~reg0",
+        "required_ps": 1538.0,
+        "clock_inverted": null,
+        "primitive_type": "Min Period",
+        "local_late_clock_ps": null,
+        "local_early_clock_ps": null
+      }
+    },
+    "DDIOOUTCELL_low_ns": {
+      "count": 160,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "altddio_out:clk_pad|ddio_out_b2j:auto_generated|ddio_outa[0]~DFFLO",
+        "required_ps": 689.0,
+        "actual_ps": 4928.0,
+        "slack_ps": 4239.0
+      }
+    },
+    "DDIOOUTCELL_period_ns": {
+      "count": 160,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "SDRAM_A[0]~reg0",
+        "required_ps": 1538.0,
+        "actual_ps": 10000.0,
+        "slack_ps": 8462.0
+      }
+    },
+    "FF_high_ns": {
+      "count": 72,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "beat[11]",
+        "required_ps": 615.0,
+        "actual_ps": 5066.0,
+        "slack_ps": 4451.0
+      }
+    },
+    "FF_ingress_high_ns": {
+      "count": 72,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "beat[11]",
+        "required_ps": 577.0,
+        "clock_inverted": false,
+        "primitive_type": "High Pulse Width",
+        "local_late_clock_ps": 539.0,
+        "local_early_clock_ps": 577.0
+      }
+    },
+    "FF_ingress_low_ns": {
+      "count": 72,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "beat[10]",
+        "required_ps": 836.0,
+        "clock_inverted": false,
+        "primitive_type": "Low Pulse Width",
+        "local_late_clock_ps": 719.0,
+        "local_early_clock_ps": 498.0
+      }
+    },
+    "FF_ingress_period_ns": {
+      "count": 72,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "beat[10]",
+        "required_ps": 1538.0,
+        "clock_inverted": null,
+        "primitive_type": "Min Period",
+        "local_late_clock_ps": null,
+        "local_early_clock_ps": null
+      }
+    },
+    "FF_low_ns": {
+      "count": 72,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "beat[10]",
+        "required_ps": 615.0,
+        "actual_ps": 4917.0,
+        "slack_ps": 4302.0
+      }
+    },
+    "FF_period_ns": {
+      "count": 72,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "beat[10]",
+        "required_ps": 1538.0,
+        "actual_ps": 10000.0,
+        "slack_ps": 8462.0
+      }
+    }
+  },
+  "opaque_ddr_groups": [],
+  "hashes": {
+    "clock-requirements/7_slow_1100mv_-40c/pulse.rpt": "6f284da286a443d070d544530ccb5b630c9800c9cd1e4c2f4b09952a229fcffa",
+    "clock-requirements/7_slow_1100mv_-40c/requirements.tsv": "38f09a6d697ed94038941e25cb50bdd2d7e921b1c3a553925333dfdc97b6b016",
+    "clock-requirements/7_slow_1100mv_100c/pulse.rpt": "49cbf16a31a5aa9e015d6d3ffecf35097d5693bd106dd7b60c9adcde72103ecf",
+    "clock-requirements/7_slow_1100mv_100c/requirements.tsv": "f141bb80797c7b42c44208b6278e7c2fc28602f849fae02e8c20e31fb701144f",
+    "clock-requirements/MIN_fast_1100mv_-40c/pulse.rpt": "a795508815c7a5429dc263ea91d8794ddc5f8bfc5cd60af422921dffd7da7491",
+    "clock-requirements/MIN_fast_1100mv_-40c/requirements.tsv": "f754f4b034c8b23e9bba9a285499967be45170ac9098c599aa26e3ce53f1b5b1",
+    "clock-requirements/MIN_fast_1100mv_100c/pulse.rpt": "1c81ec1fdca715a60ece83177384c8cd294f71969b9a31b661fe4fb0032984ec",
+    "clock-requirements/MIN_fast_1100mv_100c/requirements.tsv": "7b7cc46603ff1b18e2f0a236f0d6b159a1c53014611850e3b9434ef730643478",
+    "clocks.sdc": "984afc9d14c2b3cdaa3263afeb96a967339a734992cfcdfd3e5fff5f65250d62",
+    "top.qsf": "2646a7e6200420580707e117292451979129b4de615417d521d2645bf837e738",
+    "ramtest-sdr-pads.v": "3dbe0739ea8b1ff09bdeb3b49ca28aec4484052888de91c38de778e8e66bb2fa"
+  },
+  "query_sha256": "09dec39801af3aac127c5ef91787cebbdbbac7e0386316c41d8046dd38eeed82"
+}

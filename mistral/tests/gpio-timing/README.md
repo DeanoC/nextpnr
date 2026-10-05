@@ -210,5 +210,56 @@ explicitly assigned to a supported pad. See
 [the profile contract](../../../docs/mistral-io-delay.md#gpio-model-boundary)
 and `../registered-pad/check.py` for the native packing/checkpoint regression.
 The profile does not establish board timing or prove 100/130 MHz hardware
-operation. DDR output clock forwarding and SDR input capture remain unsupported
-for external pad constraints.
+operation. Fabric-data DDR output remains unsupported for external pad
+constraints.
+
+## Constant clock forwarding at AD20
+
+`--variants clock-forward clock-forward-inverted --all-transitions
+--output-load-pf 30` fits both constant forwarder polarities at the actual
+SDRAM clock pin. `clock-forward-reference30.json` retains their four-corner
+mux/pad observations. Their late bounds reproduce the earlier varying-data
+reference: 5.391ns for fabric rising and 5.372ns for falling launches. Constant
+forwarders have one possible pad transition per launch phase; the audit checks
+that transition against declared polarity and requires its explicit query.
+Changing the polarity declaration or deleting transition evidence rejects.
+
+`check_mux_clock_frame.py <ramtest-evidence.json> <ramtest-project>
+--check-rejections` audits the clock reference frame. It compares each early/
+late register clock prefix with the corresponding DDR mux path, requiring
+matching nodes, transitions and delays up to the shared ingress. All 32
+prefixes match across four corners at both reference loads. The normalized
+AD20 register pulse requirements reach 759/733ps; the backend conservatively
+uses the wider existing output family envelope of 790/770ps and period1540ps.
+`clock-mux-frame-reference.json` retains counts and source/report hashes. Four
+negative cases cover modified delays, nodes, transitions and missing edges.
+
+Only constant forwarders at AD20 are enabled in the explicit reference
+profile. Both pad phases and their native clock routes remain visible to STA.
+This does not create a generated clock on the output pin or certify the SDRAM
+chip's clock waveform. See `../registered-pad/check_clock.py` for native
+normal/inverted forwarding, primitive guards and checkpoint replay.
+
+
+## SDR capture on the actual SDRAM pins
+
+`--variants ramtest-sdr-pads --all-transitions --output-load-pf 30` fits the
+39-pin fixture with one plain rising-edge DQ capture register instead of the
+DDR input primitive, requesting `FAST_INPUT_REGISTER` on all DQ bits. This
+matches FES's `RAM_OSS_HIGH_SPEED` capture workaround while preserving the
+same registered data/OE and command/address/mask outputs.
+`ramtest-sdr-pad-reference30.json` records all four corners and transitions:
+rising capture setup6433ps and signed hold-2181ps, identical to the DDR high
+word. The backend uses the same outward-rounded6440/-2180ps checks.
+
+`ramtest-sdr-clock-reference.json` records90 registers and1080 audited clock
+checks, with no opaque DDR input groups. Input ingress period1538ps and
+high/low167/144ps fit within the backend's conservative1540/170/190ps input
+envelope. `check_clock_summary.py` exercises six malformed-evidence cases
+for this SDR reference and seven for DDR.
+
+The native regression `../registered-pad/check.py --sdr` verifies SDR capture,
+registered data/OE, setup rejection, clock-cut rejection and checkpoint replay.
+The current FES high-speed QSF must request DQ input/output/OE packing before
+using this pad profile; its older workaround leaves those registers in fabric.
+This fixture does not modify FES RTL or certify a board timing budget.

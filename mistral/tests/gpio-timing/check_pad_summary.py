@@ -20,10 +20,11 @@ def check(evidence):
             pass
         else:
             raise AssertionError('Accepted missing explicit rise transition coverage')
-    if set(evidence['variants']) == {'ddr-output-data'}:
+    if set(evidence['variants']) == {'ddr-output-data'} or evidence.get('forwarded_clock_polarities'):
         assert result['bounds']['write_ddr_low_late']['maximum']['clock_edge'] == 'F'
         assert result['bounds']['write_ddr_high_late']['maximum']['clock_edge'] == 'R'
-        rows = evidence['variants']['ddr-output-data']['reports']['7_slow_1100mv_100c/output-setup.rpt']
+        data = next(iter(evidence['variants'].values()))
+        rows = data['reports']['7_slow_1100mv_100c/output-setup.rpt']
         path = rows[0]
         for missing in ['muxsel', 'dataout', 'IOOBUF', 'phase', 'total']:
             modified = copy.deepcopy(path)
@@ -40,14 +41,26 @@ def check(evidence):
             except ValueError:
                 continue
             raise AssertionError('Accepted incomplete DDR output '+missing+': '+str(parsed))
-        print('PASS: both DDR output phases and five incomplete-mux-path rejections')
+        if evidence.get('forwarded_clock_polarities'):
+            for variant in evidence['variants']:
+                modified = copy.deepcopy(evidence)
+                modified['forwarded_clock_polarities'][variant] = not modified['forwarded_clock_polarities'][variant]
+                try:
+                    summarize(modified)
+                except ValueError:
+                    continue
+                raise AssertionError('Accepted incorrect declared clock polarity')
+        print('PASS: both DDR output phases, transition coverage, polarity and five incomplete-mux-path rejections')
         return
-    assert result['bounds']['read_ddr_low_setup']['maximum']['clock_edge'] == 'F'
-    assert result['bounds']['read_ddr_high_setup']['maximum']['clock_edge'] == 'R'
+    if 'read_ddr_low_setup' in result['bounds']:
+        assert result['bounds']['read_ddr_low_setup']['maximum']['clock_edge'] == 'F'
+        assert result['bounds']['read_ddr_high_setup']['maximum']['clock_edge'] == 'R'
+    else:
+        assert result['bounds']['read_sdr_setup']['maximum']['clock_edge'] == 'R'
     if 'read_sdr_hold' in result['bounds']:
         assert result['bounds']['read_sdr_hold']['minimum']['value_ps'] < 0
     selected = {}
-    variant = 'ramtest-pads' if 'ramtest-pads' in evidence['variants'] else 'ddr'
+    variant = next((v for v in evidence['variants'] if v.startswith('ramtest-')), 'ddr')
     for report, rows in evidence['variants'][variant]['reports'].items():
         if report != '7_slow_1100mv_100c/input-setup.rpt' and report != '7_slow_1100mv_100c/output-setup.rpt':
             continue

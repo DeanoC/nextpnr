@@ -66,7 +66,8 @@ bool gpio_pad_profile(const Context *ctx, const CellInfo *cell, bool dq_only)
 {
     auto profile = cell->attrs.find(ctx->id("NEXTPNR_GPIO_TIMING_PROFILE"));
     if (profile == cell->attrs.end() || !profile->second.is_string ||
-        profile->second.as_string() != "QUARTUS_17_0_2_RAMTEST" || !gpio_fabric_profile(ctx, cell))
+        profile->second.as_string() != "QUARTUS_17_0_2_RAMTEST" || ctx->getChipName() != "5CSEBA6U23I7" ||
+        !cell->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_SDRIO, id_MISTRAL_SDROUT, id_MISTRAL_DDROUT))
         return false;
     auto loc = cell->attrs.find(id_LOC);
     if (loc == cell->attrs.end() || !loc->second.is_string)
@@ -78,18 +79,27 @@ bool gpio_pad_profile(const Context *ctx, const CellInfo *cell, bool dq_only)
                          "C12", "AB26", "AD17", "D12", "Y17", "AB25", "AG13", "AF13",
                          "AG10", "AA19", "AA18", "Y18", "W14"};
     bool found = false;
-    for (const char *name : dq)
-        found |= pin == std::string("PIN_") + name;
-    if (!dq_only)
-        for (const char *name : out)
+    if (cell->type == id_MISTRAL_DDROUT) {
+        auto high = cell->params.find(id_DDR_HIGH);
+        if (cell->getPort(id_I) || cell->getPort(id_D_H) || cell->getPort(id_D_L) || high == cell->params.end() ||
+            high->second.is_string || (high->second.as_int64() != 0 && high->second.as_int64() != 1))
+            return false;
+        found = pin == "PIN_AD20";
+    } else {
+        for (const char *name : dq)
             found |= pin == std::string("PIN_") + name;
+        if (!dq_only)
+            for (const char *name : out)
+                found |= pin == std::string("PIN_") + name;
+    }
     if (!found || cell->bel == BelId())
         return false;
     auto package_pin = ctx->cyclonev->pin_find_name(pin.substr(4));
     if (!package_pin || ctx->get_io_pin_bel(package_pin) != cell->bel)
         return false;
     const auto io = ctx->get_io_electrical(cell);
-    if (io.drive_strength != CycloneV::V3P3_LVTTL_16MA_LVCMOS_2MA || io.slow_slew || io.weak_pullup || io.clamp_diode)
+    if (io.lvcmos || io.bus_hold || io.d1_delay >= 0 || io.d3_delay >= 0 || io.d5_delay >= 0 || io.d5_oe_delay >= 0 ||
+        io.drive_strength != CycloneV::V3P3_LVTTL_16MA_LVCMOS_2MA || io.slow_slew || io.weak_pullup || io.clamp_diode)
         return false;
     if (int_or_default(cell->params, ctx->id("IOREG_IN_ACLR"), 0) ||
         int_or_default(cell->params, ctx->id("IOREG_IN_CE"), 0))
@@ -462,15 +472,32 @@ std::vector<RegisteredIoTiming> Arch::getRegisteredIoTiming(const CellInfo *cell
             (cell->type == id_MISTRAL_SDRIO && int_or_default(cell->params, id("IOREG_IN"), 0) &&
              int_or_default(cell->params, id("IOREG_IN_DDR"), 0));
     TimingClockingInfo timing{};
+    if (cell->type == id_MISTRAL_DDROUT) {
+        if (input || !gpio_pad_load(getCtx(), cell)) return {};
+        // Constant clock-forwarder fits in both polarities reproduce the
+        // varying-data AD20 mux envelope. Its muxsel and register clock pins
+        // share identical routing prefixes at every checked corner/edge;
+        // check_mux_clock_frame.py audits that reference frame explicitly.
+        const bool high = cell->params.at(id_DDR_HIGH).as_int64() != 0;
+        timing.clock_port = id_CLK;
+        timing.edge = RISING_EDGE;
+        timing.clockToQ = DelayQuad(0, 5400);
+        RegisteredIoTiming rising{high ? id("rise") : id("fall"), timing};
+        timing.edge = FALLING_EDGE;
+        timing.clockToQ = DelayQuad(0, 5380);
+        return {rising, {high ? id("fall") : id("rise"), timing}};
+    }
     // Outward-rounded complete pad envelopes from ramtest-pad-reference30.json
+    // and ramtest-sdr-pad-reference30.json. SDR matches the DDR high word.
     // (both transitions, all actual pins, all four corners). Input hold uses
     // the largest signed requirement, not the smallest observed pad delay.
     if (input) {
-        if (!ddr_in) return {};
+        if (!gpio_input_registered(getCtx(), cell)) return {};
         timing.clock_port = cell->type == id_MISTRAL_SDRIO ? id_CLKIN : id_CLK;
         timing.edge = RISING_EDGE;
         timing.setup = DelayPair(6440); timing.hold = DelayPair(-2180);
-        RegisteredIoTiming high{id("high"), timing};
+        RegisteredIoTiming high{ddr_in ? id("high") : id("rise"), timing};
+        if (!ddr_in) return {high};
         timing.edge = FALLING_EDGE;
         timing.setup = DelayPair(6430); timing.hold = DelayPair(-2170);
         return {high, {id("low"), timing}};

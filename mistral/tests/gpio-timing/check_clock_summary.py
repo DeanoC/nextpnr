@@ -11,10 +11,12 @@ from clock_summary import summarize
 
 def check(project):
     reference = summarize(project)
-    assert reference['opaque_ddr_groups']
+    ddr = bool(reference['opaque_ddr_groups'])
     assert reference['bounds']['DDIOINCELL_period_ns']['maximum']['required_ps'] == 1538
-    assert reference['bounds']['DDIOINCELL_ingress_low_ns']['maximum']['required_ps'] == 185
-    for kind in ['missing_corner', 'missing_check', 'declaration', 'slack', 'type', 'handoff_edge', 'clock_path']:
+    assert reference['bounds']['DDIOINCELL_ingress_low_ns']['maximum']['required_ps'] == (185 if ddr else 144)
+    defects = ['missing_corner', 'missing_check', 'declaration', 'slack', 'type', 'clock_path']
+    if ddr: defects.append('handoff_edge')
+    for kind in defects:
         with tempfile.TemporaryDirectory() as name:
             root = Path(name)
             shutil.copytree(project/'clock-requirements', root/'clock-requirements')
@@ -55,7 +57,7 @@ def check(project):
             except ValueError:
                 continue
             raise AssertionError('Accepted incomplete or inconsistent '+kind)
-    print('PASS: normalized DDR clock requirements and seven incomplete-evidence rejections')
+    print(f'PASS: normalized {"DDR" if ddr else "SDR"} clock requirements and {len(defects)} incomplete-evidence rejections')
 
 
 if __name__ == '__main__':

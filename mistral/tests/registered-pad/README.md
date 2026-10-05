@@ -21,3 +21,12 @@ of unsupported profile settings.
 The opt-in fitted reference profile and limitations are documented in
 [the IO delay contract](../../../docs/mistral-io-delay.md#gpio-model-boundary).
 This regression does not establish physical SDRAM timing or hardware behavior.
+
+`check_clock.py` accepts the same arguments and verifies normal and inverted
+constant DDR clock forwarding at AD20. Detailed net reports must preserve both
+pad edges and their fabric launch phases after checkpoint reload. Clock cuts
+and `--timing-allow-fail` cannot bypass the primitive waveform gate.
+
+Pass `--sdr` to `check.py` to test the plain rising-edge input capture used by
+FES's high-speed workaround. The fixture requests input/data/OE packing and
+uses the same tested DQ pins and complete pad timing profile.

@@ -134,15 +134,27 @@ def summarize(evidence):
             raise ValueError('Missing corner coverage for '+key)
         if evidence.get('all_transitions', False):
             coverage = collections.defaultdict(set)
+            expected = {}
             for row in rows:
                 identity = (row['variant'], row['report'].split('/')[0], row['source'], row['target'])
-                coverage[identity]  # Require every observed channel to have both explicit queries.
+                inverted = evidence.get('forwarded_clock_polarities', {}).get(row['variant'])
+                wanted = {'rise', 'fall'}
+                if inverted is not None:
+                    if not isinstance(inverted, bool):
+                        raise ValueError('Forwarded clock polarity must be boolean')
+                    edge = row['clock_edge']
+                    pad_edge = ('F' if edge == 'R' else 'R') if inverted else edge
+                    if row['pad_transition'] != pad_edge:
+                        raise ValueError('Forwarded clock polarity disagrees with pad transition')
+                    wanted = {'rise' if pad_edge == 'R' else 'fall'}
+                expected[identity] = wanted
+                coverage[identity]  # Require all physically possible transitions at each launch phase.
                 for transition, edge in [('rise', 'R'), ('fall', 'F')]:
                     if '-'+transition+'-' in row['report']:
                         if row['pad_transition'] != edge:
                             raise ValueError('Pad transition disagrees with explicit query')
                         coverage[identity].add(transition)
-            if any(value != {'rise', 'fall'} for value in coverage.values()):
+            if any(value != expected[identity] for identity, value in coverage.items()):
                 raise ValueError('Incomplete explicit transition coverage for '+key)
         result[key] = dict(count=len(rows), minimum=min(rows, key=lambda r: r['value_ps']),
                            maximum=max(rows, key=lambda r: r['value_ps']))
@@ -153,6 +165,7 @@ def summarize(evidence):
     return dict(classification='fitted pad reference observations; not a production model or hardware signoff',
                 clock_reference='GPIO register clock or DDIO output mux routing ingress; upstream network excluded',
                 device=evidence['device'], io_standard=evidence['io_standard'],
+                forwarded_clock_polarities=evidence.get('forwarded_clock_polarities', {}),
                 all_transitions=evidence.get('all_transitions', False),
                 ddr_output_pin=evidence.get('ddr_output_pin', 'W15'),
                 output_load_pf=evidence.get('output_load_pf', 0), bounds=result,
