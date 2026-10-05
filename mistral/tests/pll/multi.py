@@ -64,14 +64,15 @@ def main():
                                           ("frequen", "tuple", "profile")), log
 
         for index in range(len(frequencies)):
-            for label, value in (("nondivisor", "7"),
-                                 ("inexact", frequencies[index] + "1"),
+            # The general solver accepts every set Quartus implements; these
+            # remain unsupported.
+            for label, value in (("excess-precision", "7.0000001"),
                                  ("below-range", "0.5"),
-                                 ("above-range", "101")):
+                                 ("above-range", "600")):
                 reject(f"{label}-{index}", {index: value})
-        # Each requested output is individually supported, but they do not
-        # share one checked tuple. A per-output solver must not accept them.
-        reject("no-common-tuple", {0: "75", 1: "80"})
+        # Each requested output is individually supported, but no VCO
+        # reproduces both within Quartus's 500 Hz tolerance.
+        reject("no-common-vco", {0: "75", 1: "75.0007"})
     print("PASS: multi-output PLL common-tuple selection and full FPLL oracles")
 
 

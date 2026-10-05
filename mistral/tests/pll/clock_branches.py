@@ -168,8 +168,10 @@ def main():
     four_report, _, _ = route(out / "four", four, 4)
     for name in ("gated1", "gated2"):
         assert four_report["fmax"][name]["constraint"] == 25 and four_report["fmax"][name]["achieved"] >= 25
-    synth(extra_branches(4), out / "five")
-    log = run(command + ["--json", str(out / "five" / "synth.json")], out / "invalid-five.log", success=False)
+    # C6 of FPLL (0,14) reaches four horizontal and four vertical global
+    # lanes; a ninth branch exceeds them.
+    synth(extra_branches(9), out / "nine")
+    log = run(command + ["--json", str(out / "nine" / "synth.json")], out / "invalid-nine.log", success=False)
     assert "no available dedicated PLL/clock-buffer pair" in log, log
     print("PASS: independent clock branches, shared phase, Quartus oracle and resource limits", report["fmax"])
     print("RBF sha256", hashlib.sha256((out / "top.rbf").read_bytes()).hexdigest())

@@ -65,13 +65,13 @@ def main():
                    "--freq", "50", "--compress-rbf"]
         design = json.loads((case / "synth.json").read_text())
         for index in range(count):
-            for duty in (0, 100, 1):
+            for duty in (0, 100):
                 invalid = copy.deepcopy(design)
                 invalid["modules"]["top"]["cells"]["pll"]["parameters"][f"duty_cycle{index}"] = format(duty, "032b")
                 path = case / f"invalid-duty{index}-{duty}.json"
                 path.write_text(json.dumps(invalid))
                 log = run(command + ["--json", str(path)], path.with_suffix(".log"), success=False)
-                reason = "integer percent from 1 to 99" if duty in (0, 100) else "frequencies/duties"
+                reason = "integer percent from 1 to 99"
                 assert "ERROR" in log and reason in log, log
         for reverse in (False, True):
             edge = case / ("fall-rise" if reverse else "rise-fall")

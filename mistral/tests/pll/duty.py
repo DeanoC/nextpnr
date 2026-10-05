@@ -110,10 +110,9 @@ def main():
     for name, changes, expected in (
         ("zero", {"duty_cycle0": f"{0:032b}"}, "integer percent from 1 to 99"),
         ("hundred", {"duty_cycle0": f"{100:032b}"}, "integer percent from 1 to 99"),
-        ("inexact", {"output_clock_frequency0": "100 MHz", "duty_cycle0": f"{25:032b}"},
-         "unsupported PLL output frequency/duty"),
-        ("fractional", {"output_clock_frequency0": "12.288 MHz", "fractional_vco_multiplier": "true"},
-         "fractional-N profiles require 50 percent duty cycle"),
+        # Any duty Quartus realises exactly (including 100 MHz at 25% and
+        # fractional outputs) is accepted by the general solver.
+        ("string", {"duty_cycle0": "25"}, "must be an integer percentage"),
     ):
         invalid = copy.deepcopy(design)
         invalid["modules"]["top"]["cells"]["pll"]["parameters"].update(changes)

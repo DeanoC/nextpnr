@@ -555,12 +555,14 @@ bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
             }
         }
     }
-    if (data.type == id_MISTRAL_CLKENA && data.block_index != 2 && data.bound) {
+    if (data.type.in(id_MISTRAL_CLKENA, id_MISTRAL_CLKENA_PLL) && data.block_index != 2 && data.bound) {
         auto input = data.bound->getPort(id_A);
         if (!input || !input->driver.cell || input->driver.cell->type != id_altera_pll ||
             input->driver.cell->bel == BelId())
             return false;
-        WireId source = getBelPinWire(input->driver.cell->bel, input->driver.port);
+        WireId source = pll_output_wire(input->driver.cell, input->driver.port);
+        if (source == WireId())
+            return false;
         WireId dest = getBelPinWire(bel, id_A);
         return pll_clock_select.count(PipId(source.node, dest.node));
     }
@@ -668,6 +670,8 @@ bool Arch::isValidBelForCellType(IdString cell_type, BelId bel) const
         return is_io_cell(cell_type);
     else if (bel_type == id_MISTRAL_CLKENA)
         return is_clkbuf_cell(cell_type);
+    else if (bel_type == id_MISTRAL_CLKENA_PLL)
+        return false; // PLL-only lanes: bound by the PLL packer, never offered to the placer
     else
         return bel_type == cell_type;
 }
@@ -791,6 +795,18 @@ void Arch::assign_default_pinmap(CellInfo *cell)
 {
     if (cell->type.in(id_MISTRAL_M10K, id_MISTRAL_M10K_TDP))
         return; // M10Ks always have a custom pinmap
+    if (cell->type == id_altera_pll && cell->attrs.count(id("MISTRAL_PLL_COUNTERS"))) {
+        // Restore the packer's output-counter mapping after a JSON reload.
+        std::string list = cell->attrs.at(id("MISTRAL_PLL_COUNTERS")).as_string();
+        int index = 0;
+        for (size_t start = 0; start < list.size(); ++index) {
+            size_t comma = list.find(',', start);
+            IdString port = (index == 0 && cell->ports.count(id_outclk)) ? id_outclk : idf("outclk[%d]", index);
+            if (cell->pin_data[port].bel_pins.empty())
+                cell->pin_data[port].bel_pins = {idf("C%s", list.substr(start, comma - start).c_str())};
+            start = comma == std::string::npos ? list.size() : comma + 1;
+        }
+    }
     for (auto &port : cell->ports) {
         auto &pinmap = cell->pin_data[port.first].bel_pins;
         if ((is_comb_cell(cell->type) || cell->type.in(id_MISTRAL_BUF, id_MISTRAL_MLAB)) &&

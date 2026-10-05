@@ -23,12 +23,13 @@
 #include <functional>
 #include <map>
 #include <set>
+#include <tuple>
 
 #include "design_utils.h"
 #include "dsp.h"
 #include "log.h"
 #include "nextpnr.h"
-#include "pll.h"
+#include "pll_cell.h"
 #include "util.h"
 
 NEXTPNR_NAMESPACE_BEGIN
@@ -38,6 +39,40 @@ bool is_dsp_multiplier(IdString type)
 {
     return type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
                    id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED);
+}
+
+// HDL source order, then cell name. JSON object order is alphabetical and the
+// cell dict iterates newest-first, so neither keeps the first PLL in the
+// source on FPLL (0,14) once a third instance is inserted between them.
+std::tuple<std::string, int, int, std::string> pll_source_key(Context *ctx, const CellInfo *ci)
+{
+    std::string file;
+    int line = 1 << 30, column = 1 << 30;
+    auto found = ci->attrs.find(ctx->id("src"));
+    if (found != ci->attrs.end()) {
+        std::string src = found->second.str;
+        auto bar = src.find('|');
+        if (bar != std::string::npos)
+            src.resize(bar);
+        auto colon = src.rfind(':');
+        if (colon != std::string::npos) {
+            file = src.substr(0, colon);
+            const char *p = src.c_str() + colon + 1;
+            int parsed_line = 0, parsed_column = 0;
+            while (*p >= '0' && *p <= '9')
+                parsed_line = parsed_line * 10 + (*p++ - '0');
+            if (*p == '.') {
+                ++p;
+                while (*p >= '0' && *p <= '9')
+                    parsed_column = parsed_column * 10 + (*p++ - '0');
+            }
+            if (parsed_line > 0) {
+                line = parsed_line;
+                column = parsed_column;
+            }
+        }
+    }
+    return {file, line, column, ci->name.str(ctx)};
 }
 
 bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool def = false)
@@ -2599,8 +2634,7 @@ struct MistralPacker
         std::vector<IdString> remove;
         auto is_pll_clock = [&](NetInfo *net) {
             return net && net->driver.cell && net->driver.cell->type == id_altera_pll &&
-                   net->driver.port.in(id_outclk, ctx->id("outclk[0]"), ctx->id("outclk[1]"),
-                                       ctx->id("outclk[2]"), ctx->id("outclk[3]"));
+                   mistral_pll_is_output_port(ctx, net->driver.port);
         };
         auto dedicated_source = [&](NetInfo *net) {
             if (net && net->driver.cell && net->driver.cell->type == id_MISTRAL_CLKBUF && net->driver.port == id_Q) {
@@ -2739,148 +2773,56 @@ struct MistralPacker
 
     void setup_plls()
     {
-        for (auto &entry : ctx->cells) {
-            CellInfo *ci = entry.second.get();
-            if (ci->type != id_altera_pll)
-                continue;
-            int clocks = int_or_default(ci->params, ctx->id("number_of_clocks"), 1);
-            if (clocks < 1 || clocks > 4)
-                log_error("PLL '%s': number_of_clocks must be 1, 2, 3 or 4.\n", ctx->nameOf(ci));
-            auto reference = ci->params.find(ctx->id("reference_clock_frequency"));
-            int reference_mhz = reference != ci->params.end() && reference->second.is_string ?
-                    mistral_pll::parse_mhz(reference->second.as_string()) : 0;
-            if (!mistral_pll::valid_reference(reference_mhz))
-                log_error("PLL '%s': reference frequency must be 25, 50 or 100 MHz.\n", ctx->nameOf(ci));
-            bool fractional = str_or_default(ci->params, ctx->id("fractional_vco_multiplier"), "false") == "true";
-            std::string phase1 = str_or_default(ci->params, ctx->id("phase_shift1"), "0 ps");
-            std::array<std::string, 4> phases{"0 ps", phase1, "0 ps", "0 ps"};
-            std::array<int, 4> phase_ps{};
-            auto freq0 = ci->params.find(ctx->id("output_clock_frequency0"));
-            int64_t phase_output_hz = freq0 != ci->params.end() && freq0->second.is_string ?
-                    mistral_pll::parse_output_hz(freq0->second.as_string()) : 0;
-            bool shifted = false;
-            for (int i = 1; i < clocks; ++i) {
-                phases[i] = str_or_default(ci->params, ctx->idf("phase_shift%d", i), "0 ps");
-                auto phase = mistral_pll::select_phase(phases[i], phase_output_hz);
-                if (!phase)
-                    log_error("PLL '%s': phase_shift%d must be zero or a checked phase shift for the output frequency.\n", ctx->nameOf(ci), i);
-                phase_ps[i] = phase->shift_ps;
-                shifted |= phase_ps[i] != 0;
-            }
-            int duty0 = int_or_default(ci->params, ctx->id("duty_cycle0"), 50);
-            int duty1 = int_or_default(ci->params, ctx->id("duty_cycle1"), 50);
-            std::array<int, 4> duties{duty0, duty1, 50, 50};
-            for (int i = 2; i < clocks; ++i)
-                duties[i] = int_or_default(ci->params, ctx->idf("duty_cycle%d", i), 50);
-            for (int i = 0; i < clocks; ++i)
-                if (duties[i] <= 0 || duties[i] >= 100)
-                    log_error("PLL '%s': duty cycle must be an integer percent from 1 to 99.\n", ctx->nameOf(ci));
-            if (fractional && (duty0 != 50 || (clocks == 2 && duty1 != 50)))
-                log_error("PLL '%s': fractional-N profiles require 50 percent duty cycle.\n", ctx->nameOf(ci));
-            // Frequency selection uses only checked feedback/analog tuples.
-            // Other unsupported modes and parameters still fail closed.
-            dict<IdString, Property> profile = {
-                {ctx->id("reference_clock_frequency"), reference->second},
-                {ctx->id("operation_mode"), Property("direct")},
-                {ctx->id("fractional_vco_multiplier"), Property(fractional ? "true" : "false")},
-                {ctx->id("phase_shift0"), Property("0 ps")},
-                {ctx->id("number_of_clocks"), Property(clocks)},
-                {ctx->id("duty_cycle0"), Property(duty0)},
-            };
-            if (clocks >= 2) {
-                profile[ctx->id("phase_shift1")] = Property(phase1);
-                profile[ctx->id("duty_cycle1")] = Property(duty1);
-            }
-            if (clocks >= 3) {
-                profile[ctx->id("phase_shift2")] = Property(phases[2]);
-                profile[ctx->id("duty_cycle2")] = Property(duties[2]);
-            }
-            if (clocks == 4) {
-                profile[ctx->id("phase_shift3")] = Property(phases[3]);
-                profile[ctx->id("duty_cycle3")] = Property(duties[3]);
-            }
+        using namespace mistral_pll_solver;
+        // Physical sites in preference order: the established board-reference
+        // sites first so existing designs keep their placement, then the
+        // remaining FPLLs.  Within a site, counters C6/C7/C5/C8 keep their
+        // established lanes 2/3/1/0; other counters take any free lane.
+        auto site_rank = [&](BelId bel) {
+            Loc l = ctx->getBelLocation(bel);
+            static const std::array<std::pair<int, int>, 6> order{
+                    {{0, 14}, {0, 31}, {0, 55}, {89, 0}, {0, 73}, {0, 0}}};
+            for (size_t i = 0; i < order.size(); ++i)
+                if (order[i].first == l.x && order[i].second == l.y)
+                    return int(i);
+            return int(order.size());
+        };
+        const std::array<int, 9> counter_order{6, 7, 5, 8, 4, 0, 1, 2, 3};
+        auto preferred_lane = [](int counter) { return counter == 6 ? 2 : counter == 7 ? 3 : counter == 5 ? 1 : 0; };
+        const std::array<int, 8> lane_order{2, 3, 1, 0, 4, 5, 6, 7}; // HG lanes, then VG lanes
+        std::vector<CellInfo *> plls;
+        for (auto &entry : ctx->cells)
+            if (entry.second->type == id_altera_pll)
+                plls.push_back(entry.second.get());
+        std::stable_sort(plls.begin(), plls.end(), [&](CellInfo *a, CellInfo *b) {
+            return pll_source_key(ctx, a) < pll_source_key(ctx, b);
+        });
+        for (CellInfo *ci : plls) {
             if (ctx->args.device != "5CSEBA6U23I7")
-                log_error("PLL '%s': initial PLL profile supports only 5CSEBA6U23I7.\n", ctx->nameOf(ci));
-            for (auto &param : ci->params) {
-                if (param.first == ctx->id("output_clock_frequency0") ||
-                    (clocks >= 2 && param.first == ctx->id("output_clock_frequency1")) ||
-                    (clocks >= 3 && param.first == ctx->id("output_clock_frequency2")) ||
-                    (clocks == 4 && param.first == ctx->id("output_clock_frequency3")))
-                    continue;
-                auto expected = profile.find(param.first);
-                if (expected == profile.end() || param.second != expected->second)
-                    log_error("PLL '%s': unsupported parameter '%s'; only checked direct profiles are supported.\n",
-                              ctx->nameOf(ci), ctx->nameOf(param.first));
-            }
-            for (auto required : {"reference_clock_frequency", "output_clock_frequency0", "operation_mode"})
-                if (!ci->params.count(ctx->id(required)))
-                    log_error("PLL '%s': explicit parameter '%s' is required.\n", ctx->nameOf(ci), required);
-            const auto &frequency = ci->params.at(ctx->id("output_clock_frequency0"));
-            int64_t output_hz = frequency.is_string ? mistral_pll::parse_output_hz(frequency.as_string()) : 0;
-            auto config = fractional ? mistral_pll::select_fractional(output_hz, reference_mhz) :
-                                       mistral_pll::select_hz(output_hz, reference_mhz, duty0);
-            if (fractional && clocks == 1 && !config)
-                log_error("PLL '%s': fractional-N selector requires a 50 MHz reference and a 1-100 MHz output with a bounded 400-500 MHz shared VCO.\n",
-                          ctx->nameOf(ci));
-            int64_t output1_hz = 0;
-            int c1 = 0;
-            if (clocks >= 2) {
-                auto freq1 = ci->params.find(ctx->id("output_clock_frequency1"));
-                if (freq1 == ci->params.end() || !freq1->second.is_string)
-                    log_error("PLL '%s': explicit output_clock_frequency1 is required.\n", ctx->nameOf(ci));
-                output1_hz = mistral_pll::parse_output_hz(freq1->second.as_string());
-                if (shifted && (fractional || (output_hz != 25000000 && output_hz != 50000000 &&
-                                                output_hz != 100000000 && output_hz != 130000000) ||
-                                output1_hz != output_hz || (output_hz != 25000000 && reference_mhz != 50) ||
-                                duty0 != 50 || duty1 != 50))
-                    log_error("PLL '%s': phase profile requires equal integer 25 MHz outputs with a checked reference, "
-                              "or 50/100/130 MHz outputs with a 50 MHz reference, and 50 percent duty.\n",
-                              ctx->nameOf(ci));
-                auto dual = fractional ? mistral_pll::select_fractional_dual(output_hz, output1_hz, reference_mhz) :
-                                         mistral_pll::select_dual_hz(output_hz, output1_hz, reference_mhz, duty0, duty1);
-                if (fractional && !dual)
-                    log_error("PLL '%s': fractional-N dual selector requires a 50 MHz reference and exact shared-VCO output counters in the bounded 400-500 MHz window.\n",
-                              ctx->nameOf(ci));
-                if (!dual)
-                    log_error("PLL '%s': unsupported dual PLL frequencies/duties; require a checked 1-100 MHz tuple or the 130/130 MHz profile.\n", ctx->nameOf(ci));
-                config = dual->feedback;
-                c1 = dual->c1;
-                if (!ci->getPort(ctx->id("outclk[0]")) || ci->ports.count(id_outclk))
-                    log_error("PLL '%s': dual profile requires outclk[0] and outclk[1].\n", ctx->nameOf(ci));
+                log_error("PLL '%s': the Quartus-derived PLL solver supports only 5CSEBA6U23I7.\n", ctx->nameOf(ci));
+            MistralPllRequest req;
+            std::string err = mistral_pll_parse(ctx, ci, req);
+            if (!err.empty())
+                log_error("PLL '%s': %s.\n", ctx->nameOf(ci), err.c_str());
+            Result solved = solve(req.ref_hz, req.fractional, req.outputs);
+            if (!solved.solution)
+                log_error("PLL '%s': unsupported PLL output frequency/duty/phase request: %s.\n", ctx->nameOf(ci),
+                          solved.error.c_str());
+            const Solution &sol = *solved.solution;
+            int clocks = req.clocks;
+            // Established netlist convention: the first output is named outclk.
+            if (ci->ports.count(ctx->id("outclk[0]")) && !ci->ports.count(id_outclk))
                 ci->renamePort(ctx->id("outclk[0]"), id_outclk);
-            }
-            std::array<int64_t, 4> output_hzs{output_hz, output1_hz, 0, 0};
-            if (clocks >= 3) {
-                for (int i = 2; i < clocks; ++i) {
-                    auto freq = ci->params.find(ctx->idf("output_clock_frequency%d", i));
-                    if (freq == ci->params.end() || !freq->second.is_string)
-                        log_error("PLL '%s': explicit output_clock_frequency%d is required.\n", ctx->nameOf(ci), i);
-                    output_hzs[i] = mistral_pll::parse_output_hz(freq->second.as_string());
-                }
-                if (fractional)
-                    log_error("PLL '%s': multi-output profile requires integer feedback.\n",
-                              ctx->nameOf(ci));
-                if (shifted)
-                    for (int i = 0; i < clocks; ++i)
-                        if (output_hzs[i] != output_hz || duties[i] != 50)
-                            log_error("PLL '%s': phase profile requires the same frequency on every output with 50 percent duty.\n",
-                                      ctx->nameOf(ci));
-                auto multi = mistral_pll::select_multi_hz(output_hzs, clocks, reference_mhz, duties);
-                if (!multi)
-                    log_error("PLL '%s': unsupported multi-output frequencies/duties; require exact 1 to 100 MHz dividers "
-                              "from one checked 300/320/400/520 MHz tuple.\n", ctx->nameOf(ci));
-                config = multi->feedback;
-                c1 = multi->counters[1];
-            }
-            if (!config)
-                log_error("PLL '%s': unsupported PLL output frequency/duty; require exact decimal MHz from 1 to 100 "
-                          "and an exact integer C divider from a checked 300/320/520 MHz tuple.\n", ctx->nameOf(ci));
-            for (auto &port : ci->ports)
-                if (!port.first.in(id_refclk, id_outclk, id_locked, id_rst) &&
-                    !(clocks >= 2 && port.first == ctx->id("outclk[1]")) &&
-                    !(clocks >= 3 && port.first == ctx->id("outclk[2]")) &&
-                    !(clocks == 4 && port.first == ctx->id("outclk[3]")))
+            for (auto &port : ci->ports) {
+                if (port.first.in(id_refclk, id_locked, id_rst))
+                    continue;
+                bool used_output = false;
+                for (int i = 0; i < clocks; ++i)
+                    if (port.first == mistral_pll_output_port(ctx, ci, i))
+                        used_output = true;
+                if (!used_output && port.second.net)
                     log_error("PLL '%s': unsupported port '%s'.\n", ctx->nameOf(ci), ctx->nameOf(port.first));
+            }
             auto reset_state = get_pin_needed_muxval(ci, id_rst);
             if (reset_state == PIN_0) {
                 // Keep the established fixed-profile bitstream for inactive reset.
@@ -2890,13 +2832,12 @@ struct MistralPacker
                 log_error("PLL '%s': rst must be tied low or driven by a signal.\n", ctx->nameOf(ci));
             }
 
-            NetInfo *ref = ci->getPort(id_refclk), *out = ci->getPort(id_outclk);
+            NetInfo *ref = ci->getPort(id_refclk);
             NetInfo *buffered_ref = nullptr;
             // clkbufmap promotes a reference also used by fabric registers.
             // The PLL still needs the dedicated pad tap; keep the buffer for
             // its fabric users. Only the unconditional CLKBUF is transparent.
-            if (ref && ref->driver.cell && ref->driver.cell->type == id_MISTRAL_CLKBUF &&
-                ref->driver.port == id_Q) {
+            if (ref && ref->driver.cell && ref->driver.cell->type == id_MISTRAL_CLKBUF && ref->driver.port == id_Q) {
                 NetInfo *pad_net = ref->driver.cell->getPort(id_A);
                 if (pad_net) {
                     buffered_ref = ref;
@@ -2906,20 +2847,24 @@ struct MistralPacker
                 }
             }
             if (!ref || !ref->driver.cell || ref->driver.cell->type != id_MISTRAL_IB ||
-                str_or_default(ref->driver.cell->attrs, id_LOC, "") != "PIN_V11")
-                log_error("PLL '%s': initial profile requires a dedicated reference from PIN_V11.\n", ctx->nameOf(ci));
-            std::array<NetInfo *, 4> outputs{out, ci->getPort(ctx->id("outclk[1]")),
-                                            ci->getPort(ctx->id("outclk[2]")), ci->getPort(ctx->id("outclk[3]"))};
-            std::array<std::vector<CellInfo *>, 4> branches;
+                ref->driver.cell->bel == BelId())
+                log_error("PLL '%s': refclk requires a dedicated reference from a placed clock input pin.\n",
+                          ctx->nameOf(ci));
+            std::vector<NetInfo *> outputs(clocks);
+            std::vector<std::vector<CellInfo *>> branches(clocks);
+            bool shifted = false;
+            for (int i = 0; i < clocks; ++i)
+                shifted |= sol.outputs[i].phase_ps != 0;
             for (int i = 0; i < clocks; ++i) {
+                outputs[i] = ci->getPort(mistral_pll_output_port(ctx, ci, i));
                 if (!outputs[i] || outputs[i]->users.empty())
                     log_error("PLL '%s': output %d must feed clock buffers.\n", ctx->nameOf(ci), i);
                 for (auto user : outputs[i]->users) {
                     if (!ctx->is_clkbuf_cell(user.cell->type) || user.port != id_A)
                         log_error("PLL '%s': output %d must feed only clock buffers.\n", ctx->nameOf(ci), i);
                     branches[i].push_back(user.cell);
-                    if (phase_ps[i] != 0 && (outputs[i]->clkconstr ||
-                        (user.cell->getPort(id_Q) && user.cell->getPort(id_Q)->clkconstr)))
+                    if (sol.outputs[i].phase_ps != 0 &&
+                        (outputs[i]->clkconstr || (user.cell->getPort(id_Q) && user.cell->getPort(id_Q)->clkconstr)))
                         log_error("PLL '%s': shifted output must use the PLL-derived phase constraint, not create_clock.\n",
                                   ctx->nameOf(ci));
                 }
@@ -2931,117 +2876,190 @@ struct MistralPacker
                     return a->name.str(ctx) < b->name.str(ctx);
                 });
             }
-            auto set_clock = [&](NetInfo *net, int period, int duty = 50) {
+            auto set_clock = [&](NetInfo *net, int period, int duty = 50, const char *what = "") {
                 int high = int(int64_t(period) * duty / 100);
                 int low = duty == 50 ? high : period - high;
                 if (!net)
                     log_error("PLL '%s': disconnected clock.\n", ctx->nameOf(ci));
                 if (net->clkconstr && (net->clkconstr->period.minDelay() != period ||
-                                      net->clkconstr->period.maxDelay() != period ||
-                                      net->clkconstr->high.minDelay() != high || net->clkconstr->high.maxDelay() != high ||
-                                      net->clkconstr->low.minDelay() != low || net->clkconstr->low.maxDelay() != low))
-                    log_error("PLL '%s': conflicting clock constraint on '%s'.\n", ctx->nameOf(ci), ctx->nameOf(net));
+                                       net->clkconstr->period.maxDelay() != period ||
+                                       net->clkconstr->high.minDelay() != high || net->clkconstr->high.maxDelay() != high ||
+                                       net->clkconstr->low.minDelay() != low || net->clkconstr->low.maxDelay() != low))
+                    log_error("PLL '%s': conflicting clock constraint on %s'%s'.\n", ctx->nameOf(ci), what,
+                              ctx->nameOf(net));
                 net->clkconstr.reset(new ClockConstraint());
                 net->clkconstr->period = DelayPair(period);
                 net->clkconstr->high = DelayPair(high);
                 net->clkconstr->low = DelayPair(low);
             };
             // Check the input pin's SDC constraint as well as the buffered net.
-            set_clock(ref->driver.cell->getPort(id_PAD), ctx->getDelayFromNS(1000.0 / reference_mhz));
-            set_clock(ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
+            int ref_period = ctx->getDelayFromNS(1.0e9 / double(req.ref_hz));
+            set_clock(ref->driver.cell->getPort(id_PAD), ref_period, 50, "reference ");
+            set_clock(ref, ref_period, 50, "reference ");
             if (buffered_ref)
-                set_clock(buffered_ref, ctx->getDelayFromNS(1000.0 / reference_mhz));
-            std::array<double, 4> generated_hzs{mistral_pll::achieved_hz(*config, reference_mhz),
-                                               double(output1_hz), double(output_hzs[2]), double(output_hzs[3])};
-            if (clocks >= 2) {
-                auto second_config = *config;
-                second_config.c = c1;
-                generated_hzs[1] = mistral_pll::achieved_hz(second_config, reference_mhz);
-            }
+                set_clock(buffered_ref, ref_period, 50, "reference ");
             for (int i = 0; i < clocks; ++i) {
-                int period = ctx->getDelayFromNS(1.0e9 / generated_hzs[i]);
-                set_clock(outputs[i], period, duties[i]);
+                double hz = sol.outputs[i].achieved_hz.to_double();
+                int period = ctx->getDelayFromNS(1.0e9 / hz);
+                set_clock(outputs[i], period, req.outputs[i].duty);
                 for (CellInfo *buffer : branches[i])
-                    set_clock(buffer->getPort(id_Q), period, duties[i]);
+                    set_clock(buffer->getPort(id_Q), period, req.outputs[i].duty);
                 // Gating suppresses edges; it does not change the phase of the
                 // remaining edges. Relate branches of this counter only, unless
-                // the existing shifted profile already relates every output.
+                // a shifted output relates every output of this PLL.
                 if (shifted || branches[i].size() > 1) {
                     IdString group = shifted ? ci->name : ctx->idf("$pll_branch$%s$%d", ctx->nameOf(ci), i);
                     auto set_phase = [&](NetInfo *net) {
                         net->clkconstr->phase_group = group;
-                        net->clkconstr->phase_shift = ctx->getDelayFromNS(phase_ps[i] / 1000.0f);
+                        net->clkconstr->phase_shift = ctx->getDelayFromNS(sol.outputs[i].phase_ps / 1000.0f);
                     };
                     set_phase(outputs[i]);
                     for (CellInfo *buffer : branches[i])
                         set_phase(buffer->getPort(id_Q));
                 }
-                if (fractional)
-                    log_info("PLL '%s': fractional-N %srequested %.6f Hz, achieved %.9f Hz, error %.9g ppm.\n",
-                             ctx->nameOf(ci), i == 0 ? "" : "second ", double(output_hzs[i]), generated_hzs[i],
-                             (generated_hzs[i] / output_hzs[i] - 1.0) * 1.0e6);
+                if (sol.fractional || hz != double(req.outputs[i].hz))
+                    log_info("PLL '%s': %s requested %.6f Hz (output %d), achieved %.9f Hz, error %.9g ppm.\n",
+                             ctx->nameOf(ci), sol.fractional ? "fractional-N" : "integer",
+                             double(req.outputs[i].hz), i, hz, (hz / double(req.outputs[i].hz) - 1.0) * 1.0e6);
             }
-            BelId chosen;
             WireId pad = ctx->getBelPinWire(ref->driver.cell->bel, ref->driver.port);
             std::vector<BelId> candidates;
             for (const auto &candidate : ctx->pll_clock_bels)
                 candidates.push_back(candidate.first);
-            // Preserve the established V11 site (0,14) before trying (0,31).
-            std::sort(candidates.begin(), candidates.end());
-            const std::array<int, 4> preferred_lanes{2, 3, 1, 0};
-            std::vector<std::pair<int, CellInfo *>> buffers;
-            for (int i = 0; i < clocks; ++i)
-                buffers.emplace_back(i, branches[i].front());
-            for (int i = 0; i < clocks; ++i)
-                for (size_t j = 1; j < branches[i].size(); ++j)
-                    buffers.emplace_back(i, branches[i][j]);
+            std::sort(candidates.begin(), candidates.end(), [&](BelId a, BelId b) {
+                int ra = site_rank(a), rb = site_rank(b);
+                return ra != rb ? ra < rb : a < b;
+            });
+            bool reachable = false;
+            for (BelId candidate : candidates)
+                reachable |= ctx->pll_ref_select.count(PipId(pad.node, ctx->getBelPinWire(candidate, id_refclk).node)) > 0;
+            if (!reachable)
+                log_error("PLL '%s': reference pin '%s' has no dedicated clock path to an FPLL; reference clocks "
+                          "from global or fabric routing are not supported.\n",
+                          ctx->nameOf(ci), str_or_default(ref->driver.cell->attrs, id_LOC, "?").c_str());
+            BelId chosen;
+            std::vector<int> counters;
             for (BelId candidate : candidates) {
                 WireId dst = ctx->getBelPinWire(candidate, id_refclk);
-                PipId ref_pip(pad.node, dst.node);
-                if (!ctx->pll_ref_select.count(ref_pip) || !ctx->checkBelAvail(candidate))
+                if (!ctx->pll_ref_select.count(PipId(pad.node, dst.node)) || !ctx->checkBelAvail(candidate))
                     continue;
-                // The additional CLKIN2/site profile is checked at the board reference only.
-                if (ctx->pll_ref_select.at(ref_pip) == 6 && reference_mhz != 50)
-                    continue;
-                std::vector<BelId> selected(buffers.size());
-                bool available = true;
-                for (size_t i = 0; i < buffers.size(); ++i) {
-                    int output = buffers[i].first;
-                    const auto &options = ctx->pll_clock_bels.at(candidate)[output];
-                    auto try_lane = [&](int lane) {
-                        for (BelId clock : options) {
-                            if (ctx->bel_data(clock).block_index != lane || !ctx->checkBelAvail(clock) ||
-                                std::find(selected.begin(), selected.end(), clock) != selected.end())
-                                continue;
-                            selected[i] = clock;
-                            return true;
-                        }
-                        return false;
+                const auto &links = ctx->pll_clock_bels.at(candidate);
+                // Prefer one lane on C6/C7/C5/C8 for each primary branch, then
+                // place any further branches. That keeps an ungated buffer on
+                // the counter's established lane. At FPLL (89,0) those four
+                // counters share four vertical lanes, so a second branch can
+                // be left with no lane even though a later output would fit
+                // on a horizontal counter. Only then, give each output the
+                // first counter that has a lane for every branch.
+                std::vector<int> assign(clocks, -1);
+                std::vector<BelId> taken;
+                std::vector<std::pair<CellInfo *, BelId>> binds;
+                auto try_lane = [&](int counter, int lane) -> BelId {
+                    for (BelId clock : links[counter]) {
+                        if (ctx->bel_data(clock).block_index != lane || !ctx->checkBelAvail(clock) ||
+                            std::find(taken.begin(), taken.end(), clock) != taken.end())
+                            continue;
+                        return clock;
+                    }
+                    return BelId();
+                };
+                auto find_lane = [&](int counter) -> BelId {
+                    BelId b = try_lane(counter, preferred_lane(counter));
+                    for (int lane : lane_order)
+                        if (b == BelId())
+                            b = try_lane(counter, lane);
+                    return b;
+                };
+                auto lanes_for = [&](int counter) {
+                    std::vector<BelId> lanes;
+                    auto add = [&](int lane) {
+                        BelId b = try_lane(counter, lane);
+                        if (b != BelId() && std::find(lanes.begin(), lanes.end(), b) == lanes.end())
+                            lanes.push_back(b);
                     };
-                    if (!try_lane(preferred_lanes[output]))
-                        for (int lane : preferred_lanes)
-                            if (try_lane(lane))
-                                break;
-                    if (selected[i] == BelId()) {
+                    add(preferred_lane(counter));
+                    for (int lane : lane_order)
+                        add(lane);
+                    return lanes;
+                };
+                auto reset_choice = [&]() {
+                    assign.assign(clocks, -1);
+                    taken.clear();
+                    binds.clear();
+                };
+                bool available = true;
+                for (int i = 0; i < clocks && available; ++i) {
+                    BelId lane;
+                    for (int counter : counter_order) {
+                        if (std::find(assign.begin(), assign.end(), counter) != assign.end())
+                            continue;
+                        lane = find_lane(counter);
+                        if (lane != BelId()) {
+                            assign[i] = counter;
+                            break;
+                        }
+                    }
+                    if (lane == BelId()) {
                         available = false;
                         break;
+                    }
+                    taken.push_back(lane);
+                    binds.emplace_back(branches[i].front(), lane);
+                }
+                for (int i = 0; i < clocks && available; ++i)
+                    for (size_t j = 1; j < branches[i].size() && available; ++j) {
+                        BelId lane = find_lane(assign[i]);
+                        if (lane == BelId())
+                            available = false;
+                        else {
+                            taken.push_back(lane);
+                            binds.emplace_back(branches[i][j], lane);
+                        }
+                    }
+                if (!available) {
+                    reset_choice();
+                    available = true;
+                    for (int i = 0; i < clocks && available; ++i) {
+                        bool placed = false;
+                        for (int counter : counter_order) {
+                            if (std::find(assign.begin(), assign.end(), counter) != assign.end())
+                                continue;
+                            std::vector<BelId> lanes = lanes_for(counter);
+                            if (lanes.size() < branches[i].size())
+                                continue;
+                            assign[i] = counter;
+                            for (size_t j = 0; j < branches[i].size(); ++j) {
+                                taken.push_back(lanes[j]);
+                                binds.emplace_back(branches[i][j], lanes[j]);
+                            }
+                            placed = true;
+                            break;
+                        }
+                        if (!placed)
+                            available = false;
                     }
                 }
                 if (!available)
                     continue;
                 chosen = candidate;
+                counters = assign;
                 ctx->bindBel(chosen, ci, STRENGTH_LOCKED);
-                for (size_t i = 0; i < buffers.size(); ++i)
-                    ctx->bindBel(selected[i], buffers[i].second, STRENGTH_LOCKED);
+                for (auto &bind : binds)
+                    ctx->bindBel(bind.second, bind.first, STRENGTH_LOCKED);
                 break;
             }
             if (chosen == BelId())
                 log_error("PLL '%s': no available dedicated PLL/clock-buffer pair.\n", ctx->nameOf(ci));
-            if (clocks >= 2)
-                log_info("PLL '%s': second output %.9g MHz, C7=%d.\n", ctx->nameOf(ci),
-                         output1_hz / 1.0e6, c1);
-            log_info("PLL '%s': %d MHz -> %.9g MHz, direct, M=%d N=%d C6=%d, bel %s\n",
-                     ctx->nameOf(ci), reference_mhz, output_hz / 1.0e6, config->m, config->n, config->c, ctx->nameOfBel(chosen));
+            std::string counter_list;
+            for (int i = 0; i < clocks; ++i) {
+                ci->pin_data[mistral_pll_output_port(ctx, ci, i)].bel_pins = {ctx->idf("C%d", counters[i])};
+                counter_list += (i ? "," : "") + std::to_string(counters[i]);
+            }
+            ci->attrs[ctx->id("MISTRAL_PLL_COUNTERS")] = counter_list;
+            log_info("PLL '%s': %.6f MHz -> VCO %.6f MHz, %s, M=%d N=%d%s, counters C%s, bel %s\n", ctx->nameOf(ci),
+                     req.ref_hz / 1.0e6, sol.vco_hz.to_double() / 1.0e6, sol.fractional ? "fractional-N" : "integer",
+                     sol.m, sol.n, sol.fractional ? (" K=" + std::to_string(sol.k)).c_str() : "", counter_list.c_str(),
+                     ctx->nameOfBel(chosen));
         }
     }
 

@@ -56,26 +56,46 @@ def main():
     assert "s FPLL.000.073:PL_AUX_BG_POWERDOWN 1" in bt
     assert "PLL_FEEDBACK_ENABLE" not in bt
     assert "o OPT_B ffffff40.2dffffff" in bt
-    for name, parameter, value in (("frequency", "output_clock_frequency0", "7.0 MHz"),
-                                   ("mode", "operation_mode", "normal"),
-                                   ("fractional", "fractional_vco_multiplier", "true"),
-                                   ("phase", "phase_shift0", "100 ps"),
-                                   ("duty", "duty_cycle0", format(40, "032b")),
-                                   ("count", "number_of_clocks", format(5, "032b"))):
+    # The general solver accepts every configuration Quartus implements
+    # (mistral/tests/pll/solver.py); these remain unsupported and must fail.
+    for name, parameter, value, expected in (
+            ("frequency", "output_clock_frequency0", "7.0000001 MHz", "at most six decimal places"),
+            ("too-fast", "output_clock_frequency0", "600.0 MHz", "exceed the -7 global clock limit"),
+            ("mode", "operation_mode", "normal", "unsupported parameter"),
+            ("fractional", "fractional_vco_multiplier", "true", "fractional-N mode supports reference clocks"),
+            ("phase", "phase_shift0", "-100 ps", "unsupported PLL output frequency/duty/phase"),
+            ("duty", "duty_cycle0", format(0, "032b"), "duty cycle must be an integer percent"),
+            ("count", "number_of_clocks", format(10, "032b"), "number_of_clocks must"),
+            # 2^32+1 and 2^32+50 fit in the parameter bit vector but not in int.
+            # Narrowing them used to yield a legal 1 and a legal 50.
+            ("count-wide", "number_of_clocks", format(2 ** 32 + 1, "033b"),
+             "number_of_clocks must be an integer from 1 to 9"),
+            ("duty-wide", "duty_cycle0", format(2 ** 32 + 50, "033b"),
+             "duty_cycle0 must be an integer percentage"),
+            # as_int64() drops bits above 63, so these used to read as 1 and 50.
+            ("count-65", "number_of_clocks", format(2 ** 64 + 1, "065b"),
+             "number_of_clocks must be an integer from 1 to 9"),
+            ("duty-65", "duty_cycle0", format(2 ** 64 + 50, "065b"),
+             "duty_cycle0 must be an integer percentage"),
+            # as_int64() treats x/z as zero. "x1" would pack as one clock, and
+            # "11001z" would pack as duty 50, either of which is also one more.
+            ("count-undef", "number_of_clocks", "x1",
+             "number_of_clocks must be an integer from 1 to 9"),
+            ("duty-undef", "duty_cycle0", "11001z",
+             "duty_cycle0 must be an integer percentage"),
+            # Leading-zero spellings are not the canonical parameter name.
+            ("duty-alias", "duty_cycle00", format(99, "032b"),
+             "unsupported parameter 'duty_cycle00'")):
         invalid = copy.deepcopy(design)
         pll = invalid["modules"]["top"]["cells"]["pll"]
         pll["parameters"][parameter] = value
         if name == "fractional":
-            # 25 MHz output is now a valid generic fractional rate; use the
-            # unsupported reference to exercise the fractional-only guard.
+            # 25 MHz is a valid generic fractional rate; use an unsupported
+            # reference to exercise the fractional-only guard.
             pll["parameters"]["reference_clock_frequency"] = "25.0 MHz"
         path = out / f"invalid-{name}.json"
         path.write_text(json.dumps(invalid))
         log = run(command + ["--json", str(path)], out / f"invalid-{name}.log", success=False)
-        expected = {"frequency": "unsupported PLL output frequency",
-                    "count": "number_of_clocks must",
-                    "duty": "unsupported PLL output frequency/duty",
-                    "fractional": "fractional-N selector requires"}.get(name, "unsupported parameter")
         assert expected in log, log
     for name in ("reset", "fanout", "port"):
         invalid = copy.deepcopy(design)
@@ -112,7 +132,7 @@ def main():
     invalid_command = command.copy()
     invalid_command[invalid_command.index("--qsf") + 1] = str(qsf)
     log = run(invalid_command + ["--json", str(out / "synth.json")], out / "invalid-reference-pin.log", success=False)
-    assert "dedicated reference from PIN_V11" in log, log
+    assert "has no dedicated clock path to an FPLL" in log, log
     digest = hashlib.sha256((out / "top.rbf").read_bytes()).hexdigest()
     print(f"PASS: one PLL, 25 MHz generated clock, direct C6 configuration; RBF sha256 {digest}")
 

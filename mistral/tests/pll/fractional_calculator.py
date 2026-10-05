@@ -57,7 +57,9 @@ def main():
 
     single_cases = {
         "27": ("27.0 MHz", "D727", 27000000, 15, 8, "1999999a"),
-        "99": ("99.0 MHz", "D799", 99000000, 5, 9, "e6666666"),
+        # Quartus 17.0.2 word (oracle fixtures/solver g_002 pll1), derived from
+        # its six-decimal VCO 494.999999 MHz rather than the nearest word.
+        "99": ("99.0 MHz", "D799", 99000000, 5, 9, "e6666611"),
     }
     for name, (frequency, signature, hz, counter, multiplier, fraction) in single_cases.items():
         out = root / f"single-{name}"

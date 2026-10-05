@@ -1,47 +1,186 @@
 # Cyclone V PLL support
 
-This backend supports the integer, fractional and phase profiles described
-below, including two independent PLLs on the board reference. Integer output
-selection is generic over a table of complete Quartus-checked feedback
-profiles: the requested rate is solved as an exact C divider, so adding a
-rate that divides a supported VCO does not require a rate-specific case.
-Hardware evidence applies only to the explicitly recorded diagnostics; other
-profiles have host-only validation.
+`altera_pll` cells (Yosys blackbox, generic `pll_type "General"`, direct
+compensation) are implemented by a general solver, `mistral/pll_solver.h`,
+that reproduces the choices Quartus Prime 17.0.2 makes for the same
+parameters on `5CSEBA6U23I7`: VCO, M/N/C counters, fractional word, loop
+filter and charge pump, M and C phase presets and the VCO post divider.
+Every rule was derived from Quartus's own legality engine and from decoded
+Quartus bitstreams and is verified against Quartus (see "General solver"
+below). Where Quartus's behaviour was not fully characterised the solver
+fails closed with an explicit error instead of guessing.
 
-The test uses the existing Yosys `altera_pll` blackbox, without a Yosys patch.
-One physical FPLL is reserved per cell. On `5CSEBA6U23I7`, Mistral enumerates
-six FPLL sites. The currently accepted configuration is:
+Supported (all host-only validation; hardware evidence below applies only to
+the recorded diagnostics):
 
-- Reference: 25, 50 or 100 MHz for integer mode, and 50 MHz for fractional-N
-  mode, from the dedicated V11 input route. The DE10-Nano onboard oscillator
-  supplies 50 MHz; other references require an appropriate external physical
-  clock source.
-- Output: one clock from 1 to 100 MHz, expressed as decimal MHz with at most
-  one-Hz precision. Integer mode requires an exact C divisor from a checked
-  300, 320 or 520 MHz feedback profile. Fractional-N mode calculates M, C and
-  a 32-bit fraction in the bounded reported-VCO window described below; zero
-  phase.
-  Integer duty percentages are supported when exactly representable by the
-  selected C high/low counters (see below). Fractional-N mode requires 50%
-  duty.
-- Direct mode with integer feedback. The selector prefers the 300 MHz profile,
-  then 320 MHz, then the 520 MHz profile. Only C6 drives a single output.
-- Active-high fabric-driven `rst`, or `rst` tied low; optional `locked` status output.
-- One or more existing MISTRAL clock buffers per output; direct fabric sinks
-  on the unbuffered PLL tap remain unsupported.
+- References: every pin with a dedicated path to an FPLL CLKIN on the U23
+  package (V11, Y13, E11, V12, Y15, D12, W21, Y24; DE10-Nano FPGA_CLK1/2/3_50
+  are V11/Y13/E11) and every FPLL site reachable from it.
+  `CLKIN_0_SRC = 4 + k` selects CLKIN(k). Integer mode accepts 5–320 MHz,
+  fractional-N 50–100 MHz references.
+- Outputs: 1–9 per PLL (number_of_clocks), any frequency Quartus implements
+  up to 550 MHz (the -7 global-clock limit; Quartus accepts counter outputs up
+  to 1340 MHz), decimal MHz with at most six decimal places, static phase
+  shifts on any output (`"<n> ps"`, n >= 0) and integer duty cycles Quartus
+  realises exactly.
+- Counters C0–C8, each with a free global clock lane reachable through
+  Mistral's PLLCOUT → CMUXHG/CMUXVG links. The vertical CMUXVG lanes are
+  PLL-only clock buffers. A ninth simultaneous output on one PLL needs a
+  regional clock (C4 at FPLL (89,0)) and is rejected.
+- Fractional-N with any number of outputs whose requests share one exact VCO
+  (Quartus merges near-miss per-output VCOs; that is not modelled).
+- The parameter set emitted by Quartus's IP generator (unused outputs
+  `"0 MHz"`/`"0 ps"`/50, `pll_type`/`pll_subtype` `"General"`).
+- Active-high fabric-driven `rst`, or `rst` tied low; optional `locked`.
+- One or more MISTRAL clock buffers per output; direct fabric sinks on the
+  unbuffered PLL tap remain unsupported.
 
-Output frequencies use strings such as `"20 MHz"`, `"20.0 MHz"` or `"12.5 MHz"`. The reference accepts the same whole-MHz string syntax, restricted to 25,
-50 or 100 MHz; other parameters keep the values in `top.v`.
-The supported whole-MHz integer subset is 1, 2, 3, 4, 5, 6, 8, 10, 12, 13,
-15, 16, 20, 25, 26, 30, 32, 40, 50, 52, 60, 64, 65, 75, 80, and 100. The
-integer selector searches complete feedback/analog profiles; it does not
-invent analog values for an unverified VCO. Fractional-N accepts any parsed
-1–100 MHz request for which its bounded calculator finds legal counters.
-Out-of-range or inexact integer requests (for example 7 MHz or 12.3 MHz) fail;
-fractional-N requests fail when no bounded solution exists.
-Unsupported device, pin, frequency, phase, duty cycle, clock count,
-reconfiguration ports, or output topology fail explicitly. Missing frequency
-and mode parameters also fail. Reset must be tied low or driven; a permanently asserted or undriven reset fails.
+Rejected (fail closed): other devices; non-direct operation modes;
+`pll_type "Cyclone V"` physical-parameter PLLs, dynamic phase shift and
+reconfiguration ports (`phase_en`, `scanclk`, `reconfig_to_pll`, ...);
+reference pins without a dedicated FPLL path (Quartus can use a global clock);
+negative phases; inexact duty requests; requests for which no Quartus VCO
+reproduces every output within its 500 Hz / 100 ppm tolerance; and the edge
+cases listed under "Limits" below. Reset must be tied low or driven.
+
+## General solver
+
+Quartus exposes its PLL legality engine to `quartus_sh`
+(`load_package advanced_pll_legality`, configurations `GENERIC_PLL` and
+`CYCLONEV_PLL_CONFIG`). The generic flow selects the lowest VCO in the
+`GENERIC_PLL PLL_OUTPUT_CLOCK_FREQUENCY` list, but the fitter's M/N and
+analogue settings differ from the engine's `CYCLONEV_PLL_CONFIG` answers, so
+those were measured from 39 compiled Quartus projects (218 PLLs, six per
+compile, all six FPLL sites, 16 references). The rules:
+
+- **Legal VCO (integer).** VCO = ref·M0/N0 (lowest terms), reported VCO
+  300–1600 MHz. At or above 600 MHz: ref/N0 >= 5 MHz, and M0 <= 255 for even
+  M0 (odd M0 > 255 is left uncharacterised). Below 600 MHz: even M0 needs
+  ref/N0 >= 5 MHz, odd M0 needs ref/(2·N0) > 5 MHz. Each output needs a
+  counter C in 1..512 with request·C inside 300–1600 MHz and the
+  Hz-truncated actual output within min(500 Hz, 100 ppm) of the request; duty
+  must be exactly realisable in half VCO periods; phase k·VCO/8 within 5 ps,
+  k <= 2047. Checked against the engine for 37,000 VCO candidates and 10,000
+  randomised requests (`solver_tools/xcheck.py`): no case where the solver
+  accepts and differs from Quartus.
+- **Legal VCO (fractional).** Candidates request·C; N = the unique divider
+  with ref/N >= 50 MHz and integer part M >= 8, fraction in (0.05, 0.95);
+  integer multiples of the PFD within tolerance are also legal; multiple
+  legal N or non-exact multi-output VCOs fail closed.
+- **M/N (fitter).** N0 odd and ref/(2·N0) > 5 MHz (and 2·M0 <= 256): Quartus
+  doubles M and N. Odd final N: M preset q = round(4M/N) VCO/8 steps
+  (M_CNT_LO_PRESET = 1 + q/8, PH_MUX = q mod 8), i.e. half a reference period.
+  M odd enables M odd-duty correction; N never does.
+- **Loop filter.** With M_eff = M × post divider (2 below 600 MHz):
+  BWCTRL/CP_CURRENT follow the IP generator's Medium table (non-doubled) or
+  Low table (doubled): M_eff <=2/<=3: 9/2, 9/3; <=7: 8/2 (doubled 8/1);
+  <=13: 8/3 (8/1); <=32: 7/2 (7/1); <=70: 6/2 (6/1); <=124: 4/2 (4/1);
+  <=192: 3/2 (3/1); <=256: 2/2 (2/1). Fractional uses Medium on the integer M.
+  References above 320 MHz (where Quartus deviates) fail closed.
+- **VCO_DIV** 0 (÷2) below 600 MHz, else 1. Lock filters 0x19/2, FBCLK_MUX_2,
+  VCO phase enables and the (0,73) auxiliary bandgap powerdown as before;
+  VCO0PH_EN only when a counter from C4..C8 is used.
+- **Fractional word.** Quartus rounds the fraction to 32 bits, recomputes the
+  VCO in double precision, prints it truncated to six decimals and rounds the
+  word again from that printed value. `pll_solver.h` reproduces that sequence;
+  it explains the "not the nearest word" values of the earlier 74.25, 11.2896
+  and 99 MHz profiles (99 MHz now emits Quartus's `e6666611`, not `e6666666`).
+- **Counters.** Duty in half VCO periods h: high = ceil(h/2), low = C − high,
+  odd-duty bit = h odd; C = 1 uses counter bypass. Output i takes the first
+  free counter in the order C6, C7, C5, C8, C4, C0..C3 that has a free lane;
+  site order FPLL (0,14), (0,31), (0,55), (89,0), (0,73), (0,0). Extra
+  branches keep that choice when each still has a lane. Otherwise every
+  output is given the first counter in that order with a lane per branch.
+
+Quartus silently mis-implements some requests (for example integer
+148.5 MHz from 50 MHz needs M=297 and produces a 5 MHz clock); the solver
+rejects them.
+
+Run the standalone checks (no device database) and the end-to-end oracle
+comparison:
+
+```sh
+python3 mistral/tests/pll/solver.py --output /tmp/pll-solver
+python3 mistral/tests/pll/general.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --mistral-cv "$MISTRAL_CV" --output /tmp/pll-general
+```
+
+`solver.py` builds `solver_config.cpp` (the earlier checked profiles,
+fractional words and fail-closed cases) and `solver_cases.cpp`, which replays
+all 218 oracle PLLs in [fixtures/solver](fixtures/solver/) (cases.txt plus
+each project's inputs, fitter PLL report and decoded FPLL/CMUX settings) and
+compares M, N, K, BWCTRL, CP_CURRENT, M presets, VCO_DIV, M/N odd/bypass bits
+and every output counter's divider, duty, bypass and phase presets: 198 match,
+2 Quartus mis-implementations are rejected, 18 fail closed (references above
+320 MHz, fractional references above 100 MHz, merged multi-output fractional
+VCOs).
+
+`general.py` routes four designs in [fixtures/general](fixtures/general/) and
+requires every FPLL setting (including inversions and the auxiliary bandgap)
+to equal a Quartus build of the same design pinned to nextpnr's FPLL site and
+output counters:
+
+| Case | Coverage |
+| --- | --- |
+| mister3 | V11 fractional 148.5 MHz, E11 fractional 24.576 MHz, Y13 integer 189/85.909090/21.477272 MHz at FPLL (89,0) on vertical lanes |
+| eight | W21 (CLKIN3 of (89,0)), eight outputs on C6/C7/C5/C8 (vertical) and C0..C3 (horizontal) |
+| oddn | V12 (CLKIN1), M32/N5 odd-N presets, 3125 ps phase, 25% and 40% duties |
+| refs | 27 MHz at D12 → (0,31) 74.25/148.5 MHz (M33/N2), 100 MHz fractional at Y15 (N=2), 25 MHz at E11 → (0,55) 250 MHz |
+
+Regenerate fixtures with the scripts in [solver_tools](solver_tools/)
+(`QUARTUS_BIN`, `YOSYS`, `NEXTPNR`, `MISTRAL_CV` environment variables):
+`pllgen.py`/`batch.py` compile oracle projects, `export_fixture.py` writes
+`fixtures/solver`, `make_general.py CASEDIR` builds a general fixture, and
+`rbc_query.tcl`/`rbc.py`/`xcheck.py` cross-check the solver
+(`solve_cli.cpp`) against the legality engine.
+
+Designs that do not use the new resources keep byte-identical bitstreams:
+the original wires and edges are created first, the vertical lanes are a
+separate PLL-only bel type, and new counter edges into the fabric-capable
+horizontal lane 2 are hidden from non-PLL nets. The one deliberate change is
+the 130/130 MHz SDRAM profile (650 MHz VCO), which now uses `VCO_DIV 1` as
+Quartus does instead of the previous `0`.
+
+### Limits
+
+- Fractional-N references above 100 MHz, integer references above 320 MHz,
+  odd M0 > 255 and engine-boundary ties fail closed.
+- Quartus merges near-coincident per-output fractional VCOs (for example
+  85.909090/21.477272/42.954545 MHz uses 429.54544 MHz); only exact common
+  VCOs are accepted.
+- Quartus's fallback for requests with no output inside tolerance (it picks
+  a single approximate VCO) is rejected rather than reproduced.
+- Regional clocks (C4 at FPLL (89,0), C0..C3 elsewhere) and reference clocks
+  from global/fabric routing are not modelled.
+- PLL cascading, external feedback, normal/source-synchronous/ZDB modes and
+  the bandwidth presets other than Auto are rejected.
+
+### Phase 2 findings: dynamic phase shift and reconfiguration
+
+MiSTer's `pll_hdmi` uses `altera_pll` with `pll_type "Cyclone V"`,
+`pll_subtype "Reconfigurable"`, explicit physical parameters and the
+64-bit `reconfig_to_pll`/`reconfig_from_pll` buses driven by
+`altera_pll_reconfig` (soft logic plus the FPLL DPRIO port). Mistral already
+names the FPLL ports involved (`reg_clk`, `reg_rst_n`, `reg_read`,
+`reg_write`, `reg_reg_addr[5:0]`, `reg_writedata[15:0]`,
+`reg_readdata[15:0]`, `reg_byte_en`, `reg_ser_shift_load`, `reg_mdio_dis`,
+`atpgmode`, and for dynamic phase shift `phase_en`, `up_dn`, `cnt_sel[4:0]`,
+`scanen`, `phase_done`). Supporting them needs: packing the explicit physical
+parameters of `pll_type "Cyclone V"` (the IP generator's values, computed by
+its `qcl_pll`/`CYCLONEV_PLL_CONFIG` engine path, differ from the generic
+fitter path, e.g. M6/N1 instead of M12/N2 at 300 MHz), mapping the
+reconfiguration bus bits to those ports with their GIN/GOUT routing, and
+oracle checks of the DPRIO-related PRAM bits. None of this is implemented;
+the ports remain explicit errors.
+
+## Historical profile records
+
+The sections below record the earlier closed profile table and its
+hardware/oracle evidence. Their positive fixtures remain regression tests and
+still produce identical bitstreams; statements that other values are
+"rejected" or "unsupported" are superseded by the general solver above. The
+standalone selector tests they mention (`*_config.cpp`, `pll.h`) were replaced
+by `solver_config.cpp`.
 
 ## Implementation
 
@@ -1083,28 +1222,41 @@ Downstream locks and FES pins are unchanged.
 
 ## Two independent PLLs on the board reference
 
-Two `altera_pll` instances can share the DE10-Nano V11 50 MHz reference.
-The packer first uses FPLL (0,14), then FPLL (0,31). Each cell retains its
-own feedback configuration, output dividers and timing phase group. The
-second site is restricted to a 50 MHz reference; this extension does not
-add support for other physical reference sources.
+Several `altera_pll` instances can share the DE10-Nano V11 50 MHz reference.
+The packer walks PLLs in HDL source order and offers FPLL sites in the order
+(0,14), (0,31), (0,55), (89,0), (0,73), (0,0), skipping a site the reference
+pin cannot reach or that lacks a free counter and lane. V11 reaches three of
+those sites: (0,14) and (0,31) through the horizontal clock mux, then (0,0)
+through the vertical mux. A fourth PLL on V11 fails during packing. Each
+cell keeps its own feedback configuration, output dividers and timing phase
+group. Other reference pins are legal when Mistral has a dedicated GPIO to
+CLKIN edge; `fixtures/general/refs` places a 27 MHz reference at (0,31).
 
-Mistral already describes both dedicated input routes and their output
-connections. No Mistral source or table changes are required:
+Mistral already describes the dedicated input routes and counter connections.
+No Mistral source or table changes are required:
 
-| FPLL | V11 reference input | `CLKIN_0_SRC` | C6 destination | HG selector |
+| FPLL | V11 reference input | `CLKIN_0_SRC` | C6 destination | selector |
 | --- | --- | --- | --- | --- |
-| (0,14) | CLKIN0 | 4 | CMUXHG (0,35) PLLIN14 | 0x16 |
-| (0,31) | CLKIN2 | 6 | CMUXHG (0,35) PLLIN6 | 0x0e |
+| (0,14) | CLKIN0 | 4 | CMUXHG (0,35) PLLIN14 | HG 0x16 |
+| (0,31) | CLKIN2 | 6 | CMUXHG (0,35) PLLIN6 | HG 0x0e |
+| (0,0) | CLKIN0 | 4 | CMUXVG (42,0) PLLIN1 | vertical lane |
 
-The backend imports each counter's connections to all four CMUXHG lanes,
-using Mistral's existing PLLIN selector encoding. Packing reserves a distinct
-free lane for every output before binding a PLL. The previous lane preference
-2/3/1/0 is preserved whenever those lanes are free; a second PLL uses remaining
-lanes. Dedicated clock-buffer legality now checks the actual PLL-to-buffer
-connection instead of requiring a fixed output number for each lane. Both
-PLLs together can use at most four output lanes on this mux. A third PLL or
-an output count exceeding the available lanes fails during packing.
+The corner site (0,0) has no in-range horizontal counter edge (C4 lands on
+PLLIN 17 and 20, which the importer rejects). Its C5..C8 edges drive
+CMUXVG (42,0) only. Those lanes are bel type `MISTRAL_CLKENA_PLL` (block
+index 4..7) so the placer's clock-buffer bucket stays the same; the packer
+binds them. Tile (0,0) bel 0 is a real FPLL, so an unbound `BelId` uses
+z `0xffff` rather than all zeros.
+
+The backend imports each counter's connections to the CMUXHG and CMUXVG
+lanes, using Mistral's existing PLLIN selector encoding. Packing reserves a
+distinct free lane for every output before binding a PLL. Lane preference
+2/3/1/0, then the vertical lanes, is preserved whenever those lanes are free.
+Dedicated clock-buffer legality checks the actual PLL-to-buffer connection.
+The two horizontal sites share four CMUXHG lanes. Three outputs at (0,14)
+and two at (0,0) place, because (0,0) drives CMUXVG (42,0). One PLL with
+five outputs still fails during packing: every V11-reachable site has only
+counters C5..C8. (89,0) has eight counters, and V11 does not reach it.
 
 ```sh
 python3 mistral/tests/pll/two_pll.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
@@ -1125,8 +1277,11 @@ the imported Mistral connections.
 An observed data crossing between the two PLL outputs remains cross-domain,
 including when the requested output frequencies are equal. A common reference
 does not establish a synchronous timing relationship between separate PLLs.
-The runner also exercises all four shared lanes and rejects a fifth output,
-a third PLL and a conflicting reference constraint.
+The runner also exercises all four shared lanes, places a three-plus-two
+split (video at (0,14) on CMUXHG, audio at (0,0) on CMUXVG lanes 0 and 1
+with `INPUT_SEL` 0x09/0x0a and `CLKIN_0_SRC` 4), and rejects one PLL with
+five outputs and a conflicting reference constraint. A third PLL on V11 is
+placed at FPLL (0,0) on a vertical lane; a fourth PLL is rejected.
 
 This change is based on nextpnr fork `mistral-stable` commit
 `1dad4cc2ea75944b0e3b645cf9e82dd88b6a9faa`, with unchanged Mistral
@@ -1311,7 +1466,12 @@ constraint, and reserves each counter's preferred primary lane before
 allocating additional branches. Ungated buffers take priority within a
 counter; other ordering follows cell names. Allocation checks all requested
 lanes before binding, and insufficient capacity produces a packing error.
-Existing single-branch profiles retain their lane preferences.
+Existing single-branch profiles retain their lane preferences. If the
+primary lanes cannot hold a later branch, counters are chosen again so
+each output gets one lane per branch. A W21 PLL with four outputs and a
+second branch on the first then uses C6 for both branches and C0 for the
+fourth output, instead of failing after C6/C7/C5/C8 take the four vertical
+lanes at FPLL (89,0).
 
 Branches of one counter receive a shared phase origin. Their downstream
 paths use the running-clock waveform even when a gate can suppress edges.
@@ -1323,6 +1483,8 @@ their PLL-wide phase relationship. ENA setup/hold remains uncharacterized.
 ```sh
 python3 mistral/tests/pll/clock_branches.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
   --mistral-cv "$MISTRAL_CV" --output /tmp/pll-clock-branches
+python3 mistral/tests/pll/lane_match.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --output /tmp/pll-lane-match
 ```
 
 The [portable Quartus reference](fixtures/clock-branches/README.md) confirms

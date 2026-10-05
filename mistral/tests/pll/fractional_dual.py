@@ -116,14 +116,13 @@ def main():
     assert "i FPLL.000.014:NRESET0 1" not in bt
     assert any(line.startswith("r ") and "FPLL.000.014:NRESET0" in line for line in bt.splitlines())
     for name, changes, expected in (
-        ("unsupported-pair", {"output_clock_frequency1": "13.5 MHz"},
-         "fractional-N dual selector requires"),
-        ("bad-second", {"output_clock_frequency1": "24.0 MHz"}, "fractional-N dual selector requires"),
-        ("reference", {"reference_clock_frequency": "25.0 MHz"}, "fractional-N dual selector requires"),
-        ("integer-mode", {"fractional_vco_multiplier": "false"}, "unsupported dual PLL frequencies"),
-        ("three-outputs", {"number_of_clocks": f"{3:032b}"}, "explicit output_clock_frequency2 is required"),
-        ("phase1", {"phase_shift1": "100 ps"},
-         "phase_shift1 must be zero or a checked phase shift"),
+        # Pairs without an exact common VCO are not characterised (fail closed).
+        ("unsupported-pair", {"output_clock_frequency1": "13.5 MHz"}, "unsupported PLL output frequency"),
+        ("bad-second", {"output_clock_frequency1": "24.0001 MHz"}, "unsupported PLL output frequency"),
+        ("reference", {"reference_clock_frequency": "25.0 MHz"}, "fractional-N mode supports reference clocks"),
+        ("precision", {"output_clock_frequency1": "24.5760001 MHz"}, "at most six decimal places"),
+        ("three-outputs", {"number_of_clocks": f"{3:032b}"}, "explicit parameter 'output_clock_frequency2' is required"),
+        ("phase1", {"phase_shift1": "-100 ps"}, "unsupported PLL output frequency/duty/phase"),
     ):
         invalid = copy.deepcopy(design)
         invalid["modules"]["top"]["cells"]["pll"]["parameters"].update(changes)

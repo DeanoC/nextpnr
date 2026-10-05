@@ -106,16 +106,15 @@ def main():
 
     if not args.skip_negative:
         for name, parameter, value, reasons in (
-            ("five-outputs", "number_of_clocks", format(5, "032b"), ("number_of_clocks",)),
-            ("reference26", "reference_clock_frequency", "26.0 MHz", ("multi-output", "reference")),
-            ("fractional", "fractional_vco_multiplier", "true", ("multi-output", "fractional")),
-            ("frequency0", "output_clock_frequency0", "7.0 MHz", ("multi-output", "frequenc")),
-            ("frequency1", "output_clock_frequency1", "7.0 MHz", ("multi-output", "frequenc")),
-            ("phase1", "phase_shift1", "10000 ps", ("phase",)),
+            ("ten-outputs", "number_of_clocks", format(10, "032b"), ("number_of_clocks",)),
+            ("reference26", "reference_clock_frequency", "26.0 MHz", ("frequenc", "reference")),
+            ("frequency0", "output_clock_frequency0", "7.0000001 MHz", ("decimal",)),
+            ("frequency1", "output_clock_frequency1", "7.0000001 MHz", ("decimal",)),
+            ("phase1", "phase_shift1", "-100 ps", ("phase",)),
             ("duty0", "duty_cycle0", format(0, "032b"), ("duty cycle",)),
             ("duty1", "duty_cycle1", format(0, "032b"), ("duty cycle",)),
-            ("frequency2", "output_clock_frequency2", "7.0 MHz", ("multi-output", "frequenc")),
-            ("phase2", "phase_shift2", "100 ps", ("multi-output", "phase")),
+            ("frequency2", "output_clock_frequency2", "7.0000001 MHz", ("decimal",)),
+            ("phase2", "phase_shift2", "-100 ps", ("phase",)),
             ("duty2", "duty_cycle2", format(0, "032b"), ("duty cycle",)),
             ("missing-frequency2", "output_clock_frequency2", None, ("output_clock_frequency2",)),
         ):
