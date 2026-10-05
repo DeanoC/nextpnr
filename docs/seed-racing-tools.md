@@ -160,6 +160,21 @@ recomputes each identity hash and requires its design, constraint family, and
 clock list to match the run. A run cannot improve its classification by
 omitting a failing clock.
 
+Create a dataset from completed collection summaries with:
+
+```
+python3 python/seed_racing.py dataset collection-a.json collection-b.json \
+    --output evaluation-dataset.json
+```
+
+The adapter verifies each telemetry digest, retains the valid structured
+telemetry prefix, and normalizes only iteration and repair metrics into the
+evaluator's prefix allowlist. It never copies `run_end` legality or final
+analogue timing into an observation. Those outcomes become visible at the
+collector's full process duration, after terminal artifacts have been read.
+Combining collections is supported, but policy results spanning more than one
+mapped-design/constraint family remain explicitly cross-design descriptive.
+
 `python3 python/seed_racing.py evaluate DATASET --checkpoints 5,10 --quotas
 8,2 --budget-seconds 600` replays random full-run and conservative
 successive-halving schedules over fully observed traces. Checkpoints are fixed

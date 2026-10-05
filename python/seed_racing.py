@@ -403,9 +403,10 @@ def _resolved_binary(argv0: str, cwd: Optional[str], environment: Mapping[str, s
 
 
 def _validate_collection_executable(executable: Path,
-                                    dependency_paths: Sequence[Path] = ()) -> None:
+                                    dependency_paths: Sequence[Path] = (),
+                                    require_supported_name: bool = True) -> None:
     """Keep the collector scoped to native nextpnr executables."""
-    if not executable.name.startswith("nextpnr"):
+    if require_supported_name and not executable.name.startswith("nextpnr"):
         raise ValueError(
             "collection requires a native nextpnr ELF executable; standalone language "
             "interpreters and generic launchers have unbounded implicit module/resource inputs")
@@ -420,11 +421,11 @@ def _validate_collection_executable(executable: Path,
             "collection requires nextpnr built with BUILD_PYTHON=OFF; embedded Python "
             f"runtime {python_runtime} loads implicit standard-library, site, and "
             "extension-module inputs")
-    if not executable.name.startswith("nextpnr-mistral"):
+    if require_supported_name and not executable.name.startswith("nextpnr-mistral"):
         raise ValueError(
             "seed-racing collection currently supports only nextpnr-mistral because "
             "other architectures lack authoritative final analogue timing evidence")
-    if not _file_contains_any(executable, (b"nextpnr.seed-racing.native.v1\x00",)):
+    if not _file_contains_any(executable, (b"nextpnr.seed-racing.native.v1\n\x00",)):
         raise ValueError(
             "collection requires a native nextpnr build with the seed-racing contract; "
             "a nextpnr-like filename is not executable authentication")
@@ -887,7 +888,8 @@ class Collector:
         execution = self._runtime_evidence["manifest"]["execution"]
         _validate_collection_executable(
             Path(self._binary_launch_path),
-            tuple(Path(path) for path in execution["dependency_paths"]))
+            tuple(Path(path) for path in execution["dependency_paths"]),
+            require_supported_name=False)
         expected_runtime_hashes = {
             item["path"]: item["sha256"] for item in self._runtime_evidence["manifest"]["files"]}
         if _sha256_stream(frozen) != expected_runtime_hashes.get(str(resolved)):
@@ -1745,6 +1747,156 @@ def _exact_execution_backend(value: Any) -> bool:
             bool(fields[2]) and bool(fields[3]))
 
 
+_TELEMETRY_PREFIX_MAP = {
+    "backend_nodes_expanded_cumulative": "node_expansions",
+    "backend_arcs_cumulative": "traversals",
+    "total_wire_use": "wire_count",
+    "overused_wires": "overused_wires",
+    "total_excess_occupancy": "total_excess_occupancy",
+    "current_congestion_weight": "congestion_weight",
+    "table_wns_ns": "table_wns_ns",
+    "table_tns_ns": "table_tns_ns",
+    "table_failing_endpoints": "table_failing_endpoints",
+    "repaired_arcs": "repaired_connections",
+}
+
+
+def telemetry_observations(records: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
+    """Normalize router telemetry into prefix-only evaluator observations.
+
+    Metric state is carried forward because a later repair record does not make
+    an already observed occupancy value secret. Final run_end fields are never
+    copied into observations.
+    """
+    observations: List[Dict[str, Any]] = []
+    state: Dict[str, Any] = {}
+    prior_excess: Optional[float] = None
+    for record in records:
+        if record.get("event") not in {"iteration", "repair_round"}:
+            continue
+        for source, destination in _TELEMETRY_PREFIX_MAP.items():
+            value = record.get(source)
+            if _finite_number(value):
+                state[destination] = value
+        excess = record.get("total_excess_occupancy")
+        if _finite_number(excess):
+            current_excess = float(excess)
+            if prior_excess is not None:
+                state["recent_progress"] = prior_excess - current_excess
+            prior_excess = current_excess
+        observation = dict(state)
+        observation["elapsed_seconds"] = float(record["elapsed_s"])
+        for field in ("phase", "attempt", "round"):
+            if field in record:
+                observation[field] = record[field]
+        observations.append(observation)
+    return observations
+
+
+def assemble_dataset(collection_paths: Sequence[Path]) -> Dict[str, Any]:
+    """Build a validated evaluator dataset from immutable collection summaries."""
+    if not collection_paths:
+        raise ValueError("at least one collection summary is required")
+    cohort_identities: Dict[str, Any] = {}
+    declarations: Dict[Tuple[str, str], List[str]] = {}
+    runs = []
+    for collection_path in collection_paths:
+        with collection_path.open(encoding="utf-8") as stream:
+            collection = json.load(stream)
+        if (collection.get("schema_version") != SCHEMA_VERSION or
+                not isinstance(collection.get("results"), list) or
+                not isinstance(collection.get("cohort_identity"), dict)):
+            raise ValueError(f"unsupported collection summary: {collection_path}")
+        identity = collection["cohort_identity"]
+        manifest = identity.get("manifest")
+        cohort = manifest.get("cohort") if isinstance(manifest, dict) else None
+        if not isinstance(cohort, dict):
+            raise ValueError(f"collection lacks a cohort identity: {collection_path}")
+        cohort_id = cohort.get("id")
+        mapped_design_id = cohort.get("mapped_design_id")
+        constraint_family = cohort.get("constraint_family")
+        clocks = manifest.get("required_clocks")
+        if (not all(isinstance(value, str) and value for value in
+                    (cohort_id, mapped_design_id, constraint_family)) or
+                not isinstance(clocks, list)):
+            raise ValueError(f"collection has an incomplete cohort identity: {collection_path}")
+        existing_identity = cohort_identities.get(cohort_id)
+        if existing_identity is not None and existing_identity != identity:
+            raise ValueError(f"cohort {cohort_id!r} has conflicting identities")
+        cohort_identities[cohort_id] = identity
+        design_key = (mapped_design_id, constraint_family)
+        if design_key in declarations and declarations[design_key] != clocks:
+            raise ValueError(f"design {design_key!r} has conflicting required clocks")
+        declarations[design_key] = list(clocks)
+        for result in collection["results"]:
+            if not isinstance(result, dict) or result.get("cohort_identity") != identity:
+                raise ValueError("collection result is not bound to its summary cohort identity")
+            artifacts = result.get("artifacts")
+            if not isinstance(artifacts, dict):
+                raise ValueError(f"collection result {result.get('run_id')!r} lacks artifacts")
+            artifact_paths = [Path(artifact["path"]) for artifact in artifacts.values()
+                              if isinstance(artifact, dict) and
+                              isinstance(artifact.get("path"), str) and artifact["path"]]
+            if not artifact_paths:
+                raise ValueError(f"collection result {result.get('run_id')!r} has no artifact path")
+            result_path = artifact_paths[0].parent / "result.json"
+            if not result_path.is_absolute():
+                result_path = collection_path.parent / result_path
+            expected_result_digest = result.get("result_sha256")
+            if (not isinstance(expected_result_digest, str) or
+                    sha256_file(result_path) != expected_result_digest):
+                raise ValueError(f"result digest mismatch for {result.get('run_id')!r}")
+            with result_path.open(encoding="utf-8") as stream:
+                persisted_result = json.load(stream)
+            summary_result = dict(result)
+            summary_result.pop("result_sha256")
+            if persisted_result != summary_result:
+                raise ValueError(f"persisted result mismatch for {result.get('run_id')!r}")
+            telemetry = artifacts.get("telemetry")
+            observations: List[Dict[str, Any]] = []
+            if isinstance(telemetry, dict) and telemetry.get("available") is True:
+                telemetry_path = Path(telemetry.get("path", ""))
+                if not telemetry_path.is_absolute():
+                    telemetry_path = collection_path.parent / telemetry_path
+                expected_digest = telemetry.get("sha256")
+                if (not isinstance(expected_digest, str) or
+                        sha256_file(telemetry_path) != expected_digest):
+                    raise ValueError(f"telemetry digest mismatch for {result.get('run_id')!r}")
+                records, _ = load_jsonl(telemetry_path)
+                observations = telemetry_observations(records)
+            duration = _positive_number(result.get("elapsed_seconds"), "elapsed_seconds")
+            if observations and observations[-1]["elapsed_seconds"] > duration:
+                raise ValueError("telemetry observation exceeds collected process duration")
+            runs.append({
+                "run_id": result.get("run_id"),
+                "cohort_id": cohort_id,
+                "cohort_fingerprint_sha256": identity.get("fingerprint_sha256"),
+                "mapped_design_id": mapped_design_id,
+                "constraint_family": constraint_family,
+                "seed": result.get("seed"),
+                "replicate": result.get("repeat"),
+                "status": result.get("status"),
+                "process_started": result.get("process_started"),
+                "duration_seconds": duration,
+                # Final legality and analogue timing are available only after the
+                # wrapper has collected every terminal artifact.
+                "outcome_observed_seconds": duration,
+                "observations": observations,
+                "outcome": result.get("outcome"),
+            })
+    document = {
+        "schema_version": SCHEMA_VERSION,
+        "required_clocks": [
+            {"mapped_design_id": key[0], "constraint_family": key[1], "clocks": clocks}
+            for key, clocks in sorted(declarations.items())
+        ],
+        "cohort_identities": cohort_identities,
+        "runs": runs,
+    }
+    validate_dataset(document)
+    return document
+
+
 def _final_timing_evidence(path: Optional[Path], required_clocks: Sequence[str]) -> Dict[str, Any]:
     evidence: Dict[str, Any] = {
         "required_clocks": list(required_clocks),
@@ -2312,6 +2464,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     collect.add_argument("manifest", type=Path)
     collect.add_argument("--output", required=True, type=Path)
     collect.add_argument("--dry-run", action="store_true")
+    dataset = subparsers.add_parser(
+        "dataset", help="assemble evaluator input from collection summaries")
+    dataset.add_argument("collections", nargs="+", type=Path)
+    dataset.add_argument("--output", required=True, type=Path)
     replay = subparsers.add_parser("evaluate", help="replay prefix-only policies offline")
     replay.add_argument("dataset", type=Path)
     replay.add_argument("--checkpoints", required=True)
@@ -2322,13 +2478,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     replay.add_argument("--output", type=Path)
     arguments = parser.parse_args(argv)
     try:
-        with arguments.manifest.open(encoding="utf-8") if arguments.operation == "collect" else arguments.dataset.open(encoding="utf-8") as stream:
-            document = json.load(stream)
         if arguments.operation == "collect":
+            with arguments.manifest.open(encoding="utf-8") as stream:
+                document = json.load(stream)
             result = Collector(document, arguments.output).run(arguments.dry_run)
+        elif arguments.operation == "dataset":
+            result = assemble_dataset(arguments.collections)
+            _json_dump(arguments.output, result)
         else:
+            with arguments.dataset.open(encoding="utf-8") as stream:
+                document = json.load(stream)
             result = evaluate(document, _comma_numbers(arguments.checkpoints), _comma_numbers(arguments.quotas, True), arguments.exploratory_survivors, _comma_numbers(arguments.scheduler_seeds, True), arguments.budget_seconds)
-        if getattr(arguments, "output", None) and arguments.operation == "evaluate":
+        if arguments.operation == "dataset":
+            pass
+        elif getattr(arguments, "output", None) and arguments.operation == "evaluate":
             _json_dump(arguments.output, result)
         else:
             json.dump(result, sys.stdout, indent=2, sort_keys=True, allow_nan=False)
