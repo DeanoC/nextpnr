@@ -160,6 +160,39 @@ recomputes each identity hash and requires its design, constraint family, and
 clock list to match the run. A run cannot improve its classification by
 omitting a failing clock.
 
+Create a dataset from completed collection summaries with:
+
+```
+python3 python/seed_racing.py dataset collection-a.json collection-b.json \
+    --output evaluation-dataset.json
+```
+
+The adapter reads each result or telemetry artifact once, verifies that exact
+byte snapshot against its digest, retains the valid structured telemetry
+prefix, and normalizes only iteration and repair metrics into the
+evaluator's prefix allowlist. It never copies `run_end` legality or final
+analogue timing into an observation. Those outcomes become visible at the
+collector's full process duration, after terminal artifacts have been read.
+The collector resolves its output root before planning and records absolute
+artifact paths, including when `--output` was relative; the adapter rejects a
+relative artifact path because it cannot be authenticated against the original
+invocation directory. A candidate that never started because of total-budget
+expiry or cancellation has no artifact to authenticate and is retained as an
+unsuccessful zero-cost censored run with explicitly unavailable evidence.
+An artifactless `runner_error` has neither authenticated lifecycle evidence nor
+an honest measurable cost. The adapter records it in top-level `excluded_runs`
+with `missing_artifact_and_cost_evidence` instead of discarding the cohort or
+inventing a duration; excluded runs never enter policy replay or performance
+claims.
+An entirely unlaunched GPU cohort has no observed device identity; the dataset
+accepts that absence only for never-launched runs that claim no backend. Any
+launched GPU run still requires the cohort-bound exact backend and runtime
+identity. An explicit `process_started: false` is accepted only with a
+collector pre-launch terminal status; a contradictory completed, routing, or
+timing result is rejected before it can become a success.
+Combining collections is supported, but policy results spanning more than one
+mapped-design/constraint family remain explicitly cross-design descriptive.
+
 `python3 python/seed_racing.py evaluate DATASET --checkpoints 5,10 --quotas
 8,2 --budget-seconds 600` replays random full-run and conservative
 successive-halving schedules over fully observed traces. Checkpoints are fixed

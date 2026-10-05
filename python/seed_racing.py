@@ -50,6 +50,7 @@ TERMINAL_STATUSES = {
     "launch_error",
     "runner_error",
 }
+PRELAUNCH_STATUSES = {"not_started_total_budget", "cancelled", "launch_error"}
 PREFIX_FEATURES = {
     "elapsed_seconds", "phase", "attempt", "round", "work", "searches", "node_expansions", "traversals",
     "backend_retries", "unrouted_connections", "overused_wires", "total_excess_occupancy", "wire_count",
@@ -76,6 +77,18 @@ def _positive_number(value: Any, field: str) -> float:
         raise ValueError(f"{field} must be a positive finite number") from None
     if not math.isfinite(number) or number <= 0:
         raise ValueError(f"{field} must be a positive finite number")
+    return number
+
+
+def _nonnegative_number(value: Any, field: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field} must be a non-negative finite number")
+    try:
+        number = float(value)
+    except (OverflowError, ValueError):
+        raise ValueError(f"{field} must be a non-negative finite number") from None
+    if not math.isfinite(number) or number < 0:
+        raise ValueError(f"{field} must be a non-negative finite number")
     return number
 
 
@@ -224,6 +237,15 @@ def _safe_component(value: Any) -> str:
     if not safe or safe in {".", ".."}:
         raise ValueError(f"unsafe path component: {text!r}")
     return safe[:80]
+
+
+def _exact_safe_component(value: Any) -> str:
+    """Validate an existing path component without changing its length."""
+    text = str(value)
+    if (not text or text in {".", ".."} or
+            any(not (ch.isalnum() or ch in "._-") for ch in text)):
+        raise ValueError(f"unsafe path component: {text!r}")
+    return text
 
 
 def _require_keys(mapping: Mapping[str, Any], keys: Iterable[str], context: str) -> None:
@@ -403,9 +425,10 @@ def _resolved_binary(argv0: str, cwd: Optional[str], environment: Mapping[str, s
 
 
 def _validate_collection_executable(executable: Path,
-                                    dependency_paths: Sequence[Path] = ()) -> None:
+                                    dependency_paths: Sequence[Path] = (),
+                                    require_supported_name: bool = True) -> None:
     """Keep the collector scoped to native nextpnr executables."""
-    if not executable.name.startswith("nextpnr"):
+    if require_supported_name and not executable.name.startswith("nextpnr"):
         raise ValueError(
             "collection requires a native nextpnr ELF executable; standalone language "
             "interpreters and generic launchers have unbounded implicit module/resource inputs")
@@ -420,11 +443,11 @@ def _validate_collection_executable(executable: Path,
             "collection requires nextpnr built with BUILD_PYTHON=OFF; embedded Python "
             f"runtime {python_runtime} loads implicit standard-library, site, and "
             "extension-module inputs")
-    if not executable.name.startswith("nextpnr-mistral"):
+    if require_supported_name and not executable.name.startswith("nextpnr-mistral"):
         raise ValueError(
             "seed-racing collection currently supports only nextpnr-mistral because "
             "other architectures lack authoritative final analogue timing evidence")
-    if not _file_contains_any(executable, (b"nextpnr.seed-racing.native.v1\x00",)):
+    if not _file_contains_any(executable, (b"nextpnr.seed-racing.native.v1\n\x00",)):
         raise ValueError(
             "collection requires a native nextpnr build with the seed-racing contract; "
             "a nextpnr-like filename is not executable authentication")
@@ -887,7 +910,8 @@ class Collector:
         execution = self._runtime_evidence["manifest"]["execution"]
         _validate_collection_executable(
             Path(self._binary_launch_path),
-            tuple(Path(path) for path in execution["dependency_paths"]))
+            tuple(Path(path) for path in execution["dependency_paths"]),
+            require_supported_name=False)
         expected_runtime_hashes = {
             item["path"]: item["sha256"] for item in self._runtime_evidence["manifest"]["files"]}
         if _sha256_stream(frozen) != expected_runtime_hashes.get(str(resolved)):
@@ -1648,77 +1672,89 @@ def _finite_json_tree(value: Any) -> bool:
     return True
 
 
-def load_jsonl(path: Path) -> Tuple[List[Dict[str, Any]], bool]:
-    """Load a valid telemetry prefix and flag truncation or schema/order errors."""
+def _load_jsonl_lines(lines: Iterable[str]) -> Tuple[List[Dict[str, Any]], bool]:
     records, truncated = [], False
     expected_sequence = 0
     prior_elapsed = -math.inf
     run_id = None
     terminal_seen = False
     phase_stack: List[Tuple[str, int]] = []
-    with path.open("r", encoding="utf-8") as stream:
-        for line in stream:
-            if not line.strip():
-                continue
-            try:
-                value = json.loads(
-                    line, parse_constant=lambda token: (_ for _ in ()).throw(
-                        ValueError(f"non-finite JSON number: {token}")))
-                schema_version = value.get("schema_version") if isinstance(value, dict) else None
-                sequence = value.get("sequence") if isinstance(value, dict) else None
-                if (not isinstance(value, dict) or not _finite_json_tree(value) or
-                        isinstance(schema_version, bool) or not isinstance(schema_version, int) or
-                        schema_version != SCHEMA_VERSION or isinstance(sequence, bool) or
-                        not isinstance(sequence, int) or sequence != expected_sequence or
-                        not isinstance(value.get("run_id"), str) or not value["run_id"] or
-                        value.get("event") not in
-                        {"run_start", "phase_start", "iteration", "repair_round",
-                         "phase_end", "run_end"} or
-                        terminal_seen):
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(
+                line, parse_constant=lambda token: (_ for _ in ()).throw(
+                    ValueError(f"non-finite JSON number: {token}")))
+            schema_version = value.get("schema_version") if isinstance(value, dict) else None
+            sequence = value.get("sequence") if isinstance(value, dict) else None
+            if (not isinstance(value, dict) or not _finite_json_tree(value) or
+                    isinstance(schema_version, bool) or not isinstance(schema_version, int) or
+                    schema_version != SCHEMA_VERSION or isinstance(sequence, bool) or
+                    not isinstance(sequence, int) or sequence != expected_sequence or
+                    not isinstance(value.get("run_id"), str) or not value["run_id"] or
+                    value.get("event") not in
+                    {"run_start", "phase_start", "iteration", "repair_round",
+                     "phase_end", "run_end"} or
+                    terminal_seen):
+                raise ValueError
+            elapsed = value.get("elapsed_s")
+            if (not _finite_number(elapsed) or elapsed < 0 or elapsed < prior_elapsed):
+                raise ValueError
+            if run_id is None:
+                run_id = value["run_id"]
+            elif value["run_id"] != run_id:
+                raise ValueError
+            event, phase, attempt = value["event"], value.get("phase"), value.get("attempt")
+            if expected_sequence == 0 and event != "run_start":
+                raise ValueError
+            if expected_sequence != 0 and event == "run_start":
+                raise ValueError
+            if event == "run_start":
+                if phase is not None or attempt is not None:
                     raise ValueError
-                elapsed = value.get("elapsed_s")
-                if (not _finite_number(elapsed) or elapsed < 0 or elapsed < prior_elapsed):
+            elif event == "phase_start":
+                if (not isinstance(phase, str) or not phase or isinstance(attempt, bool) or
+                        not isinstance(attempt, int) or attempt < 0):
                     raise ValueError
-                if run_id is None:
-                    run_id = value["run_id"]
-                elif value["run_id"] != run_id:
+                phase_stack.append((phase, attempt))
+            elif event == "phase_end":
+                if (not isinstance(phase, str) or isinstance(attempt, bool) or
+                        not isinstance(attempt, int) or attempt < 0 or not phase_stack or
+                        phase_stack[-1] != (phase, attempt)):
                     raise ValueError
-                event, phase, attempt = value["event"], value.get("phase"), value.get("attempt")
-                if expected_sequence == 0 and event != "run_start":
+                phase_stack.pop()
+            elif event in {"iteration", "repair_round"}:
+                if (not isinstance(phase, str) or not phase or isinstance(attempt, bool) or
+                        not isinstance(attempt, int) or attempt < 0 or not phase_stack or
+                        phase_stack[-1] != (phase, attempt) or
+                        (event == "repair_round" and phase != "timing_repair")):
                     raise ValueError
-                if expected_sequence != 0 and event == "run_start":
+            elif event == "run_end":
+                if phase_stack or phase is not None or attempt is not None:
                     raise ValueError
-                if event == "run_start":
-                    if phase is not None or attempt is not None:
-                        raise ValueError
-                elif event == "phase_start":
-                    if (not isinstance(phase, str) or not phase or isinstance(attempt, bool) or
-                            not isinstance(attempt, int) or attempt < 0):
-                        raise ValueError
-                    phase_stack.append((phase, attempt))
-                elif event == "phase_end":
-                    if (not isinstance(phase, str) or isinstance(attempt, bool) or
-                            not isinstance(attempt, int) or attempt < 0 or not phase_stack or
-                            phase_stack[-1] != (phase, attempt)):
-                        raise ValueError
-                    phase_stack.pop()
-                elif event in {"iteration", "repair_round"}:
-                    if (not isinstance(phase, str) or not phase or isinstance(attempt, bool) or
-                            not isinstance(attempt, int) or attempt < 0 or not phase_stack or
-                            phase_stack[-1] != (phase, attempt) or
-                            (event == "repair_round" and phase != "timing_repair")):
-                        raise ValueError
-                elif event == "run_end":
-                    if phase_stack or phase is not None or attempt is not None:
-                        raise ValueError
-                records.append(value)
-                expected_sequence += 1
-                prior_elapsed = float(elapsed)
-                terminal_seen = value["event"] == "run_end"
-            except (json.JSONDecodeError, ValueError):
-                truncated = True
-                break
+            records.append(value)
+            expected_sequence += 1
+            prior_elapsed = float(elapsed)
+            terminal_seen = value["event"] == "run_end"
+        except (json.JSONDecodeError, ValueError):
+            truncated = True
+            break
     return records, truncated or not terminal_seen or bool(phase_stack)
+
+
+def load_jsonl(path: Path) -> Tuple[List[Dict[str, Any]], bool]:
+    """Load a valid telemetry prefix and flag truncation or schema/order errors."""
+    with path.open("r", encoding="utf-8") as stream:
+        return _load_jsonl_lines(stream)
+
+
+def load_jsonl_bytes(data: bytes) -> Tuple[List[Dict[str, Any]], bool]:
+    """Parse telemetry bytes already frozen by the caller."""
+    try:
+        return _load_jsonl_lines(data.decode("utf-8").splitlines())
+    except UnicodeError:
+        return [], True
 
 
 def _finite_number(value: Any) -> bool:
@@ -1743,6 +1779,224 @@ def _exact_execution_backend(value: Any) -> bool:
             all(character in "0123456789abcdefABCDEF" for character in device_uuid) and
             any(character != "0" for character in device_uuid) and
             bool(fields[2]) and bool(fields[3]))
+
+
+def _verified_file_bytes(path: Path, expected_digest: Any, label: str) -> bytes:
+    """Read once, then authenticate the exact bytes returned to the parser."""
+    with path.open("rb") as stream:
+        data = stream.read()
+    if (not isinstance(expected_digest, str) or
+            hashlib.sha256(data).hexdigest() != expected_digest):
+        raise ValueError(f"{label} digest mismatch")
+    return data
+
+
+_TELEMETRY_PREFIX_MAP = {
+    "backend_nodes_expanded_cumulative": "node_expansions",
+    "backend_arcs_cumulative": "traversals",
+    "total_wire_use": "wire_count",
+    "overused_wires": "overused_wires",
+    "total_excess_occupancy": "total_excess_occupancy",
+    "current_congestion_weight": "congestion_weight",
+    "table_wns_ns": "table_wns_ns",
+    "table_tns_ns": "table_tns_ns",
+    "table_failing_endpoints": "table_failing_endpoints",
+    "repaired_arcs": "repaired_connections",
+}
+
+
+def telemetry_observations(records: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
+    """Normalize router telemetry into prefix-only evaluator observations.
+
+    Metric state is carried forward because a later repair record does not make
+    an already observed occupancy value secret. Final run_end fields are never
+    copied into observations.
+    """
+    observations: List[Dict[str, Any]] = []
+    state: Dict[str, Any] = {}
+    prior_excess: Optional[float] = None
+    for record in records:
+        event = record.get("event")
+        repair_summary = (event == "phase_end" and
+                          record.get("phase") == "timing_repair" and
+                          any(_finite_number(record.get(field))
+                              for field in _TELEMETRY_PREFIX_MAP))
+        if event not in {"iteration", "repair_round"} and not repair_summary:
+            continue
+        for source, destination in _TELEMETRY_PREFIX_MAP.items():
+            value = record.get(source)
+            if _finite_number(value):
+                state[destination] = value
+        excess = record.get("total_excess_occupancy")
+        if _finite_number(excess):
+            current_excess = float(excess)
+            if prior_excess is not None:
+                state["recent_progress"] = prior_excess - current_excess
+            prior_excess = current_excess
+        observation = dict(state)
+        observation["elapsed_seconds"] = float(record["elapsed_s"])
+        for field in ("phase", "attempt", "round"):
+            if field in record:
+                observation[field] = record[field]
+        observations.append(observation)
+    return observations
+
+
+def assemble_dataset(collection_paths: Sequence[Path]) -> Dict[str, Any]:
+    """Build a validated evaluator dataset from immutable collection summaries."""
+    if not collection_paths:
+        raise ValueError("at least one collection summary is required")
+    cohort_identities: Dict[str, Any] = {}
+    declarations: Dict[Tuple[str, str], List[str]] = {}
+    runs = []
+    excluded_runs = []
+    for collection_path in collection_paths:
+        with collection_path.open(encoding="utf-8") as stream:
+            collection = json.load(stream)
+        if (collection.get("schema_version") != SCHEMA_VERSION or
+                not isinstance(collection.get("results"), list) or
+                not isinstance(collection.get("cohort_identity"), dict)):
+            raise ValueError(f"unsupported collection summary: {collection_path}")
+        identity = collection["cohort_identity"]
+        manifest = identity.get("manifest")
+        cohort = manifest.get("cohort") if isinstance(manifest, dict) else None
+        if not isinstance(cohort, dict):
+            raise ValueError(f"collection lacks a cohort identity: {collection_path}")
+        cohort_id = cohort.get("id")
+        mapped_design_id = cohort.get("mapped_design_id")
+        constraint_family = cohort.get("constraint_family")
+        clocks = manifest.get("required_clocks")
+        if (not all(isinstance(value, str) and value for value in
+                    (cohort_id, mapped_design_id, constraint_family)) or
+                not isinstance(clocks, list)):
+            raise ValueError(f"collection has an incomplete cohort identity: {collection_path}")
+        existing_identity = cohort_identities.get(cohort_id)
+        if existing_identity is not None and existing_identity != identity:
+            raise ValueError(f"cohort {cohort_id!r} has conflicting identities")
+        cohort_identities[cohort_id] = identity
+        design_key = (mapped_design_id, constraint_family)
+        if design_key in declarations and declarations[design_key] != clocks:
+            raise ValueError(f"design {design_key!r} has conflicting required clocks")
+        declarations[design_key] = list(clocks)
+        for result in collection["results"]:
+            if not isinstance(result, dict) or result.get("cohort_identity") != identity:
+                raise ValueError("collection result is not bound to its summary cohort identity")
+            artifacts = result.get("artifacts")
+            observations: List[Dict[str, Any]] = []
+            artifactless_runner_error = (
+                result.get("status") == "runner_error" and
+                not isinstance(artifacts, dict))
+            if artifactless_runner_error:
+                if result.get("result_sha256") is not None:
+                    run_id = result.get("run_id")
+                    if not isinstance(run_id, str) or not run_id:
+                        raise ValueError("collection runner error lacks its run_id")
+                    result_path = (collection_path.parent / _safe_component(cohort_id) /
+                                   _exact_safe_component(run_id) / "result.json")
+                    result_label = f"result for {run_id!r}"
+                    result_bytes = _verified_file_bytes(
+                        result_path, result.get("result_sha256"), result_label)
+                    persisted_result = json.loads(result_bytes)
+                    summary_result = dict(result)
+                    summary_result.pop("result_sha256")
+                    if persisted_result != summary_result:
+                        raise ValueError(f"persisted result mismatch for {run_id!r}")
+                # The collector could not preserve process lifecycle or cost
+                # evidence for an exception escaping _run_one. Keep the failure
+                # visible, but do not invent a zero duration or admit an
+                # unauthenticated run into policy replay.
+                excluded_runs.append({
+                    "run_id": result.get("run_id"),
+                    "cohort_id": cohort_id,
+                    "seed": result.get("seed"),
+                    "replicate": result.get("repeat"),
+                    "status": "runner_error",
+                    "reason": "missing_artifact_and_cost_evidence",
+                    "error": result.get("error"),
+                })
+                continue
+            never_started = (result.get("process_started") is False and
+                             result.get("status") in {"not_started_total_budget", "cancelled"} and
+                             not isinstance(artifacts, dict) and
+                             result.get("result_sha256") is None)
+            if never_started:
+                duration = 0.0
+                outcome = {
+                    "telemetry_complete": False,
+                    "legal_route": None,
+                    "timing_gate_pass": None,
+                    "required_clocks": list(clocks),
+                    "analogue_clocks": [],
+                    "analogue_timing_pass": None,
+                    "timing_evidence_reason": "process_not_started",
+                    "evidence_complete": False,
+                }
+            else:
+                if not isinstance(artifacts, dict):
+                    raise ValueError(f"collection result {result.get('run_id')!r} lacks artifacts")
+                stdout = artifacts.get("stdout")
+                stdout_path = (Path(stdout["path"])
+                               if isinstance(stdout, dict) and
+                               isinstance(stdout.get("path"), str) and stdout["path"] else None)
+                if stdout_path is None:
+                    raise ValueError(
+                        f"collection result {result.get('run_id')!r} lacks its stdout path")
+                result_path = stdout_path.parent / "result.json"
+                # Collector resolves its output root before planning, so native
+                # summaries always contain absolute artifact paths.
+                if not result_path.is_absolute():
+                    raise ValueError("collection artifact paths must be absolute")
+                result_label = f"result for {result.get('run_id')!r}"
+                result_bytes = _verified_file_bytes(
+                    result_path, result.get("result_sha256"), result_label)
+                persisted_result = json.loads(result_bytes)
+                summary_result = dict(result)
+                summary_result.pop("result_sha256")
+                if persisted_result != summary_result:
+                    raise ValueError(f"persisted result mismatch for {result.get('run_id')!r}")
+                telemetry = artifacts.get("telemetry")
+                if isinstance(telemetry, dict) and telemetry.get("available") is True:
+                    telemetry_path = Path(telemetry.get("path", ""))
+                    if not telemetry_path.is_absolute():
+                        raise ValueError("collection telemetry paths must be absolute")
+                    telemetry_label = f"telemetry for {result.get('run_id')!r}"
+                    telemetry_bytes = _verified_file_bytes(
+                        telemetry_path, telemetry.get("sha256"), telemetry_label)
+                    records, _ = load_jsonl_bytes(telemetry_bytes)
+                    observations = telemetry_observations(records)
+                duration = _positive_number(result.get("elapsed_seconds"), "elapsed_seconds")
+                outcome = result.get("outcome")
+            if observations and observations[-1]["elapsed_seconds"] > duration:
+                raise ValueError("telemetry observation exceeds collected process duration")
+            runs.append({
+                "run_id": result.get("run_id"),
+                "cohort_id": cohort_id,
+                "cohort_fingerprint_sha256": identity.get("fingerprint_sha256"),
+                "mapped_design_id": mapped_design_id,
+                "constraint_family": constraint_family,
+                "seed": result.get("seed"),
+                "replicate": result.get("repeat"),
+                "status": result.get("status"),
+                "process_started": result.get("process_started"),
+                "duration_seconds": duration,
+                # Final legality and analogue timing are available only after the
+                # wrapper has collected every terminal artifact.
+                "outcome_observed_seconds": duration,
+                "observations": observations,
+                "outcome": outcome,
+            })
+    document = {
+        "schema_version": SCHEMA_VERSION,
+        "required_clocks": [
+            {"mapped_design_id": key[0], "constraint_family": key[1], "clocks": clocks}
+            for key, clocks in sorted(declarations.items())
+        ],
+        "cohort_identities": cohort_identities,
+        "runs": runs,
+        "excluded_runs": excluded_runs,
+    }
+    validate_dataset(document)
+    return document
 
 
 def _final_timing_evidence(path: Optional[Path], required_clocks: Sequence[str]) -> Dict[str, Any]:
@@ -1962,7 +2216,17 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
                 "run cohort_id, mapped_design_id, and constraint_family must be non-empty strings")
         if not isinstance(run["status"], str) or run["status"] not in TERMINAL_STATUSES:
             raise ValueError("run status must be a supported terminal status")
-        duration = _positive_number(run["duration_seconds"], "duration_seconds")
+        process_started = run.get("process_started")
+        if "process_started" in run and not isinstance(process_started, bool):
+            raise ValueError("run process_started must be boolean when present")
+        prelaunch = process_started is False and run["status"] in PRELAUNCH_STATUSES
+        if process_started is False and not prelaunch:
+            raise ValueError("run status contradicts its never-launched lifecycle")
+        zero_cost_prelaunch = prelaunch and run["status"] in {
+            "not_started_total_budget", "cancelled"}
+        duration = (_nonnegative_number(run["duration_seconds"], "duration_seconds")
+                    if zero_cost_prelaunch else
+                    _positive_number(run["duration_seconds"], "duration_seconds"))
         observations = run["observations"]
         if not isinstance(observations, list):
             raise ValueError("observations must be an array")
@@ -1980,8 +2244,10 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
             normalized_observation = dict(observation)
             normalized_observation["elapsed_seconds"] = elapsed
             clean.append(normalized_observation)
-        outcome_observed = _positive_number(run["outcome_observed_seconds"],
-                                            "outcome_observed_seconds")
+        outcome_observed = (
+            _nonnegative_number(run["outcome_observed_seconds"], "outcome_observed_seconds")
+            if zero_cost_prelaunch else
+            _positive_number(run["outcome_observed_seconds"], "outcome_observed_seconds"))
         if outcome_observed > duration or (clean and outcome_observed < clean[-1]["elapsed_seconds"]):
             raise ValueError("outcome availability must follow observations and fit within duration")
         outcome = run["outcome"]
@@ -2031,44 +2297,48 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
             raise ValueError("completed GPU run requires a passed outcome timing gate")
         requires_execution_identity = declared_gpu
         observed_backend = outcome.get("execution_backend")
-        never_launched = run.get("process_started") is False
         if requires_execution_identity or "execution_identity" in identity_manifest or \
                 isinstance(observed_backend, str):
             execution_identity = identity_manifest.get("execution_identity")
-            if (not isinstance(execution_identity, dict) or
+            unbound_never_launched = (prelaunch and execution_identity is None and
+                                      observed_backend is None)
+            if unbound_never_launched:
+                pass
+            elif (not isinstance(execution_identity, dict) or
                     not isinstance(execution_identity.get("backend"), str) or
                     not execution_identity["backend"]):
                 raise ValueError("GPU run execution backend is not bound by its cohort identity")
-            if never_launched:
+            elif prelaunch:
                 if observed_backend is not None:
                     raise ValueError("never-launched GPU run must not claim an execution backend")
             elif observed_backend != execution_identity["backend"]:
                 raise ValueError("GPU run execution backend is not bound by its cohort identity")
             elif not _exact_execution_backend(observed_backend):
                 raise ValueError("GPU run execution backend lacks exact device attestation")
-            runtime_id = execution_identity.get("runtime_environment_id")
-            runtime_binary = identity_manifest.get("binary")
-            runtime_evidence = (runtime_binary.get("runtime_environment")
-                                if isinstance(runtime_binary, dict) else None)
-            runtime_manifest = (runtime_evidence.get("manifest")
-                                if isinstance(runtime_evidence, dict) else None)
-            runtime_manifest_id = None
-            if isinstance(runtime_manifest, dict):
-                runtime_encoded = json.dumps(
-                    runtime_manifest, sort_keys=True, separators=(",", ":"),
-                    allow_nan=False).encode("utf-8")
-                runtime_manifest_id = "sha256:" + hashlib.sha256(runtime_encoded).hexdigest()
-            provenance = identity_manifest.get("provenance")
-            if (not isinstance(runtime_id, str) or not runtime_id.startswith("sha256:") or
-                    len(runtime_id) != 71 or
-                    any(character not in "0123456789abcdef" for character in runtime_id[7:]) or
-                    not isinstance(runtime_evidence, dict) or
-                    runtime_evidence.get("runtime_environment_id") != runtime_id or
-                    runtime_manifest_id != runtime_id or
-                    not isinstance(provenance, dict) or
-                    provenance.get("runtime_environment_id") != runtime_id):
-                raise ValueError(
-                    "GPU run runtime environment is not cross-bound by its cohort identity")
+            if not unbound_never_launched:
+                runtime_id = execution_identity.get("runtime_environment_id")
+                runtime_binary = identity_manifest.get("binary")
+                runtime_evidence = (runtime_binary.get("runtime_environment")
+                                    if isinstance(runtime_binary, dict) else None)
+                runtime_manifest = (runtime_evidence.get("manifest")
+                                    if isinstance(runtime_evidence, dict) else None)
+                runtime_manifest_id = None
+                if isinstance(runtime_manifest, dict):
+                    runtime_encoded = json.dumps(
+                        runtime_manifest, sort_keys=True, separators=(",", ":"),
+                        allow_nan=False).encode("utf-8")
+                    runtime_manifest_id = "sha256:" + hashlib.sha256(runtime_encoded).hexdigest()
+                provenance = identity_manifest.get("provenance")
+                if (not isinstance(runtime_id, str) or not runtime_id.startswith("sha256:") or
+                        len(runtime_id) != 71 or
+                        any(character not in "0123456789abcdef" for character in runtime_id[7:]) or
+                        not isinstance(runtime_evidence, dict) or
+                        runtime_evidence.get("runtime_environment_id") != runtime_id or
+                        runtime_manifest_id != runtime_id or
+                        not isinstance(provenance, dict) or
+                        provenance.get("runtime_environment_id") != runtime_id):
+                    raise ValueError(
+                        "GPU run runtime environment is not cross-bound by its cohort identity")
         identity_cohort = identity_manifest.get("cohort")
         if (not isinstance(identity_cohort, dict) or
                 identity_cohort.get("id") != run["cohort_id"] or
@@ -2312,6 +2582,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     collect.add_argument("manifest", type=Path)
     collect.add_argument("--output", required=True, type=Path)
     collect.add_argument("--dry-run", action="store_true")
+    dataset = subparsers.add_parser(
+        "dataset", help="assemble evaluator input from collection summaries")
+    dataset.add_argument("collections", nargs="+", type=Path)
+    dataset.add_argument("--output", required=True, type=Path)
     replay = subparsers.add_parser("evaluate", help="replay prefix-only policies offline")
     replay.add_argument("dataset", type=Path)
     replay.add_argument("--checkpoints", required=True)
@@ -2322,13 +2596,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     replay.add_argument("--output", type=Path)
     arguments = parser.parse_args(argv)
     try:
-        with arguments.manifest.open(encoding="utf-8") if arguments.operation == "collect" else arguments.dataset.open(encoding="utf-8") as stream:
-            document = json.load(stream)
         if arguments.operation == "collect":
+            with arguments.manifest.open(encoding="utf-8") as stream:
+                document = json.load(stream)
             result = Collector(document, arguments.output).run(arguments.dry_run)
+        elif arguments.operation == "dataset":
+            result = assemble_dataset(arguments.collections)
+            _json_dump(arguments.output, result)
         else:
+            with arguments.dataset.open(encoding="utf-8") as stream:
+                document = json.load(stream)
             result = evaluate(document, _comma_numbers(arguments.checkpoints), _comma_numbers(arguments.quotas, True), arguments.exploratory_survivors, _comma_numbers(arguments.scheduler_seeds, True), arguments.budget_seconds)
-        if getattr(arguments, "output", None) and arguments.operation == "evaluate":
+        if arguments.operation == "dataset":
+            pass
+        elif getattr(arguments, "output", None) and arguments.operation == "evaluate":
             _json_dump(arguments.output, result)
         else:
             json.dump(result, sys.stdout, indent=2, sort_keys=True, allow_nan=False)

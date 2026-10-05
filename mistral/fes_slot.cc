@@ -1128,8 +1128,8 @@ void Arch::fes_report_slot_capacity(IdString region_name, const std::vector<Cell
         const int by_ena = (int(group.second.enas.size()) + slots - 1) / slots;
         ctrl_labs += group.first != nullptr ? std::max(by_count, by_ena) : 0;
     }
-    // FF BELs 1 and 3 of each ALM are rejected by is_alm_legal, so 20 per LAB.
-    const int comb_bels = 20 * usable_labs, ff_bels = 20 * usable_labs;
+    // FF BELs 1 and 3 of each ALM are rejected by is_alm_legal unless --mistral-ff4, so 20 (or 40) per LAB.
+    const int comb_bels = 20 * usable_labs, ff_bels = (lab_ff4 ? 40 : 20) * usable_labs;
     // check_lab_input_count admits 42 unique ALM inputs per LAB. Two LUTs in
     // one ALM may share at most two inputs, so the best case shares two per
     // pair of non-arithmetic LUTs; unpaired FF data and SDATA add one each.

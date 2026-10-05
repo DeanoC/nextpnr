@@ -228,6 +228,36 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "runtime environment"):
             seed_racing.validate_dataset(document)
 
+    def test_all_never_launched_gpu_runs_need_no_observed_backend(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        for cohort_id, identity in document["cohort_identities"].items():
+            identity["manifest"]["command"] = ["nextpnr-mistral", "--router", "gpu"]
+            encoded = json.dumps(identity["manifest"], sort_keys=True,
+                                 separators=(",", ":")).encode()
+            identity["fingerprint_sha256"] = seed_racing.hashlib.sha256(encoded).hexdigest()
+            for run in document["runs"]:
+                if run["cohort_id"] != cohort_id:
+                    continue
+                run["cohort_fingerprint_sha256"] = identity["fingerprint_sha256"]
+                run["status"] = "not_started_total_budget"
+                run["process_started"] = False
+                run["duration_seconds"] = 0
+                run["outcome_observed_seconds"] = 0
+                run["observations"] = []
+                run["outcome"].pop("execution_backend", None)
+        normalized = seed_racing.validate_dataset(document)
+        self.assertTrue(all(not run["success"] for run in normalized))
+        document["runs"][0].update({"status": "completed", "process_started": False,
+                                     "duration_seconds": 1,
+                                     "outcome_observed_seconds": 1})
+        with self.assertRaisesRegex(ValueError, "contradicts.*never-launched"):
+            seed_racing.validate_dataset(document)
+        document["runs"][0].update({"status": "timeout", "process_started": True,
+                                     "duration_seconds": 1,
+                                     "outcome_observed_seconds": 1})
+        with self.assertRaisesRegex(ValueError, "execution backend"):
+            seed_racing.validate_dataset(document)
+
     def test_dataset_rejects_unknown_terminal_status(self):
         document = json.loads(FIXTURE.read_text(encoding="utf-8"))
         document["runs"][0]["status"] = "complete"
@@ -261,6 +291,123 @@ class DatasetTests(unittest.TestCase):
             records, truncated = seed_racing.load_jsonl(path)
         self.assertEqual(len(records), 1)
         self.assertTrue(truncated)
+
+    def test_collection_summary_assembles_a_prefix_only_dataset(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            telemetry = root / "reports" / "telemetry.jsonl"
+            telemetry.parent.mkdir()
+            stdout = root / "stdout.log"
+            stdout.write_text("", encoding="utf-8")
+            events = [
+                {"schema_version": 1, "sequence": 0, "run_id": "native", "event": "run_start",
+                 "phase": None, "attempt": None, "elapsed_s": 0},
+                {"schema_version": 1, "sequence": 1, "run_id": "native", "event": "phase_start",
+                 "phase": "negotiation", "attempt": 1, "elapsed_s": 1},
+                {"schema_version": 1, "sequence": 2, "run_id": "native", "event": "iteration",
+                 "phase": "negotiation", "attempt": 1, "elapsed_s": 2,
+                 "total_excess_occupancy": 10, "overused_wires": 8,
+                 "backend_nodes_expanded_cumulative": 100},
+                {"schema_version": 1, "sequence": 3, "run_id": "native", "event": "iteration",
+                 "phase": "negotiation", "attempt": 1, "elapsed_s": 3,
+                 "total_excess_occupancy": 3, "overused_wires": 2,
+                 "backend_nodes_expanded_cumulative": 180},
+                {"schema_version": 1, "sequence": 4, "run_id": "native", "event": "phase_end",
+                 "phase": "negotiation", "attempt": 1, "elapsed_s": 4},
+                {"schema_version": 1, "sequence": 5, "run_id": "native", "event": "phase_start",
+                 "phase": "timing_repair", "attempt": 1, "elapsed_s": 5},
+                {"schema_version": 1, "sequence": 6, "run_id": "native", "event": "repair_round",
+                 "phase": "timing_repair", "attempt": 1, "round": 1, "elapsed_s": 6,
+                 "table_wns_ns": 0.25},
+                {"schema_version": 1, "sequence": 7, "run_id": "native", "event": "phase_end",
+                 "phase": "timing_repair", "attempt": 1, "elapsed_s": 7,
+                 "repaired_arcs": 4},
+                {"schema_version": 1, "sequence": 8, "run_id": "native", "event": "run_end",
+                 "phase": None, "attempt": None, "elapsed_s": 8,
+                 "routing_legal": True, "timing_gate_pass": True},
+            ]
+            telemetry.write_text("".join(json.dumps(event) + "\n" for event in events),
+                                 encoding="utf-8")
+            source_run = next(run for run in self.document["runs"]
+                              if run["run_id"] == "late-winner")
+            identity = self.document["cohort_identities"]["synthetic"]
+            result = {
+                "run_id": "collected-run", "seed": 17, "repeat": 2,
+                "status": "completed", "process_started": True,
+                "elapsed_seconds": 20, "cohort_identity": identity,
+                "outcome": source_run["outcome"],
+                "artifacts": {
+                    "stdout": {"available": True, "path": str(stdout),
+                               "sha256": seed_racing.sha256_file(stdout)},
+                    "telemetry": {"available": True, "path": str(telemetry),
+                                  "sha256": seed_racing.sha256_file(telemetry)},
+                },
+            }
+            result_path = root / "result.json"
+            result_path.write_text(json.dumps(result), encoding="utf-8")
+            summary_result = dict(result, result_sha256=seed_racing.sha256_file(result_path))
+            runner_error_id = "runner-error-" + "x" * 90
+            runner_error = {
+                "run_id": runner_error_id, "seed": 19, "repeat": 1,
+                "status": "runner_error", "error": "collector failed",
+                "cohort_identity": identity,
+            }
+            runner_error_path = root / "synthetic" / runner_error_id / "result.json"
+            runner_error_path.parent.mkdir(parents=True)
+            runner_error_path.write_text(json.dumps(runner_error), encoding="utf-8")
+            summary_runner_error = dict(
+                runner_error, result_sha256=seed_racing.sha256_file(runner_error_path))
+            collection = {
+                "schema_version": 1,
+                "cohort_identity": identity,
+                "results": [summary_result, {
+                    "run_id": "never-started", "seed": 18, "repeat": 1,
+                    "status": "not_started_total_budget", "process_started": False,
+                    "termination_reason": "total_budget_expired_before_run_setup",
+                    "cohort_identity": identity,
+                }, summary_runner_error],
+            }
+            summary = root / "collection.json"
+            summary.write_text(json.dumps(collection), encoding="utf-8")
+            original_telemetry = telemetry.read_bytes()
+            verified_file_bytes = seed_racing._verified_file_bytes
+
+            def replace_telemetry_after_snapshot(path, expected_digest, label):
+                data = verified_file_bytes(path, expected_digest, label)
+                if path == telemetry:
+                    telemetry.write_text('{"replaced":true}\n', encoding="utf-8")
+                return data
+
+            with mock.patch.object(seed_racing, "_verified_file_bytes",
+                                   side_effect=replace_telemetry_after_snapshot):
+                dataset = seed_racing.assemble_dataset([summary])
+            normalized = seed_racing.validate_dataset(dataset)
+            self.assertEqual(len(normalized), 2)
+            self.assertEqual(normalized[0]["outcome_observed_seconds"], 20)
+            self.assertEqual(normalized[0]["observations"][1]["recent_progress"], 7)
+            self.assertEqual(normalized[0]["observations"][1]["node_expansions"], 180)
+            self.assertNotIn("routing_legal", normalized[0]["observations"][1])
+            self.assertEqual(normalized[0]["observations"][-1]["repaired_connections"], 4)
+            self.assertEqual(normalized[0]["observations"][-1]["total_excess_occupancy"], 3)
+            self.assertEqual(normalized[1]["duration_seconds"], 0)
+            self.assertFalse(normalized[1]["success"])
+            self.assertEqual(normalized[1]["outcome"]["timing_evidence_reason"],
+                             "process_not_started")
+            self.assertEqual(dataset["excluded_runs"], [{
+                "run_id": runner_error_id, "cohort_id": "synthetic", "seed": 19,
+                "replicate": 1, "status": "runner_error",
+                "reason": "missing_artifact_and_cost_evidence",
+                "error": "collector failed",
+            }])
+            telemetry.write_bytes(original_telemetry)
+            collection["results"][0]["artifacts"]["telemetry"]["sha256"] = "0" * 64
+            modified = dict(collection["results"][0])
+            modified.pop("result_sha256")
+            result_path.write_text(json.dumps(modified), encoding="utf-8")
+            collection["results"][0]["result_sha256"] = seed_racing.sha256_file(result_path)
+            summary.write_text(json.dumps(collection), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "telemetry.*digest mismatch"):
+                seed_racing.assemble_dataset([summary])
 
     def test_jsonl_rejects_sequence_run_and_time_regressions(self):
         cases = [
@@ -375,6 +522,22 @@ class CollectorTests(unittest.TestCase):
         source_path = path.with_suffix(".c")
         source_path.write_text(source, encoding="utf-8")
         seed_racing.subprocess.run(["cc", str(source_path), "-o", str(path)], check=True)
+
+    def test_relative_output_root_is_resolved_before_paths_are_recorded(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "runner"
+            self.python_elf_runner(runner)
+            manifest = self.manifest(temporary, [str(runner), "{seed}"])
+            previous = os.getcwd()
+            try:
+                os.chdir(temporary)
+                collector = seed_racing.Collector(manifest, Path("runs"))
+                spec = collector.plan()[0]
+            finally:
+                os.chdir(previous)
+            self.assertTrue(collector.output_root.is_absolute())
+            self.assertTrue(spec.directory.is_absolute())
+            self.assertEqual(collector.output_root, Path(temporary, "runs").resolve())
 
     def manifest(self, temporary, command, per_run=2, repeats=1, seeds=None):
         if (isinstance(command, list) and command and
@@ -1028,6 +1191,21 @@ class CollectorTests(unittest.TestCase):
                 evidence["manifest"]["execution"]["dependency_paths"])
             with self.assertRaisesRegex(ValueError, "seed-racing contract"):
                 VALIDATE_COLLECTION_EXECUTABLE(runner, dependencies)
+
+    def test_collection_accepts_compiled_native_contract_marker(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "nextpnr-mistral"
+            self.compile_c_runner(
+                runner,
+                '#include <stdio.h>\n'
+                'int main(void){fputs("nextpnr.seed-racing.native.v1\\n",stdout);return 0;}\n')
+            VALIDATE_COLLECTION_EXECUTABLE(runner)
+            descriptor = os.open(runner, os.O_RDONLY | os.O_CLOEXEC)
+            try:
+                VALIDATE_COLLECTION_EXECUTABLE(
+                    Path(f"/proc/self/fd/{descriptor}"), require_supported_name=False)
+            finally:
+                os.close(descriptor)
 
     def test_collection_rejects_inert_contract_marker(self):
         with tempfile.TemporaryDirectory() as temporary:

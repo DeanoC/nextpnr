@@ -1829,6 +1829,196 @@ struct GpuRouter
         return false;
     }
 
+    // Diagnostic equality checks use fields, never padding or hash-table order.
+    bool equal_escape_net(const NetData &a, const NetData &b) const
+    {
+        auto box = [](const BoundingBox &x, const BoundingBox &y) {
+            return x.x0 == y.x0 && x.y0 == y.y0 && x.x1 == y.x1 && x.y1 == y.y1;
+        };
+        if (a.src != b.src || !box(a.bb, b.bb) || a.cx != b.cx || a.cy != b.cy || a.hpwl != b.hpwl ||
+            a.fail_count != b.fail_count || a.max_crit != b.max_crit || a.wires.size() != b.wires.size() ||
+            a.arcs.size() != b.arcs.size())
+            return false;
+        for (auto &wire : a.wires) {
+            auto f = b.wires.find(wire.first);
+            if (f == b.wires.end())
+                return false;
+            const auto &x = wire.second;
+            const auto &y = f->second;
+            if (x.parent != y.parent || x.pip != y.pip || x.count != y.count || x.delay != y.delay)
+                return false;
+        }
+        for (size_t i = 0; i < a.arcs.size(); ++i) {
+            if (a.arcs[i].size() != b.arcs[i].size())
+                return false;
+            for (size_t j = 0; j < a.arcs[i].size(); ++j) {
+                const auto &x = a.arcs[i][j];
+                const auto &y = b.arcs[i][j];
+                if (x.sink != y.sink || !box(x.bb, y.bb) || x.routed != y.routed ||
+                    x.pre_routed != y.pre_routed || x.frozen != y.frozen)
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    // Try moving one legal occupant of a congested mux group before retrying
+    // its invalid users. A successful move must avoid the whole group and
+    // remain uncongested. Failed trials restore the complete original net.
+    std::vector<int> escape_local_inputs()
+    {
+        std::set<int32_t> group;
+        for (int n : failed_nets) {
+            auto &nd = nets.at(n);
+            for (auto usr : nets_by_udata.at(n)->users.enumerate()) {
+                for (auto &ad : nd.arcs.at(usr.index.idx())) {
+                    if (check_arc_routing(nd, ad))
+                        continue;
+                    for (auto pip : ctx->getPipsUphill(idx_to_wire.at(ad.sink))) {
+                        WireId wire = ctx->getPipSrcWire(pip);
+                        std::string name = ctx->nameOfWire(wire);
+                        if (name.compare(0, 3, "TD.") == 0)
+                            group.insert(widx(wire));
+                    }
+                    if (!group.empty())
+                        break;
+                }
+                if (!group.empty())
+                    break;
+            }
+            if (!group.empty())
+                break;
+        }
+        if (group.empty() || group.size() > 64)
+            return {};
+        bool reject_trial = ctx->setting<bool>("gpurouter/localInputEscapeRejectTrial", false);
+        bool audit = reject_trial || ctx->setting<bool>("gpurouter/localInputEscapeAudit", false);
+        int trials = 0;
+        for (int n = 0; n < int(nets.size()) && trials < 4; ++n) {
+            if (failed_nets.count(n))
+                continue;
+            auto &nd = nets.at(n);
+            if (group.count(nd.src))
+                continue;
+            HostTask task;
+            task.net = n;
+            bool eligible = true;
+            for (auto usr : nets_by_udata.at(n)->users.enumerate()) {
+                auto &arcs = nd.arcs.at(usr.index.idx());
+                for (size_t j = 0; j < arcs.size(); ++j) {
+                    auto &ad = arcs[j];
+                    bool touches = false;
+                    int32_t at = ad.sink;
+                    for (size_t step = 0; step <= nd.wires.size(); ++step) {
+                        touches |= group.count(at) != 0;
+                        auto path = nd.wires.find(at);
+                        if (path == nd.wires.end() || path->second.parent < 0)
+                            break;
+                        at = path->second.parent;
+                    }
+                    if (!touches)
+                        continue;
+                    if (ad.frozen || ad.pre_routed || !check_arc_routing(nd, ad)) {
+                        eligible = false;
+                        break;
+                    }
+                    // Structural eligibility only; the actual search below
+                    // must prove an available, uncongested path outside group.
+                    std::vector<int32_t> pending{ad.sink};
+                    std::set<int32_t> seen;
+                    bool outside = false;
+                    for (size_t i = 0; i < pending.size() && seen.size() < 2048; ++i) {
+                        int32_t wire = pending[i];
+                        if (!seen.insert(wire).second)
+                            continue;
+                        std::string name = ctx->nameOfWire(idx_to_wire.at(wire));
+                        if (wire == nd.src)
+                            outside = true;
+                        if (name.compare(0, 3, "TD.") == 0) {
+                            outside |= !group.count(wire);
+                            continue;
+                        }
+                        for (auto pip : ctx->getPipsUphill(idx_to_wire.at(wire)))
+                            pending.push_back(widx(ctx->getPipSrcWire(pip)));
+                    }
+                    if (!outside) {
+                        eligible = false;
+                        break;
+                    }
+                    task.arcs.emplace_back(usr.index.idx(), int(j));
+                }
+                if (!eligible)
+                    break;
+            }
+            if (!eligible || task.arcs.empty() || task.arcs.size() > 16)
+                continue;
+            ++trials;
+            flush_state();
+            NetData saved = nd;
+            std::vector<int32_t> saved_occ, saved_reserved;
+            std::vector<float> saved_hist;
+            if (audit) {
+                saved_occ = occ;
+                saved_reserved = reserved;
+                saved_hist = hist;
+            }
+            auto previous = task_blocked.find(n);
+            bool had_blocked = previous != task_blocked.end();
+            std::vector<int32_t> old_blocked = had_blocked ? previous->second : std::vector<int32_t>{};
+            auto rollback = [&](bool candidate_valid, const char *reason) {
+                restore_net(n, saved);
+                if (!audit)
+                    return;
+                auto current = task_blocked.find(n);
+                bool block_ok = had_blocked ? current != task_blocked.end() && current->second == old_blocked
+                                            : current == task_blocked.end();
+                bool net_ok = equal_escape_net(nd, saved);
+                bool occ_ok = occ == saved_occ, hist_ok = hist == saved_hist, reserve_ok = reserved == saved_reserved;
+                log_info("    local_input_rollback net=%s trial=%d forced=%d candidate_valid=%d reason=%s "
+                         "net_equal=%d occupancy_equal=%d history_equal=%d reservations_equal=%d blocked_equal=%d\n",
+                         ctx->nameOf(nets_by_udata.at(n)), trials, reject_trial, candidate_valid, reason,
+                         net_ok, occ_ok, hist_ok, reserve_ok, block_ok);
+                if (!(net_ok && occ_ok && hist_ok && reserve_ok && block_ok))
+                    log_error("Local input escape rollback did not restore the saved routing state.\n");
+            };
+            for (auto a : task.arcs)
+                ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
+            bool remaining = false;
+            for (int32_t wire : group)
+                remaining |= nd.wires.count(wire) != 0;
+            if (remaining) {
+                rollback(false, "remaining_group_use");
+                continue;
+            }
+            auto &blocked = task_blocked[n];
+            blocked.insert(blocked.end(), group.begin(), group.end());
+            flush_state();
+            auto retry = route_tasks(std::vector<HostTask>{task}, true, false);
+            flush_state();
+            if (!retry.empty())
+                retry = route_tasks(retry, false, true);
+            flush_state();
+            if (had_blocked)
+                task_blocked[n] = old_blocked;
+            else
+                task_blocked.erase(n);
+            bool valid = retry.empty();
+            for (auto a : task.arcs)
+                valid &= check_arc_routing(nd, nd.arcs.at(a.first).at(a.second));
+            for (int32_t wire : group)
+                valid &= nd.wires.count(wire) == 0;
+            bool candidate_valid = valid;
+            if (reject_trial)
+                valid = false; // Diagnostic fault injection, never a production policy.
+            log_info("    local input escape net=%s arcs=%zu group=%zu trial=%d accepted=%d\n",
+                     ctx->nameOf(nets_by_udata.at(n)), task.arcs.size(), group.size(), trials, valid);
+            if (valid)
+                return {n};
+            rollback(candidate_valid, reject_trial ? "forced_rejection" : "route_rejected");
+        }
+        return {};
+    }
+
     // Re-route the stuck nets one at a time, ignoring soft timing-repair
     // reservations, and unfreeze every frozen arc whose wire the new path
     // uses. Returns how many arcs were unfrozen. The nets are ripped and
@@ -1842,6 +2032,8 @@ struct GpuRouter
         int opened = 0;
         pool<int> touched;
         ignore_soft = true;
+        if (ctx->setting<bool>("gpurouter/localInputEscape", false))
+            rerouted = escape_local_inputs();
         for (int n : stuck) {
             NetInfo *ni = nets_by_udata.at(n);
             auto &nd = nets.at(n);
