@@ -65,3 +65,69 @@ models yet. Completing its support requires DDR handoff coverage, matching
 output delay-chain settings, and a qualified clock-to-pin/output-load model.
 Some internal DDR handoff queries report no paths; that absence is not proof of
 zero delay or a passing half-cycle check.
+
+## Complete pad reference paths
+
+`pad_summary.py` extracts pad capture setup/hold and registered data/OE
+clock-to-pin observations from retained path reports. Capture includes the
+input buffer and all local data delays, subtracting the register's internal
+clock CELL delay. Hold reverses that subtraction. Output combines the local
+register clock CELL with all register-to-pin delays, including the output
+buffer. The upstream clock network ends at the register clock ingress and
+is excluded from these arcs, so routed clock delay is not counted twice.
+DDR rising and falling capture remain separate; this extraction does not
+qualify the internal low-word handoff to the rising fabric output.
+
+```sh
+python3 mistral/tests/gpio-timing/pad_summary.py /tmp/gpio-timing/evidence.json \
+  --output /tmp/pad-reference.json
+python3 mistral/tests/gpio-timing/check_pad_summary.py /tmp/gpio-timing/evidence.json
+python3 mistral/tests/gpio-timing/characterize.py \
+  --quartus-bin /path/to/quartus/bin --output /tmp/gpio-load30 \
+  --variants ddr pads --output-load-pf 30
+python3 mistral/tests/gpio-timing/compare_load.py \
+  --baseline /tmp/gpio-timing --loaded /tmp/gpio-load30 \
+  --output /tmp/load-comparison.json
+```
+
+The load option requests a lumped far-end capacitance on the named pads using
+`BOARD_MODEL_FAR_C`; it is a reference sweep, not an estimate of the user's
+board. Quartus 17.0 TimeQuest ignores the obsolete `OUTPUT_PIN_LOAD` option.
+The assignment uses farads as documented in the
+[Quartus 17.0 Far capacitance option](https://www.intel.com/content/www/us/en/programmable/quartushelp/17.0/logicops/logicops/def_board_model_far_c.htm).
+The original reference fits have no added external capacitance. A zero-load
+reference cannot establish the maximum output delay for a real memory board.
+The extractor checks clock ingress, complete input/output buffers, accumulated
+delay consistency, both setup/hold or early/late observations, and all four
+corners. Its regression check rejects missing buffers, missing clock cells,
+altered delay totals, conflicting capture edges and missing corner/check types.
+The resulting receipts record observations and hashes, without enabling
+production pad timing in Mistral.
+
+The loaded SDR/DDR-input reference receipts cover eighty matched registered
+output data/OE paths. A lumped 30 pF load adds 0.487–1.222 ns relative to the
+unloaded fits, reaching 5.414 ns clock-to-pin in the worst OE observation.
+The comparison checks equal RTL/SDC, only capacitance assignment changes,
+matching register channels and equal local register clock delay. Both bounds
+and per-path load differences retain report/evidence hashes. The read setup
+observations reach 6.351 ns relative to the clock routing ingress; negative
+hold requirements are retained rather than clamped to zero.
+
+`--variants ddr-output-data` additionally characterizes the existing varying-data
+DDR-output oracle fixture, including its two output phases and fabric register
+checks. It uses a synthetic 10 ns clock for characterization, not the oracle's
+original 20 ns constraint. Run it separately for the default and loaded cases;
+the same pad extractor and load comparison apply. TimeQuest represents the
+DDIO output clock mux transfer as a data path from the clock port, not a
+register clock-to-Q arc. The extractor stops the upstream clock network at
+that mux's routing ingress and keeps the rising and falling phases separate.
+Sixteen matched observations add 0.558–1.221 ns with the 30 pF load, reaching
+5.461 ns. This fixture uses PIN_W15; its bounds do not qualify the actual
+SDRAM clock pin or all placements. Internal DDR data-register setup/hold,
+low-word handoff and asynchronous controls also need separate coverage.
+
+The adjacent `pad-reference0.json`, `pad-reference30.json` and
+`pad-ddr-reference{0,30}.json` receipts record the observed extrema, counts,
+corner/report provenance and input hashes. `pad-load-reference.json` and
+`pad-ddr-load-reference.json` retain all matched load differences and evidence
+hashes. These data remain distinct from the existing production fabric arcs.

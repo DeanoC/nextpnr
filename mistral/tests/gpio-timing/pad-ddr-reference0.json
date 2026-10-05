@@ -1,0 +1,132 @@
+{
+  "classification": "fitted pad reference observations; not a production model or hardware signoff",
+  "clock_reference": "GPIO register clock or DDIO output mux routing ingress; upstream network excluded",
+  "device": "5CSEBA6U23I7",
+  "io_standard": "3.3-V LVTTL",
+  "output_load_pf": 0,
+  "bounds": {
+    "write_ddr_high_early": {
+      "count": 4,
+      "minimum": {
+        "value_ps": 2102.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 2102.0,
+        "variant": "ddr-output-data",
+        "report": "MIN_fast_1100mv_-40c/output-hold.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "DDR_OUT",
+        "report_sha256": "6f0d8367cfca562ac8bfb573b45da2a3157ba6d6c336f6d2cb555545c3036127"
+      },
+      "maximum": {
+        "value_ps": 4060.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 4060.0,
+        "variant": "ddr-output-data",
+        "report": "7_slow_1100mv_100c/output-hold.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "DDR_OUT",
+        "report_sha256": "f38701df117f18030ac3edba87918ed1fb460671b26116391d9de24dce013e0b"
+      }
+    },
+    "write_ddr_high_late": {
+      "count": 4,
+      "minimum": {
+        "value_ps": 2158.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 2158.0,
+        "variant": "ddr-output-data",
+        "report": "MIN_fast_1100mv_-40c/output-setup.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "DDR_OUT",
+        "report_sha256": "1c4bdca2e743aadd5c8f267c0eb8afd6f38c8e66765ef1792b0e2924f1bb2c53"
+      },
+      "maximum": {
+        "value_ps": 4240.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 4240.0,
+        "variant": "ddr-output-data",
+        "report": "7_slow_1100mv_100c/output-setup.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "DDR_OUT",
+        "report_sha256": "51c81d7cdc553197887f3896ca21153d194c7b3f2c979295b04290ee1b5866d0"
+      }
+    },
+    "write_ddr_low_early": {
+      "count": 4,
+      "minimum": {
+        "value_ps": 2098.0,
+        "clock_edge": "F",
+        "data_transition": "FF",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 2098.0,
+        "variant": "ddr-output-data",
+        "report": "MIN_fast_1100mv_-40c/output-hold.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "DDR_OUT",
+        "report_sha256": "6f0d8367cfca562ac8bfb573b45da2a3157ba6d6c336f6d2cb555545c3036127"
+      },
+      "maximum": {
+        "value_ps": 4041.0,
+        "clock_edge": "F",
+        "data_transition": "FF",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 4041.0,
+        "variant": "ddr-output-data",
+        "report": "7_slow_1100mv_100c/output-hold.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "DDR_OUT",
+        "report_sha256": "f38701df117f18030ac3edba87918ed1fb460671b26116391d9de24dce013e0b"
+      }
+    },
+    "write_ddr_low_late": {
+      "count": 4,
+      "minimum": {
+        "value_ps": 2158.0,
+        "clock_edge": "F",
+        "data_transition": "RR",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 2158.0,
+        "variant": "ddr-output-data",
+        "report": "MIN_fast_1100mv_-40c/output-setup.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "DDR_OUT",
+        "report_sha256": "1c4bdca2e743aadd5c8f267c0eb8afd6f38c8e66765ef1792b0e2924f1bb2c53"
+      },
+      "maximum": {
+        "value_ps": 4228.0,
+        "clock_edge": "F",
+        "data_transition": "RR",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 4228.0,
+        "variant": "ddr-output-data",
+        "report": "7_slow_1100mv_100c/output-setup.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "DDR_OUT",
+        "report_sha256": "51c81d7cdc553197887f3896ca21153d194c7b3f2c979295b04290ee1b5866d0"
+      }
+    }
+  },
+  "input_hashes": {
+    "ddr-output-data": {
+      "clocks.sdc": "92319d793f093012fa28a2a0fb84a46304f3403d5aa73a17a5f6f9cf63cee2c7",
+      "ddr-output-data.v": "52f42c640c23085db379109ac3891309e390bda1ebc5bdd91ae9fd3d27116dc4",
+      "top.qsf": "165ba382c687d7eab9b89bafc7b79398e08e9828aae79d5e1001c21b23ba0c0a"
+    }
+  }
+}

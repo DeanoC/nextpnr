@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 import re
 import shutil
@@ -55,26 +56,50 @@ def main():
     parser.add_argument('--quartus-bin', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--reuse-fits', action='store_true')
+    parser.add_argument('--variants', nargs='+', choices=['ddr', 'pads', 'bus', 'ddr-output-data'],
+                        default=['ddr', 'pads', 'bus'])
+    parser.add_argument('--output-load-pf', type=float, default=0,
+                        help='External reference load on interface pads (not a board estimate)')
     args = parser.parse_args()
+    if not math.isfinite(args.output_load_pf) or args.output_load_pf < 0:
+        parser.error('--output-load-pf must be finite and nonnegative')
     here = Path(__file__).resolve().parent
     fixtures = here.parent / 'io-registers'
     out = args.output.resolve()
     evidence = {'classification': 'fitted reference evidence, not a production model or hardware signoff',
-                'device': '5CSEBA6U23I7', 'io_standard': '3.3-V LVTTL', 'variants': {}}
-    for variant in ['ddr', 'pads', 'bus']:
+                'device': '5CSEBA6U23I7', 'io_standard': '3.3-V LVTTL',
+                'output_load_pf': args.output_load_pf, 'variants': {}}
+    for variant in dict.fromkeys(args.variants):
         project = out / variant
         project.mkdir(parents=True, exist_ok=True)
-        inputs = {variant+'.v': (fixtures / (variant+'.v')).read_text(),
-                  'top.qsf': (fixtures / 'oracle' / (variant+'.qsf')).read_text()
-                             .replace('../'+variant+'.v', variant+'.v').replace('../clocks.sdc', 'clocks.sdc'),
+        if variant == 'ddr-output-data':
+            oracle = here.parent / variant / 'oracle'
+            rtl = (oracle/'top.v').read_text()
+            qsf = (oracle/'top.qsf').read_text().replace('VERILOG_FILE top.v', 'VERILOG_FILE '+variant+'.v')
+            clock_port = 'FPGA_CLK1_50'
+        else:
+            rtl = (fixtures / (variant+'.v')).read_text()
+            qsf = (fixtures / 'oracle' / (variant+'.qsf')).read_text().replace(
+                '../'+variant+'.v', variant+'.v').replace('../clocks.sdc', 'clocks.sdc')
+            clock_port = 'clk'
+        inputs = {variant+'.v': rtl, 'top.qsf': qsf,
                   'top.qpf': 'PROJECT_REVISION = "top"\n',
-                  'clocks.sdc': 'create_clock -period 10 -name memory [get_ports clk]\n'
-                  'set_input_delay -clock memory -min 0 [remove_from_collection [all_inputs] [get_ports clk]]\n'
-                  'set_input_delay -clock memory -max 1 [remove_from_collection [all_inputs] [get_ports clk]]\n'
+                  'clocks.sdc': f'create_clock -period 10 -name memory [get_ports {clock_port}]\n'
+                  f'set_input_delay -clock memory -min 0 [remove_from_collection [all_inputs] [get_ports {clock_port}]]\n'
+                  f'set_input_delay -clock memory -max 1 [remove_from_collection [all_inputs] [get_ports {clock_port}]]\n'
                   'set_input_delay -clock memory -min 0 [get_ports {dq[*] p1 p2 p3}]\n'
                   'set_input_delay -clock memory -max 1 [get_ports {dq[*] p1 p2 p3}]\n'
                   'set_output_delay -clock memory -min 0 [all_outputs]\n'
                   'set_output_delay -clock memory -max 1 [all_outputs]\n'}
+        if args.output_load_pf:
+            # The obsolete OUTPUT_PIN_LOAD is ignored by TimeQuest 17.0.
+            # Use a lumped far-end board capacitance (units are farads).
+            ports = {'ddr': ['dq[0]', 'dq[1]'],
+                     'pads': ['p1', 'p2', 'p3', 'p4', 'p6', 'p8'],
+                     'ddr-output-data': ['DDR_OUT'],
+                     'bus': [f'dq[{i}]' for i in range(4)]}[variant]
+            inputs['top.qsf'] += ''.join('set_instance_assignment -name BOARD_MODEL_FAR_C '
+                                        f'{args.output_load_pf*1e-12:.12g} -to {port}\n' for port in ports)
         if args.reuse_fits:
             for name, body in inputs.items():
                 def normalized(text):
@@ -86,8 +111,17 @@ def main():
             for name, body in inputs.items():
                 (project / name).write_text(body)
             run([args.quartus_bin / 'quartus_sh', '--flow', 'compile', 'top'], project, project / 'compile.log')
-        shutil.copy(here / 'paths.tcl', project / 'paths.tcl')
+        if args.output_load_pf:
+            fit = (project / 'output_files/top.fit.rpt').read_text(encoding='latin-1')
+            if 'Ignored BOARD_MODEL_FAR_C' in fit:
+                raise ValueError('Quartus ignored the requested output load')
+        query = 'ddr-output-paths.tcl' if variant == 'ddr-output-data' else 'paths.tcl'
+        shutil.copy(here / query, project / 'paths.tcl')
         run([args.quartus_bin / 'quartus_sta', '-t', 'paths.tcl'], project, project / 'paths.log')
+        if args.output_load_pf and re.search(
+                r'Ignored.*(?:BOARD_MODEL_FAR_C|Board Model Far C|capacitance assignment)',
+                (project/'paths.log').read_text(encoding='latin-1'), re.I):
+            raise ValueError('TimeQuest ignored the requested board capacitance')
         reports = {}
         for report in sorted(project.glob('*_*mv_*c/*.rpt')):
             reports[str(report.relative_to(project))] = paths(report.read_text())
@@ -100,7 +134,7 @@ def main():
                   (p.name in inputs or p.suffix == '.rpt' or p.name == 'paths.tcl')}
         evidence['variants'][variant] = {'hashes': hashes, 'reports': reports}
     (out / 'evidence.json').write_text(json.dumps(evidence, indent=2)+'\n')
-    print('PASS: retained GPIO paths, source hashes and all four corners for SDR, DDR and OE references')
+    print('PASS: retained GPIO paths, source hashes and all four corners for '+', '.join(args.variants))
 
 
 if __name__ == '__main__':
