@@ -49,22 +49,19 @@ def route(netlist, qsf, name, nextpnr=None, success=True, sdc=True):
     return run(command, o / (name + ".route.log"), success)
 
 
-def settings(name, sdr_outputs=()):
+def settings(name):
     run([a.mistral_cv, "decomp", "5CSEBA6U23I7", o / (name + ".rbf"), o / (name + ".bt")], o / (name + ".decode.log"))
     found = {}
     for line in (o / (name + ".bt")).read_text().splitlines():
         m = re.match(r"^s ((?:GPIO|DQS16)\.\S+) (\S+) ; (\S+)", line)
         if not m or IGNORED.search(m.group(1)):
             continue
-        # nextpnr keeps its existing OE-delay default on a packed SDR output.
-        if m.group(3) in sdr_outputs and "RB_T9_SEL_EREG_CFF_DELAY" in m.group(1):
-            continue
         found.setdefault(m.group(3), []).append(m.group(1) + " " + m.group(2))
     return {pin: sorted(values) for pin, values in found.items()}
 
 
-def compare(name, sdr_outputs=()):
-    got = settings(name, sdr_outputs)
+def compare(name):
+    got = settings(name)
     want = oracle["designs"][name]["settings"]
     for pin in sorted(set(got) | set(want)):
         assert got.get(pin, []) == want.get(pin, []), (name, pin, got.get(pin), want.get(pin))
@@ -74,7 +71,7 @@ def compare(name, sdr_outputs=()):
 top = synth("top.v", "top")
 log = route(top, f / "pins.qsf", "top")
 assert "Packed SDR input register" in log and "Packed SDR output register" in log
-pins = compare("top", sdr_outputs={oracle["designs"]["top"]["pins"]["o_reg_d5"]})
+pins = compare("top")
 print(f"PASS: {pins} pads match the Quartus electrical and delay-chain settings")
 
 bus = synth("bus.v", "bus")

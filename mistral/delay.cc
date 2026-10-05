@@ -33,12 +33,11 @@ namespace {
 // hold 309; input clock-to-fabric 866. Round outward to 10 ps. Clock-to-Q
 // uses a conservative zero minimum, not the minimum of a reference fit.
 // Pad capture, pad output and asynchronous clear are intentionally excluded.
-// Output-only SDROUT is also excluded: its backend delay defaults differ from
-// the fitted Quartus reference (see io-registers/oracle/mapping.json).
+// SDROUT and SDRIO both keep the zero delay-chain defaults of these fits.
 bool gpio_fabric_profile(const Context *ctx, const CellInfo *cell)
 {
     if (ctx->getChipName() != "5CSEBA6U23I7" ||
-        !cell->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_SDRIO))
+        !cell->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_SDRIO, id_MISTRAL_SDROUT))
         return false;
     const auto io = ctx->get_io_electrical(cell);
     return !io.lvcmos && !io.bus_hold && io.d1_delay < 0 && io.d3_delay < 0 &&

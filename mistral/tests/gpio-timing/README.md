@@ -27,17 +27,34 @@ conservative zero clock-to-Q minimum. These reference envelopes do not certify
 all silicon, placements, electrical conditions, or fast-corner routing delay.
 
 The current backend profile covers fabric-facing SDR/DDR input outputs, input
-clock enables, and registered bidirectional output/OE data and enables on the
+clock enables, and registered SDR output/OE data and enables on the
 tested device with default delay settings. Both DDR outputs launch into the
 fabric on the rising clock edge; the low word's falling pad-capture edge is a
 separate relationship. Asynchronous clear stays uncharacterized. Other devices,
 LVCMOS, bus hold, and explicit delay-chain settings retain their unsupported
 classification.
 
-Output-only `MISTRAL_SDROUT` remains excluded because its backend delay-chain
-defaults differ from Quartus's fitted values. The oracle mapping explicitly
-lists this difference. Copying Quartus's register arcs without first matching
-those settings would not establish a timing model for the emitted bitstream.
+Output-only `MISTRAL_SDROUT` now keeps the database's zero delay-chain defaults,
+matching these Quartus fits. Explicit `D5_DELAY` assignments still override
+the default and retain their unsupported fabric timing classification.
+`compare_sdrout.py` audits a second fit of `pads.v` with `D5_DELAY 31` on p4/p6.
+Its QSF also requests `D5_OE_DELAY 31`; Quartus reports that the OE delay is
+unused on those output-only pins and resets it to zero. The audit checks source
+and SDC identity, permitted QSF differences, decoded data-delay selectors,
+equal reported clock paths, and matched setup/hold paths at all four corners.
+
+```sh
+python3 mistral/tests/gpio-timing/compare_sdrout.py \
+  --baseline /tmp/gpio-timing/pads --delayed /tmp/pads-forced31 \
+  --output /tmp/sdrout-delay-comparison.json
+```
+
+The adjacent `sdrout-delay-reference.json` receipt records sixteen matched
+clock-to-pin observations and 24 unchanged fabric setup/hold checks. Forced
+D5=31 adds 0.483–1.180 ns in those fits. Removing that delay improves setup
+but also reduces output hold margin; board timing must determine any required
+explicit compensation. This is not evidence of the cause of issue #135, or
+proof that either setting passes SDRAM hardware.
 
 External pad capture and output timing remain unsupported. The current IO-delay
 analyzer refuses registered pads rather than silently timing only their fabric

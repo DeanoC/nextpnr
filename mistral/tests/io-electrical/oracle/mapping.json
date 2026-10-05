@@ -3,8 +3,7 @@
   "device": "5CSEBA6U23I7",
   "decoder": "mistral-cv decomp (Mistral 3194ac5)",
   "ignored": [
-    "DQS16 INPUT_REG4_SEL (nextpnr writes SEL_LOCKED_DPA on every output lane; Quartus leaves the default)",
-    "DQS16 RB_T9_SEL_EREG_CFF_DELAY on a FAST_OUTPUT_REGISTER pad (nextpnr keeps its existing 0x1f; Quartus chooses it per design)"
+    "DQS16 INPUT_REG4_SEL (nextpnr writes SEL_LOCKED_DPA on every output lane; Quartus leaves the default)"
   ],
   "designs": {
     "top": {

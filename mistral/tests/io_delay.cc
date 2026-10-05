@@ -334,6 +334,35 @@ TEST_F(IoDelayTest, UncharacterizedElectricalProfilesKeepRegisterTimingUnsupport
         bidir->attrs.erase(ctx->id(setting.first));
     }
     output->type = id_MISTRAL_SDROUT;
+    output->attrs[ctx->id("D5_DELAY")] = std::string("31");
     EXPECT_EQ(ctx->getPortTimingClass(output, id_I, count), TMG_ENDPOINT);
     EXPECT_EQ(count, 0);
+}
+
+TEST_F(IoDelayTest, RegisteredOutputFabricPathIsTimedButExternalPadRemainsUnsupported)
+{
+    output->type = id_MISTRAL_SDROUT;
+    output->addInput(id_CLK);
+    output->addInput(id_CEOUT);
+    output->connectPort(id_CLK, clock);
+    output->connectPort(id_CEOUT, launch->getPort(id_Q));
+    ctx->assignArchInfo();
+    TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
+    auto source = ctx->getPortClockingInfo(launch, id_Q, 0);
+    for (auto pin : {id_I, id_CEOUT}) {
+        int count = 0;
+        EXPECT_EQ(ctx->getPortTimingClass(output, pin, count), TMG_REGISTER_INPUT);
+        EXPECT_EQ(count, 1);
+        EXPECT_EQ(timing.get_setup_slack(CellPortKey(output->name, pin)),
+                  10000 - source.clockToQ.maxDelay() - 120);
+        EXPECT_GT(timing.get_criticality(CellPortKey(output->name, pin)), 0);
+    }
+    auto path = find_path(timing.get_timing_result(), output);
+    ASSERT_FALSE(path.segments.empty());
+    EXPECT_EQ(path.clock_pair.end.clock, clock->name);
+    EXPECT_EQ(path.segments.back().type, CriticalPath::Segment::Type::SETUP);
+    EXPECT_EQ(path.segments.back().delay, 120);
+    sdc("set_output_delay -clock memory 1 [get_ports dout]\n");
+    TimingAnalyser external(ctx.get());
+    EXPECT_THROW(external.setup(false, false, true), log_execution_error_exception);
 }

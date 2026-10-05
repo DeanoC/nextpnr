@@ -3,8 +3,7 @@
   "device": "5CSEBA6U23I7",
   "decoder": "mistral-cv decomp",
   "ignored": [
-    "DQS16 INPUT_REG4_SEL on output lanes (nextpnr default)",
-    "DQS16 RB_T9_SEL_EREG_CFF_DELAY and RB_T9_SEL_OREG_DFF_DELAY on output-only FAST_OUTPUT_REGISTER pads (nextpnr keeps 0x1f; Quartus chooses per design)"
+    "DQS16 INPUT_REG4_SEL on output lanes (nextpnr default)"
   ],
   "designs": {
     "pads": {

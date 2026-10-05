@@ -1,0 +1,167 @@
+{
+  "classification": "matched Quartus reference fits; not SDRAM hardware signoff",
+  "device": "5CSEBA6U23I7",
+  "fabric_checks_unchanged": 24,
+  "paths": [
+    {
+      "report": "7_slow_1100mv_-40c/output-hold.rpt",
+      "port": "p6",
+      "default_ns": 3.519,
+      "forced31_ns": 4.576,
+      "extra_ns": 1.057
+    },
+    {
+      "report": "7_slow_1100mv_-40c/output-hold.rpt",
+      "port": "p4",
+      "default_ns": 3.625,
+      "forced31_ns": 4.682,
+      "extra_ns": 1.057
+    },
+    {
+      "report": "7_slow_1100mv_-40c/output-setup.rpt",
+      "port": "p4",
+      "default_ns": 3.751,
+      "forced31_ns": 4.866,
+      "extra_ns": 1.115
+    },
+    {
+      "report": "7_slow_1100mv_-40c/output-setup.rpt",
+      "port": "p6",
+      "default_ns": 3.648,
+      "forced31_ns": 4.763,
+      "extra_ns": 1.115
+    },
+    {
+      "report": "7_slow_1100mv_100c/output-hold.rpt",
+      "port": "p6",
+      "default_ns": 3.852,
+      "forced31_ns": 4.937,
+      "extra_ns": 1.085
+    },
+    {
+      "report": "7_slow_1100mv_100c/output-hold.rpt",
+      "port": "p4",
+      "default_ns": 3.947,
+      "forced31_ns": 5.033,
+      "extra_ns": 1.086
+    },
+    {
+      "report": "7_slow_1100mv_100c/output-setup.rpt",
+      "port": "p4",
+      "default_ns": 4.091,
+      "forced31_ns": 5.271,
+      "extra_ns": 1.18
+    },
+    {
+      "report": "7_slow_1100mv_100c/output-setup.rpt",
+      "port": "p6",
+      "default_ns": 3.995,
+      "forced31_ns": 5.175,
+      "extra_ns": 1.18
+    },
+    {
+      "report": "MIN_fast_1100mv_-40c/output-hold.rpt",
+      "port": "p6",
+      "default_ns": 2.02,
+      "forced31_ns": 2.503,
+      "extra_ns": 0.483
+    },
+    {
+      "report": "MIN_fast_1100mv_-40c/output-hold.rpt",
+      "port": "p4",
+      "default_ns": 2.075,
+      "forced31_ns": 2.559,
+      "extra_ns": 0.484
+    },
+    {
+      "report": "MIN_fast_1100mv_-40c/output-setup.rpt",
+      "port": "p4",
+      "default_ns": 2.114,
+      "forced31_ns": 2.624,
+      "extra_ns": 0.51
+    },
+    {
+      "report": "MIN_fast_1100mv_-40c/output-setup.rpt",
+      "port": "p6",
+      "default_ns": 2.061,
+      "forced31_ns": 2.571,
+      "extra_ns": 0.51
+    },
+    {
+      "report": "MIN_fast_1100mv_100c/output-hold.rpt",
+      "port": "p6",
+      "default_ns": 2.406,
+      "forced31_ns": 2.982,
+      "extra_ns": 0.576
+    },
+    {
+      "report": "MIN_fast_1100mv_100c/output-hold.rpt",
+      "port": "p4",
+      "default_ns": 2.451,
+      "forced31_ns": 3.028,
+      "extra_ns": 0.577
+    },
+    {
+      "report": "MIN_fast_1100mv_100c/output-setup.rpt",
+      "port": "p4",
+      "default_ns": 2.499,
+      "forced31_ns": 3.099,
+      "extra_ns": 0.6
+    },
+    {
+      "report": "MIN_fast_1100mv_100c/output-setup.rpt",
+      "port": "p6",
+      "default_ns": 2.452,
+      "forced31_ns": 3.053,
+      "extra_ns": 0.601
+    }
+  ],
+  "hashes": {
+    "default": {
+      "pads.v": "73b3c5d8c6c1f9beee6ec3b02ddd34a2e29430b38d8a1b61d7dd052c751a639e",
+      "top.qsf": "28c473ef9f5b68e1465f9ff473e939bebceebdf618b1703eed0f028096637b34",
+      "clocks.sdc": "94f42c2fa83678727a975a9adef7c549e7dce5768067351920f9eac27989be8b",
+      "compile.log": "7f39ace06b2d1629128fefd44453232c7f27e5858f7ae577c3b25544f9eb3026",
+      "top.bt": "1f300310c69c75a079b944d9786521abc13c4c721229e2f7f571c98486d32413",
+      "7_slow_1100mv_-40c/output-hold.rpt": "ba591e59b82a8702d113a89f802721b7b74054b64a46bf43528c65049f2e4476",
+      "7_slow_1100mv_-40c/output-setup.rpt": "5b0d60c2458a03c42c286160dd25c0bd50ab4eb3cbd584b4447b6865a57a9452",
+      "7_slow_1100mv_-40c/register-hold.rpt": "88bb781e5b89844e031b38c3ed53d8f53f28707914b0b1cf99b83ddade38e602",
+      "7_slow_1100mv_-40c/register-setup.rpt": "b52a3ab552ee8db97fe04abaf239ae268f53ddefa97ac7427a95730ff54fead4",
+      "7_slow_1100mv_100c/output-hold.rpt": "01995a9ccb503d4134cc1adfc9c4ded0260ea0523592199c2141d561ec4f2f82",
+      "7_slow_1100mv_100c/output-setup.rpt": "7b922c7c9ec0da8218be3e5a1595fc5d6f9323994616bd3f18bd0d0e487b1cac",
+      "7_slow_1100mv_100c/register-hold.rpt": "10a2ff91b7ef3ad2480c7d9eeb99c1f3c9f2d9d8913d04079caa5c358f7811b6",
+      "7_slow_1100mv_100c/register-setup.rpt": "517d9a0343bcd0f9a9325549e0c7eef13f529f5b5ac16d49b51b4200fe961d7f",
+      "MIN_fast_1100mv_-40c/output-hold.rpt": "5e8aac636c2ab3798bcd55f8ff57a270eb4ef887d3d273beaf13eb5493daf9cd",
+      "MIN_fast_1100mv_-40c/output-setup.rpt": "94fef37ec4e01c907da28d1744abc8db1dcd3e75bd60ec0f682c7ef053dcfdab",
+      "MIN_fast_1100mv_-40c/register-hold.rpt": "fd1b2dc8b0dc0f0142e85447f00b19c5fb4a0eae9a0b58fe3e59428dae1383b1",
+      "MIN_fast_1100mv_-40c/register-setup.rpt": "3f0318432e6eddd91dbbf767c1029f3270fe4a3bfe6f48497d7d09363053b8c7",
+      "MIN_fast_1100mv_100c/output-hold.rpt": "c5525dfce129e9259d42b286d8d714d67c4d3f9d968b456bbde65fa90828ad9e",
+      "MIN_fast_1100mv_100c/output-setup.rpt": "37b7c806c26126fdbe086afce26b778f4f999fd035abdc506eaaa812dad58e42",
+      "MIN_fast_1100mv_100c/register-hold.rpt": "f6ac076fa3ef196b815c60a8426798a19896f6d37f45e19b08f098a4b33fbc0a",
+      "MIN_fast_1100mv_100c/register-setup.rpt": "ecf356bc24d40ba388ec5cd5b7a7f04600c905b2abebcb4d90bb3cc49f020801"
+    },
+    "forced31": {
+      "pads.v": "73b3c5d8c6c1f9beee6ec3b02ddd34a2e29430b38d8a1b61d7dd052c751a639e",
+      "top.qsf": "681e7930a07bcc87c671605551c1996bf8c2e67a9c62f9db42cb23bb1581a267",
+      "clocks.sdc": "94f42c2fa83678727a975a9adef7c549e7dce5768067351920f9eac27989be8b",
+      "compile.log": "0aed280479b55936707636c36df3e3db31992b9680cb1f52f12ea88b1475799b",
+      "top.bt": "a5f14806dea2814a27073e561e58244e776c24e52a27af93596dd753e274383b",
+      "7_slow_1100mv_-40c/output-hold.rpt": "524037d17a1e7b56bbe8b966273af773a8c1c5af72dfcd99a3c6c0d0c1cc9be3",
+      "7_slow_1100mv_-40c/output-setup.rpt": "5c97c6705032fef1c325f17460ae9f1854ec56db1c21bc1dc3662474c2f764ea",
+      "7_slow_1100mv_-40c/register-hold.rpt": "88bb781e5b89844e031b38c3ed53d8f53f28707914b0b1cf99b83ddade38e602",
+      "7_slow_1100mv_-40c/register-setup.rpt": "b52a3ab552ee8db97fe04abaf239ae268f53ddefa97ac7427a95730ff54fead4",
+      "7_slow_1100mv_100c/output-hold.rpt": "116632cc75cf79b2e0aa131fa74616cb75197876d2b6a41f13a07f64d32105cf",
+      "7_slow_1100mv_100c/output-setup.rpt": "5127bece1c81ac95ae4355ec8a7460cb96a975713a3898ab8eb966c5c2d08251",
+      "7_slow_1100mv_100c/register-hold.rpt": "10a2ff91b7ef3ad2480c7d9eeb99c1f3c9f2d9d8913d04079caa5c358f7811b6",
+      "7_slow_1100mv_100c/register-setup.rpt": "517d9a0343bcd0f9a9325549e0c7eef13f529f5b5ac16d49b51b4200fe961d7f",
+      "MIN_fast_1100mv_-40c/output-hold.rpt": "288ce0d6f1e401e376447b585ec6e37bea0f7be671f57f9a3ff3db7a9faa9288",
+      "MIN_fast_1100mv_-40c/output-setup.rpt": "799a4f6ab1a939abc4e7123280179fed5d4401f064efa79c9fb3873bc4bda44c",
+      "MIN_fast_1100mv_-40c/register-hold.rpt": "fd1b2dc8b0dc0f0142e85447f00b19c5fb4a0eae9a0b58fe3e59428dae1383b1",
+      "MIN_fast_1100mv_-40c/register-setup.rpt": "3f0318432e6eddd91dbbf767c1029f3270fe4a3bfe6f48497d7d09363053b8c7",
+      "MIN_fast_1100mv_100c/output-hold.rpt": "b6288a42b4cf78021ac59de20672cef7225b4c4b6aeec51877bff13620eee694",
+      "MIN_fast_1100mv_100c/output-setup.rpt": "4de8bb41c5c752da50330cc5dcbfc464ab6cc725170a8178173b762f686adab7",
+      "MIN_fast_1100mv_100c/register-hold.rpt": "f6ac076fa3ef196b815c60a8426798a19896f6d37f45e19b08f098a4b33fbc0a",
+      "MIN_fast_1100mv_100c/register-setup.rpt": "ecf356bc24d40ba388ec5cd5b7a7f04600c905b2abebcb4d90bb3cc49f020801"
+    }
+  }
+}

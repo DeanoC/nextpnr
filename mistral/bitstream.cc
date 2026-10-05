@@ -412,8 +412,10 @@ struct MistralBitgen
                 NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_OUTPUT_SEL, lane, CycloneV::SEL_SDR));
                 NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::OEREG_HR_CLK_EN, lane, true));
                 NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RBOE_LVL_FR_CLK_EN, lane, true));
-                NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::RB_T9_SEL_EREG_CFF_DELAY, lane, 0x1f));
-                NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::RB_T9_SEL_OREG_DFF_DELAY, lane, 0x1f));
+                // Keep the database's zero delay-chain defaults, as for SDRIO.
+                // Forcing D5 to 31 adds about 1.2 ns to the clock-to-pin path
+                // in the GPIO reference fits. Explicit D5_DELAY assignments
+                // are applied below; hold compensation must not be implicit.
             } else if (has_dqs && ci->type == id_MISTRAL_SDRIO) {
                 // Settings of Quartus 17.0.2 packed I/O registers on a
                 // bidirectional or tri-state pad.

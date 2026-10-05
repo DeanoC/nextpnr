@@ -40,14 +40,12 @@ def route(netlist, qsf, name, success=True):
     return run(command, o / (name + ".route.log"), success)
 
 
-def decoded(name, pins, sdr_outputs):
+def decoded(name, pins):
     run([a.mistral_cv, "decomp", "5CSEBA6U23I7", o / (name + ".rbf"), o / (name + ".bt")], o / (name + ".decode.log"))
     found = {}
     for line in (o / (name + ".bt")).read_text().splitlines():
         m = re.match(r"^s ((?:GPIO|DQS16)\.\S+) (\S+) ; (\S+)", line)
         if m and m.group(3) in pins and "INPUT_REG4_SEL" not in m.group(1):
-            if m.group(3) in sdr_outputs and re.search(r"RB_T9_SEL_(EREG_CFF|OREG_DFF)_DELAY", m.group(1)):
-                continue
             found.setdefault(m.group(3), []).append("s " + m.group(1) + " " + m.group(2))
         m = re.match(r"^i (\S+) (\S) ; (\S+)", line)
         if m and m.group(3) in pins and re.search(r"(CEIN|CEOUT|ACLR|OEIN\.\d)", line):
@@ -55,10 +53,10 @@ def decoded(name, pins, sdr_outputs):
     return {pin: sorted(values) for pin, values in found.items()}
 
 
-def compare(name, sdr_outputs=()):
+def compare(name):
     design = oracle["designs"][name]
     pins = set(design["pins"].values())
-    got = decoded(name, pins, set(sdr_outputs))
+    got = decoded(name, pins)
     want = {pin: values for pin, values in design["decoded"].items() if pin in pins}
     for pin in sorted(set(got) | set(want)):
         assert got.get(pin, []) == want.get(pin, []), (name, pin, got.get(pin), want.get(pin))
@@ -69,7 +67,7 @@ def compare(name, sdr_outputs=()):
 pads = synth("pads")
 log = route(pads, f / "pads.qsf", "pads")
 assert log.count("I/O register") >= 4 and log.count("Packed SDR") == 4, log
-count, routes = compare("pads", sdr_outputs=[oracle["designs"]["pads"]["pins"][p] for p in ("p4", "p6")])
+count, routes = compare("pads")
 for port in ("CEIN", "CEOUT", "ACLR"):
     assert f":{port} ;" in routes, port
 print(f"PASS: {count} pads match Quartus I/O register settings and inverters (in, out, OE, CE, ACLR)")

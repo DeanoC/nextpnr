@@ -48,9 +48,12 @@ Decoded settings for the DQS16 lane of the pad:
 | clock enables | `INPUT_PATH_CE_IN`, `CE_OUTREG_TIEOFF_EN`, `CE_OEREG_TIEOFF_EN` |
 | asynchronous clears | `USE_CLR_INREG_EN`, `USE_CLR_OUTREG_EN`, `OEREG_ACLR_EN` |
 
-The registers have no characterized setup/hold, clock-to-pad or clock-to-Q
-model, so their pins are unclocked timing endpoints and nextpnr warns; a
-fabric Fmax does not establish interface timing closure.
+The qualified reference profile times fabric-facing register arcs; see
+[GPIO timing characterization](../gpio-timing/README.md). External pad timing
+is still incomplete, so a fabric Fmax does not establish interface closure.
+Output-only SDR pads keep zero data/OE delay-chain defaults, and this fixture
+checks those selectors against Quartus without excluding them. Explicit
+delay-chain assignments still override the defaults.
 
 ## Fixture
 

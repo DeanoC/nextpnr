@@ -849,7 +849,7 @@ struct MistralPacker
             ctx->cells.erase(ff->name);
         }
         if (!outputs.empty())
-            log_warning("SDR output registers: setup/hold and clock-to-pad timing are uncharacterized; "
+            log_warning("SDR output registers: clock-to-pad timing is uncharacterized; "
                         "reported fabric Fmax does not establish output-interface timing closure.\n");
     }
 
