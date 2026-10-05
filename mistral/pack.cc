@@ -566,6 +566,43 @@ struct MistralPacker
                 pads.push_back(io);
         }
         pool<IdString> absorbed;
+        // One fabric flip-flop cannot fill both an input register and an
+        // output or OE register. Reject that before rewriting any pad: the
+        // input path deletes the cell, and the output path would look it up.
+        {
+            auto output_ff = [&](CellInfo *pad, IdString port) -> CellInfo * {
+                NetInfo *net = pad->getPort(port);
+                if (!net || !net->driver.cell || net->driver.cell->type != id_MISTRAL_FF || net->driver.port != id_Q)
+                    return nullptr;
+                return net->driver.cell;
+            };
+            auto input_ff = [&](CellInfo *pad) -> CellInfo * {
+                NetInfo *data = pad->getPort(id_O);
+                if (!data || data->users.entries() != 1)
+                    return nullptr;
+                auto user = *data->users.begin();
+                if (user.cell->type != id_MISTRAL_FF || user.port != id_DATAIN)
+                    return nullptr;
+                return user.cell;
+            };
+            dict<IdString, unsigned> role;
+            for (CellInfo *pad : pads) {
+                if (io_register_requested(pad, req_out))
+                    if (CellInfo *ff = output_ff(pad, id_I))
+                        role[ff->name] |= 2;
+                if (io_register_requested(pad, req_oe))
+                    if (CellInfo *ff = output_ff(pad, id_OE))
+                        role[ff->name] |= 2;
+                if (io_register_requested(pad, req_in))
+                    if (CellInfo *ff = input_ff(pad))
+                        role[ff->name] |= 1;
+            }
+            for (const auto &entry : role)
+                if ((entry.second & 3) == 3)
+                    log_error("Registered I/O '%s': one flip-flop cannot be both an input register and an "
+                              "output or output-enable register.\n",
+                              entry.first.c_str(ctx));
+        }
         for (CellInfo *io : pads) {
             auto fail = [&](const char *reason) { log_error("Registered I/O '%s': %s.\n", ctx->nameOf(io), reason); };
             const bool in = io_register_requested(io, req_in), out = io_register_requested(io, req_out),
@@ -615,7 +652,15 @@ struct MistralPacker
                     fail("output and output-enable registers must share one clock");
                 out_clock = io_register_clock(ff, io, "sdr", fail);
             }
-            NetInfo *in_clock = in_ff ? io_register_clock(in_ff, io, "sdr", fail) : nullptr;
+            // CLKOUT and CLKIN are separate pad clocks. The same unbuffered
+            // source reuses the buffer just created; a second source needs
+            // its own name, or createCell asserts on the shared "sdr" suffix.
+            NetInfo *in_clock = nullptr;
+            if (in_ff) {
+                NetInfo *out_raw = out_ff ? out_ff->getPort(id_CLK) : (oe_ff ? oe_ff->getPort(id_CLK) : nullptr);
+                const bool separate = out_raw && in_ff->getPort(id_CLK) != out_raw;
+                in_clock = io_register_clock(in_ff, io, separate ? "sdr_in" : "sdr", fail);
+            }
 
             auto attach = [&](CellInfo *ff, const char *reg, IdString ce_port) {
                 IoRegControls ctl = io_register_controls(ff, fail);

@@ -1,0 +1,8 @@
+set_location_assignment PIN_V11 -to clk_a
+set_location_assignment PIN_V12 -to clk_b
+set_location_assignment PIN_E8 -to d
+set_location_assignment PIN_AF4 -to oe
+set_location_assignment PIN_AH27 -to p
+set_location_assignment PIN_Y15 -to q
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to p
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to p

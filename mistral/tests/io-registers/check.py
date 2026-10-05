@@ -147,4 +147,87 @@ path = o / "d1-bidir.qsf"
 path.write_text(base + "set_instance_assignment -name D1_DELAY 4 -to p3\n")
 log = route(pads, path, "d1-bidir", success=False)
 assert "D1_DELAY on a bidirectional FAST_INPUT_REGISTER is not encoded" in log, log[-2000:]
-print("PASS: six unsupported I/O register requests rejected")
+
+
+def shared_ff(m):
+    # p1's output register now also samples p3, and p3's own sampler is disconnected.
+    out = ff_driving(m, "p1")
+    p3 = next(
+        cell
+        for cell in m["cells"].values()
+        if cell["type"] == "MISTRAL_IO" and cell["connections"].get("PAD") == m["ports"]["p3"]["bits"]
+    )
+    sampled = p3["connections"]["O"]
+    for cell in m["cells"].values():
+        if cell is not out and cell.get("type") == "MISTRAL_FF" and cell["connections"].get("DATAIN") == sampled:
+            cell["connections"]["DATAIN"] = ["0"]
+    out["connections"]["DATAIN"] = sampled
+
+
+reject_netlist(
+    "shared-ff",
+    shared_ff,
+    "cannot be both an input register and an output or output-enable register",
+)
+print("PASS: seven unsupported I/O register requests rejected")
+
+
+def pack(netlist, qsf, name, success=True):
+    command = [
+        a.nextpnr,
+        "--device",
+        "5CSEBA6U23I7",
+        "--qsf",
+        qsf,
+        "--json",
+        netlist,
+        "--pack-only",
+        "--write",
+        o / (name + ".packed.json"),
+    ]
+    return run(command, o / (name + ".pack.log"), success)
+
+
+def sdr_clocks(path):
+    cells = json.loads(path.read_text())["modules"]["top"]["cells"]
+    pads = [cell for cell in cells.values() if cell["type"] == "MISTRAL_SDRIO"]
+    assert len(pads) == 1, list(cells)
+    pad = pads[0]
+    assert pad["connections"].get("CLK") and pad["connections"].get("CLKIN")
+    buffers = [name for name, cell in cells.items() if cell["type"] == "MISTRAL_CLKBUF"]
+    return pad["connections"]["CLK"], pad["connections"]["CLKIN"], buffers
+
+
+run(
+    [
+        a.yosys,
+        "-p",
+        f"read_verilog {f / 'split.v'}; synth_intel_alm -top top -noclkbuf; write_json {o / 'split.json'}",
+    ],
+    o / "split.synth.log",
+)
+pack(o / "split.json", f / "split.qsf", "split")
+clk, clkin, buffers = sdr_clocks(o / "split.packed.json")
+assert clk != clkin, (clk, clkin)
+assert any(name.endswith("$sdr_clkbuf") for name in buffers), buffers
+assert any(name.endswith("$sdr_in_clkbuf") for name in buffers), buffers
+print("PASS: bidirectional input and output registers pack on different unbuffered clocks")
+
+shared = json.loads((o / "split.json").read_text())
+clocks = [
+    cell["connections"]["CLK"]
+    for cell in shared["modules"]["top"]["cells"].values()
+    if cell["type"] == "MISTRAL_FF"
+]
+assert len(clocks) == 2 and clocks[0] != clocks[1], clocks
+for cell in shared["modules"]["top"]["cells"].values():
+    if cell["type"] == "MISTRAL_FF":
+        cell["connections"]["CLK"] = clocks[0]
+shared_path = o / "split-shared.json"
+shared_path.write_text(json.dumps(shared))
+pack(shared_path, f / "split.qsf", "split-shared")
+clk, clkin, buffers = sdr_clocks(o / "split-shared.packed.json")
+assert clk == clkin, (clk, clkin)
+assert sum(name.endswith("$sdr_clkbuf") for name in buffers) == 1, buffers
+assert not any(name.endswith("$sdr_in_clkbuf") for name in buffers), buffers
+print("PASS: one unbuffered clock is shared by the input and output registers")

@@ -24,7 +24,9 @@ with these `MISTRAL_FF` controls:
 
 Polarity uses the programmable inverter in front of each pad control input.
 Registers on one pad must share their enable and clear nets, and the output
-and OE registers must share a clock. A register whose Q drives several pads
+and OE registers must share a clock. The input register may use a different
+clock. One flip-flop cannot pack as both the input register and an output or
+output-enable register. A register whose Q drives several pads
 requesting the same register is copied into each pad, so one OE register can
 drive a whole SDRAM bus. Synchronous clear or load, a clock enable tied low, a
 clear held active, register parameters, inverted clocks, a Q that also drives
@@ -57,6 +59,10 @@ fabric Fmax does not establish interface timing closure.
   asynchronous clear, and a tri-state output with output and OE registers).
 - `bus.v`/`bus.qsf`: a four-bit SDRAM-style bus with one OE register, an
   active-low asynchronous reset and an active-low clock enable.
+- `split.v`/`split.qsf`: one bidirectional pad whose input and output
+  registers use different clocks. Synthesis passes `-noclkbuf`, so packing
+  inserts both global buffers. A netlist edit ties them to one clock, and
+  another edit of `pads` makes one flip-flop serve both registers.
 - `oracle/`: the Quartus projects (built with `QUARTUS` defined, inferring the
   tri-state pads), their gzip'd RBFs and `mapping.json`, the decoded per-pad
   settings and control-input inverters. The open flow instantiates
