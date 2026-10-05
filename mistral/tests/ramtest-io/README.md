@@ -183,3 +183,74 @@ accumulated clock arrival times, rather than summing data IC increments.
 It still mixes independent early/late common-clock prefixes conservatively;
 it neither credits common-path pessimism removal nor prescribes a capture
 phase. These diagnostic windows must not be substituted for native STA.
+
+## Output transfers in matching fitted corners
+
+`corner_windows.py` now audits the complete set of 52 registered FES output
+channels (16 DQ data, 16 DQ OE and 20 address/bank/command channels). The
+surrogate's two registered mask outputs are optional as a complete pair.
+It compares each channel against the same corner's physical clock transfer,
+retaining independent early/late common-clock paths without CPPR credit:
+
+```
+write setup = T/2 + clock_early - output_late - tIS - flight_max - margin
+write hold  = T/2 + output_early - clock_late - tIH - flight_max - margin
+```
+
+`transfer-reference.json` uses each full Quartus fit only at its actual rate,
+with the earlier 0..0.5 ns flight and 0.2 ns margin assumptions. Before adding
+the chip-select inverter, the worst output setup margins are -0.220 ns at
+100 MHz and -1.342 ns at 130 MHz, both on DQ OE. Worst output hold margins are
++0.246 ns and -0.908 ns. The minimum nCS setup allowance for an additional
+inverter is +0.710 ns at 100 MHz and -0.444 ns at 130 MHz. These numbers do
+not establish the actual inverter delay, board flights, or native-route slack.
+They explain why replacing the arbitrary 5 ns inverter allowance alone would
+not establish complete timing closure. The audit rejects missing output
+channels and requires shared-clock translation to cancel from output margins
+as well as pulse bounds and read windows.
+
+For a full PLL fit, pass `--memory-mhz 100` or `--memory-mhz 130` to retain
+only its actual rate. The surrogate fixture may still explore both periods.
+
+## Controller cycle sensitivity after IO packing
+
+`capture_cycle.py` instantiates the snapshot's actual `sdram_addon_port.v`
+with `RAM_OSS_HIGH_SPEED` and one output-register stage. Its diagnostic
+wrapper reproduces the 5 ns / 6.538 ns rising capture clocks, plus the 130 MHz
+falling-edge handoff in `top.v`. PLL and wrapper hashes are retained; changed
+capture assignments or phase parameters require re-auditing the wrapper.
+The existing FES simulation PLL passes the board clock through, and its
+memory model supports only CAS2, so those models cannot establish this
+100/130 MHz capture sequence.
+
+```sh
+python3 mistral/tests/ramtest-io/capture_cycle.py \
+  --fes-root /tmp/fes-snapshot/sources/misteross \
+  --output /tmp/capture-cycle-audit
+```
+
+The model launches one word CAS2/CAS3 chip clocks after READ, drives a poison
+word before data becomes valid and after the following chip clock plus
+2.5 ns hold, and records the exact capture consumed by the controller. Its
+return delay is a lumped illustrative parameter; it is not a fitted FPGA arc
+or measured board flight. The 32 traces sweep 0/3/6/9 ns return delays and
+fast/maximum chip access assumptions. No RTL in FES is edited. Temporary
+copies explore advancing the 130 MHz `capture_due` trigger by one or two
+cycles; they are diagnostics, not proposed production patches.
+
+`capture-cycle-reference.json` shows the original controller consuming a
+sample 10 ns after chip data launch at 100 MHz, and 18.075 ns after launch at
+130 MHz. With a fast return, 100 MHz consumes the valid word while 130 MHz
+consumes poison. Advancing the 130 MHz trigger two cycles selects the sample
+2.691 ns after launch and restores the word in that fast case. A delayed
+return reverses the outcome: the original schedule can then succeed while
+the advanced schedule fails. Every consumed word is checked against the
+recorded sample time and explicit valid window.
+
+This exposes a capture-cycle dependency that moving DQ registers into IO
+cells can change. It does not prove that a fixed counter change repairs the
+physical board, nor explain the original 100 MHz failure by itself. A final
+capture schedule must agree with fitted clock/data timing, single-word read
+latency, hold/turnaround requirements and hardware results. Do not add a
+setup-only multicycle merely to make the late-read path pass: the selected
+word's following transition must also be checked for hold.

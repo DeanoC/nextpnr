@@ -57,6 +57,13 @@ def analyze(evidence, flight, margin, distortion):
                           p["stage"] == "clock" and p["type"] in ("IC", "CELL")]
                 prefix = points[-2]["total_ns"] - points[0]["total_ns"]
                 key = ("read", path["From Node"], kind)
+            elif output and family in ("write_data", "write_oe"):
+                points = [p for p in path["points"] if p["section"] == "arrival" and
+                          p["stage"] == "clock" and p["type"] in ("IC", "CELL")]
+                if data["clock_edge"] != "R":
+                    raise ValueError("expected rising SDR output launch")
+                prefix = points[-2]["total_ns"] - points[0]["total_ns"]
+                key = ("write", path["To Node"], family, kind)
             else:
                 continue
             if not math.isfinite(prefix) or not math.isfinite(data["value_ps"]):
@@ -102,10 +109,40 @@ def analyze(evidence, flight, margin, distortion):
                 upper = 1.5 * period + arrival("R", "hold") + 2.5 - margin
                 upper += min(-value - prefix for value, prefix in hold)
                 windows[pin] = [round(lower, 6), round(upper, 6)]
+            channels = {(key[1], key[2]) for key in paths if key[0] == "write"}
+            commands = [f"SDRAM_A[{i}]" for i in range(13)] + ["SDRAM_BA[0]", "SDRAM_BA[1]"]
+            commands += ["SDRAM_CKE", "SDRAM_nCS", "SDRAM_nRAS", "SDRAM_nCAS", "SDRAM_nWE"]
+            expected = {(pin, "write_data") for pin in commands}
+            expected |= {(f"SDRAM_DQ[{i}]", family) for i in range(16)
+                         for family in ("write_data", "write_oe")}
+            # Surrogate fixtures register the masks; the full FES RTL keeps
+            # them constant. Require the complete pair if either is present.
+            masks = {("SDRAM_DQML", "write_data"), ("SDRAM_DQMH", "write_data")}
+            if channels != expected and channels != expected | masks:
+                raise ValueError("incomplete SDR data/OE output channels")
+            writes = []
+            for pin, family in sorted(channels):
+                late = paths["write", pin, family, "setup"]
+                early = paths["write", pin, family, "hold"]
+                if not late or not early:
+                    raise ValueError("missing output setup/hold pair")
+                # Compare outgoing data and the *same corner's* physical
+                # forwarded rising edge. No CPPR or guaranteed-minimum credit.
+                setup_slack = period / 2 + arrival("R", "hold") - max(sum(p) for p in late)
+                setup_slack -= 1.5 + flight + margin
+                hold_slack = period / 2 + min(sum(p) for p in early) - arrival("R", "setup")
+                hold_slack -= 0.8 + flight + margin
+                writes.append(dict(pin=pin, channel=family, setup_ns=round(setup_slack, 6),
+                                   hold_ns=round(hold_slack, 6)))
             corners[corner] = {"pulse_lower_bounds_ns": pulses,
                                "read_capture_windows_ns": windows,
                                "all_pin_window_ns": [max(w[0] for w in windows.values()),
-                                                     min(w[1] for w in windows.values())]}
+                                                     min(w[1] for w in windows.values())],
+                               "output_channels": len(writes),
+                               "worst_output_setup": min(writes, key=lambda r: r["setup_ns"]),
+                               "worst_output_hold": min(writes, key=lambda r: r["hold_ns"]),
+                               "cs_inverter_max_setup_delay_ns": min(r["setup_ns"] for r in writes
+                                                                       if r["pin"] == "SDRAM_nCS")}
         common = [max(c["all_pin_window_ns"][0] for c in corners.values()),
                   min(c["all_pin_window_ns"][1] for c in corners.values())]
         result[str(rate)] = {"corners": corners, "common_absolute_capture_window_ns": common,
@@ -126,13 +163,15 @@ if __name__ == "__main__":
                         help="maximum board rise/fall flight difference, ns; an assumption")
     parser.add_argument("--check-rejections", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--memory-mhz", type=int, choices=(100, 130),
+                        help="Retain only the actual fitted rate for a full PLL design")
     args = parser.parse_args()
     if any(not math.isfinite(x) or x < 0 for x in (args.flight_max, args.margin, args.clock_distortion)):
         raise ValueError("flight and margin must be finite and nonnegative")
     evidence = json.loads(args.evidence.read_text())
     result = analyze(evidence, args.flight_max, args.margin, args.clock_distortion)
     if args.check_rejections:
-        for defect in ("corner", "clock", "pin", "device", "load", "finite"):
+        for defect in ("corner", "clock", "pin", "output", "device", "load", "finite"):
             bad = copy.deepcopy(evidence)
             reports = bad["variants"]["ramtest-sdr-pads"]["reports"]
             if defect == "device": bad["device"] = "other"
@@ -140,10 +179,11 @@ if __name__ == "__main__":
             elif defect == "corner":
                 for name in list(reports):
                     if name.startswith("7_slow_1100mv_100c/"): del reports[name]
-            elif defect in ("clock", "pin"):
+            elif defect in ("clock", "pin", "output"):
                 for name, paths in reports.items():
-                    paths[:] = [p for p in paths if p["To Node"] != "SDRAM_CLK"] if defect == "clock" else [
-                        p for p in paths if p["From Node"] != "SDRAM_DQ[0]"]
+                    if defect == "clock": paths[:] = [p for p in paths if p["To Node"] != "SDRAM_CLK"]
+                    elif defect == "output": paths[:] = [p for p in paths if p["To Node"] != "SDRAM_nCS"]
+                    else: paths[:] = [p for p in paths if p["From Node"] != "SDRAM_DQ[0]"]
             else:
                 path = next(p for p in reports["7_slow_1100mv_100c/output-rise-setup.rpt"]
                             if p["To Node"] == "SDRAM_CLK")
@@ -153,7 +193,7 @@ if __name__ == "__main__":
             except (ValueError, KeyError):
                 continue
             raise AssertionError("accepted defective evidence: " + defect)
-        result["rejection_cases"] = 6
+        result["rejection_cases"] = 7
         translated = copy.deepcopy(evidence)
         for paths in translated["variants"]["ramtest-sdr-pads"]["reports"].values():
             for path in paths:
@@ -162,7 +202,7 @@ if __name__ == "__main__":
                     section = (point["section"], point["stage"])
                     if point["node"] == "FPGA_CLK1_50~input|o" and (
                             section == ("required", "clock") or
-                            (path["To Node"] == "SDRAM_CLK" and point["section"] == "arrival")):
+                            (path["To Node"].startswith("SDRAM_") and point["section"] == "arrival")):
                         point["incremental_ns"] += 1.0
                         active = point["section"]
                     if point["section"] == active:
@@ -174,9 +214,13 @@ if __name__ == "__main__":
             for corner, values in data["corners"].items():
                 for key, value in values["pulse_lower_bounds_ns"].items():
                     assert abs(value - other["corners"][corner]["pulse_lower_bounds_ns"][key]) < 1e-9
-        result["common_clock_translation_check"] = "1ns shared prefix shift cancels from pulses and read windows"
+                for key in ("worst_output_setup", "worst_output_hold", "cs_inverter_max_setup_delay_ns"):
+                    assert values[key] == other["corners"][corner][key]
+        result["common_clock_translation_check"] = "1ns shared prefix shift cancels from pulses, read windows and output margins"
     result["evidence_sha256"] = hashlib.sha256(args.evidence.read_bytes()).hexdigest()
     result["audit_sha256"] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    if args.memory_mhz is not None:
+        result["rates"] = {str(args.memory_mhz): result["rates"][str(args.memory_mhz)]}
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     for rate, data in result["rates"].items():
         pulse = min(min(c["pulse_lower_bounds_ns"].values()) for c in data["corners"].values())
