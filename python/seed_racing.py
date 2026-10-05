@@ -79,6 +79,18 @@ def _positive_number(value: Any, field: str) -> float:
     return number
 
 
+def _nonnegative_number(value: Any, field: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field} must be a non-negative finite number")
+    try:
+        number = float(value)
+    except (OverflowError, ValueError):
+        raise ValueError(f"{field} must be a non-negative finite number") from None
+    if not math.isfinite(number) or number < 0:
+        raise ValueError(f"{field} must be a non-negative finite number")
+    return number
+
+
 def _positive_int(value: Any, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise ValueError(f"{field} must be a positive integer")
@@ -1832,39 +1844,61 @@ def assemble_dataset(collection_paths: Sequence[Path]) -> Dict[str, Any]:
             if not isinstance(result, dict) or result.get("cohort_identity") != identity:
                 raise ValueError("collection result is not bound to its summary cohort identity")
             artifacts = result.get("artifacts")
-            if not isinstance(artifacts, dict):
-                raise ValueError(f"collection result {result.get('run_id')!r} lacks artifacts")
-            artifact_paths = [Path(artifact["path"]) for artifact in artifacts.values()
-                              if isinstance(artifact, dict) and
-                              isinstance(artifact.get("path"), str) and artifact["path"]]
-            if not artifact_paths:
-                raise ValueError(f"collection result {result.get('run_id')!r} has no artifact path")
-            result_path = artifact_paths[0].parent / "result.json"
-            if not result_path.is_absolute():
-                result_path = collection_path.parent / result_path
-            expected_result_digest = result.get("result_sha256")
-            if (not isinstance(expected_result_digest, str) or
-                    sha256_file(result_path) != expected_result_digest):
-                raise ValueError(f"result digest mismatch for {result.get('run_id')!r}")
-            with result_path.open(encoding="utf-8") as stream:
-                persisted_result = json.load(stream)
-            summary_result = dict(result)
-            summary_result.pop("result_sha256")
-            if persisted_result != summary_result:
-                raise ValueError(f"persisted result mismatch for {result.get('run_id')!r}")
-            telemetry = artifacts.get("telemetry")
             observations: List[Dict[str, Any]] = []
-            if isinstance(telemetry, dict) and telemetry.get("available") is True:
-                telemetry_path = Path(telemetry.get("path", ""))
-                if not telemetry_path.is_absolute():
-                    telemetry_path = collection_path.parent / telemetry_path
-                expected_digest = telemetry.get("sha256")
-                if (not isinstance(expected_digest, str) or
-                        sha256_file(telemetry_path) != expected_digest):
-                    raise ValueError(f"telemetry digest mismatch for {result.get('run_id')!r}")
-                records, _ = load_jsonl(telemetry_path)
-                observations = telemetry_observations(records)
-            duration = _positive_number(result.get("elapsed_seconds"), "elapsed_seconds")
+            never_started = (result.get("process_started") is False and
+                             result.get("status") in {"not_started_total_budget", "cancelled"} and
+                             not isinstance(artifacts, dict) and
+                             result.get("result_sha256") is None)
+            if never_started:
+                duration = 0.0
+                outcome = {
+                    "telemetry_complete": False,
+                    "legal_route": None,
+                    "timing_gate_pass": None,
+                    "required_clocks": list(clocks),
+                    "analogue_clocks": [],
+                    "analogue_timing_pass": None,
+                    "timing_evidence_reason": "process_not_started",
+                    "evidence_complete": False,
+                }
+            else:
+                if not isinstance(artifacts, dict):
+                    raise ValueError(f"collection result {result.get('run_id')!r} lacks artifacts")
+                artifact_paths = [Path(artifact["path"]) for artifact in artifacts.values()
+                                  if isinstance(artifact, dict) and
+                                  isinstance(artifact.get("path"), str) and artifact["path"]]
+                if not artifact_paths:
+                    raise ValueError(
+                        f"collection result {result.get('run_id')!r} has no artifact path")
+                result_path = artifact_paths[0].parent / "result.json"
+                # Collector resolves its output root before planning, so native
+                # summaries always contain absolute artifact paths.
+                if not result_path.is_absolute():
+                    raise ValueError("collection artifact paths must be absolute")
+                expected_result_digest = result.get("result_sha256")
+                if (not isinstance(expected_result_digest, str) or
+                        sha256_file(result_path) != expected_result_digest):
+                    raise ValueError(f"result digest mismatch for {result.get('run_id')!r}")
+                with result_path.open(encoding="utf-8") as stream:
+                    persisted_result = json.load(stream)
+                summary_result = dict(result)
+                summary_result.pop("result_sha256")
+                if persisted_result != summary_result:
+                    raise ValueError(f"persisted result mismatch for {result.get('run_id')!r}")
+                telemetry = artifacts.get("telemetry")
+                if isinstance(telemetry, dict) and telemetry.get("available") is True:
+                    telemetry_path = Path(telemetry.get("path", ""))
+                    if not telemetry_path.is_absolute():
+                        raise ValueError("collection telemetry paths must be absolute")
+                    expected_digest = telemetry.get("sha256")
+                    if (not isinstance(expected_digest, str) or
+                            sha256_file(telemetry_path) != expected_digest):
+                        raise ValueError(
+                            f"telemetry digest mismatch for {result.get('run_id')!r}")
+                    records, _ = load_jsonl(telemetry_path)
+                    observations = telemetry_observations(records)
+                duration = _positive_number(result.get("elapsed_seconds"), "elapsed_seconds")
+                outcome = result.get("outcome")
             if observations and observations[-1]["elapsed_seconds"] > duration:
                 raise ValueError("telemetry observation exceeds collected process duration")
             runs.append({
@@ -1882,7 +1916,7 @@ def assemble_dataset(collection_paths: Sequence[Path]) -> Dict[str, Any]:
                 # wrapper has collected every terminal artifact.
                 "outcome_observed_seconds": duration,
                 "observations": observations,
-                "outcome": result.get("outcome"),
+                "outcome": outcome,
             })
     document = {
         "schema_version": SCHEMA_VERSION,
@@ -2114,7 +2148,11 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
                 "run cohort_id, mapped_design_id, and constraint_family must be non-empty strings")
         if not isinstance(run["status"], str) or run["status"] not in TERMINAL_STATUSES:
             raise ValueError("run status must be a supported terminal status")
-        duration = _positive_number(run["duration_seconds"], "duration_seconds")
+        never_launched = (run.get("process_started") is False and
+                          run["status"] in {"not_started_total_budget", "cancelled"})
+        duration = (_nonnegative_number(run["duration_seconds"], "duration_seconds")
+                    if never_launched else
+                    _positive_number(run["duration_seconds"], "duration_seconds"))
         observations = run["observations"]
         if not isinstance(observations, list):
             raise ValueError("observations must be an array")
@@ -2132,8 +2170,10 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
             normalized_observation = dict(observation)
             normalized_observation["elapsed_seconds"] = elapsed
             clean.append(normalized_observation)
-        outcome_observed = _positive_number(run["outcome_observed_seconds"],
-                                            "outcome_observed_seconds")
+        outcome_observed = (
+            _nonnegative_number(run["outcome_observed_seconds"], "outcome_observed_seconds")
+            if never_launched else
+            _positive_number(run["outcome_observed_seconds"], "outcome_observed_seconds"))
         if outcome_observed > duration or (clean and outcome_observed < clean[-1]["elapsed_seconds"]):
             raise ValueError("outcome availability must follow observations and fit within duration")
         outcome = run["outcome"]

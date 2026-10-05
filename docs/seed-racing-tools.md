@@ -172,6 +172,12 @@ telemetry prefix, and normalizes only iteration and repair metrics into the
 evaluator's prefix allowlist. It never copies `run_end` legality or final
 analogue timing into an observation. Those outcomes become visible at the
 collector's full process duration, after terminal artifacts have been read.
+The collector resolves its output root before planning and records absolute
+artifact paths, including when `--output` was relative; the adapter rejects a
+relative artifact path because it cannot be authenticated against the original
+invocation directory. A candidate that never started because of total-budget
+expiry or cancellation has no artifact to authenticate and is retained as an
+unsuccessful zero-cost censored run with explicitly unavailable evidence.
 Combining collections is supported, but policy results spanning more than one
 mapped-design/constraint family remain explicitly cross-design descriptive.
 

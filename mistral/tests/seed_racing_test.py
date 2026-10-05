@@ -305,17 +305,26 @@ class DatasetTests(unittest.TestCase):
             collection = {
                 "schema_version": 1,
                 "cohort_identity": identity,
-                "results": [summary_result],
+                "results": [summary_result, {
+                    "run_id": "never-started", "seed": 18, "repeat": 1,
+                    "status": "not_started_total_budget", "process_started": False,
+                    "termination_reason": "total_budget_expired_before_run_setup",
+                    "cohort_identity": identity,
+                }],
             }
             summary = root / "collection.json"
             summary.write_text(json.dumps(collection), encoding="utf-8")
             dataset = seed_racing.assemble_dataset([summary])
             normalized = seed_racing.validate_dataset(dataset)
-            self.assertEqual(len(normalized), 1)
+            self.assertEqual(len(normalized), 2)
             self.assertEqual(normalized[0]["outcome_observed_seconds"], 20)
             self.assertEqual(normalized[0]["observations"][1]["recent_progress"], 7)
             self.assertEqual(normalized[0]["observations"][1]["node_expansions"], 180)
             self.assertNotIn("routing_legal", normalized[0]["observations"][1])
+            self.assertEqual(normalized[1]["duration_seconds"], 0)
+            self.assertFalse(normalized[1]["success"])
+            self.assertEqual(normalized[1]["outcome"]["timing_evidence_reason"],
+                             "process_not_started")
             collection["results"][0]["artifacts"]["telemetry"]["sha256"] = "0" * 64
             modified = dict(collection["results"][0])
             modified.pop("result_sha256")
@@ -438,6 +447,22 @@ class CollectorTests(unittest.TestCase):
         source_path = path.with_suffix(".c")
         source_path.write_text(source, encoding="utf-8")
         seed_racing.subprocess.run(["cc", str(source_path), "-o", str(path)], check=True)
+
+    def test_relative_output_root_is_resolved_before_paths_are_recorded(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runner = Path(temporary) / "runner"
+            self.python_elf_runner(runner)
+            manifest = self.manifest(temporary, [str(runner), "{seed}"])
+            previous = os.getcwd()
+            try:
+                os.chdir(temporary)
+                collector = seed_racing.Collector(manifest, Path("runs"))
+                spec = collector.plan()[0]
+            finally:
+                os.chdir(previous)
+            self.assertTrue(collector.output_root.is_absolute())
+            self.assertTrue(spec.directory.is_absolute())
+            self.assertEqual(collector.output_root, Path(temporary, "runs").resolve())
 
     def manifest(self, temporary, command, per_run=2, repeats=1, seeds=None):
         if (isinstance(command, list) and command and
