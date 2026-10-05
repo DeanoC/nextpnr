@@ -174,5 +174,5 @@ def data_fanout(design):
     }
 
 
-reject_variant("data-buffer", data_fanout, "driven directly by one input buffer")
+reject_variant("data-buffer", data_fanout, "driven directly by one input or bidirectional buffer")
 print("PASS: eight invalid DDR input requests rejected")
