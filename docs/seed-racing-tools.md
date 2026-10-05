@@ -179,6 +179,11 @@ relative artifact path because it cannot be authenticated against the original
 invocation directory. A candidate that never started because of total-budget
 expiry or cancellation has no artifact to authenticate and is retained as an
 unsuccessful zero-cost censored run with explicitly unavailable evidence.
+An artifactless `runner_error` has neither authenticated lifecycle evidence nor
+an honest measurable cost. The adapter records it in top-level `excluded_runs`
+with `missing_artifact_and_cost_evidence` instead of discarding the cohort or
+inventing a duration; excluded runs never enter policy replay or performance
+claims.
 An entirely unlaunched GPU cohort has no observed device identity; the dataset
 accepts that absence only for never-launched runs that claim no backend. Any
 launched GPU run still requires the cohort-bound exact backend and runtime

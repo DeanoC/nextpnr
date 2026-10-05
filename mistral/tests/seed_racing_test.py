@@ -354,6 +354,10 @@ class DatasetTests(unittest.TestCase):
                     "status": "not_started_total_budget", "process_started": False,
                     "termination_reason": "total_budget_expired_before_run_setup",
                     "cohort_identity": identity,
+                }, {
+                    "run_id": "runner-error", "seed": 19, "repeat": 1,
+                    "status": "runner_error", "error": "collector failed",
+                    "cohort_identity": identity,
                 }],
             }
             summary = root / "collection.json"
@@ -382,6 +386,12 @@ class DatasetTests(unittest.TestCase):
             self.assertFalse(normalized[1]["success"])
             self.assertEqual(normalized[1]["outcome"]["timing_evidence_reason"],
                              "process_not_started")
+            self.assertEqual(dataset["excluded_runs"], [{
+                "run_id": "runner-error", "cohort_id": "synthetic", "seed": 19,
+                "replicate": 1, "status": "runner_error",
+                "reason": "missing_artifact_and_cost_evidence",
+                "error": "collector failed",
+            }])
             telemetry.write_bytes(original_telemetry)
             collection["results"][0]["artifacts"]["telemetry"]["sha256"] = "0" * 64
             modified = dict(collection["results"][0])

@@ -1840,6 +1840,7 @@ def assemble_dataset(collection_paths: Sequence[Path]) -> Dict[str, Any]:
     cohort_identities: Dict[str, Any] = {}
     declarations: Dict[Tuple[str, str], List[str]] = {}
     runs = []
+    excluded_runs = []
     for collection_path in collection_paths:
         with collection_path.open(encoding="utf-8") as stream:
             collection = json.load(stream)
@@ -1873,6 +1874,25 @@ def assemble_dataset(collection_paths: Sequence[Path]) -> Dict[str, Any]:
                 raise ValueError("collection result is not bound to its summary cohort identity")
             artifacts = result.get("artifacts")
             observations: List[Dict[str, Any]] = []
+            artifactless_runner_error = (
+                result.get("status") == "runner_error" and
+                not isinstance(artifacts, dict) and
+                result.get("result_sha256") is None)
+            if artifactless_runner_error:
+                # The collector could not preserve process lifecycle or cost
+                # evidence for an exception escaping _run_one. Keep the failure
+                # visible, but do not invent a zero duration or admit an
+                # unauthenticated run into policy replay.
+                excluded_runs.append({
+                    "run_id": result.get("run_id"),
+                    "cohort_id": cohort_id,
+                    "seed": result.get("seed"),
+                    "replicate": result.get("repeat"),
+                    "status": "runner_error",
+                    "reason": "missing_artifact_and_cost_evidence",
+                    "error": result.get("error"),
+                })
+                continue
             never_started = (result.get("process_started") is False and
                              result.get("status") in {"not_started_total_budget", "cancelled"} and
                              not isinstance(artifacts, dict) and
@@ -1951,6 +1971,7 @@ def assemble_dataset(collection_paths: Sequence[Path]) -> Dict[str, Any]:
         ],
         "cohort_identities": cohort_identities,
         "runs": runs,
+        "excluded_runs": excluded_runs,
     }
     validate_dataset(document)
     return document
