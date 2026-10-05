@@ -1093,6 +1093,7 @@
     "Different placements and timing engines; these total slacks are not an isolated router quality comparison",
     "Observed minimum local arcs must not be substituted as guaranteed silicon minima",
     "Signed event shifts on fixed routes do not prescribe PLL phases or controller capture cycles",
-    "Previously reported passing Quartus DDR-capture core is a separate configuration from these OSS high-speed SDR-capture fits"
+    "Previously reported passing Quartus DDR-capture core is a separate configuration from these OSS high-speed SDR-capture fits",
+    "These fits use newer FES controller RTL with an extra output stage and forced IO packing; they do not reproduce the hardware-passing100MHz OSS baseline. See baseline-reference.json."
   ]
 }

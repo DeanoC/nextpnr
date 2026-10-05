@@ -305,6 +305,11 @@ tightening only the inverter assumption is insufficient.
 
 ## Compare full OSS RTL in Quartus and nextpnr
 
+These fits use a newer controller with an extra output register stage and
+adjusted capture count, plus forced IO packing. They do **not** reproduce the
+100 MHz hardware-passing OSS bitstream. The historical baseline audit below
+supersedes interpreting their negative slack as a failure of that artifact.
+
 `quartus_board.tcl` applies the same explicit flight and external-margin
 assumptions to retained full Quartus fits, using a generated clock at the
 physical SDRAM pin. It queries all four corners without refitting the design.
@@ -366,3 +371,60 @@ core. Neither the current native results nor these Quartus results establish
 hardware closure for this configuration. The remaining work needs a qualified
 clock/pad model and a capture schedule that also meets the controller handoff;
 moving a PLL phase alone is insufficient.
+
+## Calibrate against the historical 100 MHz hardware baseline
+
+`baseline-reference.json` identifies the original artifacts from
+[issue #135](https://github.com/DeanoC/nextpnr/issues/135): passing RBF
+`e76deaa51662f65f…` (2180175 bytes), and failing RBF `9cff64b3a51fcf99…`
+(2166676 bytes). Their controller, wrapper and PLL source hashes match each
+other. The newer diagnostic wrapper/controller hashes do not match them:
+the diagnostic adds an output stage and changes the 100 MHz capture count
+from 2 to 3 to compensate. Both historical builds use fabric capture/output
+registers; the diagnostic places capture and output registers in IO cells.
+
+`legacy_checkpoint.py` repairs only isolated checkpoint metadata. The old
+writer emitted duplicate `outclk` keys, so ordinary JSON loading discards a
+PLL output. The helper identifies outputs from their routed C6/C7 source
+counters, independently of key order, restores physical frozen-pin names
+and the old clock periods/phases, then replays without pack/place/route.
+Every output RBF must match the supplied original SHA-256 exactly. No source
+worktree or original artifact is changed.
+
+```sh
+python3 mistral/tests/ramtest-io/legacy_checkpoint.py \
+  --source-root /path/to/historical/sources/misteross \
+  --nextpnr /path/to/nextpnr-mistral --expected-rbf ORIGINAL_FULL_SHA256 \
+  --output /tmp/historical-replay --probe
+```
+
+Both exact artifacts replay successfully and preserve internal timing passes.
+The original capture-to-controller setup margins are +3.371 ns passing and
++3.053 ns failing; the recent forced-IO diagnostic's negative margin is not
+the historical passing implementation's margin. GPIO and PLL settings
+decoded from the two original RBFs with one decoder match exactly (190 GPIO
+and 64 PLL settings). Placement and routing still differ.
+
+The optional probe retains top-level ports on packed reload and applies
+synthetic zero input/output requirements to expose routes. Only the clock
+forwarder receives the reference timing profile/load; no fabric register is
+repacked. Probe RBFs also match the originals exactly. Synthetic probe timing
+can fail, and that is not a hardware result or a SDRAM timing requirement.
+Enabling IO analysis also uses full early/late clock-route intervals, so its
+internal margins differ slightly from the original scalar clock-route checks.
+
+The same native model reports read-path late arrival medians of 1.529 ns
+passing and 1.852 ns failing. DQ OE late arrivals increase by 1.016 ns median;
+the largest individual address-boundary increase is 2.491 ns. These are
+differential observations at native GPIO/fabric boundaries, not complete
+chip-pin delay budgets. Unregistered pad/package and fast-corner qualification
+remain unresolved. They identify real route differences to investigate,
+without proving which path caused the hardware failure.
+
+Eight ideal-clock traces of the historical 100 MHz controller consume the
+sample 10 ns after nominal chip data launch, with CAS2/burst1. Both fast and
+maximum access assumptions succeed with zero assumed return delay; longer
+return assumptions can fail. The model reproduces the consumed cycle but
+does not establish physical board delays. The user's Quartus 100 MHz hardware
+pass remains the baseline observation; its exact bitstream identity is still
+pending, so the recent Quartus refits must not inherit that hardware result.
