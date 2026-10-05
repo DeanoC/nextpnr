@@ -78,8 +78,14 @@ costs.
 
 ## Prefix-only replay
 
-The corrected evaluator first proved exact equality of the 16 candidate
-identities in each replicate stratum. Each stratum then used checkpoints
+The corrected evaluator first proved that each replicate stratum exactly
+matched the 16 candidate identities and repeat indices sealed in the cohort
+manifest. Because this cohort predates identity-embedded population fields,
+the replay supplied the retained original collection manifest explicitly with
+`--cohort-manifest`; the evaluator matched its cohort descriptor and
+recorded canonical declaration digest
+`686bb9b583f47eecc8035961c3e5d4093f9bf35c738a0249838138d965a573f8`.
+Each stratum then used checkpoints
 200/210 seconds, quotas 8/2, one exploratory survivor, scheduler seeds 0 through
 19, and a 9,600-second budget. No repeat competed with another repeat, and no
 future observation, final route label, or numeric router seed was a ranking
@@ -119,8 +125,8 @@ digests are:
 - collection manifest: `7bb02496686b4826a3599f0019ece373f84f6d003a8946216e90a7fe57f940de`
 - collection summary: `a2db7b7d8a9eb748e67a9ac5c49fcbf96049ea585159721d4f1a2d5a8b83734d`
 - assembled dataset: `c7e4eecd515c2469944d280eaf0224143ab1feaec72e34c119ed64a751352b0c`
-- balanced replay: `c3086791696715d2ed69e430bc4e1ab8ce9a15d95a92c6d10c43ffafb790cf9b`
-- congestion-first replay: `3f9aacb13a2a785ae80afafc76eb53b09b33079fc0386acfea46006117d75929`
+- declaration-bound balanced replay: `c191025788d91f47b251e3a9cfb3ebce6cc2db2004f7f157132efb5da756af86`
+- declaration-bound congestion-first replay: `2f615c707c85b25b7b9e7454a24c803d61630b4eaae5fb0d907b7322b55c066b`
 
 This closes the predeclared held-out gate without changing nextpnr's default
 behavior and without authorizing online termination.

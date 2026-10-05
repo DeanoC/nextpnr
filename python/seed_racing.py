@@ -1236,6 +1236,8 @@ class Collector:
             "artifacts": self.manifest["artifacts"],
             "required_clocks": self.manifest["required_clocks"],
             "limits": self.manifest["limits"],
+            "seeds": self.manifest["seeds"],
+            "repeats": self.manifest["repeats"],
         }
         if execution_identity is not None:
             record["execution_identity"] = dict(execution_identity)
@@ -2664,10 +2666,89 @@ def _evaluate_population_policies(
     }
 
 
+def _declared_replicate_populations(
+    document: Mapping[str, Any],
+    external_manifests: Sequence[Mapping[str, Any]] = (),
+) -> Tuple[Dict[int, Set[Tuple[str, str, str, str]]], Dict[str, Dict[str, str]]]:
+    identities = document.get("cohort_identities")
+    if not isinstance(identities, dict):
+        raise ValueError("replicate-stratified evaluation requires cohort identities")
+    external_by_cohort: Dict[str, Mapping[str, Any]] = {}
+    for external in external_manifests:
+        cohort = external.get("cohort") if isinstance(external, Mapping) else None
+        cohort_id = cohort.get("id") if isinstance(cohort, Mapping) else None
+        if not isinstance(cohort_id, str) or not cohort_id:
+            raise ValueError("external cohort manifest has no cohort id")
+        if cohort_id in external_by_cohort:
+            raise ValueError(f"duplicate external cohort manifest for {cohort_id!r}")
+        external_by_cohort[cohort_id] = external
+    populations: Dict[int, Set[Tuple[str, str, str, str]]] = {}
+    sources: Dict[str, Dict[str, str]] = {}
+    for cohort_id, identity in identities.items():
+        manifest = identity.get("manifest") if isinstance(identity, dict) else None
+        cohort = manifest.get("cohort") if isinstance(manifest, dict) else None
+        seeds = manifest.get("seeds") if isinstance(manifest, dict) else None
+        repeats = manifest.get("repeats") if isinstance(manifest, dict) else None
+        if (not isinstance(cohort_id, str) or not cohort_id or
+                not isinstance(cohort, dict) or cohort.get("id") != cohort_id):
+            raise ValueError("replicate-stratified cohort identity is incomplete")
+        source = "dataset_identity"
+        declaration: Mapping[str, Any] = manifest
+        if seeds is None and repeats is None:
+            declaration = external_by_cohort.get(cohort_id, {})
+            if not declaration:
+                raise ValueError(
+                    "replicate-stratified evaluation requires declared cohort seeds and repeats")
+            external_cohort = declaration.get("cohort")
+            if external_cohort != cohort:
+                raise ValueError(
+                    f"external cohort manifest does not match identity for {cohort_id!r}")
+            seeds = declaration.get("seeds")
+            repeats = declaration.get("repeats")
+            source = "external_manifest"
+        elif cohort_id in external_by_cohort:
+            external = external_by_cohort[cohort_id]
+            if (external.get("cohort") != cohort or external.get("seeds") != seeds or
+                    external.get("repeats") != repeats):
+                raise ValueError(
+                    f"external cohort manifest conflicts with identity for {cohort_id!r}")
+        if (not isinstance(seeds, list) or not seeds or
+                isinstance(repeats, bool) or not isinstance(repeats, int) or repeats <= 0):
+            raise ValueError(
+                "replicate-stratified evaluation requires declared cohort seeds and repeats")
+        mapped_design_id = cohort.get("mapped_design_id")
+        constraint_family = cohort.get("constraint_family")
+        if not all(isinstance(value, str) and value for value in
+                   (mapped_design_id, constraint_family)):
+            raise ValueError("replicate-stratified cohort identity is incomplete")
+        keys = []
+        for seed in seeds:
+            if (isinstance(seed, (dict, list, bool)) or
+                    not (seed is None or isinstance(seed, (str, int, float)))):
+                raise ValueError("declared cohort seed must be a supported scalar")
+            keys.append((cohort_id, mapped_design_id, constraint_family, str(seed)))
+        if len(set(keys)) != len(keys):
+            raise ValueError(f"cohort {cohort_id!r} declares duplicate seed candidates")
+        encoded = json.dumps(declaration, sort_keys=True, separators=(",", ":"),
+                             allow_nan=False).encode("utf-8")
+        sources[cohort_id] = {
+            "source": source,
+            "canonical_sha256": hashlib.sha256(encoded).hexdigest(),
+        }
+        for replicate in range(1, repeats + 1):
+            populations.setdefault(replicate, set()).update(keys)
+    unexpected = set(external_by_cohort) - set(identities)
+    if unexpected:
+        raise ValueError(
+            f"external cohort manifest has no dataset identity: {sorted(unexpected)[0]!r}")
+    return populations, sources
+
+
 def evaluate(
     document: Mapping[str, Any], checkpoints: Sequence[float], quotas: Sequence[int],
     exploratory: int, scheduler_seeds: Sequence[int], budget: float,
     ranking_policy: str = "congestion-first-v1", replicate_stratified: bool = False,
+    cohort_manifests: Sequence[Mapping[str, Any]] = (),
 ) -> Dict[str, Any]:
     runs = validate_dataset(document)
     if ranking_policy not in RANKING_POLICIES:
@@ -2699,15 +2780,18 @@ def evaluate(
                 f"replicate stratum {replicate} contains duplicate seed candidates")
         candidate_populations[replicate] = set(candidate_keys)
 
-    reference_replicate = min(candidate_populations)
-    reference_population = candidate_populations[reference_replicate]
-    for replicate, candidate_population in sorted(candidate_populations.items()):
-        if candidate_population != reference_population:
-            missing = len(reference_population - candidate_population)
-            extra = len(candidate_population - reference_population)
+    declared_populations, declaration_sources = _declared_replicate_populations(
+        document, cohort_manifests)
+    all_replicates = sorted(set(candidate_populations) | set(declared_populations))
+    for replicate in all_replicates:
+        candidate_population = candidate_populations.get(replicate, set())
+        declared_population = declared_populations.get(replicate, set())
+        if candidate_population != declared_population:
+            missing = len(declared_population - candidate_population)
+            extra = len(candidate_population - declared_population)
             raise ValueError(
-                "replicate strata contain different candidate populations: "
-                f"stratum {replicate} differs from stratum {reference_replicate} "
+                "replicate stratum does not match its declared candidate population: "
+                f"stratum {replicate} "
                 f"(missing {missing}, extra {extra})")
 
     for replicate, population in sorted(strata.items()):
@@ -2721,6 +2805,7 @@ def evaluate(
         "schema_version": SCHEMA_VERSION,
         "evaluation_mode": "replicate-stratified",
         "ranking_policy": ranking_policy,
+        "cohort_population_declarations": declaration_sources,
         "budget_scope": "per-replicate-stratum",
         "evaluation_population": {
             **_evaluation_population(runs),
@@ -2756,6 +2841,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     replay.add_argument("--ranking-policy", choices=RANKING_POLICIES,
                         default="congestion-first-v1")
     replay.add_argument("--replicate-stratified", action="store_true")
+    replay.add_argument("--cohort-manifest", action="append", default=[], type=Path,
+                        help="original declaration for a legacy cohort identity")
     replay.add_argument("--output", type=Path)
     arguments = parser.parse_args(argv)
     try:
@@ -2769,6 +2856,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         else:
             with arguments.dataset.open(encoding="utf-8") as stream:
                 document = json.load(stream)
+            cohort_manifests = []
+            for path in arguments.cohort_manifest:
+                with path.open(encoding="utf-8") as stream:
+                    cohort_manifests.append(json.load(stream))
             result = evaluate(
                 document, _comma_numbers(arguments.checkpoints),
                 _comma_numbers(arguments.quotas, True),
@@ -2776,7 +2867,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 _comma_numbers(arguments.scheduler_seeds, True),
                 arguments.budget_seconds,
                 ranking_policy=arguments.ranking_policy,
-                replicate_stratified=arguments.replicate_stratified)
+                replicate_stratified=arguments.replicate_stratified,
+                cohort_manifests=cohort_manifests)
         if arguments.operation == "dataset":
             pass
         elif getattr(arguments, "output", None) and arguments.operation == "evaluate":

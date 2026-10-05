@@ -224,6 +224,16 @@ promotion slots in the same simulated race. The supplied budget applies
 independently to each stratum and the output labels that scope explicitly.
 Within a stratum, duplicate `(cohort, mapped design, constraint family, seed)`
 candidates are rejected using the collector's scalar-label identity.
+Every stratum must also match the seeds and repeat indices sealed in the cohort
+manifest. Equal observed strata are insufficient: if the same artifactless run
+is excluded from every repeat, evaluation fails closed instead of silently
+shrinking the declared population.
+New collection identities seal `seeds` and `repeats` directly. A dataset made
+by an older collector lacks those identity fields and therefore fails closed
+unless each original declaration is supplied explicitly with
+`--cohort-manifest MANIFEST`. The evaluator checks its cohort descriptor
+against the dataset and records the declaration's canonical SHA-256 digest in
+the replay; this is a compatibility path, not an inferred population.
 Combined-run mode remains available for reproducing older descriptive results,
 but it is not representative of a race that launches each seed once.
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import hashlib
 import json
 import os
 import signal
@@ -20,6 +21,17 @@ import seed_racing
 FIXTURE = ROOT / "mistral" / "tests" / "seed_racing" / "synthetic.json"
 VALIDATE_COLLECTION_EXECUTABLE = seed_racing._validate_collection_executable
 PROBE_NATIVE_CONTRACT = seed_racing._probe_native_contract
+
+
+def refresh_cohort_fingerprints(document):
+    for cohort_id, identity in document["cohort_identities"].items():
+        encoded = json.dumps(
+            identity["manifest"], sort_keys=True, separators=(",", ":"),
+            allow_nan=False).encode("utf-8")
+        identity["fingerprint_sha256"] = hashlib.sha256(encoded).hexdigest()
+        for run in document["runs"]:
+            if run["cohort_id"] == cohort_id:
+                run["cohort_fingerprint_sha256"] = identity["fingerprint_sha256"]
 
 
 class DatasetTests(unittest.TestCase):
@@ -162,6 +174,9 @@ class DatasetTests(unittest.TestCase):
 
     def test_replicate_stratified_evaluation_never_races_repeats_together(self):
         document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        for identity in document["cohort_identities"].values():
+            identity["manifest"]["repeats"] = 2
+        refresh_cohort_fingerprints(document)
         repeats = json.loads(json.dumps(document["runs"]))
         for run in repeats:
             run["run_id"] += "-repeat-2"
@@ -196,16 +211,22 @@ class DatasetTests(unittest.TestCase):
                                  replicate_stratified=True)
 
         incomplete = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        for identity in incomplete["cohort_identities"].values():
+            identity["manifest"]["repeats"] = 2
+        refresh_cohort_fingerprints(incomplete)
         repeats = json.loads(json.dumps(incomplete["runs"]))
         for run in repeats:
             run["run_id"] += "-repeat-2"
             run["replicate"] = 2
         incomplete["runs"].extend(repeats[:-1])
-        with self.assertRaisesRegex(ValueError, "different candidate populations"):
+        with self.assertRaisesRegex(ValueError, "declared candidate population"):
             seed_racing.evaluate(incomplete, [5], [3], 1, [0], 10_000,
                                  replicate_stratified=True)
 
         mismatched = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        for identity in mismatched["cohort_identities"].values():
+            identity["manifest"]["repeats"] = 2
+        refresh_cohort_fingerprints(mismatched)
         repeats = json.loads(json.dumps(mismatched["runs"]))
         for run in repeats:
             run["run_id"] += "-repeat-2"
@@ -216,14 +237,59 @@ class DatasetTests(unittest.TestCase):
             seed_racing.evaluate(mismatched, [5], [3], 1, [0], 10_000,
                                  replicate_stratified=True)
 
+        missing_everywhere = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        for identity in missing_everywhere["cohort_identities"].values():
+            identity["manifest"]["repeats"] = 2
+        refresh_cohort_fingerprints(missing_everywhere)
+        missing_seed = missing_everywhere["runs"][0]["seed"]
+        repeats = json.loads(json.dumps(missing_everywhere["runs"]))
+        for run in repeats:
+            run["run_id"] += "-repeat-2"
+            run["replicate"] = 2
+        missing_everywhere["runs"].extend(repeats)
+        missing_everywhere["runs"] = [
+            run for run in missing_everywhere["runs"] if run["seed"] != missing_seed]
+        with self.assertRaisesRegex(ValueError, "missing 1, extra 0"):
+            seed_racing.evaluate(missing_everywhere, [5], [3], 1, [0], 10_000,
+                                 replicate_stratified=True)
+
     def test_replicate_stratification_preserves_supported_scalar_seed_labels(self):
         document = json.loads(FIXTURE.read_text(encoding="utf-8"))
         document["runs"][0]["seed"] = "named-seed"
         document["runs"][1]["seed"] = 2.5
         document["runs"][2]["seed"] = None
+        document["cohort_identities"]["synthetic"]["manifest"]["seeds"][:3] = [
+            "named-seed", 2.5, None]
+        refresh_cohort_fingerprints(document)
         result = seed_racing.evaluate(
             document, [5], [3], 1, [0], 10_000, replicate_stratified=True)
         self.assertEqual(result["replicate_strata"][0]["evaluation_population"]["runs"], 8)
+
+    def test_legacy_identity_requires_matching_external_cohort_manifest(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        identity_manifest = document["cohort_identities"]["synthetic"]["manifest"]
+        declaration = {
+            "cohort": json.loads(json.dumps(identity_manifest["cohort"])),
+            "seeds": identity_manifest.pop("seeds"),
+            "repeats": identity_manifest.pop("repeats"),
+        }
+        refresh_cohort_fingerprints(document)
+        with self.assertRaisesRegex(ValueError, "declared cohort seeds and repeats"):
+            seed_racing.evaluate(
+                document, [5], [3], 1, [0], 10_000, replicate_stratified=True)
+
+        result = seed_racing.evaluate(
+            document, [5], [3], 1, [0], 10_000, replicate_stratified=True,
+            cohort_manifests=[declaration])
+        self.assertEqual(
+            result["cohort_population_declarations"]["synthetic"]["source"],
+            "external_manifest")
+
+        declaration["cohort"]["mapped_design_id"] = "wrong"
+        with self.assertRaisesRegex(ValueError, "does not match identity"):
+            seed_racing.evaluate(
+                document, [5], [3], 1, [0], 10_000, replicate_stratified=True,
+                cohort_manifests=[declaration])
 
     def test_numeric_seed_is_not_a_tie_breaker_or_feature(self):
         def tied_runs(ids_and_seeds):
@@ -733,6 +799,8 @@ class CollectorTests(unittest.TestCase):
             self.assertEqual([item["status"] for item in results],
                              ["incomplete_evidence", "incomplete_evidence"])
             for result in results:
+                self.assertEqual(result["cohort_identity"]["manifest"]["seeds"], [2, 3])
+                self.assertEqual(result["cohort_identity"]["manifest"]["repeats"], 1)
                 run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
                 immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
                 self.assertEqual(immutable["seed"], result["seed"])
