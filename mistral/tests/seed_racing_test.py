@@ -99,6 +99,102 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(len(first["stages"][0]["exploratory"]), 1)
         self.assertIn(first["stages"][0]["exploratory"][0], first["retained"])
 
+    def test_balanced_policy_reserves_timing_and_congestion_ranked_slots(self):
+        def candidate(run_id, overuse, table_wns):
+            return {
+                "run_id": run_id, "duration_seconds": 20,
+                "outcome_observed_seconds": 20,
+                "observations": [{"elapsed_seconds": 5,
+                                  "total_excess_occupancy": overuse,
+                                  "table_wns_ns": table_wns}],
+                "success": False, "final_multi_clock_margin_ns": None,
+            }
+        runs = [candidate("route-leader", 0, -10),
+                candidate("timing-leader", 100, 0),
+                candidate("middle", 50, -1)]
+        result = seed_racing.successive_halving(
+            runs, [5], [2], 0, 7, restart=False,
+            ranking_policy="balanced-prefix-v1")
+        stage = result["stages"][0]
+        self.assertEqual(stage["ranked"], ["timing-leader", "route-leader"])
+        self.assertEqual(stage["ranked_sources"], ["timing", "congestion"])
+        self.assertEqual(result["ranking_policy"], "balanced-prefix-v1")
+
+    def test_balanced_policy_does_not_read_future_observations_or_outcomes(self):
+        def candidate(run_id, overuse, table_wns, future_wns, success):
+            return {
+                "run_id": run_id, "duration_seconds": 20,
+                "outcome_observed_seconds": 20,
+                "observations": [
+                    {"elapsed_seconds": 5, "total_excess_occupancy": overuse,
+                     "table_wns_ns": table_wns},
+                    {"elapsed_seconds": 10, "total_excess_occupancy": 0,
+                     "table_wns_ns": future_wns},
+                ],
+                "success": success,
+                "final_multi_clock_margin_ns": 1 if success else -1,
+            }
+        first = [candidate("a", 10, -1, -100, False),
+                 candidate("b", 20, 0, 100, True)]
+        second = [candidate("a", 10, -1, 100, True),
+                  candidate("b", 20, 0, -100, False)]
+        selections = []
+        for runs in (first, second):
+            result = seed_racing.successive_halving(
+                runs, [5], [1], 0, 7, restart=False,
+                ranking_policy="balanced-prefix-v1")
+            selections.append(result["stages"][0]["promoted"])
+        self.assertEqual(selections, [["b"], ["b"]])
+
+    def test_balanced_policy_uses_congestion_when_prefix_timing_is_unavailable(self):
+        runs = [{
+            "run_id": run_id, "duration_seconds": 20,
+            "outcome_observed_seconds": 20,
+            "observations": [{"elapsed_seconds": 5,
+                              "total_excess_occupancy": overuse}],
+            "success": False, "final_multi_clock_margin_ns": None,
+        } for run_id, overuse in (("worse", 10), ("better", 1))]
+        result = seed_racing.successive_halving(
+            runs, [5], [1], 0, 7, restart=False,
+            ranking_policy="balanced-prefix-v1")
+        self.assertEqual(result["stages"][0]["ranked"], ["better"])
+        self.assertEqual(result["stages"][0]["ranked_sources"], ["congestion"])
+
+    def test_replicate_stratified_evaluation_never_races_repeats_together(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        repeats = json.loads(json.dumps(document["runs"]))
+        for run in repeats:
+            run["run_id"] += "-repeat-2"
+            run["replicate"] = 2
+        document["runs"].extend(repeats)
+        result = seed_racing.evaluate(
+            document, [5], [3], 1, [0], 10_000,
+            ranking_policy="balanced-prefix-v1", replicate_stratified=True)
+        self.assertEqual(result["evaluation_mode"], "replicate-stratified")
+        self.assertEqual(result["budget_scope"], "per-replicate-stratum")
+        self.assertEqual([item["replicate"] for item in result["replicate_strata"]], [1, 2])
+        self.assertEqual([item["evaluation_population"]["runs"]
+                          for item in result["replicate_strata"]], [8, 8])
+        for item in result["replicate_strata"]:
+            evaluated = item["successive_halving_restart"][0]["stages"][0]["evaluated"]
+            self.assertEqual(len(evaluated), 8)
+            self.assertEqual(len({run_id.endswith("-repeat-2") for run_id in evaluated}), 1)
+
+    def test_replicate_stratification_rejects_missing_or_duplicate_candidates(self):
+        missing = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        missing["runs"][0].pop("replicate")
+        with self.assertRaisesRegex(ValueError, "positive integer replicate"):
+            seed_racing.evaluate(missing, [5], [3], 1, [0], 10_000,
+                                 replicate_stratified=True)
+
+        duplicate = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        repeated = json.loads(json.dumps(duplicate["runs"][0]))
+        repeated["run_id"] += "-duplicate"
+        duplicate["runs"].append(repeated)
+        with self.assertRaisesRegex(ValueError, "duplicate seed candidates"):
+            seed_racing.evaluate(duplicate, [5], [3], 1, [0], 10_000,
+                                 replicate_stratified=True)
+
     def test_numeric_seed_is_not_a_tie_breaker_or_feature(self):
         def tied_runs(ids_and_seeds):
             return [{
