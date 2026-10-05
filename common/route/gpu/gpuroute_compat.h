@@ -27,9 +27,13 @@
         defined(GPUROUTE_USE_HIP)
 #include <hip/hip_runtime.h>
 #define GPUROUTE_BACKEND_NAME "hip"
+#if defined(HIP_VERSION_MAJOR) && HIP_VERSION_MAJOR >= 6
+#define GPUROUTE_HAS_DEVICE_UUID 1
+#endif
 #elif defined(__CUDACC__) || defined(GPUROUTE_USE_CUDA)
 #include <cuda_runtime.h>
 #define GPUROUTE_BACKEND_NAME "cuda"
+#define GPUROUTE_HAS_DEVICE_UUID 1
 #define hipError_t cudaError_t
 #define hipSuccess cudaSuccess
 #define hipGetErrorString cudaGetErrorString
@@ -37,6 +41,7 @@
 #define hipSetDevice cudaSetDevice
 #define hipDeviceProp_t cudaDeviceProp
 #define hipGetDeviceProperties cudaGetDeviceProperties
+#define hipDeviceGetPCIBusId cudaDeviceGetPCIBusId
 #define hipMalloc cudaMalloc
 #define hipFree cudaFree
 #define hipMemcpy cudaMemcpy

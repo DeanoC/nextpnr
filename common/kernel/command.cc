@@ -183,7 +183,17 @@ void init_share_dirname() { npnr_share_dirname = "/share/"; }
 #else
 void init_share_dirname()
 {
-    std::string proc_self_path = proc_self_dirname();
+    const char *executable_dir_override = getenv("NEXTPNR_EXECUTABLE_DIR");
+    std::string proc_self_path;
+    if (executable_dir_override != nullptr && executable_dir_override[0] != '\0') {
+        proc_self_path = executable_dir_override;
+        if (proc_self_path.back() != '/')
+            proc_self_path += '/';
+        if (!check_file_exists(proc_self_path, true))
+            log_error("NEXTPNR_EXECUTABLE_DIR does not name an accessible directory: %s\n", executable_dir_override);
+    } else {
+        proc_self_path = proc_self_dirname();
+    }
 
     for (const std::string &proc_share_path : {
                  proc_self_path + "share/",
@@ -278,6 +288,10 @@ bool CommandHandler::executeBeforeContext()
                   << " -- Next Generation Place and Route (Version " GIT_DESCRIBE_STR ")\n";
         return true;
     }
+    if (vm.count("seed-racing-contract")) {
+        std::cout << "nextpnr.seed-racing.native.v1\n";
+        return true;
+    }
     validate();
 
     if (vm.count("quiet")) {
@@ -361,6 +375,7 @@ po::options_description CommandHandler::getGeneralOptions()
     general.add_options()("ignore-rel-clk", "ignore clock-to-clock relations in timing checks");
 
     general.add_options()("version,V", "show version");
+    general.add_options()("seed-racing-contract", "report nextpnr.seed-racing.native.v1 capability");
     general.add_options()("test", "check architecture database integrity");
     general.add_options()("freq", po::value<double>(), "set target frequency for design in MHz");
     general.add_options()("timing-allow-fail", "allow timing to fail in design");
@@ -400,6 +415,8 @@ po::options_description CommandHandler::getGeneralOptions()
     general.add_options()("gpu-device", po::value<int>(), "GPU device index for --router gpu (default: most compute units)");
     general.add_options()("gpu-cpu", "run --router gpu on the sequential CPU reference backend");
     general.add_options()("gpu-perf", "print GPU router timing and backend statistics");
+    general.add_options()("gpu-telemetry", po::value<std::string>(),
+                          "write opt-in GPU router telemetry as versioned JSONL (refuses existing files)");
     general.add_options()("gpu-batches", po::value<int>(), "GPU router: bounding-box-disjoint batches per iteration");
     general.add_options()("gpu-opt", po::value<std::vector<std::string>>(),
                           "GPU router tuning setting as name=value (sets gpurouter/<name>; see docs/gpurouter.md)");
@@ -427,6 +444,7 @@ void script_terminate_handler()
 
 void CommandHandler::setupContext(Context *ctx)
 {
+    telemetry_seed.clear();
     if (ctx->settings.find(ctx->id("seed")) != ctx->settings.end())
         ctx->rngseed(ctx->setting<uint64_t>("seed"));
 
@@ -448,7 +466,9 @@ void CommandHandler::setupContext(Context *ctx)
     }
 
     if (vm.count("seed")) {
-        ctx->rngseed(vm["seed"].as<uint64_t>());
+        auto requested_seed = vm["seed"].as<uint64_t>();
+        ctx->rngseed(requested_seed);
+        telemetry_seed = std::to_string(requested_seed);
     }
 
     if (vm.count("threads")) {
@@ -460,6 +480,7 @@ void CommandHandler::setupContext(Context *ctx)
         std::uniform_int_distribution<uint64_t> distrib{1};
         auto seed = distrib(randDev);
         ctx->rngstate = seed;
+        telemetry_seed = std::to_string(seed);
         log_info("Generated random seed: %" PRIu64 "\n", seed);
     }
 
@@ -597,6 +618,22 @@ void CommandHandler::setupContext(Context *ctx)
     }
 }
 
+void CommandHandler::restoreTelemetrySettings(Context *ctx)
+{
+    IdString path_key = ctx->id("gpurouter/telemetryPath");
+    IdString seed_key = ctx->id("gpurouter/telemetrySeed");
+    if (!vm.count("gpu-telemetry")) {
+        ctx->settings.erase(path_key);
+        ctx->settings.erase(seed_key);
+        return;
+    }
+    ctx->settings[path_key] = vm["gpu-telemetry"].as<std::string>();
+    if (telemetry_seed.empty())
+        ctx->settings.erase(seed_key);
+    else
+        ctx->settings[seed_key] = telemetry_seed;
+}
+
 int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
 {
     if (vm.count("on-failure")) {
@@ -638,6 +675,8 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
             // show error is handled by gui itself
         }
 
+        restoreTelemetrySettings(w.getContext());
+
         w.show();
 
         return a.exec();
@@ -658,6 +697,7 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
 
         customAfterLoad(ctx.get());
     }
+    restoreTelemetrySettings(ctx.get());
 
 #ifndef NO_PYTHON
     init_python(argv[0]);
@@ -796,10 +836,25 @@ void CommandHandler::load_json(Context *ctx, std::string filename)
 {
     setupContext(ctx);
     setupArchContext(ctx);
+    IdString path_key = ctx->id("gpurouter/telemetryPath");
+    IdString seed_key = ctx->id("gpurouter/telemetrySeed");
+    auto old_path = ctx->settings.find(path_key);
+    bool telemetry_pending = old_path != ctx->settings.end();
+    Property telemetry_path = telemetry_pending ? old_path->second : Property();
+    auto old_seed = ctx->settings.find(seed_key);
+    bool telemetry_seed_pending = telemetry_pending && old_seed != ctx->settings.end();
+    Property pending_seed = telemetry_seed_pending ? old_seed->second : Property();
     {
         auto f = open_ifstream_and_log_error(filename, "JSON file");
         if (!parse_json(f, filename, ctx))
             log_error("Loading design failed.\n");
+        ctx->settings.erase(path_key);
+        ctx->settings.erase(seed_key);
+        if (telemetry_pending) {
+            ctx->settings[path_key] = telemetry_path;
+            if (telemetry_seed_pending)
+                ctx->settings[seed_key] = pending_seed;
+        }
     }
 }
 

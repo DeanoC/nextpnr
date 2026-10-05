@@ -8,6 +8,7 @@ set(SOURCES
     arch_pybindings.h
     bitstream.cc
     constids.inc
+    ctrl.cc
     delay.cc
     local_remap.cc
     local_remap_pin_policy.h

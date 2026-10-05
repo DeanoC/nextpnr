@@ -10,6 +10,7 @@
 #include <tuple>
 #include <vector>
 #include "gtest/gtest.h"
+#include "json11.hpp"
 #include "jsonwrite.h"
 #include "log.h"
 #include "nextpnr.h"
@@ -114,6 +115,31 @@ class TimingReportPathsTest : public ::testing::Test
         net->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
         bind_clock_source(net, name + "$source");
         return net;
+    }
+
+    NetInfo *physically_related_clock(const std::string &name)
+    {
+        auto *root = ctx->createNet(ctx->id(name + "$root"));
+        bind_clock_source(root, name + "$root_source");
+        auto branch = [&](NetInfo *output, const std::string &branch_name) {
+            auto *cell = ctx->createCell(ctx->id(branch_name), id_MISTRAL_ALUT2);
+            cell->params[id_LUT] = Property(int64_t(0xA), 4);
+            cell->addInput(id_A); cell->addInput(id_B); cell->addOutput(id_Q);
+            cell->connectPort(id_A, root); cell->connectPort(id_B, root); cell->connectPort(id_Q, output);
+            ctx->assignArchInfo();
+            for (auto bel : ctx->getBels()) {
+                if (!ctx->checkBelAvail(bel) || !ctx->isValidBelForCellType(cell->type, bel)) continue;
+                ctx->bindBel(bel, cell, STRENGTH_USER);
+                if (ctx->isBelLocationValid(bel)) return;
+                ctx->unbindBel(bel);
+            }
+            FAIL() << "No legal related-clock branch BEL for " << branch_name;
+        };
+        auto *related = ctx->createNet(ctx->id(name)); related->is_global = true;
+        related->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+        branch(clock, name + "$primary_branch");
+        branch(related, name + "$related_branch");
+        return related;
     }
 
     CellInfo *other_launch(NetInfo *net)
@@ -326,6 +352,60 @@ TEST_F(TimingReportPathsTest, FinalRefreshClearsExtrasWithoutChangingLegacyOrNat
     EXPECT_EQ(graph, netlist());
 }
 
+TEST_F(TimingReportPathsTest, JsonReportCarriesCompleteHoldSlackAndExplicitModel)
+{
+    timing_analysis(ctx.get(), false, true, false, false, true);
+    ASSERT_TRUE(ctx->timing_result.clock_setup_slack.count(clock->name));
+    ASSERT_TRUE(ctx->timing_result.clock_hold_slack.count(clock->name));
+    auto parse_report = [&]() {
+        std::ostringstream out; ctx->writeJsonReport(out);
+        std::string error; auto document = json11::Json::parse(out.str(), error);
+        EXPECT_TRUE(error.empty()) << error;
+        return document;
+    };
+    auto document = parse_report();
+    EXPECT_FALSE(document["timing_summary"]["final_analogue_model"].bool_value());
+    auto clock_summary = document["timing_summary"]["clocks"][clock->name.str(ctx.get())];
+    EXPECT_TRUE(clock_summary["setup_wns_ns"].is_number());
+    EXPECT_TRUE(clock_summary["hold_wns_ns"].is_number());
+    EXPECT_DOUBLE_EQ(clock_summary["setup_wns_ns"].number_value(),
+                     ctx->getDelayNS(ctx->timing_result.clock_setup_slack.at(clock->name)));
+    EXPECT_DOUBLE_EQ(clock_summary["hold_wns_ns"].number_value(),
+                     ctx->getDelayNS(ctx->timing_result.clock_hold_slack.at(clock->name)));
+    // Related-clock-only timing can have complete enforced slacks without a
+    // same-clock Fmax record; the final report must retain that evidence.
+    ctx->timing_result.clock_fmax.clear();
+    document = parse_report();
+    EXPECT_TRUE(document["fmax"].object_items().empty());
+    clock_summary = document["timing_summary"]["clocks"][clock->name.str(ctx.get())];
+    EXPECT_TRUE(clock_summary["setup_wns_ns"].is_number());
+    EXPECT_TRUE(clock_summary["hold_wns_ns"].is_number());
+    ctx->timing_result_is_final_analogue = true;
+    EXPECT_TRUE(parse_report()["timing_summary"]["final_analogue_model"].bool_value());
+}
+
+TEST_F(TimingReportPathsTest, PhysicallyRelatedOnlyLaunchClockCarriesFinalSlacks)
+{
+    auto *related_clock = physically_related_clock("related_clock");
+    auto *related_launch = other_launch(related_clock);
+    related_launch->disconnectPort(id_DATAIN);
+    auto *endpoint = rising.front(); auto *logic = cone.at(endpoint->name);
+    for (auto pin : {id_A, id_B}) {
+        logic->disconnectPort(pin); logic->connectPort(pin, related_launch->getPort(id_Q));
+    }
+    ctx->assignArchInfo();
+    timing_analysis(ctx.get(), false, true, false, false, true);
+    ASSERT_FALSE(ctx->timing_result.clock_fmax.count(related_clock->name));
+    ASSERT_TRUE(ctx->timing_result.clock_setup_slack.count(related_clock->name));
+    ASSERT_TRUE(ctx->timing_result.clock_hold_slack.count(related_clock->name));
+    std::ostringstream out; ctx->writeJsonReport(out);
+    std::string error; auto document = json11::Json::parse(out.str(), error);
+    ASSERT_TRUE(error.empty()) << error;
+    const auto summary = document["timing_summary"]["clocks"][related_clock->name.str(ctx.get())];
+    EXPECT_TRUE(summary["setup_wns_ns"].is_number());
+    EXPECT_TRUE(summary["hold_wns_ns"].is_number());
+}
+
 TEST_F(TimingReportPathsTest, InvalidPublicLimitsFailWithoutChangingResults)
 {
     TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
@@ -428,9 +508,16 @@ TEST_F(TimingReportPathsTest, PhaseRelatedEndpointRetainsItsActualSetupAndHoldWi
     bind_clock_source(clock, "primary_clock_source");
     clock->clkconstr->phase_group = ctx->id("shared_pll_phase");
     auto *phase_clock = other_clock("phase_clock");
-    phase_clock->clkconstr->phase_shift = 2500;
+    phase_clock->clkconstr->phase_shift = 1000;
+    ctx->settings[ctx->id("timing/ignoreRelClk")] = true;
     auto *endpoint = rising.front();
     endpoint->disconnectPort(id_CLK); endpoint->connectPort(id_CLK, phase_clock);
+    launch->disconnectPort(id_DATAIN);
+    for (auto *other : rising)
+        if (other != endpoint)
+            other->disconnectPort(id_DATAIN);
+    for (auto *other : falling)
+        other->disconnectPort(id_DATAIN);
     ctx->assignArchInfo();
     TimingAnalyser timing(ctx.get()); timing.with_clock_skew = true; timing.setup(false, false, true);
     std::vector<EndpointClockPairTiming> rows;
@@ -441,13 +528,69 @@ TEST_F(TimingReportPathsTest, PhaseRelatedEndpointRetainsItsActualSetupAndHoldWi
     ASSERT_TRUE(row.setup_timed); ASSERT_TRUE(row.hold_related);
     ASSERT_TRUE(row.setup_window.has_value()); ASSERT_TRUE(row.setup_margin.has_value());
     ASSERT_TRUE(row.hold_margin.has_value());
-    EXPECT_EQ(*row.setup_window, 2500); // rising launch to the actual +2.5ns capture edge
+    EXPECT_EQ(*row.setup_window, 1000); // rising launch to the actual +1ns capture edge
     EXPECT_EQ(row.max_path_delay, path_delay(native_setup_path(timing, endpoint, row)));
-    EXPECT_EQ(*row.setup_margin, 2500 - row.max_path_delay);
+    EXPECT_EQ(*row.setup_margin, 1000 - row.max_path_delay);
     EXPECT_EQ(*row.hold_margin, row.min_path_delay);
     EXPECT_FLOAT_EQ(timing.get_setup_slack(CellPortKey(endpoint->name, id_DATAIN)), float(*row.setup_margin));
-    EXPECT_GT(row.min_path_delay, 7500); // previous capture edge contributes period minus interval
+    ASSERT_TRUE(timing.get_timing_result().clock_setup_slack.count(clock->name));
+    ASSERT_TRUE(timing.get_timing_result().clock_hold_slack.count(clock->name));
+    // ignoreRelClk does not exempt this timed phase relation from the setup/Fmax gate.
+    EXPECT_EQ(timing.get_timing_result().clock_setup_slack.at(clock->name), *row.setup_margin);
+    EXPECT_EQ(timing.get_timing_result().clock_hold_slack.at(clock->name), *row.hold_margin);
+    EXPECT_GT(row.min_path_delay, 9000); // previous capture edge contributes period minus interval
     ctx->check();
+}
+
+TEST_F(TimingReportPathsTest, RelatedClockOnlyReportUsesNetConstraintsAndFailsClosedWhenAllowed)
+{
+    auto *phase_clock = other_clock("phase_clock_only");
+    phase_clock->clkconstr->period = DelayPair(20000);
+    TimingResult result;
+    CriticalPath report;
+    report.clock_pair.start = ClockEvent{clock->name, RISING_EDGE};
+    report.clock_pair.end = ClockEvent{phase_clock->name, RISING_EDGE};
+    report.max_delay = 10000;
+    CriticalPath::Segment segment;
+    segment.type = CriticalPath::Segment::Type::CLK_TO_CLK;
+    segment.delay = 13333;
+    report.segments.push_back(segment);
+    result.xclock_paths.push_back(report);
+    ASSERT_TRUE(result.clock_fmax.empty());
+
+    ctx->settings[ctx->id("timing/allowFail")] = true;
+    EXPECT_FALSE(ctx->log_timing_results(result, false, true, false, true));
+
+    result.clock_fmax[phase_clock->name] = ClockFmax{75.0f, 50.0f};
+    EXPECT_FALSE(ctx->log_timing_results(result, false, true, false, true));
+    result.clock_fmax[clock->name] = ClockFmax{75.0f, 100.0f};
+    EXPECT_FALSE(ctx->log_timing_results(result, false, true, false, true));
+
+    ctx->settings[ctx->id("timing/ignoreRelClk")] = true;
+    EXPECT_TRUE(ctx->log_timing_results(result, false, true, false, true));
+}
+
+TEST_F(TimingReportPathsTest, AllowedHoldViolationStillFailsTheTimingGate)
+{
+    TimingResult result;
+    result.min_delay_violations.emplace_back();
+    ctx->settings[ctx->id("timing/allowFail")] = true;
+    EXPECT_FALSE(ctx->log_timing_results(result, false, true, false, true));
+    EXPECT_TRUE(ctx->log_timing_results(result, false, false, false, false));
+
+    CriticalPath cross_clock_hold;
+    cross_clock_hold.clock_pair.start = ClockEvent{clock->name, RISING_EDGE};
+    cross_clock_hold.clock_pair.end = ClockEvent{ctx->id("other_clock"), RISING_EDGE};
+    result.min_delay_violations = {cross_clock_hold};
+    ctx->settings[ctx->id("timing/ignoreRelClk")] = true;
+    EXPECT_TRUE(ctx->log_timing_results(result, false, false, false, true));
+
+    clock->clkconstr->phase_group = ctx->id("shared_pll_phase");
+    auto *phase_clock = other_clock("phase_clock");
+    phase_clock->clkconstr->phase_group = clock->clkconstr->phase_group;
+    cross_clock_hold.clock_pair.end = ClockEvent{phase_clock->name, RISING_EDGE};
+    result.min_delay_violations = {cross_clock_hold};
+    EXPECT_FALSE(ctx->log_timing_results(result, false, false, false, true));
 }
 
 TEST_F(TimingReportPathsTest, UnknownClocksAsyncLaunchesAndIncompleteAnalysisFailClosed)
