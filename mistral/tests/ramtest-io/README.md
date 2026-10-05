@@ -254,3 +254,51 @@ capture schedule must agree with fitted clock/data timing, single-word read
 latency, hold/turnaround requirements and hardware results. Do not add a
 setup-only multicycle merely to make the late-read path pass: the selected
 word's following transition must also be checked for hold.
+
+## Standard-board specifications and candidate gate
+
+The pinned [XSDS3.0 schematic](https://github.com/MiSTer-devel/Hardware_MiSTer/blob/bbd3619620056a0f44476e27f18b442b4f0a5952/releases/sdram_xsds_3.0.pdf)
+shares CLK, address, commands and DQ between two memories, and uses an
+LVC1G04 for the second chip select. It does not identify the inverter vendor
+or establish parasitics for the user's RetroRemake board and DE10 connector.
+
+[Etron Table 14](https://etron.com/wp-content/uploads/2022/04/EM63B165TSBM_Rev-2.4.pdf)
+specifies input capacitance up to 5.5 pF and DQ capacitance up to 6 pF at 25 °C;
+these are sampled specifications. Two chips therefore contribute 11/12 pF
+before the PCB and connector. An illustrative extra 8 pF gives 19/20 pF.
+This is a sensitivity assumption, not a measured 20 pF board limit. The native
+profile retains its 30 pF timing envelope; lowering a declared load alone
+cannot narrow its fitted timing bounds. FPGA input capacitance and the other
+memory's DQ loading also matter to the read path.
+
+[TI's SN74LVC1G04](https://www.ti.com/lit/ds/symlink/sn74lvc1g04.pdf)
+at 3.3 V specifies maximum propagation delay of 3.3 ns at 15 pF, or 4.2 ns at 50 pF.
+The comparison requires that exact part, its supply/temperature conditions
+and input transitions no slower than 2.5 ns. A generic LVC1G04 marking does not
+justify assigning these values to the user's board. The original 5 ns bound
+remains the generic diagnostic assumption.
+
+`board_gate.py` compares these assumptions against the retained full-fit
+100 MHz evidence. It keeps one absolute read window across corners and does
+not choose a PLL phase when the intersection is empty. TI 15 pF timing is
+ineligible when the assumed load exceeds 15 pF; no load extrapolation is used.
+
+```sh
+python3 mistral/tests/ramtest-io/board_gate.py \
+  --reference mistral/tests/ramtest-io/transfer-reference.json \
+  --extra-cap-pf 8 --output /tmp/board-reference.json
+```
+
+`board-reference.json` also retains a strict native 100 MHz replay with the
+conditional 0.7–3.3 ns inverter assumption. Worst setup improves from −7.578 ns
+to −5.878 ns; worst hold remains −2.189 ns. It returns exit 1, and its diagnostic
+RBF is identical to the original routed bitstream. No passing candidate was
+selected or programmed: the read-window intersection is still empty and
+output/internal timing still fails under the retained envelopes.
+
+Etron's AC timing uses a 30 pF test load and 1 ns input transitions. Notes 9/10
+require compensation for slower edges. Those conditions are not proven by
+this investigation's pulse-width check or scalar pad-delay envelopes.
+Further work must audit native clock/data correlation and waveform/load
+conditions before pairing a physical capture phase with a consumption cycle;
+tightening only the inverter assumption is insufficient.
