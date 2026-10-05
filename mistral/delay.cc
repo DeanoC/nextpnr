@@ -487,19 +487,21 @@ std::vector<RegisteredIoTiming> Arch::getRegisteredIoTiming(const CellInfo *cell
         timing.clockToQ = DelayQuad(0, 5380);
         return {rising, {high ? id("fall") : id("rise"), timing}};
     }
-    // Outward-rounded complete pad envelopes from ramtest-pad-reference30.json
-    // and ramtest-sdr-pad-reference30.json. SDR matches the DDR high word.
+    // Outward-rounded complete pad envelopes from input-zero-reference30.json.
+    // Controlled D1/D3=0 fits match decoded native defaults on all 16 DQ pins;
+    // unconstrained Quartus fits can silently insert different delay chains.
+    // SDR matches the DDR high word.
     // (both transitions, all actual pins, all four corners). Input hold uses
     // the largest signed requirement, not the smallest observed pad delay.
     if (input) {
         if (!gpio_input_registered(getCtx(), cell)) return {};
         timing.clock_port = cell->type == id_MISTRAL_SDRIO ? id_CLKIN : id_CLK;
         timing.edge = RISING_EDGE;
-        timing.setup = DelayPair(6440); timing.hold = DelayPair(-2180);
+        timing.setup = DelayPair(1910); timing.hold = DelayPair(-310);
         RegisteredIoTiming high{ddr_in ? id("high") : id("rise"), timing};
         if (!ddr_in) return {high};
         timing.edge = FALLING_EDGE;
-        timing.setup = DelayPair(6430); timing.hold = DelayPair(-2170);
+        timing.setup = DelayPair(1900); timing.hold = DelayPair(-300);
         return {high, {id("low"), timing}};
     }
     if (!gpio_pad_load(getCtx(), cell) || !gpio_output_registered(getCtx(), cell))

@@ -10,9 +10,10 @@ python3 mistral/tests/registered-pad/check.py \
   --output /tmp/registered-pad
 ```
 
-The check verifies successful timing, an output setup failure, primitive clock
-rejection despite false-path cuts and `--timing-allow-fail`, and fresh-process
-routed checkpoint replay without rereading QSF/SDC. Reports must include
+The check verifies successful final analogue timing, output setup and input
+hold failures, primitive clock rejection despite false-path cuts and `--timing-allow-fail`, and fresh-process
+routed checkpoint replay without rereading QSF/SDC. Successful original and
+reloaded bitstreams must be byte-identical. Reports must include
 registered capture and OE boundaries; timing aliases must not appear in the
 persisted design. Common-engine tests in `io_delay.cc` also cover independent
 capture edges/data/OE, pulse distortion, reentry, malformed models and rejection

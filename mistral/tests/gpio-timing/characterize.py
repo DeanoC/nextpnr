@@ -64,15 +64,20 @@ def main():
     parser.add_argument('--ddr-output-pin', choices=['W15', 'AD20'], default='W15')
     parser.add_argument('--all-transitions', action='store_true',
                         help='Query rise/fall pad transitions separately in addition to worst paths')
+    parser.add_argument('--zero-input-delays', action='store_true',
+                        help='Force ramtest DQ D1/D3 selectors to native zero defaults')
     args = parser.parse_args()
     if not math.isfinite(args.output_load_pf) or args.output_load_pf < 0:
         parser.error('--output-load-pf must be finite and nonnegative')
+    if args.zero_input_delays and any(v not in ['ramtest-pads', 'ramtest-sdr-pads'] for v in args.variants):
+        parser.error('--zero-input-delays requires ramtest pad variants')
     here = Path(__file__).resolve().parent
     fixtures = here.parent / 'io-registers'
     out = args.output.resolve()
     evidence = {'classification': 'fitted reference evidence, not a production model or hardware signoff',
                 'device': '5CSEBA6U23I7', 'io_standard': '3.3-V LVTTL',
                 'output_load_pf': args.output_load_pf, 'all_transitions': args.all_transitions,
+                'zero_input_delays': args.zero_input_delays,
                 'ddr_output_pin': 'AD20' if all(v.startswith('ramtest-') or v.startswith('clock-forward')
                                               for v in args.variants) else args.ddr_output_pin,
                 'forwarded_clock_polarities': {v: v.endswith('inverted') for v in args.variants
@@ -92,6 +97,10 @@ def main():
                 qsf = qsf.replace('VERILOG_FILE ramtest-pads.v', 'VERILOG_FILE ramtest-sdr-pads.v')
                 qsf += 'set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[*]\n'
             clock_port = 'FPGA_CLK1_50'
+            if args.zero_input_delays:
+                for index in range(16):
+                    for selector in ['D1_DELAY', 'D3_DELAY']:
+                        qsf += f'set_instance_assignment -name {selector} 0 -to SDRAM_DQ[{index}]\n'
         elif variant.startswith('clock-forward'):
             oracle = here.parent / 'ddr-output' / 'oracle'
             rtl = (here.parent/'ddr-output'/'top.v').read_text().replace('MINIMAL=0', 'MINIMAL=1')

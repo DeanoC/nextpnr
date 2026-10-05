@@ -94,6 +94,14 @@ outputs, 20 address/bank/command outputs and two forwarded-clock edges.
 | 100 MHz | -9.206 ns | -2.189 ns | -1.246 / -1.266 ns |
 | 130 MHz | -15.914 ns | -3.343 ns | -2.400 / -2.420 ns |
 
+The corrected input model's fixed-route replay is retained in
+`input-zero-results.json`. Bitstreams are byte-identical to the original
+routes. Worst setup becomes -7.578 ns at 100 MHz and -11.384 ns at 130 MHz;
+worst hold remains -2.189/-3.343 ns. The100 MHz worst setup is now nCS output,
+while130 MHz still has a read-capture violation. These results use the same
+unmeasured board assumptions. The table above preserves the original model's
+results; pulse bounds and internal fabric failures are unchanged.
+
 Both diagnostic designs fail. These are fixed-route checks with assumed board
 delays, not a conclusion that the board cannot run at these rates. The clock
 envelope is too pessimistic to prove pulse widths; internal fabric timing also
@@ -138,7 +146,8 @@ accept different words. It does not prescribe a new PLL phase.
 The audit rejects missing corners, clock transfers and DQ pins, unsupported
 device/load, and nonfinite timing. A shared 1 ns clock-prefix translation must
 cancel from both pulse bounds and read windows. These checks do not qualify
-the reference envelopes for production. Native timing bounds stay unchanged.
+the reference envelopes for production. These historical surrogate windows use nonzero input selectors. They do not
+represent the corrected native zero-selector profile below.
 
 ## Input profile qualification mismatch
 
@@ -159,14 +168,15 @@ in the full Quartus fit and native tester. All 16 full/native input delay
 settings agree. Merely checking that QSF delay attributes were absent did
 not ensure the fitter selected the native configuration.
 
-Consequently the existing 6440/-2180 ps input profile is **not qualified for
-the native default configuration**. The hold mismatch matters as well as the
-pessimistic setup number: -2180 ps is less restrictive than the full fit's
--316 ps maximum hold requirement. Do not use this profile for hardware
-acceptance. Requalify both SDR and DDR input captures with controlled delay
-selectors and bitstream checks before replacing the input bounds. The output
-bounds agree in these comparisons; D3 affects the separate input-to-fabric
-handoff and also needs a matched configuration audit.
+The original 6440/-2180 ps profile was not qualified for the native defaults.
+Its -2180 ps hold requirement was less restrictive than the full fit's -316 ps
+maximum. Controlled SDR/DDR fits now force D1/D3=0, and decoded settings
+match the native defaults on every DQ pin. The new receipt
+`../gpio-timing/input-zero-reference30.json` verifies the same 1905/-316 ps SDR
+and DDR-high extrema, plus 1900/-306 ps DDR-low extrema. The backend rounds
+outward to 1910/-310 ps and 1900/-300 ps. The separately audited input-to-fabric
+maximum remains 866 ps. Historical receipts preserve the original observations;
+use the corrected profile for subsequent native timing diagnosis.
 
 Exploratory full-fit corner arithmetic retains PLL compensation through
 accumulated clock arrival times, rather than summing data IC increments.

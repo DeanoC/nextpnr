@@ -713,8 +713,11 @@ TEST_F(IoDelayTest, NativeReferencePadModelsTimeCompleteDqAndGuardClock)
     ASSERT_EQ(ctx->getRegisteredIoTiming(bidir, id_PAD, false).size(), 2u);
     TimingAnalyser timing(ctx.get());
     EXPECT_NO_THROW(timing.setup(true, false, true));
-    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "high", true)), 560);
-    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "low", true)), -5430);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "high", true)), 5090);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "low", true)), -900);
+    const auto read = ctx->getRegisteredIoTiming(bidir, id_PAD, true);
+    EXPECT_EQ(read[0].clocking.hold.maxDelay(), -310);
+    EXPECT_EQ(read[1].clocking.hold.maxDelay(), -300);
     EXPECT_EQ(timing.get_setup_slack(boundary_key("write", "data", false)), 720);
     EXPECT_EQ(timing.get_setup_slack(boundary_key("write", "oe", false)), 580);
     EXPECT_EQ(ctx->getPrimitiveClockRequirements(bidir).size(), 2u);
@@ -850,10 +853,16 @@ TEST_F(IoDelayTest, NativeSdrCaptureHasOnePadEdgeAndCompleteDataOeTiming)
     ASSERT_EQ(read.size(), 1u);
     EXPECT_EQ(read.front().clocking.edge, RISING_EDGE);
     EXPECT_EQ(read.front().clocking.clock_port, id_CLKIN);
+    EXPECT_EQ(read.front().clocking.hold.maxDelay(), -310);
     EXPECT_EQ(ctx->getRegisteredIoTiming(bidir, id_PAD, false).size(), 2u);
     TimingAnalyser timing(ctx.get()); timing.setup(true, false, true);
-    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "rise", true)), 560);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "rise", true)), 5090);
     EXPECT_EQ(timing.get_setup_slack(boundary_key("write", "oe", false)), 580);
     auto private_ports = ctx->cells.at(bidir->name)->ports;
     EXPECT_FALSE(private_ports.count(ctx->id("PAD$timing$read$rise$register")));
+    // An early external arrival used to pass with the mismatched -2180 ps
+    // hold model. The native zero-delay input must flag this violation.
+    sdc("set_input_delay -clock memory -min -2 [get_ports {dq[*]}]\n");
+    timing.setup(false, false, true);
+    EXPECT_EQ(timing.get_timing_result().clock_hold_slack.at(clock->name), -1690);
 }

@@ -156,8 +156,9 @@ python3 mistral/tests/gpio-timing/pad_summary.py /tmp/ramtest-pads30/evidence.js
   --output /tmp/ramtest-pad-reference30.json
 ```
 
-The complete pin reference raises observed input setup to 6.433 ns (rising
-capture) and 6.421 ns (falling capture). With 30 pF added load, observed maxima
+The original automatically fitted reference observed input setup of 6.433 ns
+(rising capture) and 6.421 ns (falling capture). These input observations use
+nonzero delay selectors and are superseded by the controlled reference below. With 30 pF added load, observed maxima
 are 5.276 ns for SDR data, 5.416 ns for OE and 5.391/5.372 ns for the DDR clock
 pad's rising/falling launch phases. The matched load audit covers 1,344 paths
 including worst, rise and fall queries. The existing input clock-to-fabric
@@ -249,8 +250,9 @@ DDR input primitive, requesting `FAST_INPUT_REGISTER` on all DQ bits. This
 matches FES's `RAM_OSS_HIGH_SPEED` capture workaround while preserving the
 same registered data/OE and command/address/mask outputs.
 `ramtest-sdr-pad-reference30.json` records all four corners and transitions:
-rising capture setup6433ps and signed hold-2181ps, identical to the DDR high
-word. The backend uses the same outward-rounded6440/-2180ps checks.
+historical rising capture setup6433ps and signed hold-2181ps, identical to the
+DDR high word. Quartus inserted nonzero input delays in that reference; the
+backend now uses the controlled zero-selector reference below.
 
 `ramtest-sdr-clock-reference.json` records90 registers and1080 audited clock
 checks, with no opaque DDR input groups. Input ingress period1538ps and
@@ -263,3 +265,43 @@ registered data/OE, setup rejection, clock-cut rejection and checkpoint replay.
 The current FES high-speed QSF must request DQ input/output/OE packing before
 using this pad profile; its older workaround leaves those registers in fabric.
 This fixture does not modify FES RTL or certify a board timing budget.
+
+
+## Controlled native input delay configuration
+
+Add `--zero-input-delays` to a fit of both `ramtest-pads` and
+`ramtest-sdr-pads`. This explicitly requests D1_DELAY=0 and D3_DELAY=0 on
+all 16 DQ pins. Absent QSF assignments allow Quartus to choose nonzero
+selectors, even when the native bitstream keeps their zero defaults.
+
+`input-zero-reference30.json` retains four-corner rise/fall capture evidence,
+decoded selector comparisons and matching input-to-fabric observations.
+`check_input_configuration.py` checks the retained QSF assignments, each
+pin's decoded DQS16 selectors and the database's omitted defaults against
+the native tester. It rejects missing decoded pins and nonzero selectors.
+Decode each project's `output_files/top.rbf` to `top.bt` with `mistral-cv`
+before running the audit.
+
+The reference input maxima are setup 1905 ps / signed hold -316 ps for SDR and
+DDR high, and setup 1900 ps / signed hold -306 ps for DDR low. Outward rounding
+produces 1910/-310 ps and 1900/-300 ps, respectively. The input-to-fabric maximum
+remains 866 ps, covered by the existing 0..870 ps envelope. This corrects the
+native configuration's hold requirement as well as its setup requirement.
+The explicit device, pins, electrical and register-mode guards still apply;
+these fitted envelopes do not establish board or hardware acceptance.
+
+Reproduce the controlled fit and audit with:
+
+```sh
+python3 mistral/tests/gpio-timing/characterize.py \
+  --quartus-bin /path/to/quartus/bin --output /tmp/ramtest-zero30 \
+  --variants ramtest-pads ramtest-sdr-pads --zero-input-delays \
+  --all-transitions --output-load-pf 30
+# In each project directory, query clock requirements as well:
+quartus_sta -t /path/to/nextpnr/mistral/tests/gpio-timing/clock_requirements.tcl
+# Decode each project's RBF to top.bt, then compare against the native tester:
+python3 mistral/tests/gpio-timing/check_input_configuration.py /tmp/ramtest-zero30 \
+  --native /tmp/native-ramtest100.bt \
+  --database-doc /path/to/mistral/docs/gendoc/dqs16-dmux.rst \
+  --output /tmp/input-zero-reference30.json
+```

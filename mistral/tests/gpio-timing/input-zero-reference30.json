@@ -1,0 +1,896 @@
+{
+  "classification": "fitted pad reference observations; not a production model or hardware signoff",
+  "clock_reference": "GPIO register clock or DDIO output mux routing ingress; upstream network excluded",
+  "device": "5CSEBA6U23I7",
+  "io_standard": "3.3-V LVTTL",
+  "forwarded_clock_polarities": {},
+  "all_transitions": true,
+  "ddr_output_pin": "AD20",
+  "output_load_pf": 30.0,
+  "bounds": {
+    "read_ddr_high_hold": {
+      "count": 192,
+      "minimum": {
+        "value_ps": -1683.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 750.0,
+        "data_local_ps": 2433.0,
+        "variant": "ramtest-pads",
+        "report": "7_slow_1100mv_-40c/input-fall-hold.rpt",
+        "source": "SDRAM_DQ[9]",
+        "target": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+        "report_sha256": "bcd89aca4bae7cc1b538ace0c07e7ee1c874f45226b7a000fbd66772200bbd60"
+      },
+      "maximum": {
+        "value_ps": -316.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 295.0,
+        "data_local_ps": 611.0,
+        "variant": "ramtest-pads",
+        "report": "MIN_fast_1100mv_-40c/input-hold.rpt",
+        "source": "SDRAM_DQ[11]",
+        "target": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+        "report_sha256": "92771d0a12a6c8d48b64274edc5c9bb5f468df5deb15d86828280dd7d45e11e3"
+      }
+    },
+    "read_ddr_high_setup": {
+      "count": 192,
+      "minimum": {
+        "value_ps": 396.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 273.0,
+        "data_local_ps": 669.0,
+        "variant": "ramtest-pads",
+        "report": "MIN_fast_1100mv_-40c/input-rise-setup.rpt",
+        "source": "SDRAM_DQ[11]",
+        "target": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+        "report_sha256": "8767f1e86cb91dd56f30b4f4ff641c55755d309584227cd361475b212baaf9c8"
+      },
+      "maximum": {
+        "value_ps": 1905.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 688.0,
+        "data_local_ps": 2593.0,
+        "variant": "ramtest-pads",
+        "report": "7_slow_1100mv_-40c/input-fall-setup.rpt",
+        "source": "SDRAM_DQ[9]",
+        "target": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+        "report_sha256": "ece53796e6ed464c519e5b7f2013be092421b7ec5f7d14e594cca079cd0c420d"
+      }
+    },
+    "read_ddr_low_hold": {
+      "count": 192,
+      "minimum": {
+        "value_ps": -1700.0,
+        "clock_edge": "F",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 539.0,
+        "data_local_ps": 2239.0,
+        "variant": "ramtest-pads",
+        "report": "7_slow_1100mv_-40c/input-fall-hold.rpt",
+        "source": "SDRAM_DQ[9]",
+        "target": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+        "report_sha256": "bcd89aca4bae7cc1b538ace0c07e7ee1c874f45226b7a000fbd66772200bbd60"
+      },
+      "maximum": {
+        "value_ps": -306.0,
+        "clock_edge": "F",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 205.0,
+        "data_local_ps": 511.0,
+        "variant": "ramtest-pads",
+        "report": "MIN_fast_1100mv_-40c/input-hold.rpt",
+        "source": "SDRAM_DQ[11]",
+        "target": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+        "report_sha256": "92771d0a12a6c8d48b64274edc5c9bb5f468df5deb15d86828280dd7d45e11e3"
+      }
+    },
+    "read_ddr_low_setup": {
+      "count": 192,
+      "minimum": {
+        "value_ps": 383.0,
+        "clock_edge": "F",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 188.0,
+        "data_local_ps": 571.0,
+        "variant": "ramtest-pads",
+        "report": "MIN_fast_1100mv_-40c/input-rise-setup.rpt",
+        "source": "SDRAM_DQ[11]",
+        "target": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+        "report_sha256": "8767f1e86cb91dd56f30b4f4ff641c55755d309584227cd361475b212baaf9c8"
+      },
+      "maximum": {
+        "value_ps": 1900.0,
+        "clock_edge": "F",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 491.0,
+        "data_local_ps": 2391.0,
+        "variant": "ramtest-pads",
+        "report": "7_slow_1100mv_-40c/input-fall-setup.rpt",
+        "source": "SDRAM_DQ[9]",
+        "target": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+        "report_sha256": "ece53796e6ed464c519e5b7f2013be092421b7ec5f7d14e594cca079cd0c420d"
+      }
+    },
+    "read_sdr_hold": {
+      "count": 192,
+      "minimum": {
+        "value_ps": -1683.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 750.0,
+        "data_local_ps": 2433.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "7_slow_1100mv_-40c/input-fall-hold.rpt",
+        "source": "SDRAM_DQ[9]",
+        "target": "pads[9].sample",
+        "report_sha256": "a85b927bf5f174f5bf69c2fe76e32af8cd1ee7b82a26bd78cb25ccd12d2b1626"
+      },
+      "maximum": {
+        "value_ps": -316.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 295.0,
+        "data_local_ps": 611.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "MIN_fast_1100mv_-40c/input-hold.rpt",
+        "source": "SDRAM_DQ[11]",
+        "target": "pads[11].sample",
+        "report_sha256": "eceb90331db3ba1703ccd052cee4f96181534859d52d1543c8681496596eb745"
+      }
+    },
+    "read_sdr_setup": {
+      "count": 192,
+      "minimum": {
+        "value_ps": 396.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 273.0,
+        "data_local_ps": 669.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "MIN_fast_1100mv_-40c/input-rise-setup.rpt",
+        "source": "SDRAM_DQ[11]",
+        "target": "pads[11].sample",
+        "report_sha256": "dd2b29072c223d4d90908ff0effccf0a21cbd009b42566f7ac85a6a13c3058a7"
+      },
+      "maximum": {
+        "value_ps": 1905.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 688.0,
+        "data_local_ps": 2593.0,
+        "variant": "ramtest-sdr-pads",
+        "report": "7_slow_1100mv_-40c/input-fall-setup.rpt",
+        "source": "SDRAM_DQ[9]",
+        "target": "pads[9].sample",
+        "report_sha256": "4cfcef3ed619e08b14b82878979c71d8995e0939941d32908e0660e70f9e941c"
+      }
+    },
+    "write_data_early": {
+      "count": 912,
+      "minimum": {
+        "value_ps": 2472.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 340.0,
+        "data_local_ps": 2132.0,
+        "variant": "ramtest-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-hold.rpt",
+        "source": "SDRAM_nWE~reg0",
+        "target": "SDRAM_nWE",
+        "report_sha256": "6ff0fbc6a8c031a590012e4ccb7c08085115c8243bf60f323a25ea48fc3533f2"
+      },
+      "maximum": {
+        "value_ps": 5133.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 828.0,
+        "data_local_ps": 4305.0,
+        "variant": "ramtest-pads",
+        "report": "7_slow_1100mv_100c/output-rise-hold.rpt",
+        "source": "data_out[15]",
+        "target": "SDRAM_DQ[15]",
+        "report_sha256": "a6454c8cefeee3cd8658d16e223425b765c346252e0ec1932790ef9d79a3a66c"
+      }
+    },
+    "write_data_late": {
+      "count": 912,
+      "minimum": {
+        "value_ps": 2510.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 366.0,
+        "data_local_ps": 2144.0,
+        "variant": "ramtest-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-setup.rpt",
+        "source": "SDRAM_nWE~reg0",
+        "target": "SDRAM_nWE",
+        "report_sha256": "bd0ffb43a213023e8e83475555a375e1acba0b352c0e4d844009135285884d40"
+      },
+      "maximum": {
+        "value_ps": 5276.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 918.0,
+        "data_local_ps": 4358.0,
+        "variant": "ramtest-pads",
+        "report": "7_slow_1100mv_100c/output-rise-setup.rpt",
+        "source": "data_out[15]",
+        "target": "SDRAM_DQ[15]",
+        "report_sha256": "60f7c80d0da1a27a9e12a41e28a1355b98283780fb6ced08c18014c43faec8fc"
+      }
+    },
+    "write_ddr_high_early": {
+      "count": 24,
+      "minimum": {
+        "value_ps": 2607.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 2607.0,
+        "variant": "ramtest-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-hold.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "6ff0fbc6a8c031a590012e4ccb7c08085115c8243bf60f323a25ea48fc3533f2"
+      },
+      "maximum": {
+        "value_ps": 5227.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 5227.0,
+        "variant": "ramtest-pads",
+        "report": "7_slow_1100mv_100c/output-rise-hold.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "a6454c8cefeee3cd8658d16e223425b765c346252e0ec1932790ef9d79a3a66c"
+      }
+    },
+    "write_ddr_high_late": {
+      "count": 24,
+      "minimum": {
+        "value_ps": 2650.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 2650.0,
+        "variant": "ramtest-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-setup.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "bd0ffb43a213023e8e83475555a375e1acba0b352c0e4d844009135285884d40"
+      },
+      "maximum": {
+        "value_ps": 5391.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 5391.0,
+        "variant": "ramtest-pads",
+        "report": "7_slow_1100mv_100c/output-rise-setup.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "60f7c80d0da1a27a9e12a41e28a1355b98283780fb6ced08c18014c43faec8fc"
+      }
+    },
+    "write_ddr_low_early": {
+      "count": 24,
+      "minimum": {
+        "value_ps": 2603.0,
+        "clock_edge": "F",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 2603.0,
+        "variant": "ramtest-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-hold.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "6ff0fbc6a8c031a590012e4ccb7c08085115c8243bf60f323a25ea48fc3533f2"
+      },
+      "maximum": {
+        "value_ps": 5209.0,
+        "clock_edge": "F",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 5209.0,
+        "variant": "ramtest-pads",
+        "report": "7_slow_1100mv_100c/output-rise-hold.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "a6454c8cefeee3cd8658d16e223425b765c346252e0ec1932790ef9d79a3a66c"
+      }
+    },
+    "write_ddr_low_late": {
+      "count": 24,
+      "minimum": {
+        "value_ps": 2645.0,
+        "clock_edge": "F",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 2645.0,
+        "variant": "ramtest-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-setup.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "bd0ffb43a213023e8e83475555a375e1acba0b352c0e4d844009135285884d40"
+      },
+      "maximum": {
+        "value_ps": 5372.0,
+        "clock_edge": "F",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_reference": "DDIO output clock mux routing ingress",
+        "clock_local_ps": 0,
+        "data_local_ps": 5372.0,
+        "variant": "ramtest-pads",
+        "report": "7_slow_1100mv_100c/output-rise-setup.rpt",
+        "source": "FPGA_CLK1_50",
+        "target": "SDRAM_CLK",
+        "report_sha256": "60f7c80d0da1a27a9e12a41e28a1355b98283780fb6ced08c18014c43faec8fc"
+      }
+    },
+    "write_oe_early": {
+      "count": 384,
+      "minimum": {
+        "value_ps": 2545.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 412.0,
+        "data_local_ps": 2133.0,
+        "variant": "ramtest-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-hold.rpt",
+        "source": "data_oe~_Duplicate_10",
+        "target": "SDRAM_DQ[9]",
+        "report_sha256": "6ff0fbc6a8c031a590012e4ccb7c08085115c8243bf60f323a25ea48fc3533f2"
+      },
+      "maximum": {
+        "value_ps": 5236.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 1004.0,
+        "data_local_ps": 4232.0,
+        "variant": "ramtest-pads",
+        "report": "7_slow_1100mv_100c/output-rise-hold.rpt",
+        "source": "data_oe~_Duplicate_4",
+        "target": "SDRAM_DQ[3]",
+        "report_sha256": "a6454c8cefeee3cd8658d16e223425b765c346252e0ec1932790ef9d79a3a66c"
+      }
+    },
+    "write_oe_late": {
+      "count": 384,
+      "minimum": {
+        "value_ps": 2590.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "pad_transition": "F",
+        "clock_local_ps": 441.0,
+        "data_local_ps": 2149.0,
+        "variant": "ramtest-pads",
+        "report": "MIN_fast_1100mv_-40c/output-fall-setup.rpt",
+        "source": "data_oe~_Duplicate_10",
+        "target": "SDRAM_DQ[9]",
+        "report_sha256": "bd0ffb43a213023e8e83475555a375e1acba0b352c0e4d844009135285884d40"
+      },
+      "maximum": {
+        "value_ps": 5416.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "pad_transition": "R",
+        "clock_local_ps": 1109.0,
+        "data_local_ps": 4307.0,
+        "variant": "ramtest-pads",
+        "report": "7_slow_1100mv_100c/output-rise-setup.rpt",
+        "source": "data_oe~_Duplicate_3",
+        "target": "SDRAM_DQ[2]",
+        "report_sha256": "60f7c80d0da1a27a9e12a41e28a1355b98283780fb6ced08c18014c43faec8fc"
+      }
+    }
+  },
+  "input_hashes": {
+    "ramtest-pads": {
+      "clocks.sdc": "984afc9d14c2b3cdaa3263afeb96a967339a734992cfcdfd3e5fff5f65250d62",
+      "ramtest-pads.v": "26e95d0e76391e4ba85e569f56519fcc1963d18e144fc0bbacc4a6f75de39293",
+      "top.qsf": "1d7e8645e9c4d16b98dd2d3be3c550740eeb92a479f221b195bf9711ebb97606"
+    },
+    "ramtest-sdr-pads": {
+      "clocks.sdc": "984afc9d14c2b3cdaa3263afeb96a967339a734992cfcdfd3e5fff5f65250d62",
+      "ramtest-sdr-pads.v": "3dbe0739ea8b1ff09bdeb3b49ca28aec4484052888de91c38de778e8e66bb2fa",
+      "top.qsf": "4f4dca666ef7a6c2dd5b730b9372418904a770c8de863706982cc7456609398d"
+    }
+  },
+  "input_delay_configuration": {
+    "ramtest-pads": {
+      "settings": {
+        "V12": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "E8": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "D11": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "W12": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AH13": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "D8": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AH14": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AF7": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AE24": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AD23": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AE6": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AE23": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AG14": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AD5": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AF4": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AH3": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        }
+      },
+      "decoded_sha256": "5f244bab4a22ce0b3b2e81490eb46eb1dc8dd1635ec86ff9703dc69f6c229cb3",
+      "rbf_sha256": "1db2ca1062f1c3669bfa793f17fd2634f8c3a86784413d6e41cee4af9d00b2ab"
+    },
+    "ramtest-sdr-pads": {
+      "settings": {
+        "V12": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "E8": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "D11": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "W12": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AH13": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "D8": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AH14": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AF7": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AE24": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AD23": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AE6": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AE23": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AG14": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AD5": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AF4": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        },
+        "AH3": {
+          "RB_T1_SEL_IREG_CFF_DELAY": "0",
+          "SET_T3_FOR_CDATA0IN": "0",
+          "SET_T3_FOR_CDATA1IN": "0"
+        }
+      },
+      "decoded_sha256": "1642e1d22c9bdefffd5c1fd582b8bf3feee37103e2a6dbf23fabb8068625bf94",
+      "rbf_sha256": "ea1574ab56ba62b185f6ae2e1bce3785b84a7f8e56302ef5030ce8594e28ffc4"
+    }
+  },
+  "input_clock_to_fabric": {
+    "ramtest-pads": {
+      "count": 256,
+      "maximum": {
+        "report": "7_slow_1100mv_-40c/fabric-setup.rpt",
+        "source": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+        "value_ps": 866.0,
+        "report_sha256": "7f89c1418a12ea324a96c307afae78efd3e6dfd93ab8c2c291b7f5280c9f252b"
+      },
+      "envelope_ps": 870
+    },
+    "ramtest-sdr-pads": {
+      "count": 256,
+      "maximum": {
+        "report": "7_slow_1100mv_-40c/fabric-setup.rpt",
+        "source": "pads[5].sample",
+        "value_ps": 850.0,
+        "report_sha256": "bbf1a90a5e7604109c0cc32139db65e69ff83b3c642bfe0f723adcd4a69313b2"
+      },
+      "envelope_ps": 870
+    }
+  },
+  "clock_requirements": {
+    "ramtest-pads": {
+      "check_count": 1440,
+      "bounds": {
+        "DDIOINCELL_ingress_high_ns": {
+          "count": 192,
+          "maximum": {
+            "corner": "7_slow_1100mv_100c",
+            "node": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+            "required_ps": 167.0,
+            "clock_inverted": false,
+            "primitive_type": "High Pulse Width",
+            "local_late_clock_ps": 731.0,
+            "local_early_clock_ps": 659.0
+          }
+        },
+        "DDIOINCELL_ingress_low_ns": {
+          "count": 192,
+          "maximum": {
+            "corner": "7_slow_1100mv_100c",
+            "node": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+            "required_ps": 185.0,
+            "clock_inverted": false,
+            "primitive_type": "Low Pulse Width",
+            "local_late_clock_ps": 730.0,
+            "local_early_clock_ps": 653.0
+          }
+        },
+        "DDIOINCELL_ingress_period_ns": {
+          "count": 192,
+          "maximum": {
+            "corner": "7_slow_1100mv_-40c",
+            "node": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+            "required_ps": 1538.0,
+            "clock_inverted": null,
+            "primitive_type": "Min Period",
+            "local_late_clock_ps": null,
+            "local_early_clock_ps": null
+          }
+        },
+        "DDIOOECELL_ingress_high_ns": {
+          "count": 64,
+          "maximum": {
+            "corner": "7_slow_1100mv_100c",
+            "node": "data_oe~_Duplicate_3",
+            "required_ps": 806.0,
+            "clock_inverted": false,
+            "primitive_type": "High Pulse Width",
+            "local_late_clock_ps": 1109.0,
+            "local_early_clock_ps": 991.0
+          }
+        },
+        "DDIOOECELL_ingress_low_ns": {
+          "count": 64,
+          "maximum": {
+            "corner": "7_slow_1100mv_100c",
+            "node": "data_oe~_Duplicate_15",
+            "required_ps": 778.0,
+            "clock_inverted": false,
+            "primitive_type": "Low Pulse Width",
+            "local_late_clock_ps": 1094.0,
+            "local_early_clock_ps": 1004.0
+          }
+        },
+        "DDIOOECELL_ingress_period_ns": {
+          "count": 64,
+          "maximum": {
+            "corner": "7_slow_1100mv_-40c",
+            "node": "data_oe~_Duplicate_1",
+            "required_ps": 1538.0,
+            "clock_inverted": null,
+            "primitive_type": "Min Period",
+            "local_late_clock_ps": null,
+            "local_early_clock_ps": null
+          }
+        },
+        "DDIOOUTCELL_ingress_high_ns": {
+          "count": 160,
+          "maximum": {
+            "corner": "7_slow_1100mv_100c",
+            "node": "SDRAM_A[12]~reg0",
+            "required_ps": 790.0,
+            "clock_inverted": false,
+            "primitive_type": "High Pulse Width",
+            "local_late_clock_ps": 918.0,
+            "local_early_clock_ps": 816.0
+          }
+        },
+        "DDIOOUTCELL_ingress_low_ns": {
+          "count": 160,
+          "maximum": {
+            "corner": "7_slow_1100mv_100c",
+            "node": "SDRAM_A[5]~reg0",
+            "required_ps": 767.0,
+            "clock_inverted": false,
+            "primitive_type": "Low Pulse Width",
+            "local_late_clock_ps": 894.0,
+            "local_early_clock_ps": 815.0
+          }
+        },
+        "DDIOOUTCELL_ingress_period_ns": {
+          "count": 160,
+          "maximum": {
+            "corner": "7_slow_1100mv_-40c",
+            "node": "SDRAM_A[0]~reg0",
+            "required_ps": 1538.0,
+            "clock_inverted": null,
+            "primitive_type": "Min Period",
+            "local_late_clock_ps": null,
+            "local_early_clock_ps": null
+          }
+        }
+      },
+      "hashes": {
+        "clock-requirements/7_slow_1100mv_-40c/pulse.rpt": "6d406d492576cadc374452cfe093f695266f9e10ddb1cdb2c1ea16f5960a120b",
+        "clock-requirements/7_slow_1100mv_-40c/requirements.tsv": "482c035b5375cefa499c22df7fc586e0800ca0c91f9eb623966d483228988f7a",
+        "clock-requirements/7_slow_1100mv_100c/pulse.rpt": "fc9042ff905707e889bbb35d1615884165c154c16815be9b3584c330fcd06f79",
+        "clock-requirements/7_slow_1100mv_100c/requirements.tsv": "19d6549b5c3a8e83297cd5ec2de5ab7d75a023055ccdd1e77d0ba92776bcfefb",
+        "clock-requirements/MIN_fast_1100mv_-40c/pulse.rpt": "e0d12b4d8611efdcbc3e534013a6e8dfe8179004e708c38a17312b05b0a21a43",
+        "clock-requirements/MIN_fast_1100mv_-40c/requirements.tsv": "89b4a1022a9462cff6272cb598d1d42e418dfcc4b4da239a31397a500840c4ce",
+        "clock-requirements/MIN_fast_1100mv_100c/pulse.rpt": "febd5a0eb19fa5ef852dbc1604dcc7fe6bf489232a5f2efb1db77325779c92fe",
+        "clock-requirements/MIN_fast_1100mv_100c/requirements.tsv": "ad31d85fe9a42c070af90601d93c7718afbb46cfb1a5ba2b103faaa24c7054ea",
+        "clocks.sdc": "984afc9d14c2b3cdaa3263afeb96a967339a734992cfcdfd3e5fff5f65250d62",
+        "top.qsf": "1d7e8645e9c4d16b98dd2d3be3c550740eeb92a479f221b195bf9711ebb97606",
+        "ramtest-pads.v": "26e95d0e76391e4ba85e569f56519fcc1963d18e144fc0bbacc4a6f75de39293"
+      },
+      "query_sha256": "09dec39801af3aac127c5ef91787cebbdbbac7e0386316c41d8046dd38eeed82"
+    },
+    "ramtest-sdr-pads": {
+      "check_count": 1080,
+      "bounds": {
+        "DDIOINCELL_ingress_high_ns": {
+          "count": 64,
+          "maximum": {
+            "corner": "7_slow_1100mv_100c",
+            "node": "pads[2].sample",
+            "required_ps": 167.0,
+            "clock_inverted": false,
+            "primitive_type": "High Pulse Width",
+            "local_late_clock_ps": 731.0,
+            "local_early_clock_ps": 659.0
+          }
+        },
+        "DDIOINCELL_ingress_low_ns": {
+          "count": 64,
+          "maximum": {
+            "corner": "7_slow_1100mv_100c",
+            "node": "pads[3].sample",
+            "required_ps": 144.0,
+            "clock_inverted": false,
+            "primitive_type": "Low Pulse Width",
+            "local_late_clock_ps": 734.0,
+            "local_early_clock_ps": 656.0
+          }
+        },
+        "DDIOINCELL_ingress_period_ns": {
+          "count": 64,
+          "maximum": {
+            "corner": "7_slow_1100mv_-40c",
+            "node": "pads[0].sample",
+            "required_ps": 1538.0,
+            "clock_inverted": null,
+            "primitive_type": "Min Period",
+            "local_late_clock_ps": null,
+            "local_early_clock_ps": null
+          }
+        },
+        "DDIOOECELL_ingress_high_ns": {
+          "count": 64,
+          "maximum": {
+            "corner": "7_slow_1100mv_100c",
+            "node": "data_oe~_Duplicate_3",
+            "required_ps": 806.0,
+            "clock_inverted": false,
+            "primitive_type": "High Pulse Width",
+            "local_late_clock_ps": 1109.0,
+            "local_early_clock_ps": 991.0
+          }
+        },
+        "DDIOOECELL_ingress_low_ns": {
+          "count": 64,
+          "maximum": {
+            "corner": "7_slow_1100mv_100c",
+            "node": "data_oe~_Duplicate_4",
+            "required_ps": 778.0,
+            "clock_inverted": false,
+            "primitive_type": "Low Pulse Width",
+            "local_late_clock_ps": 1094.0,
+            "local_early_clock_ps": 1004.0
+          }
+        },
+        "DDIOOECELL_ingress_period_ns": {
+          "count": 64,
+          "maximum": {
+            "corner": "7_slow_1100mv_-40c",
+            "node": "data_oe~_Duplicate_1",
+            "required_ps": 1538.0,
+            "clock_inverted": null,
+            "primitive_type": "Min Period",
+            "local_late_clock_ps": null,
+            "local_early_clock_ps": null
+          }
+        },
+        "DDIOOUTCELL_ingress_high_ns": {
+          "count": 160,
+          "maximum": {
+            "corner": "7_slow_1100mv_100c",
+            "node": "SDRAM_A[12]~reg0",
+            "required_ps": 790.0,
+            "clock_inverted": false,
+            "primitive_type": "High Pulse Width",
+            "local_late_clock_ps": 918.0,
+            "local_early_clock_ps": 816.0
+          }
+        },
+        "DDIOOUTCELL_ingress_low_ns": {
+          "count": 160,
+          "maximum": {
+            "corner": "7_slow_1100mv_100c",
+            "node": "SDRAM_A[5]~reg0",
+            "required_ps": 767.0,
+            "clock_inverted": false,
+            "primitive_type": "Low Pulse Width",
+            "local_late_clock_ps": 894.0,
+            "local_early_clock_ps": 815.0
+          }
+        },
+        "DDIOOUTCELL_ingress_period_ns": {
+          "count": 160,
+          "maximum": {
+            "corner": "7_slow_1100mv_-40c",
+            "node": "SDRAM_A[0]~reg0",
+            "required_ps": 1538.0,
+            "clock_inverted": null,
+            "primitive_type": "Min Period",
+            "local_late_clock_ps": null,
+            "local_early_clock_ps": null
+          }
+        }
+      },
+      "hashes": {
+        "clock-requirements/7_slow_1100mv_-40c/pulse.rpt": "6f284da286a443d070d544530ccb5b630c9800c9cd1e4c2f4b09952a229fcffa",
+        "clock-requirements/7_slow_1100mv_-40c/requirements.tsv": "38f09a6d697ed94038941e25cb50bdd2d7e921b1c3a553925333dfdc97b6b016",
+        "clock-requirements/7_slow_1100mv_100c/pulse.rpt": "49cbf16a31a5aa9e015d6d3ffecf35097d5693bd106dd7b60c9adcde72103ecf",
+        "clock-requirements/7_slow_1100mv_100c/requirements.tsv": "f141bb80797c7b42c44208b6278e7c2fc28602f849fae02e8c20e31fb701144f",
+        "clock-requirements/MIN_fast_1100mv_-40c/pulse.rpt": "a795508815c7a5429dc263ea91d8794ddc5f8bfc5cd60af422921dffd7da7491",
+        "clock-requirements/MIN_fast_1100mv_-40c/requirements.tsv": "f754f4b034c8b23e9bba9a285499967be45170ac9098c599aa26e3ce53f1b5b1",
+        "clock-requirements/MIN_fast_1100mv_100c/pulse.rpt": "1c81ec1fdca715a60ece83177384c8cd294f71969b9a31b661fe4fb0032984ec",
+        "clock-requirements/MIN_fast_1100mv_100c/requirements.tsv": "7b7cc46603ff1b18e2f0a236f0d6b159a1c53014611850e3b9434ef730643478",
+        "clocks.sdc": "984afc9d14c2b3cdaa3263afeb96a967339a734992cfcdfd3e5fff5f65250d62",
+        "top.qsf": "4f4dca666ef7a6c2dd5b730b9372418904a770c8de863706982cc7456609398d",
+        "ramtest-sdr-pads.v": "3dbe0739ea8b1ff09bdeb3b49ca28aec4484052888de91c38de778e8e66bb2fa"
+      },
+      "query_sha256": "09dec39801af3aac127c5ef91787cebbdbbac7e0386316c41d8046dd38eeed82"
+    }
+  },
+  "native_decoded_sha256": "e4adc68f00b1b2085d7e3ad2017d64cbc93c808556bd9b2d51f2e72a67e7700c",
+  "database_defaults_sha256": "6f7d4e2d36efbd96018e6cce7e51a83e3583277195805f1ec7e888e458dc188e",
+  "negative_checks": [
+    "missing decoded pin",
+    "nonzero decoded selector"
+  ]
+}

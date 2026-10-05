@@ -1,0 +1,130 @@
+{
+  "classification": "fixed-route diagnostic; unmeasured board assumptions; not hardware signoff",
+  "binary_sha256": "8d2665f678ec891d969842031fca2e4164fb3d34fc46f20c84c6efdd7c7e7c32",
+  "rates": {
+    "100": {
+      "exit_code": 0,
+      "command": [
+        "/tmp/nextpnr-135-build/nextpnr-mistral",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/tmp/nextpnr-135-investigation/fes-full-overlay/sources/misteross/build/fes-ramtest-100/probed-final.json",
+        "--sdc",
+        "/tmp/nextpnr-135-investigation/fes-full-overlay/sources/misteross/build/fes-ramtest-100/budget/board.sdc",
+        "--no-pack",
+        "--no-place",
+        "--no-route",
+        "--timing-allow-fail",
+        "--report",
+        "/tmp/nextpnr-135-investigation/input-zero-replay/100/timing.json",
+        "--detailed-timing-report",
+        "--rbf",
+        "/tmp/nextpnr-135-investigation/input-zero-replay/100/diagnostic.rbf"
+      ],
+      "rbf_matches_original": true,
+      "timing_summary": {
+        "clocks": {
+          "display.pixel_clk": {
+            "hold_wns_ns": 0.414000004529953,
+            "setup_wns_ns": -0.3959999978542328
+          },
+          "ram_clock.clocks[0]": {
+            "hold_wns_ns": -2.188999891281128,
+            "setup_wns_ns": -7.578000068664551
+          },
+          "ram_clock.clocks[1]": {
+            "hold_wns_ns": 4.74399995803833,
+            "setup_wns_ns": -0.5519999861717224
+          }
+        },
+        "final_analogue_model": true
+      },
+      "strict_gate": {
+        "exit_code": 1,
+        "rbf_emitted": true,
+        "command": [
+          "/tmp/nextpnr-135-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-135-investigation/input-zero-replay/100/strict-input.json",
+          "--sdc",
+          "/tmp/nextpnr-135-investigation/fes-full-overlay/sources/misteross/build/fes-ramtest-100/budget/board.sdc",
+          "--no-pack",
+          "--no-place",
+          "--no-route",
+          "--rbf",
+          "/tmp/nextpnr-135-investigation/input-zero-replay/100/strict.rbf"
+        ]
+      }
+    },
+    "130": {
+      "exit_code": 0,
+      "command": [
+        "/tmp/nextpnr-135-build/nextpnr-mistral",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/tmp/nextpnr-135-investigation/fes-full-overlay/sources/misteross/build/fes-ramtest-130/probed-final.json",
+        "--sdc",
+        "/tmp/nextpnr-135-investigation/fes-full-overlay/sources/misteross/build/fes-ramtest-130/budget/board.sdc",
+        "--no-pack",
+        "--no-place",
+        "--no-route",
+        "--timing-allow-fail",
+        "--report",
+        "/tmp/nextpnr-135-investigation/input-zero-replay/130/timing.json",
+        "--detailed-timing-report",
+        "--rbf",
+        "/tmp/nextpnr-135-investigation/input-zero-replay/130/diagnostic.rbf"
+      ],
+      "rbf_matches_original": true,
+      "timing_summary": {
+        "clocks": {
+          "display.pixel_clk": {
+            "hold_wns_ns": 0.414000004529953,
+            "setup_wns_ns": -2.884000062942505
+          },
+          "ram_clock.clocks[0]": {
+            "hold_wns_ns": -3.3429999351501465,
+            "setup_wns_ns": -11.383999824523926
+          },
+          "ram_clock.clocks[1]": {
+            "hold_wns_ns": 2.431999921798706,
+            "setup_wns_ns": 2.697999954223633
+          }
+        },
+        "final_analogue_model": true
+      },
+      "strict_gate": {
+        "exit_code": 1,
+        "rbf_emitted": true,
+        "command": [
+          "/tmp/nextpnr-135-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-135-investigation/input-zero-replay/130/strict-input.json",
+          "--sdc",
+          "/tmp/nextpnr-135-investigation/fes-full-overlay/sources/misteross/build/fes-ramtest-130/budget/board.sdc",
+          "--no-pack",
+          "--no-place",
+          "--no-route",
+          "--rbf",
+          "/tmp/nextpnr-135-investigation/input-zero-replay/130/strict.rbf"
+        ]
+      }
+    }
+  },
+  "input_model_ps": {
+    "sdr_and_ddr_high": {
+      "setup": 1910,
+      "hold": -310
+    },
+    "ddr_low": {
+      "setup": 1900,
+      "hold": -300
+    }
+  }
+}

@@ -43,13 +43,14 @@ def main():
          f"read_verilog {rtl}; synth_intel_alm -nobram -nodsp -top top; write_json {synth}"], "synth")
     # Synthetic host regression budgets; these are not real SDRAM constraints.
     base = ("create_clock -period 20 -name memory [get_ports clk]\n"
-            "set_input_delay -clock memory -min 1 [get_ports {dq[*]}]\n"
+            "set_input_delay -clock memory -min 2 [get_ports {dq[*]}]\n"
             "set_input_delay -clock memory -max 3 [get_ports {dq[*]}]\n"
             "set_output_delay -clock memory -min 0 [get_ports {dq[*]}]\n"
             "set_output_delay -clock memory -max 4 [get_ports {dq[*]}]\n")
     cases = {
         "pass": (base, True, None),
         "setup-fail": (base.replace("-max 4", "-max 40"), False, "FAIL at"),
+        "hold-fail": (base.replace("-min 2", "-min -2"), False, "Hold/min time violation"),
         "clock-cut-fail": (base.replace("-period 20", "-period 1") +
                            "set_false_path -from [get_clocks memory] -to [get_clocks memory]\n",
                            False, "outside its timing model"),
@@ -58,7 +59,8 @@ def main():
         sdc = out / (name + ".sdc")
         sdc.write_text(text)
         command = [args.nextpnr.resolve(), "--device", "5CSEBA6U23I7", "--json", synth,
-                   "--qsf", qsf, "--sdc", sdc, "--seed", "1", "--router", "router2"]
+                   "--qsf", qsf, "--sdc", sdc, "--seed", "1", "--router", "router2",
+                   "--rbf", out / (name + ".rbf")]
         if name == "clock-cut-fail":
             command += ["--timing-allow-fail"]
         if success:
@@ -73,11 +75,13 @@ def main():
          "--detailed-timing-report", "--rbf", out / "reload.rbf"], "reload")
     for filename in ("report.json", "reload.json"):
         report = json.loads((out / filename).read_text())
+        assert report["timing_summary"]["final_analogue_model"], filename
         paths = json.dumps(report["detailed_net_timings"])
         assert "PAD$timing$read$" in paths, filename
         assert "PAD$timing$write$" in paths, filename
         assert "$oe$" in paths, filename
-    print("PASS: native registered DQ timing, data setup gate, clock cuts/allow-fail guard and fresh checkpoint")
+    assert (out / "pass.rbf").read_bytes() == (out / "reload.rbf").read_bytes()
+    print("PASS: final analogue DQ timing, setup/hold gates, clock cuts/allow-fail guard and identical checkpoint bitstream")
 
 
 if __name__ == "__main__":
