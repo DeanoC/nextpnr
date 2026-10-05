@@ -1,0 +1,24 @@
+Classification: host-only; no hardware programmed
+Base: DeanoC/nextpnr main 3d4a5b35; Mistral 7ed06e21; Yosys 886afa63 +
+feat/intel-alm-control-block-atoms (control block blackboxes)
+
+PASS: chip ID, CRC, OPREG, user/core JTAG and oscillator ports match the Quartus routes
+PASS: options: 332 settings identical to the Quartus delta
+PASS: bushold: 600 settings identical to the Quartus delta
+PASS: default and unknown assignments leave the bitstream unchanged; atom CRC divider wins
+PASS: 17 unsupported atoms, connections, parameters and option values rejected
+
+nextpnr RBF sha256 (uncompressed):
+  atoms.rbf   24a1a0e7d101c3f4ee6a5c0f64f712f652d76d8d68ca0a4601ff0bedf1c6f51a
+  blinky.rbf  a20233c334213b9629c27c76613913c144a1fef22cac044f577ce8a83b19b4e5
+  options.rbf 64dc6bd7b920ebcbfdb4393aa2323a4549d1d2295439412351ae6737fc3c631d
+  bushold.rbf 65bcf25002fa8dc7e447403960a4875cf1593388d87af2b3e54c86585bc5180f
+
+Ordinary design (blinky.v with the oracle QSF, whose global assignments are
+not recognised) with the unmodified main binary and this branch, --seed 3:
+identical RBFs, uncompressed sha256
+da053646b2a83cb63624bbbc459f5a9d3e3d10ea783ab09832fdc8b01d514eaf and with
+--compress-rbf c49d5f48c6fe88fd8beecf6bd7d2173a1922ab51c20f2848b33a2edcddd54284.
+sdr-output and ddr-input produce byte-identical RBFs with both binaries
+(their route assertions fail identically against Mistral 7ed06e21 decode
+labels on main too); hps_i2c passes.

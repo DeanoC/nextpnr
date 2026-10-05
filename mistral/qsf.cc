@@ -97,6 +97,10 @@ void set_global_assignment_cmd(Context *ctx, const option_map_t &options, const 
 {
     const std::string &name = options.at("name").at(0);
     const std::string &value = pos_args.at(0);
+    // Device-wide options nextpnr implements; any other global assignment is
+    // a Quartus project setting with no meaning here and is ignored.
+    if (ctx->apply_control_option(name, value))
+        return;
     if (name == "FES_RESERVED_BEL") {
         ctx->note_reserved_bel(value);
         return;

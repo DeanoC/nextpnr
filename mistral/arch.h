@@ -770,6 +770,18 @@ struct Arch : BaseArch<ArchRanges>
 
     // -------------------------------------------------
 
+    // Control block atoms (chip ID, CRC, user JTAG, ...) and the device-wide
+    // options of QSF global assignments (ctrl.cc).
+    void create_control_atoms(int x, int y);
+    bool apply_control_option(const std::string &name, const std::string &value);
+    std::string control_option(const std::string &name) const;
+    void pack_control_atoms();
+    void check_control_options() const;
+    void write_control_bitstream();
+    dict<std::string, std::string> control_options;
+
+    // -------------------------------------------------
+
     void build_bitstream(); // bitstream.cc
 };
 
