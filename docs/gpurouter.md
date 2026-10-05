@@ -54,6 +54,9 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `bbMargin/x`, `bbMargin/y` | 3 | net bounding-box padding, tiles |
 | `initCurrCongWeight`, `histCongWeight`, `currCongWeightMult` | 0.5, 1.0, 2.0 | congestion schedule (router2 values) |
 | `congestionStallIters`, `congestionStallBoost`, `congestionStallBoostMax` | 20, 1.5, 50 | if the overused-wire count sets no new minimum for this many iterations, `currCongWeightMult` is scaled by this factor (compounding every further `congestionStallIters` iterations with no improvement, capped at `congestionStallBoostMax`) until a new minimum is reached. A genuine hard conflict (no legal alternative route at all) does not respond to any cost weight; `maxIter` remains the backstop for that case |
+| `localInputEscape` | 0 | at a small congestion plateau, try moving one legal occupant out of the Mistral TD input group feeding an invalid sink; at most four nets and 16 movable arcs per net; accept only an uncongested route outside the group, restore rejected trials |
+| `localInputEscapeAudit` | 0 | diagnostic: compare complete net state, global occupancy/history/reservations and temporary exclusions after a rejected escape trial |
+| `localInputEscapeRejectTrial` | 0 | diagnostic fault injection: force rejection and audited restoration of an escape trial, including valid computed routes; requires `localInputEscape=1` |
 | `estimateWeight` | 1.25 | A* heuristic weight |
 | `repairEstimateWeight` | = `estimateWeight` | A* heuristic weight of the pure-delay searches (timing repair, peer groups, candidate generation) |
 | `biasCostFactor` | 0.25 | pull towards the net centroid |
