@@ -346,6 +346,16 @@ class DatasetTests(unittest.TestCase):
             result_path = root / "result.json"
             result_path.write_text(json.dumps(result), encoding="utf-8")
             summary_result = dict(result, result_sha256=seed_racing.sha256_file(result_path))
+            runner_error = {
+                "run_id": "runner-error", "seed": 19, "repeat": 1,
+                "status": "runner_error", "error": "collector failed",
+                "cohort_identity": identity,
+            }
+            runner_error_path = root / "synthetic" / "runner-error" / "result.json"
+            runner_error_path.parent.mkdir(parents=True)
+            runner_error_path.write_text(json.dumps(runner_error), encoding="utf-8")
+            summary_runner_error = dict(
+                runner_error, result_sha256=seed_racing.sha256_file(runner_error_path))
             collection = {
                 "schema_version": 1,
                 "cohort_identity": identity,
@@ -354,11 +364,7 @@ class DatasetTests(unittest.TestCase):
                     "status": "not_started_total_budget", "process_started": False,
                     "termination_reason": "total_budget_expired_before_run_setup",
                     "cohort_identity": identity,
-                }, {
-                    "run_id": "runner-error", "seed": 19, "repeat": 1,
-                    "status": "runner_error", "error": "collector failed",
-                    "cohort_identity": identity,
-                }],
+                }, summary_runner_error],
             }
             summary = root / "collection.json"
             summary.write_text(json.dumps(collection), encoding="utf-8")

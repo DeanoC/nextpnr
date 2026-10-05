@@ -1876,9 +1876,22 @@ def assemble_dataset(collection_paths: Sequence[Path]) -> Dict[str, Any]:
             observations: List[Dict[str, Any]] = []
             artifactless_runner_error = (
                 result.get("status") == "runner_error" and
-                not isinstance(artifacts, dict) and
-                result.get("result_sha256") is None)
+                not isinstance(artifacts, dict))
             if artifactless_runner_error:
+                if result.get("result_sha256") is not None:
+                    run_id = result.get("run_id")
+                    if not isinstance(run_id, str) or not run_id:
+                        raise ValueError("collection runner error lacks its run_id")
+                    result_path = (collection_path.parent / _safe_component(cohort_id) /
+                                   _safe_component(run_id) / "result.json")
+                    result_label = f"result for {run_id!r}"
+                    result_bytes = _verified_file_bytes(
+                        result_path, result.get("result_sha256"), result_label)
+                    persisted_result = json.loads(result_bytes)
+                    summary_result = dict(result)
+                    summary_result.pop("result_sha256")
+                    if persisted_result != summary_result:
+                        raise ValueError(f"persisted result mismatch for {run_id!r}")
                 # The collector could not preserve process lifecycle or cost
                 # evidence for an exception escaping _run_one. Keep the failure
                 # visible, but do not invent a zero duration or admit an
