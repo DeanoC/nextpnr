@@ -130,6 +130,7 @@ void TimingAnalyser::run(bool update_route_delays, bool update_net_timings, bool
     reset_times();
     if (update_route_delays)
         get_route_delays();
+    check_primitive_clocks();
     walk_forward();
     walk_backward();
     compute_slack();
@@ -378,6 +379,10 @@ void TimingAnalyser::add_registered_io_boundary(CellInfo *cell, IdString pad, bo
 
 void TimingAnalyser::get_route_delays()
 {
+    pool<CellPortKey> primitive_clocks;
+    for (const auto &entry : ctx->cells)
+        for (const auto &requirement : ctx->getPrimitiveClockRequirements(entry.second.get()))
+            primitive_clocks.insert(CellPortKey(entry.first, requirement.clock_port));
     for (auto &net : ctx->nets) {
         NetInfo *ni = net.second.get();
         if (ni->driver.cell == nullptr || ni->driver.cell->bel == BelId())
@@ -386,13 +391,62 @@ void TimingAnalyser::get_route_delays()
         for (auto &usr : ni->users) {
             if (usr.cell->bel == BelId())
                 continue;
-            ports.at(CellPortKey(usr)).route_delay = ctx->settings.count(ctx->id("timing/io_delays"))
+            ports.at(CellPortKey(usr)).route_delay = (ctx->settings.count(ctx->id("timing/io_delays")) ||
+                                                     primitive_clocks.count(CellPortKey(usr)))
                     ? ctx->getNetinfoRouteDelayQuad(ni, usr).delayPair() : DelayPair(ctx->getNetinfoRouteDelay(ni, usr));
         }
     }
 }
 
 void TimingAnalyser::set_route_delay(CellPortKey port, DelayPair value) { ports.at(port).route_delay = value; }
+
+void TimingAnalyser::check_primitive_clocks()
+{
+    // This validates the domain of the architecture's primitive model, even
+    // with setup_only, disabled clock skew, false paths or asynchronous groups.
+    // Run after routing updates, including callers supplying manual delays.
+    for (const auto &entry : ctx->cells) {
+        const CellInfo *cell = entry.second.get();
+        pool<IdString> checked;
+        for (const auto &requirement : ctx->getPrimitiveClockRequirements(cell)) {
+            int count = 0;
+            auto valid = [](delay_t value) {
+                return std::isfinite(double(value)) && value >= 0 &&
+                       double(value) < double(std::numeric_limits<delay_t>::max()) / 4;
+            };
+            const NetInfo *clock = cell->getPort(requirement.clock_port);
+            if (!clock || port_timing_class(cell, requirement.clock_port, count) != TMG_CLOCK_INPUT ||
+                !checked.insert(requirement.clock_port).second || !valid(requirement.min_period) ||
+                !valid(requirement.min_high) || !valid(requirement.min_low))
+                log_error("Invalid primitive clock model for '%s.%s'.\n", ctx->nameOf(cell),
+                          requirement.clock_port.c_str(ctx));
+            if (!clock->clkconstr)
+                log_error("Primitive clock '%s.%s' requires an explicit physical clock waveform.\n", ctx->nameOf(cell),
+                          requirement.clock_port.c_str(ctx));
+            const auto &wave = *clock->clkconstr;
+            const auto route = ports.at(CellPortKey(cell->name, requirement.clock_port)).route_delay;
+            auto valid_range = [&](DelayPair pair) {
+                return valid(pair.minDelay()) && valid(pair.maxDelay()) && pair.minDelay() <= pair.maxDelay();
+            };
+            if (!valid_range(wave.period) || !valid_range(wave.high) || !valid_range(wave.low) || !valid_range(route))
+                log_error("Invalid clock waveform or route delay for '%s.%s'.\n", ctx->nameOf(cell),
+                          requirement.clock_port.c_str(ctx));
+            // A constant route does not change a same-edge period. Without
+            // separate edge-correlated route bounds, subtract the full range
+            // from both pulse widths; never assume rise/fall propagation equal.
+            const double distortion = double(route.maxDelay()) - double(route.minDelay());
+            const double actual[] = {double(wave.period.minDelay()), double(wave.high.minDelay()) - distortion,
+                                     double(wave.low.minDelay()) - distortion};
+            const delay_t required[] = {requirement.min_period, requirement.min_high, requirement.min_low};
+            const char *names[] = {"period", "high pulse", "low pulse"};
+            for (int i = 0; i != 3; ++i)
+                if (required[i] > 0 && actual[i] < double(required[i]))
+                    log_error("Primitive clock '%s.%s' %s %.3f ns is outside its timing model (minimum %.3f ns).\n",
+                              ctx->nameOf(cell), requirement.clock_port.c_str(ctx), names[i],
+                              ctx->getDelayNS(delay_t(actual[i])), ctx->getDelayNS(required[i]));
+        }
+    }
+}
 
 void TimingAnalyser::topo_sort()
 {

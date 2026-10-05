@@ -487,6 +487,8 @@ struct Arch : BaseArch<ArchRanges>
     TimingPortClass getPortTimingClass(const CellInfo *cell, IdString port,
                                        int &clockInfoCount) const override;                                // delay.cc
     TimingClockingInfo getPortClockingInfo(const CellInfo *cell, IdString port, int index) const override; // delay.cc
+    std::vector<RegisteredIoTiming> getRegisteredIoTiming(const CellInfo *cell, IdString pad, bool input) const override;
+    std::vector<PrimitiveClockRequirement> getPrimitiveClockRequirements(const CellInfo *cell) const override;
     bool getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort,
                       DelayQuad &delay) const override;                                                      // delay.cc
     DelayQuad getPipDelay(PipId pip) const override;                                                         // delay.cc

@@ -20,6 +20,8 @@
 #include "util.h"
 
 #include <cstdio>
+#include <cmath>
+#include <cstdlib>
 
 NEXTPNR_NAMESPACE_BEGIN
 
@@ -54,6 +56,71 @@ bool gpio_output_registered(const Context *ctx, const CellInfo *cell)
 {
     return cell->type == id_MISTRAL_SDROUT ||
            (cell->type == id_MISTRAL_SDRIO && int_or_default(cell->params, ctx->id("IOREG_OUT"), 0));
+}
+
+// Explicit reference-profile opt-in: these envelopes cover the retained
+// four-corner fits, not an arbitrary pin/electrical configuration or board.
+// Check the physical BEL as well as the pin assignment; stale attributes
+// must not qualify a pad that was moved to a different site.
+bool gpio_pad_profile(const Context *ctx, const CellInfo *cell, bool dq_only)
+{
+    auto profile = cell->attrs.find(ctx->id("NEXTPNR_GPIO_TIMING_PROFILE"));
+    if (profile == cell->attrs.end() || !profile->second.is_string ||
+        profile->second.as_string() != "QUARTUS_17_0_2_RAMTEST" || !gpio_fabric_profile(ctx, cell))
+        return false;
+    auto loc = cell->attrs.find(id_LOC);
+    if (loc == cell->attrs.end() || !loc->second.is_string)
+        return false;
+    const std::string pin = loc->second.as_string();
+    const char *dq[] = {"V12", "E8", "D11", "W12", "AH13", "D8", "AH14", "AF7",
+                        "AE24", "AD23", "AE6", "AE23", "AG14", "AD5", "AF4", "AH3"};
+    const char *out[] = {"Y11", "AA26", "AA13", "AA11", "W11", "Y19", "AB23", "AC23", "AC22",
+                         "C12", "AB26", "AD17", "D12", "Y17", "AB25", "AG13", "AF13",
+                         "AG10", "AA19", "AA18", "Y18", "W14"};
+    bool found = false;
+    for (const char *name : dq)
+        found |= pin == std::string("PIN_") + name;
+    if (!dq_only)
+        for (const char *name : out)
+            found |= pin == std::string("PIN_") + name;
+    if (!found || cell->bel == BelId())
+        return false;
+    auto package_pin = ctx->cyclonev->pin_find_name(pin.substr(4));
+    if (!package_pin || ctx->get_io_pin_bel(package_pin) != cell->bel)
+        return false;
+    const auto io = ctx->get_io_electrical(cell);
+    if (io.drive_strength != CycloneV::V3P3_LVTTL_16MA_LVCMOS_2MA || io.slow_slew || io.weak_pullup || io.clamp_diode)
+        return false;
+    if (int_or_default(cell->params, ctx->id("IOREG_IN_ACLR"), 0) ||
+        int_or_default(cell->params, ctx->id("IOREG_IN_CE"), 0))
+        return false;
+    // Asynchronous clear, inverted clocks and enabled clock enables were not
+    // covered by the pad reference fixture. Missing control ports mean the
+    // packer's default inactive clear / enabled clock.
+    for (IdString port : {id_CLK, id_CLKIN})
+        if (cell->getPort(port) && cell->get_pin_state(port) != PIN_SIG)
+            return false;
+    if (cell->getPort(id_ACLR) && cell->get_pin_state(id_ACLR) != PIN_0)
+        return false;
+    for (IdString port : {id_CEIN, id_CEOUT})
+        if (cell->getPort(port) && cell->get_pin_state(port) != PIN_1)
+            return false;
+    return true;
+}
+
+bool gpio_pad_load(const Context *ctx, const CellInfo *cell)
+{
+    // Far C is in farads in Quartus QSF. Support numeric scientific notation
+    // and the common pF suffix; reject unknown suffixes and omitted loads.
+    auto attr = cell->attrs.find(ctx->id("BOARD_MODEL_FAR_C"));
+    if (attr == cell->attrs.end() || !attr->second.is_string)
+        return false;
+    const std::string value = attr->second.as_string();
+    char *end = nullptr;
+    double load = std::strtod(value.c_str(), &end);
+    if (end == value.c_str()) return false;
+    if (*end == 'p' || *end == 'P') { load *= 1e-12; ++end; }
+    return *end == '\0' && std::isfinite(load) && load >= 0 && load <= 30e-12;
 }
 
 bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool def = false)
@@ -385,6 +452,61 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         }
     }
     return TMG_IGNORE;
+}
+
+std::vector<RegisteredIoTiming> Arch::getRegisteredIoTiming(const CellInfo *cell, IdString pad, bool input) const
+{
+    if (pad != id_PAD || !gpio_pad_profile(getCtx(), cell, input || cell->type == id_MISTRAL_SDRIO))
+        return {};
+    const bool ddr_in = cell->type == id_MISTRAL_DDRIN ||
+            (cell->type == id_MISTRAL_SDRIO && int_or_default(cell->params, id("IOREG_IN"), 0) &&
+             int_or_default(cell->params, id("IOREG_IN_DDR"), 0));
+    TimingClockingInfo timing{};
+    // Outward-rounded complete pad envelopes from ramtest-pad-reference30.json
+    // (both transitions, all actual pins, all four corners). Input hold uses
+    // the largest signed requirement, not the smallest observed pad delay.
+    if (input) {
+        if (!ddr_in) return {};
+        timing.clock_port = cell->type == id_MISTRAL_SDRIO ? id_CLKIN : id_CLK;
+        timing.edge = RISING_EDGE;
+        timing.setup = DelayPair(6440); timing.hold = DelayPair(-2180);
+        RegisteredIoTiming high{id("high"), timing};
+        timing.edge = FALLING_EDGE;
+        timing.setup = DelayPair(6430); timing.hold = DelayPair(-2170);
+        return {high, {id("low"), timing}};
+    }
+    if (!gpio_pad_load(getCtx(), cell) || !gpio_output_registered(getCtx(), cell))
+        return {};
+    // Mixed combinational data/OE would require additional boundary arcs.
+    // Reject the whole direction instead of reporting only the data register.
+    if (cell->type == id_MISTRAL_SDRIO && !int_or_default(cell->params, id("IOREG_OE"), 0))
+        return {};
+    timing.clock_port = id_CLK;
+    timing.edge = RISING_EDGE;
+    // Zero is a conservative early bound. Do not promote the fastest observed
+    // fit to a guaranteed silicon minimum. Use the 30pF late bound at all
+    // supported declared loads, without extrapolating a load curve.
+    timing.clockToQ = DelayQuad(0, 5280);
+    RegisteredIoTiming data{id("data"), timing};
+    if (cell->type == id_MISTRAL_SDROUT)
+        return {data};
+    timing.clockToQ = DelayQuad(0, 5420);
+    return {data, {id("oe"), timing}};
+}
+
+std::vector<PrimitiveClockRequirement> Arch::getPrimitiveClockRequirements(const CellInfo *cell) const
+{
+    std::vector<PrimitiveClockRequirement> result;
+    // Query the same profile as pad arcs. These requirements are normalized
+    // to GPIO clock ingress, including local early/late CELL distortion.
+    // The DDR input's hidden low-word retiming remains an opaque primitive;
+    // its period/pulse requirements must still be met when data paths are cut.
+    if (!getRegisteredIoTiming(cell, id_PAD, true).empty())
+        result.push_back({cell->type == id_MISTRAL_SDRIO ? id_CLKIN : id_CLK, 1540, 170, 190});
+    if (!getRegisteredIoTiming(cell, id_PAD, false).empty())
+        result.push_back({id_CLK, 1540, cell->type == id_MISTRAL_SDRIO ? 810 : 790,
+                         cell->type == id_MISTRAL_SDRIO ? 780 : 770});
+    return result;
 }
 
 TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port, int index) const

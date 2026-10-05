@@ -192,9 +192,10 @@ the audit adds late-minus-early local clock CELL delay, swaps high/low for an
 inverted internal clock, and excludes credit from global clock pessimism
 removal. Observed ingress requirements reach 167/185 ps for DDR input and
 806/778 ps for registered OE high/low widths; data output reaches 790/767 ps.
-These are local requirements. Routed clock duty distortion and any external
-uncertainty still need checks in the timing engine before these profiles can
-enable registered-pad constraints.
+These are local requirements. The timing engine now checks period and pulse
+widths for the explicit pad reference profile, conservatively subtracting the
+routed clock delay range from each pulse. External uncertainty still belongs
+in the physical clock waveform and board budgets.
 
 `ramtest-pad-reference{0,30}.json` and `ramtest-pad-load-reference.json` retain
 the complete pin/transition extrema and compact matched-load audit.
@@ -203,5 +204,11 @@ clock requirements, opaque DDR groups and hashes. The GPIO requirement extrema
 are identical between the default and 30 pF fits. The clock audit's seven
 negative cases cover missing corners/checks, declaration mismatches, inconsistent
 slack, unknown check types, a new explicit handoff edge and missing local clock
-cells. These receipts do not enable Mistral pad timing or prove 100/130 MHz
-hardware operation.
+cells. The backend uses outward-rounded pad and clock envelopes from these
+receipts only when `NEXTPNR_GPIO_TIMING_PROFILE=QUARTUS_17_0_2_RAMTEST` is
+explicitly assigned to a supported pad. See
+[the profile contract](../../../docs/mistral-io-delay.md#gpio-model-boundary)
+and `../registered-pad/check.py` for the native packing/checkpoint regression.
+The profile does not establish board timing or prove 100/130 MHz hardware
+operation. DDR output clock forwarding and SDR input capture remain unsupported
+for external pad constraints.

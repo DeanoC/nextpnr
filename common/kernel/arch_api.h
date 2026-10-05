@@ -138,6 +138,10 @@ template <typename R> struct ArchAPI : BaseCtx
     {
         return {};
     }
+    virtual std::vector<PrimitiveClockRequirement> getPrimitiveClockRequirements(const CellInfo * /*cell*/) const
+    {
+        return {};
+    }
     // Placement validity checks
     virtual bool isValidBelForCellType(IdString cell_type, BelId bel) const = 0;
     virtual IdString getBelBucketName(BelBucketId bucket) const = 0;

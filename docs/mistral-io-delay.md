@@ -57,11 +57,36 @@ it cannot reload as scalar `dq` and lose its saved constraints.
 ## GPIO model boundary
 
 Mistral supports these constraints on unregistered `MISTRAL_IB`, `MISTRAL_OB`
-and `MISTRAL_IO` fabric interfaces. Registered SDR/DDR GPIO modes are rejected for external constraints because
-their pad capture and clock-to-pad models and bidirectional timing boundaries
-are incomplete. A qualified reference profile now times some fabric-facing
-GPIO register arcs; see [the characterization fixture](../mistral/tests/gpio-timing/README.md).
-This does not enable external pad constraints on registered modes.
+and `MISTRAL_IO` fabric interfaces. An explicit reference profile also supports
+registered pads on the tested DE10-Nano SDRAM pins. Enable it with a QSF
+instance assignment on each pad:
+
+```tcl
+set_instance_assignment -name NEXTPNR_GPIO_TIMING_PROFILE QUARTUS_17_0_2_RAMTEST -to {SDRAM_DQ[*]}
+set_instance_assignment -name BOARD_MODEL_FAR_C 30P -to {SDRAM_DQ[*]}
+```
+
+The profile uses the retained Quartus 17.0.2 four-corner reference fits for
+`5CSEBA6U23I7`, default delay chains, 3.3-V LVTTL, 16mA, fast slew, no bus
+hold, pull-up or clamp, inactive asynchronous clear and constant clock enables.
+It requires the tested package pin assignment and a matching placed BEL.
+This is an opt-in fitted reference envelope, not board or silicon signoff.
+The [characterization fixture](../mistral/tests/gpio-timing/README.md) records
+its raw evidence, coverage and limitations.
+
+Supported input capture is `MISTRAL_DDRIN` or `MISTRAL_SDRIO` with
+`IOREG_IN_DDR=1`, on the 16 tested DQ pins. Both capture edges have complete
+pad setup/hold checks. Supported output is `MISTRAL_SDROUT` on the tested
+DQ/address/bank/command/mask pins, or `MISTRAL_SDRIO` on DQ with both data
+and OE registered. Output timing includes the output buffer and declared load;
+`BOARD_MODEL_FAR_C` must specify a finite 0..30pF in farads (e.g. `3e-11`)
+or with suffix `P`/`p`. Every supported load uses the conservative 30pF late
+bound and a zero early bound. Load values are declarations, not measurements.
+
+Mixed registered/combinational data and OE, SDR input capture, DDR output,
+other pins/devices/electrical settings and nondefault delay chains have no
+complete pad model and reject external constraints. In particular, the
+forwarded SDRAM clock still needs its own qualified model and board budget.
 
 The common timing analyzer now has separate registered-pad read and write
 boundaries. Architectures provide complete external relationships through
@@ -82,13 +107,21 @@ has no routing segment: its physical delay is entirely in the supplied model.
 Detailed net reports include each alias's logical source and clock event;
 the physical driver is null for an externally driven pad net.
 
-Mistral currently inherits the empty-model default. Registered external
-constraints still fail explicitly until its pad models are qualified. Common
-graph tests use synthetic architecture models rather than treating Quartus
-reference samples as a production pad model.
+Primitive clock requirements are checked independently of data-path timing.
+The architecture API `getPrimitiveClockRequirements` supplies period and high/
+low pulse limits at the real clock routing ingress. GPIO limits include local
+clock CELL early/late distortion from the Quartus reference. STA subtracts
+the routed clock delay range from each pulse width, conservatively bounding
+rise/fall distortion, and requires an explicit physical clock waveform.
+These checks also run with manual route updates, setup-only analysis, clock
+skew disabled and data paths cut. A violation is a hard error, including with
+`--timing-allow-fail`: the primitive timing model is outside its qualified
+waveform domain. It is not an ordinary relaxable data-path slack violation.
+Clock uncertainty remains unsupported and must be covered in the supplied
+waveform/budgets when assessing a physical board.
 
-The data timing boundary is the GPIO routing ingress/egress, not a newly
-characterized package-pad model. Checks use the existing routing/cell delay
+For unregistered interfaces the data timing boundary is the GPIO routing
+ingress/egress, rather than the reference profile’s complete pad boundary. Checks use the existing routing/cell delay
 models, including their minimum/maximum ranges. The analogue model remains
 the backend's existing slow-corner model; its minimum interval is not an
 independently characterized fast-corner hold bound. External clock-pad latency,

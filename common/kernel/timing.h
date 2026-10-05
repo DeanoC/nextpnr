@@ -151,6 +151,7 @@ struct TimingAnalyser
     void init_ports();
     void get_cell_delays();
     void get_route_delays();
+    void check_primitive_clocks();
     void topo_sort();
     void setup_port_domains();
     void identify_related_domains();

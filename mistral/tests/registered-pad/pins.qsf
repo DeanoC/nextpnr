@@ -1,0 +1,14 @@
+set_location_assignment PIN_V11 -to clk
+set_location_assignment PIN_AH27 -to d[0]
+set_location_assignment PIN_AG25 -to d[1]
+set_location_assignment PIN_W12 -to oe
+set_location_assignment PIN_V12 -to dq[0]
+set_location_assignment PIN_E8 -to dq[1]
+set_location_assignment PIN_Y15 -to q[0]
+set_location_assignment PIN_AC24 -to q[1]
+set_location_assignment PIN_AA15 -to q[2]
+set_location_assignment PIN_AD26 -to q[3]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to dq[*]
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to dq[*]
+set_instance_assignment -name NEXTPNR_GPIO_TIMING_PROFILE QUARTUS_17_0_2_RAMTEST -to dq[*]
+set_instance_assignment -name BOARD_MODEL_FAR_C 30P -to dq[*]

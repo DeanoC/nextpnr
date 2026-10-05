@@ -15,9 +15,18 @@ class IoBoundaryTestContext : public Context
   public:
     using Context::Context;
     dict<std::pair<IdString, bool>, std::vector<RegisteredIoTiming>> boundary_models;
+    dict<IdString, std::vector<PrimitiveClockRequirement>> clock_models;
+    bool native_models = false;
+    std::vector<PrimitiveClockRequirement> getPrimitiveClockRequirements(const CellInfo *cell) const override
+    {
+        auto found = clock_models.find(cell->name);
+        return found == clock_models.end() ? (native_models ? Arch::getPrimitiveClockRequirements(cell)
+                                                            : std::vector<PrimitiveClockRequirement>{}) : found->second;
+    }
     std::vector<RegisteredIoTiming> getRegisteredIoTiming(const CellInfo *cell, IdString pad, bool input) const override
     {
         auto found = boundary_models.find(std::make_pair(cell->name, input));
+        if (native_models) return Arch::getRegisteredIoTiming(cell, pad, input);
         return pad == id_PAD && found != boundary_models.end() ? found->second : std::vector<RegisteredIoTiming>{};
     }
 };
@@ -627,4 +636,164 @@ TEST_F(IoDelayTest, RegisteredPadUsesSeparatePhaseRelatedCaptureClock)
         EXPECT_EQ(path.max_delay - total, 200);
     }
     EXPECT_TRUE(found);
+}
+
+TEST_F(IoDelayTest, PrimitiveClockLimitsFollowRoutedWaveformAndReentry)
+{
+    registered_boundaries();
+    auto &models = static_cast<IoBoundaryTestContext *>(ctx.get())->clock_models;
+    models[bidir->name] = {{id_CLKIN, 1538, 170, 190}, {id_CLK, 1538, 810, 780}};
+    TimingAnalyser timing(ctx.get());
+    EXPECT_NO_THROW(timing.setup());
+    // A large constant delay moves both edges without narrowing either pulse.
+    timing.set_route_delay(CellPortKey(bidir->name, id_CLK), DelayPair(5000));
+    EXPECT_NO_THROW(timing.run(false));
+    timing.set_route_delay(CellPortKey(bidir->name, id_CLK), DelayPair(0, 3190));
+    EXPECT_NO_THROW(timing.run(false)); // exactly the 810 ps high requirement
+    timing.set_route_delay(CellPortKey(bidir->name, id_CLK), DelayPair(0, 3191));
+    EXPECT_THROW(timing.run(false), log_execution_error_exception);
+    timing.set_route_delay(CellPortKey(bidir->name, id_CLK), DelayPair(0));
+    EXPECT_NO_THROW(timing.run(false));
+    clock->clkconstr->high = DelayPair(8000);
+    clock->clkconstr->low = DelayPair(2000);
+    timing.set_route_delay(CellPortKey(bidir->name, id_CLKIN), DelayPair(0, 1811));
+    EXPECT_THROW(timing.run(false), log_execution_error_exception); // low capture pulse
+    EXPECT_NO_THROW(timing.setup()); // no stale route bounds after setup
+    models.clear();
+    EXPECT_NO_THROW(timing.setup()); // no cached primitive checks either
+}
+
+TEST_F(IoDelayTest, PrimitiveClockLimitsCannotBeCutOrRelaxed)
+{
+    registered_boundaries();
+    static_cast<IoBoundaryTestContext *>(ctx.get())->clock_models[bidir->name] = {{id_CLKIN, 1538, 170, 190}};
+    sdc("set_false_path -from [get_clocks memory] -to [get_clocks memory]\n");
+    TimingAnalyser timing(ctx.get());
+    timing.with_clock_skew = false;
+    timing.setup_only = true;
+    clock->clkconstr->period = DelayPair(1537);
+    clock->clkconstr->high = DelayPair(770);
+    clock->clkconstr->low = DelayPair(767);
+    EXPECT_THROW(timing.setup(), log_execution_error_exception);
+    clock->clkconstr->period = DelayPair(1538);
+    clock->clkconstr->low = DelayPair(768);
+    EXPECT_NO_THROW(timing.setup());
+    // setup restores persisted explicit clocks; use a genuinely unconstrained net.
+    bidir->disconnectPort(id_CLKIN);
+    bidir->connectPort(id_CLKIN, net("unconstrained-clock"));
+    EXPECT_THROW(timing.setup(), log_execution_error_exception);
+}
+
+TEST_F(IoDelayTest, PrimitiveClockModelsRejectMalformedDeclarations)
+{
+    registered_boundaries();
+    auto &models = static_cast<IoBoundaryTestContext *>(ctx.get())->clock_models;
+    models[bidir->name] = {{id_CLKIN, -1, 170, 190}};
+    EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
+    models[bidir->name] = {{id_I, 1538, 170, 190}};
+    EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
+    models[bidir->name] = {{id_CLKIN, 1538, 170, 190}, {id_CLKIN, 1538, 170, 190}};
+    EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
+    models[bidir->name] = {{id_CLKIN, 1538, 170, 190}};
+    clock->clkconstr->high = DelayPair(5000, 4000);
+    EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
+}
+
+TEST_F(IoDelayTest, NativeReferencePadModelsTimeCompleteDqAndGuardClock)
+{
+    registered_boundaries();
+    auto *native = static_cast<IoBoundaryTestContext *>(ctx.get());
+    native->native_models = true;
+    bidir->params[ctx->id("IOREG_IN_DDR")] = 1;
+    bidir->attrs[id_LOC] = std::string("PIN_V12");
+    bidir->attrs[ctx->id("NEXTPNR_GPIO_TIMING_PROFILE")] = std::string("QUARTUS_17_0_2_RAMTEST");
+    bidir->attrs[ctx->id("BOARD_MODEL_FAR_C")] = std::string("30P");
+    ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name("V12")), bidir, STRENGTH_LOCKED);
+    ASSERT_EQ(ctx->getRegisteredIoTiming(bidir, id_PAD, true).size(), 2u);
+    ASSERT_EQ(ctx->getRegisteredIoTiming(bidir, id_PAD, false).size(), 2u);
+    TimingAnalyser timing(ctx.get());
+    EXPECT_NO_THROW(timing.setup(true, false, true));
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "high", true)), 560);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "low", true)), -5430);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("write", "data", false)), 720);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("write", "oe", false)), 580);
+    EXPECT_EQ(ctx->getPrimitiveClockRequirements(bidir).size(), 2u);
+    clock->clkconstr->high = DelayPair(800);
+    clock->clkconstr->low = DelayPair(9200);
+    sdc("set_false_path -from [get_clocks memory] -to [get_clocks memory]\n");
+    EXPECT_THROW(timing.setup(), log_execution_error_exception);
+}
+
+TEST_F(IoDelayTest, NativeReferenceProfileRejectsUnqualifiedPinsLoadsAndModes)
+{
+    registered_boundaries();
+    static_cast<IoBoundaryTestContext *>(ctx.get())->native_models = true;
+    bidir->params[ctx->id("IOREG_IN_DDR")] = 1;
+    bidir->attrs[id_LOC] = std::string("PIN_V12");
+    bidir->attrs[ctx->id("NEXTPNR_GPIO_TIMING_PROFILE")] = std::string("QUARTUS_17_0_2_RAMTEST");
+    bidir->attrs[ctx->id("BOARD_MODEL_FAR_C")] = std::string("3e-11");
+    ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name("V12")), bidir, STRENGTH_LOCKED);
+    ASSERT_EQ(ctx->getRegisteredIoTiming(bidir, id_PAD, false).size(), 2u);
+    for (const char *value : {"31P", "-1P", "nan", "inf", "30Pjunk", "", "30", "1e300"}) {
+        bidir->attrs[ctx->id("BOARD_MODEL_FAR_C")] = std::string(value);
+        EXPECT_TRUE(ctx->getRegisteredIoTiming(bidir, id_PAD, false).empty()) << value;
+        // External capacitance does not alter the input-capture envelope.
+        EXPECT_EQ(ctx->getRegisteredIoTiming(bidir, id_PAD, true).size(), 2u);
+    }
+    bidir->attrs.erase(ctx->id("BOARD_MODEL_FAR_C"));
+    EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
+    bidir->attrs[ctx->id("BOARD_MODEL_FAR_C")] = std::string("30P");
+    bidir->params[ctx->id("IOREG_OE")] = 0;
+    EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
+    bidir->params[ctx->id("IOREG_OE")] = 1;
+    bidir->params[ctx->id("IOREG_OUT")] = 0;
+    EXPECT_TRUE(ctx->getRegisteredIoTiming(bidir, id_PAD, false).empty());
+    bidir->params[ctx->id("IOREG_OUT")] = 1;
+    bidir->params[ctx->id("IOREG_IN_DDR")] = 0;
+    EXPECT_TRUE(ctx->getRegisteredIoTiming(bidir, id_PAD, true).empty());
+    bidir->params[ctx->id("IOREG_IN_DDR")] = 1;
+    for (const auto &option : std::vector<std::pair<const char *, const char *>>{
+            {"CURRENT_STRENGTH_NEW", "8MA"}, {"SLEW_RATE", "0"}, {"WEAK_PULL_UP_RESISTOR", "ON"},
+            {"D5_DELAY", "1"}, {"ENABLE_BUS_HOLD_CIRCUITRY", "ON"}, {"IO_STANDARD", "3.3-V LVCMOS"}}) {
+        bidir->attrs[ctx->id(option.first)] = std::string(option.second);
+        EXPECT_TRUE(ctx->getRegisteredIoTiming(bidir, id_PAD, true).empty()) << option.first;
+        EXPECT_TRUE(ctx->getRegisteredIoTiming(bidir, id_PAD, false).empty()) << option.first;
+        bidir->attrs.erase(ctx->id(option.first));
+    }
+    bidir->attrs[id_LOC] = std::string("PIN_E8"); // another tested pin, but not this physical BEL
+    EXPECT_TRUE(ctx->getRegisteredIoTiming(bidir, id_PAD, true).empty());
+    bidir->attrs[id_LOC] = std::string("PIN_W15"); // not among the qualified DQ pins
+    EXPECT_TRUE(ctx->getRegisteredIoTiming(bidir, id_PAD, false).empty());
+    bidir->attrs[id_LOC] = std::string("PIN_V12");
+    bidir->attrs.erase(ctx->id("NEXTPNR_GPIO_TIMING_PROFILE"));
+    EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
+}
+
+TEST_F(IoDelayTest, NativeReferenceProfileSupportsStandaloneSdrOutputAndDdrInput)
+{
+    static_cast<IoBoundaryTestContext *>(ctx.get())->native_models = true;
+    output->type = id_MISTRAL_SDROUT;
+    output->addInput(id_CLK); output->connectPort(id_CLK, clock);
+    output->attrs[id_LOC] = std::string("PIN_Y11");
+    output->attrs[ctx->id("NEXTPNR_GPIO_TIMING_PROFILE")] = std::string("QUARTUS_17_0_2_RAMTEST");
+    output->attrs[ctx->id("BOARD_MODEL_FAR_C")] = std::string("0");
+    ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name("Y11")), output, STRENGTH_LOCKED);
+    auto write = ctx->getRegisteredIoTiming(output, id_PAD, false);
+    ASSERT_EQ(write.size(), 1u);
+    EXPECT_EQ(write.front().name, ctx->id("data"));
+    EXPECT_EQ(write.front().clocking.clockToQ.maxDelay(), 5280);
+    EXPECT_EQ(ctx->getPrimitiveClockRequirements(output).size(), 1u);
+    input->type = id_MISTRAL_DDRIN;
+    input->addInput(id_CLK); input->connectPort(id_CLK, clock);
+    input->attrs[id_LOC] = std::string("PIN_V12");
+    input->attrs[ctx->id("NEXTPNR_GPIO_TIMING_PROFILE")] = std::string("QUARTUS_17_0_2_RAMTEST");
+    ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name("V12")), input, STRENGTH_LOCKED);
+    auto read = ctx->getRegisteredIoTiming(input, id_PAD, true);
+    ASSERT_EQ(read.size(), 2u);
+    EXPECT_EQ(read.front().clocking.clock_port, id_CLK);
+    EXPECT_EQ(ctx->getPrimitiveClockRequirements(input).size(), 1u);
+    input->type = id_MISTRAL_SDRIN;
+    EXPECT_TRUE(ctx->getRegisteredIoTiming(input, id_PAD, true).empty());
+    output->type = id_MISTRAL_DDROUT;
+    EXPECT_TRUE(ctx->getRegisteredIoTiming(output, id_PAD, false).empty());
 }

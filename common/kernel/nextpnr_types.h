@@ -290,6 +290,16 @@ struct RegisteredIoTiming
     TimingClockingInfo clocking;
 };
 
+// Limits of a primitive timing model, referred to its real clock routing
+// ingress (not an internal register clock pin). Data-path exceptions cannot
+// relax these physical waveform requirements. Zero disables an individual
+// requirement; architectures without a qualified model return no entries.
+struct PrimitiveClockRequirement
+{
+    IdString clock_port;
+    delay_t min_period = 0, min_high = 0, min_low = 0;
+};
+
 struct PseudoCell
 {
     virtual Loc getLocation() const = 0;
