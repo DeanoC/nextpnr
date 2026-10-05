@@ -265,7 +265,10 @@ class DatasetTests(unittest.TestCase):
     def test_collection_summary_assembles_a_prefix_only_dataset(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            telemetry = root / "telemetry.jsonl"
+            telemetry = root / "reports" / "telemetry.jsonl"
+            telemetry.parent.mkdir()
+            stdout = root / "stdout.log"
+            stdout.write_text("", encoding="utf-8")
             events = [
                 {"schema_version": 1, "sequence": 0, "run_id": "native", "event": "run_start",
                  "phase": None, "attempt": None, "elapsed_s": 0},
@@ -281,8 +284,16 @@ class DatasetTests(unittest.TestCase):
                  "backend_nodes_expanded_cumulative": 180},
                 {"schema_version": 1, "sequence": 4, "run_id": "native", "event": "phase_end",
                  "phase": "negotiation", "attempt": 1, "elapsed_s": 4},
-                {"schema_version": 1, "sequence": 5, "run_id": "native", "event": "run_end",
-                 "phase": None, "attempt": None, "elapsed_s": 5,
+                {"schema_version": 1, "sequence": 5, "run_id": "native", "event": "phase_start",
+                 "phase": "timing_repair", "attempt": 1, "elapsed_s": 5},
+                {"schema_version": 1, "sequence": 6, "run_id": "native", "event": "repair_round",
+                 "phase": "timing_repair", "attempt": 1, "round": 1, "elapsed_s": 6,
+                 "table_wns_ns": 0.25},
+                {"schema_version": 1, "sequence": 7, "run_id": "native", "event": "phase_end",
+                 "phase": "timing_repair", "attempt": 1, "elapsed_s": 7,
+                 "repaired_arcs": 4},
+                {"schema_version": 1, "sequence": 8, "run_id": "native", "event": "run_end",
+                 "phase": None, "attempt": None, "elapsed_s": 8,
                  "routing_legal": True, "timing_gate_pass": True},
             ]
             telemetry.write_text("".join(json.dumps(event) + "\n" for event in events),
@@ -295,9 +306,12 @@ class DatasetTests(unittest.TestCase):
                 "status": "completed", "process_started": True,
                 "elapsed_seconds": 20, "cohort_identity": identity,
                 "outcome": source_run["outcome"],
-                "artifacts": {"telemetry": {
-                    "available": True, "path": str(telemetry),
-                    "sha256": seed_racing.sha256_file(telemetry)}},
+                "artifacts": {
+                    "stdout": {"available": True, "path": str(stdout),
+                               "sha256": seed_racing.sha256_file(stdout)},
+                    "telemetry": {"available": True, "path": str(telemetry),
+                                  "sha256": seed_racing.sha256_file(telemetry)},
+                },
             }
             result_path = root / "result.json"
             result_path.write_text(json.dumps(result), encoding="utf-8")
@@ -321,6 +335,8 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(normalized[0]["observations"][1]["recent_progress"], 7)
             self.assertEqual(normalized[0]["observations"][1]["node_expansions"], 180)
             self.assertNotIn("routing_legal", normalized[0]["observations"][1])
+            self.assertEqual(normalized[0]["observations"][-1]["repaired_connections"], 4)
+            self.assertEqual(normalized[0]["observations"][-1]["total_excess_occupancy"], 3)
             self.assertEqual(normalized[1]["duration_seconds"], 0)
             self.assertFalse(normalized[1]["success"])
             self.assertEqual(normalized[1]["outcome"]["timing_evidence_reason"],

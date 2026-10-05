@@ -100,8 +100,8 @@ repository. Principal SHA-256 identities are:
 
 - Catch collection: `1d8a1057092d61ebd44a42f6ce877a8a79c1f729a441e90f3fd4522b597c5016`
 - Pong collection: `91dcecc3e561626fc502ae9cc7c97ead3fc1dbea1b0ce5061e2e6e135d6584dd`
-- Verified Catch evaluator dataset: `a6b859836a848fde4a8e2ff3bb01152d6b55c8f75413af98e5e2497f35c079fd`
-- Verified Pong evaluator dataset: `bd07d22434829e4f34e4c955b00d4e7bcc11a5e7e1f562a62fad38429b50bd18`
+- Verified Catch evaluator dataset: `0be931ed976ebe9371675dd891ad04e981a6c1d0170e2b9169a6821b9dfe97db`
+- Verified Pong evaluator dataset: `6a958548a57bd3c9bb011ce246febff27a54476aa8d302b465898877a5f61914`
 
 Representative replay commands were:
 
@@ -121,7 +121,7 @@ Focused validation after adding the adapter:
 
 ```
 python3 -m unittest mistral.tests.seed_racing_test
-# Ran 80 tests ... OK
+# Ran 81 tests ... OK
 python3 -m py_compile python/seed_racing.py
 git diff --check
 ```

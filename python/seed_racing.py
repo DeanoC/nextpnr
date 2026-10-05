@@ -1784,7 +1784,12 @@ def telemetry_observations(records: Sequence[Mapping[str, Any]]) -> List[Dict[st
     state: Dict[str, Any] = {}
     prior_excess: Optional[float] = None
     for record in records:
-        if record.get("event") not in {"iteration", "repair_round"}:
+        event = record.get("event")
+        repair_summary = (event == "phase_end" and
+                          record.get("phase") == "timing_repair" and
+                          any(_finite_number(record.get(field))
+                              for field in _TELEMETRY_PREFIX_MAP))
+        if event not in {"iteration", "repair_round"} and not repair_summary:
             continue
         for source, destination in _TELEMETRY_PREFIX_MAP.items():
             value = record.get(source)
@@ -1864,13 +1869,14 @@ def assemble_dataset(collection_paths: Sequence[Path]) -> Dict[str, Any]:
             else:
                 if not isinstance(artifacts, dict):
                     raise ValueError(f"collection result {result.get('run_id')!r} lacks artifacts")
-                artifact_paths = [Path(artifact["path"]) for artifact in artifacts.values()
-                                  if isinstance(artifact, dict) and
-                                  isinstance(artifact.get("path"), str) and artifact["path"]]
-                if not artifact_paths:
+                stdout = artifacts.get("stdout")
+                stdout_path = (Path(stdout["path"])
+                               if isinstance(stdout, dict) and
+                               isinstance(stdout.get("path"), str) and stdout["path"] else None)
+                if stdout_path is None:
                     raise ValueError(
-                        f"collection result {result.get('run_id')!r} has no artifact path")
-                result_path = artifact_paths[0].parent / "result.json"
+                        f"collection result {result.get('run_id')!r} lacks its stdout path")
+                result_path = stdout_path.parent / "result.json"
                 # Collector resolves its output root before planning, so native
                 # summaries always contain absolute artifact paths.
                 if not result_path.is_absolute():
