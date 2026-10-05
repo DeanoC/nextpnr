@@ -1659,9 +1659,15 @@ struct GpuRouter
                 curr_cong_weight += cfg.curr_cong_mult * cong_stall_boost;
             if (!failed_nets.empty() && (iter % 100) == 0)
                 log_overused_wires();
-            if (iter > cfg.max_iter && !failed_nets.empty())
-                log_error("GPU router did not converge after %d iterations (%d overused wires).\n", cfg.max_iter,
-                          overused_wires);
+            if (iter > cfg.max_iter && !failed_nets.empty()) {
+                if (telemetry)
+                    telemetry->emit("phase_end", "negotiation", attempt,
+                                    {gpuroute::Telemetry::Field::string("status", "iteration_limit"),
+                                     gpuroute::Telemetry::Field::integer_value("last_iteration", iter - 1)});
+                log_warning("GPU router did not converge after %d iterations (%d overused wires).\n", cfg.max_iter,
+                            overused_wires);
+                return false;
+            }
         } while (!failed_nets.empty());
         if (telemetry)
             telemetry->emit("phase_end", "negotiation", attempt,

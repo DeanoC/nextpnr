@@ -1967,6 +1967,11 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
         if not isinstance(outcome, dict):
             raise ValueError("outcome must be an object")
         legal = outcome.get("legal_route") is True
+        timing_gate_pass = outcome.get("timing_gate_pass")
+        if timing_gate_pass is not None and not isinstance(timing_gate_pass, bool):
+            raise ValueError("outcome.timing_gate_pass must be boolean or null")
+        if run["status"] == "completed" and timing_gate_pass is False:
+            raise ValueError("completed run contradicts failed outcome timing gate")
         required_clocks = outcome.get("required_clocks")
         if (not isinstance(required_clocks, list) or not required_clocks or
                 not all(isinstance(name, str) and name for name in required_clocks) or
@@ -2075,7 +2080,8 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
         copy = dict(run)
         copy.update({"duration_seconds": duration, "outcome_observed_seconds": outcome_observed,
                      "observations": clean,
-                     "success": legal and analogue_pass and run["status"] == "completed",
+                     "success": (legal and analogue_pass and timing_gate_pass is not False and
+                                 run["status"] == "completed"),
                      "legal_route": legal, "analogue_timing_pass": analogue_pass,
                      "timing_available": timing_available, "missing_required_clocks": missing_required,
                      "final_multi_clock_margin_ns": final_margin})

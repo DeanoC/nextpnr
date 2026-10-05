@@ -146,6 +146,13 @@ class DatasetTests(unittest.TestCase):
         document["runs"][0]["status"] = "timing_constraint_failure"
         seed_racing.validate_dataset(document)
 
+    def test_dataset_rejects_completed_run_with_failed_timing_gate(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        winner = next(run for run in document["runs"] if run["run_id"] == "late-winner")
+        winner["outcome"]["timing_gate_pass"] = False
+        with self.assertRaisesRegex(ValueError, "contradicts failed outcome timing gate"):
+            seed_racing.validate_dataset(document)
+
     def test_dataset_binds_gpu_runs_to_the_cohort_execution_backend(self):
         document = json.loads(FIXTURE.read_text(encoding="utf-8"))
         identity = document["cohort_identities"]["synthetic"]
