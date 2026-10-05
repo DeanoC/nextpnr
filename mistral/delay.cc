@@ -130,6 +130,16 @@ bool f2sdram_clocked(const CellInfo *cell, IdString clock)
 TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, int &clockInfoCount) const
 {
     clockInfoCount = 0;
+    const bool io_timed = settings.count(id("timing/io_delays"));
+    if (io_timed && cell->type == id_MISTRAL_IB && port == id_O)
+        return TMG_STARTPOINT;
+    if (io_timed && cell->type == id_MISTRAL_OB && port == id_I)
+        return TMG_ENDPOINT;
+    if (io_timed && cell->type == id_MISTRAL_IO) {
+        if (port == id_O) return TMG_STARTPOINT;
+        if (port.in(id_I, id_OE)) return TMG_ENDPOINT;
+        return TMG_IGNORE;
+    }
     if (cell->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN)) {
         // The Mistral database has no characterized GPIO input-register
         // setup/hold or register clock-to-Q model.

@@ -233,6 +233,13 @@ struct TimingAnalyser
     // Timing data for every cell port
     struct PerPort
     {
+        struct IoDelay
+        {
+            IdString clock;
+            ClockEdge edge;
+            DelayPair delay;
+        };
+        std::optional<IoDelay> io_delay;
         CellPortKey cell_port;
         PortType type;
         // per domain timings

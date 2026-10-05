@@ -28,6 +28,7 @@ target_sources(nextpnr_kernel PUBLIC
     idstringlist.cc
     idstringlist.h
     indexed_store.h
+    io_delay.h
     log.cc
     log.h
     nextpnr_assertions.cc

@@ -25,6 +25,9 @@
 #include <algorithm>
 #include <cctype>
 #include <iterator>
+#include <set>
+#include <sstream>
+#include "io_delay.h"
 
 NEXTPNR_NAMESPACE_BEGIN
 
@@ -256,6 +259,8 @@ struct SDCParser
             return cmd_set_false_path(arguments);
         else if (cmd == "set_multicycle_path")
             return cmd_set_multicycle_path(arguments);
+        else if (cmd == "set_input_delay" || cmd == "set_output_delay")
+            return cmd_set_io_delay(arguments, cmd == "set_input_delay");
         else if (cmd == "derive_pll_clocks" || cmd == "derive_clock_uncertainty")
             return cmd_ignored(arguments);
         else if (cmd == "set_clock_groups")
@@ -291,7 +296,7 @@ struct SDCParser
             if (!arg.is_string)
                 log_error("get_nets expected string arguments (line %d)\n", lineno);
             std::string s = arg.str;
-            if (s.at(0) == '-')
+            if (!s.empty() && s.at(0) == '-')
                 log_error("unsupported argument '%s' to get_nets (line %d)\n", s.c_str(), lineno);
             IdString id = ctx->id(s);
             if (ctx->nets.count(id) || ctx->net_aliases.count(id))
@@ -310,13 +315,42 @@ struct SDCParser
             if (!arg.is_string)
                 log_error("get_ports expected string arguments (line %d)\n", lineno);
             std::string s = arg.str;
-            if (s.at(0) == '-')
+            if (!s.empty() && s.at(0) == '-')
                 log_error("unsupported argument '%s' to get_ports (line %d)\n", s.c_str(), lineno);
-            IdString id = ctx->id(s);
-            if (ctx->ports.count(id))
-                ports.emplace_back(SdcEntity::ENTITY_PORT, id);
+            std::istringstream patterns(s);
+            std::string pattern;
+            while (patterns >> pattern) {
+                IdString id = ctx->id(pattern);
+                if (ctx->ports.count(id)) {
+                    ports.emplace_back(SdcEntity::ENTITY_PORT, id);
+                    continue;
+                }
+                for (const auto &port : ctx->ports)
+                    if (glob_match(pattern, port.first.str(ctx)))
+                        ports.emplace_back(SdcEntity::ENTITY_PORT, port.first);
+            }
         }
+        std::sort(ports.begin(), ports.end(), [&](const SdcEntity &a, const SdcEntity &b) {
+            return a.name.str(ctx) < b.name.str(ctx);
+        });
+        ports.erase(std::unique(ports.begin(), ports.end(), [](const SdcEntity &a, const SdcEntity &b) {
+            return a.name == b.name;
+        }), ports.end());
         return ports;
+    }
+
+    // Brackets are literal bus delimiters, rather than glob character classes.
+    static bool glob_match(const std::string &pattern, const std::string &name)
+    {
+        size_t p = 0, n = 0, star = std::string::npos, retry = 0;
+        while (n < name.size()) {
+            if (p < pattern.size() && (pattern[p] == '?' || pattern[p] == name[n])) { ++p; ++n; }
+            else if (p < pattern.size() && pattern[p] == '*') { star = p++; retry = n; }
+            else if (star != std::string::npos) { p = star + 1; n = ++retry; }
+            else return false;
+        }
+        while (p < pattern.size() && pattern[p] == '*') ++p;
+        return p == pattern.size();
     }
 
     SdcValue cmd_get_cells(const std::vector<SdcValue> &arguments)
@@ -393,6 +427,73 @@ struct SDCParser
                 clocks.emplace_back(SdcEntity::ENTITY_CLOCK, ctx->id(name));
         }
         return clocks;
+    }
+
+    SdcValue cmd_set_io_delay(const std::vector<SdcValue> &arguments, bool input)
+    {
+        bool minimum = false, maximum = false, falling = false, have_value = false;
+        double delay = 0;
+        NetInfo *clock = nullptr;
+        std::vector<SdcEntity> targets;
+        for (size_t i = 1; i < arguments.size(); ++i) {
+            const auto &arg = arguments[i];
+            if (!arg.is_string) {
+                targets.insert(targets.end(), arg.list.begin(), arg.list.end());
+            } else if (arg.str == "-min") minimum = true;
+            else if (arg.str == "-max") maximum = true;
+            else if (arg.str == "-clock_fall") falling = true;
+            else if (arg.str == "-clock") {
+                if (clock || ++i == arguments.size())
+                    log_error("IO delay requires exactly one -clock (line %d).\n", lineno);
+                const auto &value = arguments[i];
+                if (value.is_string) {
+                    auto named = ctx->settings.find(ctx->id("sdc/clock/" + value.str));
+                    clock = io_delay_clock(ctx, named == ctx->settings.end() ? value.str : named->second.as_string());
+                } else if (value.list.size() == 1 && value.list[0].type == SdcEntity::ENTITY_CLOCK) {
+                    auto name = value.list[0].name.str(ctx);
+                    auto named = ctx->settings.find(ctx->id("sdc/clock/" + name));
+                    clock = io_delay_clock(ctx, named == ctx->settings.end() ? name : named->second.as_string());
+                }
+                if (!clock) log_error("IO delay clock matched no single physical clock (line %d).\n", lineno);
+            } else {
+                size_t consumed = 0;
+                try { delay = std::stod(arg.str, &consumed); }
+                catch (const std::exception &) {
+                    log_error("Unsupported IO delay argument '%s' (line %d).\n", arg.str.c_str(), lineno);
+                }
+                if (have_value || consumed != arg.str.size())
+                    log_error("IO delay requires one numeric delay and [get_ports ...] (line %d).\n", lineno);
+                io_delay_value(ctx, json11::Json(delay));
+                have_value = true;
+            }
+        }
+        if (!clock || !have_value || targets.empty())
+            log_error("IO delay requires -clock, a numeric delay, and matching ports (line %d).\n", lineno);
+        if (!minimum && !maximum) minimum = maximum = true;
+        auto rows = read_io_delays(ctx);
+        for (const auto &target : targets) {
+            if (target.type != SdcEntity::ENTITY_PORT)
+                log_error("IO delay applies only to top-level ports (line %d).\n", lineno);
+            auto *port = target.get_port(ctx);
+            if ((input && port->type == PORT_OUT) || (!input && port->type == PORT_IN))
+                log_error("IO delay has wrong direction for port '%s' (line %d).\n", target.name.c_str(ctx), lineno);
+            json11::Json::object row{{"port", target.name.str(ctx)}, {"input", input},
+                                     {"clock", clock->name.str(ctx)}, {"fall", falling}};
+            size_t index = rows.size();
+            for (size_t r = 0; r < rows.size(); ++r) {
+                if (rows[r]["port"].string_value() != target.name.str(ctx) || rows[r]["input"].bool_value() != input)
+                    continue;
+                if (rows[r]["clock"].string_value() != clock->name.str(ctx) || rows[r]["fall"].bool_value() != falling)
+                    log_error("Multiple clock/edge IO delays on one port require unsupported -add_delay semantics.\n");
+                row = rows[r].object_items(); index = r; break;
+            }
+            if (minimum) row["min"] = delay;
+            if (maximum) row["max"] = delay;
+            if (index == rows.size()) rows.emplace_back(row);
+            else rows[index] = row;
+        }
+        ctx->settings[ctx->id("timing/io_delays")] = json11::Json(rows).dump();
+        return std::string{};
     }
 
     SdcValue cmd_ignored(const std::vector<SdcValue> &arguments)
@@ -548,52 +649,50 @@ struct SDCParser
 
     SdcValue cmd_create_clock(const std::vector<SdcValue> &arguments)
     {
-        // Options may follow the target. Collect them before applying, or a
-        // later -name is never stored and [get_clocks <name>] matches nothing.
-        float period = 10;
+        double period = 10;
         std::string clock_name;
-        std::vector<NetInfo *> targets;
-        for (int i = 1; i < int(arguments.size()); i++) {
-            auto &arg = arguments.at(i);
-            if (arg.is_string) {
-                std::string s = arg.str;
-                if (s == "-period") {
-                    i++;
-                    auto &val = arguments.at(i);
-                    if (!val.is_string)
-                        log_error("expecting string argument to -period (line %d)\n", lineno);
-                    try {
-                        period = std::stof(val.str);
-                    } catch (std::exception &e) {
-                        log_error("invalid argument '%s' to -period (line %d)\n", val.str.c_str(), lineno);
-                    }
-                } else if (s == "-name") {
-                    i++;
-                    if (i >= int(arguments.size()) || !arguments.at(i).is_string)
-                        log_error("expecting a clock name after -name (line %d)\n", lineno);
-                    clock_name = arguments.at(i).str;
-                } else {
-                    log_error("unsupported argument '%s' to create_clock\n", s.c_str());
-                }
+        std::vector<SdcEntity> targets;
+        for (size_t i = 1; i < arguments.size(); ++i) {
+            const auto &arg = arguments[i];
+            if (!arg.is_string) {
+                targets.insert(targets.end(), arg.list.begin(), arg.list.end());
+                continue;
+            }
+            if (arg.str != "-period" && arg.str != "-name")
+                log_error("Unsupported argument '%s' to create_clock.\n", arg.str.c_str());
+            if (++i == arguments.size() || !arguments[i].is_string)
+                log_error("create_clock option '%s' requires a value.\n", arg.str.c_str());
+            if (arg.str == "-name") {
+                clock_name = arguments[i].str;
             } else {
-                for (const auto &ety : arg.list) {
-                    NetInfo *net = nullptr;
-                    if (ety.type == SdcEntity::ENTITY_PIN)
-                        net = ety.get_net(ctx);
-                    else if (ety.type == SdcEntity::ENTITY_NET)
-                        net = ctx->nets.at(ety.name).get();
-                    else if (ety.type == SdcEntity::ENTITY_PORT)
-                        net = ctx->ports.at(ety.name).net;
-                    else
-                        log_error("create_clock applies only to cells, cell pins, or IO ports (line %d)\n", lineno);
-                    targets.push_back(net);
-                }
+                size_t consumed = 0;
+                try { period = std::stod(arguments[i].str, &consumed); }
+                catch (const std::exception &) { log_error("Invalid create_clock period.\n"); }
+                io_delay_value(ctx, json11::Json(period));
+                if (consumed != arguments[i].str.size() || period <= 0 || ctx->getDelayFromNS(period) <= 0)
+                    log_error("create_clock period must be positive and representable.\n");
             }
         }
-        for (NetInfo *net : targets) {
-            ctx->addClock(net->name, 1000.0f / period);
-            if (!clock_name.empty())
+        if (targets.empty())
+            log_error("create_clock requires a physical target; virtual clocks are not supported.\n");
+        if (!clock_name.empty() && targets.size() != 1)
+            log_error("A named create_clock requires exactly one target.\n");
+        for (const auto &target : targets) {
+            NetInfo *net = nullptr;
+            if (target.type == SdcEntity::ENTITY_PORT) net = target.get_port(ctx)->net;
+            else if (target.type == SdcEntity::ENTITY_NET || target.type == SdcEntity::ENTITY_PIN)
+                net = target.get_net(ctx);
+            if (!net) log_error("create_clock target must be a connected port, net, or pin.\n");
+            if (!clock_name.empty()) {
+                IdString key = ctx->id("sdc/clock/" + clock_name);
+                auto old = ctx->settings.find(key);
+                if (old != ctx->settings.end() && old->second.as_string() != net->name.str(ctx))
+                    log_error("Clock name '%s' already names another net.\n", clock_name.c_str());
+                ctx->settings[key] = net->name.str(ctx);
                 ctx->sdc_clock_names[clock_name] = net->name;
+            }
+            ctx->addClock(net->name, 1000.0 / period);
+            ctx->settings[ctx->id("sdc/period/" + net->name.str(ctx))] = json11::Json(period).dump();
         }
         return std::string{};
     }

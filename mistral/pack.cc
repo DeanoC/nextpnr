@@ -3063,6 +3063,32 @@ struct MistralPacker
         }
     }
 
+    void propagate_io_clocks()
+    {
+        if (!ctx->settings.count(ctx->id("timing/io_delays"))) return;
+        // A create_clock on an input pad is also the reference for the
+        // uninverted fabric clock behind its input and global buffers.
+        bool changed;
+        do {
+            changed = false;
+            for (const auto &entry : ctx->cells) {
+                auto *cell = entry.second.get();
+                IdString in, out;
+                if (cell->type == id_MISTRAL_IB) { in = id_PAD; out = id_O; }
+                else if (cell->type == id_MISTRAL_CLKBUF) { in = id_A; out = id_Q; }
+                else continue;
+                auto *source = cell->getPort(in), *target = cell->getPort(out);
+                if (!source || !target || !source->clkconstr || target->clkconstr) continue;
+                if (cell->get_pin_state(in) == PIN_INV)
+                    log_error("IO clock constraints do not support inverted input/global buffers.\n");
+                if (source->clkconstr->phase_group == IdString())
+                    source->clkconstr->phase_group = source->name;
+                target->clkconstr = std::make_unique<ClockConstraint>(*source->clkconstr);
+                changed = true;
+            }
+        } while (changed);
+    }
+
     void run()
     {
         init_constant_nets();
@@ -3078,6 +3104,7 @@ struct MistralPacker
         setup_clock_enables();
         setup_plls();
         fold_inverted_pll_clock_buffers();
+        propagate_io_clocks();
         ensure_dsp_control_ports();
         ensure_m10k_control_ports();
         pack_constants();
