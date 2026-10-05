@@ -548,8 +548,11 @@ struct SDCParser
 
     SdcValue cmd_create_clock(const std::vector<SdcValue> &arguments)
     {
+        // Options may follow the target. Collect them before applying, or a
+        // later -name is never stored and [get_clocks <name>] matches nothing.
         float period = 10;
         std::string clock_name;
+        std::vector<NetInfo *> targets;
         for (int i = 1; i < int(arguments.size()); i++) {
             auto &arg = arguments.at(i);
             if (arg.is_string) {
@@ -583,12 +586,14 @@ struct SDCParser
                         net = ctx->ports.at(ety.name).net;
                     else
                         log_error("create_clock applies only to cells, cell pins, or IO ports (line %d)\n", lineno);
-
-                    ctx->addClock(net->name, 1000.0f / period);
-                    if (!clock_name.empty())
-                        ctx->sdc_clock_names[clock_name] = net->name;
+                    targets.push_back(net);
                 }
             }
+        }
+        for (NetInfo *net : targets) {
+            ctx->addClock(net->name, 1000.0f / period);
+            if (!clock_name.empty())
+                ctx->sdc_clock_names[clock_name] = net->name;
         }
         return std::string{};
     }

@@ -1436,7 +1436,10 @@ void TimingAnalyser::build_crit_path_reports()
         const bool phase_locked = phase_related_clocks(ctx, launch.clock, capture.clock);
         const bool ignored_related = bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
                                      launch.clock != capture.clock && !phase_locked;
-        if (!launch.is_async() && (ordinary_timed || (physically_related && !ignored_related))) {
+        // timed_clocks() already drops an SDC cut, but the two clocks can still
+        // share a physical driver. That crossing must not set setup WNS.
+        const bool sdc_cut = ctx->sdc_clock_false(launch.clock, capture.clock);
+        if (!launch.is_async() && !sdc_cut && (ordinary_timed || (physically_related && !ignored_related))) {
             const delay_t setup_window = ordinary_timed
                                                    ? dp.period.minDelay()
                                                    : std::min(clock_period(ctx, launch.clock),

@@ -67,6 +67,23 @@ groups_fast = report["fmax"][FAST]["achieved"]
 assert groups_fast > base_fast, (groups_fast, base_fast)
 print(f"PASS: set_clock_groups cuts both crossings ({FAST}: {base_fast:.2f} -> {groups_fast:.2f} MHz)")
 
+
+def setup_wns(document, clock):
+    clocks = document["timing_summary"]["clocks"]
+    assert clock in clocks, sorted(clocks)
+    value = clocks[clock]["setup_wns_ns"]
+    assert isinstance(value, (int, float)), clocks[clock]
+    return value
+
+
+# Same-clock fmax is 1000/path at the 20 ns create_clock. A cut crossing that
+# still shares the PLL driver must not pull setup WNS below that.
+for clock in (FAST, SLOW):
+    expected = 20.0 - 1000.0 / report["fmax"][clock]["achieved"]
+    got = setup_wns(report, clock)
+    assert abs(got - expected) < max(0.05, 0.02 * abs(expected)), (clock, got, expected)
+print("PASS: cut crossings do not set setup WNS")
+
 log, report = route("wildcard", "set_clock_groups -exclusive -group [get_clocks {*s[0]}] -group {clocks[1]}\n")
 assert untimed(log, FAST, SLOW) and untimed(log, SLOW, FAST)
 log, report = route("single-group", "set_clock_groups -asynchronous -group [get_clocks {clocks[0]}]\n")
@@ -143,3 +160,16 @@ relaxed = route_free("free-mc", "set_multicycle_path -setup 2 -from [get_clocks 
 _, mc_fmax = clock_fmax(relaxed)
 assert abs(mc_fmax - 2 * base_fmax) < 0.05 * base_fmax, (clock, base_fmax, mc_fmax)
 print(f"PASS: multicycle on unconstrained clock '{clock}' reports {base_fmax:.2f} -> {mc_fmax:.2f} MHz")
+
+# -name and -period after the target must still bind the clock timing sees.
+# The port net is not that clock: synth inserts a clock buffer first.
+late = route_free(
+    "free-name-late",
+    "create_clock [get_nets {%s}] -name logical -period 20\n"
+    "set_multicycle_path -setup 2 -from [get_clocks {logical}] -to [get_clocks {logical}]\n" % clock,
+)
+late_clock, late_fmax = clock_fmax(late)
+assert abs(late_fmax - 2 * base_fmax) < 0.05 * base_fmax, (base_fmax, late_fmax)
+late_report = json.loads((o / "free-name-late.json").read_text())
+assert abs(late_report["fmax"][late_clock]["constraint"] - 50.0) < 0.05, late_report["fmax"]
+print(f"PASS: create_clock -name after the target reports {late_fmax:.2f} MHz at 50 MHz")
