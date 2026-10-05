@@ -182,7 +182,9 @@ unsuccessful zero-cost censored run with explicitly unavailable evidence.
 An entirely unlaunched GPU cohort has no observed device identity; the dataset
 accepts that absence only for never-launched runs that claim no backend. Any
 launched GPU run still requires the cohort-bound exact backend and runtime
-identity.
+identity. An explicit `process_started: false` is accepted only with a
+collector pre-launch terminal status; a contradictory completed, routing, or
+timing result is rejected before it can become a success.
 Combining collections is supported, but policy results spanning more than one
 mapped-design/constraint family remain explicitly cross-design descriptive.
 

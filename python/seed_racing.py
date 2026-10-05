@@ -50,6 +50,7 @@ TERMINAL_STATUSES = {
     "launch_error",
     "runner_error",
 }
+PRELAUNCH_STATUSES = {"not_started_total_budget", "cancelled", "launch_error"}
 PREFIX_FEATURES = {
     "elapsed_seconds", "phase", "attempt", "round", "work", "searches", "node_expansions", "traversals",
     "backend_retries", "unrouted_connections", "overused_wires", "total_excess_occupancy", "wire_count",
@@ -2172,10 +2173,16 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
                 "run cohort_id, mapped_design_id, and constraint_family must be non-empty strings")
         if not isinstance(run["status"], str) or run["status"] not in TERMINAL_STATUSES:
             raise ValueError("run status must be a supported terminal status")
-        never_launched = (run.get("process_started") is False and
-                          run["status"] in {"not_started_total_budget", "cancelled"})
+        process_started = run.get("process_started")
+        if "process_started" in run and not isinstance(process_started, bool):
+            raise ValueError("run process_started must be boolean when present")
+        prelaunch = process_started is False and run["status"] in PRELAUNCH_STATUSES
+        if process_started is False and not prelaunch:
+            raise ValueError("run status contradicts its never-launched lifecycle")
+        zero_cost_prelaunch = prelaunch and run["status"] in {
+            "not_started_total_budget", "cancelled"}
         duration = (_nonnegative_number(run["duration_seconds"], "duration_seconds")
-                    if never_launched else
+                    if zero_cost_prelaunch else
                     _positive_number(run["duration_seconds"], "duration_seconds"))
         observations = run["observations"]
         if not isinstance(observations, list):
@@ -2196,7 +2203,7 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
             clean.append(normalized_observation)
         outcome_observed = (
             _nonnegative_number(run["outcome_observed_seconds"], "outcome_observed_seconds")
-            if never_launched else
+            if zero_cost_prelaunch else
             _positive_number(run["outcome_observed_seconds"], "outcome_observed_seconds"))
         if outcome_observed > duration or (clean and outcome_observed < clean[-1]["elapsed_seconds"]):
             raise ValueError("outcome availability must follow observations and fit within duration")
@@ -2247,11 +2254,10 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
             raise ValueError("completed GPU run requires a passed outcome timing gate")
         requires_execution_identity = declared_gpu
         observed_backend = outcome.get("execution_backend")
-        never_launched = run.get("process_started") is False
         if requires_execution_identity or "execution_identity" in identity_manifest or \
                 isinstance(observed_backend, str):
             execution_identity = identity_manifest.get("execution_identity")
-            unbound_never_launched = (never_launched and execution_identity is None and
+            unbound_never_launched = (prelaunch and execution_identity is None and
                                       observed_backend is None)
             if unbound_never_launched:
                 pass
@@ -2259,7 +2265,7 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
                     not isinstance(execution_identity.get("backend"), str) or
                     not execution_identity["backend"]):
                 raise ValueError("GPU run execution backend is not bound by its cohort identity")
-            elif never_launched:
+            elif prelaunch:
                 if observed_backend is not None:
                     raise ValueError("never-launched GPU run must not claim an execution backend")
             elif observed_backend != execution_identity["backend"]:

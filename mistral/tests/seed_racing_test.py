@@ -247,6 +247,11 @@ class DatasetTests(unittest.TestCase):
                 run["outcome"].pop("execution_backend", None)
         normalized = seed_racing.validate_dataset(document)
         self.assertTrue(all(not run["success"] for run in normalized))
+        document["runs"][0].update({"status": "completed", "process_started": False,
+                                     "duration_seconds": 1,
+                                     "outcome_observed_seconds": 1})
+        with self.assertRaisesRegex(ValueError, "contradicts.*never-launched"):
+            seed_racing.validate_dataset(document)
         document["runs"][0].update({"status": "timeout", "process_started": True,
                                      "duration_seconds": 1,
                                      "outcome_observed_seconds": 1})
