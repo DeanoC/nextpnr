@@ -1025,6 +1025,7 @@ void Arch::build_bitstream()
     log_info("Running signoff timing analysis...\n");
 
     timing_analysis(getCtx(), true, true, true, true, true);
+    getCtx()->timing_result_is_final_analogue = true;
 
     if (const char *dump = getenv("NEXTPNR_MISTRAL_ARC_DUMP"))
         dump_analogue_arcs(dump);

@@ -11,7 +11,20 @@ target_sources(nextpnr_route PUBLIC
     gpurouter.h
     gpu/gpuroute_backend.h
     gpu/gpuroute_cpu.cc
+    gpu/gpuroute_telemetry.cc
+    gpu/gpuroute_telemetry.h
 )
+
+if (BUILD_TESTS)
+    add_executable(nextpnr-gpuroute-telemetry-test
+        tests/gpuroute_telemetry.cc
+        gpu/gpuroute_telemetry.cc
+    )
+    target_include_directories(nextpnr-gpuroute-telemetry-test PRIVATE gpu)
+    target_link_libraries(nextpnr-gpuroute-telemetry-test PRIVATE gtest_main json11)
+    set_property(TARGET nextpnr-gpuroute-telemetry-test PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+    add_test(NAME nextpnr-gpuroute-telemetry-test COMMAND nextpnr-gpuroute-telemetry-test)
+endif()
 
 # GPU device backend for the GPU router. The device code is compiled by the
 # vendor compiler into a static library with a plain C++ interface

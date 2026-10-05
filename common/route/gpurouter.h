@@ -137,13 +137,18 @@ struct GpuRouterCfg
     bool cpu_backend;
     // Print per-iteration timing and backend statistics
     bool perf_profile;
+    // Empty disables telemetry. The writer creates this path exclusively.
+    std::string telemetry_path;
+    // Original explicit or randomized command seed. This is kept separate
+    // from the warmed/advanced RNG state serialized in the generic settings.
+    std::string telemetry_seed;
     // Stop after this many iterations without convergence
     int max_iter;
 };
 
 // Returns true when the whole design routed (and, as with router2, after the
 // result has been checked by router1).
-bool gpurouter(Context *ctx, const GpuRouterCfg &cfg);
+bool gpurouter(Context *ctx, const GpuRouterCfg &cfg, bool consume_telemetry = true);
 
 // An alternative routing tree for one net produced by GpuCandidateRouter:
 // every wire the net uses with the pip that drives it (PipId() for the
