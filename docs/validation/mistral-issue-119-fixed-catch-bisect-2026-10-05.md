@@ -26,6 +26,13 @@ seed changed. Every run exited normally, completed legal routing and passed
 final analogue setup timing for both `core.game.clk` and `audio.clk`. These
 historical reports do not expose hold analysis, so hold remains unavailable.
 
+```text
+nextpnr-mistral --json synth.json --device 5CSEBA6U23I7 \
+  --qsf constraints-audio.qsf --sdc clocks.sdc --freq 74.25 --seed N \
+  --router gpu --gpu-device 0 --rbf core.rbf --compress-rbf \
+  --write routed.json --report timing.json --detailed-timing-report
+```
+
 ## Bisect
 
 The controlled endpoints reproduce the earlier Powerboat HIP comparison
@@ -42,6 +49,26 @@ Its immediate parent `3f4acc0e` produces 132.6260 MHz at seed 1. The commit
 produces 129.7353 MHz, identical to the later `3d4a5b35` endpoint. All five
 tested bisect midpoints before the commit retained the parent result; the first
 tested merge after it retained the new result.
+
+The no-joint comparison is a deliberately modified build of `4e5ace3c`, not a
+CLI setting. Its complete source difference is:
+
+```diff
+diff --git a/mistral/arch.cc b/mistral/arch.cc
+@@
+-        cfg.placeAllAtOnce = true;
++        cfg.placeAllAtOnce = false;
+```
+
+It was configured with CMake `Release`, `ARCH=mistral`, `GPU_ROUTER=CUDA`,
+`CMAKE_CUDA_ARCHITECTURES=86`, `BUILD_GUI=OFF`, `BUILD_PYTHON=ON`, and Mistral
+`7ed06e21`. The resulting `nextpnr-mistral` reports version
+`nextpnr-0.11.1-348-g4e5ace3c` and has SHA-256
+`83cd87784d96adad5650f01d2e32168696003cd0fb844915e01fefa7ef79da08`.
+It used the same command as the unmodified boundary cohort; no extra option was
+passed. The affinity-disabled variants alone add the existing
+`--placer-heap-no-ctrl-set` option. Thus each variant changes only the stated
+joint-placement source assignment and/or the stated affinity option.
 
 ## Eight-seed confirmation
 
