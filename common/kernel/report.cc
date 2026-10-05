@@ -161,13 +161,18 @@ static Json::array json_report_detailed_net_timings(const Context *ctx)
                                               {"port", sink_timing.cell_port.second.c_str(ctx)},
                                               {"event", clock_event_name(ctx, sink_timing.clock_pair.end)},
                                               {"delay", Json::array({minDelay, maxDelay})}});
+            if (sink_timing.timing_source.first != IdString())
+                endpointJson["source"] = Json::object{
+                        {"cell", sink_timing.timing_source.first.c_str(ctx)},
+                        {"port", sink_timing.timing_source.second.c_str(ctx)},
+                        {"event", clock_event_name(ctx, sink_timing.clock_pair.start)}};
             endpointsJson.push_back(endpointJson);
         }
 
         auto netTimingJson = Json::object({{"net", net->name.c_str(ctx)},
                                            {"sources", net_sources(net, ctx)},
-                                           {"driver", net->driver.cell->name.c_str(ctx)},
-                                           {"port", net->driver.port.c_str(ctx)},
+                                           {"driver", net->driver.cell ? Json(net->driver.cell->name.c_str(ctx)) : Json()},
+                                           {"port", net->driver.cell ? Json(net->driver.port.c_str(ctx)) : Json()},
                                            {"event", clock_event_name(ctx, start)},
                                            {"endpoints", endpointsJson}});
 

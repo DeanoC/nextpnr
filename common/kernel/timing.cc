@@ -160,6 +160,8 @@ void TimingAnalyser::run(bool update_route_delays, bool update_net_timings, bool
 
 void TimingAnalyser::init_ports()
 {
+    timing_nets.clear();
+    ports.clear();
     // Per cell port structures
     for (auto &cell : ctx->cells) {
         CellInfo *ci = cell.second.get();
@@ -290,7 +292,17 @@ void TimingAnalyser::get_cell_delays()
                 if (pin.second.net && ctx->getPortTimingClass(buffer, pin.first, count) == TMG_CLOCK_INPUT)
                     registered = true;
             }
-            if (registered) continue;
+            if (registered) {
+                for (const auto &pin : buffer->ports) {
+                    if (pin.second.net != net) continue;
+                    for (const auto &model : ctx->getRegisteredIoTiming(buffer, pin.first, input)) {
+                        add_registered_io_boundary(buffer, pin.first, input, model,
+                                PerPort::IoDelay{clock->name, row["fall"].bool_value() ? FALLING_EDGE : RISING_EDGE, delay});
+                        ++matched;
+                    }
+                }
+                continue;
+            }
             for (const auto &pin : buffer->ports) {
                 int count = 0;
                 auto cls = ctx->getPortTimingClass(buffer, pin.first, count);
@@ -303,8 +315,65 @@ void TimingAnalyser::get_cell_delays()
             }
         }
         if (!matched)
-            log_error("IO delay for '%s' has no supported unregistered IO timing boundary.\n", name.c_str(ctx));
+            log_error("IO delay for '%s' has no supported unregistered IO timing boundary or qualified registered-pad model.\n", name.c_str(ctx));
     }
+}
+
+void TimingAnalyser::add_registered_io_boundary(CellInfo *cell, IdString pad, bool input,
+                                               const RegisteredIoTiming &model,
+                                               const PerPort::IoDelay &constraint)
+{
+    const auto &info = model.clocking;
+    int count = 0;
+    auto finite = [](delay_t value) {
+        return std::isfinite(double(value)) &&
+               std::abs(double(value)) < double(std::numeric_limits<delay_t>::max()) / 4;
+    };
+    auto valid = [&](DelayPair value) {
+        return finite(value.minDelay()) && finite(value.maxDelay()) && value.minDelay() <= value.maxDelay();
+    };
+    if (model.name == IdString() || !cell->getPort(info.clock_port) ||
+        port_timing_class(cell, info.clock_port, count) != TMG_CLOCK_INPUT ||
+        (info.edge != RISING_EDGE && info.edge != FALLING_EDGE) ||
+        (input ? !valid(info.setup) || !valid(info.hold) : !valid(info.clockToQ.rise) || !valid(info.clockToQ.fall)))
+        log_error("Invalid registered IO timing model for '%s.%s'.\n", cell->name.c_str(ctx), pad.c_str(ctx));
+
+    std::string prefix = pad.str(ctx) + "$timing$" + (input ? "read$" : "write$") + model.name.str(ctx);
+    CellPortKey external(cell->name, ctx->id(prefix + "$external"));
+    CellPortKey local(cell->name, ctx->id(prefix + "$register"));
+    if (ports.count(external) || ports.count(local))
+        log_error("Overlapping registered IO timing channels at '%s.%s'.\n", cell->name.c_str(ctx), pad.c_str(ctx));
+
+    // Use the physical pad net's name for report metadata, without changing
+    // that net's driver/users or giving the router another net to route.
+    auto bridge = std::make_unique<NetInfo>(cell->getPort(pad)->name);
+    auto source = input ? external : local;
+    auto sink = input ? local : external;
+    bridge->driver = PortRef{cell, source.port};
+    auto sink_index = bridge->users.add(PortRef{cell, sink.port});
+    for (const auto &key : {external, local}) {
+        PerPort data;
+        data.cell_port = key;
+        data.type = key == source ? PORT_OUT : PORT_IN;
+        data.timing_port = std::make_unique<PerPort::TimingPort>();
+        data.timing_port->connection = PortInfo{key.port, bridge.get(), data.type, key == sink ? sink_index : store_index<PortRef>{}};
+        if (key == external) {
+            data.io_delay = constraint;
+            data.timing_port->cls = input ? TMG_STARTPOINT : TMG_ENDPOINT;
+            data.cell_arcs.emplace_back(input ? CellArc::STARTPOINT : CellArc::ENDPOINT, IdString(), DelayQuad{});
+        } else {
+            data.timing_port->clocking = info;
+            data.timing_port->cls = input ? TMG_REGISTER_INPUT : TMG_REGISTER_OUTPUT;
+            if (input) {
+                data.cell_arcs.emplace_back(CellArc::SETUP, info.clock_port, DelayQuad(info.setup, info.setup), info.edge);
+                data.cell_arcs.emplace_back(CellArc::HOLD, info.clock_port, DelayQuad(info.hold, info.hold), info.edge);
+            } else {
+                data.cell_arcs.emplace_back(CellArc::CLK_TO_Q, info.clock_port, info.clockToQ, info.edge);
+            }
+        }
+        ports.emplace(key, std::move(data));
+    }
+    timing_nets.push_back(std::move(bridge));
 }
 
 void TimingAnalyser::get_route_delays()
@@ -521,7 +590,7 @@ void TimingAnalyser::identify_related_domains()
 
                 // Get the driver timing class
                 int info_count = 0;
-                auto timing_class = ctx->getPortTimingClass(cell, port, info_count);
+                auto timing_class = port_timing_class(cell, port, info_count);
 
                 // The driver must be a combinational output
                 if (timing_class != TMG_COMB_OUTPUT) {
@@ -543,7 +612,7 @@ void TimingAnalyser::identify_related_domains()
                     }
 
                     // The input must be a combinational input
-                    timing_class = ctx->getPortTimingClass(cell, pi.name, info_count);
+                    timing_class = port_timing_class(cell, pi.name, info_count);
                     if (timing_class != TMG_COMB_INPUT) {
                         continue;
                     }
@@ -861,7 +930,7 @@ dict<domain_id_t, delay_t> TimingAnalyser::max_delay_by_domain_pairs()
                     // walk back to startpoint
                     auto crit_path = walk_crit_path(domain_pair_id(launch_id, capture_id), ep.first, true);
                     auto first_inp = crit_path.back();
-                    const auto &sp = first_inp.cell->ports.at(first_inp.port).net->driver;
+                    const auto &sp = port_info(CellPortKey(first_inp)).net->driver;
                     auto &sp_port = ports.at(CellPortKey{sp.cell->name, sp.port});
 
                     for (auto &fanin : sp_port.cell_arcs) {
@@ -972,6 +1041,8 @@ void TimingAnalyser::build_detailed_net_timing_report()
                     sink_timing.clock_pair.end.edge = capture.edge;
                     sink_timing.cell_port = std::make_pair(pd.cell_port.cell, pd.cell_port.port);
                     sink_timing.delay = arr.second.value;
+                    if (pd.timing_port)
+                        sink_timing.timing_source = std::make_pair(net->driver.cell->name, net->driver.port);
 
                     net_timings[net->name].push_back(sink_timing);
                 }
@@ -1068,7 +1139,8 @@ std::vector<CriticalPath> TimingAnalyser::get_report_setup_paths(int count)
                 !finite_delay(required->second.value.minDelay()))
                 continue;
             int clocks = 0;
-            if (ctx->getPortTimingClass(cell_info(key), key.port, clocks) != TMG_REGISTER_INPUT || clocks <= 0)
+            if ((port_timing_class(cell_info(key), key.port, clocks) != TMG_REGISTER_INPUT || clocks <= 0) &&
+                !data.io_delay)
                 continue;
             endpoints.push_back({key, tag->second.setup_slack});
         }
@@ -1122,11 +1194,11 @@ bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
         if (cell == ctx->cells.end() || !cell->second->ports.count(key.port))
             return false;
         int count = 0;
-        if (ctx->getPortTimingClass(cell->second.get(), key.port, count) != kind || count <= 0)
+        if (port_timing_class(cell->second.get(), key.port, count) != kind || count <= 0)
             return false;
         bool matched = false;
         for (int index = 0; index < count; ++index) {
-            auto info = ctx->getPortClockingInfo(cell->second.get(), key.port, index);
+            auto info = port_clocking_info(cell->second.get(), key.port, index);
             auto clock = cell->second->getPort(info.clock_port);
             if (!clock || !valid_clock(ClockDomainKey(clock->name, info.edge)))
                 return false;
@@ -1264,7 +1336,7 @@ std::vector<PortRef> TimingAnalyser::walk_crit_path(domain_id_t domain_pair, Cel
         auto cell = cell_info(cursor);
         auto &port = port_info(cursor);
         int port_clocks;
-        auto portClass = ctx->getPortTimingClass(cell, port.name, port_clocks);
+        auto portClass = port_timing_class(cell, port.name, port_clocks);
 
         // combinational loop
         if (!visited.insert(std::make_pair(cell->name, port.name)).second)
@@ -1332,11 +1404,11 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
 
     // Get timing and clocking info on the startpoint
     auto first_inp = crit_path.front();
-    const auto &sp = first_inp.cell->ports.at(first_inp.port).net->driver;
+    const auto &sp = port_info(CellPortKey(first_inp)).net->driver;
     const auto &sp_cell = sp.cell;
-    const auto &sp_port = sp_cell->ports.at(sp.port);
+    const auto &sp_port = port_info(CellPortKey(sp));
     int sp_clocks;
-    const auto sp_portClass = ctx->getPortTimingClass(sp_cell, sp_port.name, sp_clocks);
+    const auto sp_portClass = port_timing_class(sp_cell, sp_port.name, sp_clocks);
     TimingClockingInfo sp_clk_info;
     bool register_start = sp_portClass == TMG_REGISTER_OUTPUT;
 
@@ -1344,7 +1416,7 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
         // If we don't find a clock we don't consider this startpoint to be registered.
         register_start = sp_clocks > 0;
         for (int i = 0; i < sp_clocks; i++) {
-            sp_clk_info = ctx->getPortClockingInfo(sp_cell, sp_port.name, i);
+            sp_clk_info = port_clocking_info(sp_cell, sp_port.name, i);
             const auto clk_net = sp_cell->getPort(sp_clk_info.clock_port);
             register_start = clk_net != nullptr && clk_net->name == launch.clock && sp_clk_info.edge == launch.edge;
             if (register_start) {
@@ -1356,9 +1428,9 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
     // Get timing and clocking info on the endpoint
     const auto &ep = crit_path.back();
     const auto &ep_cell = ep.cell;
-    const auto &ep_port = ep_cell->ports.at(ep.port);
+    const auto &ep_port = port_info(CellPortKey(ep));
     int ep_clocks;
-    const auto ep_portClass = ctx->getPortTimingClass(ep_cell, ep_port.name, ep_clocks);
+    const auto ep_portClass = port_timing_class(ep_cell, ep_port.name, ep_clocks);
     TimingClockingInfo ep_clk_info;
 
     bool register_end = ep_portClass == TMG_REGISTER_INPUT;
@@ -1367,7 +1439,7 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
         // If we don't find a clock we don't consider this startpoint to be registered.
         register_end = ep_clocks > 0;
         for (int i = 0; i < ep_clocks; i++) {
-            ep_clk_info = ctx->getPortClockingInfo(ep_cell, ep_port.name, i);
+            ep_clk_info = port_clocking_info(ep_cell, ep_port.name, i);
             const auto clk_net = ep_cell->getPort(ep_clk_info.clock_port);
 
             register_end = clk_net != nullptr && clk_net->name == capture.clock && ep_clk_info.edge == capture.edge;
@@ -1438,7 +1510,7 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
     bool is_startpoint = true;
     for (auto sink : crit_path) {
         auto sink_cell = sink.cell;
-        auto &port = sink_cell->ports.at(sink.port);
+        auto &port = port_info(CellPortKey(sink));
         auto net = port.net;
         auto &driver = net->driver;
         auto driver_cell = driver.cell;
@@ -1464,16 +1536,19 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
         seg_logic.net = IdString();
         report.segments.push_back(seg_logic);
 
-        auto net_delay = ctx->settings.count(ctx->id("timing/io_delays"))
-                ? ctx->getNetinfoRouteDelayQuad(net, sink).delayPair() : DelayPair(ctx->getNetinfoRouteDelay(net, sink));
-
-        CriticalPath::Segment seg_route;
-        seg_route.type = CriticalPath::Segment::Type::ROUTING;
-        seg_route.delay = longest_path ? net_delay.maxDelay() : net_delay.minDelay();
-        seg_route.from = std::make_pair(driver_cell->name, driver.port);
-        seg_route.to = std::make_pair(sink_cell->name, sink.port);
-        seg_route.net = net->name;
-        report.segments.push_back(seg_route);
+        // The private pad bridge has no routing: its complete physical delay
+        // is in the architecture's capture/launch model. Keep it out of routing
+        // reports, which otherwise query nonexistent physical alias pins.
+        if (!ports.at(CellPortKey(sink)).timing_port) {
+            auto net_delay = ports.at(CellPortKey(sink)).route_delay;
+            CriticalPath::Segment seg_route;
+            seg_route.type = CriticalPath::Segment::Type::ROUTING;
+            seg_route.delay = longest_path ? net_delay.maxDelay() : net_delay.minDelay();
+            seg_route.from = std::make_pair(driver_cell->name, driver.port);
+            seg_route.to = std::make_pair(sink_cell->name, sink.port);
+            seg_route.net = net->name;
+            report.segments.push_back(seg_route);
+        }
 
         prev_cell = sink_cell;
         prev_port = sink.port;
@@ -1653,7 +1728,7 @@ std::vector<CriticalPath> TimingAnalyser::get_min_delay_violations()
         for (const auto &ep : capture.endpoints) {
             const CellInfo *ci = cell_info(ep.first);
             int clkInfoCount = 0;
-            const TimingPortClass cls = ctx->getPortTimingClass(ci, ep.first.port, clkInfoCount);
+            const TimingPortClass cls = port_timing_class(ci, ep.first.port, clkInfoCount);
             if (cls != TMG_REGISTER_INPUT && !ports.at(ep.first).io_delay)
                 continue;
 
@@ -1784,7 +1859,31 @@ const std::string TimingAnalyser::arcType_to_str(CellArc::ArcType typ)
 
 CellInfo *TimingAnalyser::cell_info(const CellPortKey &key) { return ctx->cells.at(key.cell).get(); }
 
-PortInfo &TimingAnalyser::port_info(const CellPortKey &key) { return ctx->cells.at(key.cell)->ports.at(key.port); }
+PortInfo &TimingAnalyser::port_info(const CellPortKey &key)
+{
+    auto &data = ports.at(key);
+    return data.timing_port ? data.timing_port->connection : ctx->cells.at(key.cell)->ports.at(key.port);
+}
+
+TimingPortClass TimingAnalyser::port_timing_class(const CellInfo *cell, IdString port, int &count) const
+{
+    auto found = ports.find(CellPortKey(cell->name, port));
+    if (found != ports.end() && found->second.timing_port) {
+        count = found->second.timing_port->clocking ? 1 : 0;
+        return found->second.timing_port->cls;
+    }
+    return ctx->getPortTimingClass(cell, port, count);
+}
+
+TimingClockingInfo TimingAnalyser::port_clocking_info(const CellInfo *cell, IdString port, int index) const
+{
+    auto found = ports.find(CellPortKey(cell->name, port));
+    if (found != ports.end() && found->second.timing_port) {
+        NPNR_ASSERT(index == 0 && found->second.timing_port->clocking);
+        return *found->second.timing_port->clocking;
+    }
+    return ctx->getPortClockingInfo(cell, port, index);
+}
 
 bool timing_analysis(Context *ctx, bool print_slack_histogram, bool print_fmax, bool print_path, bool warn_on_failure,
                      bool update_results)
@@ -1803,7 +1902,7 @@ bool timing_analysis(Context *ctx, bool print_slack_histogram, bool print_fmax, 
     auto &result = tmg.get_timing_result();
     if (extra_report_paths) {
         result.report_setup_paths = tmg.get_report_setup_paths(ctx->timing_report_paths);
-        log_info("Timing report includes %zu additional registered setup endpoint paths (limit %d per domain pair).\n",
+        log_info("Timing report includes %zu additional clocked/IO setup endpoint paths (limit %d per domain pair).\n",
                  result.report_setup_paths.size(), ctx->timing_report_paths);
     }
     bool timing_constraints_met =

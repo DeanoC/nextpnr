@@ -131,6 +131,13 @@ template <typename R> struct ArchAPI : BaseCtx
     virtual bool getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort, DelayQuad &delay) const = 0;
     virtual TimingPortClass getPortTimingClass(const CellInfo *cell, IdString port, int &clockInfoCount) const = 0;
     virtual TimingClockingInfo getPortClockingInfo(const CellInfo *cell, IdString port, int index) const = 0;
+    // Empty means no complete, qualified model for this pad/direction/profile.
+    // These are external boundaries, not getPortClockingInfo's fabric arcs.
+    virtual std::vector<RegisteredIoTiming> getRegisteredIoTiming(const CellInfo * /*cell*/, IdString /*pad_port*/,
+                                                               bool /*input*/) const
+    {
+        return {};
+    }
     // Placement validity checks
     virtual bool isValidBelForCellType(IdString cell_type, BelId bel) const = 0;
     virtual IdString getBelBucketName(BelBucketId bucket) const = 0;

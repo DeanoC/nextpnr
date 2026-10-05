@@ -8,6 +8,20 @@
 
 USING_NEXTPNR_NAMESPACE
 
+// Synthetic architecture models exercise the common timing graph without
+// inventing production Cyclone V pad characterization.
+class IoBoundaryTestContext : public Context
+{
+  public:
+    using Context::Context;
+    dict<std::pair<IdString, bool>, std::vector<RegisteredIoTiming>> boundary_models;
+    std::vector<RegisteredIoTiming> getRegisteredIoTiming(const CellInfo *cell, IdString pad, bool input) const override
+    {
+        auto found = boundary_models.find(std::make_pair(cell->name, input));
+        return pad == id_PAD && found != boundary_models.end() ? found->second : std::vector<RegisteredIoTiming>{};
+    }
+};
+
 class IoDelayTest : public ::testing::Test
 {
   protected:
@@ -47,7 +61,7 @@ class IoDelayTest : public ::testing::Test
     void SetUp() override
     {
         ArchArgs args; args.device = "5CSEBA6U23I7";
-        ctx = std::make_unique<Context>(args);
+        ctx = std::make_unique<IoBoundaryTestContext>(args);
         ctx->settings[ctx->id("target_freq")] = 1e8;
         net("$PACKER_GND_NET"); net("$PACKER_VCC_NET");
         clock = net("clock");
@@ -79,6 +93,39 @@ class IoDelayTest : public ::testing::Test
             if (entry.segments.back().to.first == sink->name) return entry;
         ADD_FAILURE() << "Missing path to " << sink->name.str(ctx.get());
         return {};
+    }
+
+    void registered_boundaries()
+    {
+        bidir->type = id_MISTRAL_SDRIO;
+        for (auto param : {"IOREG_IN", "IOREG_OUT", "IOREG_OE"}) bidir->params[ctx->id(param)] = 1;
+        for (auto pin : {id_CLK, id_CLKIN}) {
+            bidir->addInput(pin);
+            bidir->connectPort(pin, clock);
+        }
+        auto &models = static_cast<IoBoundaryTestContext *>(ctx.get())->boundary_models;
+        TimingClockingInfo read{}; read.clock_port = id_CLKIN; read.edge = RISING_EDGE;
+        read.setup = DelayPair(200); read.hold = DelayPair(100);
+        models[{bidir->name, true}].push_back({ctx->id("rise"), read});
+        read.edge = FALLING_EDGE; read.setup = DelayPair(300); read.hold = DelayPair(150);
+        models[{bidir->name, true}].push_back({ctx->id("fall"), read});
+        TimingClockingInfo write{}; write.clock_port = id_CLK; write.edge = RISING_EDGE;
+        write.clockToQ = DelayQuad(100, 500);
+        models[{bidir->name, false}].push_back({ctx->id("data"), write});
+        write.clockToQ = DelayQuad(300, 900);
+        models[{bidir->name, false}].push_back({ctx->id("oe"), write});
+        clock->clkconstr->high = DelayPair(4000); clock->clkconstr->low = DelayPair(6000);
+        sdc("set_input_delay -clock memory -min 1 [get_ports {dq[*]}]\n"
+            "set_input_delay -clock memory -max 3 [get_ports {dq[*]}]\n"
+            "set_output_delay -clock memory -min -1 [get_ports {dq[*]}]\n"
+            "set_output_delay -clock memory -max 4 [get_ports {dq[*]}]\n");
+        ctx->assignArchInfo();
+    }
+
+    CellPortKey boundary_key(const char *direction, const char *channel, bool local)
+    {
+        return CellPortKey(bidir->name, ctx->id(std::string("PAD$timing$") + direction + "$" + channel +
+                                               (local ? "$register" : "$external")));
     }
 };
 
@@ -365,4 +412,219 @@ TEST_F(IoDelayTest, RegisteredOutputFabricPathIsTimedButExternalPadRemainsUnsupp
     sdc("set_output_delay -clock memory 1 [get_ports dout]\n");
     TimingAnalyser external(ctx.get());
     EXPECT_THROW(external.setup(false, false, true), log_execution_error_exception);
+}
+
+TEST_F(IoDelayTest, RegisteredPadReadEdgesAndWriteDataOeAreIndependent)
+{
+    registered_boundaries();
+    TimingAnalyser timing(ctx.get()); timing.setup(true, true, true);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "rise", true)), 6800);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "fall", true)), 700);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("write", "data", false)), 5500);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("write", "oe", false)), 5100);
+    auto paths = timing.get_report_setup_paths(16);
+    for (const auto &entry : timing.get_timing_result().clock_paths) paths.push_back(entry.second);
+    bool rising = false, falling = false;
+    int write_setups = 0;
+    for (const auto &path : paths) {
+        auto end = path.segments.back().to.second;
+        if (end == boundary_key("write", "data", false).port || end == boundary_key("write", "oe", false).port) {
+            ++write_setups;
+            EXPECT_EQ(path.segments.front().type, CriticalPath::Segment::Type::CLK_TO_Q);
+            EXPECT_EQ(path.segments.back().delay, 4000);
+            EXPECT_EQ(path.segments.size(), 2);
+        }
+        if (path.segments.back().to != std::make_pair(bidir->name, boundary_key("read", "rise", true).port) &&
+            path.segments.back().to != std::make_pair(bidir->name, boundary_key("read", "fall", true).port)) continue;
+        EXPECT_EQ(path.segments.front().type, CriticalPath::Segment::Type::SOURCE);
+        EXPECT_EQ(path.segments.front().delay, 3000);
+        EXPECT_EQ(path.segments.back().type, CriticalPath::Segment::Type::SETUP);
+        EXPECT_EQ(path.segments.size(), 2);
+        if (path.clock_pair.end.edge == RISING_EDGE) { rising = true; EXPECT_EQ(path.max_delay, 10000); }
+        else { falling = true; EXPECT_EQ(path.max_delay, 4000); }
+    }
+    EXPECT_TRUE(rising); EXPECT_TRUE(falling);
+    EXPECT_EQ(write_setups, 2);
+    int writes = 0;
+    for (const auto &path : timing.get_timing_result().min_delay_violations) {
+        auto end = path.segments.back().to.second;
+        if (end != boundary_key("write", "data", false).port && end != boundary_key("write", "oe", false).port) continue;
+        ++writes;
+        auto launch = std::find_if(path.segments.begin(), path.segments.end(), [](const CriticalPath::Segment &seg) {
+            return seg.type == CriticalPath::Segment::Type::CLK_TO_Q;
+        });
+        ASSERT_NE(launch, path.segments.end());
+        EXPECT_EQ(launch->delay, end == boundary_key("write", "data", false).port ? 100 : 300);
+        EXPECT_EQ(path.segments.back().type, CriticalPath::Segment::Type::HOLD);
+        delay_t total = 0; for (const auto &seg : path.segments) total += seg.delay;
+        EXPECT_EQ(total, end == boundary_key("write", "data", false).port ? -900 : -700);
+    }
+    EXPECT_EQ(writes, 2);
+}
+
+TEST_F(IoDelayTest, RegisteredPadClockSkewAndMulticycleUseTheSameReportFrame)
+{
+    registered_boundaries();
+    TimingAnalyser timing(ctx.get()); timing.with_clock_skew = true; timing.setup(false, false, true);
+    timing.set_route_delay(CellPortKey(bidir->name, id_CLKIN), DelayPair(400, 700));
+    timing.set_route_delay(CellPortKey(bidir->name, id_CLK), DelayPair(200, 500));
+    timing.run(false, false, false, true);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "rise", true)), 7200);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "fall", true)), 1100);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("write", "data", false)), 5000);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("write", "oe", false)), 4600);
+    auto paths = timing.get_report_setup_paths(16);
+    for (const auto &entry : timing.get_timing_result().clock_paths) paths.push_back(entry.second);
+    for (const auto &path : paths) {
+        auto port = path.segments.back().to.second;
+        if (path.segments.back().to.first != bidir->name || port.str(ctx.get()).find("$timing$") == std::string::npos) continue;
+        delay_t total = 0; for (const auto &seg : path.segments) total += seg.delay;
+        EXPECT_EQ(path.max_delay - total, timing.get_setup_slack(CellPortKey(bidir->name, port)));
+    }
+    auto hold = timing.get_timing_result().clock_hold_slack.at(clock->name);
+    sdc("set_multicycle_path -setup 2 -from [get_clocks memory] -to [get_clocks memory]\n");
+    timing.setup(false, false, true);
+    timing.set_route_delay(CellPortKey(bidir->name, id_CLKIN), DelayPair(400, 700));
+    timing.set_route_delay(CellPortKey(bidir->name, id_CLK), DelayPair(200, 500));
+    timing.run(false, false, false, true);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "fall", true)), 11100);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("write", "oe", false)), 14600);
+    EXPECT_EQ(timing.get_timing_result().clock_hold_slack.at(clock->name), hold);
+}
+
+TEST_F(IoDelayTest, RegisteredPadGraphDoesNotChangeCheckpointOrLeakAcrossSetup)
+{
+    struct Diagnostics {
+        std::ostringstream stream;
+        Diagnostics() { log_streams.emplace_back(&stream, LogLevel::INFO_MSG); }
+        ~Diagnostics() { log_streams.pop_back(); }
+    } diagnostics;
+    registered_boundaries();
+    ctx->settings[ctx->id("synth")] = 1;
+    std::ostringstream before, after; std::string filename = "boundary.json";
+    ASSERT_TRUE(write_json_file(before, filename, ctx.get()));
+    auto users = bidir->getPort(id_PAD)->users.entries();
+    auto nets = ctx->nets.size(), cells = ctx->cells.size(), pins = bidir->ports.size();
+    TimingAnalyser timing(ctx.get()); timing.setup(true, true, true);
+    timing.setup(true, true, true);
+    ASSERT_TRUE(write_json_file(after, filename, ctx.get()));
+    EXPECT_EQ(before.str(), after.str());
+    EXPECT_EQ(ctx->nets.size(), nets); EXPECT_EQ(ctx->cells.size(), cells); EXPECT_EQ(bidir->ports.size(), pins);
+    EXPECT_EQ(bidir->getPort(id_PAD)->users.entries(), users);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "fall", true)), 700);
+    std::vector<EndpointClockPairTiming> rows;
+    EXPECT_FALSE(timing.get_endpoint_clock_pair_timings(boundary_key("read", "fall", true), rows));
+    ArchArgs args; args.device = "5CSEBA6U23I7";
+    auto fresh = std::make_unique<IoBoundaryTestContext>(args);
+    fresh->createNet(fresh->id("$PACKER_GND_NET")); fresh->createNet(fresh->id("$PACKER_VCC_NET"));
+    std::istringstream incoming(before.str());
+    ASSERT_TRUE(parse_json(incoming, filename, fresh.get()));
+    const auto &models = static_cast<IoBoundaryTestContext *>(ctx.get())->boundary_models;
+    for (const auto &entry : models) {
+        auto key = std::make_pair(fresh->id(entry.first.first.str(ctx.get())), entry.first.second);
+        for (auto model : entry.second) {
+            model.name = fresh->id(model.name.str(ctx.get()));
+            model.clocking.clock_port = fresh->id(model.clocking.clock_port.str(ctx.get()));
+            fresh->boundary_models[key].push_back(model);
+        }
+    }
+    fresh->assignArchInfo();
+    TimingAnalyser restored(fresh.get()); ASSERT_NO_THROW(restored.setup(true, true, true)) << diagnostics.stream.str();
+    EXPECT_EQ(restored.get_setup_slack(CellPortKey(fresh->id(bidir->name.str(ctx.get())),
+                  fresh->id("PAD$timing$read$fall$register"))), 700);
+    // Reports may name aliases, but must not look them up as routed pins or
+    // assume an external input pad net has a physical design driver.
+    for (const auto &entry : ctx->cells) {
+        auto *cell = entry.second.get();
+        for (auto bel : ctx->getBels()) {
+            if (ctx->getBoundBelCell(bel) || !ctx->isValidBelForCellType(cell->type, bel)) continue;
+            ctx->bindBel(bel, cell, STRENGTH_USER);
+            break;
+        }
+        ASSERT_NE(cell->bel, BelId());
+    }
+    ctx->timing_result = timing.get_timing_result();
+    ctx->timing_result.report_setup_paths = timing.get_report_setup_paths(16);
+    ctx->detailed_timing_report = true;
+    std::ostringstream report; ASSERT_NO_THROW(ctx->writeJsonReport(report));
+    std::string error;
+    auto json = json11::Json::parse(report.str(), error);
+    ASSERT_TRUE(error.empty()) << error;
+    bool found_pad = false;
+    for (const auto &row : json["detailed_net_timings"].array_items()) {
+        if (row["net"].string_value() != bidir->getPort(id_PAD)->name.str(ctx.get())) continue;
+        found_pad = true;
+        EXPECT_TRUE(row["driver"].is_null());
+        for (const auto &sink : row["endpoints"].array_items()) {
+            EXPECT_EQ(sink["source"]["cell"].string_value(), bidir->name.str(ctx.get()));
+            EXPECT_NE(sink["source"]["port"].string_value().find("$timing$"), std::string::npos);
+        }
+    }
+    EXPECT_TRUE(found_pad);
+}
+
+TEST_F(IoDelayTest, RegisteredPadCutsDoNotBypassModelAndClockValidation)
+{
+    registered_boundaries();
+    sdc("set_false_path -from [get_clocks memory] -to [get_clocks memory]\n");
+    TimingAnalyser cut(ctx.get()); cut.setup(false, false, true);
+    EXPECT_EQ(cut.get_criticality(boundary_key("read", "fall", true)), 0);
+    EXPECT_EQ(cut.get_criticality(boundary_key("write", "oe", false)), 0);
+    EXPECT_TRUE(cut.get_timing_result().clock_setup_slack.empty());
+    EXPECT_TRUE(cut.get_timing_result().min_delay_violations.empty());
+    auto &models = static_cast<IoBoundaryTestContext *>(ctx.get())->boundary_models;
+    auto saved = models[{bidir->name, true}];
+    models[{bidir->name, true}].front().clocking.clock_port = id_ACLR;
+    TimingAnalyser invalid(ctx.get());
+    EXPECT_THROW(invalid.setup(), log_execution_error_exception);
+    models[{bidir->name, true}] = saved;
+    models[{bidir->name, true}].front().clocking.clock_port = id_I;
+    TimingAnalyser not_clock(ctx.get());
+    EXPECT_THROW(not_clock.setup(), log_execution_error_exception);
+    models[{bidir->name, true}] = saved;
+    models[{bidir->name, true}].front().clocking.setup = DelayPair(300, 200);
+    TimingAnalyser reversed(ctx.get());
+    EXPECT_THROW(reversed.setup(), log_execution_error_exception);
+    models[{bidir->name, true}] = saved;
+    models[{bidir->name, true}].push_back(saved.front());
+    TimingAnalyser overlap(ctx.get());
+    EXPECT_THROW(overlap.setup(), log_execution_error_exception);
+    models[{bidir->name, true}] = saved;
+    auto *unrelated = net("unrelated"); ctx->addClock(unrelated->name, 125);
+    auto write_saved = models[{bidir->name, false}];
+    models[{bidir->name, false}].front().clocking.clockToQ = DelayQuad(100, 500, 300, 200);
+    TimingAnalyser invalid_output(ctx.get());
+    EXPECT_THROW(invalid_output.setup(), log_execution_error_exception);
+    models[{bidir->name, false}] = write_saved;
+    bidir->disconnectPort(id_CLKIN); bidir->connectPort(id_CLKIN, unrelated);
+    TimingAnalyser mismatched(ctx.get());
+    EXPECT_THROW(mismatched.setup(), log_execution_error_exception);
+}
+
+TEST_F(IoDelayTest, RegisteredPadUsesSeparatePhaseRelatedCaptureClock)
+{
+    registered_boundaries();
+    auto *shifted = net("shifted_capture");
+    shifted->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+    clock->clkconstr->phase_group = shifted->clkconstr->phase_group = ctx->id("memory_pll");
+    shifted->clkconstr->phase_shift = 3000;
+    bidir->disconnectPort(id_CLKIN); bidir->connectPort(id_CLKIN, shifted);
+    TimingAnalyser timing(ctx.get()); timing.with_clock_skew = true; timing.setup(false, false, true);
+    timing.set_route_delay(CellPortKey(bidir->name, id_CLKIN), DelayPair(400, 700));
+    timing.run(false, false, false, true);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "rise", true)), 200);
+    EXPECT_EQ(timing.get_setup_slack(boundary_key("read", "fall", true)), 4100);
+    auto paths = timing.get_report_setup_paths(16);
+    for (const auto &entry : timing.get_timing_result().clock_paths) paths.push_back(entry.second);
+    for (const auto &path : timing.get_timing_result().xclock_paths) paths.push_back(path);
+    bool found = false;
+    for (const auto &path : paths) {
+        if (path.segments.back().to.second != boundary_key("read", "rise", true).port) continue;
+        found = true;
+        EXPECT_EQ(path.clock_pair.end.clock, shifted->name);
+        EXPECT_EQ(path.max_delay, 3000);
+        delay_t total = 0; for (const auto &segment : path.segments) total += segment.delay;
+        EXPECT_EQ(path.max_delay - total, 200);
+    }
+    EXPECT_TRUE(found);
 }

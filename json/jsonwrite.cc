@@ -59,6 +59,7 @@ struct PortGroup
     std::vector<int> bits;
     PortType dir;
     int offset = 0;
+    bool is_bus = false;
 };
 
 std::vector<PortGroup> group_ports(Context *ctx, const dict<IdString, PortInfo> &ports, bool is_cell = false)
@@ -80,7 +81,7 @@ std::vector<PortGroup> group_ports(Context *ctx, const dict<IdString, PortInfo> 
 
             if (!base_to_group.count(basename)) {
                 base_to_group[basename] = groups.size();
-                groups.push_back({basename, {}, {}, pair.second.type});
+                groups.push_back({basename, {}, {}, pair.second.type, 0, true});
             }
 
             auto &grp = groups.at(base_to_group[basename]);
@@ -99,6 +100,12 @@ std::vector<PortGroup> group_ports(Context *ctx, const dict<IdString, PortInfo> 
             NPNR_ASSERT(group.bits.at(vec_idx) == -1);
             group.bits.at(vec_idx) = bit.second;
         }
+        // Width-one, zero-offset buses otherwise reload as scalars (dq[0]
+        // becomes dq), losing the exact port name stored in IO constraints.
+        // Keep that root port's literal name in constrained checkpoints.
+        if (!is_cell && ctx->settings.count(ctx->id("timing/io_delays")) &&
+            group.is_bus && group.offset == 0 && group.bits.size() == 1)
+            group.name += "[0]";
     }
     return groups;
 }

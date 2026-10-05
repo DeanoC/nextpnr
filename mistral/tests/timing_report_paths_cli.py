@@ -171,7 +171,7 @@ class TimingReportPathsCliTest(unittest.TestCase):
             self.assertEqual(len(endpoints), expected, timing)
             tied = [name for name in endpoints[1:] if name != "launch"]
             self.assertEqual(tied, sorted(tied))
-            self.assertIn("additional registered setup endpoint paths", answer[1])
+            self.assertIn("additional clocked/IO setup endpoint paths", answer[1])
             self.assertTrue(all(not net.get("attributes", {}).get("ROUTING")
                                 for net in placed["modules"]["top"]["netnames"].values()))
         self.assertEqual(set(self.assert_native_paths(json.loads(all_paths[2]["timing.json"]),

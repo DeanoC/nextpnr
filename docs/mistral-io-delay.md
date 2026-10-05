@@ -51,6 +51,8 @@ compatibility no-op; multicycle hold retains the single-cycle relationship.
 Constraints and the clock periods, duty cycles and phase relationships used by
 their analysis are preserved in JSON settings. Explicit clocks on input pads
 propagate through uninverted input/global buffers when IO delays are enabled.
+Constrained checkpoints keep a width-one `dq[0]` root port's literal name so
+it cannot reload as scalar `dq` and lose its saved constraints.
 
 ## GPIO model boundary
 
@@ -60,6 +62,30 @@ their pad capture and clock-to-pad models and bidirectional timing boundaries
 are incomplete. A qualified reference profile now times some fabric-facing
 GPIO register arcs; see [the characterization fixture](../mistral/tests/gpio-timing/README.md).
 This does not enable external pad constraints on registered modes.
+
+The common timing analyzer now has separate registered-pad read and write
+boundaries. Architectures provide complete external relationships through
+`getRegisteredIoTiming(cell, pad, input)`: each named capture edge has its own
+setup/hold checks, and each data/OE launch channel has its own clock-to-pad
+interval. These models refer to the real cell's clock routing ingress. They
+must include the pad buffers, electrical/load conditions and any internal
+delay chains; fabric-facing register arcs cannot substitute for them. A
+direction containing unsupported combinational paths must return no model.
+
+The analyzer creates private ports named `PAD$timing$read$...` or
+`PAD$timing$write$...` on the existing cell identity. These aliases exist only
+inside STA. They do not change cell ports, physical net drivers/users, routes,
+bitstreams or checkpoints. Every capture edge uses a separate node so rising
+and falling timing checks cannot overwrite each other. Their paths use the
+normal setup/hold, phase, skew and SDC exception machinery. The private bridge
+has no routing segment: its physical delay is entirely in the supplied model.
+Detailed net reports include each alias's logical source and clock event;
+the physical driver is null for an externally driven pad net.
+
+Mistral currently inherits the empty-model default. Registered external
+constraints still fail explicitly until its pad models are qualified. Common
+graph tests use synthetic architecture models rather than treating Quartus
+reference samples as a production pad model.
 
 The data timing boundary is the GPIO routing ingress/egress, not a newly
 characterized package-pad model. Checks use the existing routing/cell delay

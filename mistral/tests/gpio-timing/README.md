@@ -58,8 +58,10 @@ proof that either setting passes SDRAM hardware.
 
 External pad capture and output timing remain unsupported. The current IO-delay
 analyzer refuses registered pads rather than silently timing only their fabric
-side. Completing that support requires independent read/write boundaries on
-bidirectional pads, separate capture edges and DDR handoff coverage, matching
+side. The common analyzer now supports independent read/write boundaries,
+separate capture edges and data/OE channels through an architecture API, with
+synthetic-model regression coverage. Mistral does not supply that API's pad
+models yet. Completing its support requires DDR handoff coverage, matching
 output delay-chain settings, and a qualified clock-to-pin/output-load model.
 Some internal DDR handoff queries report no paths; that absence is not proof of
 zero delay or a passing half-cycle check.
