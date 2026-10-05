@@ -1,0 +1,88 @@
+{
+  "classification": "local reference envelope; external pad timing remains unsupported",
+  "device": "5CSEBA6U23I7",
+  "bounds": {
+    "input_control_setup": {
+      "observed_max_ps": 115.0,
+      "envelope_ps": 120,
+      "count": 20,
+      "worst": {
+        "variant": "bus",
+        "report": "7_slow_1100mv_-40c/register-setup.rpt",
+        "from": "ce_n",
+        "to": "dq_in[1]",
+        "ns": 0.1150000000000001,
+        "report_sha256": "8dabda5f0afaeb654b014d845f67f3a6e6a6fe94b725b34b7835261b12218381"
+      }
+    },
+    "input_control_hold": {
+      "observed_max_ps": 659.0,
+      "envelope_ps": 660,
+      "count": 20,
+      "worst": {
+        "variant": "bus",
+        "report": "7_slow_1100mv_-40c/register-hold.rpt",
+        "from": "ce_n",
+        "to": "dq_in[3]",
+        "ns": 0.659,
+        "report_sha256": "34ba20f21cdae5de8b0e6e86792ad976e03c794047da9967ae4074a980087c52"
+      }
+    },
+    "output_control_setup": {
+      "observed_max_ps": 109.0,
+      "envelope_ps": 120,
+      "count": 132,
+      "worst": {
+        "variant": "bus",
+        "report": "7_slow_1100mv_100c/register-setup.rpt",
+        "from": "ce_n",
+        "to": "dq_out[2]",
+        "ns": 0.1090000000000001,
+        "report_sha256": "5bebe0a969cb62dd971a448adcfea6301fa6d32741ea80b1c3710cbfb7d6022d"
+      }
+    },
+    "output_control_hold": {
+      "observed_max_ps": 309.0,
+      "envelope_ps": 310,
+      "count": 132,
+      "worst": {
+        "variant": "bus",
+        "report": "7_slow_1100mv_100c/register-hold.rpt",
+        "from": "ce_n",
+        "to": "dq_oe",
+        "ns": 0.30899999999999994,
+        "report_sha256": "2543013ea005f38fa97201127303f5b2024fceda3cfd17e9b346a78b67db382b"
+      }
+    },
+    "input_clock_to_fabric": {
+      "observed_max_ps": 866.0,
+      "envelope_ps": 870,
+      "count": 88,
+      "worst": {
+        "variant": "ddr",
+        "report": "7_slow_1100mv_-40c/fabric-setup.rpt",
+        "from": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+        "to": "q[2]",
+        "ns": 0.866,
+        "report_sha256": "009456cb27e7040c59a9310ddb1be8d21bd5c2929786a8c8325698f42ac81f97"
+      }
+    }
+  },
+  "input_hashes": {
+    "ddr": {
+      "clocks.sdc": "94f42c2fa83678727a975a9adef7c549e7dce5768067351920f9eac27989be8b",
+      "ddr.v": "7d552c467d8367774dbf61f61505b1a86d1a153b3e2b7efffb2716fcd12447db",
+      "top.qsf": "2acced56881b4bc2a4ca644b553e235d11a4595c598c662c31fbb95ad11d5838"
+    },
+    "pads": {
+      "clocks.sdc": "94f42c2fa83678727a975a9adef7c549e7dce5768067351920f9eac27989be8b",
+      "pads.v": "73b3c5d8c6c1f9beee6ec3b02ddd34a2e29430b38d8a1b61d7dd052c751a639e",
+      "top.qsf": "28c473ef9f5b68e1465f9ff473e939bebceebdf618b1703eed0f028096637b34"
+    },
+    "bus": {
+      "bus.v": "dca6f4f10afd48a64d995a3b6b876c50613deb3f009fb0f948e0cc1c306c2ac4",
+      "clocks.sdc": "94f42c2fa83678727a975a9adef7c549e7dce5768067351920f9eac27989be8b",
+      "top.qsf": "36d18df1323b83521dc4d2eb447752fcde0c38a2790701c360667122bfb50049"
+    }
+  }
+}

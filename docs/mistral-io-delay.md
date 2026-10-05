@@ -55,8 +55,11 @@ propagate through uninverted input/global buffers when IO delays are enabled.
 ## GPIO model boundary
 
 Mistral supports these constraints on unregistered `MISTRAL_IB`, `MISTRAL_OB`
-and `MISTRAL_IO` fabric interfaces. Registered SDR/DDR GPIO modes are rejected
-because their characterized setup/hold and clock-to-pad models are incomplete.
+and `MISTRAL_IO` fabric interfaces. Registered SDR/DDR GPIO modes are rejected for external constraints because
+their pad capture and clock-to-pad models and bidirectional timing boundaries
+are incomplete. A qualified reference profile now times some fabric-facing
+GPIO register arcs; see [the characterization fixture](../mistral/tests/gpio-timing/README.md).
+This does not enable external pad constraints on registered modes.
 
 The data timing boundary is the GPIO routing ingress/egress, not a newly
 characterized package-pad model. Checks use the existing routing/cell delay

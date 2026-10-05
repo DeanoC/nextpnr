@@ -268,3 +268,72 @@ TEST_F(IoDelayTest, SetupMulticycleRelaxesExternalSetupWithoutRelaxingHold)
     ASSERT_EQ(holds.size(), 1);
     EXPECT_EQ(holds[0].segments.back().delay, -2000);
 }
+
+TEST_F(IoDelayTest, RegisteredDdrFabricHandoffUsesRisingEdgeForBothWords)
+{
+    bidir->type = id_MISTRAL_SDRIO;
+    bidir->params[ctx->id("IOREG_IN")] = 1;
+    bidir->disconnectPort(id_O);
+    bidir->ports.erase(id_O);
+    bidir->addInput(id_CLKIN);
+    bidir->connectPort(id_CLKIN, clock);
+    bidir->addOutput(id_Q_H);
+    bidir->addOutput(id_Q_L);
+    auto *high_data = input->getPort(id_O);
+    input->disconnectPort(id_O);
+    bidir->connectPort(id_Q_H, high_data);
+    auto *low_capture = ff("low_capture");
+    bidir->connectPort(id_Q_L, net("low_data"));
+    low_capture->connectPort(id_DATAIN, bidir->getPort(id_Q_L));
+    ctx->assignArchInfo();
+    TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
+    for (auto *sink : {capture, low_capture}) {
+        auto reports = timing.get_report_setup_paths(16);
+        for (const auto &entry : timing.get_timing_result().clock_paths) reports.push_back(entry.second);
+        auto found = std::find_if(reports.begin(), reports.end(), [&](const CriticalPath &path) {
+            return !path.segments.empty() && path.segments.back().to.first == sink->name;
+        });
+        ASSERT_NE(found, reports.end());
+        const auto &path = *found;
+        EXPECT_EQ(path.clock_pair.start.clock, clock->name);
+        EXPECT_EQ(path.clock_pair.start.edge, RISING_EDGE);
+        EXPECT_EQ(path.max_delay, 10000);
+        EXPECT_GT(timing.get_criticality(CellPortKey(sink->name, id_DATAIN)), 0);
+    }
+}
+
+TEST_F(IoDelayTest, RegisteredFabricTimingDoesNotEnableExternalPadTiming)
+{
+    bidir->type = id_MISTRAL_SDRIO;
+    bidir->params[ctx->id("IOREG_OUT")] = 1;
+    bidir->params[ctx->id("IOREG_OE")] = 1;
+    bidir->addInput(id_CLK);
+    bidir->connectPort(id_CLK, clock);
+    int count = 0;
+    EXPECT_EQ(ctx->getPortTimingClass(bidir, id_I, count), TMG_REGISTER_INPUT);
+    EXPECT_EQ(count, 1);
+    sdc("set_output_delay -clock memory 1 [get_ports {dq[*]}]\n");
+    ctx->assignArchInfo();
+    TimingAnalyser timing(ctx.get());
+    EXPECT_THROW(timing.setup(false, false, true), log_execution_error_exception);
+}
+
+TEST_F(IoDelayTest, UncharacterizedElectricalProfilesKeepRegisterTimingUnsupported)
+{
+    bidir->type = id_MISTRAL_SDRIO;
+    bidir->params[ctx->id("IOREG_IN")] = 1;
+    bidir->addOutput(id_Q_H);
+    int count = 0;
+    EXPECT_EQ(ctx->getPortTimingClass(bidir, id_Q_H, count), TMG_REGISTER_OUTPUT);
+    for (const auto &setting : {std::make_pair("D3_DELAY", "1"),
+                                std::make_pair("ENABLE_BUS_HOLD_CIRCUITRY", "ON"),
+                                std::make_pair("IO_STANDARD", "3.3-V LVCMOS")}) {
+        bidir->attrs[ctx->id(setting.first)] = std::string(setting.second);
+        EXPECT_EQ(ctx->getPortTimingClass(bidir, id_Q_H, count), TMG_IGNORE);
+        EXPECT_EQ(count, 0);
+        bidir->attrs.erase(ctx->id(setting.first));
+    }
+    output->type = id_MISTRAL_SDROUT;
+    EXPECT_EQ(ctx->getPortTimingClass(output, id_I, count), TMG_ENDPOINT);
+    EXPECT_EQ(count, 0);
+}

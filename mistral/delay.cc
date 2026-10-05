@@ -25,6 +25,38 @@ NEXTPNR_NAMESPACE_BEGIN
 
 namespace {
 
+// Reference local-register envelope (ps): Quartus 17.0.2, 5CSEBA6U23I7,
+// io-registers SDR/DDR/OE fixtures, all four slow/fast temperature corners.
+// Normalize the data CELL delay against the internal clock CELL delay;
+// package, input buffers and interconnect stay outside these local arcs.
+// Observed maxima: CEIN setup 115, hold 659; output/OE setup 109,
+// hold 309; input clock-to-fabric 866. Round outward to 10 ps. Clock-to-Q
+// uses a conservative zero minimum, not the minimum of a reference fit.
+// Pad capture, pad output and asynchronous clear are intentionally excluded.
+// Output-only SDROUT is also excluded: its backend delay defaults differ from
+// the fitted Quartus reference (see io-registers/oracle/mapping.json).
+bool gpio_fabric_profile(const Context *ctx, const CellInfo *cell)
+{
+    if (ctx->getChipName() != "5CSEBA6U23I7" ||
+        !cell->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_SDRIO))
+        return false;
+    const auto io = ctx->get_io_electrical(cell);
+    return !io.lvcmos && !io.bus_hold && io.d1_delay < 0 && io.d3_delay < 0 &&
+           io.d5_delay < 0 && io.d5_oe_delay < 0;
+}
+
+bool gpio_input_registered(const Context *ctx, const CellInfo *cell)
+{
+    return cell->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN) ||
+           (cell->type == id_MISTRAL_SDRIO && int_or_default(cell->params, ctx->id("IOREG_IN"), 0));
+}
+
+bool gpio_output_registered(const Context *ctx, const CellInfo *cell)
+{
+    return cell->type == id_MISTRAL_SDROUT ||
+           (cell->type == id_MISTRAL_SDRIO && int_or_default(cell->params, ctx->id("IOREG_OUT"), 0));
+}
+
 bool dsp_bool_param(const dict<IdString, Property> &params, IdString key, bool def = false)
 {
     auto it = params.find(key);
@@ -139,6 +171,21 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         if (port == id_O) return TMG_STARTPOINT;
         if (port.in(id_I, id_OE)) return TMG_ENDPOINT;
         return TMG_IGNORE;
+    }
+    if (gpio_fabric_profile(getCtx(), cell)) {
+        if (port.in(id_CLK, id_CLKIN)) return TMG_CLOCK_INPUT;
+        if (gpio_input_registered(getCtx(), cell) && port.in(id_Q, id_Q_H, id_Q_L, id_CEIN)) {
+            clockInfoCount = 1;
+            return port == id_CEIN ? TMG_REGISTER_INPUT : TMG_REGISTER_OUTPUT;
+        }
+        const bool oe = cell->type == id_MISTRAL_SDRIO && int_or_default(cell->params, id("IOREG_OE"), 0);
+        if ((port == id_I && gpio_output_registered(getCtx(), cell)) || (port == id_OE && oe) ||
+            (port == id_CEOUT && (gpio_output_registered(getCtx(), cell) || oe))) {
+            clockInfoCount = 1;
+            return TMG_REGISTER_INPUT;
+        }
+        // Remaining pad and asynchronous-control paths use the unsupported
+        // classifications below; fabric arcs do not imply interface closure.
     }
     if (cell->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN)) {
         // The Mistral database has no characterized GPIO input-register
@@ -344,6 +391,20 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
 TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port, int index) const
 {
     TimingClockingInfo timing{};
+    if (gpio_fabric_profile(getCtx(), cell)) {
+        const bool input = port.in(id_Q, id_Q_H, id_Q_L, id_CEIN);
+        timing.clock_port = input && cell->type == id_MISTRAL_SDRIO ? id_CLKIN : id_CLK;
+        // DDIO low data is retimed to the rising edge before entering fabric.
+        // Its external pad capture edge is separate and is not modeled here.
+        timing.edge = RISING_EDGE;
+        if (port.in(id_Q, id_Q_H, id_Q_L))
+            timing.clockToQ = DelayQuad{0, 870};
+        else {
+            timing.setup = DelayPair{120, 120};
+            timing.hold = input ? DelayPair{660, 660} : DelayPair{310, 310};
+        }
+        return timing;
+    }
     if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
                       id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED)) {
         timing.clock_port = id_CLK;

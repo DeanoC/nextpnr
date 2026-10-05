@@ -772,7 +772,7 @@ struct MistralPacker
             ctx->cells.erase(name);
         }
         if (!pads.empty())
-            log_warning("Bidirectional I/O registers: setup/hold, clock-to-pad and clock-to-Q timing are "
+            log_warning("Bidirectional I/O registers: pad setup/hold and clock-to-pad timing are "
                         "uncharacterized; reported fabric Fmax does not establish interface timing closure.\n");
     }
 
@@ -946,7 +946,7 @@ struct MistralPacker
             ctx->cells.erase(ff->name);
         }
         if (!inputs.empty())
-            log_warning("SDR input registers: setup/hold and GPIO register clock-to-Q timing are uncharacterized; "
+            log_warning("SDR input registers: pad setup/hold timing is uncharacterized; "
                         "reported fabric Fmax does not establish input-interface timing closure.\n");
     }
 
@@ -1315,7 +1315,7 @@ struct MistralPacker
             ctx->cells.erase(ddr->name);
         }
         if (!inputs.empty())
-            log_warning("DDR input registers: setup/hold, GPIO register clock-to-Q, and Q-to-fabric timing are "
+            log_warning("DDR input registers: pad setup/hold and internal DDR handoff timing are "
                         "uncharacterized; "
                         "reported fabric Fmax does not establish input-interface timing closure.\n");
     }
