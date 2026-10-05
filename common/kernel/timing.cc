@@ -474,7 +474,8 @@ void TimingAnalyser::setup_port_domains()
             const auto &dp = domain_pairs.at(pair.first);
             const auto &launch = domains.at(dp.key.launch).key;
             const auto &capture = domains.at(dp.key.capture).key;
-            if (launch.is_async() || capture.is_async() || !timed_clocks(ctx, launch.clock, capture.clock))
+            if (launch.is_async() || capture.is_async() ||
+                (launch.clock != capture.clock && !phase_related_clocks(ctx, launch.clock, capture.clock)))
                 log_error("IO delay path at '%s.%s' requires the same clock or equal-period phase-related clocks.\n",
                           port.first.cell.c_str(ctx), port.first.port.c_str(ctx));
         }
