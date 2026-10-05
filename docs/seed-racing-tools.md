@@ -75,8 +75,9 @@ GPU-capable Mistral and generic nextpnr collections must bind exactly
 one explicit `--router`; `gpu` additionally requires exactly one
 `--gpu-telemetry {telemetry}` binding. These bindings must occur before
 `--`. JSON/read inputs whose settings override the declared router are rejected.
-Explicit `router1`/`router2` CPU collections
-do not require GPU backend attestation. HIP runtimes older than version 6 remain
+`router1` and `router2` collections are rejected because they do not emit the
+terminal structured legality evidence required for a complete seed-racing
+outcome. HIP runtimes older than version 6 remain
 usable for ordinary GPU routing, but their telemetry is explicitly unattested
 because those runtimes do not expose the exact device UUID; seed-racing
 collection rejects that backend identity.
@@ -93,9 +94,12 @@ directory descriptor in `NEXTPNR_EXECUTABLE_DIR`; replacing its display path
 cannot redirect later workers. Collection fails closed without Linux
 sealed descriptors, pidfds, and `/proc`. The executable's dynamic dependency
 closure is copied and content-checked into individually sealed descriptors before
-submission. Each worker is invoked by the sealed dynamic-loader descriptor with
-the sealed library descriptors explicitly preloaded, so later pathname swaps
-cannot alter the bytes consumed by another worker. The command must be a native
+submission. Every dependency must have a `DT_SONAME` exactly matching the
+`DT_NEEDED` name that resolved it; otherwise collection rejects the runtime.
+Each worker is invoked by the sealed dynamic-loader descriptor with those
+name-bound sealed library descriptors explicitly preloaded, so the loader does
+not reopen a mutable dependency pathname and later swaps cannot alter the bytes
+consumed by another worker. The command must be a native
 `nextpnr` ELF executable; Python-enabled nextpnr builds, shebang commands,
 standalone language interpreters, generic launchers, and nextpnr Python hooks
 are rejected because their implicit module/resource search trees cannot be

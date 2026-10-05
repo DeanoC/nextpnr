@@ -770,8 +770,8 @@ class CollectorTests(unittest.TestCase):
             source.write_text('const char *value(void) { return VALUE; }\n', encoding="utf-8")
             for destination, value in ((original, '"frozen"'), (replacement, '"replacement"')):
                 seed_racing.subprocess.run(
-                    ["cc", "-shared", "-fPIC", f"-DVALUE={value}", str(source), "-o",
-                     str(destination)], check=True)
+                    ["cc", "-shared", "-fPIC", f"-DVALUE={value}", str(source),
+                     "-Wl,-soname,libmutable.so", "-o", str(destination)], check=True)
             runner_source = root / "runner.c"
             runner_source.write_text(
                 "#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n"
@@ -988,11 +988,40 @@ class CollectorTests(unittest.TestCase):
         executable = Path("/bin/true").resolve()
         completed = seed_racing.subprocess.CompletedProcess(
             ["ldd", str(executable)], 1, "", "not a dynamic executable\n")
-        with mock.patch.object(seed_racing.subprocess, "run", return_value=completed):
+        with mock.patch.object(seed_racing.subprocess, "run", return_value=completed), \
+                mock.patch.object(seed_racing, "_elf_dynamic_names", return_value=(None, [])):
             evidence = seed_racing._runtime_environment_evidence(
                 executable, seed_racing._child_environment({}))
         files = evidence["manifest"]["files"]
         self.assertIn(str(executable), [item["path"] for item in files])
+
+    def test_runtime_evidence_rejects_needed_library_without_matching_soname(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            library_source = root / "foo.c"
+            library_source.write_text("int foo(void){return 0;}\n", encoding="utf-8")
+            runner_source = root / "runner.c"
+            runner_source.write_text("int foo(void); int main(void){return foo();}\n",
+                                     encoding="utf-8")
+            library = root / "libfoo.so"
+            runner = root / "nextpnr-test"
+            seed_racing.subprocess.run(
+                ["cc", "-shared", "-fPIC", str(library_source), "-o", str(library)],
+                check=True)
+            seed_racing.subprocess.run(
+                ["cc", str(runner_source), "-L", str(root), "-lfoo",
+                 "-Wl,-rpath,$ORIGIN", "-o", str(runner)], check=True)
+            environment = seed_racing._child_environment({})
+            with self.assertRaisesRegex(ValueError, "does not match DT_SONAME None"):
+                seed_racing._runtime_environment_evidence(runner, environment)
+
+            seed_racing.subprocess.run(
+                ["cc", "-shared", "-fPIC", str(library_source),
+                 "-Wl,-soname,libfoo.so", "-o", str(library)], check=True)
+            evidence = seed_racing._runtime_environment_evidence(runner, environment)
+            bindings = evidence["manifest"]["execution"]["dependency_bindings"]
+            self.assertIn({"needed": "libfoo.so", "path": str(library),
+                           "soname": "libfoo.so"}, bindings)
 
     def test_normal_leader_exit_kills_residual_process_group(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -1178,17 +1207,15 @@ if seed == 4: sys.exit(1)
             with self.assertRaisesRegex(ValueError, "explicit --router"):
                 seed_racing.Collector(manifest, Path(temporary) / "implicit-router").run()
 
-    def test_explicit_cpu_mistral_collection_does_not_require_gpu_attestation(self):
+    def test_explicit_cpu_mistral_collection_is_rejected_without_terminal_telemetry(self):
         with tempfile.TemporaryDirectory() as temporary:
             runner = Path(temporary) / "nextpnr-mistral"
             self.python_elf_runner(runner)
             manifest = self.manifest(temporary, [str(runner), "-c", "pass", "--router", "router2",
                                                  "--seed", "{seed}"])
-            result = seed_racing.Collector(
-                manifest, Path(temporary) / "cpu-mistral").run()[0]
-            self.assertEqual(result["status"], "incomplete_evidence")
-            self.assertNotIn("execution_identity",
-                             result["cohort_identity"]["manifest"])
+            with self.assertRaisesRegex(ValueError, "requires --router gpu"):
+                seed_racing.Collector(
+                    manifest, Path(temporary) / "cpu-mistral").run()
 
     def test_gpu_capable_router_binding_ignores_tokens_after_double_dash(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -1214,10 +1241,10 @@ if seed == 4: sys.exit(1)
                 seed_racing.Collector(manifest, Path(temporary) / "hook-runs").run()
 
             design = Path(temporary) / "design.json"
-            design.write_text(json.dumps({"settings": {"router": "gpu"}}), encoding="utf-8")
+            design.write_text(json.dumps({"settings": {"router": "router2"}}), encoding="utf-8")
             manifest = self.manifest(
-                temporary, [str(runner), "--router", "router2", "--seed", "{seed}",
-                            "--json", str(design)])
+                temporary, [str(runner), "--router", "gpu", "--seed", "{seed}",
+                            "--gpu-telemetry", "{telemetry}", "--json", str(design)])
             manifest["inputs"] = [{"path": str(design), "role": "mapped_netlist"}]
             with self.assertRaisesRegex(ValueError, "overrides declared router"):
                 seed_racing.Collector(manifest, Path(temporary) / "json-runs").run()

@@ -461,6 +461,100 @@ def _elf_interpreter(path: Path) -> Optional[Path]:
             return Path(value).resolve()
     return None
 
+
+def _elf_dynamic_names(path: Path) -> Tuple[Optional[str], List[str]]:
+    """Read DT_SONAME and DT_NEEDED without executing another program."""
+    with path.open("rb") as stream:
+        ident = stream.read(16)
+        if len(ident) != 16 or ident[:4] != b"\x7fELF" or ident[4] not in (1, 2) or ident[5] not in (1, 2):
+            raise ValueError(f"runtime object is not a supported ELF file: {path}")
+        elf_class = ident[4]
+        endian = "<" if ident[5] == 1 else ">"
+        header_format = endian + ("HHIIIIIHHHHHH" if elf_class == 1 else "HHIQQQIHHHHHH")
+        header_size = struct.calcsize(header_format)
+        header_data = stream.read(header_size)
+        if len(header_data) != header_size:
+            raise ValueError(f"truncated ELF header: {path}")
+        header = struct.unpack(header_format, header_data)
+        program_offset, program_entry_size, program_count = header[4], header[8], header[9]
+        program_format = endian + ("IIIIIIII" if elf_class == 1 else "IIQQQQQQ")
+        program_size = struct.calcsize(program_format)
+        if program_entry_size < program_size:
+            raise ValueError(f"invalid ELF program header size: {path}")
+        loads: List[Tuple[int, int, int]] = []
+        dynamic: Optional[Tuple[int, int]] = None
+        for index in range(program_count):
+            stream.seek(program_offset + index * program_entry_size)
+            program_data = stream.read(program_size)
+            if len(program_data) != program_size:
+                raise ValueError(f"truncated ELF program headers: {path}")
+            program = struct.unpack(program_format, program_data)
+            if elf_class == 1:
+                kind, offset, address, file_size = program[0], program[1], program[2], program[4]
+            else:
+                kind, offset, address, file_size = program[0], program[2], program[3], program[5]
+            if kind == 1:  # PT_LOAD
+                loads.append((address, offset, file_size))
+            elif kind == 2:  # PT_DYNAMIC
+                dynamic = (offset, file_size)
+        if dynamic is None:
+            return None, []
+        entry_format = endian + ("iI" if elf_class == 1 else "qQ")
+        entry_size = struct.calcsize(entry_format)
+        string_address = None
+        string_size = None
+        needed_offsets: List[int] = []
+        soname_offset = None
+        for offset in range(dynamic[0], dynamic[0] + dynamic[1], entry_size):
+            stream.seek(offset)
+            entry_data = stream.read(entry_size)
+            if len(entry_data) != entry_size:
+                raise ValueError(f"truncated ELF dynamic table: {path}")
+            tag, value = struct.unpack(entry_format, entry_data)
+            if tag == 0:  # DT_NULL
+                break
+            if tag == 1:  # DT_NEEDED
+                needed_offsets.append(value)
+            elif tag == 5:  # DT_STRTAB
+                string_address = value
+            elif tag == 10:  # DT_STRSZ
+                string_size = value
+            elif tag == 14:  # DT_SONAME
+                soname_offset = value
+        if string_address is None or string_size is None:
+            if needed_offsets or soname_offset is not None:
+                raise ValueError(f"ELF dynamic names lack a bounded string table: {path}")
+            return None, []
+        string_offset = None
+        for address, offset, file_size in loads:
+            if address <= string_address and string_address + string_size <= address + file_size:
+                string_offset = offset + string_address - address
+                break
+        if string_offset is None:
+            raise ValueError(f"ELF dynamic string table is outside file-backed segments: {path}")
+        stream.seek(string_offset)
+        strings = stream.read(string_size)
+        if len(strings) != string_size:
+            raise ValueError(f"truncated ELF dynamic string table: {path}")
+
+    def name_at(offset: int) -> str:
+        if offset < 0 or offset >= len(strings):
+            raise ValueError(f"invalid ELF dynamic string offset: {path}")
+        end = strings.find(b"\0", offset)
+        if end < 0:
+            raise ValueError(f"unterminated ELF dynamic string: {path}")
+        try:
+            value = strings[offset:end].decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise ValueError(f"non-UTF-8 ELF dynamic name: {path}") from error
+        if not value or "/" in value:
+            raise ValueError(f"invalid ELF dynamic name: {path}")
+        return value
+
+    soname = name_at(soname_offset) if soname_offset is not None else None
+    return soname, [name_at(offset) for offset in needed_offsets]
+
+
 def _runtime_environment_evidence(executable: Path, environment: Mapping[str, str],
                                   share_directory: Optional[Path] = None,
                                   recorded_executable: Optional[Path] = None,
@@ -473,6 +567,7 @@ def _runtime_environment_evidence(executable: Path, environment: Mapping[str, st
         raise ValueError(
             "collection requires a native nextpnr ELF executable; shebang commands are unsupported")
     paths = set()
+    dependency_bindings: Dict[str, Path] = {}
     completed = subprocess.run(
         ["ldd", str(executable)], env=dict(environment), stdout=subprocess.PIPE,
         stderr=subprocess.PIPE, text=True, check=False, pass_fds=tuple(pass_fds))
@@ -486,12 +581,20 @@ def _runtime_environment_evidence(executable: Path, environment: Mapping[str, st
         for line in completed.stdout.splitlines():
             words = line.strip().split()
             candidate = None
+            needed_name = None
             if "=>" in words and words.index("=>") + 1 < len(words):
+                needed_name = words[0]
                 candidate = words[words.index("=>") + 1]
             elif words:
                 candidate = words[0]
             if candidate and candidate.startswith("/") and Path(candidate).is_file():
-                paths.add(Path(candidate).resolve())
+                resolved = Path(candidate).resolve()
+                paths.add(resolved)
+                if needed_name is not None:
+                    previous = dependency_bindings.setdefault(needed_name, resolved)
+                    if previous != resolved:
+                        raise ValueError(
+                            f"runtime dependency name resolves to multiple objects: {needed_name}")
     files = [{"path": str(recorded_executable), "sha256": sha256_file(executable)}]
     files.extend({"path": str(path), "sha256": sha256_file(path)}
                  for path in sorted(paths, key=str))
@@ -517,12 +620,33 @@ def _runtime_environment_evidence(executable: Path, environment: Mapping[str, st
         paths.add(dynamic_loader)
         if not any(item["path"] == str(dynamic_loader) for item in files):
             files.append({"path": str(dynamic_loader), "sha256": sha256_file(dynamic_loader)})
+    bound_dependencies = []
+    for needed_name, path in sorted(dependency_bindings.items()):
+        soname, unused_needed = _elf_dynamic_names(path)
+        if soname != needed_name:
+            raise ValueError(
+                f"runtime dependency {path} cannot be sealed by preload: "
+                f"DT_NEEDED {needed_name!r} does not match DT_SONAME {soname!r}")
+        bound_dependencies.append({"needed": needed_name, "path": str(path), "soname": soname})
+    provided = set(dependency_bindings)
+    if dynamic_loader is not None:
+        loader_soname, unused_loader_needed = _elf_dynamic_names(dynamic_loader)
+        if loader_soname is not None:
+            provided.add(loader_soname)
+    closure_objects = [executable] + [path for path in paths if path != dynamic_loader]
+    for path in closure_objects:
+        unused_soname, needed_names = _elf_dynamic_names(path)
+        missing = sorted(set(needed_names) - provided)
+        if missing:
+            raise ValueError(
+                f"runtime dependency closure for {path} is unresolved: {', '.join(missing)}")
     manifest = {"runtime_binary": str(recorded_executable),
                 "launchers": [str(recorded_executable)], "files": files,
                 "execution": {
                     "kind": "elf",
                     "dynamic_loader": str(dynamic_loader) if dynamic_loader is not None else None,
-                    "dependency_paths": sorted(str(path) for path in paths)},
+                    "dependency_paths": sorted(str(path) for path in paths),
+                    "dependency_bindings": bound_dependencies},
                 "platform": {"sysname": uname.sysname, "release": uname.release,
                              "machine": uname.machine},
                 "cpu": _cpu_identity()}
@@ -730,6 +854,8 @@ class Collector:
             item["path"]: item["sha256"] for item in self._runtime_evidence["manifest"]["files"]}
         if _sha256_stream(frozen) != expected_runtime_hashes.get(str(resolved)):
             raise RuntimeError("cohort executable changed while deriving its runtime closure")
+        dependency_bindings = {
+            item["path"]: item["needed"] for item in execution["dependency_bindings"]}
         sealed_runtime: Dict[str, str] = {}
         for source_text in execution["dependency_paths"]:
             source = Path(source_text)
@@ -737,6 +863,12 @@ class Collector:
             self._snapshot_streams.append(frozen_runtime)
             if _sha256_stream(frozen_runtime) != expected_runtime_hashes.get(str(source)):
                 raise RuntimeError(f"runtime dependency changed while snapshotting: {source}")
+            expected_name = dependency_bindings.get(str(source))
+            if expected_name is not None:
+                soname, unused_needed = _elf_dynamic_names(Path(_descriptor_path(frozen_runtime)))
+                if soname != expected_name:
+                    raise RuntimeError(
+                        f"runtime dependency identity changed while snapshotting: {source}")
             sealed_runtime[str(source)] = _descriptor_path(frozen_runtime)
         if source_share is not None:
             source_files = {str(path.relative_to(source_share)): sha256_file(path)
@@ -834,6 +966,10 @@ class Collector:
                 raise ValueError(
                     f"GPU-capable collection forbids route-mutating Python hook {option}")
         declared_router = _option_values(command, "--router")[0]
+        if declared_router != "gpu":
+            raise ValueError(
+                "seed-racing collection currently requires --router gpu because router1/router2 "
+                "do not emit equivalent terminal legality telemetry")
         for option in ("--json", "--read"):
             for value in _option_values(command, option):
                 base = Path(self.manifest["cwd"] or os.getcwd())
