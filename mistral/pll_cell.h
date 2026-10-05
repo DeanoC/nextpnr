@@ -22,7 +22,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cstring>
+#include <limits>
 
 #include "nextpnr.h"
 #include "pll_solver.h"
@@ -80,7 +82,15 @@ inline std::string mistral_pll_parse(const Context *ctx, const CellInfo *ci, Mis
             ok = false;
             return 0;
         }
-        return int(it->second.as_int64());
+        // Narrowing first turns 2^32+1 into 1 and 2^32+50 into 50, so an
+        // illegal parameter passes the later range check. Reject any value
+        // that does not fit in int unchanged.
+        int64_t value = it->second.as_int64();
+        if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max()) {
+            ok = false;
+            return 0;
+        }
+        return int(value);
     };
     bool present = false, ok = true;
     req.clocks = integer(ctx->id("number_of_clocks"), 1, ok);

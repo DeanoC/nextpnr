@@ -65,7 +65,13 @@ def main():
             ("fractional", "fractional_vco_multiplier", "true", "fractional-N mode supports reference clocks"),
             ("phase", "phase_shift0", "-100 ps", "unsupported PLL output frequency/duty/phase"),
             ("duty", "duty_cycle0", format(0, "032b"), "duty cycle must be an integer percent"),
-            ("count", "number_of_clocks", format(10, "032b"), "number_of_clocks must")):
+            ("count", "number_of_clocks", format(10, "032b"), "number_of_clocks must"),
+            # 2^32+1 and 2^32+50 fit in the parameter bit vector but not in int.
+            # Narrowing them used to yield a legal 1 and a legal 50.
+            ("count-wide", "number_of_clocks", format(2 ** 32 + 1, "033b"),
+             "number_of_clocks must be an integer from 1 to 9"),
+            ("duty-wide", "duty_cycle0", format(2 ** 32 + 50, "033b"),
+             "duty_cycle0 must be an integer percentage")):
         invalid = copy.deepcopy(design)
         pll = invalid["modules"]["top"]["cells"]["pll"]
         pll["parameters"][parameter] = value
