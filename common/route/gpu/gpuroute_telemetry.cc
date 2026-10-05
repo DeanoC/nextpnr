@@ -123,7 +123,13 @@ Telemetry::Telemetry(const std::string &path, std::string run_id)
     if (err == 0)
         file_ = _fdopen(fd, "wb");
 #else
-    int fd = ::open(path.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0666);
+    // The bounded collector pre-opens and anchors output files, then passes
+    // their inherited descriptors through /proc/self/fd. Preserve exclusive
+    // creation for ordinary paths, but write the explicitly inherited object
+    // instead of rejecting its descriptor path as already existing.
+    const bool inherited_fd = path.rfind("/proc/self/fd/", 0) == 0;
+    int flags = O_WRONLY | O_CLOEXEC | (inherited_fd ? O_TRUNC : (O_CREAT | O_EXCL));
+    int fd = ::open(path.c_str(), flags, 0666);
     if (fd >= 0)
         file_ = fdopen(fd, "w");
 #endif

@@ -168,6 +168,16 @@ class DatasetTests(unittest.TestCase):
                 run["cohort_fingerprint_sha256"] = identity["fingerprint_sha256"]
                 run["outcome"]["execution_backend"] = identity["manifest"]["execution_identity"]["backend"]
         seed_racing.validate_dataset(document)
+        never_launched = document["runs"][0]
+        never_launched["status"] = "not_started_total_budget"
+        never_launched["process_started"] = False
+        del never_launched["outcome"]["execution_backend"]
+        seed_racing.validate_dataset(document)
+        never_launched["outcome"]["execution_backend"] = \
+            identity["manifest"]["execution_identity"]["backend"]
+        with self.assertRaisesRegex(ValueError, "must not claim"):
+            seed_racing.validate_dataset(document)
+        never_launched["process_started"] = True
         document["runs"][0]["outcome"]["execution_backend"] = "cpu-reference"
         with self.assertRaisesRegex(ValueError, "execution backend"):
             seed_racing.validate_dataset(document)

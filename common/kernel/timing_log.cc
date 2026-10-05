@@ -22,6 +22,7 @@
 #include <algorithm>
 #include "log.h"
 #include "nextpnr.h"
+#include "timing.h"
 #include "util.h"
 
 NEXTPNR_NAMESPACE_BEGIN
@@ -41,7 +42,8 @@ static std::string clock_event_name(const Context *ctx, const ClockEvent &e, int
 static bool ignored_related_constraint(const Context *ctx, const CriticalPath &report)
 {
     return bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
-           report.clock_pair.start.clock != report.clock_pair.end.clock;
+           report.clock_pair.start.clock != report.clock_pair.end.clock &&
+           !phase_related_clocks(ctx, report.clock_pair.start.clock, report.clock_pair.end.clock);
 }
 
 static void log_crit_paths(const Context *ctx, TimingResult &result)

@@ -62,6 +62,8 @@ struct ClockDomainKey
 
 typedef int domain_id_t;
 
+bool phase_related_clocks(const Context *ctx, IdString launch, IdString capture);
+
 struct ClockDomainPairKey
 {
     domain_id_t launch, capture;

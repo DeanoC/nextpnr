@@ -512,6 +512,12 @@ TEST_F(TimingReportPathsTest, PhaseRelatedEndpointRetainsItsActualSetupAndHoldWi
     ctx->settings[ctx->id("timing/ignoreRelClk")] = true;
     auto *endpoint = rising.front();
     endpoint->disconnectPort(id_CLK); endpoint->connectPort(id_CLK, phase_clock);
+    launch->disconnectPort(id_DATAIN);
+    for (auto *other : rising)
+        if (other != endpoint)
+            other->disconnectPort(id_DATAIN);
+    for (auto *other : falling)
+        other->disconnectPort(id_DATAIN);
     ctx->assignArchInfo();
     TimingAnalyser timing(ctx.get()); timing.with_clock_skew = true; timing.setup(false, false, true);
     std::vector<EndpointClockPairTiming> rows;
@@ -528,8 +534,10 @@ TEST_F(TimingReportPathsTest, PhaseRelatedEndpointRetainsItsActualSetupAndHoldWi
     EXPECT_EQ(*row.hold_margin, row.min_path_delay);
     EXPECT_FLOAT_EQ(timing.get_setup_slack(CellPortKey(endpoint->name, id_DATAIN)), float(*row.setup_margin));
     ASSERT_TRUE(timing.get_timing_result().clock_setup_slack.count(clock->name));
+    ASSERT_TRUE(timing.get_timing_result().clock_hold_slack.count(clock->name));
     // ignoreRelClk does not exempt this timed phase relation from the setup/Fmax gate.
     EXPECT_EQ(timing.get_timing_result().clock_setup_slack.at(clock->name), *row.setup_margin);
+    EXPECT_EQ(timing.get_timing_result().clock_hold_slack.at(clock->name), *row.hold_margin);
     EXPECT_GT(row.min_path_delay, 9000); // previous capture edge contributes period minus interval
     ctx->check();
 }
@@ -576,6 +584,13 @@ TEST_F(TimingReportPathsTest, AllowedHoldViolationStillFailsTheTimingGate)
     result.min_delay_violations = {cross_clock_hold};
     ctx->settings[ctx->id("timing/ignoreRelClk")] = true;
     EXPECT_TRUE(ctx->log_timing_results(result, false, false, false, true));
+
+    clock->clkconstr->phase_group = ctx->id("shared_pll_phase");
+    auto *phase_clock = other_clock("phase_clock");
+    phase_clock->clkconstr->phase_group = clock->clkconstr->phase_group;
+    cross_clock_hold.clock_pair.end = ClockEvent{phase_clock->name, RISING_EDGE};
+    result.min_delay_violations = {cross_clock_hold};
+    EXPECT_FALSE(ctx->log_timing_results(result, false, false, false, true));
 }
 
 TEST_F(TimingReportPathsTest, UnknownClocksAsyncLaunchesAndIncompleteAnalysisFailClosed)

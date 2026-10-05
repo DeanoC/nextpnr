@@ -52,7 +52,7 @@ static delay_t clock_interval(const Context *ctx, IdString clock, ClockEdge laun
     return clock_period(ctx, clock) / 2;
 }
 
-static bool phase_related(const Context *ctx, IdString launch, IdString capture)
+bool phase_related_clocks(const Context *ctx, IdString launch, IdString capture)
 {
     auto a = ctx->nets.find(launch), b = ctx->nets.find(capture);
     if (a == ctx->nets.end() || b == ctx->nets.end() || !a->second->clkconstr || !b->second->clkconstr)
@@ -64,7 +64,7 @@ static bool phase_related(const Context *ctx, IdString launch, IdString capture)
 
 static bool timed_clocks(const Context *ctx, IdString launch, IdString capture)
 {
-    return launch == capture || phase_related(ctx, launch, capture);
+    return launch == capture || phase_related_clocks(ctx, launch, capture);
 }
 
 static delay_t clock_interval(const Context *ctx, IdString launch, IdString capture, ClockEdge launch_edge,
@@ -72,7 +72,7 @@ static delay_t clock_interval(const Context *ctx, IdString launch, IdString capt
 {
     if (launch == capture)
         return clock_interval(ctx, launch, launch_edge, capture_edge);
-    NPNR_ASSERT(phase_related(ctx, launch, capture));
+    NPNR_ASSERT(phase_related_clocks(ctx, launch, capture));
     const auto &ca = *ctx->nets.at(launch)->clkconstr, &cb = *ctx->nets.at(capture)->clkconstr;
     delay_t interval = cb.phase_shift - ca.phase_shift;
     if (capture_edge == FALLING_EDGE)
@@ -812,7 +812,7 @@ void TimingAnalyser::compute_slack()
             pdp.second.setup_slack = 0 - (arr.value.maxDelay() - req.value.minDelay() + clock_to_clock);
             if (!setup_only)
                 pdp.second.hold_slack = arr.value.minDelay() - req.value.maxDelay() + clock_to_clock;
-            if (!setup_only && phase_related(ctx, launch_clock, capture_clock))
+            if (!setup_only && phase_related_clocks(ctx, launch_clock, capture_clock))
                 pdp.second.hold_slack += clock_period(ctx, launch_clock) - dp.period.minDelay();
             pdp.second.max_path_length = arr.path_length + req.path_length;
             if (timed_clocks(ctx, launch_clock, capture_clock))
@@ -1094,7 +1094,7 @@ bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
             row.setup_timed = timed_clocks(ctx, launch.clock, capture.clock);
             row.hold_related = arrival.first == required.first ||
                                clock_delays.count(std::make_pair(launch.clock, capture.clock)) ||
-                               phase_related(ctx, launch.clock, capture.clock);
+                               phase_related_clocks(ctx, launch.clock, capture.clock);
             if (row.setup_timed) {
                 auto window = domain_pairs.at(pair->second).period.minDelay();
                 if (!finite(window) || window <= 0)
@@ -1275,7 +1275,7 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
     auto clock_pair = std::make_pair(launch.clock, capture.clock);
     auto related_clock = clock_delays.count(clock_pair) > 0;
     auto same_clock = launch.clock == capture.clock;
-    auto phase_locked = phase_related(ctx, launch.clock, capture.clock);
+    auto phase_locked = phase_related_clocks(ctx, launch.clock, capture.clock);
 
     if (related_clock) {
         delay_t clock_delay = clock_delays.at(clock_pair);
@@ -1412,9 +1412,9 @@ void TimingAnalyser::build_crit_path_reports()
 
         const bool ordinary_timed = timed_clocks(ctx, launch.clock, capture.clock);
         const bool physically_related = clock_delays.count(std::make_pair(launch.clock, capture.clock));
-        const bool ignored_related =
-                bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
-                launch.clock != capture.clock;
+        const bool phase_locked = phase_related_clocks(ctx, launch.clock, capture.clock);
+        const bool ignored_related = bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
+                                     launch.clock != capture.clock && !phase_locked;
         if (!launch.is_async() && (ordinary_timed || (physically_related && !ignored_related))) {
             const delay_t setup_window = ordinary_timed
                                                    ? dp.period.minDelay()
@@ -1551,7 +1551,7 @@ std::vector<CriticalPath> TimingAnalyser::get_min_delay_violations()
 
                 auto clocks = std::make_pair(launch_clock, capture_clock);
                 auto related_clocks = clock_delays.count(clocks) > 0;
-                auto phase_locked = phase_related(ctx, launch_clock, capture_clock);
+                auto phase_locked = phase_related_clocks(ctx, launch_clock, capture_clock);
 
                 if (launch_id == async_clock_id || (launch_id != capture_id && !related_clocks && !phase_locked)) {
                     continue;
@@ -1567,9 +1567,8 @@ std::vector<CriticalPath> TimingAnalyser::get_min_delay_violations()
                     hold_slack += clock_period(ctx, launch_clock) -
                                   clock_interval(ctx, launch_clock, capture_clock, launch.key.edge, capture.key.edge);
 
-                const bool ignored_related =
-                        bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
-                        launch_clock != capture_clock;
+                const bool ignored_related = bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
+                                             launch_clock != capture_clock && !phase_locked;
                 if (!ignored_related) {
                     auto inserted = result.clock_hold_slack.emplace(launch_clock, hold_slack);
                     if (!inserted.second)

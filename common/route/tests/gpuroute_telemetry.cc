@@ -7,6 +7,11 @@
 #include <iterator>
 #include <stdexcept>
 
+#ifndef _WIN32
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 #include "gpuroute_telemetry.h"
 
 namespace {
@@ -61,5 +66,24 @@ TEST(GpuRouteTelemetry, RefusesToOverwrite)
     EXPECT_EQ(contents, "input");
     std::filesystem::remove(path);
 }
+
+#ifndef _WIN32
+TEST(GpuRouteTelemetry, WritesInheritedProcDescriptor)
+{
+    auto path = temporary_path();
+    int fd = ::open(path.c_str(), O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0600);
+    ASSERT_GE(fd, 0);
+    {
+        gpuroute::Telemetry telemetry("/proc/self/fd/" + std::to_string(fd), "inherited");
+        telemetry.emit("run_start", "", -1, {});
+    }
+    ::close(fd);
+    std::ifstream input(path);
+    std::string line;
+    ASSERT_TRUE(std::getline(input, line));
+    EXPECT_NE(line.find("\"run_id\":\"inherited\""), std::string::npos);
+    std::filesystem::remove(path);
+}
+#endif
 
 } // namespace

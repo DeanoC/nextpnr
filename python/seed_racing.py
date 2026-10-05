@@ -1818,15 +1818,20 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
         declared_gpu = router_values == ["gpu"]
         requires_execution_identity = declared_gpu
         observed_backend = outcome.get("execution_backend")
+        never_launched = run.get("process_started") is False
         if requires_execution_identity or "execution_identity" in identity_manifest or \
                 isinstance(observed_backend, str):
             execution_identity = identity_manifest.get("execution_identity")
             if (not isinstance(execution_identity, dict) or
                     not isinstance(execution_identity.get("backend"), str) or
-                    not execution_identity["backend"] or
-                    observed_backend != execution_identity["backend"]):
+                    not execution_identity["backend"]):
                 raise ValueError("GPU run execution backend is not bound by its cohort identity")
-            if not _exact_execution_backend(observed_backend):
+            if never_launched:
+                if observed_backend is not None:
+                    raise ValueError("never-launched GPU run must not claim an execution backend")
+            elif observed_backend != execution_identity["backend"]:
+                raise ValueError("GPU run execution backend is not bound by its cohort identity")
+            elif not _exact_execution_backend(observed_backend):
                 raise ValueError("GPU run execution backend lacks exact device attestation")
             runtime_id = execution_identity.get("runtime_environment_id")
             runtime_binary = identity_manifest.get("binary")
