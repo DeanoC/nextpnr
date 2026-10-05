@@ -346,12 +346,13 @@ class DatasetTests(unittest.TestCase):
             result_path = root / "result.json"
             result_path.write_text(json.dumps(result), encoding="utf-8")
             summary_result = dict(result, result_sha256=seed_racing.sha256_file(result_path))
+            runner_error_id = "runner-error-" + "x" * 90
             runner_error = {
-                "run_id": "runner-error", "seed": 19, "repeat": 1,
+                "run_id": runner_error_id, "seed": 19, "repeat": 1,
                 "status": "runner_error", "error": "collector failed",
                 "cohort_identity": identity,
             }
-            runner_error_path = root / "synthetic" / "runner-error" / "result.json"
+            runner_error_path = root / "synthetic" / runner_error_id / "result.json"
             runner_error_path.parent.mkdir(parents=True)
             runner_error_path.write_text(json.dumps(runner_error), encoding="utf-8")
             summary_runner_error = dict(
@@ -393,7 +394,7 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(normalized[1]["outcome"]["timing_evidence_reason"],
                              "process_not_started")
             self.assertEqual(dataset["excluded_runs"], [{
-                "run_id": "runner-error", "cohort_id": "synthetic", "seed": 19,
+                "run_id": runner_error_id, "cohort_id": "synthetic", "seed": 19,
                 "replicate": 1, "status": "runner_error",
                 "reason": "missing_artifact_and_cost_evidence",
                 "error": "collector failed",

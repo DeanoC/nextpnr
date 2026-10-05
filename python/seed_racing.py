@@ -239,6 +239,15 @@ def _safe_component(value: Any) -> str:
     return safe[:80]
 
 
+def _exact_safe_component(value: Any) -> str:
+    """Validate an existing path component without changing its length."""
+    text = str(value)
+    if (not text or text in {".", ".."} or
+            any(not (ch.isalnum() or ch in "._-") for ch in text)):
+        raise ValueError(f"unsafe path component: {text!r}")
+    return text
+
+
 def _require_keys(mapping: Mapping[str, Any], keys: Iterable[str], context: str) -> None:
     missing = sorted(set(keys) - set(mapping))
     if missing:
@@ -1883,7 +1892,7 @@ def assemble_dataset(collection_paths: Sequence[Path]) -> Dict[str, Any]:
                     if not isinstance(run_id, str) or not run_id:
                         raise ValueError("collection runner error lacks its run_id")
                     result_path = (collection_path.parent / _safe_component(cohort_id) /
-                                   _safe_component(run_id) / "result.json")
+                                   _exact_safe_component(run_id) / "result.json")
                     result_label = f"result for {run_id!r}"
                     result_bytes = _verified_file_bytes(
                         result_path, result.get("result_sha256"), result_label)
