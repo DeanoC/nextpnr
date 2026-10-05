@@ -119,6 +119,7 @@ static Json::array json_report_critical_paths(const Context *ctx)
         critPathsJson.push_back(Json::object({{"from", clock_event_name(ctx, report.second.clock_pair.start)},
                                               {"to", clock_event_name(ctx, report.second.clock_pair.end)},
                                               {"max_delay", ctx->getDelayNS(report.second.max_delay)},
+                                              {"criticality", double(report.second.criticality)},
                                               {"path", report_critical_path(report.second)}}));
     }
 
@@ -127,12 +128,14 @@ static Json::array json_report_critical_paths(const Context *ctx)
         critPathsJson.push_back(Json::object({{"from", clock_event_name(ctx, report.clock_pair.start)},
                                               {"to", clock_event_name(ctx, report.clock_pair.end)},
                                               {"max_delay", ctx->getDelayNS(report.max_delay)},
+                                              {"criticality", double(report.criticality)},
                                               {"path", report_critical_path(report)}}));
     }
     for (const auto &report : ctx->timing_result.report_setup_paths) {
         critPathsJson.push_back(Json::object({{"from", clock_event_name(ctx, report.clock_pair.start)},
                                               {"to", clock_event_name(ctx, report.clock_pair.end)},
                                               {"max_delay", ctx->getDelayNS(report.max_delay)},
+                                              {"criticality", double(report.criticality)},
                                               {"path", report_critical_path(report)}}));
     }
 

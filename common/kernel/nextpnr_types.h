@@ -465,6 +465,10 @@ struct CriticalPath
     // if sum[segments.delay] > max_delay this is a setup/max violation
     delay_t max_delay;
 
+    // Criticality of this path's endpoint in this clock pair, in [0, 1].
+    // Placement reads the same value through get_criticality. An SDC cut is 0.
+    float criticality = 0;
+
     // Individual path segments
     std::vector<Segment> segments;
 };

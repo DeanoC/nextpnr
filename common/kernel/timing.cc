@@ -852,8 +852,14 @@ void TimingAnalyser::compute_criticality()
         auto &pd = ports.at(p);
         for (auto &pdp : pd.domain_pairs) {
             auto &dp = domain_pairs.at(pdp.first);
-            // Do not set criticality for asynchronous paths
-            if (domains.at(dp.key.launch).key.is_async() || domains.at(dp.key.capture).key.is_async())
+            const auto &launch = domains.at(dp.key.launch).key;
+            const auto &capture = domains.at(dp.key.capture).key;
+            // Asynchronous paths are not placed by setup criticality. An SDC
+            // cut still has slack; assigning it would give the worst endpoint
+            // criticality 1, which placement and routing read.
+            if (launch.is_async() || capture.is_async())
+                continue;
+            if (ctx->sdc_clock_false(launch.clock, capture.clock))
                 continue;
 
             float crit =
@@ -1220,6 +1226,10 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
     report.clock_pair.start.edge = launch.edge;
     report.clock_pair.end.clock = capture.clock;
     report.clock_pair.end.edge = capture.edge;
+    // This is the criticality compute_criticality stored for this pair. A cut
+    // stays at 0, which is what get_criticality reports for a crossing-only sink.
+    if (ports.count(endpoint) && ports.at(endpoint).domain_pairs.count(domain_pair))
+        report.criticality = ports.at(endpoint).domain_pairs.at(domain_pair).criticality;
 
     report.max_delay = ctx->getDelayFromNS(1.0e9 / ctx->setting<float>("target_freq"));
     if (launch.edge != capture.edge) {

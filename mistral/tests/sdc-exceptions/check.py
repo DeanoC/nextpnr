@@ -84,6 +84,26 @@ for clock in (FAST, SLOW):
     assert abs(got - expected) < max(0.05, 0.02 * abs(expected)), (clock, got, expected)
 print("PASS: cut crossings do not set setup WNS")
 
+
+def path_criticality(document, launch, capture):
+    want = ("posedge " + launch, "posedge " + capture)
+    matches = [p for p in document["critical_paths"] if (p["from"], p["to"]) == want]
+    assert matches, (want, [(p["from"], p["to"]) for p in document["critical_paths"]])
+    values = [p["criticality"] for p in matches]
+    assert all(isinstance(value, (int, float)) for value in values), matches
+    return max(values)
+
+
+# The worst endpoint of a cut pair used to receive criticality 1. Same-clock
+# paths still do: that is what placement reads through get_criticality.
+for launch, capture in ((FAST, SLOW), (SLOW, FAST)):
+    crit = path_criticality(report, launch, capture)
+    assert crit < 0.01, (launch, capture, crit)
+for clock in (FAST, SLOW):
+    crit = path_criticality(report, clock, clock)
+    assert crit > 0.99, (clock, crit)
+print("PASS: cut crossings do not set criticality")
+
 log, report = route("wildcard", "set_clock_groups -exclusive -group [get_clocks {*s[0]}] -group {clocks[1]}\n")
 assert untimed(log, FAST, SLOW) and untimed(log, SLOW, FAST)
 log, report = route("single-group", "set_clock_groups -asynchronous -group [get_clocks {clocks[0]}]\n")
@@ -93,6 +113,7 @@ print("PASS: wildcard and brace-list groups; a single group is exclusive with ev
 log, report = route("false-path", "set_false_path -from [get_clocks {clocks[1]}] -to [get_clocks {clocks[0]}]\n")
 assert untimed(log, SLOW, FAST) and not untimed(log, FAST, SLOW), log[-2000:]
 assert not hold(log, SLOW, FAST), log[-2000:]
+assert path_criticality(report, SLOW, FAST) < 0.01
 print("PASS: clock-to-clock set_false_path cuts only its direction")
 
 log, report = route("false-self", "set_false_path -from [get_clocks {clocks[0]}] -to [get_clocks {clocks[0]}]\n")

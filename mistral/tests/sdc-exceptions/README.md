@@ -4,7 +4,8 @@ Clock-level `set_clock_groups`, `set_false_path`, and `set_multicycle_path`
 in the shared SDC parser. Patterns (`*` and `?`) match a `create_clock -name`
 or a clock net name when timing analysis sees the clock, so PLL outputs named
 during packing are covered. `-name` and `-period` may follow the target.
-A cut pair is omitted from setup WNS even when the clocks share a driver.
+A cut pair is omitted from setup WNS and from timing criticality even when
+the clocks share a driver.
 
 `set_clock_groups` accepts `-asynchronous`, `-exclusive`,
 `-logically_exclusive`, and `-physically_exclusive`. All four cut timing
