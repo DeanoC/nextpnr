@@ -66,9 +66,11 @@ std::vector<PortGroup> group_ports(Context *ctx, const dict<IdString, PortInfo> 
 {
     std::vector<PortGroup> groups;
     dict<std::string, size_t> base_to_group;
+    pool<std::string> scalar_names;
     for (auto &pair : ports) {
         std::string name = pair.second.name.str(ctx);
         if ((name.back() != ']') || (name.find('[') == std::string::npos)) {
+            scalar_names.insert(name);
             groups.push_back(
                     {name,
                      {{0, pair.second.net ? pair.second.net->name.index : (is_cell ? -1 : pair.first.index)}},
@@ -107,7 +109,20 @@ std::vector<PortGroup> group_ports(Context *ctx, const dict<IdString, PortInfo> 
             group.is_bus && group.offset == 0 && group.bits.size() == 1)
             group.name += "[0]";
     }
-    return groups;
+    std::vector<PortGroup> result;
+    for (auto &group : groups) {
+        // A packed PLL can have scalar outclk alongside outclk[1], etc.
+        // Grouping that bus as outclk would emit duplicate JSON keys and
+        // silently discard an output on reload. Preserve the literal bits.
+        if (group.is_bus && scalar_names.count(group.name)) {
+            for (auto bit : group.grouped_bits)
+                result.push_back({group.name + "[" + std::to_string(bit.first) + "]", {},
+                                  {bit.second}, group.dir});
+        } else {
+            result.push_back(std::move(group));
+        }
+    }
+    return result;
 }
 
 std::string format_port_bits(const PortGroup &port, int &dummy_idx)

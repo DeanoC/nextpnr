@@ -2811,8 +2811,13 @@ struct MistralPacker
             const Solution &sol = *solved.solution;
             int clocks = req.clocks;
             // Established netlist convention: the first output is named outclk.
-            if (ci->ports.count(ctx->id("outclk[0]")) && !ci->ports.count(id_outclk))
+            if (ci->ports.count(ctx->id("outclk[0]")) && !ci->ports.count(id_outclk)) {
                 ci->renamePort(ctx->id("outclk[0]"), id_outclk);
+                // Default pin maps were assigned before PLL packing. The
+                // renamed port gets its selected counter below; retaining
+                // the old map would freeze a nonexistent outclk[0] BEL pin.
+                ci->pin_data.erase(ctx->id("outclk[0]"));
+            }
             for (auto &port : ci->ports) {
                 if (port.first.in(id_refclk, id_locked, id_rst))
                     continue;
