@@ -1,0 +1,799 @@
+{
+  "classification": "declared primitive clock checks; opaque DDR handoff remains without a path arc",
+  "node_count": 120,
+  "check_count": 1440,
+  "bounds": {
+    "DDIOINCELL_high_ns": {
+      "count": 192,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+        "required_ps": 95.0,
+        "actual_ps": 5051.0,
+        "slack_ps": 4956.0
+      }
+    },
+    "DDIOINCELL_ingress_high_ns": {
+      "count": 192,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+        "required_ps": 167.0,
+        "clock_inverted": false,
+        "primitive_type": "High Pulse Width",
+        "local_late_clock_ps": 731.0,
+        "local_early_clock_ps": 659.0
+      }
+    },
+    "DDIOINCELL_ingress_low_ns": {
+      "count": 192,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+        "required_ps": 185.0,
+        "clock_inverted": false,
+        "primitive_type": "Low Pulse Width",
+        "local_late_clock_ps": 730.0,
+        "local_early_clock_ps": 653.0
+      }
+    },
+    "DDIOINCELL_ingress_period_ns": {
+      "count": 192,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+        "required_ps": 1538.0,
+        "clock_inverted": null,
+        "primitive_type": "Min Period",
+        "local_late_clock_ps": null,
+        "local_early_clock_ps": null
+      }
+    },
+    "DDIOINCELL_low_ns": {
+      "count": 192,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+        "required_ps": 108.0,
+        "actual_ps": 4903.0,
+        "slack_ps": 4795.0
+      }
+    },
+    "DDIOINCELL_period_ns": {
+      "count": 192,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+        "required_ps": 1538.0,
+        "actual_ps": 10000.0,
+        "slack_ps": 8462.0
+      }
+    },
+    "DDIOOECELL_high_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "data_oe~_Duplicate_3",
+        "required_ps": 688.0,
+        "actual_ps": 5031.0,
+        "slack_ps": 4343.0
+      }
+    },
+    "DDIOOECELL_ingress_high_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "data_oe~_Duplicate_3",
+        "required_ps": 806.0,
+        "clock_inverted": false,
+        "primitive_type": "High Pulse Width",
+        "local_late_clock_ps": 1109.0,
+        "local_early_clock_ps": 991.0
+      }
+    },
+    "DDIOOECELL_ingress_low_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "data_oe~_Duplicate_15",
+        "required_ps": 778.0,
+        "clock_inverted": false,
+        "primitive_type": "Low Pulse Width",
+        "local_late_clock_ps": 1094.0,
+        "local_early_clock_ps": 1004.0
+      }
+    },
+    "DDIOOECELL_ingress_period_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "data_oe~_Duplicate_1",
+        "required_ps": 1538.0,
+        "clock_inverted": null,
+        "primitive_type": "Min Period",
+        "local_late_clock_ps": null,
+        "local_early_clock_ps": null
+      }
+    },
+    "DDIOOECELL_low_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "data_oe~_Duplicate_15",
+        "required_ps": 688.0,
+        "actual_ps": 4920.0,
+        "slack_ps": 4232.0
+      }
+    },
+    "DDIOOECELL_period_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "data_oe~_Duplicate_1",
+        "required_ps": 1538.0,
+        "actual_ps": 10000.0,
+        "slack_ps": 8462.0
+      }
+    },
+    "DDIOOUTCELL_high_ns": {
+      "count": 160,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "altddio_out:clk_pad|ddio_out_b2j:auto_generated|ddio_outa[0]~DFFHI0",
+        "required_ps": 689.0,
+        "actual_ps": 5046.0,
+        "slack_ps": 4357.0
+      }
+    },
+    "DDIOOUTCELL_ingress_high_ns": {
+      "count": 160,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "SDRAM_A[12]~reg0",
+        "required_ps": 790.0,
+        "clock_inverted": false,
+        "primitive_type": "High Pulse Width",
+        "local_late_clock_ps": 918.0,
+        "local_early_clock_ps": 816.0
+      }
+    },
+    "DDIOOUTCELL_ingress_low_ns": {
+      "count": 160,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "SDRAM_A[5]~reg0",
+        "required_ps": 767.0,
+        "clock_inverted": false,
+        "primitive_type": "Low Pulse Width",
+        "local_late_clock_ps": 894.0,
+        "local_early_clock_ps": 815.0
+      }
+    },
+    "DDIOOUTCELL_ingress_period_ns": {
+      "count": 160,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "SDRAM_A[0]~reg0",
+        "required_ps": 1538.0,
+        "clock_inverted": null,
+        "primitive_type": "Min Period",
+        "local_late_clock_ps": null,
+        "local_early_clock_ps": null
+      }
+    },
+    "DDIOOUTCELL_low_ns": {
+      "count": 160,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "altddio_out:clk_pad|ddio_out_b2j:auto_generated|ddio_outa[0]~DFFLO",
+        "required_ps": 689.0,
+        "actual_ps": 4928.0,
+        "slack_ps": 4239.0
+      }
+    },
+    "DDIOOUTCELL_period_ns": {
+      "count": 160,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "SDRAM_A[0]~reg0",
+        "required_ps": 1538.0,
+        "actual_ps": 10000.0,
+        "slack_ps": 8462.0
+      }
+    },
+    "FF_high_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "beat[11]",
+        "required_ps": 615.0,
+        "actual_ps": 5051.0,
+        "slack_ps": 4436.0
+      }
+    },
+    "FF_ingress_high_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "beat[11]",
+        "required_ps": 582.0,
+        "clock_inverted": false,
+        "primitive_type": "High Pulse Width",
+        "local_late_clock_ps": 526.0,
+        "local_early_clock_ps": 559.0
+      }
+    },
+    "FF_ingress_low_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_100c",
+        "node": "beat[1]",
+        "required_ps": 829.0,
+        "clock_inverted": false,
+        "primitive_type": "Low Pulse Width",
+        "local_late_clock_ps": 717.0,
+        "local_early_clock_ps": 503.0
+      }
+    },
+    "FF_ingress_period_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "beat[10]",
+        "required_ps": 1538.0,
+        "clock_inverted": null,
+        "primitive_type": "Min Period",
+        "local_late_clock_ps": null,
+        "local_early_clock_ps": null
+      }
+    },
+    "FF_low_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "beat[10]",
+        "required_ps": 615.0,
+        "actual_ps": 4928.0,
+        "slack_ps": 4313.0
+      }
+    },
+    "FF_period_ns": {
+      "count": 64,
+      "maximum": {
+        "corner": "7_slow_1100mv_-40c",
+        "node": "beat[10]",
+        "required_ps": 1538.0,
+        "actual_ps": 10000.0,
+        "slack_ps": 8462.0
+      }
+    }
+  },
+  "opaque_ddr_groups": [
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X40_Y0_N14",
+      "falling_capture": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X38_Y81_N48",
+      "falling_capture": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X32_Y81_N31",
+      "falling_capture": "altddio_in:pads[2].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[2].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[2].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X40_Y0_N31",
+      "falling_capture": "altddio_in:pads[3].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[3].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[3].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X60_Y0_N65",
+      "falling_capture": "altddio_in:pads[4].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[4].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[4].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X38_Y81_N65",
+      "falling_capture": "altddio_in:pads[5].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[5].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[5].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X62_Y0_N65",
+      "falling_capture": "altddio_in:pads[6].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[6].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[6].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X34_Y0_N88",
+      "falling_capture": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X82_Y0_N54",
+      "falling_capture": "altddio_in:pads[8].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[8].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[8].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X76_Y0_N14",
+      "falling_capture": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X8_Y0_N65",
+      "falling_capture": "altddio_in:pads[10].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[10].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[10].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X82_Y0_N71",
+      "falling_capture": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X60_Y0_N48",
+      "falling_capture": "altddio_in:pads[12].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[12].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[12].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X8_Y0_N48",
+      "falling_capture": "altddio_in:pads[13].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[13].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[13].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X26_Y0_N105",
+      "falling_capture": "altddio_in:pads[14].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[14].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[14].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "location": "DDIOINCELL_X36_Y0_N48",
+      "falling_capture": "altddio_in:pads[15].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[15].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[15].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X40_Y0_N14",
+      "falling_capture": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X38_Y81_N48",
+      "falling_capture": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X32_Y81_N31",
+      "falling_capture": "altddio_in:pads[2].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[2].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[2].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X40_Y0_N31",
+      "falling_capture": "altddio_in:pads[3].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[3].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[3].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X60_Y0_N65",
+      "falling_capture": "altddio_in:pads[4].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[4].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[4].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X38_Y81_N65",
+      "falling_capture": "altddio_in:pads[5].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[5].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[5].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X62_Y0_N65",
+      "falling_capture": "altddio_in:pads[6].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[6].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[6].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X34_Y0_N88",
+      "falling_capture": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X82_Y0_N54",
+      "falling_capture": "altddio_in:pads[8].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[8].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[8].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X76_Y0_N14",
+      "falling_capture": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X8_Y0_N65",
+      "falling_capture": "altddio_in:pads[10].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[10].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[10].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X82_Y0_N71",
+      "falling_capture": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X60_Y0_N48",
+      "falling_capture": "altddio_in:pads[12].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[12].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[12].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X8_Y0_N48",
+      "falling_capture": "altddio_in:pads[13].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[13].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[13].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X26_Y0_N105",
+      "falling_capture": "altddio_in:pads[14].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[14].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[14].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "location": "DDIOINCELL_X36_Y0_N48",
+      "falling_capture": "altddio_in:pads[15].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[15].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[15].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X40_Y0_N14",
+      "falling_capture": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X38_Y81_N48",
+      "falling_capture": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X32_Y81_N31",
+      "falling_capture": "altddio_in:pads[2].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[2].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[2].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X40_Y0_N31",
+      "falling_capture": "altddio_in:pads[3].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[3].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[3].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X60_Y0_N65",
+      "falling_capture": "altddio_in:pads[4].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[4].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[4].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X38_Y81_N65",
+      "falling_capture": "altddio_in:pads[5].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[5].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[5].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X62_Y0_N65",
+      "falling_capture": "altddio_in:pads[6].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[6].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[6].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X34_Y0_N88",
+      "falling_capture": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X82_Y0_N54",
+      "falling_capture": "altddio_in:pads[8].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[8].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[8].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X76_Y0_N14",
+      "falling_capture": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X8_Y0_N65",
+      "falling_capture": "altddio_in:pads[10].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[10].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[10].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X82_Y0_N71",
+      "falling_capture": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X60_Y0_N48",
+      "falling_capture": "altddio_in:pads[12].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[12].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[12].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X8_Y0_N48",
+      "falling_capture": "altddio_in:pads[13].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[13].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[13].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X26_Y0_N105",
+      "falling_capture": "altddio_in:pads[14].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[14].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[14].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "location": "DDIOINCELL_X36_Y0_N48",
+      "falling_capture": "altddio_in:pads[15].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[15].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[15].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X40_Y0_N14",
+      "falling_capture": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X38_Y81_N48",
+      "falling_capture": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X32_Y81_N31",
+      "falling_capture": "altddio_in:pads[2].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[2].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[2].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X40_Y0_N31",
+      "falling_capture": "altddio_in:pads[3].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[3].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[3].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X60_Y0_N65",
+      "falling_capture": "altddio_in:pads[4].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[4].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[4].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X38_Y81_N65",
+      "falling_capture": "altddio_in:pads[5].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[5].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[5].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X62_Y0_N65",
+      "falling_capture": "altddio_in:pads[6].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[6].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[6].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X34_Y0_N88",
+      "falling_capture": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[7].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X82_Y0_N54",
+      "falling_capture": "altddio_in:pads[8].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[8].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[8].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X76_Y0_N14",
+      "falling_capture": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[9].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X8_Y0_N65",
+      "falling_capture": "altddio_in:pads[10].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[10].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[10].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X82_Y0_N71",
+      "falling_capture": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[11].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X60_Y0_N48",
+      "falling_capture": "altddio_in:pads[12].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[12].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[12].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X8_Y0_N48",
+      "falling_capture": "altddio_in:pads[13].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[13].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[13].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X26_Y0_N105",
+      "falling_capture": "altddio_in:pads[14].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[14].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[14].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "location": "DDIOINCELL_X36_Y0_N48",
+      "falling_capture": "altddio_in:pads[15].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+      "retimed_low": "altddio_in:pads[15].cap|ddio_in_q9f:auto_generated|dataout_l[0]",
+      "rising_capture": "altddio_in:pads[15].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+      "classification": "opaque handoff: no falling fanout or low-word synchronous input"
+    }
+  ],
+  "hashes": {
+    "clock-requirements/7_slow_1100mv_-40c/pulse.rpt": "6d406d492576cadc374452cfe093f695266f9e10ddb1cdb2c1ea16f5960a120b",
+    "clock-requirements/7_slow_1100mv_-40c/requirements.tsv": "482c035b5375cefa499c22df7fc586e0800ca0c91f9eb623966d483228988f7a",
+    "clock-requirements/7_slow_1100mv_100c/pulse.rpt": "fc9042ff905707e889bbb35d1615884165c154c16815be9b3584c330fcd06f79",
+    "clock-requirements/7_slow_1100mv_100c/requirements.tsv": "19d6549b5c3a8e83297cd5ec2de5ab7d75a023055ccdd1e77d0ba92776bcfefb",
+    "clock-requirements/MIN_fast_1100mv_-40c/pulse.rpt": "e0d12b4d8611efdcbc3e534013a6e8dfe8179004e708c38a17312b05b0a21a43",
+    "clock-requirements/MIN_fast_1100mv_-40c/requirements.tsv": "89b4a1022a9462cff6272cb598d1d42e418dfcc4b4da239a31397a500840c4ce",
+    "clock-requirements/MIN_fast_1100mv_100c/pulse.rpt": "febd5a0eb19fa5ef852dbc1604dcc7fe6bf489232a5f2efb1db77325779c92fe",
+    "clock-requirements/MIN_fast_1100mv_100c/requirements.tsv": "ad31d85fe9a42c070af90601d93c7718afbb46cfb1a5ba2b103faaa24c7054ea",
+    "clocks.sdc": "984afc9d14c2b3cdaa3263afeb96a967339a734992cfcdfd3e5fff5f65250d62",
+    "top.qsf": "eac80ff01d02ef943aa9fd77b38b350c821821cdaa22a8b93a66e28077e416e2",
+    "ramtest-pads.v": "26e95d0e76391e4ba85e569f56519fcc1963d18e144fc0bbacc4a6f75de39293"
+  },
+  "query_sha256": "09dec39801af3aac127c5ef91787cebbdbbac7e0386316c41d8046dd38eeed82"
+}

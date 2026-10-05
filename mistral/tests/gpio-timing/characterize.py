@@ -6,7 +6,6 @@ import json
 import math
 from pathlib import Path
 import re
-import shutil
 import subprocess
 
 
@@ -56,10 +55,13 @@ def main():
     parser.add_argument('--quartus-bin', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--reuse-fits', action='store_true')
-    parser.add_argument('--variants', nargs='+', choices=['ddr', 'pads', 'bus', 'ddr-output-data'],
+    parser.add_argument('--variants', nargs='+', choices=['ddr', 'pads', 'bus', 'ddr-output-data', 'ramtest-pads'],
                         default=['ddr', 'pads', 'bus'])
     parser.add_argument('--output-load-pf', type=float, default=0,
                         help='External reference load on interface pads (not a board estimate)')
+    parser.add_argument('--ddr-output-pin', choices=['W15', 'AD20'], default='W15')
+    parser.add_argument('--all-transitions', action='store_true',
+                        help='Query rise/fall pad transitions separately in addition to worst paths')
     args = parser.parse_args()
     if not math.isfinite(args.output_load_pf) or args.output_load_pf < 0:
         parser.error('--output-load-pf must be finite and nonnegative')
@@ -68,14 +70,21 @@ def main():
     out = args.output.resolve()
     evidence = {'classification': 'fitted reference evidence, not a production model or hardware signoff',
                 'device': '5CSEBA6U23I7', 'io_standard': '3.3-V LVTTL',
-                'output_load_pf': args.output_load_pf, 'variants': {}}
+                'output_load_pf': args.output_load_pf, 'all_transitions': args.all_transitions,
+                'ddr_output_pin': 'AD20' if args.variants == ['ramtest-pads'] else args.ddr_output_pin,
+                'variants': {}}
     for variant in dict.fromkeys(args.variants):
         project = out / variant
         project.mkdir(parents=True, exist_ok=True)
-        if variant == 'ddr-output-data':
+        if variant == 'ramtest-pads':
+            rtl = (here/'ramtest-pads.v').read_text()
+            qsf = (here/'ramtest-pads.qsf').read_text()
+            clock_port = 'FPGA_CLK1_50'
+        elif variant == 'ddr-output-data':
             oracle = here.parent / variant / 'oracle'
             rtl = (oracle/'top.v').read_text()
             qsf = (oracle/'top.qsf').read_text().replace('VERILOG_FILE top.v', 'VERILOG_FILE '+variant+'.v')
+            qsf = qsf.replace('PIN_W15 -to DDR_OUT', 'PIN_'+args.ddr_output_pin+' -to DDR_OUT')
             clock_port = 'FPGA_CLK1_50'
         else:
             rtl = (fixtures / (variant+'.v')).read_text()
@@ -91,12 +100,15 @@ def main():
                   'set_input_delay -clock memory -max 1 [get_ports {dq[*] p1 p2 p3}]\n'
                   'set_output_delay -clock memory -min 0 [all_outputs]\n'
                   'set_output_delay -clock memory -max 1 [all_outputs]\n'}
+        if variant == 'ramtest-pads':
+            inputs['clocks.sdc'] = inputs['clocks.sdc'].replace('dq[*] p1 p2 p3', 'SDRAM_DQ[*]')
         if args.output_load_pf:
             # The obsolete OUTPUT_PIN_LOAD is ignored by TimeQuest 17.0.
             # Use a lumped far-end board capacitance (units are farads).
             ports = {'ddr': ['dq[0]', 'dq[1]'],
                      'pads': ['p1', 'p2', 'p3', 'p4', 'p6', 'p8'],
                      'ddr-output-data': ['DDR_OUT'],
+                     'ramtest-pads': re.findall(r'^set_location_assignment PIN_\w+ -to (SDRAM_\S+)$', qsf, re.M),
                      'bus': [f'dq[{i}]' for i in range(4)]}[variant]
             inputs['top.qsf'] += ''.join('set_instance_assignment -name BOARD_MODEL_FAR_C '
                                         f'{args.output_load_pf*1e-12:.12g} -to {port}\n' for port in ports)
@@ -115,8 +127,28 @@ def main():
             fit = (project / 'output_files/top.fit.rpt').read_text(encoding='latin-1')
             if 'Ignored BOARD_MODEL_FAR_C' in fit:
                 raise ValueError('Quartus ignored the requested output load')
-        query = 'ddr-output-paths.tcl' if variant == 'ddr-output-data' else 'paths.tcl'
-        shutil.copy(here / query, project / 'paths.tcl')
+        query = {'ddr-output-data': 'ddr-output-paths.tcl', 'ramtest-pads': 'ramtest-paths.tcl'}.get(variant, 'paths.tcl')
+        query_text = (here/query).read_text()
+        if args.all_transitions:
+            input_ports = 'SDRAM_DQ[*]' if variant == 'ramtest-pads' else 'dq[*] p1 p2 p3 p5 p7'
+            output_ports = {'ddr-output-data': 'DDR_OUT', 'ramtest-pads': 'SDRAM_*'}.get(
+                variant, 'dq[*] p1 p2 p3 p4 p6 p8')
+            extra = ('foreach corner [get_available_operating_conditions] {\n'
+                     '    set_operating_conditions $corner\n    update_timing_netlist\n'
+                     '    foreach kind {setup hold} {\n    foreach transition {rise fall} {\n')
+            if variant != 'ddr-output-data':
+                extra += ('        report_timing -$kind -${transition}_from [get_ports {'+input_ports+'}] '
+                          '-npaths 500 -nworst 100 -detail full_path '
+                          '-file $corner/input-$transition-$kind.rpt\n')
+            extra += ('        report_timing -$kind -${transition}_to [get_ports {'+output_ports+'}] '
+                      '-npaths 500 -nworst 100 -detail full_path '
+                      '-file $corner/output-$transition-$kind.rpt\n    }\n    }\n}\n')
+            query_text = query_text.replace('project_close', extra+'project_close')
+        (project/'paths.tcl').write_text(query_text)
+        # A reused fit may have previously been queried with different options.
+        # Do not collect stale reports from those old queries.
+        for report in project.glob('*_*mv_*c/*.rpt'):
+            report.unlink()
         run([args.quartus_bin / 'quartus_sta', '-t', 'paths.tcl'], project, project / 'paths.log')
         if args.output_load_pf and re.search(
                 r'Ignored.*(?:BOARD_MODEL_FAR_C|Board Model Far C|capacitance assignment)',

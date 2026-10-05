@@ -43,6 +43,7 @@ def arc(path, kind, output):
                 raise ValueError('DDR output phase disagrees with mux clock transition')
             return ('write_ddr_low' if edge == 'F' else 'write_ddr_high'), dict(
                 value_ps=round(value*1000, 3), clock_edge=edge, data_transition=local[-1]['transition'],
+                pad_transition=local[-1]['transition'][-1],
                 clock_reference='DDIO output clock mux routing ingress',
                 clock_local_ps=0, data_local_ps=round(value*1000, 3))
         if any(p['location'].startswith('DDIOOUTCELL') and p['node'].endswith('|dataout') for p in data):
@@ -103,6 +104,7 @@ def arc(path, kind, output):
         raise ValueError('Missing clock edge')
     return family, dict(value_ps=round(value*1000, 3), clock_edge=edge,
                         data_transition=data[-1]['transition'],
+                        pad_transition=data[-1]['transition'][-1] if output else data[0]['transition'][0],
                         clock_local_ps=round(register['incremental_ns']*1000, 3),
                         data_local_ps=round(total(data)*1000, 3))
 
@@ -130,6 +132,18 @@ def summarize(evidence):
     for key, rows in sorted(observations.items()):
         if len({r['report'].split('/')[0] for r in rows}) != 4:
             raise ValueError('Missing corner coverage for '+key)
+        if evidence.get('all_transitions', False):
+            coverage = collections.defaultdict(set)
+            for row in rows:
+                identity = (row['variant'], row['report'].split('/')[0], row['source'], row['target'])
+                coverage[identity]  # Require every observed channel to have both explicit queries.
+                for transition, edge in [('rise', 'R'), ('fall', 'F')]:
+                    if '-'+transition+'-' in row['report']:
+                        if row['pad_transition'] != edge:
+                            raise ValueError('Pad transition disagrees with explicit query')
+                        coverage[identity].add(transition)
+            if any(value != {'rise', 'fall'} for value in coverage.values()):
+                raise ValueError('Incomplete explicit transition coverage for '+key)
         result[key] = dict(count=len(rows), minimum=min(rows, key=lambda r: r['value_ps']),
                            maximum=max(rows, key=lambda r: r['value_ps']))
     for family in {key.rsplit('_', 1)[0] for key in result}:
@@ -139,6 +153,8 @@ def summarize(evidence):
     return dict(classification='fitted pad reference observations; not a production model or hardware signoff',
                 clock_reference='GPIO register clock or DDIO output mux routing ingress; upstream network excluded',
                 device=evidence['device'], io_standard=evidence['io_standard'],
+                all_transitions=evidence.get('all_transitions', False),
+                ddr_output_pin=evidence.get('ddr_output_pin', 'W15'),
                 output_load_pf=evidence.get('output_load_pf', 0), bounds=result,
                 input_hashes={v: {k: h for k, h in d['hashes'].items()
                                  if k.endswith('.v') or k in ['top.qsf', 'clocks.sdc']}

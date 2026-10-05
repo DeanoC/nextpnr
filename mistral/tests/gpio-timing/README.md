@@ -131,3 +131,77 @@ The adjacent `pad-reference0.json`, `pad-reference30.json` and
 corner/report provenance and input hashes. `pad-load-reference.json` and
 `pad-ddr-load-reference.json` retain all matched load differences and evidence
 hashes. These data remain distinct from the existing production fabric arcs.
+
+## Actual SDRAM pin and transition coverage
+
+`--ddr-output-pin AD20` moves the DDR-output fixture to the actual SDRAM clock
+pin. `--all-transitions` additionally queries each rising/falling pad transition
+and audits both explicit queries for every clock phase, endpoint and corner.
+Reusing a fit discards its old path reports before querying, so reports from
+previous options cannot satisfy that coverage check.
+
+`--variants ramtest-pads --all-transitions` covers all 39 SDRAM pin locations
+from the retained FES DE10-Nano 100 MHz QSF: sixteen DQ pads with DDR capture,
+registered data/OE, and registered address, bank, command and mask outputs,
+plus the DDR-output clock pad on AD20. Its clock-pad data varies to exercise
+both transitions at each clock phase; this is not a functional SDRAM tester.
+Its output/register choices and synthetic single 10 ns clock differ from the
+real core, including its masks and separate PLL/capture clocks.
+
+```sh
+python3 mistral/tests/gpio-timing/characterize.py \
+  --quartus-bin /path/to/quartus/bin --output /tmp/ramtest-pads30 \
+  --variants ramtest-pads --all-transitions --output-load-pf 30
+python3 mistral/tests/gpio-timing/pad_summary.py /tmp/ramtest-pads30/evidence.json \
+  --output /tmp/ramtest-pad-reference30.json
+```
+
+The complete pin reference raises observed input setup to 6.433 ns (rising
+capture) and 6.421 ns (falling capture). With 30 pF added load, observed maxima
+are 5.276 ns for SDR data, 5.416 ns for OE and 5.391/5.372 ns for the DDR clock
+pad's rising/falling launch phases. The matched load audit covers 1,344 paths
+including worst, rise and fall queries. The existing input clock-to-fabric
+envelope still covers the 866 ps maximum in 256 fabric observations. Compact
+load receipts (`compare_load.py --compact`) retain counts, extrema witnesses
+and evidence hashes without duplicating every path.
+
+## Declared primitive clock checks and DDR abstraction
+
+Run the clock query from a retained fitted project directory, then audit it:
+
+```sh
+/path/to/quartus/bin/quartus_sta -t /absolute/path/to/clock_requirements.tcl
+python3 mistral/tests/gpio-timing/clock_summary.py /tmp/gpio-timing/ddr \
+  --output /tmp/clock-reference.json
+python3 mistral/tests/gpio-timing/check_clock_summary.py /tmp/gpio-timing/ddr
+```
+
+The query retains each register's declared minimum period and high/low pulse
+width, synchronous input edges and data fanouts. Its separate minimum-pulse
+reports use a dedicated parser. The audit compares declarations with every
+reported check, verifies actual-minus-required slack, requires all four
+corners and rejects missing checks or inconsistent local clock paths.
+
+TimeQuest exposes the DDR input's falling capture and retimed rising low-word
+output as separate nodes with no connecting data edge. The receipt records
+this opaque relationship; it does not invent a zero-delay handoff arc. The
+39-pin fits expose 120 registers and 1,440 matching clock checks across four
+corners. DDR primitive period requirements reach 1.538 ns. Pulse requirements
+at internal registers must be normalized to the physical GPIO clock ingress:
+the audit adds late-minus-early local clock CELL delay, swaps high/low for an
+inverted internal clock, and excludes credit from global clock pessimism
+removal. Observed ingress requirements reach 167/185 ps for DDR input and
+806/778 ps for registered OE high/low widths; data output reaches 790/767 ps.
+These are local requirements. Routed clock duty distortion and any external
+uncertainty still need checks in the timing engine before these profiles can
+enable registered-pad constraints.
+
+`ramtest-pad-reference{0,30}.json` and `ramtest-pad-load-reference.json` retain
+the complete pin/transition extrema and compact matched-load audit.
+`ramtest-clock-reference.json` retains the loaded fit's declared and normalized
+clock requirements, opaque DDR groups and hashes. The GPIO requirement extrema
+are identical between the default and 30 pF fits. The clock audit's seven
+negative cases cover missing corners/checks, declaration mismatches, inconsistent
+slack, unknown check types, a new explicit handoff edge and missing local clock
+cells. These receipts do not enable Mistral pad timing or prove 100/130 MHz
+hardware operation.

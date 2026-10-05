@@ -9,6 +9,17 @@ from pad_summary import arc, summarize
 
 def check(evidence):
     result = summarize(evidence)
+    if evidence.get('all_transitions', False):
+        modified = copy.deepcopy(evidence)
+        data = next(iter(modified['variants'].values()))
+        report = next(r for r in data['reports'] if '/output-rise-setup.rpt' in r)
+        del data['reports'][report]
+        try:
+            summarize(modified)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('Accepted missing explicit rise transition coverage')
     if set(evidence['variants']) == {'ddr-output-data'}:
         assert result['bounds']['write_ddr_low_late']['maximum']['clock_edge'] == 'F'
         assert result['bounds']['write_ddr_high_late']['maximum']['clock_edge'] == 'R'
@@ -33,15 +44,17 @@ def check(evidence):
         return
     assert result['bounds']['read_ddr_low_setup']['maximum']['clock_edge'] == 'F'
     assert result['bounds']['read_ddr_high_setup']['maximum']['clock_edge'] == 'R'
-    assert result['bounds']['read_sdr_hold']['minimum']['value_ps'] < 0
+    if 'read_sdr_hold' in result['bounds']:
+        assert result['bounds']['read_sdr_hold']['minimum']['value_ps'] < 0
     selected = {}
-    for report, rows in evidence['variants']['ddr']['reports'].items():
+    variant = 'ramtest-pads' if 'ramtest-pads' in evidence['variants'] else 'ddr'
+    for report, rows in evidence['variants'][variant]['reports'].items():
         if report != '7_slow_1100mv_100c/input-setup.rpt' and report != '7_slow_1100mv_100c/output-setup.rpt':
             continue
         output = '/output-' in report
         for row in rows:
             parsed = arc(row, 'setup', output)
-            if parsed is not None:
+            if parsed is not None and not (output and parsed[0].startswith('write_ddr_')):
                 selected.setdefault('write' if output else 'read', row)
 
     def rejected(path, output):
@@ -74,7 +87,8 @@ def check(evidence):
         modified = copy.deepcopy(evidence)
         for data in modified['variants'].values():
             data['reports'] = {k: v for k, v in data['reports'].items() if not (
-                k.startswith('MIN_fast_1100mv_100c/') if missing == 'corner' else '/output-hold.rpt' in k)}
+                k.startswith('MIN_fast_1100mv_100c/') if missing == 'corner' else
+                '/output-' in k and k.endswith('hold.rpt'))}
         try:
             summarize(modified)
         except ValueError:

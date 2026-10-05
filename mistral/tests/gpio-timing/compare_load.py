@@ -85,7 +85,17 @@ if __name__ == '__main__':
     parser.add_argument('--baseline', type=Path, required=True)
     parser.add_argument('--loaded', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--compact', action='store_true', help='Keep extrema witnesses instead of every matched path')
     args = parser.parse_args()
     result = compare(args.baseline, args.loaded)
+    if args.compact:
+        rows = result.pop('paths')
+        result['path_extrema'] = {
+            'least_increase': min(rows, key=lambda r: r['increase_ps']),
+            'greatest_increase': max(rows, key=lambda r: r['increase_ps']),
+            'earliest_loaded': min(rows, key=lambda r: r['loaded_ps']),
+            'latest_loaded': max(rows, key=lambda r: r['loaded_ps'])}
+        result['channel_counts'] = {channel: sum(r['channel'] == channel for r in rows)
+                                    for channel in sorted({r['channel'] for r in rows})}
     args.output.write_text(json.dumps(result, indent=2)+'\n')
     print(f"PASS: {result['count']} matched data/OE paths have larger clock-to-pin delay with added load")
