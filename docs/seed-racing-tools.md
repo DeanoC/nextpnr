@@ -167,8 +167,9 @@ python3 python/seed_racing.py dataset collection-a.json collection-b.json \
     --output evaluation-dataset.json
 ```
 
-The adapter verifies each telemetry digest, retains the valid structured
-telemetry prefix, and normalizes only iteration and repair metrics into the
+The adapter reads each result or telemetry artifact once, verifies that exact
+byte snapshot against its digest, retains the valid structured telemetry
+prefix, and normalizes only iteration and repair metrics into the
 evaluator's prefix allowlist. It never copies `run_end` legality or final
 analogue timing into an observation. Those outcomes become visible at the
 collector's full process duration, after terminal artifacts have been read.
@@ -178,6 +179,10 @@ relative artifact path because it cannot be authenticated against the original
 invocation directory. A candidate that never started because of total-budget
 expiry or cancellation has no artifact to authenticate and is retained as an
 unsuccessful zero-cost censored run with explicitly unavailable evidence.
+An entirely unlaunched GPU cohort has no observed device identity; the dataset
+accepts that absence only for never-launched runs that claim no backend. Any
+launched GPU run still requires the cohort-bound exact backend and runtime
+identity.
 Combining collections is supported, but policy results spanning more than one
 mapped-design/constraint family remain explicitly cross-design descriptive.
 

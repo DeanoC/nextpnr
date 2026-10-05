@@ -121,7 +121,7 @@ Focused validation after adding the adapter:
 
 ```
 python3 -m unittest mistral.tests.seed_racing_test
-# Ran 81 tests ... OK
+# Ran 82 tests ... OK
 python3 -m py_compile python/seed_racing.py
 git diff --check
 ```

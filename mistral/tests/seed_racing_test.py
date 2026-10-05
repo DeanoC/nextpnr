@@ -228,6 +228,31 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "runtime environment"):
             seed_racing.validate_dataset(document)
 
+    def test_all_never_launched_gpu_runs_need_no_observed_backend(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        for cohort_id, identity in document["cohort_identities"].items():
+            identity["manifest"]["command"] = ["nextpnr-mistral", "--router", "gpu"]
+            encoded = json.dumps(identity["manifest"], sort_keys=True,
+                                 separators=(",", ":")).encode()
+            identity["fingerprint_sha256"] = seed_racing.hashlib.sha256(encoded).hexdigest()
+            for run in document["runs"]:
+                if run["cohort_id"] != cohort_id:
+                    continue
+                run["cohort_fingerprint_sha256"] = identity["fingerprint_sha256"]
+                run["status"] = "not_started_total_budget"
+                run["process_started"] = False
+                run["duration_seconds"] = 0
+                run["outcome_observed_seconds"] = 0
+                run["observations"] = []
+                run["outcome"].pop("execution_backend", None)
+        normalized = seed_racing.validate_dataset(document)
+        self.assertTrue(all(not run["success"] for run in normalized))
+        document["runs"][0].update({"status": "timeout", "process_started": True,
+                                     "duration_seconds": 1,
+                                     "outcome_observed_seconds": 1})
+        with self.assertRaisesRegex(ValueError, "execution backend"):
+            seed_racing.validate_dataset(document)
+
     def test_dataset_rejects_unknown_terminal_status(self):
         document = json.loads(FIXTURE.read_text(encoding="utf-8"))
         document["runs"][0]["status"] = "complete"
@@ -328,7 +353,18 @@ class DatasetTests(unittest.TestCase):
             }
             summary = root / "collection.json"
             summary.write_text(json.dumps(collection), encoding="utf-8")
-            dataset = seed_racing.assemble_dataset([summary])
+            original_telemetry = telemetry.read_bytes()
+            verified_file_bytes = seed_racing._verified_file_bytes
+
+            def replace_telemetry_after_snapshot(path, expected_digest, label):
+                data = verified_file_bytes(path, expected_digest, label)
+                if path == telemetry:
+                    telemetry.write_text('{"replaced":true}\n', encoding="utf-8")
+                return data
+
+            with mock.patch.object(seed_racing, "_verified_file_bytes",
+                                   side_effect=replace_telemetry_after_snapshot):
+                dataset = seed_racing.assemble_dataset([summary])
             normalized = seed_racing.validate_dataset(dataset)
             self.assertEqual(len(normalized), 2)
             self.assertEqual(normalized[0]["outcome_observed_seconds"], 20)
@@ -341,13 +377,14 @@ class DatasetTests(unittest.TestCase):
             self.assertFalse(normalized[1]["success"])
             self.assertEqual(normalized[1]["outcome"]["timing_evidence_reason"],
                              "process_not_started")
+            telemetry.write_bytes(original_telemetry)
             collection["results"][0]["artifacts"]["telemetry"]["sha256"] = "0" * 64
             modified = dict(collection["results"][0])
             modified.pop("result_sha256")
             result_path.write_text(json.dumps(modified), encoding="utf-8")
             collection["results"][0]["result_sha256"] = seed_racing.sha256_file(result_path)
             summary.write_text(json.dumps(collection), encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "telemetry digest mismatch"):
+            with self.assertRaisesRegex(ValueError, "telemetry.*digest mismatch"):
                 seed_racing.assemble_dataset([summary])
 
     def test_jsonl_rejects_sequence_run_and_time_regressions(self):

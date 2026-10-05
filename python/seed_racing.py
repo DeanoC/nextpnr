@@ -1662,77 +1662,89 @@ def _finite_json_tree(value: Any) -> bool:
     return True
 
 
-def load_jsonl(path: Path) -> Tuple[List[Dict[str, Any]], bool]:
-    """Load a valid telemetry prefix and flag truncation or schema/order errors."""
+def _load_jsonl_lines(lines: Iterable[str]) -> Tuple[List[Dict[str, Any]], bool]:
     records, truncated = [], False
     expected_sequence = 0
     prior_elapsed = -math.inf
     run_id = None
     terminal_seen = False
     phase_stack: List[Tuple[str, int]] = []
-    with path.open("r", encoding="utf-8") as stream:
-        for line in stream:
-            if not line.strip():
-                continue
-            try:
-                value = json.loads(
-                    line, parse_constant=lambda token: (_ for _ in ()).throw(
-                        ValueError(f"non-finite JSON number: {token}")))
-                schema_version = value.get("schema_version") if isinstance(value, dict) else None
-                sequence = value.get("sequence") if isinstance(value, dict) else None
-                if (not isinstance(value, dict) or not _finite_json_tree(value) or
-                        isinstance(schema_version, bool) or not isinstance(schema_version, int) or
-                        schema_version != SCHEMA_VERSION or isinstance(sequence, bool) or
-                        not isinstance(sequence, int) or sequence != expected_sequence or
-                        not isinstance(value.get("run_id"), str) or not value["run_id"] or
-                        value.get("event") not in
-                        {"run_start", "phase_start", "iteration", "repair_round",
-                         "phase_end", "run_end"} or
-                        terminal_seen):
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(
+                line, parse_constant=lambda token: (_ for _ in ()).throw(
+                    ValueError(f"non-finite JSON number: {token}")))
+            schema_version = value.get("schema_version") if isinstance(value, dict) else None
+            sequence = value.get("sequence") if isinstance(value, dict) else None
+            if (not isinstance(value, dict) or not _finite_json_tree(value) or
+                    isinstance(schema_version, bool) or not isinstance(schema_version, int) or
+                    schema_version != SCHEMA_VERSION or isinstance(sequence, bool) or
+                    not isinstance(sequence, int) or sequence != expected_sequence or
+                    not isinstance(value.get("run_id"), str) or not value["run_id"] or
+                    value.get("event") not in
+                    {"run_start", "phase_start", "iteration", "repair_round",
+                     "phase_end", "run_end"} or
+                    terminal_seen):
+                raise ValueError
+            elapsed = value.get("elapsed_s")
+            if (not _finite_number(elapsed) or elapsed < 0 or elapsed < prior_elapsed):
+                raise ValueError
+            if run_id is None:
+                run_id = value["run_id"]
+            elif value["run_id"] != run_id:
+                raise ValueError
+            event, phase, attempt = value["event"], value.get("phase"), value.get("attempt")
+            if expected_sequence == 0 and event != "run_start":
+                raise ValueError
+            if expected_sequence != 0 and event == "run_start":
+                raise ValueError
+            if event == "run_start":
+                if phase is not None or attempt is not None:
                     raise ValueError
-                elapsed = value.get("elapsed_s")
-                if (not _finite_number(elapsed) or elapsed < 0 or elapsed < prior_elapsed):
+            elif event == "phase_start":
+                if (not isinstance(phase, str) or not phase or isinstance(attempt, bool) or
+                        not isinstance(attempt, int) or attempt < 0):
                     raise ValueError
-                if run_id is None:
-                    run_id = value["run_id"]
-                elif value["run_id"] != run_id:
+                phase_stack.append((phase, attempt))
+            elif event == "phase_end":
+                if (not isinstance(phase, str) or isinstance(attempt, bool) or
+                        not isinstance(attempt, int) or attempt < 0 or not phase_stack or
+                        phase_stack[-1] != (phase, attempt)):
                     raise ValueError
-                event, phase, attempt = value["event"], value.get("phase"), value.get("attempt")
-                if expected_sequence == 0 and event != "run_start":
+                phase_stack.pop()
+            elif event in {"iteration", "repair_round"}:
+                if (not isinstance(phase, str) or not phase or isinstance(attempt, bool) or
+                        not isinstance(attempt, int) or attempt < 0 or not phase_stack or
+                        phase_stack[-1] != (phase, attempt) or
+                        (event == "repair_round" and phase != "timing_repair")):
                     raise ValueError
-                if expected_sequence != 0 and event == "run_start":
+            elif event == "run_end":
+                if phase_stack or phase is not None or attempt is not None:
                     raise ValueError
-                if event == "run_start":
-                    if phase is not None or attempt is not None:
-                        raise ValueError
-                elif event == "phase_start":
-                    if (not isinstance(phase, str) or not phase or isinstance(attempt, bool) or
-                            not isinstance(attempt, int) or attempt < 0):
-                        raise ValueError
-                    phase_stack.append((phase, attempt))
-                elif event == "phase_end":
-                    if (not isinstance(phase, str) or isinstance(attempt, bool) or
-                            not isinstance(attempt, int) or attempt < 0 or not phase_stack or
-                            phase_stack[-1] != (phase, attempt)):
-                        raise ValueError
-                    phase_stack.pop()
-                elif event in {"iteration", "repair_round"}:
-                    if (not isinstance(phase, str) or not phase or isinstance(attempt, bool) or
-                            not isinstance(attempt, int) or attempt < 0 or not phase_stack or
-                            phase_stack[-1] != (phase, attempt) or
-                            (event == "repair_round" and phase != "timing_repair")):
-                        raise ValueError
-                elif event == "run_end":
-                    if phase_stack or phase is not None or attempt is not None:
-                        raise ValueError
-                records.append(value)
-                expected_sequence += 1
-                prior_elapsed = float(elapsed)
-                terminal_seen = value["event"] == "run_end"
-            except (json.JSONDecodeError, ValueError):
-                truncated = True
-                break
+            records.append(value)
+            expected_sequence += 1
+            prior_elapsed = float(elapsed)
+            terminal_seen = value["event"] == "run_end"
+        except (json.JSONDecodeError, ValueError):
+            truncated = True
+            break
     return records, truncated or not terminal_seen or bool(phase_stack)
+
+
+def load_jsonl(path: Path) -> Tuple[List[Dict[str, Any]], bool]:
+    """Load a valid telemetry prefix and flag truncation or schema/order errors."""
+    with path.open("r", encoding="utf-8") as stream:
+        return _load_jsonl_lines(stream)
+
+
+def load_jsonl_bytes(data: bytes) -> Tuple[List[Dict[str, Any]], bool]:
+    """Parse telemetry bytes already frozen by the caller."""
+    try:
+        return _load_jsonl_lines(data.decode("utf-8").splitlines())
+    except UnicodeError:
+        return [], True
 
 
 def _finite_number(value: Any) -> bool:
@@ -1757,6 +1769,16 @@ def _exact_execution_backend(value: Any) -> bool:
             all(character in "0123456789abcdefABCDEF" for character in device_uuid) and
             any(character != "0" for character in device_uuid) and
             bool(fields[2]) and bool(fields[3]))
+
+
+def _verified_file_bytes(path: Path, expected_digest: Any, label: str) -> bytes:
+    """Read once, then authenticate the exact bytes returned to the parser."""
+    with path.open("rb") as stream:
+        data = stream.read()
+    if (not isinstance(expected_digest, str) or
+            hashlib.sha256(data).hexdigest() != expected_digest):
+        raise ValueError(f"{label} digest mismatch")
+    return data
 
 
 _TELEMETRY_PREFIX_MAP = {
@@ -1881,12 +1903,10 @@ def assemble_dataset(collection_paths: Sequence[Path]) -> Dict[str, Any]:
                 # summaries always contain absolute artifact paths.
                 if not result_path.is_absolute():
                     raise ValueError("collection artifact paths must be absolute")
-                expected_result_digest = result.get("result_sha256")
-                if (not isinstance(expected_result_digest, str) or
-                        sha256_file(result_path) != expected_result_digest):
-                    raise ValueError(f"result digest mismatch for {result.get('run_id')!r}")
-                with result_path.open(encoding="utf-8") as stream:
-                    persisted_result = json.load(stream)
+                result_label = f"result for {result.get('run_id')!r}"
+                result_bytes = _verified_file_bytes(
+                    result_path, result.get("result_sha256"), result_label)
+                persisted_result = json.loads(result_bytes)
                 summary_result = dict(result)
                 summary_result.pop("result_sha256")
                 if persisted_result != summary_result:
@@ -1896,12 +1916,10 @@ def assemble_dataset(collection_paths: Sequence[Path]) -> Dict[str, Any]:
                     telemetry_path = Path(telemetry.get("path", ""))
                     if not telemetry_path.is_absolute():
                         raise ValueError("collection telemetry paths must be absolute")
-                    expected_digest = telemetry.get("sha256")
-                    if (not isinstance(expected_digest, str) or
-                            sha256_file(telemetry_path) != expected_digest):
-                        raise ValueError(
-                            f"telemetry digest mismatch for {result.get('run_id')!r}")
-                    records, _ = load_jsonl(telemetry_path)
+                    telemetry_label = f"telemetry for {result.get('run_id')!r}"
+                    telemetry_bytes = _verified_file_bytes(
+                        telemetry_path, telemetry.get("sha256"), telemetry_label)
+                    records, _ = load_jsonl_bytes(telemetry_bytes)
                     observations = telemetry_observations(records)
                 duration = _positive_number(result.get("elapsed_seconds"), "elapsed_seconds")
                 outcome = result.get("outcome")
@@ -2233,40 +2251,45 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
         if requires_execution_identity or "execution_identity" in identity_manifest or \
                 isinstance(observed_backend, str):
             execution_identity = identity_manifest.get("execution_identity")
-            if (not isinstance(execution_identity, dict) or
+            unbound_never_launched = (never_launched and execution_identity is None and
+                                      observed_backend is None)
+            if unbound_never_launched:
+                pass
+            elif (not isinstance(execution_identity, dict) or
                     not isinstance(execution_identity.get("backend"), str) or
                     not execution_identity["backend"]):
                 raise ValueError("GPU run execution backend is not bound by its cohort identity")
-            if never_launched:
+            elif never_launched:
                 if observed_backend is not None:
                     raise ValueError("never-launched GPU run must not claim an execution backend")
             elif observed_backend != execution_identity["backend"]:
                 raise ValueError("GPU run execution backend is not bound by its cohort identity")
             elif not _exact_execution_backend(observed_backend):
                 raise ValueError("GPU run execution backend lacks exact device attestation")
-            runtime_id = execution_identity.get("runtime_environment_id")
-            runtime_binary = identity_manifest.get("binary")
-            runtime_evidence = (runtime_binary.get("runtime_environment")
-                                if isinstance(runtime_binary, dict) else None)
-            runtime_manifest = (runtime_evidence.get("manifest")
-                                if isinstance(runtime_evidence, dict) else None)
-            runtime_manifest_id = None
-            if isinstance(runtime_manifest, dict):
-                runtime_encoded = json.dumps(
-                    runtime_manifest, sort_keys=True, separators=(",", ":"),
-                    allow_nan=False).encode("utf-8")
-                runtime_manifest_id = "sha256:" + hashlib.sha256(runtime_encoded).hexdigest()
-            provenance = identity_manifest.get("provenance")
-            if (not isinstance(runtime_id, str) or not runtime_id.startswith("sha256:") or
-                    len(runtime_id) != 71 or
-                    any(character not in "0123456789abcdef" for character in runtime_id[7:]) or
-                    not isinstance(runtime_evidence, dict) or
-                    runtime_evidence.get("runtime_environment_id") != runtime_id or
-                    runtime_manifest_id != runtime_id or
-                    not isinstance(provenance, dict) or
-                    provenance.get("runtime_environment_id") != runtime_id):
-                raise ValueError(
-                    "GPU run runtime environment is not cross-bound by its cohort identity")
+            if not unbound_never_launched:
+                runtime_id = execution_identity.get("runtime_environment_id")
+                runtime_binary = identity_manifest.get("binary")
+                runtime_evidence = (runtime_binary.get("runtime_environment")
+                                    if isinstance(runtime_binary, dict) else None)
+                runtime_manifest = (runtime_evidence.get("manifest")
+                                    if isinstance(runtime_evidence, dict) else None)
+                runtime_manifest_id = None
+                if isinstance(runtime_manifest, dict):
+                    runtime_encoded = json.dumps(
+                        runtime_manifest, sort_keys=True, separators=(",", ":"),
+                        allow_nan=False).encode("utf-8")
+                    runtime_manifest_id = "sha256:" + hashlib.sha256(runtime_encoded).hexdigest()
+                provenance = identity_manifest.get("provenance")
+                if (not isinstance(runtime_id, str) or not runtime_id.startswith("sha256:") or
+                        len(runtime_id) != 71 or
+                        any(character not in "0123456789abcdef" for character in runtime_id[7:]) or
+                        not isinstance(runtime_evidence, dict) or
+                        runtime_evidence.get("runtime_environment_id") != runtime_id or
+                        runtime_manifest_id != runtime_id or
+                        not isinstance(provenance, dict) or
+                        provenance.get("runtime_environment_id") != runtime_id):
+                    raise ValueError(
+                        "GPU run runtime environment is not cross-bound by its cohort identity")
         identity_cohort = identity_manifest.get("cohort")
         if (not isinstance(identity_cohort, dict) or
                 identity_cohort.get("id") != run["cohort_id"] or
