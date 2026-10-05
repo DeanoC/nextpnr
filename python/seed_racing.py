@@ -2215,8 +2215,9 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
                    ("cohort_id", "mapped_design_id", "constraint_family")):
             raise ValueError(
                 "run cohort_id, mapped_design_id, and constraint_family must be non-empty strings")
-        if isinstance(run["seed"], bool) or not isinstance(run["seed"], int):
-            raise ValueError("run seed must be an integer")
+        if (isinstance(run["seed"], (dict, list, bool)) or
+                not (run["seed"] is None or isinstance(run["seed"], (str, int, float)))):
+            raise ValueError("run seed must be a scalar supported by collection manifests")
         if not isinstance(run["status"], str) or run["status"] not in TERMINAL_STATUSES:
             raise ValueError("run status must be a supported terminal status")
         process_started = run.get("process_started")
@@ -2688,7 +2689,8 @@ def evaluate(
     evaluations = []
     for replicate, population in sorted(strata.items()):
         candidate_keys = [
-            (run["cohort_id"], run["mapped_design_id"], run["constraint_family"], run["seed"])
+            (run["cohort_id"], run["mapped_design_id"], run["constraint_family"],
+             str(run["seed"]))
             for run in population
         ]
         if len(set(candidate_keys)) != len(candidate_keys):

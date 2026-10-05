@@ -217,15 +217,15 @@ proxy and never replaces final analogue setup-and-hold evidence. The random
 exploratory survivor is selected independently from candidates not chosen by
 either ranked lane.
 
-When a cohort contains repeated executions of each numeric seed, use
+When a cohort contains repeated executions of each seed label, use
 `--replicate-stratified`. It evaluates each positive integer replicate index as
 a separate race, so repeatability samples of one seed cannot consume multiple
 promotion slots in the same simulated race. The supplied budget applies
 independently to each stratum and the output labels that scope explicitly.
 Within a stratum, duplicate `(cohort, mapped design, constraint family, seed)`
-candidates are rejected. Combined-run mode remains available for reproducing
-older descriptive results, but it is not representative of a race that launches
-each seed once.
+candidates are rejected using the collector's scalar-label identity.
+Combined-run mode remains available for reproducing older descriptive results,
+but it is not representative of a race that launches each seed once.
 
 Each run's `outcome` separates `legal_route` from final analogue timing. It
 must list every expected setup/related-clock constraint in `required_clocks` and

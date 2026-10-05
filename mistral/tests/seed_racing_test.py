@@ -195,6 +195,15 @@ class DatasetTests(unittest.TestCase):
             seed_racing.evaluate(duplicate, [5], [3], 1, [0], 10_000,
                                  replicate_stratified=True)
 
+    def test_replicate_stratification_preserves_supported_scalar_seed_labels(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        document["runs"][0]["seed"] = "named-seed"
+        document["runs"][1]["seed"] = 2.5
+        document["runs"][2]["seed"] = None
+        result = seed_racing.evaluate(
+            document, [5], [3], 1, [0], 10_000, replicate_stratified=True)
+        self.assertEqual(result["replicate_strata"][0]["evaluation_population"]["runs"], 8)
+
     def test_numeric_seed_is_not_a_tie_breaker_or_feature(self):
         def tied_runs(ids_and_seeds):
             return [{
