@@ -486,3 +486,60 @@ every simulated transition, and neither this ideal-clock trace nor the route
 comparison proves which path caused the hardware failure. The next useful
 experiment should preserve the original RTL/capture schedule and change the
 suspect placement/routing, with an identifiable artifact for hardware comparison.
+
+## Controlled three-address-net hardware candidate
+
+`legacy_reroute.py` starts from the exact failing historical checkpoint and
+removes routing only for `sdram.sdram_a[9]`, `[10]` and `[12]`. The routed
+checkpoint automatically freezes all loaded placements, physical pin maps
+and remaining routes. It uses CPU router2 with `router2/estimateWeight=0`
+to search beyond the usual heuristic choices, seed 2, without pack or place.
+No RTL, IO packing or PLL/capture phase is changed.
+
+```sh
+python3 -B mistral/tests/ramtest-io/legacy_reroute.py \
+  --baseline /tmp/nextpnr-135-investigation/baseline-replay-failing \
+  --nextpnr /path/to/nextpnr-mistral --decoder /path/to/mistral-cv \
+  --output /tmp/ramtest-100-address-control
+```
+
+The helper requires unchanged logic/connectivity, placement and pin maps;
+exactly three changed physical routes; identical original internal final
+analogue timing; 16 unchanged read boundaries and 49 unchanged other output
+boundaries. It decodes both original and candidate RBFs with the same decoder
+and requires every non-routing configuration line to match. Its synthetic
+zero-delay probe must preserve the candidate RBF byte-for-byte; its timing
+failure is a diagnostic result, not a hardware result. `--reuse` validates
+existing completed runs rather than repeating routing/probing.
+
+Three isolated CPU routing trials produced these native late boundary arrivals:
+
+| Trial | A9 | A10 | A12 |
+| --- | ---: | ---: | ---: |
+| Original failing build | 8.797 ns | 6.676 ns | 8.959 ns |
+| Router1 | 10.528 ns | 7.953 ns | 8.644 ns |
+| Router2, normal search | 10.528 ns | 8.130 ns | 10.541 ns |
+| Router2, estimate weight zero | 6.002 ns | 5.604 ns | 6.169 ns |
+
+Only the final trial improves all three paths. An independent fresh run of
+the helper reproduced the same compressed RBF:
+
+- SHA-256: `fdf50532b84edc282dab9991469bc541ff5a6e5dfada569f8ed2b7c2e7e2fa72`
+- Size: 2166657 bytes.
+- File on powerboat: `/tmp/nextpnr-135-investigation/ramtest-100-address-control/candidate.rbf`.
+- Receipt: `legacy-reroute-reference.json`.
+
+All 19892 cells retain their physical locations and pin maps. All 51953 decoded
+non-routing configuration lines match the original failing build, including
+PLL and GPIO settings. The original internal setup margins remain +0.218 ns
+on the memory clock and +3.053 ns on the capture clock. A9 improves 2.795 ns,
+A10 1.072 ns and A12 2.790 ns relative to the failing artifact; A9 and A12 are
+also faster than the known-passing artifact at these boundaries.
+
+This is a controlled **hardware-test candidate**, not a timing signoff or a
+confirmed fix. Native boundary arrivals still exclude unqualified pad/board
+delays. Compare this RBF against original failing SHA `9cff64b3a51fcf99…`
+using the same kit, boot, clock rate and patterns. A pass would implicate the
+three address routes as a group; a failure would leave read capture, command
+skew and remaining address setup as possible causes. No hardware programming
+has been performed by this investigation.
