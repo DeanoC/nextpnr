@@ -153,6 +153,25 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "contradicts failed outcome timing gate"):
             seed_racing.validate_dataset(document)
 
+    def test_dataset_requires_explicit_passed_timing_gate_for_gpu_success(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        identity = document["cohort_identities"]["synthetic"]
+        identity["manifest"]["command"] = ["nextpnr-mistral", "--router", "gpu"]
+        for run in document["runs"]:
+            if run["status"] == "completed":
+                run["outcome"]["timing_gate_pass"] = True
+        encoded = json.dumps(identity["manifest"], sort_keys=True,
+                             separators=(",", ":")).encode()
+        identity["fingerprint_sha256"] = seed_racing.hashlib.sha256(encoded).hexdigest()
+        for run in document["runs"]:
+            if run["cohort_id"] == "synthetic":
+                run["cohort_fingerprint_sha256"] = identity["fingerprint_sha256"]
+        winner = next(run for run in document["runs"] if run["run_id"] == "late-winner")
+        winner["outcome"]["timing_gate_pass"] = None
+        document["runs"] = [winner]
+        with self.assertRaisesRegex(ValueError, "requires a passed outcome timing gate"):
+            seed_racing.validate_dataset(document)
+
     def test_dataset_binds_gpu_runs_to_the_cohort_execution_backend(self):
         document = json.loads(FIXTURE.read_text(encoding="utf-8"))
         identity = document["cohort_identities"]["synthetic"]
@@ -175,6 +194,8 @@ class DatasetTests(unittest.TestCase):
             if run["cohort_id"] == "synthetic":
                 run["cohort_fingerprint_sha256"] = identity["fingerprint_sha256"]
                 run["outcome"]["execution_backend"] = identity["manifest"]["execution_identity"]["backend"]
+                if run["status"] == "completed":
+                    run["outcome"]["timing_gate_pass"] = True
         seed_racing.validate_dataset(document)
         never_launched = document["runs"][0]
         never_launched["status"] = "not_started_total_budget"
@@ -356,6 +377,9 @@ class CollectorTests(unittest.TestCase):
         seed_racing.subprocess.run(["cc", str(source_path), "-o", str(path)], check=True)
 
     def manifest(self, temporary, command, per_run=2, repeats=1, seeds=None):
+        if (isinstance(command, list) and command and
+                Path(command[0]).name.startswith("nextpnr-mistral") and "--rbf" not in command):
+            command = list(command) + ["--rbf", "{bitstream}"]
         if isinstance(command, list) and command and "{seed}" not in command:
             command = list(command) + ["{seed}"]
         input_path = Path(temporary) / "netlist.json"
@@ -370,7 +394,8 @@ class CollectorTests(unittest.TestCase):
             "repeats": repeats,
             "limits": {"per_run_seconds": per_run, "total_seconds": 5, "concurrency": 2},
             "inputs": [],
-            "artifacts": {"final_report": "report.json", "telemetry": "telemetry.jsonl"},
+            "artifacts": {"final_report": "report.json", "telemetry": "telemetry.jsonl",
+                          "bitstream": "output.rbf"},
             "required_clocks": ["clk"],
             "environment": {"SEED_RACING_TEST": "1"},
             "provenance": {"source_revision": "test", "dirty": False,
@@ -492,6 +517,11 @@ class CollectorTests(unittest.TestCase):
             self.assertNotIn("UNRECORDED_ROUTER_CONTROL", child)
             self.assertEqual(child, recorded)
             self.assertEqual(child["SEED_RACING_TEST"], "1")
+            self.assertGreater(int(child["NEXTPNR_GPU_TELEMETRY_PROCESS_START_NS"]), 0)
+
+            manifest["environment"]["NEXTPNR_GPU_TELEMETRY_PROCESS_START_NS"] = "0"
+            with self.assertRaisesRegex(ValueError, "reserved for the collector"):
+                seed_racing.validate_collection_manifest(manifest)
 
     def test_expired_total_budget_does_not_start_run_setup(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -1246,6 +1276,12 @@ if seed == 4: sys.exit(1)
             manifest = self.manifest(temporary, non_cli_gpu_command, seeds=[1])
             with self.assertRaisesRegex(ValueError, "explicit --router"):
                 seed_racing.Collector(manifest, Path(temporary) / "implicit-router").run()
+
+            manifest = self.manifest(temporary, command, seeds=[1])
+            rbf_index = manifest["command"].index("--rbf")
+            del manifest["command"][rbf_index:rbf_index + 2]
+            with self.assertRaisesRegex(ValueError, "final analogue signoff"):
+                seed_racing.Collector(manifest, Path(temporary) / "missing-rbf").run()
 
     def test_explicit_cpu_mistral_collection_is_rejected_without_terminal_telemetry(self):
         with tempfile.TemporaryDirectory() as temporary:

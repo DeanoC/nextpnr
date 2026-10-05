@@ -13,6 +13,7 @@
 #include <atomic>
 #include <cerrno>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <iomanip>
 #include <sstream>
@@ -116,6 +117,23 @@ std::string Telemetry::make_run_id(uint64_t seed)
 Telemetry::Telemetry(const std::string &path, std::string run_id)
         : path_(path), run_id_(std::move(run_id)), start_(std::chrono::steady_clock::now())
 {
+#ifndef _WIN32
+    // The bounded collector records its launch epoch immediately before
+    // spawning nextpnr. Python's monotonic_ns() and steady_clock both use
+    // CLOCK_MONOTONIC on the supported Linux collector platform, so this
+    // keeps routing observations on the same prefix clock as run budgets.
+    if (const char *launch_ns = std::getenv("NEXTPNR_GPU_TELEMETRY_PROCESS_START_NS")) {
+        try {
+            std::size_t parsed = 0;
+            const auto value = std::stoll(launch_ns, &parsed);
+            if (parsed != std::strlen(launch_ns) || value < 0)
+                throw std::invalid_argument("invalid process launch epoch");
+            start_ = std::chrono::steady_clock::time_point(std::chrono::nanoseconds(value));
+        } catch (const std::exception &) {
+            throw std::runtime_error("invalid NEXTPNR_GPU_TELEMETRY_PROCESS_START_NS");
+        }
+    }
+#endif
 #ifdef _WIN32
     int fd = -1;
     errno_t err = _sopen_s(&fd, path.c_str(), _O_CREAT | _O_EXCL | _O_WRONLY | _O_BINARY, _SH_DENYRW,

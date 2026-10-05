@@ -84,6 +84,26 @@ TEST(GpuRouteTelemetry, WritesInheritedProcDescriptor)
     EXPECT_NE(line.find("\"run_id\":\"inherited\""), std::string::npos);
     std::filesystem::remove(path);
 }
+
+TEST(GpuRouteTelemetry, UsesCollectorProcessLaunchEpoch)
+{
+    auto path = temporary_path();
+    const auto launch = std::chrono::steady_clock::now() - std::chrono::milliseconds(50);
+    const auto launch_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(launch.time_since_epoch()).count();
+    ASSERT_EQ(setenv("NEXTPNR_GPU_TELEMETRY_PROCESS_START_NS", std::to_string(launch_ns).c_str(), 1), 0);
+    {
+        gpuroute::Telemetry telemetry(path.string(), "process-relative");
+        telemetry.emit("run_start", "", -1, {});
+    }
+    unsetenv("NEXTPNR_GPU_TELEMETRY_PROCESS_START_NS");
+    std::ifstream input(path);
+    std::string line, error;
+    ASSERT_TRUE(std::getline(input, line));
+    auto record = json11::Json::parse(line, error);
+    ASSERT_TRUE(record.is_object()) << error;
+    EXPECT_GE(record["elapsed_s"].number_value(), 0.04);
+    std::filesystem::remove(path);
+}
 #endif
 
 } // namespace

@@ -75,7 +75,9 @@ Seed-racing collection currently accepts only native `nextpnr-mistral` cohorts,
 because the generic architecture does not emit authoritative final-analogue timing.
 The manifest architecture must be `mistral`. Collection must bind exactly one
 explicit `--router`; `gpu` additionally requires exactly one
-`--gpu-telemetry {telemetry}` binding. These bindings must occur before
+`--gpu-telemetry {telemetry}` binding and exactly one `--rbf {bitstream}`
+binding. The RBF binding is required because Mistral performs authoritative
+final-analogue signoff only while building the bitstream. These bindings must occur before
 `--`. JSON/read inputs whose settings override the declared router are rejected.
 `router1` and `router2` collections are rejected because they do not emit the
 terminal structured legality evidence required for a complete seed-racing

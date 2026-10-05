@@ -294,6 +294,9 @@ def validate_collection_manifest(document: Mapping[str, Any]) -> Dict[str, Any]:
     environment = document.get("environment", {})
     if not isinstance(environment, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in environment.items()):
         raise ValueError("environment must be an explicit string map")
+    if "NEXTPNR_GPU_TELEMETRY_PROCESS_START_NS" in environment:
+        raise ValueError(
+            "NEXTPNR_GPU_TELEMETRY_PROCESS_START_NS is reserved for the collector")
     loader_controls = sorted(
         name for name in environment if name.startswith("LD_") or name == "GLIBC_TUNABLES")
     if loader_controls:
@@ -841,6 +844,8 @@ class Collector:
                         "telemetry", "telemetry.jsonl")),
                     "report": str(directory / self.manifest["artifacts"].get(
                         "final_report", "report.json")),
+                    "bitstream": str(directory / self.manifest["artifacts"].get(
+                        "bitstream", "output.rbf")),
                 }
                 argv = _expand_argv(self.manifest["command"], fields)
                 argv = [_rewrite_input_argument(argument, self._input_replacements, command_base)
@@ -1018,6 +1023,10 @@ class Collector:
             raise ValueError(
                 "seed-racing collection currently requires --router gpu because router1/router2 "
                 "do not emit equivalent terminal legality telemetry")
+        if _option_values(command, "--rbf") != ["{bitstream}"]:
+            raise ValueError(
+                "nextpnr-mistral seed-racing collection requires exactly one "
+                "--rbf {bitstream} binding so final analogue signoff runs")
         for option in ("--json", "--read"):
             for value in _option_values(command, option):
                 base = Path(self.manifest["cwd"] or os.getcwd())
@@ -1312,12 +1321,14 @@ class Collector:
             "started_unix_seconds": started_wall,
         }
         manifest_path = spec.directory / "manifest.json"
+        started_ns = time.monotonic_ns()
+        environment["NEXTPNR_GPU_TELEMETRY_PROCESS_START_NS"] = str(started_ns)
+        immutable["environment"] = dict(environment)
         _json_dump(manifest_path, immutable)
         manifest_sha256 = sha256_file(manifest_path)
         result: Dict[str, Any] = {"run_id": spec.run_id, "seed": spec.seed, "repeat": spec.repeat,
                                   "process_started": False}
         stdout_path, stderr_path = artifact_paths["stdout"], artifact_paths["stderr"]
-        started = time.monotonic()
         process: Optional[subprocess.Popen[Any]] = None
         try:
             stdout, stderr = artifact_sources["stdout"], artifact_sources["stderr"]
@@ -1400,7 +1411,7 @@ class Collector:
         finally:
             with self._lock:
                 self._active.pop(spec.run_id, None)
-        result["elapsed_seconds"] = time.monotonic() - started
+        result["elapsed_seconds"] = (time.monotonic_ns() - started_ns) / 1_000_000_000
         if sha256_file(manifest_path) != manifest_sha256:
             raise RuntimeError("run manifest changed while the worker was active")
         artifact_streams = []
@@ -2006,6 +2017,8 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
         if gpu_capable and len(router_values) != 1:
             raise ValueError("GPU-capable nextpnr cohort identity lacks an explicit router")
         declared_gpu = router_values == ["gpu"]
+        if declared_gpu and run["status"] == "completed" and timing_gate_pass is not True:
+            raise ValueError("completed GPU run requires a passed outcome timing gate")
         requires_execution_identity = declared_gpu
         observed_backend = outcome.get("execution_backend")
         never_launched = run.get("process_started") is False
@@ -2077,10 +2090,11 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
                        for clock in required_records]
             analogue_pass = all(margin > 0 for margin in margins)
             final_margin = min(margins)
+        timing_gate_success = timing_gate_pass is True if declared_gpu else timing_gate_pass is not False
         copy = dict(run)
         copy.update({"duration_seconds": duration, "outcome_observed_seconds": outcome_observed,
                      "observations": clean,
-                     "success": (legal and analogue_pass and timing_gate_pass is not False and
+                     "success": (legal and analogue_pass and timing_gate_success and
                                  run["status"] == "completed"),
                      "legal_route": legal, "analogue_timing_pass": analogue_pass,
                      "timing_available": timing_available, "missing_required_clocks": missing_required,
