@@ -1,0 +1,12 @@
+set_location_assignment PIN_V11 -to clk
+set_location_assignment PIN_V12 -to d[0]
+set_location_assignment PIN_E8 -to d[1]
+set_location_assignment PIN_W12 -to oe
+set_location_assignment PIN_AH27 -to dq[0]
+set_location_assignment PIN_AG25 -to dq[1]
+set_location_assignment PIN_Y15 -to q[0]
+set_location_assignment PIN_AC24 -to q[1]
+set_location_assignment PIN_AA15 -to q[2]
+set_location_assignment PIN_AD26 -to q[3]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to dq[*]
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to dq[*]

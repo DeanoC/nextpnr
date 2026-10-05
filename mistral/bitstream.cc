@@ -348,7 +348,8 @@ struct MistralBitgen
                           (ci->type.in(id_MISTRAL_IO, id_MISTRAL_SDRIO) && ci->getPort(id_OE) != nullptr));
         bool is_input = (ci->type.in(id_MISTRAL_IB, id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR) ||
                          (ci->type.in(id_MISTRAL_IO, id_MISTRAL_SDRIO) &&
-                          (ci->getPort(id_O) != nullptr || ci->getPort(id_Q) != nullptr)));
+                          (ci->getPort(id_O) != nullptr || ci->getPort(id_Q) != nullptr ||
+                           ci->getPort(id_Q_H) != nullptr || ci->getPort(id_Q_L) != nullptr)));
         auto ioreg = [&](const char *name) { return int_or_default(ci->params, ctx->id(name), 0) != 0; };
         const bool in_reg = ci->type == id_MISTRAL_SDRIN || (ci->type == id_MISTRAL_SDRIO && ioreg("IOREG_IN"));
         const bool out_reg = ci->type == id_MISTRAL_SDROUT || (ci->type == id_MISTRAL_SDRIO && ioreg("IOREG_OUT"));

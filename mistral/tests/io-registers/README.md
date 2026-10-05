@@ -14,6 +14,7 @@ The packer now absorbs, as Quartus Prime Lite 17.0.2 does:
 | `MISTRAL_IB` | input (`MISTRAL_SDRIN`) |
 | `MISTRAL_OB` | output (`MISTRAL_SDROUT`) |
 | `MISTRAL_IO` (bidirectional or tri-state) | any of input, output and OE (`MISTRAL_SDRIO`) |
+| `MISTRAL_IO` + `altddio_in` on its input | DDR input capture, optionally with output and OE registers (`MISTRAL_SDRIO`) |
 
 with these `MISTRAL_FF` controls:
 
@@ -59,6 +60,9 @@ fabric Fmax does not establish interface timing closure.
   asynchronous clear, and a tri-state output with output and OE registers).
 - `bus.v`/`bus.qsf`: a four-bit SDRAM-style bus with one OE register, an
   active-low asynchronous reset and an active-low clock enable.
+- `ddr.v`/`ddr.qsf`: two bidirectional pads built like the RAM tester's SDRAM
+  DQ (`altiobuf_bidir` with `altddio_in` on the pad input), with packed output
+  and OE registers.
 - `split.v`/`split.qsf`: one bidirectional pad whose input and output
   registers use different clocks. Synthesis passes `-noclkbuf`, so packing
   inserts both global buffers. A netlist edit ties them to one clock, and

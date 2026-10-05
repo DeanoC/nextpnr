@@ -560,9 +560,13 @@ struct MistralPacker
             if (io->type.in(id_MISTRAL_IB, id_MISTRAL_OB) && io_register_requested(io, req_oe))
                 log_warning("FAST_OUTPUT_ENABLE_REGISTER on '%s' is ignored: the pad has no output enable.\n",
                             ctx->nameOf(io));
-            if (io->type == id_MISTRAL_IO && (io_register_requested(io, req_in) ||
-                                              io_register_requested(io, req_out) ||
-                                              io_register_requested(io, req_oe)))
+            const bool ddr_in = io->type == id_MISTRAL_SDRIO && int_or_default(io->params, ctx->id("IOREG_IN_DDR"), 0);
+            if (ddr_in && io_register_requested(io, req_in))
+                log_error("Registered I/O '%s': FAST_INPUT_REGISTER conflicts with its DDR input register.\n",
+                          ctx->nameOf(io));
+            if ((io->type == id_MISTRAL_IO || ddr_in) &&
+                (io_register_requested(io, req_in) || io_register_requested(io, req_out) ||
+                 io_register_requested(io, req_oe)))
                 pads.push_back(io);
         }
         pool<IdString> absorbed;
@@ -712,7 +716,8 @@ struct MistralPacker
                 io->addInput(id_CLKIN);
                 io->connectPort(id_CLKIN, in_clock);
             }
-            io->params[ctx->id("IOREG_IN")] = Property(in ? 1 : 0);
+            if (!int_or_default(io->params, ctx->id("IOREG_IN_DDR"), 0))
+                io->params[ctx->id("IOREG_IN")] = Property(in ? 1 : 0);
             io->params[ctx->id("IOREG_OUT")] = Property(out ? 1 : 0);
             io->params[ctx->id("IOREG_OE")] = Property(oe ? 1 : 0);
             io->type = id_MISTRAL_SDRIO;
@@ -1196,10 +1201,13 @@ struct MistralPacker
                     fail("enable must be high and set/clear controls low");
             }
             NetInfo *data = ddr->getPort(datain);
-            if (!data || !data->driver.cell || data->driver.cell->type != id_MISTRAL_IB ||
+            if (!data || !data->driver.cell || !data->driver.cell->type.in(id_MISTRAL_IB, id_MISTRAL_IO) ||
                 data->driver.port != id_O || data->users.entries() != 1)
-                fail("datain must be driven directly by one input buffer");
+                fail("datain must be driven directly by one input or bidirectional buffer");
             CellInfo *ib = data->driver.cell;
+            // A bidirectional pad keeps its output path: it becomes a
+            // MISTRAL_SDRIO whose input register captures both edges.
+            const bool bidir = ib->type == id_MISTRAL_IO;
             NetInfo *high = ddr->getPort(dataout_h), *low = ddr->getPort(dataout_l);
             if (!high || !low || high == low)
                 fail("dataout_h and dataout_l must be separate connected nets");
@@ -1251,10 +1259,20 @@ struct MistralPacker
             ib->connectPort(id_Q_H, high);
             ib->addOutput(id_Q_L);
             ib->connectPort(id_Q_L, low);
-            ib->addInput(id_CLK);
-            ib->connectPort(id_CLK, clock);
-            ib->pin_data[id_CLK].bel_pins = {ctx->id("CLKIN")};
-            ib->type = id_MISTRAL_DDRIN;
+            if (bidir) {
+                ib->addInput(id_CLKIN);
+                ib->connectPort(id_CLKIN, clock);
+                ib->params[ctx->id("IOREG_IN")] = Property(1);
+                ib->params[ctx->id("IOREG_IN_DDR")] = Property(1);
+                ib->params[ctx->id("IOREG_OUT")] = Property(0);
+                ib->params[ctx->id("IOREG_OE")] = Property(0);
+                ib->type = id_MISTRAL_SDRIO;
+            } else {
+                ib->addInput(id_CLK);
+                ib->connectPort(id_CLK, clock);
+                ib->pin_data[id_CLK].bel_pins = {ctx->id("CLKIN")};
+                ib->type = id_MISTRAL_DDRIN;
+            }
             for (auto &port : ddr->ports)
                 ddr->disconnectPort(port.first);
             log_info("Packed DDR input '%s' into %s.\n", ctx->nameOf(ddr), ctx->nameOfBel(ib->bel));

@@ -83,6 +83,14 @@ assert not any(c["type"] == "MISTRAL_FF" for c in cells.values())
 count, _ = compare("bus")
 print(f"PASS: shared OE register copied into each pad; {count} pads match Quartus with active-low CE/ACLR")
 
+ddr = synth("ddr")
+log = route(ddr, f / "ddr.qsf", "ddr")
+assert log.count("Packed DDR input") == 2 and log.count("Packed output output-enable I/O registers") == 2, log
+cells = json.loads((o / "ddr.routed.json").read_text())["modules"]["top"]["cells"]
+assert sum(c["type"] == "MISTRAL_SDRIO" for c in cells.values()) == 2
+count, _ = compare("ddr")
+print(f"PASS: DDR capture with output and OE registers on bidirectional pads; {count} pads match Quartus")
+
 base = (f / "pads.qsf").read_text()
 
 
