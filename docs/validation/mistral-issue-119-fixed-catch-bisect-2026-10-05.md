@@ -127,11 +127,17 @@ regression.
 
 ## Conclusion
 
-The nextpnr-only part of issue #119 begins at `4e5ace3c`, specifically with
-ordinary Mistral joint LUT/FF placement. On the fixed original Catch netlist it
-is much smaller than the original cross-toolchain headline: -0.42% cohort
-median here versus -9.09% when synthesis and the mapped netlist also changed.
-The original result cannot be assigned wholly to nextpnr.
+The principal cutoff-crossing decline isolated here begins at `4e5ace3c`,
+specifically with ordinary Mistral joint LUT/FF placement. This does not claim
+that it is the first nextpnr behavior change in the full endpoint range: seed 1
+had already moved from 132.7669 MHz at `a93fe013` to 132.6260 MHz at the
+immediate parent. The bisect identifies the first revision below the stated
+cutoff and the start of the 129.7353 MHz result retained at `3d4a5b35`.
+
+On the fixed original Catch netlist the boundary cohort shift is much smaller
+than the original cross-toolchain headline: -0.42% cohort median here versus
+-9.09% when synthesis and the mapped netlist also changed. The original result
+cannot be assigned wholly to nextpnr.
 
 No default change is justified by this cohort alone. A follow-up should expose
 or derive a bounded selection rule between separate and joint placement, then
