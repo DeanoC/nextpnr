@@ -32,11 +32,13 @@ base = (f / "base.sdc").read_text()
 FAST, SLOW = "clocks[0]", "clocks[1]"
 
 
-def route(name, extra, success=True):
+def route(name, extra, success=True, allow_fail=True):
     sdc = o / (name + ".sdc")
     sdc.write_text(base + extra)
     command = [a.nextpnr, "--device", "5CSEBA6U23I7", "--qsf", f / "pins.qsf", "--sdc", sdc, "--json", o / "top.json",
-               "--seed", "1", "--timing-allow-fail"]
+               "--seed", "1"]
+    if allow_fail:
+        command.append("--timing-allow-fail")
     if success:
         command += ["--report", o / (name + ".json")]
     log = run(command, o / (name + ".log"), success)
@@ -103,6 +105,16 @@ for clock in (FAST, SLOW):
     crit = path_criticality(report, clock, clock)
     assert crit > 0.99, (clock, crit)
 print("PASS: cut crossings do not set criticality")
+
+# Same-clock paths meet 50 MHz. The crossings share the PLL, so a clock-to-clock
+# check would be allowed to fail the run. The gate must still accept the design.
+log, gated = route("groups-gate", "set_clock_groups -asynchronous -group [get_clocks {clocks[0]}] "
+                   "-group [get_clocks {clocks[1]}]\n", allow_fail=False)
+assert "ERROR:" not in log, log[-2000:]
+assert "Max frequency for posedge" not in log, log[-2000:]
+for clock in (FAST, SLOW):
+    assert gated["fmax"][clock]["achieved"] > gated["fmax"][clock]["constraint"], gated["fmax"][clock]
+print("PASS: a cut crossing does not fail the timing gate")
 
 log, report = route("wildcard", "set_clock_groups -exclusive -group [get_clocks {*s[0]}] -group {clocks[1]}\n")
 assert untimed(log, FAST, SLOW) and untimed(log, SLOW, FAST)
@@ -181,6 +193,17 @@ relaxed = route_free("free-mc", "set_multicycle_path -setup 2 -from [get_clocks 
 _, mc_fmax = clock_fmax(relaxed)
 assert abs(mc_fmax - 2 * base_fmax) < 0.05 * base_fmax, (clock, base_fmax, mc_fmax)
 print(f"PASS: multicycle on unconstrained clock '{clock}' reports {base_fmax:.2f} -> {mc_fmax:.2f} MHz")
+
+# -setup 2 widens a 12 MHz target to two periods. The histogram used to record
+# one period minus the path.
+mc_report = json.loads((o / "free-mc.json").read_text())
+window = 2 * (1000.0 / mc_report["fmax"][clock]["constraint"])
+mc_path = next(p for p in mc_report["critical_paths"] if p["from"] == p["to"] == "posedge " + clock)
+mc_delay = sum(step["delay"] for step in mc_path["path"])
+mc_slacks = [int(key) / 1000.0 for key in mc_report["slack_histogram_ps"]]
+assert mc_slacks, mc_report["slack_histogram_ps"]
+assert abs(min(mc_slacks) - (window - mc_delay)) < 0.05, (min(mc_slacks), window, mc_delay)
+print(f"PASS: multicycle slack histogram worst is {min(mc_slacks):.3f} ns")
 
 # -name and -period after the target must still bind the clock timing sees.
 # The port net is not that clock: synth inserts a clock buffer first.

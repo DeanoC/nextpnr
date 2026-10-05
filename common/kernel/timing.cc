@@ -1548,10 +1548,11 @@ void TimingAnalyser::build_slack_histogram_report()
                     if (!timed_clocks(ctx, launch.clock, capture.clock) || launch.is_async())
                         continue;
 
-                    delay_t clk_period = clock_interval(ctx, launch.clock, capture.clock, launch.edge, capture.edge);
-
-                    delay_t delay = arr.second.value.maxDelay() - req.second.value.minDelay();
-                    delay_t slack = clk_period - delay;
+                    // period includes a set_multicycle_path -setup window.
+                    // setup_slack already subtracted the path and clock-to-clock delay.
+                    const auto pair_id = domain_pair_id(arr.first, req.first);
+                    const auto &pair = pd.domain_pairs.at(pair_id);
+                    delay_t slack = domain_pairs.at(pair_id).period.minDelay() + pair.setup_slack;
 
                     int slack_ps = ctx->getDelayNS(slack) * 1000;
                     slack_histogram[slack_ps]++;
@@ -1714,7 +1715,10 @@ bool timing_analysis(Context *ctx, bool print_slack_histogram, bool print_fmax, 
     tmg.setup_only = false;
     tmg.with_clock_skew = true;
     const bool extra_report_paths = update_results && ctx->timing_report_paths > 1;
-    tmg.setup(ctx->detailed_timing_report, print_slack_histogram, print_path || print_fmax || extra_report_paths);
+    // The final --report analysis does not print the histogram. Still store it
+    // so the JSON report can show multicycle slack.
+    tmg.setup(ctx->detailed_timing_report, print_slack_histogram || update_results,
+              print_path || print_fmax || extra_report_paths);
 
     auto &result = tmg.get_timing_result();
     if (extra_report_paths) {

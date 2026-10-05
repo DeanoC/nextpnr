@@ -283,8 +283,15 @@ void Context::writeJsonReport(std::ostream &out) const
         };
     }
 
+    Json::object slack_histogram;
+    for (const auto &bin : timing_result.slack_histogram)
+        slack_histogram.emplace(std::to_string(bin.first), Json(int(bin.second)));
+
     Json::object jsonRoot{
-            {"utilization", util_json}, {"fmax", fmax_json}, {"critical_paths", json_report_critical_paths(this)}};
+            {"utilization", util_json},
+            {"fmax", fmax_json},
+            {"critical_paths", json_report_critical_paths(this)},
+            {"slack_histogram_ps", slack_histogram}};
     jsonRoot["timing_summary"] = Json::object{
             {"final_analogue_model", timing_result_is_final_analogue},
             {"clocks", timing_clock_json},
