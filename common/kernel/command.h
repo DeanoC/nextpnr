@@ -54,6 +54,7 @@ class CommandHandler
     bool parseOptions();
     bool executeBeforeContext();
     void setupContext(Context *ctx);
+    void restoreTelemetrySettings(Context *ctx);
     int executeMain(std::unique_ptr<Context> ctx);
     po::options_description getGeneralOptions();
     void printFooter();
@@ -67,6 +68,7 @@ class CommandHandler
     int argc;
     char **argv;
     std::ofstream logfile;
+    std::string telemetry_seed;
 };
 
 // Relative directory functions from Yosys

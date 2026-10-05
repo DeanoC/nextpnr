@@ -1163,8 +1163,12 @@ Router1Cfg::Router1Cfg(Context *ctx)
     timingGate = ctx->setting<bool>("router1/timingGate", true);
 }
 
-bool router1(Context *ctx, const Router1Cfg &cfg)
+bool router1(Context *ctx, const Router1Cfg &cfg, bool *routing_legal, bool *timing_gate_pass)
 {
+    if (routing_legal != nullptr)
+        *routing_legal = false;
+    if (timing_gate_pass != nullptr)
+        *timing_gate_pass = false;
     try {
         log_break();
         log_info("Routing..\n");
@@ -1293,8 +1297,13 @@ bool router1(Context *ctx, const Router1Cfg &cfg)
 #endif
 
         log_info("Checksum: 0x%08x\n", ctx->checksum());
-        timing_analysis(ctx, true /* slack_histogram */, true /* print_fmax */, true /* print_path */,
-                        cfg.timingGate /* warn_on_failure */, true /* update_results */);
+        if (routing_legal != nullptr)
+            *routing_legal = true;
+        bool timing_pass = timing_analysis(ctx, true /* slack_histogram */, true /* print_fmax */,
+                                           true /* print_path */, cfg.timingGate /* warn_on_failure */,
+                                           true /* update_results */);
+        if (timing_gate_pass != nullptr)
+            *timing_gate_pass = timing_pass;
 
         return true;
     } catch (log_execution_error_exception) {

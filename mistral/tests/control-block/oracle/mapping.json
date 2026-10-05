@@ -1,0 +1,138 @@
+{
+  "tool": "Quartus Prime Lite 17.0.2 Build 602",
+  "device": "5CSEBA6U23I7",
+  "decoder": "mistral-cv 7ed06e21 decomp",
+  "note": "Atom ports below are CTRL.000.002 block ports routed by Quartus; none of these atoms sets a block, inverter or option bit except the CRC divider.",
+  "atoms": {
+    "cyclonev_chipidblock": {
+      "clk": "CLOCK_CHIPID",
+      "shiftnld": "SHIFTNLD_CHIPID",
+      "regout": "REG_OUT_CHIPID"
+    },
+    "cyclonev_crcblock": {
+      "clk": "CLOCK_CRC",
+      "shiftnld": "SHIFTNLD_CRC",
+      "crcerror": "CRCERROR",
+      "regout": "REG_OUT_CRC",
+      "endofedfullchip": "END_OF_ED_FULLCHIP"
+    },
+    "cyclonev_opregblock": {
+      "clk": "CLOCK_OPREG",
+      "shiftnld": "SHIFTNLD_OPREG",
+      "regout": "REG_OUT_OPREG"
+    },
+    "cyclonev_jtag": {
+      "tdouser": "TDOUTAP",
+      "tckutap": "TCKUTAP",
+      "tdiutap": "TDIUTAP",
+      "tmsutap": "TMSUTAP",
+      "shiftuser": "SHIFTUSER",
+      "updateuser": "UPDATEUSER",
+      "clkdruser": "CLKDRUSER",
+      "runidleuser": "RUNIDLEUSER",
+      "usr1user": "USR1USER",
+      "tckcore": "TCKCORE",
+      "tmscore": "TMSCORE",
+      "tdicore": "TDICORE",
+      "tdocore": "TDOCORE",
+      "corectl": "CORECTL_JTAG",
+      "ntdopinena": "NTDOPINENA"
+    },
+    "cyclonev_oscillator": {
+      "oscena": "OSC_ENA",
+      "clkout": "CLK_OUT",
+      "clkout1": "CLK_OUT1"
+    }
+  },
+  "atoms_oracle": {
+    "rbf_sha256": "8e4f5bf81be1d15860351a7f946de3c3233bd2073dc127c9792f69c7d584b410",
+    "rbf_bytes": 7007204,
+    "ctrl_ports": [
+      "CTRL.000.002:CLKDRUSER",
+      "CTRL.000.002:CLK_OUT",
+      "CTRL.000.002:CLK_OUT1",
+      "CTRL.000.002:CORECTL_JTAG",
+      "CTRL.000.002:CRCERROR",
+      "CTRL.000.002:END_OF_ED_FULLCHIP",
+      "CTRL.000.002:NTDOPINENA",
+      "CTRL.000.002:OSC_ENA",
+      "CTRL.000.002:REG_OUT_CHIPID",
+      "CTRL.000.002:REG_OUT_CRC",
+      "CTRL.000.002:REG_OUT_OPREG",
+      "CTRL.000.002:RUNIDLEUSER",
+      "CTRL.000.002:SHIFTNLD_CHIPID",
+      "CTRL.000.002:SHIFTNLD_CRC",
+      "CTRL.000.002:SHIFTNLD_OPREG",
+      "CTRL.000.002:SHIFTUSER",
+      "CTRL.000.002:TCKCORE",
+      "CTRL.000.002:TCKUTAP",
+      "CTRL.000.002:TDICORE",
+      "CTRL.000.002:TDIUTAP",
+      "CTRL.000.002:TDOCORE",
+      "CTRL.000.002:TDOUTAP",
+      "CTRL.000.002:TMSCORE",
+      "CTRL.000.002:TMSUTAP",
+      "CTRL.000.002:UPDATEUSER",
+      "CTRL.000.002:USR1USER"
+    ],
+    "options": [
+      "o COMPRESSION_DIS 1",
+      "o CRC_DIVIDE_ORDER 1",
+      "o JTAG_ID 00b278e1",
+      "o OPT_B ffffff40.adffffff"
+    ],
+    "global_clock_routes": [
+      "r XCLKB2A.000.001.0005 TCLK.000.001.0000",
+      "r XCLKB2A.000.002.0005 TCLK.000.002.0000",
+      "r XCLKB2A.000.002.0005 TCLK.000.002.0004"
+    ]
+  },
+  "blinky_oracle": {
+    "rbf_sha256": "3c2e4e4a70689d6578baa105c167ebad8e598b93aad22bdbc451966997e6b116",
+    "rbf_bytes": 7007204
+  },
+  "options_oracle": {
+    "rbf_sha256": "3fa6b20485eb1e44b6e46780aaa0730c2a8d2dc099546fb3485e4de517e317ee",
+    "rbf_bytes": 7007204
+  },
+  "bushold_oracle": {
+    "rbf_sha256": "d7b12aaaba2d189baef38a5ca10f46de7b7d60620780ffb2b312e4cd17e9e466",
+    "rbf_bytes": 7007204
+  },
+  "quartus_behaviour": {
+    "jtag_tdo_unconnected": "Error 176551: Destination of port TDO in JTAG block must be a pin",
+    "jtag_tdoutap_connected": "Error 176304: JTAG block does not support input port TDOUTAP",
+    "jtag_core_ports_constant": "routed as constants from the fabric (CORECTL_JTAG, NTDOPINENA, TCKCORE via TDMUX, TMSCORE, TDICORE)",
+    "chipid_fabric_clock": "clk from a register routes TDMUX -> CLOCK_CHIPID; a global clock routes TCLK.000.002.0000",
+    "crcerror_to_output_pin": "Quartus places the pad on the dedicated CRC_ERROR pin Y19 (error 176283 for any other location) and sets CRC_ERROR_DETECTION_EN",
+    "crc_divider_precedence": {
+      "atom 256, QSF 2": "CRC_DIVIDE_ORDER 8 (default) + warning 176287",
+      "atom 4, no QSF": "CRC_DIVIDE_ORDER 2",
+      "atom 1, QSF 1": "CRC_DIVIDE_ORDER 0",
+      "atom 2, QSF 2": "CRC_DIVIDE_ORDER 1"
+    },
+    "CRC_ERROR_CHECKING ON without atom or pin": "no bitstream change (divisors 1, 4, 256)",
+    "ENABLE_CRC_ERROR_PIN ON": "CRC_ERROR_DETECTION_EN 1 (oram 2.13), CRC_DIVIDE_ORDER from ERROR_CHECK_FREQUENCY_DIVISOR, Y19 open-drain output, DATAOUT.0 and OEIN.0 inverted, INPUT_REG4_SEL SEL_LOCKED_DPA",
+    "STRATIX_JTAG_USER_CODE alone": "ignored: usercode is the Quartus checksum (USE_CHECKSUM_AS_USERCODE defaults ON)",
+    "STRATIX_JTAG_USER_CODE + USE_CHECKSUM_AS_USERCODE OFF": "JTAG_ID = code (12345678; ABC -> 00000abc)",
+    "USE_CHECKSUM_AS_USERCODE OFF": "JTAG_ID ffffffff (Mistral default, current nextpnr output)",
+    "ENABLE_DEVICE_WIDE_RESET ON": "oram 6.4 = 0 (DEVICE_WIDE_RESET_EN 0); DEV_CLRn AB23 input, 1.8 V (IOCSR_STD NVR_LOW), no pull-up",
+    "ENABLE_DEVICE_WIDE_OE ON": "oram 6.5 = 0 (ALLOW_DEVICE_WIDE_OUTPUT_ENABLE_DIS 0); DEV_OE AC24 input, 1.8 V (NVR_LOW), no pull-up",
+    "ENABLE_INIT_DONE_OUTPUT ON": "oram 6.3 = 0 (Mistral calls it RELEASE_CLEARS_BEFORE_TRISTATES_DIS); INIT_DONE AA20 open-drain 3.3-V LVTTL output",
+    "ENABLE_NCEO_OUTPUT ON": "oram 2.19 = 0 (NCEO_DIS 0); nCEO AE25 push-pull output, DATAOUT.0 and OEIN.0 inverted",
+    "RELEASE_CLEARS_BEFORE_TRI_STATES ON": "oram 6.2 = 0 (Mistral calls it CVP_CONF_DONE_EN)",
+    "AUTO_RESTART_CONFIGURATION OFF": "oram 6.6 = 0 (RETRY_CONFIG_ON_ERROR_EN 0)",
+    "ENABLE_OCT_DONE ON": "oram 2.20 = 0 (OCT_DONE_DIS 0)",
+    "START_UP_CLOCK": "decodes overlap: bits 6.3/6.4/6.5 of START_UP_CLOCK are the INIT_DONE, DEV_CLRn and DEV_OE enables",
+    "dedicated pins without STRATIX_DEVICE_IO_STANDARD": "identical decode for DEV_CLRn, INIT_DONE and nCEO",
+    "RESERVE_ALL_UNUSED_PINS_WEAK_PULLUP": {
+      "AS INPUT TRI-STATED WITH WEAK PULL-UP": "default, no change",
+      "AS INPUT TRI-STATED": "USE_WEAK_PULLUP 0 on every unused pad of the 315 GPIO pads (dedicated configuration and JTAG pads excluded)",
+      "AS INPUT TRI-STATED WITH BUS-HOLD": "USE_WEAK_PULLUP 0 and USE_BUS_HOLD 1 on the same pads",
+      "AS OUTPUT DRIVING GROUND / AN UNSPECIFIED SIGNAL": "DRIVE_STRENGTH PROG_GND plus GPIO and HMC inverter changes; not implemented"
+    },
+    "ON_CHIP_BITSTREAM_DECOMPRESSION ON": "COMPRESSION_DIS 0 and OPT_B ffffff40.2dffffff, identical to nextpnr --compress-rbf (assignment still ignored by nextpnr)",
+    "cyclonev_rublock / cyclonev_asmiblock": "need STRATIXV_CONFIGURATION_SCHEME Active Serial (errors 169310 / 176289); AS sets undecoded option bits oram 5.20 5.21 5.23 6.10 (6.09 with ASMI) 6.36 6.37",
+    "USER_START_UP_CLOCK ON": "no decoded change"
+  }
+}

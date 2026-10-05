@@ -734,7 +734,21 @@ class DeviceBackend : public Backend
             GPU_CHECK(hipSetDevice(device_));
             hipDeviceProp_t prop;
             GPU_CHECK(hipGetDeviceProperties(&prop, device_));
-            name_ = std::string(GPUROUTE_BACKEND_NAME) + ":" + prop.name;
+            char pci_bus_id[64] = {};
+            GPU_CHECK(hipDeviceGetPCIBusId(pci_bus_id, sizeof(pci_bus_id), device_));
+#if defined(GPUROUTE_HAS_DEVICE_UUID)
+            char uuid[33] = {};
+            for (int i = 0; i < 16; ++i)
+                std::snprintf(uuid + (2 * i), 3, "%02x", static_cast<unsigned char>(prop.uuid.bytes[i]));
+            const std::string stable_id = uuid;
+#else
+            // Preserve ordinary GPU routing on HIP runtimes predating UUID
+            // support. Telemetry labels this identity as non-attestable so
+            // provenance-sensitive collectors can reject it without changing
+            // default router behavior.
+            const std::string stable_id = "unattested-ordinal-" + std::to_string(device_);
+#endif
+            name_ = std::string(GPUROUTE_BACKEND_NAME) + ":" + stable_id + ":" + pci_bus_id + ":" + prop.name;
             n_wires_ = graph.n_wires;
             out_off_.upload(graph.out_off, (size_t)graph.n_wires + 1);
             out_dst_.upload(graph.out_dst, (size_t)graph.n_edges);

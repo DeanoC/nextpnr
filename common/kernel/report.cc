@@ -260,15 +260,32 @@ void Context::writeJsonReport(std::ostream &out) const
         };
     }
     dict<std::string, Json> fmax_json;
+    dict<std::string, Json> timing_clock_json;
     for (const auto &kv : timing_result.clock_fmax) {
         fmax_json[kv.first.str(this)] = Json::object{
                 {"achieved", kv.second.achieved},
                 {"constraint", kv.second.constraint},
         };
     }
+    // The timing gate also enforces physically/phase-related cross-clock paths,
+    // which can exist without a same-clock Fmax entry. The slack maps are the
+    // authoritative aggregation for every enforced launch clock.
+    for (const auto &setup : timing_result.clock_setup_slack) {
+        auto hold = timing_result.clock_hold_slack.find(setup.first);
+        if (hold == timing_result.clock_hold_slack.end())
+            continue;
+        timing_clock_json[setup.first.str(this)] = Json::object{
+                {"setup_wns_ns", getDelayNS(setup.second)},
+                {"hold_wns_ns", getDelayNS(hold->second)},
+        };
+    }
 
     Json::object jsonRoot{
             {"utilization", util_json}, {"fmax", fmax_json}, {"critical_paths", json_report_critical_paths(this)}};
+    jsonRoot["timing_summary"] = Json::object{
+            {"final_analogue_model", timing_result_is_final_analogue},
+            {"clocks", timing_clock_json},
+    };
     if (timing_report_paths > 1)
         jsonRoot["timing_report_paths"] = timing_report_paths;
 

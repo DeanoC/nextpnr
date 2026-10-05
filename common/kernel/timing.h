@@ -62,6 +62,8 @@ struct ClockDomainKey
 
 typedef int domain_id_t;
 
+bool phase_related_clocks(const Context *ctx, IdString launch, IdString capture);
+
 struct ClockDomainPairKey
 {
     domain_id_t launch, capture;
@@ -293,7 +295,7 @@ struct TimingAnalyser
 };
 
 // Perform timing analysis and optionaly print out slack histogram, fmax and critical paths
-void timing_analysis(Context *ctx, bool slack_histogram = true, bool print_fmax = true, bool print_path = false,
+bool timing_analysis(Context *ctx, bool slack_histogram = true, bool print_fmax = true, bool print_path = false,
                      bool warn_on_failure = false, bool update_results = false);
 
 NEXTPNR_NAMESPACE_END

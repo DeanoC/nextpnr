@@ -370,6 +370,11 @@ void BaseMainWindow::open_json()
         if (ctx->settings.find(ctx->id("synth")) == ctx->settings.end()) {
             ArchArgs chipArgs = ctx->args;
             std::unique_ptr<Context> new_ctx = std::unique_ptr<Context>(new Context(chipArgs));
+            for (const char *name : {"gpurouter/telemetryPath", "gpurouter/telemetrySeed"}) {
+                auto setting = ctx->settings.find(ctx->id(name));
+                if (setting != ctx->settings.end())
+                    new_ctx->settings[new_ctx->id(name)] = setting->second;
+            }
 #ifdef ARCH_HIMBAECHEL
             new_ctx->uarch->with_gui = true;
             new_ctx->uarch->init(new_ctx.get());
