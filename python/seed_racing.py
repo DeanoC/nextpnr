@@ -399,16 +399,24 @@ def _resolved_binary(argv0: str, cwd: Optional[str], environment: Mapping[str, s
     return Path(found).resolve() if found else None
 
 
-def _validate_collection_executable(executable: Path) -> None:
+def _validate_collection_executable(executable: Path,
+                                    dependency_paths: Sequence[Path] = ()) -> None:
     """Keep the collector scoped to native nextpnr executables."""
     if not executable.name.startswith("nextpnr"):
         raise ValueError(
             "collection requires a native nextpnr ELF executable; standalone language "
             "interpreters and generic launchers have unbounded implicit module/resource inputs")
-    if _file_contains_any(executable, (b"Py_InitializeFromConfig\x00", b"Py_Initialize\x00")):
+    python_markers = (b"Py_InitializeFromConfig\x00", b"Py_Initialize\x00")
+    python_runtime = next(
+        (path for path in (executable, *dependency_paths)
+         if _file_contains_any(path, python_markers) or
+         (_elf_dynamic_names(path)[0] or "").startswith("libpython")),
+        None)
+    if python_runtime is not None:
         raise ValueError(
             "collection requires nextpnr built with BUILD_PYTHON=OFF; embedded Python "
-            "loads implicit standard-library, site, and extension-module inputs")
+            f"runtime {python_runtime} loads implicit standard-library, site, and "
+            "extension-module inputs")
 
 
 def _child_environment(explicit: Mapping[str, str]) -> Dict[str, str]:
@@ -850,6 +858,9 @@ class Collector:
             Path(self._binary_launch_path), environment, source_share,
             recorded_executable=resolved, pass_fds=(frozen.fileno(),))
         execution = self._runtime_evidence["manifest"]["execution"]
+        _validate_collection_executable(
+            Path(self._binary_launch_path),
+            tuple(Path(path) for path in execution["dependency_paths"]))
         expected_runtime_hashes = {
             item["path"]: item["sha256"] for item in self._runtime_evidence["manifest"]["files"]}
         if _sha256_stream(frozen) != expected_runtime_hashes.get(str(resolved)):

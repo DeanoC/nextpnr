@@ -964,8 +964,13 @@ class CollectorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             runner = Path(temporary) / "nextpnr-test"
             self.python_elf_runner(runner)
+            environment = seed_racing._child_environment({})
+            evidence = seed_racing._runtime_environment_evidence(runner, environment)
+            dependencies = tuple(
+                Path(path) for path in
+                evidence["manifest"]["execution"]["dependency_paths"])
             with self.assertRaisesRegex(ValueError, "BUILD_PYTHON=OFF"):
-                VALIDATE_COLLECTION_EXECUTABLE(runner)
+                VALIDATE_COLLECTION_EXECUTABLE(runner, dependencies)
 
     def test_collection_rejects_replaced_artifact_path(self):
         with tempfile.TemporaryDirectory() as temporary:
