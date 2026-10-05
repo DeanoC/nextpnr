@@ -36,7 +36,8 @@ static void create_alm(Arch *arch, int x, int y, int z, uint32_t lab_idx)
     auto &lab = arch->labs.at(lab_idx);
     auto &alm = lab.alms.at(z);
     auto block_type = lab.is_mlab ? CycloneV::MLAB : CycloneV::LAB;
-    // Create the control set and E/F selection - which is per pair of FF
+    // Create the control set and E/F selection - each is shared by a pair of FFs. E/F (like the data path, SCLR and
+    // SLOAD) is per ALM half, while the CLK/ENA and ACLR selectors are per control group (ALMInfo::ctrl_group).
     for (int i = 0; i < 2; i++) {
         // Wires
         alm.sel_clk[i] = arch->add_wire(x, y, arch->idf("CLK%c[%d]", i ? 'B' : 'T', z));
@@ -133,11 +134,12 @@ static void create_alm(Arch *arch, int x, int y, int z, uint32_t lab_idx)
         alm.ff_in[i] = arch->add_wire(x, y, arch->idf("FFIN[%d]", (z * 4) + i));
         arch->add_pip(alm.comb_out[i / 2], alm.ff_in[i]);
         arch->add_pip(alm.sel_ef[i / 2], alm.ff_in[i]);
-        // FF bel
+        // FF bel. FF0 and FF3 take TCLK_SEL/TCLR_SEL, FF1 and FF2 take BCLK_SEL/BCLR_SEL.
         BelId bel = arch->add_bel(x, y, arch->idf("ALM%d_FF%d", z, i), id_MISTRAL_FF);
-        arch->add_bel_pin(bel, id_CLK, PORT_IN, alm.sel_clk[i / 2]);
-        arch->add_bel_pin(bel, id_ENA, PORT_IN, alm.sel_ena[i / 2]);
-        arch->add_bel_pin(bel, id_ACLR, PORT_IN, alm.sel_aclr[i / 2]);
+        const int group = ALMInfo::ctrl_group(i);
+        arch->add_bel_pin(bel, id_CLK, PORT_IN, alm.sel_clk[group]);
+        arch->add_bel_pin(bel, id_ENA, PORT_IN, alm.sel_ena[group]);
+        arch->add_bel_pin(bel, id_ACLR, PORT_IN, alm.sel_aclr[group]);
         arch->add_bel_pin(bel, id_SCLR, PORT_IN, lab.sclr_wire);
         arch->add_bel_pin(bel, id_SLOAD, PORT_IN, lab.sload_wire);
         arch->add_bel_pin(bel, id_DATAIN, PORT_IN, alm.ff_in[i]);
@@ -181,12 +183,18 @@ void Arch::create_lab(int x, int y, bool is_mlab)
     // Create common control set configuration. This is actually a subset of what's possible, but errs on the side of
     // caution due to incomplete documentation
 
-    // Clocks - hardcode to CLKA choices, as both CLKA and CLKB coming from general routing causes unexpected
-    // permutations
+    // Clocks - by default hardcode to CLKA choices, as both CLKA and CLKB coming from general routing causes
+    // unexpected permutations. With --mistral-clkb each of the three LAB clocks (CLKk_SEL) may also take CLKB, which
+    // comes from CLKIN[1] (dedicated) or DATAIN[1] (general, CLKB_SEL=DIN1). assign_control_sets reserves the exact
+    // source of every used clock wire in that mode, so the router cannot mix CLKA/CLKB sources.
     for (int i = 0; i < 3; i++) {
         lab.clk_wires[i] = add_wire(x, y, idf("CLK%d", i));
         add_pip(get_port(block_type, x, y, -1, CycloneV::CLKIN, 0), lab.clk_wires[i]);  // dedicated routing
         add_pip(get_port(block_type, x, y, -1, CycloneV::DATAIN, 0), lab.clk_wires[i]); // general routing
+        if (args.lab_clkb && !is_mlab) {
+            add_pip(get_port(block_type, x, y, -1, CycloneV::CLKIN, 1), lab.clk_wires[i]);  // CLKB, dedicated
+            add_pip(get_port(block_type, x, y, -1, CycloneV::DATAIN, 1), lab.clk_wires[i]); // CLKB, general
+        }
     }
 
     // Enables - while it looks from the config like there are choices for these, it seems like EN0_SEL actually selects
@@ -442,6 +450,14 @@ bool Arch::is_alm_legal(uint32_t lab, uint8_t alm) const
         // E/F is available if this LUT is using 3 or fewer inputs - this is conservative and sharing can probably
         // improve this situation. (1 - i) because the F input to EF_SEL is mirrored.
         bool ef_available = (!luts[1 - i] || (luts[1 - i]->combInfo.used_lut_input_count <= 2));
+        if (lab_ff4 && carry_mode && ef_available) {
+            // EF_SEL of half i picks E_i or the other half's F. An arithmetic LUT reserves E for D0 and F for D1
+            // regardless of its input count, so check those pins exactly.
+            auto arith_uses = [&](int half, int input) {
+                return luts[half] != nullptr && luts[half]->combInfo.lut_in[input] != nullptr;
+            };
+            ef_available = !arith_uses(i, 3) || !arith_uses(1 - i, 4);
+        }
         // Control set checking
         bool found_ff = false;
 
@@ -450,11 +466,23 @@ bool Arch::is_alm_legal(uint32_t lab, uint8_t alm) const
             const CellInfo *ff = ffs[i * 2 + j];
             if (!ff)
                 continue;
-            if (j == 1)
-                return false; // TODO: why are these FFs broken?
+            // FF1 and FF3 (the secondary registers) take their clock, enable and async clear from the other half's
+            // selectors (see ALMInfo::ctrl_group). Only the --mistral-ff4 model below accounts for that.
+            // MLAB clock/clear tables in Mistral are not Quartus-verified, so MLABs keep the two-FF model.
+            if (j == 1 && (!lab_ff4 || labs.at(lab).is_mlab))
+                return false;
             if (found_ff) {
-                // Two FFs in the same half with an incompatible control set
-                if (ctrlset != ff->ffInfo.ctrlset)
+                // Two FFs in the same half share EF_SEL, SCLR_DIS and SLOAD_EN, but not the clock/enable or async
+                // clear selection; those are checked per control group below.
+                if (!(ctrlset.sclr == ff->ffInfo.ctrlset.sclr) || !(ctrlset.sload == ff->ffInfo.ctrlset.sload))
+                    return false;
+                // A real sync load makes both FFs load the half's single E/F signal. Yosys never infers SLOAD; keep
+                // such FFs (and any SDATA user) alone in their half rather than prove the shared-SDATA cases.
+                if (ff4_has_sync_load(ctrlset) || ff->ffInfo.sdata != nullptr || ffs[i * 2]->ffInfo.sdata != nullptr)
+                    return false;
+                // Both FFs of the half own its two general-routing outputs (FFx0, FFx1) and the local FFx1L.
+                // Quartus rejects any other use of this half's LUT output, even within the LAB.
+                if (luts[i] && !ff4_lut_feeds_only(luts[i], ffs[i * 2], ff))
                     return false;
             } else {
                 ctrlset = ff->ffInfo.ctrlset;
@@ -479,6 +507,38 @@ bool Arch::is_alm_legal(uint32_t lab, uint8_t alm) const
         }
     }
 
+    if (lab_ff4) {
+        // TCLK_SEL/TCLR_SEL serve FF0 and FF3, BCLK_SEL/BCLR_SEL serve FF1 and FF2. Each selector picks one LAB
+        // clock+enable pair and one async clear slot; an FF without an async clear still follows its group's
+        // TCLR_SEL/BCLR_SEL, so a missing clear is also a mismatch.
+        for (auto group : {std::make_pair(0, 3), std::make_pair(1, 2)}) {
+            const CellInfo *a = ffs[group.first], *b = ffs[group.second];
+            if (a == nullptr || b == nullptr)
+                continue;
+            const auto &x = a->ffInfo.ctrlset, &y = b->ffInfo.ctrlset;
+            if (!(x.clk == y.clk) || !(x.ena == y.ena) || !(x.aclr == y.aclr))
+                return false;
+        }
+    }
+
+    return true;
+}
+
+bool Arch::ff4_has_sync_load(const FFControlSet &ctrlset) const
+{
+    // assign_ff_info ties SLOAD to the packer GND net when only SCLR is used; that is not a real load.
+    return ctrlset.sload.net != nullptr && ctrlset.sload.net->name != id("$PACKER_GND_NET");
+}
+
+bool Arch::ff4_lut_feeds_only(const CellInfo *lut, const CellInfo *ff_a, const CellInfo *ff_b) const
+{
+    const NetInfo *out = lut->combInfo.comb_out;
+    if (out == nullptr)
+        return true;
+    for (const auto &user : out->users) {
+        if ((user.cell != ff_a && user.cell != ff_b) || user.port != id_DATAIN)
+            return false;
+    }
     return true;
 }
 
@@ -699,10 +759,156 @@ struct LabCtrlSetWorker
     }
 };
 
+// Opt-in (--mistral-ff4/--mistral-clkb) control-set model. A LAB has two clock sources, CLKA (CLKIN[0] or DATAIN[0]) and CLKB (CLKIN[1] or
+// DATAIN[1]), and three clock+enable pairs k; pair k takes CLKA or CLKB (CLKk_SEL), its own polarity (CLKk_INV) and its
+// own enable, which comes from DATAIN[ena_datain[k]] only when ENk_EN is set. Quartus 17.0.2 uses exactly this for two
+// clocks and for clk/~clk in one LAB (mistral/tests/lab_ff4).
+// A clock net that route_globals routes over the dedicated clock network reaches the LAB on CLKIN; any other clock
+// comes from the fabric on DATAIN. (NetInfo::is_global is not maintained by this architecture.)
+bool dedicated_clock(const NetInfo *net)
+{
+    return net != nullptr && net->driver.cell != nullptr && net->driver.port == id_Q &&
+           net->driver.cell->type.in(id_MISTRAL_CLKENA, id_MISTRAL_CLKBUF);
+}
+
+struct LabPairWorker
+{
+    struct Pair
+    {
+        ControlSig clk, ena;
+    };
+    // Results, indexed by hardware pair k (CLKk/ENk) and clock source (0 = CLKA, 1 = CLKB)
+    std::array<Pair, 3> pairs{};
+    std::array<bool, 3> pair_used{};
+    std::array<int, 3> pair_source{-1, -1, -1};
+    std::array<const NetInfo *, 2> source{};
+    ControlSig sload{}, sclr{};
+    std::array<ControlSig, 2> aclr{};
+    std::array<ControlSig, 4> datain{};
+    int max_clocks = 2;
+    // assign_ff_info's placeholders: ENA tied to VCC means no enable, SLOAD tied to GND is the SCLR-only workaround
+    IdString vcc_name, gnd_name;
+
+    bool real_enable(const ControlSig &ena) const { return ena.net != nullptr && ena.net->name != vcc_name; }
+    bool real_load(const ControlSig &load) const { return load.net != nullptr && load.net->name != gnd_name; }
+
+    int pair_index(const FFControlSet &ctrlset) const
+    {
+        for (int k = 0; k < 3; k++)
+            if (pair_used[k] && pairs[k].clk == ctrlset.clk && pairs[k].ena == ctrlset.ena)
+                return k;
+        return -1;
+    }
+
+    bool run(const Arch *arch, uint32_t lab)
+    {
+        vcc_name = arch->id("$PACKER_VCC_NET");
+        gnd_name = arch->id("$PACKER_GND_NET");
+        std::vector<Pair> found;
+        std::vector<const NetInfo *> clocks;
+        int edge = -1;
+        bool open_aclr = false;
+        for (uint8_t alm = 0; alm < 10; alm++) {
+            for (uint8_t i = 0; i < 4; i++) {
+                const CellInfo *ff = arch->getBoundBelCell(arch->labs.at(lab).alms.at(alm).ff_bels.at(i));
+                if (ff == nullptr)
+                    continue;
+                const auto &cs = ff->ffInfo.ctrlset;
+                if (!check_assign_sig(sload, cs.sload) || !check_assign_sig(sclr, cs.sclr) ||
+                    !check_assign_sig(aclr, cs.aclr))
+                    return false;
+                if (cs.aclr.net == nullptr)
+                    open_aclr = true;
+                if (std::none_of(found.begin(), found.end(),
+                                 [&](const Pair &p) { return p.clk == cs.clk && p.ena == cs.ena; })) {
+                    if (found.size() == 3)
+                        return false; // three clock+enable pairs per LAB
+                    found.push_back(Pair{cs.clk, cs.ena});
+                }
+                if (cs.clk.net != nullptr && std::find(clocks.begin(), clocks.end(), cs.clk.net) == clocks.end()) {
+                    if (int(clocks.size()) == max_clocks)
+                        return false; // two clock signals per LAB (CLKA, CLKB), one without --mistral-clkb
+                    clocks.push_back(cs.clk.net);
+                }
+                // Mixed clock edges in one LAB (per-pair CLKk_INV) are part of --mistral-clkb
+                if (max_clocks == 1 && cs.clk.net != nullptr) {
+                    if (edge < 0)
+                        edge = cs.clk.inverted;
+                    else if (edge != int(cs.clk.inverted))
+                        return false;
+                }
+            }
+        }
+        // LAB-wide DATAIN users that do not depend on the pair assignment. The SLOAD that assign_ff_info ties to GND
+        // for SCLR-only flops is disabled by SLOAD_EN=0 and leaves DATAIN[1] free, as in Quartus.
+        if (real_load(sload) && !check_assign_sig(datain[1], sload))
+            return false;
+        if (!check_assign_sig(datain[3], sclr))
+            return false;
+        for (const auto &aclr_sig : aclr) {
+            if (check_assign_sig(datain[aclr_datain[0]], aclr_sig))
+                continue;
+            if (check_assign_sig(datain[aclr_datain[1]], aclr_sig))
+                continue;
+            return false;
+        }
+        if (open_aclr && aclr[0].net != nullptr && aclr[1].net != nullptr)
+            return false;
+        // Try both CLKA/CLKB orders, then every placement of the pairs on the three hardware pairs, keeping the first
+        // that fits the DATAIN lines. Without --mistral-clkb the only clock source is CLKA (DATAIN[0] / CLKIN[0]);
+        // swap 1 would park a fabric clock on CLKB and assign_control_sets would reserve a pip that was never added.
+        for (int swap = 0; swap < (max_clocks > 1 ? 2 : 1); swap++) {
+            if (swap == 1 && clocks.empty())
+                break;
+            std::array<const NetInfo *, 2> src{};
+            for (size_t c = 0; c < clocks.size(); c++)
+                src[(c + swap) % 2] = clocks[c];
+            auto din = datain;
+            bool ok = true;
+            for (int s = 0; s < 2 && ok; s++)
+                if (src[s] != nullptr && !dedicated_clock(src[s]))
+                    ok = check_assign_sig(din[s], ControlSig{src[s], false}); // CLKA_SEL/CLKB_SEL = DIN0/DIN1
+            if (!ok)
+                continue;
+            std::array<int, 3> perm{0, 1, 2};
+            do {
+                // found[n] goes to hardware pair perm[n]
+                auto try_din = din;
+                bool fits = true;
+                for (size_t n = 0; n < found.size() && fits; n++)
+                    if (real_enable(found[n].ena))
+                        fits = check_assign_sig(try_din[ena_datain[perm[n]]], found[n].ena);
+                if (!fits)
+                    continue;
+                pair_used = {false, false, false};
+                pair_source = {-1, -1, -1};
+                for (size_t n = 0; n < found.size(); n++) {
+                    int k = perm[n];
+                    pair_used[k] = true;
+                    pairs[k] = found[n];
+                    if (found[n].clk.net != nullptr)
+                        pair_source[k] = found[n].clk.net == src[0] ? 0 : 1;
+                }
+                source = src;
+                datain = try_din;
+                return true;
+            } while (std::next_permutation(perm.begin(), perm.end()));
+        }
+        return false;
+    }
+};
+
 }; // namespace
+
+bool Arch::lab_pair_model(uint32_t lab) const { return (args.lab_clkb || lab_ff4) && !labs.at(lab).is_mlab; }
 
 bool Arch::is_lab_ctrlset_legal(uint32_t lab) const
 {
+    if (lab_pair_model(lab)) {
+        LabPairWorker worker;
+        worker.max_clocks = args.lab_clkb ? 2 : 1;
+        return worker.run(this, lab);
+    }
     LabCtrlSetWorker worker;
     return worker.run(this, lab);
 }
@@ -743,13 +949,25 @@ void Arch::assign_control_sets(uint32_t lab)
     // e.g. CLK0 & ENA0 must be use for one control set, and CLK1 & ENA1 for another, they can't be mixed and matched
     // Similarly for how inverted & noninverted variants must be kept separate
     LabCtrlSetWorker worker;
-    bool legal = worker.run(this, lab);
+    LabPairWorker pair_worker;
+    // The pair model (opt-in) charges LAB DATAIN lines exactly as Quartus does; the default model is conservative.
+    const bool clkb = lab_pair_model(lab);
+    pair_worker.max_clocks = args.lab_clkb ? 2 : 1;
+    bool legal = clkb ? pair_worker.run(this, lab) : worker.run(this, lab);
     if (!legal) {
         log_warning("Skipping LAB %u control-set reservation (frozen scaffold or illegal after cart merge).\n",
                     unsigned(lab));
         return;
     }
     auto &lab_data = labs.at(lab);
+    const auto &datain = clkb ? pair_worker.datain : worker.datain;
+    Loc lab_loc = getBelLocation(lab_data.alms.at(0).lut_bels.at(0));
+    auto block_type = lab_data.is_mlab ? CycloneV::MLAB : CycloneV::LAB;
+    // --mistral-clkb: fix the source of a LAB clock wire, so each CLKk_SEL and CLKA_SEL/CLKB_SEL has one meaning
+    auto reserve_clock_source = [&](int k, int source, const NetInfo *net) {
+        CycloneV::port_type_t port = dedicated_clock(net) ? CycloneV::CLKIN : CycloneV::DATAIN;
+        reserve_route(get_port(block_type, lab_loc.x, lab_loc.y, -1, port, source), lab_data.clk_wires[k]);
+    };
 
     for (int j = 0; j < 2; j++) {
         lab_data.aclr_used[j] = false;
@@ -768,6 +986,8 @@ void Arch::assign_control_sets(uint32_t lab)
                 // Force use of CLK0/ENA0 for LUTRAMs. Might have to revisit if we ever support packing LUTRAMs and FFs
                 reserve_route(lab_data.clk_wires[0], wclk_wire);
                 reserve_route(lab_data.ena_wires[0], we_wire);
+                if (clkb && lut->combInfo.wclk.net != nullptr)
+                    reserve_clock_source(0, 0, lut->combInfo.wclk.net);
             }
         }
         for (uint8_t i = 0; i < 4; i++) {
@@ -775,36 +995,54 @@ void Arch::assign_control_sets(uint32_t lab)
             const CellInfo *ff = getBoundBelCell(ff_bel);
             if (ff == nullptr)
                 continue;
+            // The clock/enable and clear selectors are shared per control group, not per half
+            const int group = ALMInfo::ctrl_group(i);
             ControlSig ena_sig = ff->ffInfo.ctrlset.ena;
             WireId clk_wire = getBelPinWire(ff_bel, id_CLK);
             WireId ena_wire = getBelPinWire(ff_bel, id_ENA);
-            for (int j = 0; j < 3; j++) {
-                if (ena_sig == worker.datain[ena_datain[j]]) {
-                    if (getCtx()->debug) {
-                        log_info("Assigned CLK/ENA set %d to FF %s (%s)\n", j, nameOf(ff), getCtx()->nameOfBel(ff_bel));
+            if (clkb) {
+                int k = pair_worker.pair_index(ff->ffInfo.ctrlset);
+                NPNR_ASSERT(k >= 0);
+                if (getCtx()->debug)
+                    log_info("Assigned CLK/ENA pair %d to FF %s (%s)\n", k, nameOf(ff), getCtx()->nameOfBel(ff_bel));
+                reserve_route(lab_data.clk_wires[k], clk_wire);
+                reserve_route(lab_data.ena_wires[k], ena_wire);
+                alm_data.clk_ena_idx[group] = k;
+            } else {
+                for (int j = 0; j < 3; j++) {
+                    if (ena_sig == datain[ena_datain[j]]) {
+                        if (getCtx()->debug) {
+                            log_info("Assigned CLK/ENA set %d to FF %s (%s)\n", j, nameOf(ff),
+                                     getCtx()->nameOfBel(ff_bel));
+                        }
+                        // Without --mistral-clkb every LAB clock carries the one clock from CLKA
+                        reserve_route(lab_data.clk_wires[0], clk_wire);
+                        reserve_route(lab_data.ena_wires[j], ena_wire);
+                        alm_data.clk_ena_idx[group] = j;
+                        break;
                     }
-                    // TODO: lock clock according to ENA choice, too, when we support two clocks per ALM
-                    reserve_route(lab_data.clk_wires[0], clk_wire);
-                    reserve_route(lab_data.ena_wires[j], ena_wire);
-                    alm_data.clk_ena_idx[i / 2] = j;
-                    break;
                 }
             }
             ControlSig aclr_sig = ff->ffInfo.ctrlset.aclr;
             WireId aclr_wire = getBelPinWire(ff_bel, id_ACLR);
             for (int j = 0; j < 2; j++) {
                 // TODO: could be global ACLR, too
-                if (aclr_sig == worker.datain[aclr_datain[j]]) {
+                if (aclr_sig == datain[aclr_datain[j]]) {
                     if (getCtx()->debug) {
                         log_info("Assigned ACLR set %d to FF %s (%s)\n", i, nameOf(ff), getCtx()->nameOfBel(ff_bel));
                     }
                     reserve_route(lab_data.aclr_wires[j], aclr_wire);
                     lab_data.aclr_used[j] = (aclr_sig.net != nullptr);
-                    alm_data.aclr_idx[i / 2] = j;
+                    alm_data.aclr_idx[group] = j;
                     break;
                 }
             }
         }
+    }
+    if (clkb) {
+        for (int k = 0; k < 3; k++)
+            if (pair_worker.pair_used[k] && pair_worker.pair_source[k] >= 0)
+                reserve_clock_source(k, pair_worker.pair_source[k], pair_worker.source[pair_worker.pair_source[k]]);
     }
     // Park open flops on a fresh route. A scaffold reload locks those cells
     // at STRENGTH_LOCKED, and lab_pre_route leaves that LAB alone, so
@@ -816,8 +1054,9 @@ int Arch::park_open_aclr(uint32_t lab)
 {
     // An open ACLR pin still follows BCLR_SEL/TCLR_SEL. An unused slot's
     // SEL defaults to a DATAIN, live whenever another flop uses that slot.
-    // Park every open half on a free slot. Both slots already in use cannot
-    // be repaired from a snapshot and must be re-routed.
+    // Park every open control group (FF0+FF3 or FF1+FF2) on a free slot. Both
+    // slots already in use cannot be repaired from a snapshot and must be
+    // re-routed.
     auto &lab_data = labs.at(lab);
     int inactive_aclr = -1;
     for (int j = 0; j < 2; j++) {
@@ -829,12 +1068,14 @@ int Arch::park_open_aclr(uint32_t lab)
     int moved = 0;
     for (uint8_t alm = 0; alm < 10; alm++) {
         auto &alm_data = lab_data.alms.at(alm);
-        for (int half = 0; half < 2; half++) {
+        for (int group = 0; group < 2; group++) {
             bool open = false;
             bool driven = false;
             bool placed = false;
-            for (int j = 0; j < 2; j++) {
-                const CellInfo *ff = getBoundBelCell(alm_data.ff_bels.at(half * 2 + j));
+            for (int i = 0; i < 4; i++) {
+                if (ALMInfo::ctrl_group(i) != group)
+                    continue;
+                const CellInfo *ff = getBoundBelCell(alm_data.ff_bels.at(i));
                 if (ff == nullptr)
                     continue;
                 placed = true;
@@ -845,7 +1086,7 @@ int Arch::park_open_aclr(uint32_t lab)
             }
             if (!placed || !open || driven)
                 continue;
-            int slot = alm_data.aclr_idx[half];
+            int slot = alm_data.aclr_idx[group];
             if (slot < 0 || slot > 1 || !lab_data.aclr_used[slot])
                 continue;
             if (inactive_aclr < 0) {
@@ -854,7 +1095,7 @@ int Arch::park_open_aclr(uint32_t lab)
                           "Re-route this shell.\n",
                           loc.x, loc.y);
             }
-            alm_data.aclr_idx[half] = inactive_aclr;
+            alm_data.aclr_idx[group] = inactive_aclr;
             ++moved;
         }
     }
@@ -1017,7 +1258,11 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
         // FF route-through will never be inserted if LUT is used
         if (luts[i])
             continue;
-        for (int j = 0; j < 2; j++) {
+        for (int n = 0; n < 2; n++) {
+            // Quartus gives the route-through to the control-group-0 register of the half (FF0 top, FF3 bottom) and
+            // packs the other one through E/F. Only --mistral-ff4 places a second FF here, so the order is otherwise
+            // irrelevant.
+            const int j = (i == 1 && lab_ff4) ? 1 - n : n;
             CellInfo *ff = ffs[i * 2 + j];
             if (!ff || !ff->ffInfo.datain || alm_data.l6_mode || alm_data.carry_mode)
                 continue;
