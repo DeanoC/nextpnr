@@ -133,12 +133,27 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
     if (cell->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN)) {
         // The Mistral database has no characterized GPIO input-register
         // setup/hold or register clock-to-Q model.
-        return port == id_CLK ? TMG_CLOCK_INPUT : TMG_IGNORE;
+        if (port == id_CLK)
+            return TMG_CLOCK_INPUT;
+        return port.in(id_CEIN, id_ACLR) ? TMG_ENDPOINT : TMG_IGNORE;
     }
     if (cell->type == id_MISTRAL_SDROUT) {
         // No characterized GPIO register setup/hold or clock-to-pad arcs.
         if (port == id_CLK) return TMG_CLOCK_INPUT;
-        return port == id_I ? TMG_ENDPOINT : TMG_IGNORE;
+        return port.in(id_I, id_CEOUT, id_ACLR) ? TMG_ENDPOINT : TMG_IGNORE;
+    }
+    if (cell->type == id_MISTRAL_SDRIO) {
+        // Registered bidirectional pad: register inputs are uncharacterized
+        // endpoints; combinational pad paths stay untimed like MISTRAL_IO.
+        if (port.in(id_CLK, id_CLKIN))
+            return TMG_CLOCK_INPUT;
+        if (port.in(id_CEIN, id_CEOUT, id_ACLR))
+            return TMG_ENDPOINT;
+        if (port == id_I && int_or_default(cell->params, id("IOREG_OUT"), 0))
+            return TMG_ENDPOINT;
+        if (port == id_OE && int_or_default(cell->params, id("IOREG_OE"), 0))
+            return TMG_ENDPOINT;
+        return TMG_IGNORE;
     }
     if (cell->type == id_MISTRAL_DDROUT) {
         // No characterized GPIO register setup/hold or clock-to-pad arcs.

@@ -7,6 +7,17 @@ from pathlib import Path
 import re
 import subprocess
 
+def clock_route_ok(route, text, routed_path):
+    """A pad clock reached through its DCMUX's default TCLK input has no
+    decoder route line; accept the routed clock reaching that DCMUX."""
+    m = re.match(r"GPIO\.(\d+)\.(\d+)\.\d+:CLK(?:IN|OUT)\.0", route)
+    if not m:
+        return route in text
+    nets = json.loads(Path(routed_path).read_text())["modules"]["top"]["netnames"]
+    routing = " ".join(n.get("attributes", {}).get("ROUTING", "") for n in nets.values())
+    return f"DCMUX.{int(m.group(1))}.{int(m.group(2))}." in routing
+
+
 parser = argparse.ArgumentParser(description=__doc__)
 for key in ("yosys", "nextpnr", "mistral-cv", "output"):
     parser.add_argument("--" + key, required=True, type=Path)
@@ -100,7 +111,7 @@ for route_name in (
     "GPIO.089.008.1:DATAIN.2",
     "GPIO.089.008.1:DATAIN.3",
 ):
-    assert route_name in routes, route_name
+    assert clock_route_ok(route_name, routes, out / "routed.json"), route_name
 print("PASS: fabric DDR bidirectional I/O uses both DQS register directions at 50 MHz", flush=True)
 
 

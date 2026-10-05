@@ -345,9 +345,14 @@ struct MistralBitgen
     void write_io_cell(CellInfo *ci, int x, int y, int bi)
     {
         bool is_output = (ci->type.in(id_MISTRAL_OB, id_MISTRAL_DDROUT, id_MISTRAL_SDROUT, id_MISTRAL_DDRBIDIR) ||
-                          (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr));
+                          (ci->type.in(id_MISTRAL_IO, id_MISTRAL_SDRIO) && ci->getPort(id_OE) != nullptr));
         bool is_input = (ci->type.in(id_MISTRAL_IB, id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR) ||
-                         (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr));
+                         (ci->type.in(id_MISTRAL_IO, id_MISTRAL_SDRIO) &&
+                          (ci->getPort(id_O) != nullptr || ci->getPort(id_Q) != nullptr)));
+        auto ioreg = [&](const char *name) { return int_or_default(ci->params, ctx->id(name), 0) != 0; };
+        const bool in_reg = ci->type == id_MISTRAL_SDRIN || (ci->type == id_MISTRAL_SDRIO && ioreg("IOREG_IN"));
+        const bool out_reg = ci->type == id_MISTRAL_SDROUT || (ci->type == id_MISTRAL_SDRIO && ioreg("IOREG_OUT"));
+        const bool oe_reg = ci->type == id_MISTRAL_SDRIO && ioreg("IOREG_OE");
         auto pos = CycloneV::xycoords{x, y};
         const Arch::IoElectrical io = ctx->get_io_electrical(ci);
         cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_WEAK_PULLUP, bi, io.weak_pullup);
@@ -408,6 +413,23 @@ struct MistralBitgen
                 NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RBOE_LVL_FR_CLK_EN, lane, true));
                 NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::RB_T9_SEL_EREG_CFF_DELAY, lane, 0x1f));
                 NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::RB_T9_SEL_OREG_DFF_DELAY, lane, 0x1f));
+            } else if (has_dqs && ci->type == id_MISTRAL_SDRIO) {
+                // Settings of Quartus 17.0.2 packed I/O registers on a
+                // bidirectional or tri-state pad.
+                auto dp = dqs.p();
+                int lane = dqs.bi();
+                if (out_reg || oe_reg) {
+                    NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::OEREG_HR_CLK_EN, lane, true));
+                    NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RBOE_LVL_FR_CLK_EN, lane, true));
+                } else {
+                    NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::RB_T9_SEL_EREG_CFF_DELAY, lane, 0x1f));
+                }
+                if (out_reg)
+                    NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OUTREG_OUTPUT_SEL, lane, CycloneV::SEL_SDR));
+                if (oe_reg) {
+                    NPNR_ASSERT(cv->bmux_m_set(CycloneV::DQS16, dp, CycloneV::OEREG_OUTPUT_SEL, lane, CycloneV::SEL_1X));
+                    NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::OEREG_POWER_UP_STATE, lane, 1));
+                }
             } else if (has_dqs) {
                 cv->bmux_m_set(CycloneV::DQS16, dqs.p(), CycloneV::INPUT_REG4_SEL, dqs.bi(),
                                CycloneV::SEL_LOCKED_DPA);
@@ -415,13 +437,36 @@ struct MistralBitgen
                                dqs.bi(), 0x1f);
             }
         }
-        if (ci->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR)) {
+        if (ci->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR) || in_reg) {
             auto dqs = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
             NPNR_ASSERT(dqs);
             auto dp = dqs.p();
             int lane = dqs.bi();
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RB_FIFO_WCLK_EN, lane, true));
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, dp, CycloneV::RB_FIFO_WCLK_INV, lane, true));
+        }
+        // I/O register clock enables and the pad's shared asynchronous clear.
+        if (in_reg || out_reg || oe_reg) {
+            auto lane = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
+            NPNR_ASSERT(lane);
+            auto enable = [&](bool used, CycloneV::bmux_type_t mux) {
+                if (used)
+                    NPNR_ASSERT(cv->bmux_b_set(CycloneV::DQS16, lane.p(), mux, lane.bi(), true));
+            };
+            enable(in_reg && ioreg("IOREG_IN_CE"), CycloneV::INPUT_PATH_CE_IN);
+            enable(out_reg && ioreg("IOREG_OUT_CE"), CycloneV::CE_OUTREG_TIEOFF_EN);
+            enable(oe_reg && ioreg("IOREG_OE_CE"), CycloneV::CE_OEREG_TIEOFF_EN);
+            enable(in_reg && ioreg("IOREG_IN_ACLR"), CycloneV::USE_CLR_INREG_EN);
+            enable(out_reg && ioreg("IOREG_OUT_ACLR"), CycloneV::USE_CLR_OUTREG_EN);
+            enable(oe_reg && ioreg("IOREG_OE_ACLR"), CycloneV::OEREG_ACLR_EN);
+            for (auto port : {id_CEIN, id_CEOUT, id_ACLR}) {
+                if (!ci->getPort(port))
+                    continue;
+                auto ptype = port == id_CEIN ? CycloneV::CEIN : (port == id_CEOUT ? CycloneV::CEOUT : CycloneV::ACLR);
+                auto rnode = find_rnode(CycloneV::GPIO, pos, ptype, bi);
+                NPNR_ASSERT(rnode != CycloneV::rnode_coords{});
+                NPNR_ASSERT(cv->inv_set(cv->rc2ri(rnode), ioreg(ctx->idf("IOREG_%s_INV", port.c_str(ctx)).c_str(ctx))));
+            }
         }
         // Explicit delay-chain assignments override the defaults written above.
         set_delay(CycloneV::RB_T1_SEL_IREG_CFF_DELAY, ci->type == id_MISTRAL_SDRIN ? io.d1_delay : -1);
@@ -432,7 +477,8 @@ struct MistralBitgen
         // There seem to be two mirrored OEIN inversion bits for constant OE for inputs/outputs. This might be to
         // prevent a single bitflip from turning inputs to outputs and messing up other devices on the boards, notably
         // ECP5 does similar. OEIN.0 inverted for outputs; OEIN.1 for inputs
-        cv->inv_set(cv->rc2ri(find_rnode(CycloneV::GPIO, pos, CycloneV::OEIN, bi, 0)), is_output);
+        // A registered OE feeds OEIN.0 without inversion (Quartus 17.0.2).
+        cv->inv_set(cv->rc2ri(find_rnode(CycloneV::GPIO, pos, CycloneV::OEIN, bi, 0)), is_output && !oe_reg);
         cv->inv_set(cv->rc2ri(find_rnode(CycloneV::GPIO, pos, CycloneV::OEIN, bi, 1)), !is_output);
     }
 

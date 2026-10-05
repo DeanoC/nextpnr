@@ -52,6 +52,14 @@ void Arch::create_gpio(int x, int y)
         }
         if (has_port(CycloneV::GPIO, x, y, z, CycloneV::DATAIN, 2))
             add_bel_pin(bel, id_Q_L, PORT_OUT, get_port(CycloneV::GPIO, x, y, z, CycloneV::DATAIN, 2));
+        // I/O register clock enables (input; output and OE) and the pad's
+        // shared asynchronous clear.
+        if (has_port(CycloneV::GPIO, x, y, z, CycloneV::CEIN))
+            add_bel_pin(bel, id_CEIN, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::CEIN));
+        if (has_port(CycloneV::GPIO, x, y, z, CycloneV::CEOUT))
+            add_bel_pin(bel, id_CEOUT, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::CEOUT));
+        if (has_port(CycloneV::GPIO, x, y, z, CycloneV::ACLR))
+            add_bel_pin(bel, id_ACLR, PORT_IN, get_port(CycloneV::GPIO, x, y, z, CycloneV::ACLR));
         bel_data(bel).block_index = z;
     }
 }
@@ -65,6 +73,7 @@ bool Arch::is_io_cell(IdString cell_type) const
     case ID_MISTRAL_DDRIN:
     case ID_MISTRAL_OB:
     case ID_MISTRAL_SDROUT:
+    case ID_MISTRAL_SDRIO:
     case ID_MISTRAL_DDROUT:
     case ID_MISTRAL_DDRBIDIR:
     case ID_MISTRAL_IO:
@@ -216,6 +225,11 @@ void Arch::check_io_electrical() const
         if (io.d1_delay >= 0 && ci->type != id_MISTRAL_SDRIN) {
             if (ci->type.in(id_MISTRAL_DDRIN, id_MISTRAL_DDRBIDIR))
                 log_error("IO '%s': D1_DELAY is only supported with FAST_INPUT_REGISTER, not a DDR input.\n",
+                          nameOf(ci));
+            // A bidirectional FAST_INPUT_REGISTER is MISTRAL_SDRIO. The D1 chain
+            // is only written for MISTRAL_SDRIN, so accepting it would drop the delay.
+            if (ci->type == id_MISTRAL_SDRIO)
+                log_error("IO '%s': D1_DELAY on a bidirectional FAST_INPUT_REGISTER is not encoded.\n",
                           nameOf(ci));
             log_warning("IO '%s': D1_DELAY applies only to an input register and is ignored.\n", nameOf(ci));
         }

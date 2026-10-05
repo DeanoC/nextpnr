@@ -1,0 +1,604 @@
+{
+  "tool": "Quartus Prime Lite 17.0.2 Build 602",
+  "device": "5CSEBA6U23I7",
+  "decoder": "mistral-cv decomp",
+  "ignored": [
+    "DQS16 INPUT_REG4_SEL on output lanes (nextpnr default)",
+    "DQS16 RB_T9_SEL_EREG_CFF_DELAY and RB_T9_SEL_OREG_DFF_DELAY on output-only FAST_OUTPUT_REGISTER pads (nextpnr keeps 0x1f; Quartus chooses per design)"
+  ],
+  "designs": {
+    "pads": {
+      "rbf_sha256": "9aabcb5c7b4e1497496b8dea88e56677a5d48ef248f1d059a823c824d214cc27",
+      "rbf_bytes": 7007204,
+      "pins": {
+        "clk": "V11",
+        "d[0]": "V12",
+        "d[1]": "E8",
+        "d[2]": "W12",
+        "d[3]": "D11",
+        "d[4]": "D8",
+        "d[5]": "AH13",
+        "d[6]": "AF7",
+        "d[7]": "AH14",
+        "ce": "AF4",
+        "rst_a": "AH3",
+        "p1": "AH27",
+        "p2": "AG25",
+        "p3": "AH26",
+        "p4": "AH24",
+        "p5": "AF25",
+        "p6": "AG23",
+        "p7": "AF23",
+        "p8": "AG24",
+        "q[0]": "Y15",
+        "q[1]": "AC24",
+        "q[2]": "AA15",
+        "q[3]": "AD26",
+        "q[4]": "AG28"
+      },
+      "decoded": {
+        "AA15": [
+          "i GPIO.064.000.1:OEIN.0 1",
+          "i GPIO.064.000.1:OEIN.1 0",
+          "s DQS16.060.000:RB_T9_SEL_EREG_CFF_DELAY.1 1f",
+          "s GPIO.064.000:DRIVE_STRENGTH.1 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.064.000:IOCSR_STD.1 DIS",
+          "s GPIO.064.000:USE_WEAK_PULLUP.1 0"
+        ],
+        "AA18": [
+          "i HMC.025.000:IOINTDQSBOE.4 0"
+        ],
+        "AA19": [
+          "i HMC.025.000:IOINTDQSOE.4 0"
+        ],
+        "AC22": [
+          "i HMC.025.000:IOINTDQSOE.8 0"
+        ],
+        "AC23": [
+          "i HMC.025.000:IOINTDQSBOE.8 0"
+        ],
+        "AC24": [
+          "i GPIO.089.008.2:OEIN.0 1",
+          "i GPIO.089.008.2:OEIN.1 0",
+          "s DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.10 1f",
+          "s GPIO.089.008:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.089.008:IOCSR_STD.2 DIS",
+          "s GPIO.089.008:USE_WEAK_PULLUP.2 0"
+        ],
+        "AD17": [
+          "i HMC.025.000:IOINTDQOE.28 0"
+        ],
+        "AD19": [
+          "i HMC.025.000:IOINTDQOE.36 0"
+        ],
+        "AD20": [
+          "i HMC.025.000:IOINTDQOE.44 0"
+        ],
+        "AD23": [
+          "i HMC.025.000:IOINTDQSOE.6 0"
+        ],
+        "AD26": [
+          "i GPIO.089.006.3:OEIN.0 1",
+          "i GPIO.089.006.3:OEIN.1 0",
+          "s DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.7 1f",
+          "s GPIO.089.006:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.089.006:IOCSR_STD.3 DIS",
+          "s GPIO.089.006:USE_WEAK_PULLUP.3 0"
+        ],
+        "AE15": [
+          "i HMC.025.000:IOINTDQOE.8 0"
+        ],
+        "AE17": [
+          "i HMC.025.000:IOINTDQOE.26 0"
+        ],
+        "AE19": [
+          "i HMC.025.000:IOINTDQOE.38 0"
+        ],
+        "AE20": [
+          "i HMC.025.000:IOINTDQOE.46 0"
+        ],
+        "AE22": [
+          "i HMC.025.000:IOINTDQSBOE.6 0"
+        ],
+        "AE23": [
+          "i HMC.025.000:IOINTDQOE.72 0"
+        ],
+        "AE24": [
+          "i HMC.025.000:IOINTDQOE.74 0"
+        ],
+        "AF13": [
+          "i HMC.025.000:IOINTDQOE.0 0"
+        ],
+        "AF15": [
+          "i HMC.025.000:IOINTDQOE.10 0"
+        ],
+        "AF17": [
+          "i HMC.025.000:IOINTDQOE.20 0"
+        ],
+        "AF18": [
+          "i HMC.025.000:IOINTDQOE.40 0"
+        ],
+        "AF21": [
+          "i HMC.025.000:IOINTDQOE.54 0"
+        ],
+        "AF22": [
+          "i HMC.025.000:IOINTDQOE.56 0"
+        ],
+        "AF23": [
+          "i HMC.025.000:IOINTDQOE.62 0",
+          "s DQS16.076.000:RB_FIFO_WCLK_EN.5 1",
+          "s DQS16.076.000:RB_FIFO_WCLK_INV.5 1",
+          "s DQS16.076.000:USE_CLR_INREG_EN.5 1",
+          "s GPIO.078.000:USE_WEAK_PULLUP.1 0"
+        ],
+        "AF25": [
+          "i HMC.025.000:IOINTDQOE.82 0",
+          "s DQS16.084.000:INPUT_PATH_CE_IN.4 1",
+          "s DQS16.084.000:RB_FIFO_WCLK_EN.4 1",
+          "s DQS16.084.000:RB_FIFO_WCLK_INV.4 1",
+          "s GPIO.086.000:USE_WEAK_PULLUP.0 0"
+        ],
+        "AF4": [
+          "s GPIO.026.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "AF7": [
+          "s GPIO.034.000:USE_WEAK_PULLUP.2 0"
+        ],
+        "AG10": [
+          "i HMC.025.000:IOINTDQOE.12 0"
+        ],
+        "AG13": [
+          "i HMC.025.000:IOINTDQOE.2 0"
+        ],
+        "AG15": [
+          "i HMC.025.000:IOINTDQOE.30 0"
+        ],
+        "AG16": [
+          "i HMC.025.000:IOINTDQOE.18 0"
+        ],
+        "AG19": [
+          "i HMC.025.000:IOINTDQOE.48 0"
+        ],
+        "AG21": [
+          "i HMC.025.000:IOINTDQOE.58 0"
+        ],
+        "AG23": [
+          "i HMC.025.000:IOINTDQOE.65 0",
+          "s DQS16.076.000:OEREG_HR_CLK_EN.4 1",
+          "s DQS16.076.000:OUTREG_OUTPUT_SEL.4 SEL_SDR",
+          "s DQS16.076.000:RBOE_LVL_FR_CLK_EN.4 1",
+          "s DQS16.076.000:USE_CLR_OUTREG_EN.4 1",
+          "s GPIO.078.000:DRIVE_STRENGTH.0 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.078.000:IOCSR_STD.0 DIS",
+          "s GPIO.078.000:USE_WEAK_PULLUP.0 0"
+        ],
+        "AG24": [
+          "i GPIO.080.000.2:OEIN.1 0",
+          "s DQS16.076.000:OEREG_HR_CLK_EN.2 1",
+          "s DQS16.076.000:OEREG_OUTPUT_SEL.2 SEL_1X",
+          "s DQS16.076.000:OEREG_POWER_UP_STATE.2 1",
+          "s DQS16.076.000:OUTREG_OUTPUT_SEL.2 SEL_SDR",
+          "s DQS16.076.000:RBOE_LVL_FR_CLK_EN.2 1",
+          "s GPIO.080.000:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.080.000:IOCSR_STD.2 DIS",
+          "s GPIO.080.000:USE_WEAK_PULLUP.2 0"
+        ],
+        "AG25": [
+          "i HMC.025.000:IOINTDQOE.80 0",
+          "i HMC.025.000:IOINTDQOE.81 0",
+          "s DQS16.084.000:OEREG_HR_CLK_EN.5 1",
+          "s DQS16.084.000:OEREG_OUTPUT_SEL.5 SEL_1X",
+          "s DQS16.084.000:OEREG_POWER_UP_STATE.5 1",
+          "s DQS16.084.000:RBOE_LVL_FR_CLK_EN.5 1",
+          "s GPIO.086.000:DRIVE_STRENGTH.1 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.086.000:USE_WEAK_PULLUP.1 0"
+        ],
+        "AG26": [
+          "i HMC.025.000:IOINTDQOE.76 0"
+        ],
+        "AG28": [
+          "i HMC.025.000:IOINTDQOE.85 0",
+          "s DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.6 1f",
+          "s GPIO.086.000:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.086.000:IOCSR_STD.2 DIS",
+          "s GPIO.086.000:USE_WEAK_PULLUP.2 0"
+        ],
+        "AG8": [
+          "i HMC.025.000:IOINTDQOE.4 0"
+        ],
+        "AH11": [
+          "i HMC.025.000:IOINTDQOE.14 0"
+        ],
+        "AH12": [
+          "i HMC.025.000:IOINTDQOE.22 0"
+        ],
+        "AH13": [
+          "i HMC.025.000:IOINTDQOE.24 0",
+          "s GPIO.060.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "AH14": [
+          "s GPIO.062.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "AH16": [
+          "i HMC.025.000:IOINTDQOE.32 0"
+        ],
+        "AH18": [
+          "i HMC.025.000:IOINTDQOE.42 0"
+        ],
+        "AH21": [
+          "i HMC.025.000:IOINTDQOE.60 0"
+        ],
+        "AH23": [
+          "i HMC.025.000:IOINTDQOE.66 0"
+        ],
+        "AH24": [
+          "i HMC.025.000:IOINTDQOE.68 1",
+          "i HMC.025.000:IOINTDQOE.69 0",
+          "s DQS16.076.000:CE_OUTREG_TIEOFF_EN.3 1",
+          "s DQS16.076.000:OEREG_HR_CLK_EN.3 1",
+          "s DQS16.076.000:OUTREG_OUTPUT_SEL.3 SEL_SDR",
+          "s DQS16.076.000:RBOE_LVL_FR_CLK_EN.3 1",
+          "s GPIO.080.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.080.000:IOCSR_STD.3 DIS",
+          "s GPIO.080.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "AH26": [
+          "i HMC.025.000:IOINTDQOE.79 0",
+          "s DQS16.084.000:RB_FIFO_WCLK_EN.11 1",
+          "s DQS16.084.000:RB_FIFO_WCLK_INV.11 1",
+          "s DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.11 1f",
+          "s GPIO.084.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.084.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "AH27": [
+          "i GPIO.086.000.3:OEIN.0 1",
+          "i GPIO.086.000.3:OEIN.1 0",
+          "s DQS16.084.000:OEREG_HR_CLK_EN.7 1",
+          "s DQS16.084.000:OUTREG_OUTPUT_SEL.7 SEL_SDR",
+          "s DQS16.084.000:RBOE_LVL_FR_CLK_EN.7 1",
+          "s GPIO.086.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.086.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "AH3": [
+          "s GPIO.036.000:USE_WEAK_PULLUP.2 0"
+        ],
+        "AH8": [
+          "i HMC.025.000:IOINTDQOE.6 0"
+        ],
+        "D11": [
+          "s GPIO.032.081:USE_WEAK_PULLUP.1 0"
+        ],
+        "D8": [
+          "s GPIO.038.081:USE_WEAK_PULLUP.3 0"
+        ],
+        "E8": [
+          "s GPIO.038.081:USE_WEAK_PULLUP.2 0"
+        ],
+        "U13": [
+          "i HMC.025.000:IOINTDQSBOE.0 0"
+        ],
+        "U14": [
+          "i HMC.025.000:IOINTDQSOE.0 0"
+        ],
+        "V11": [
+          "s GPIO.032.000:USE_WEAK_PULLUP.0 0"
+        ],
+        "V12": [
+          "s GPIO.040.000:USE_WEAK_PULLUP.0 0"
+        ],
+        "V13": [
+          "i HMC.025.000:IOINTDQSBOE.2 0"
+        ],
+        "W12": [
+          "s GPIO.040.000:USE_WEAK_PULLUP.1 0"
+        ],
+        "W14": [
+          "i HMC.025.000:IOINTDQSOE.2 0"
+        ],
+        "Y15": [
+          "i GPIO.064.000.0:OEIN.0 1",
+          "i GPIO.064.000.0:OEIN.1 0",
+          "s DQS16.060.000:RB_T9_SEL_EREG_CFF_DELAY.0 1f",
+          "s GPIO.064.000:DRIVE_STRENGTH.0 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.064.000:IOCSR_STD.0 DIS",
+          "s GPIO.064.000:USE_WEAK_PULLUP.0 0"
+        ]
+      }
+    },
+    "bus": {
+      "rbf_sha256": "2ff59b0c721af3dc8d26c4a7ec28941cc4898f1fc3217b0d7b5a533f8d507042",
+      "rbf_bytes": 7007204,
+      "pins": {
+        "clk": "V11",
+        "rst_n": "AF4",
+        "ce_n": "AH3",
+        "d[0]": "V12",
+        "d[1]": "E8",
+        "d[2]": "W12",
+        "d[3]": "D11",
+        "dq[0]": "AH27",
+        "dq[1]": "AG25",
+        "dq[2]": "AH26",
+        "dq[3]": "AF25",
+        "q[0]": "Y15",
+        "q[1]": "AC24",
+        "q[2]": "AA15",
+        "q[3]": "AD26"
+      },
+      "decoded": {
+        "AA15": [
+          "i GPIO.064.000.1:OEIN.0 1",
+          "i GPIO.064.000.1:OEIN.1 0",
+          "s DQS16.060.000:RB_T9_SEL_EREG_CFF_DELAY.1 1f",
+          "s GPIO.064.000:DRIVE_STRENGTH.1 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.064.000:IOCSR_STD.1 DIS",
+          "s GPIO.064.000:USE_WEAK_PULLUP.1 0"
+        ],
+        "AA18": [
+          "i HMC.025.000:IOINTDQSBOE.4 0"
+        ],
+        "AA19": [
+          "i HMC.025.000:IOINTDQSOE.4 0"
+        ],
+        "AC22": [
+          "i HMC.025.000:IOINTDQSOE.8 0"
+        ],
+        "AC23": [
+          "i HMC.025.000:IOINTDQSBOE.8 0"
+        ],
+        "AC24": [
+          "i GPIO.089.008.2:OEIN.0 1",
+          "i GPIO.089.008.2:OEIN.1 0",
+          "s DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.10 1f",
+          "s GPIO.089.008:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.089.008:IOCSR_STD.2 DIS",
+          "s GPIO.089.008:USE_WEAK_PULLUP.2 0"
+        ],
+        "AD17": [
+          "i HMC.025.000:IOINTDQOE.28 0"
+        ],
+        "AD19": [
+          "i HMC.025.000:IOINTDQOE.36 0"
+        ],
+        "AD20": [
+          "i HMC.025.000:IOINTDQOE.44 0"
+        ],
+        "AD23": [
+          "i HMC.025.000:IOINTDQSOE.6 0"
+        ],
+        "AD26": [
+          "i GPIO.089.006.3:OEIN.0 1",
+          "i GPIO.089.006.3:OEIN.1 0",
+          "s DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.7 1f",
+          "s GPIO.089.006:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.089.006:IOCSR_STD.3 DIS",
+          "s GPIO.089.006:USE_WEAK_PULLUP.3 0"
+        ],
+        "AE15": [
+          "i HMC.025.000:IOINTDQOE.8 0"
+        ],
+        "AE17": [
+          "i HMC.025.000:IOINTDQOE.26 0"
+        ],
+        "AE19": [
+          "i HMC.025.000:IOINTDQOE.38 0"
+        ],
+        "AE20": [
+          "i HMC.025.000:IOINTDQOE.46 0"
+        ],
+        "AE22": [
+          "i HMC.025.000:IOINTDQSBOE.6 0"
+        ],
+        "AE23": [
+          "i HMC.025.000:IOINTDQOE.72 0"
+        ],
+        "AE24": [
+          "i HMC.025.000:IOINTDQOE.74 0"
+        ],
+        "AF13": [
+          "i HMC.025.000:IOINTDQOE.0 0"
+        ],
+        "AF15": [
+          "i HMC.025.000:IOINTDQOE.10 0"
+        ],
+        "AF17": [
+          "i HMC.025.000:IOINTDQOE.20 0"
+        ],
+        "AF18": [
+          "i HMC.025.000:IOINTDQOE.40 0"
+        ],
+        "AF21": [
+          "i HMC.025.000:IOINTDQOE.54 0"
+        ],
+        "AF22": [
+          "i HMC.025.000:IOINTDQOE.56 0"
+        ],
+        "AF23": [
+          "i HMC.025.000:IOINTDQOE.62 0"
+        ],
+        "AF25": [
+          "i GPIO.086.000.0:ACLR 1",
+          "i GPIO.086.000.0:CEIN 1",
+          "i GPIO.086.000.0:CEOUT 1",
+          "i HMC.025.000:IOINTDQOE.82 0",
+          "i HMC.025.000:IOINTDQOE.83 0",
+          "s DQS16.084.000:CE_OEREG_TIEOFF_EN.4 1",
+          "s DQS16.084.000:CE_OUTREG_TIEOFF_EN.4 1",
+          "s DQS16.084.000:INPUT_PATH_CE_IN.4 1",
+          "s DQS16.084.000:OEREG_ACLR_EN.4 1",
+          "s DQS16.084.000:OEREG_HR_CLK_EN.4 1",
+          "s DQS16.084.000:OEREG_OUTPUT_SEL.4 SEL_1X",
+          "s DQS16.084.000:OEREG_POWER_UP_STATE.4 1",
+          "s DQS16.084.000:OUTREG_OUTPUT_SEL.4 SEL_SDR",
+          "s DQS16.084.000:RBOE_LVL_FR_CLK_EN.4 1",
+          "s DQS16.084.000:RB_FIFO_WCLK_EN.4 1",
+          "s DQS16.084.000:RB_FIFO_WCLK_INV.4 1",
+          "s DQS16.084.000:USE_CLR_INREG_EN.4 1",
+          "s DQS16.084.000:USE_CLR_OUTREG_EN.4 1",
+          "s GPIO.086.000:DRIVE_STRENGTH.0 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.086.000:USE_WEAK_PULLUP.0 0"
+        ],
+        "AF4": [
+          "s GPIO.026.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "AG10": [
+          "i HMC.025.000:IOINTDQOE.12 0"
+        ],
+        "AG13": [
+          "i HMC.025.000:IOINTDQOE.2 0"
+        ],
+        "AG15": [
+          "i HMC.025.000:IOINTDQOE.30 0"
+        ],
+        "AG16": [
+          "i HMC.025.000:IOINTDQOE.18 0"
+        ],
+        "AG19": [
+          "i HMC.025.000:IOINTDQOE.48 0"
+        ],
+        "AG21": [
+          "i HMC.025.000:IOINTDQOE.58 0"
+        ],
+        "AG23": [
+          "i HMC.025.000:IOINTDQOE.64 0"
+        ],
+        "AG25": [
+          "i GPIO.086.000.1:ACLR 1",
+          "i GPIO.086.000.1:CEIN 1",
+          "i GPIO.086.000.1:CEOUT 1",
+          "i HMC.025.000:IOINTDQOE.80 0",
+          "i HMC.025.000:IOINTDQOE.81 0",
+          "s DQS16.084.000:CE_OEREG_TIEOFF_EN.5 1",
+          "s DQS16.084.000:CE_OUTREG_TIEOFF_EN.5 1",
+          "s DQS16.084.000:INPUT_PATH_CE_IN.5 1",
+          "s DQS16.084.000:OEREG_ACLR_EN.5 1",
+          "s DQS16.084.000:OEREG_HR_CLK_EN.5 1",
+          "s DQS16.084.000:OEREG_OUTPUT_SEL.5 SEL_1X",
+          "s DQS16.084.000:OEREG_POWER_UP_STATE.5 1",
+          "s DQS16.084.000:OUTREG_OUTPUT_SEL.5 SEL_SDR",
+          "s DQS16.084.000:RBOE_LVL_FR_CLK_EN.5 1",
+          "s DQS16.084.000:RB_FIFO_WCLK_EN.5 1",
+          "s DQS16.084.000:RB_FIFO_WCLK_INV.5 1",
+          "s DQS16.084.000:USE_CLR_INREG_EN.5 1",
+          "s DQS16.084.000:USE_CLR_OUTREG_EN.5 1",
+          "s GPIO.086.000:DRIVE_STRENGTH.1 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.086.000:USE_WEAK_PULLUP.1 0"
+        ],
+        "AG26": [
+          "i HMC.025.000:IOINTDQOE.76 0"
+        ],
+        "AG28": [
+          "i HMC.025.000:IOINTDQOE.84 0"
+        ],
+        "AG8": [
+          "i HMC.025.000:IOINTDQOE.4 0"
+        ],
+        "AH11": [
+          "i HMC.025.000:IOINTDQOE.14 0"
+        ],
+        "AH12": [
+          "i HMC.025.000:IOINTDQOE.22 0"
+        ],
+        "AH13": [
+          "i HMC.025.000:IOINTDQOE.24 0"
+        ],
+        "AH16": [
+          "i HMC.025.000:IOINTDQOE.32 0"
+        ],
+        "AH18": [
+          "i HMC.025.000:IOINTDQOE.42 0"
+        ],
+        "AH21": [
+          "i HMC.025.000:IOINTDQOE.60 0"
+        ],
+        "AH23": [
+          "i HMC.025.000:IOINTDQOE.66 0"
+        ],
+        "AH26": [
+          "i GPIO.084.000.3:ACLR 1",
+          "i GPIO.084.000.3:CEIN 1",
+          "i GPIO.084.000.3:CEOUT 1",
+          "i HMC.025.000:IOINTDQOE.78 0",
+          "i HMC.025.000:IOINTDQOE.79 0",
+          "s DQS16.084.000:CE_OEREG_TIEOFF_EN.11 1",
+          "s DQS16.084.000:CE_OUTREG_TIEOFF_EN.11 1",
+          "s DQS16.084.000:INPUT_PATH_CE_IN.11 1",
+          "s DQS16.084.000:OEREG_ACLR_EN.11 1",
+          "s DQS16.084.000:OEREG_HR_CLK_EN.11 1",
+          "s DQS16.084.000:OEREG_OUTPUT_SEL.11 SEL_1X",
+          "s DQS16.084.000:OEREG_POWER_UP_STATE.11 1",
+          "s DQS16.084.000:OUTREG_OUTPUT_SEL.11 SEL_SDR",
+          "s DQS16.084.000:RBOE_LVL_FR_CLK_EN.11 1",
+          "s DQS16.084.000:RB_FIFO_WCLK_EN.11 1",
+          "s DQS16.084.000:RB_FIFO_WCLK_INV.11 1",
+          "s DQS16.084.000:USE_CLR_INREG_EN.11 1",
+          "s DQS16.084.000:USE_CLR_OUTREG_EN.11 1",
+          "s GPIO.084.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.084.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "AH27": [
+          "i GPIO.086.000.3:ACLR 1",
+          "i GPIO.086.000.3:CEIN 1",
+          "i GPIO.086.000.3:CEOUT 1",
+          "i GPIO.086.000.3:OEIN.1 0",
+          "s DQS16.084.000:CE_OEREG_TIEOFF_EN.7 1",
+          "s DQS16.084.000:CE_OUTREG_TIEOFF_EN.7 1",
+          "s DQS16.084.000:INPUT_PATH_CE_IN.7 1",
+          "s DQS16.084.000:OEREG_ACLR_EN.7 1",
+          "s DQS16.084.000:OEREG_HR_CLK_EN.7 1",
+          "s DQS16.084.000:OEREG_OUTPUT_SEL.7 SEL_1X",
+          "s DQS16.084.000:OEREG_POWER_UP_STATE.7 1",
+          "s DQS16.084.000:OUTREG_OUTPUT_SEL.7 SEL_SDR",
+          "s DQS16.084.000:RBOE_LVL_FR_CLK_EN.7 1",
+          "s DQS16.084.000:RB_FIFO_WCLK_EN.7 1",
+          "s DQS16.084.000:RB_FIFO_WCLK_INV.7 1",
+          "s DQS16.084.000:USE_CLR_INREG_EN.7 1",
+          "s DQS16.084.000:USE_CLR_OUTREG_EN.7 1",
+          "s GPIO.086.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.086.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "AH3": [
+          "s GPIO.036.000:USE_WEAK_PULLUP.2 0"
+        ],
+        "AH8": [
+          "i HMC.025.000:IOINTDQOE.6 0"
+        ],
+        "D11": [
+          "s GPIO.032.081:USE_WEAK_PULLUP.1 0"
+        ],
+        "E8": [
+          "s GPIO.038.081:USE_WEAK_PULLUP.2 0"
+        ],
+        "U13": [
+          "i HMC.025.000:IOINTDQSBOE.0 0"
+        ],
+        "U14": [
+          "i HMC.025.000:IOINTDQSOE.0 0"
+        ],
+        "V11": [
+          "s GPIO.032.000:USE_WEAK_PULLUP.0 0"
+        ],
+        "V12": [
+          "s GPIO.040.000:USE_WEAK_PULLUP.0 0"
+        ],
+        "V13": [
+          "i HMC.025.000:IOINTDQSBOE.2 0"
+        ],
+        "W12": [
+          "s GPIO.040.000:USE_WEAK_PULLUP.1 0"
+        ],
+        "W14": [
+          "i HMC.025.000:IOINTDQSOE.2 0"
+        ],
+        "Y15": [
+          "i GPIO.064.000.0:OEIN.0 1",
+          "i GPIO.064.000.0:OEIN.1 0",
+          "s DQS16.060.000:RB_T9_SEL_EREG_CFF_DELAY.0 1f",
+          "s GPIO.064.000:DRIVE_STRENGTH.0 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "s GPIO.064.000:IOCSR_STD.0 DIS",
+          "s GPIO.064.000:USE_WEAK_PULLUP.0 0"
+        ]
+      }
+    }
+  }
+}

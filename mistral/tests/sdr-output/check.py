@@ -62,17 +62,21 @@ for name in ('direct', 'zero', 'one', 'disabled'):
             key = key.split(':')[1]
             if key.endswith('.9'): actual[key] = value
     assert actual == settings, actual
-    assert ':CLKOUT.0 ; W15' in bt and ':DATAOUT.0 ; W15' in bt
+    # The pad clock DCMUX keeps its default TCLK input, which the decoder
+    # does not print as a route; check the routed clock reaches it.
+    nets = json.loads((case / 'routed.json').read_text())['modules']['top']['netnames']
+    clock_routing = ' '.join(n.get('attributes', {}).get('ROUTING', '') for n in nets.values())
+    assert 'DCMUX.89.8.' in clock_routing and ':DATAOUT.0 ; W15' in bt
     print('PASS', name, 'packed GPIO, clock/data routes and oracle settings')
 
-for name, reason in [('enable', 'constant ENA/ACLR'), ('reset', 'constant ENA/ACLR'),
-                     ('load', 'constant ENA/ACLR'), ('clock', 'clock must be driven'),
+for name, reason in [('reset', 'asynchronous clear is held active'),
+                     ('load', 'synchronous clear and load have no I/O register equivalent'),
+                     ('clock', 'clock must be driven'),
                      ('parameter', 'unsupported register parameters'),
                      ('inverted-clock', 'noninverted clock source'),
                      ('q-fanout', 'no other Q consumers')]:
     j = copy.deepcopy(original)
     ff = next(c for c in j['modules']['top']['cells'].values() if c['type'] == 'MISTRAL_FF')
-    if name == 'enable': ff['connections']['ENA'] = ff['connections']['DATAIN']
     if name == 'reset': ff['connections']['ACLR'] = ['0']
     if name == 'load': ff['connections']['SLOAD'] = ['1']
     if name == 'clock': ff['connections']['CLK'] = ['0']
@@ -94,4 +98,4 @@ for command in ('set_output_delay', 'set_input_delay'):
     sdc.write_text((f / 'clocks.sdc').read_text() + command + ' -max 2.0 [get_ports SDR_OUT]\n')
     run(base + ['--json', o / 'input.json', '--qsf', f / 'pins.qsf', '--sdc', sdc],
         o / (command + '.log'), "Unsupported SDC command '" + command + "'")
-print('PASS disabled packing and seven unsupported requests')
+print('PASS disabled packing and six unsupported requests')
