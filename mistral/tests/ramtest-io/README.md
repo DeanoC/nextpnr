@@ -428,3 +428,61 @@ return assumptions can fail. The model reproduces the consumed cycle but
 does not establish physical board delays. The user's Quartus 100 MHz hardware
 pass remains the baseline observation; its exact bitstream identity is still
 pending, so the recent Quartus refits must not inherit that hardware result.
+
+## Historical command and bus-turnaround audit
+
+`legacy_sequence.py` runs the original controller and its original `mem_channel`
+client without editing either source. Six patterns over four words at each of
+five bases exercise low addresses, row A9/A12, column carry and chip-select
+carry. The fixture observes actual output changes after nonblocking assignments
+and command capture on the ideal forwarded clock. The board selects the second
+chip through inverted chip-select, so both select polarities are included.
+
+```sh
+python3 mistral/tests/ramtest-io/legacy_sequence.py \
+  --source-root /path/to/historical/sources/misteross \
+  --replay-root /tmp/nextpnr-135-investigation \
+  --output /tmp/historical-sequence
+```
+
+The replay root must contain `baseline-replay-passing` and
+`baseline-replay-failing` from the exact-artifact replay above. Source hashes
+reject newer diagnostic RTL; probe RBF hashes must match the historical
+artifacts. `legacy-sequence-reference.json` records the resulting 480 commands.
+Across these scans, every address/bank/command bit has a transition only 5 ns
+before chip capture. Every write data bit has at least 35 ns between its last
+change and capture. Thus treating all outputs as equally critical would hide
+the actual controller schedule.
+
+The largest address regressions map to these physical ports:
+
+| Port | Pin | Passing native arrival | Failing native arrival | Increase |
+| --- | --- | ---: | ---: | ---: |
+| A9 | C12 | 6.306 ns | 8.797 ns | 2.491 ns |
+| A10 | AB26 | 4.421 ns | 6.676 ns | 2.255 ns |
+| A12 | D12 | 6.999 ns | 8.959 ns | 1.960 ns |
+
+These arrivals include native launch-clock, fabric register and routing delay
+to the internal GPIO input boundary. They omit unqualified unregistered pad
+and board delays. For an address that changes 5 ns before ideal chip capture,
+the setup condition is `arrival + pad/board + tIS <= 5 + chip-clock-delay`.
+The reference records `arrival + 1.5 - 5` as a **lower bound on the required
+chip-clock delay**, with missing pad/board delay set to zero. It is not a slack
+verdict, and independently chosen extrema do not establish correlated timing.
+
+The minimum ideal write-OE-release to next read-drive interval is 115 ns
+(CAS2, burst1, `tLZ_min=0`). In the reverse direction, using `tHZ_max=5.4 ns`,
+the interval from latest read release to next write-OE assertion is 59.6 ns.
+The -6 timing parameters come from Table 16 of the
+[Etron datasheet](https://etron.com/wp-content/uploads/2022/04/EM63B165TSBM_Rev-2.4.pdf).
+Worst native OE boundary arrivals are 6.339 ns passing and 7.242 ns failing.
+These route changes are small relative to the observed turnaround opportunities;
+they do not support the earlier suspicion of a tight OE bus handoff in this
+historical controller. This does not qualify electrical contention timing.
+
+Address setup is the stronger lead from this audit. Input capture routing and
+command skew remain possible causes. STA path maxima may not be sensitized by
+every simulated transition, and neither this ideal-clock trace nor the route
+comparison proves which path caused the hardware failure. The next useful
+experiment should preserve the original RTL/capture schedule and change the
+suspect placement/routing, with an identifiable artifact for hardware comparison.
