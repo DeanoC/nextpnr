@@ -380,6 +380,9 @@ class CollectorTests(unittest.TestCase):
         if (isinstance(command, list) and command and
                 Path(command[0]).name.startswith("nextpnr-mistral") and "--rbf" not in command):
             command = list(command) + ["--rbf", "{bitstream}"]
+        if (isinstance(command, list) and command and
+                Path(command[0]).name.startswith("nextpnr-mistral") and "--report" not in command):
+            command = list(command) + ["--report", "{report}"]
         if isinstance(command, list) and command and "{seed}" not in command:
             command = list(command) + ["{seed}"]
         input_path = Path(temporary) / "netlist.json"
@@ -1282,6 +1285,17 @@ if seed == 4: sys.exit(1)
             del manifest["command"][rbf_index:rbf_index + 2]
             with self.assertRaisesRegex(ValueError, "final analogue signoff"):
                 seed_racing.Collector(manifest, Path(temporary) / "missing-rbf").run()
+
+            manifest = self.manifest(temporary, command, seeds=[1])
+            report_index = manifest["command"].index("--report")
+            del manifest["command"][report_index:report_index + 2]
+            with self.assertRaisesRegex(ValueError, "final timing evidence"):
+                seed_racing.Collector(manifest, Path(temporary) / "missing-report").run()
+
+            manifest = self.manifest(temporary, command, seeds=[1])
+            del manifest["artifacts"]["bitstream"]
+            with self.assertRaisesRegex(ValueError, "descriptor-bound artifacts"):
+                seed_racing.Collector(manifest, Path(temporary) / "missing-artifact").run()
 
     def test_explicit_cpu_mistral_collection_is_rejected_without_terminal_telemetry(self):
         with tempfile.TemporaryDirectory() as temporary:

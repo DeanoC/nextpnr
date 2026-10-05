@@ -1027,6 +1027,16 @@ class Collector:
             raise ValueError(
                 "nextpnr-mistral seed-racing collection requires exactly one "
                 "--rbf {bitstream} binding so final analogue signoff runs")
+        if _option_values(command, "--report") != ["{report}"]:
+            raise ValueError(
+                "nextpnr-mistral seed-racing collection requires exactly one "
+                "--report {report} binding for final timing evidence")
+        missing_artifacts = {"telemetry", "final_report", "bitstream"}.difference(
+            self.manifest["artifacts"])
+        if missing_artifacts:
+            raise ValueError(
+                "nextpnr-mistral seed-racing collection requires descriptor-bound artifacts: " +
+                ", ".join(sorted(missing_artifacts)))
         for option in ("--json", "--read"):
             for value in _option_values(command, option):
                 base = Path(self.manifest["cwd"] or os.getcwd())
