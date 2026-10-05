@@ -262,6 +262,8 @@ struct TimingAnalyser
         PerDomainPair(ClockDomainPairKey key) : key(key) {};
         ClockDomainPairKey key;
         DelayPair period{0};
+        bool timed = false;
+        delay_t multicycle_extra = 0; // included in period; setup only
         delay_t worst_setup_slack, worst_hold_slack;
     };
 

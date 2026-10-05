@@ -18,8 +18,11 @@
  */
 
 #include "gtest/gtest.h"
+#include "log.h"
 #include "nextpnr.h"
 #include "timing.h"
+
+#include <sstream>
 
 USING_NEXTPNR_NAMESPACE
 
@@ -108,4 +111,153 @@ TEST(Timing, RelatedClockPhase)
             }
         }
     }
+}
+
+namespace {
+
+void add_clock(Context &ctx, NetInfo *net, delay_t period)
+{
+    net->clkconstr = std::make_unique<ClockConstraint>();
+    net->clkconstr->period = DelayPair(period);
+    net->clkconstr->high = DelayPair(period / 2);
+    net->clkconstr->low = DelayPair(period / 2);
+}
+
+// Two clocks from one root through unequal combinational delays, plus one
+// data path from launch to capture. The reported path uses cell delays: the
+// route is unplaced, so the clock-to-clock segment is what the gate sees.
+void build_skewed_clocks(Context &ctx, delay_t delay_a, delay_t delay_b)
+{
+    auto ref = ctx.createNet(ctx.id("ref"));
+    auto clk_a = ctx.createNet(ctx.id("clk_a"));
+    auto clk_b = ctx.createNet(ctx.id("clk_b"));
+    auto data = ctx.createNet(ctx.id("data"));
+    auto osc = ctx.createCell(ctx.id("osc"), ctx.id("OSC"));
+    auto buf_a = ctx.createCell(ctx.id("buf_a"), ctx.id("BUF"));
+    auto buf_b = ctx.createCell(ctx.id("buf_b"), ctx.id("BUF"));
+    auto source = ctx.createCell(ctx.id("source"), ctx.id("FF"));
+    auto sink = ctx.createCell(ctx.id("sink"), ctx.id("FF"));
+    auto y = ctx.id("Y"), i = ctx.id("I"), o = ctx.id("O");
+    auto c = ctx.id("CLK"), q = ctx.id("Q"), d = ctx.id("D");
+    osc->addOutput(y);
+    osc->connectPort(y, ref);
+    buf_a->addInput(i);
+    buf_a->addOutput(o);
+    buf_b->addInput(i);
+    buf_b->addOutput(o);
+    buf_a->connectPort(i, ref);
+    buf_a->connectPort(o, clk_a);
+    buf_b->connectPort(i, ref);
+    buf_b->connectPort(o, clk_b);
+    ctx.addCellTimingDelay(buf_a->name, i, o, delay_a);
+    ctx.addCellTimingDelay(buf_b->name, i, o, delay_b);
+    source->addInput(c);
+    source->addOutput(q);
+    sink->addInput(c);
+    sink->addInput(d);
+    source->connectPort(c, clk_a);
+    source->connectPort(q, data);
+    sink->connectPort(c, clk_b);
+    sink->connectPort(d, data);
+    ctx.addCellTimingClock(source->name, c);
+    ctx.addCellTimingClock(sink->name, c);
+    ctx.addCellTimingClockToOut(source->name, q, c, 2);
+    ctx.addCellTimingSetupHold(sink->name, d, c, 1, 0);
+    add_clock(ctx, clk_a, 10);
+    add_clock(ctx, clk_b, 10);
+    TimingAnalyser timing(&ctx);
+    timing.setup();
+    timing.run(false, false, false, true);
+    ctx.timing_result = timing.get_timing_result();
+}
+
+bool clock_to_clock_segment(const TimingResult &result)
+{
+    for (const auto &path : result.xclock_paths)
+        for (const auto &segment : path.segments)
+            if (segment.type == CriticalPath::Segment::Type::CLK_TO_CLK && !is_zero_delay(segment.delay))
+                return true;
+    return false;
+}
+
+bool timing_gate(Context &ctx, std::string &log)
+{
+    std::ostringstream captured;
+    log_streams.emplace_back(&captured, LogLevel::LOG_MSG);
+    had_nonfatal_error = false;
+    bool met = ctx.log_timing_results(ctx.timing_result, false, true, false, true);
+    log_streams.pop_back();
+    log = captured.str();
+    return met && !had_nonfatal_error;
+}
+
+} // namespace
+
+// A shared driver gives the crossing a clock-to-clock segment. Without a cut
+// that segment fails a 100 MHz target. set_false_path must not.
+TEST(Timing, CutRelatedClockDoesNotFailGate)
+{
+    Context open(ArchArgs{});
+    open.settings[open.id("target_freq")] = 100e6;
+    build_skewed_clocks(open, 20, 1);
+    EXPECT_TRUE(clock_to_clock_segment(open.timing_result));
+    std::string open_log;
+    EXPECT_FALSE(timing_gate(open, open_log));
+    EXPECT_NE(open_log.find("Max frequency for"), std::string::npos) << open_log;
+    EXPECT_NE(open_log.find("FAIL"), std::string::npos) << open_log;
+
+    Context cut(ArchArgs{});
+    cut.settings[cut.id("target_freq")] = 100e6;
+    BaseCtx::SdcClockException exception;
+    exception.false_path = true;
+    exception.from = {"clk_a"};
+    exception.to = {"clk_b"};
+    cut.sdc_clock_exceptions.push_back(exception);
+    build_skewed_clocks(cut, 20, 1);
+    EXPECT_TRUE(clock_to_clock_segment(cut.timing_result));
+    std::string cut_log;
+    EXPECT_TRUE(timing_gate(cut, cut_log)) << cut_log;
+    EXPECT_EQ(cut_log.find("FAIL"), std::string::npos) << cut_log;
+    EXPECT_NE(cut_log.find("Max delay"), std::string::npos) << cut_log;
+}
+
+// 2 ns clock-to-Q + 27 ns route + 1 ns setup on a 20 ns clock. -setup 2
+// makes setup slack +10 ns. The single-cycle histogram value is -10 ns.
+TEST(Timing, MulticycleSlackHistogram)
+{
+    Context ctx(ArchArgs{});
+    ctx.settings[ctx.id("target_freq")] = 50e6;
+    auto clk = ctx.createNet(ctx.id("clk"));
+    add_clock(ctx, clk, 20);
+    auto data = ctx.createNet(ctx.id("data"));
+    auto source = ctx.createCell(ctx.id("source"), ctx.id("FF"));
+    auto sink = ctx.createCell(ctx.id("sink"), ctx.id("FF"));
+    auto c = ctx.id("CLK"), q = ctx.id("Q"), d = ctx.id("D");
+    source->addInput(c);
+    source->addOutput(q);
+    sink->addInput(c);
+    sink->addInput(d);
+    source->connectPort(c, clk);
+    source->connectPort(q, data);
+    sink->connectPort(c, clk);
+    sink->connectPort(d, data);
+    ctx.addCellTimingClock(source->name, c);
+    ctx.addCellTimingClock(sink->name, c);
+    ctx.addCellTimingClockToOut(source->name, q, c, 2);
+    ctx.addCellTimingSetupHold(sink->name, d, c, 1, 0);
+    BaseCtx::SdcClockException exception;
+    exception.false_path = false;
+    exception.setup_multiplier = 2;
+    exception.from = {"clk"};
+    exception.to = {"clk"};
+    ctx.sdc_clock_exceptions.push_back(exception);
+
+    TimingAnalyser timing(&ctx);
+    timing.setup();
+    timing.set_route_delay(CellPortKey(sink->name, d), DelayPair(27));
+    timing.run(false, false, true, true);
+    EXPECT_FLOAT_EQ(timing.get_setup_slack(CellPortKey(sink->name, d)), 10);
+    const auto &histogram = timing.get_timing_result().slack_histogram;
+    EXPECT_EQ(histogram.count(10000), 1u);
+    EXPECT_EQ(histogram.count(-10000), 0u);
 }

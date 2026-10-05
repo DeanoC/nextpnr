@@ -23,6 +23,7 @@
 #include "nextpnr.h"
 
 #include <algorithm>
+#include <cctype>
 #include <iterator>
 
 NEXTPNR_NAMESPACE_BEGIN
@@ -35,6 +36,7 @@ struct SdcEntity
         ENTITY_PORT,
         ENTITY_NET,
         ENTITY_PIN,
+        ENTITY_CLOCK, // name is a clock name pattern
     } type;
     IdString name;
     IdString pin; // for cell pins only
@@ -252,10 +254,12 @@ struct SDCParser
             return cmd_create_clock(arguments);
         else if (cmd == "set_false_path")
             return cmd_set_false_path(arguments);
+        else if (cmd == "set_multicycle_path")
+            return cmd_set_multicycle_path(arguments);
         else if (cmd == "derive_pll_clocks" || cmd == "derive_clock_uncertainty")
             return cmd_ignored(arguments);
         else if (cmd == "set_clock_groups")
-            return cmd_ignored(arguments);
+            return cmd_set_clock_groups(arguments);
         else
             log_error("Unsupported SDC command '%s'\n", cmd.c_str());
     }
@@ -354,29 +358,201 @@ struct SDCParser
         return pins;
     }
 
+    // Split a Tcl list such as {clk_a clk_b} (already stripped of braces).
+    static std::vector<std::string> split_list(const std::string &s)
+    {
+        std::vector<std::string> items;
+        std::string item;
+        for (char c : s) {
+            if (std::isspace(static_cast<unsigned char>(c))) {
+                if (!item.empty())
+                    items.push_back(item);
+                item.clear();
+            } else {
+                item += c;
+            }
+        }
+        if (!item.empty())
+            items.push_back(item);
+        return items;
+    }
+
     SdcValue cmd_get_clocks(const std::vector<SdcValue> &arguments)
     {
-        // Clock names are created from the placed PLL cells and explicit
-        // create_clock constraints in nextpnr.  Keep Quartus clock selectors
-        // valid for compatibility commands without inventing a second clock
-        // namespace or changing timing analysis.
-        (void)arguments;
-        return std::vector<SdcEntity>{};
+        // Clock names are patterns resolved against create_clock names and
+        // clock net names when timing analysis meets the clock, because PLL
+        // output clocks only exist after packing.
+        std::vector<SdcEntity> clocks;
+        for (int i = 1; i < int(arguments.size()); i++) {
+            auto &arg = arguments.at(i);
+            if (!arg.is_string)
+                log_error("get_clocks expected string arguments (line %d)\n", lineno);
+            if (!arg.str.empty() && arg.str.at(0) == '-')
+                log_error("unsupported argument '%s' to get_clocks (line %d)\n", arg.str.c_str(), lineno);
+            for (const auto &name : split_list(arg.str))
+                clocks.emplace_back(SdcEntity::ENTITY_CLOCK, ctx->id(name));
+        }
+        return clocks;
     }
 
     SdcValue cmd_ignored(const std::vector<SdcValue> &arguments)
     {
-        // Quartus derives PLL clocks from the primitive during packing.  The
-        // uncertainty and clock-group commands carry no equivalent metadata
-        // in the current nextpnr timing model, so accepting them is a
+        // Quartus derives PLL clocks from the primitive during packing and
+        // nextpnr has no clock uncertainty model, so accepting these is a
         // deliberate no-op that allows the same SDC to be shared.
         (void)arguments;
         return std::string{};
     }
 
+    // Clock patterns of a -group/-from/-to value: a get_clocks result or a
+    // plain list of clock names.
+    std::vector<std::string> clock_patterns(const SdcValue &value, const char *cmd)
+    {
+        std::vector<std::string> patterns;
+        if (value.is_string)
+            return split_list(value.str);
+        for (const auto &ety : value.list) {
+            if (ety.type != SdcEntity::ENTITY_CLOCK)
+                log_error("%s expects clocks here (line %d)\n", cmd, lineno);
+            patterns.push_back(ety.name.str(ctx));
+        }
+        return patterns;
+    }
+
+    static bool is_clock_list(const SdcValue &value)
+    {
+        return !value.is_string && !value.list.empty() &&
+               std::all_of(value.list.begin(), value.list.end(),
+                           [](const SdcEntity &e) { return e.type == SdcEntity::ENTITY_CLOCK; });
+    }
+
+    SdcValue cmd_set_clock_groups(const std::vector<SdcValue> &arguments)
+    {
+        std::vector<std::vector<std::string>> groups;
+        bool kind = false;
+        for (int i = 1; i < int(arguments.size()); i++) {
+            auto &arg = arguments.at(i);
+            if (!arg.is_string)
+                log_error("set_clock_groups expected an option (line %d)\n", lineno);
+            const std::string &s = arg.str;
+            if (s == "-asynchronous" || s == "-exclusive" || s == "-logically_exclusive" ||
+                s == "-physically_exclusive") {
+                kind = true;
+            } else if (s == "-group" || s == "-name") {
+                if (++i >= int(arguments.size()))
+                    log_error("missing value for %s (line %d)\n", s.c_str(), lineno);
+                if (s == "-group")
+                    groups.push_back(clock_patterns(arguments.at(i), "set_clock_groups -group"));
+            } else {
+                log_error("unsupported argument '%s' to set_clock_groups (line %d)\n", s.c_str(), lineno);
+            }
+        }
+        if (!kind)
+            log_error("set_clock_groups needs -asynchronous, -exclusive, -logically_exclusive or "
+                      "-physically_exclusive (line %d)\n",
+                      lineno);
+        if (groups.empty())
+            log_error("set_clock_groups needs at least one -group (line %d)\n", lineno);
+        ctx->sdc_clock_groups.push_back(groups);
+        return std::string{};
+    }
+
+    SdcValue cmd_set_multicycle_path(const std::vector<SdcValue> &arguments)
+    {
+        BaseCtx::SdcClockException exception;
+        exception.false_path = false;
+        bool setup = false, hold = false, have_value = false, have_hold_value = false;
+        int value = 1, hold_value = 0;
+        // A number written after -setup or -hold belongs to that option, so
+        // `-setup 2 -hold 1` is one command rather than a stray argument.
+        auto take_multiplier = [&](int &index, int &out) {
+            if (index + 1 >= int(arguments.size()))
+                return false;
+            const auto &next = arguments.at(index + 1);
+            if (!next.is_string || next.str.empty() || next.str.at(0) == '-')
+                return false;
+            try {
+                out = std::stoi(next.str);
+            } catch (std::exception &) {
+                return false;
+            }
+            ++index;
+            return true;
+        };
+        for (int i = 1; i < int(arguments.size()); i++) {
+            auto &arg = arguments.at(i);
+            if (!arg.is_string)
+                log_error("set_multicycle_path expected an option or path multiplier (line %d)\n", lineno);
+            const std::string &s = arg.str;
+            if (s == "-setup") {
+                setup = true;
+                int parsed = 0;
+                if (take_multiplier(i, parsed)) {
+                    value = parsed;
+                    have_value = true;
+                }
+            } else if (s == "-hold") {
+                hold = true;
+                int parsed = 0;
+                if (take_multiplier(i, parsed)) {
+                    hold_value = parsed;
+                    have_hold_value = true;
+                }
+            } else if (s == "-start") {
+                exception.start = true;
+            } else if (s == "-end") {
+                exception.start = false;
+            } else if (s == "-from" || s == "-to") {
+                if (++i >= int(arguments.size()))
+                    log_error("missing value for %s (line %d)\n", s.c_str(), lineno);
+                auto &val = arguments.at(i);
+                if (!is_clock_list(val))
+                    log_error("set_multicycle_path supports only clock -from/-to targets (line %d)\n", lineno);
+                (s == "-from" ? exception.from : exception.to) = clock_patterns(val, "set_multicycle_path");
+            } else if (!s.empty() && s.at(0) != '-' && !have_value) {
+                try {
+                    value = std::stoi(s);
+                } catch (std::exception &) {
+                    log_error("invalid path multiplier '%s' to set_multicycle_path (line %d)\n", s.c_str(), lineno);
+                }
+                have_value = true;
+            } else {
+                log_error("unsupported argument '%s' to set_multicycle_path (line %d)\n", s.c_str(), lineno);
+            }
+        }
+        if (!have_value && have_hold_value) {
+            value = hold_value;
+            have_value = true;
+        }
+        if (!have_value || value < 0)
+            log_error("set_multicycle_path needs a non-negative path multiplier (line %d)\n", lineno);
+        // Hold stays on the single-cycle edge. A hold-only command records
+        // nothing; -setup and -hold on one command still record the setup.
+        int reported_hold = have_hold_value ? hold_value : value;
+        if (hold && !setup) {
+            log_warning("set_multicycle_path -hold %d: hold checks keep the single-cycle relationship "
+                        "(line %d)\n",
+                        reported_hold, lineno);
+            return std::string{};
+        }
+        if (hold)
+            log_warning("set_multicycle_path -hold %d is ignored; hold checks keep the single-cycle "
+                        "relationship (line %d)\n",
+                        reported_hold, lineno);
+        if (value < 1)
+            log_error("set_multicycle_path -setup needs a multiplier of at least 1 (line %d)\n", lineno);
+        exception.setup_multiplier = value;
+        ctx->sdc_clock_exceptions.push_back(exception);
+        return std::string{};
+    }
+
     SdcValue cmd_create_clock(const std::vector<SdcValue> &arguments)
     {
+        // Options may follow the target. Collect them before applying, or a
+        // later -name is never stored and [get_clocks <name>] matches nothing.
         float period = 10;
+        std::string clock_name;
+        std::vector<NetInfo *> targets;
         for (int i = 1; i < int(arguments.size()); i++) {
             auto &arg = arguments.at(i);
             if (arg.is_string) {
@@ -393,6 +569,9 @@ struct SDCParser
                     }
                 } else if (s == "-name") {
                     i++;
+                    if (i >= int(arguments.size()) || !arguments.at(i).is_string)
+                        log_error("expecting a clock name after -name (line %d)\n", lineno);
+                    clock_name = arguments.at(i).str;
                 } else {
                     log_error("unsupported argument '%s' to create_clock\n", s.c_str());
                 }
@@ -407,16 +586,38 @@ struct SDCParser
                         net = ctx->ports.at(ety.name).net;
                     else
                         log_error("create_clock applies only to cells, cell pins, or IO ports (line %d)\n", lineno);
-
-                    ctx->addClock(net->name, 1000.0f / period);
+                    targets.push_back(net);
                 }
             }
+        }
+        for (NetInfo *net : targets) {
+            ctx->addClock(net->name, 1000.0f / period);
+            if (!clock_name.empty())
+                ctx->sdc_clock_names[clock_name] = net->name;
         }
         return std::string{};
     }
 
     SdcValue cmd_set_false_path(const std::vector<SdcValue> &arguments)
     {
+        // Clock-to-clock false paths ([get_clocks ...] on -from and/or -to)
+        // are applied to the clock-domain pairs they name.
+        bool clocks = arguments.size() > 1;
+        for (int i = 1; i < int(arguments.size()); i += 2) {
+            const auto &opt = arguments.at(i);
+            if (!opt.is_string || (opt.str != "-from" && opt.str != "-to") || i + 1 >= int(arguments.size()) ||
+                !is_clock_list(arguments.at(i + 1)))
+                clocks = false;
+        }
+        if (clocks) {
+            BaseCtx::SdcClockException exception;
+            for (int i = 1; i < int(arguments.size()); i += 2)
+                (arguments.at(i).str == "-from" ? exception.from : exception.to) =
+                        clock_patterns(arguments.at(i + 1), "set_false_path");
+            ctx->sdc_clock_exceptions.push_back(exception);
+            return std::string{};
+        }
+
         NetInfo *from = nullptr;
         NetInfo *to = nullptr;
 
@@ -485,6 +686,93 @@ struct SDCParser
         }
     }
 };
+
+namespace {
+// '*' matches any run of characters and '?' one character.
+bool sdc_glob(const char *pattern, const char *name)
+{
+    while (*pattern) {
+        if (*pattern == '*') {
+            while (*pattern == '*')
+                ++pattern;
+            if (!*pattern)
+                return true;
+            for (; *name; ++name)
+                if (sdc_glob(pattern, name))
+                    return true;
+            return false;
+        }
+        if (!*name || (*pattern != '?' && *pattern != *name))
+            return false;
+        ++pattern;
+        ++name;
+    }
+    return !*name;
+}
+} // namespace
+
+bool BaseCtx::sdc_clock_match(const std::string &pattern, IdString clock_net) const
+{
+    if (sdc_glob(pattern.c_str(), clock_net.c_str(this)))
+        return true;
+    for (const auto &named : sdc_clock_names)
+        if (named.second == clock_net && sdc_glob(pattern.c_str(), named.first.c_str()))
+            return true;
+    return false;
+}
+
+bool BaseCtx::sdc_clock_false(IdString launch, IdString capture) const
+{
+    if (launch == IdString() || capture == IdString())
+        return false;
+    auto any = [&](const std::vector<std::string> &patterns, IdString clock) {
+        if (patterns.empty())
+            return true;
+        for (const auto &pattern : patterns)
+            if (sdc_clock_match(pattern, clock))
+                return true;
+        return false;
+    };
+    for (const auto &exception : sdc_clock_exceptions)
+        if (exception.false_path && any(exception.from, launch) && any(exception.to, capture))
+            return true;
+    for (const auto &groups : sdc_clock_groups) {
+        auto group_of = [&](IdString clock) {
+            for (int i = 0; i < int(groups.size()); i++)
+                for (const auto &pattern : groups.at(i))
+                    if (sdc_clock_match(pattern, clock))
+                        return i;
+            return -1;
+        };
+        int a = group_of(launch), b = group_of(capture);
+        // A single group is exclusive with every other clock.
+        if (groups.size() == 1 ? (a >= 0) != (b >= 0) : (a >= 0 && b >= 0 && a != b))
+            return true;
+    }
+    return false;
+}
+
+const BaseCtx::SdcClockException *BaseCtx::sdc_clock_multicycle(IdString launch, IdString capture) const
+{
+    if (launch == IdString() || capture == IdString())
+        return nullptr;
+    const SdcClockException *found = nullptr;
+    for (const auto &exception : sdc_clock_exceptions) {
+        if (exception.false_path)
+            continue;
+        auto any = [&](const std::vector<std::string> &patterns, IdString clock) {
+            if (patterns.empty())
+                return true;
+            for (const auto &pattern : patterns)
+                if (sdc_clock_match(pattern, clock))
+                    return true;
+            return false;
+        };
+        if (any(exception.from, launch) && any(exception.to, capture))
+            found = &exception; // the last matching command wins
+    }
+    return found;
+}
 
 void Context::read_sdc(std::istream &in)
 {

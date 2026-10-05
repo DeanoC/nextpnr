@@ -74,6 +74,26 @@ struct BaseCtx
     // Aliases for nets, which may have more than one name due to assignments and hierarchy
     dict<IdString, IdString> net_aliases;
 
+    // SDC clock-level timing exceptions (sdc.cc). Clock patterns use '*' and
+    // '?' and match an SDC clock name (create_clock -name) or a clock net
+    // name. They are resolved when timing analysis meets a clock, so clocks
+    // derived during packing (PLL outputs) are covered.
+    struct SdcClockException
+    {
+        bool false_path = true;            // otherwise a setup multicycle
+        std::vector<std::string> from, to; // empty: any clock
+        int setup_multiplier = 1;
+        bool start = false; // multicycle counted in launch-clock periods
+    };
+    std::vector<SdcClockException> sdc_clock_exceptions;
+    // set_clock_groups: each entry is a list of groups of clock patterns;
+    // clocks in different groups of one entry are not timed against each other.
+    std::vector<std::vector<std::vector<std::string>>> sdc_clock_groups;
+    dict<std::string, IdString> sdc_clock_names;
+    bool sdc_clock_match(const std::string &pattern, IdString clock_net) const;
+    bool sdc_clock_false(IdString launch, IdString capture) const;
+    const SdcClockException *sdc_clock_multicycle(IdString launch, IdString capture) const;
+
     // Top-level ports
     dict<IdString, PortInfo> ports;
     dict<IdString, CellInfo *> port_cells;

@@ -119,6 +119,7 @@ static Json::array json_report_critical_paths(const Context *ctx)
         critPathsJson.push_back(Json::object({{"from", clock_event_name(ctx, report.second.clock_pair.start)},
                                               {"to", clock_event_name(ctx, report.second.clock_pair.end)},
                                               {"max_delay", ctx->getDelayNS(report.second.max_delay)},
+                                              {"criticality", double(report.second.criticality)},
                                               {"path", report_critical_path(report.second)}}));
     }
 
@@ -127,12 +128,14 @@ static Json::array json_report_critical_paths(const Context *ctx)
         critPathsJson.push_back(Json::object({{"from", clock_event_name(ctx, report.clock_pair.start)},
                                               {"to", clock_event_name(ctx, report.clock_pair.end)},
                                               {"max_delay", ctx->getDelayNS(report.max_delay)},
+                                              {"criticality", double(report.criticality)},
                                               {"path", report_critical_path(report)}}));
     }
     for (const auto &report : ctx->timing_result.report_setup_paths) {
         critPathsJson.push_back(Json::object({{"from", clock_event_name(ctx, report.clock_pair.start)},
                                               {"to", clock_event_name(ctx, report.clock_pair.end)},
                                               {"max_delay", ctx->getDelayNS(report.max_delay)},
+                                              {"criticality", double(report.criticality)},
                                               {"path", report_critical_path(report)}}));
     }
 
@@ -280,8 +283,15 @@ void Context::writeJsonReport(std::ostream &out) const
         };
     }
 
+    Json::object slack_histogram;
+    for (const auto &bin : timing_result.slack_histogram)
+        slack_histogram.emplace(std::to_string(bin.first), Json(int(bin.second)));
+
     Json::object jsonRoot{
-            {"utilization", util_json}, {"fmax", fmax_json}, {"critical_paths", json_report_critical_paths(this)}};
+            {"utilization", util_json},
+            {"fmax", fmax_json},
+            {"critical_paths", json_report_critical_paths(this)},
+            {"slack_histogram_ps", slack_histogram}};
     jsonRoot["timing_summary"] = Json::object{
             {"final_analogue_model", timing_result_is_final_analogue},
             {"clocks", timing_clock_json},

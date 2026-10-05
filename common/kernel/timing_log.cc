@@ -285,6 +285,10 @@ static bool log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
             if (!xclock_delays.count(report.clock_pair)) {
                 continue;
             }
+            // A shared driver still produces a clock-to-clock segment. An SDC
+            // cut is not a constraint, so that segment must not fail the run.
+            if (ctx->sdc_clock_false(clock_a, clock_b))
+                continue;
 
             delay_t path_delay = 0;
             for (const auto &segment : report.segments) {

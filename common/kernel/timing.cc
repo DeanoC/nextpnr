@@ -64,7 +64,23 @@ bool phase_related_clocks(const Context *ctx, IdString launch, IdString capture)
 
 static bool timed_clocks(const Context *ctx, IdString launch, IdString capture)
 {
+    // SDC set_clock_groups and clock-level set_false_path cut a pair.
+    if (ctx->sdc_clock_false(launch, capture))
+        return false;
     return launch == capture || phase_related_clocks(ctx, launch, capture);
+}
+
+// Extra setup time granted by a clock-level set_multicycle_path -setup N:
+// N - 1 periods of the capture clock (or of the launch clock with -start).
+static delay_t multicycle_extra(const Context *ctx, IdString launch, IdString capture)
+{
+    const auto *exception = ctx->sdc_clock_multicycle(launch, capture);
+    if (exception == nullptr || exception->setup_multiplier <= 1)
+        return 0;
+    IdString clock = exception->start ? launch : capture;
+    // A clock with no create_clock (and no generated constraint) has a null
+    // clkconstr. clock_period falls back to the target frequency.
+    return (exception->setup_multiplier - 1) * clock_period(ctx, clock);
 }
 
 static delay_t clock_interval(const Context *ctx, IdString launch, IdString capture, ClockEdge launch_edge,
@@ -381,10 +397,13 @@ void TimingAnalyser::setup_port_domains()
     for (auto &dp : domain_pairs) {
         auto &launch_data = domains.at(dp.key.launch);
         auto &capture_data = domains.at(dp.key.capture);
-        if (!timed_clocks(ctx, launch_data.key.clock, capture_data.key.clock))
+        dp.timed = timed_clocks(ctx, launch_data.key.clock, capture_data.key.clock);
+        if (!dp.timed)
             continue;
+        dp.multicycle_extra = multicycle_extra(ctx, launch_data.key.clock, capture_data.key.clock);
         dp.period = DelayPair(clock_interval(ctx, launch_data.key.clock, capture_data.key.clock, launch_data.key.edge,
-                                             capture_data.key.edge));
+                                             capture_data.key.edge) +
+                              dp.multicycle_extra);
     }
 }
 
@@ -812,10 +831,11 @@ void TimingAnalyser::compute_slack()
             pdp.second.setup_slack = 0 - (arr.value.maxDelay() - req.value.minDelay() + clock_to_clock);
             if (!setup_only)
                 pdp.second.hold_slack = arr.value.minDelay() - req.value.maxDelay() + clock_to_clock;
+            // Hold keeps the single-cycle relationship under a multicycle.
             if (!setup_only && phase_related_clocks(ctx, launch_clock, capture_clock))
-                pdp.second.hold_slack += clock_period(ctx, launch_clock) - dp.period.minDelay();
+                pdp.second.hold_slack += clock_period(ctx, launch_clock) - (dp.period.minDelay() - dp.multicycle_extra);
             pdp.second.max_path_length = arr.path_length + req.path_length;
-            if (timed_clocks(ctx, launch_clock, capture_clock))
+            if (dp.timed)
                 pd.worst_setup_slack = std::min(pd.worst_setup_slack, dp.period.minDelay() + pdp.second.setup_slack);
             dp.worst_setup_slack = std::min(dp.worst_setup_slack, pdp.second.setup_slack);
             if (!setup_only) {
@@ -832,8 +852,14 @@ void TimingAnalyser::compute_criticality()
         auto &pd = ports.at(p);
         for (auto &pdp : pd.domain_pairs) {
             auto &dp = domain_pairs.at(pdp.first);
-            // Do not set criticality for asynchronous paths
-            if (domains.at(dp.key.launch).key.is_async() || domains.at(dp.key.capture).key.is_async())
+            const auto &launch = domains.at(dp.key.launch).key;
+            const auto &capture = domains.at(dp.key.capture).key;
+            // Asynchronous paths are not placed by setup criticality. An SDC
+            // cut still has slack; assigning it would give the worst endpoint
+            // criticality 1, which placement and routing read.
+            if (launch.is_async() || capture.is_async())
+                continue;
+            if (ctx->sdc_clock_false(launch.clock, capture.clock))
                 continue;
 
             float crit =
@@ -1200,6 +1226,10 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
     report.clock_pair.start.edge = launch.edge;
     report.clock_pair.end.clock = capture.clock;
     report.clock_pair.end.edge = capture.edge;
+    // This is the criticality compute_criticality stored for this pair. A cut
+    // stays at 0, which is what get_criticality reports for a crossing-only sink.
+    if (ports.count(endpoint) && ports.at(endpoint).domain_pairs.count(domain_pair))
+        report.criticality = ports.at(endpoint).domain_pairs.at(domain_pair).criticality;
 
     report.max_delay = ctx->getDelayFromNS(1.0e9 / ctx->setting<float>("target_freq"));
     if (launch.edge != capture.edge) {
@@ -1216,7 +1246,8 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
         }
     }
     if (!launch.is_async() && timed_clocks(ctx, launch.clock, capture.clock))
-        report.max_delay = clock_interval(ctx, launch.clock, capture.clock, launch.edge, capture.edge);
+        report.max_delay = clock_interval(ctx, launch.clock, capture.clock, launch.edge, capture.edge) +
+                           multicycle_extra(ctx, launch.clock, capture.clock);
 
     auto crit_path_rev = walk_crit_path(domain_pair, endpoint, longest_path);
     auto crit_path = boost::adaptors::reverse(crit_path_rev);
@@ -1415,7 +1446,10 @@ void TimingAnalyser::build_crit_path_reports()
         const bool phase_locked = phase_related_clocks(ctx, launch.clock, capture.clock);
         const bool ignored_related = bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
                                      launch.clock != capture.clock && !phase_locked;
-        if (!launch.is_async() && (ordinary_timed || (physically_related && !ignored_related))) {
+        // timed_clocks() already drops an SDC cut, but the two clocks can still
+        // share a physical driver. That crossing must not set setup WNS.
+        const bool sdc_cut = ctx->sdc_clock_false(launch.clock, capture.clock);
+        if (!launch.is_async() && !sdc_cut && (ordinary_timed || (physically_related && !ignored_related))) {
             const delay_t setup_window = ordinary_timed
                                                    ? dp.period.minDelay()
                                                    : std::min(clock_period(ctx, launch.clock),
@@ -1433,11 +1467,13 @@ void TimingAnalyser::build_crit_path_reports()
 
         double Fmax;
 
-        if (launch.clock == capture.clock && launch.edge == capture.edge)
+        // dp.period is the launch-to-capture window, including any SDC
+        // multicycle relaxation.
+        if (launch.clock == capture.clock && launch.edge == capture.edge && dp.multicycle_extra == 0)
             Fmax = 1000 / ctx->getDelayNS(path_delay);
         else
-            Fmax = 1000.0 * double(clock_interval(ctx, launch.clock, capture.clock, launch.edge, capture.edge)) /
-                   double(clock_period(ctx, launch.clock)) / ctx->getDelayNS(path_delay);
+            Fmax = 1000.0 * double(dp.period.minDelay()) / double(clock_period(ctx, launch.clock)) /
+                   ctx->getDelayNS(path_delay);
 
         if (!clock_fmax.count(launch.clock) || Fmax < clock_fmax.at(launch.clock).achieved) {
             float target = ctx->setting<float>("target_freq") / 1e6;
@@ -1512,10 +1548,11 @@ void TimingAnalyser::build_slack_histogram_report()
                     if (!timed_clocks(ctx, launch.clock, capture.clock) || launch.is_async())
                         continue;
 
-                    delay_t clk_period = clock_interval(ctx, launch.clock, capture.clock, launch.edge, capture.edge);
-
-                    delay_t delay = arr.second.value.maxDelay() - req.second.value.minDelay();
-                    delay_t slack = clk_period - delay;
+                    // period includes a set_multicycle_path -setup window.
+                    // setup_slack already subtracted the path and clock-to-clock delay.
+                    const auto pair_id = domain_pair_id(arr.first, req.first);
+                    const auto &pair = pd.domain_pairs.at(pair_id);
+                    delay_t slack = domain_pairs.at(pair_id).period.minDelay() + pair.setup_slack;
 
                     int slack_ps = ctx->getDelayNS(slack) * 1000;
                     slack_histogram[slack_ps]++;
@@ -1556,6 +1593,10 @@ std::vector<CriticalPath> TimingAnalyser::get_min_delay_violations()
                 if (launch_id == async_clock_id || (launch_id != capture_id && !related_clocks && !phase_locked)) {
                     continue;
                 }
+                // Setup already drops these pairs in timed_clocks(). Hold must
+                // do the same, including phase-related and same-clock cuts.
+                if (ctx->sdc_clock_false(launch_clock, capture_clock))
+                    continue;
 
                 delay_t clock_to_clock = 0;
                 if (related_clocks) {
@@ -1674,7 +1715,10 @@ bool timing_analysis(Context *ctx, bool print_slack_histogram, bool print_fmax, 
     tmg.setup_only = false;
     tmg.with_clock_skew = true;
     const bool extra_report_paths = update_results && ctx->timing_report_paths > 1;
-    tmg.setup(ctx->detailed_timing_report, print_slack_histogram, print_path || print_fmax || extra_report_paths);
+    // The final --report analysis does not print the histogram. Still store it
+    // so the JSON report can show multicycle slack.
+    tmg.setup(ctx->detailed_timing_report, print_slack_histogram || update_results,
+              print_path || print_fmax || extra_report_paths);
 
     auto &result = tmg.get_timing_result();
     if (extra_report_paths) {
