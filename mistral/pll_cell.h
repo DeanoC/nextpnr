@@ -82,9 +82,14 @@ inline std::string mistral_pll_parse(const Context *ctx, const CellInfo *ci, Mis
             ok = false;
             return 0;
         }
-        // Narrowing first turns 2^32+1 into 1 and 2^32+50 into 50, so an
-        // illegal parameter passes the later range check. Reject any value
-        // that does not fit in int unchanged.
+        // as_int64() keeps only the low 64 bits, and a cast to int keeps 32.
+        // 2^32+1 and 2^64+1 both become 1; 2^64+50 becomes 50. Reject a wider
+        // bit vector before that truncation, then any value that does not fit
+        // in int unchanged.
+        if (it->second.size() > 64) {
+            ok = false;
+            return 0;
+        }
         int64_t value = it->second.as_int64();
         if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max()) {
             ok = false;

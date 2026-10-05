@@ -71,6 +71,11 @@ def main():
             ("count-wide", "number_of_clocks", format(2 ** 32 + 1, "033b"),
              "number_of_clocks must be an integer from 1 to 9"),
             ("duty-wide", "duty_cycle0", format(2 ** 32 + 50, "033b"),
+             "duty_cycle0 must be an integer percentage"),
+            # as_int64() drops bits above 63, so these used to read as 1 and 50.
+            ("count-65", "number_of_clocks", format(2 ** 64 + 1, "065b"),
+             "number_of_clocks must be an integer from 1 to 9"),
+            ("duty-65", "duty_cycle0", format(2 ** 64 + 50, "065b"),
              "duty_cycle0 must be an integer percentage")):
         invalid = copy.deepcopy(design)
         pll = invalid["modules"]["top"]["cells"]["pll"]
