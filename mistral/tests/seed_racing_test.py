@@ -195,6 +195,27 @@ class DatasetTests(unittest.TestCase):
             seed_racing.evaluate(duplicate, [5], [3], 1, [0], 10_000,
                                  replicate_stratified=True)
 
+        incomplete = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        repeats = json.loads(json.dumps(incomplete["runs"]))
+        for run in repeats:
+            run["run_id"] += "-repeat-2"
+            run["replicate"] = 2
+        incomplete["runs"].extend(repeats[:-1])
+        with self.assertRaisesRegex(ValueError, "different candidate populations"):
+            seed_racing.evaluate(incomplete, [5], [3], 1, [0], 10_000,
+                                 replicate_stratified=True)
+
+        mismatched = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        repeats = json.loads(json.dumps(mismatched["runs"]))
+        for run in repeats:
+            run["run_id"] += "-repeat-2"
+            run["replicate"] = 2
+        repeats[-1]["seed"] = "replacement-seed"
+        mismatched["runs"].extend(repeats)
+        with self.assertRaisesRegex(ValueError, "missing 1, extra 1"):
+            seed_racing.evaluate(mismatched, [5], [3], 1, [0], 10_000,
+                                 replicate_stratified=True)
+
     def test_replicate_stratification_preserves_supported_scalar_seed_labels(self):
         document = json.loads(FIXTURE.read_text(encoding="utf-8"))
         document["runs"][0]["seed"] = "named-seed"

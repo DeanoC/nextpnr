@@ -28,7 +28,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, BinaryIO, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, BinaryIO, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 try:
     import fcntl
@@ -2687,6 +2687,7 @@ def evaluate(
                 "replicate-stratified evaluation requires positive integer replicate values")
         strata.setdefault(replicate, []).append(run)
     evaluations = []
+    candidate_populations: Dict[int, Set[Tuple[str, str, str, str]]] = {}
     for replicate, population in sorted(strata.items()):
         candidate_keys = [
             (run["cohort_id"], run["mapped_design_id"], run["constraint_family"],
@@ -2696,6 +2697,20 @@ def evaluate(
         if len(set(candidate_keys)) != len(candidate_keys):
             raise ValueError(
                 f"replicate stratum {replicate} contains duplicate seed candidates")
+        candidate_populations[replicate] = set(candidate_keys)
+
+    reference_replicate = min(candidate_populations)
+    reference_population = candidate_populations[reference_replicate]
+    for replicate, candidate_population in sorted(candidate_populations.items()):
+        if candidate_population != reference_population:
+            missing = len(reference_population - candidate_population)
+            extra = len(candidate_population - reference_population)
+            raise ValueError(
+                "replicate strata contain different candidate populations: "
+                f"stratum {replicate} differs from stratum {reference_replicate} "
+                f"(missing {missing}, extra {extra})")
+
+    for replicate, population in sorted(strata.items()):
         evaluations.append({
             "replicate": replicate,
             **_evaluate_population_policies(
