@@ -104,3 +104,72 @@ Strict replay without `timing/allowFail` reports timing errors and returns a
 nonzero status. The existing backend still writes an RBF after nonfatal timing
 errors, so file existence is not acceptance: consumers must check exit status.
 No bitstream from this investigation was programmed onto hardware.
+
+## Corner correlation diagnostic
+
+`corner_windows.py` audits the retained four-corner SDR reference, including
+all 16 DQ pins, explicit pad transitions and the H=0/L=1 forwarding transfers.
+It keeps early/late clock prefixes and setup/hold checks in the same corner.
+It includes fitted upstream clock paths separately from the local mux/pad
+arcs; these routes belong to the surrogate fixture, not the FES PLL design.
+
+```sh
+python3 mistral/tests/ramtest-io/corner_windows.py \
+  /tmp/nextpnr-135-investigation/gpio-characterization/ramtest-sdr30/evidence.json \
+  --flight-max 0.5 --margin 0.2 --clock-distortion 0.1 \
+  --check-rejections --output /tmp/corner-windows.json
+```
+
+Flight is an assumed 0..0.5 ns interval for clock and return data. Clock
+distortion is a separate assumed 0.1 ns maximum difference between rising
+and falling board propagation; common trace flight does not shorten a pulse.
+The retained `corner-reference.json` includes input/audit hashes and per-pin
+windows. With these assumptions, minimum fitted reference pulses are
+3.455 ns at 100 MHz and 2.301 ns at 130 MHz. The conservative native envelope's
+negative lower bounds therefore do not establish a physical pulse failure.
+
+Read capture still has no common absolute window across all corners under
+these assumptions: the intersected lower/upper limits are 24.451/22.616 ns
+at 100 MHz and 22.697/19.154 ns at 130 MHz. A lower limit beyond the upper
+limit means the intersection is empty. This preserves the same read latency
+across corners; wrapping individual windows modulo the period could silently
+accept different words. It does not prescribe a new PLL phase.
+
+The audit rejects missing corners, clock transfers and DQ pins, unsupported
+device/load, and nonfinite timing. A shared 1 ns clock-prefix translation must
+cancel from both pulse bounds and read windows. These checks do not qualify
+the reference envelopes for production. Native timing bounds stay unchanged.
+
+## Input profile qualification mismatch
+
+Isolated Quartus 17.0.2 fits of the actual OSS high-speed RTL at 100/130 MHz
+are retained in `full-quartus-reference.json`. They request the same three DQ
+register types and 30 pF load. Memory and capture clocks remain related; IO
+delays are zero only to expose paths. These builds are different from the
+user's passing Quartus DDR-capture core and establish no hardware acceptance.
+
+Both full fits give SDR input setup 396..1905 ps and signed hold
+-1683..-316 ps. Output late bounds reproduce the surrogate fit's
+5276 ps data / 5416 ps OE / 4876 and 5372 ps selected clock transfers.
+
+Decoded bitstreams identify a material qualification mismatch: all 16 DQ
+pins in the surrogate use `RB_T1_SEL_IREG_CFF_DELAY=10` and
+`SET_T3_FOR_CDATA0IN/1IN=7`. Those assignments are omitted (database defaults)
+in the full Quartus fit and native tester. All 16 full/native input delay
+settings agree. Merely checking that QSF delay attributes were absent did
+not ensure the fitter selected the native configuration.
+
+Consequently the existing 6440/-2180 ps input profile is **not qualified for
+the native default configuration**. The hold mismatch matters as well as the
+pessimistic setup number: -2180 ps is less restrictive than the full fit's
+-316 ps maximum hold requirement. Do not use this profile for hardware
+acceptance. Requalify both SDR and DDR input captures with controlled delay
+selectors and bitstream checks before replacing the input bounds. The output
+bounds agree in these comparisons; D3 affects the separate input-to-fabric
+handoff and also needs a matched configuration audit.
+
+Exploratory full-fit corner arithmetic retains PLL compensation through
+accumulated clock arrival times, rather than summing data IC increments.
+It still mixes independent early/late common-clock prefixes conservatively;
+it neither credits common-path pessimism removal nor prescribes a capture
+phase. These diagnostic windows must not be substituted for native STA.

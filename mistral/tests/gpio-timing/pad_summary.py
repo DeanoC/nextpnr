@@ -137,7 +137,10 @@ def summarize(evidence):
             expected = {}
             for row in rows:
                 identity = (row['variant'], row['report'].split('/')[0], row['source'], row['target'])
-                inverted = evidence.get('forwarded_clock_polarities', {}).get(row['variant'])
+                # A full board fixture also contains SDR data and input pads.
+                # Forwarder polarity describes only its DDR clock transfers.
+                inverted = (evidence.get('forwarded_clock_polarities', {}).get(row['variant'])
+                            if key.startswith('write_ddr_') else None)
                 wanted = {'rise', 'fall'}
                 if inverted is not None:
                     if not isinstance(inverted, bool):
