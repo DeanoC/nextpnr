@@ -38,6 +38,7 @@ architecture's `Arch::route()` plus an entry in `availableRouters`.
 
 | Option | Effect |
 | --- | --- |
+| `--gpu-telemetry PATH` | write opt-in, versioned JSONL observations; see [the schema](seed-racing-telemetry.md) |
 | `--router gpu` | select the router |
 | `--gpu-device N` | GPU index (default: the device with the most compute units) |
 | `--gpu-cpu` | run the same algorithm on the sequential host backend |

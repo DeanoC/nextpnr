@@ -2857,8 +2857,11 @@ struct MistralPacker
 
 bool Arch::pack()
 {
+    // Before IO packing: the JTAG atom's dedicated pins leave the netlist.
+    pack_control_atoms();
     MistralPacker packer(getCtx());
     packer.run();
+    check_control_options();
 
     assignArchInfo();
 
