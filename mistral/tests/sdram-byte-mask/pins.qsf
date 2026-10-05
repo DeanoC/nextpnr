@@ -1,0 +1,10 @@
+set_location_assignment PIN_V11 -to clk
+set_location_assignment PIN_U10 -to clear_masks
+set_location_assignment PIN_AG5 -to lower_data
+set_location_assignment PIN_Y15 -to upper_data
+set_location_assignment PIN_AG13 -to dqml
+set_location_assignment PIN_AF13 -to dqmh
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to dqml
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to dqmh
+set_instance_assignment -name FAST_OUTPUT_REGISTER OFF -to dqml
+set_instance_assignment -name FAST_OUTPUT_REGISTER OFF -to dqmh

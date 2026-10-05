@@ -22,6 +22,7 @@
 #include <algorithm>
 #include "log.h"
 #include "nextpnr.h"
+#include "timing.h"
 #include "util.h"
 
 NEXTPNR_NAMESPACE_BEGIN
@@ -37,6 +38,13 @@ static std::string clock_event_name(const Context *ctx, const ClockEvent &e, int
         value.insert(value.length(), field_width - int(value.length()), ' ');
     return value;
 };
+
+static bool ignored_related_constraint(const Context *ctx, const CriticalPath &report)
+{
+    return bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
+           report.clock_pair.start.clock != report.clock_pair.end.clock &&
+           !phase_related_clocks(ctx, report.clock_pair.start.clock, report.clock_pair.end.clock);
+}
 
 static void log_crit_paths(const Context *ctx, TimingResult &result)
 {
@@ -190,7 +198,7 @@ static void log_crit_paths(const Context *ctx, TimingResult &result)
                 message = "Hold/min time violation for path '" + start + "' -> '" + end + "':\n";
             }
 
-            if (allow_fail) {
+            if (allow_fail || ignored_related_constraint(ctx, report)) {
                 log_warning("%s", message.c_str());
             } else {
                 log_nonfatal_error("%s", message.c_str());
@@ -201,15 +209,16 @@ static void log_crit_paths(const Context *ctx, TimingResult &result)
     }
 }
 
-static void log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
+static bool log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
 {
     log_break();
 
+    bool all_passed = true;
     bool allow_fail = bool_or_default(ctx->settings, ctx->id("timing/allowFail"), false);
 
-    if (result.clock_paths.empty() && result.clock_paths.empty()) {
+    if (result.clock_paths.empty() && result.xclock_paths.empty()) {
         log_info("No Fmax available; no interior timing paths found in design.\n");
-        return;
+        return true;
     }
 
     unsigned max_width = 0;
@@ -223,6 +232,10 @@ static void log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
         float fmax = result.clock_fmax[clock.first].achieved;
         float target = result.clock_fmax[clock.first].constraint;
         bool passed = target < fmax;
+        // allowFail only changes the diagnostic severity.  Keep the returned
+        // result tied to the actual constraint outcome so telemetry cannot
+        // report an allowed miss as a timing pass.
+        all_passed = all_passed && (!warn_on_failure || passed);
 
         if (!warn_on_failure || passed)
             log_info("Max frequency for clock %*s'%s': %.02f MHz (%s at %.02f MHz)\n", width, "", clock_name.c_str(),
@@ -290,21 +303,26 @@ static void log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
                 fmax = 1e3f / ctx->getDelayNS(path_delay);
             }
 
-            // Both clocks are related so they should have the same
-            // frequency. However, they may get different constraints from
-            // user input. In case of only one constraint preset take it,
-            // otherwise get the worst case (min.)
-            float target;
-            auto &clock_fmax = result.clock_fmax;
-            if (clock_fmax.count(clock_a) && !clock_fmax.count(clock_b)) {
-                target = clock_fmax.at(clock_a).constraint;
-            } else if (!clock_fmax.count(clock_a) && clock_fmax.count(clock_b)) {
-                target = clock_fmax.at(clock_b).constraint;
-            } else {
-                target = std::min(clock_fmax.at(clock_a).constraint, clock_fmax.at(clock_b).constraint);
-            }
+            // Related clocks should have the same frequency, but user constraints
+            // can differ. Enforce the stricter target. A related physical
+            // clock path can exist without an interior path for either endpoint. Resolve each target independently:
+            // use its Fmax record when present, otherwise its net constraint.
+            auto target_for_clock = [&](IdString clock) {
+                auto fmax = result.clock_fmax.find(clock);
+                if (fmax != result.clock_fmax.end())
+                    return fmax->second.constraint;
+                auto net = ctx->nets.find(clock);
+                if (net != ctx->nets.end() && net->second->clkconstr)
+                    return 1e3f / ctx->getDelayNS(net->second->clkconstr->period.minDelay());
+                return ctx->setting<float>("target_freq") / 1e6f;
+            };
+            float target = std::max(target_for_clock(clock_a), target_for_clock(clock_b));
 
             bool passed = target < fmax;
+            bool ignore_related = bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false);
+            // allowFail only changes diagnostic severity; ignoreRelClk excludes
+            // clock-to-clock relations from the configured timing gate.
+            all_passed = all_passed && (!warn_on_failure || passed || ignore_related);
 
             auto ev_a = clock_event_name(ctx, report.clock_pair.start, max_width_xca);
             auto ev_b = clock_event_name(ctx, report.clock_pair.end, max_width_xcb);
@@ -312,7 +330,7 @@ static void log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
             if (!warn_on_failure || passed)
                 log_info("Max frequency for %s -> %s: %.02f MHz (%s at %.02f MHz)\n", ev_a.c_str(), ev_b.c_str(), fmax,
                          passed ? "PASS" : "FAIL", target);
-            else if (allow_fail || bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false))
+            else if (allow_fail || ignore_related)
                 log_warning("Max frequency for  %s -> %s: %.02f MHz (%s at %.02f MHz)\n", ev_a.c_str(), ev_b.c_str(),
                             fmax, passed ? "PASS" : "FAIL", target);
             else
@@ -362,6 +380,7 @@ static void log_fmax(Context *ctx, TimingResult &result, bool warn_on_failure)
         log_info("Max delay %s -> %s: %0.02f ns\n", ev_a.c_str(), ev_b.c_str(), ctx->getDelayNS(path_delay));
     }
     log_break();
+    return all_passed;
 }
 
 static void log_histogram(Context *ctx, TimingResult &result)
@@ -404,17 +423,25 @@ static void log_histogram(Context *ctx, TimingResult &result)
                  (bins[i] * bar_width) % max_freq > 0 ? '+' : ' ');
 }
 
-void Context::log_timing_results(TimingResult &result, bool print_histogram, bool print_fmax, bool print_path,
+bool Context::log_timing_results(TimingResult &result, bool print_histogram, bool print_fmax, bool print_path,
                                  bool warn_on_failure)
 {
+    bool hold_constraints_met = std::none_of(result.min_delay_violations.begin(), result.min_delay_violations.end(),
+                                             [&](const CriticalPath &report) {
+                                                 return !ignored_related_constraint(this, report);
+                                             });
+    bool timing_constraints_met = !warn_on_failure || hold_constraints_met;
     if (print_path)
         log_crit_paths(this, result);
 
-    if (print_fmax)
-        log_fmax(this, result, warn_on_failure);
+    if (print_fmax) {
+        bool fmax_met = log_fmax(this, result, warn_on_failure);
+        timing_constraints_met = timing_constraints_met && fmax_met;
+    }
 
     if (print_histogram && !result.slack_histogram.empty())
         log_histogram(this, result);
+    return timing_constraints_met;
 }
 
 NEXTPNR_NAMESPACE_END

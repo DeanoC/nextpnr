@@ -14,6 +14,7 @@ every check holds and 1 otherwise.
 """
 
 import argparse
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -67,23 +68,44 @@ def main():
                    "--json", out / "synth.json", "--freq", freq, "--seed", "1", "--router", "gpu"]
         if args.gpu_device is not None:
             command += ["--gpu-device", str(args.gpu_device)]
+        telemetry = out / f"{name}.telemetry.jsonl"
+        telemetry.unlink(missing_ok=True)
+        report = out / f"{name}.report.json"
+        report.unlink(missing_ok=True)
+        command += ["--gpu-telemetry", telemetry, "--report", report]
         if rbf:
             command += ["--rbf", out / f"{name}.rbf"]
         log = out / f"{name}.log"
         code = run(command, log)
-        return code, log.read_text()
+        records = [json.loads(line) for line in telemetry.read_text().splitlines()]
+        return code, log.read_text(), records[-1], json.loads(report.read_text())
 
     failures = []
 
-    code, text = route("no-rbf", "400", False)
+    def complete_final_report(report):
+        summary = report.get("timing_summary", {})
+        clocks = summary.get("clocks", {})
+        if summary.get("final_analogue_model") is not True or len(clocks) != 1:
+            return False
+        clock = next(iter(clocks.values()))
+        numbers = (clock.get("setup_wns_ns"), clock.get("hold_wns_ns"))
+        return all(isinstance(value, (int, float)) and not isinstance(value, bool)
+                   for value in numbers)
+
+    code, text, terminal, report = route("no-rbf", "400", False)
     errors = fmax_errors(text)
     print(f"400 MHz without --rbf: exit {code}, {len(errors)} Fmax errors")
     if code == 0:
         failures.append("a timing miss without --rbf exited 0")
     if not errors:
         failures.append("without --rbf the legality check did not report the miss as an error")
+    if terminal.get("routing_legal") is not True or terminal.get("timing_gate_pass") is not False or \
+            terminal.get("status") != "timing_constraint_failure":
+        failures.append("without --rbf telemetry did not separate legal routing from the timing-gate miss")
+    if report.get("timing_summary", {}).get("final_analogue_model") is not False:
+        failures.append("without --rbf the report claimed final analogue timing")
 
-    code, text = route("rbf", "400", True)
+    code, text, terminal, report = route("rbf", "400", True)
     before, _, after = text.partition(SIGNOFF)
     print(f"400 MHz with --rbf: exit {code}, {len(fmax_errors(before))} Fmax errors before signoff, "
           f"{len(fmax_errors(after))} at signoff")
@@ -95,11 +117,18 @@ def main():
         failures.append("with --rbf the legality check reported the miss as an error")
     if not fmax_errors(after):
         failures.append("with --rbf the signoff did not report the miss as an error")
+    if terminal.get("routing_legal") is not True or terminal.get("timing_gate_pass") is not True or \
+            terminal.get("status") != "routing_legal":
+        failures.append("with --rbf telemetry treated the deferred table check as the final timing gate")
+    if not complete_final_report(report):
+        failures.append("with --rbf the report lacked final setup/hold analogue evidence")
 
-    code, text = route("pass", "10", True)
+    code, text, terminal, report = route("pass", "10", True)
     print(f"10 MHz with --rbf: exit {code}")
     if code != 0 or "Program finished normally." not in text:
         failures.append(f"a design that meets 10 MHz exited {code}")
+    if not complete_final_report(report):
+        failures.append("the passing --rbf report lacked final setup/hold analogue evidence")
 
     if failures:
         print(f"FAIL: {'; '.join(failures)}")

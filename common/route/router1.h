@@ -41,7 +41,10 @@ struct Router1Cfg
     bool timingGate;
 };
 
-extern bool router1(Context *ctx, const Router1Cfg &cfg);
+// Returns structural route legality. Optional outputs keep that result separate
+// from the configured timing gate outcome.
+extern bool router1(Context *ctx, const Router1Cfg &cfg, bool *routing_legal = nullptr,
+                    bool *timing_gate_pass = nullptr);
 
 NEXTPNR_NAMESPACE_END
 

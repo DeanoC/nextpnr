@@ -501,6 +501,10 @@ struct TimingResult
 
     // Min delay violations, only hold time for now
     std::vector<CriticalPath> min_delay_violations;
+
+    // Worst complete setup and hold slack for each synchronous launch clock.
+    dict<IdString, delay_t> clock_setup_slack;
+    dict<IdString, delay_t> clock_hold_slack;
 };
 
 // Represents the contents of a non-leaf cell in a design
