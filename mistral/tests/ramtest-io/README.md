@@ -302,3 +302,67 @@ this investigation's pulse-width check or scalar pad-delay envelopes.
 Further work must audit native clock/data correlation and waveform/load
 conditions before pairing a physical capture phase with a consumption cycle;
 tightening only the inverter assumption is insufficient.
+
+## Compare full OSS RTL in Quartus and nextpnr
+
+`quartus_board.tcl` applies the same explicit flight and external-margin
+assumptions to retained full Quartus fits, using a generated clock at the
+physical SDRAM pin. It queries all four corners without refitting the design.
+Run from the full OSS-RTL Quartus project directory:
+
+```sh
+quartus_sta -t /path/to/quartus_board.tcl 100 /tmp/quartus-board100 3.3
+python3 /path/to/quartus_compare.py \
+  --reports /tmp/quartus-board100 --pad-evidence /path/to/evidence.json \
+  --memory-mhz 100 --inverter-max-ns 3.3 --output /tmp/comparison100.json
+```
+
+The inverter argument records the conditional TI comparison; it does not
+identify the installed part. Use 130 and its corresponding fit/evidence to
+repeat the higher-rate audit. Quartus retains its derived PLL uncertainty
+in addition to the external margin; native uncertainty is not modeled here.
+
+The audit verifies the generated waveform and every external path's physical
+clock chain: falling fabric mux ingress, falling-to-rising DDIO transfer,
+then rising SDRAM_CLK at PIN_AD20. It requires all 16 inputs, 52 data/OE/control
+outputs and 16 controller handoffs, verifies slack arithmetic and retains
+each path's explicit clock-pessimism correction. Earlier exploratory reports
+were not acceptance evidence until this edge mapping was checked.
+
+`quartus-comparison-reference.json` records these results:
+
+| Full Quartus fit | 100 MHz | 130 MHz |
+| --- | ---: | ---: |
+| Read setup slack | −5.161 ns | −11.859 ns |
+| Read hold slack | +4.663 ns | +9.663 ns |
+| Output setup slack, conditional inverter | −0.733 ns | −1.887 ns |
+| Output hold slack | +2.054 ns | +0.900 ns |
+| Capture-to-controller setup slack | −1.820 ns | −2.056 ns |
+| Common capture-event shift interval | [5.161, 4.663] ns | [11.859, 9.663] ns |
+
+The shift intervals compare moving the existing capture event later against
+its setup and hold slacks on fixed routes. The 100 MHz intersection misses
+by 0.498 ns; the 130 MHz intersection misses by 2.196 ns. These intervals are
+not PLL settings: changing phase can select another edge/cycle and must be
+checked against the controller's consumed word. At 100 MHz the controller
+handoff is the IO capture to `sdram.rdata`; at 130 MHz it first reaches the
+falling-edge `dq_oss_hold` register. Both have independent Quartus violations.
+Without the report's shared-clock correction, these same intersections miss
+by 2.492 ns and 4.190 ns respectively. This measures the correction's effect
+in the Quartus fit; it does not transfer that credit to native clock routes.
+
+The slowest *local* output arcs closely agree: Quartus reports 5276 ps data,
+5416 ps OE and 5372 ps fabric-fall-to-pad-rise, versus native bounds of
+5280/5420/5380 ps. The native minima are zero, while the full-fit observations
+start at 2472/2545/2906 ps respectively. Native bounds also combine corner
+envelopes and omit TimeQuest's common-clock correction. These differences
+explain why total native slack cannot be interpreted as a direct measure of
+how far its physical routes lag Quartus. Observed minima are still not
+guaranteed silicon minima and do not authorize relaxing production bounds.
+
+These are full Quartus fits of the actual OSS high-speed SDR-capture RTL.
+They are separate from the previously reported working Quartus DDR-capture
+core. Neither the current native results nor these Quartus results establish
+hardware closure for this configuration. The remaining work needs a qualified
+clock/pad model and a capture schedule that also meets the controller handoff;
+moving a PLL phase alone is insufficient.
