@@ -90,37 +90,14 @@ the original cohort, have SHA-256:
 - Stratified congestion-first replay: `78bb4590b0de6c47c72d837711b5e378c63410fd3fabd90f5f581f4b20ec046a`
 - Stratified balanced replay: `6730eb6e9c91d620f60a31d1553fa0a8501db2a251037b2d717ff6faa9d0e0d7`
 
-## Predeclared held-out gate
+## Held-out gate follow-up
 
-The next cohort will use the FES C64 core, not Atari ST. Before its outcomes are
-observed, freeze the mapped netlist, constraints, nextpnr executable, runtime
-closure, GPU/backend identity, source revisions, environment, and all required
-clock names. Use one excluded pilot only to set checkpoints: take the first and
-tenth rankable routing-iteration arrival times and round each upward to the next
-10 seconds. If they collapse to one value, advance the second by 10 seconds.
+The planned C64 target failed before routing because it explicitly instantiates
+`CFG_ASYNC_READ=1` M10Ks. Cyclone V M10K hardware has no asynchronous read
+mode, so accepting that netlist would be a hardware correctness bug rather than
+a compatibility feature. No C64 routing outcome was observed.
 
-After the pilot, collect seeds 1 through 16 with two serial repeats, a
-600-second per-run limit, and a 21,600-second total collection limit. Replay
-each repeat as its own stratum with:
-
-- frozen `balanced-prefix-v1` ranking;
-- the two pilot-derived checkpoints;
-- quotas 8 then 2;
-- one random exploratory survivor;
-- scheduler seeds 0 through 19;
-- a fixed 9,600-second budget per stratum, the declared worst-case full-run
-  cost rather than a value selected from observed outcomes;
-- success only for legal routing plus positive final analogue setup and hold
-  margins on every required clock.
-
-The gate to a shadow decision logger requires at least one **ranked** eventual
-success in at least 18 of 20 scheduler orders in both replicate strata. Report
-exploratory successes separately, along with recall, false rejections, random
-time to first success, ideal-resumable cost, and restart-charged cost. A passing
-ranking gate permits shadow logging only; it does not authorize termination.
-
-If the C64 cohort lacks both successes and failures, report it as
-non-discriminating and do not tune checkpoints, constraints, or policy on its
-outcomes. If either stratum misses the ranked-success gate, stop policy work and
-do not implement live termination. All work remains host-only; no FPGA
-programming or hardware acceptance is part of this gate.
+Before observing any replacement-target outcome, the 100 MHz FES RAM tester was
+selected for its legal synchronous storage, independent RTL, multiple required
+clocks, and timing sensitivity. The frozen cohort and gate result are recorded
+in `seed-racing-ramtest-held-out-2026-10-06.md`.
