@@ -1,0 +1,224 @@
+{
+  "tool": "Quartus Prime Lite 17.0.2 Build 602",
+  "device": "5CSEBA6U23I7",
+  "decoder": "mistral-cv decomp (Mistral 3194ac5)",
+  "ignored": [
+    "DQS16 INPUT_REG4_SEL (nextpnr writes SEL_LOCKED_DPA on every output lane; Quartus leaves the default)",
+    "DQS16 RB_T9_SEL_EREG_CFF_DELAY on a FAST_OUTPUT_REGISTER pad (nextpnr keeps its existing 0x1f; Quartus chooses it per design)"
+  ],
+  "designs": {
+    "top": {
+      "rbf_sha256": "ec699b2f79371b8ac80e8e7c12bfd3deae611423f6a3f393ec874bb61fa6e078",
+      "rbf_bytes": 7007204,
+      "pins": {
+        "clk": "V11",
+        "i_plain": "V12",
+        "i_pullup": "E8",
+        "i_bushold": "W12",
+        "i_clamp": "D11",
+        "i_lvcmos": "D8",
+        "i_d3": "C12",
+        "i_d1reg": "D12",
+        "o_plain": "Y15",
+        "o_4ma": "AC24",
+        "o_8ma": "AA15",
+        "o_min": "AF28",
+        "o_slow": "AD26",
+        "o_lvcmos": "AG28",
+        "o_clamp": "AF27",
+        "o_pullup": "AE25",
+        "o_bushold": "AG26",
+        "o_d5": "AH27",
+        "o_d5max": "AG25",
+        "o_reg_d5": "AH26",
+        "b_d3_d5": "AH24",
+        "b_slow4": "AF25",
+        "b_pullup": "AG23",
+        "t_oe": "AF23"
+      },
+      "settings": {
+        "AA15": [
+          "DQS16.060.000:RB_T9_SEL_EREG_CFF_DELAY.1 1f",
+          "GPIO.064.000:DRIVE_STRENGTH.1 V3P3_LVTTL_8MA",
+          "GPIO.064.000:IOCSR_STD.1 DIS",
+          "GPIO.064.000:USE_WEAK_PULLUP.1 0"
+        ],
+        "AC24": [
+          "DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.10 1f",
+          "GPIO.089.008:DRIVE_STRENGTH.2 V3P3_LVTTL_4MA",
+          "GPIO.089.008:IOCSR_STD.2 DIS",
+          "GPIO.089.008:USE_WEAK_PULLUP.2 0"
+        ],
+        "AD26": [
+          "DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.7 1f",
+          "GPIO.089.006:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "GPIO.089.006:IOCSR_STD.3 DIS",
+          "GPIO.089.006:SLEW_RATE_SLOW.3 1",
+          "GPIO.089.006:USE_WEAK_PULLUP.3 0"
+        ],
+        "AE25": [
+          "DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.6 1f",
+          "GPIO.089.006:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "GPIO.089.006:IOCSR_STD.2 DIS"
+        ],
+        "AF23": [
+          "DQS16.076.000:RB_T9_SEL_EREG_CFF_DELAY.5 06",
+          "GPIO.078.000:DRIVE_STRENGTH.1 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "GPIO.078.000:IOCSR_STD.1 DIS",
+          "GPIO.078.000:USE_WEAK_PULLUP.1 0"
+        ],
+        "AF25": [
+          "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.4 1f",
+          "GPIO.086.000:DRIVE_STRENGTH.0 V3P3_LVTTL_4MA",
+          "GPIO.086.000:SLEW_RATE_SLOW.0 1",
+          "GPIO.086.000:USE_WEAK_PULLUP.0 0"
+        ],
+        "AF27": [
+          "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.2 1f",
+          "GPIO.088.000:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "GPIO.088.000:IOCSR_STD.2 DIS",
+          "GPIO.088.000:USE_PCI_DIODE_CLAMP.2 1",
+          "GPIO.088.000:USE_WEAK_PULLUP.2 0"
+        ],
+        "AF28": [
+          "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.3 1f",
+          "GPIO.088.000:DRIVE_STRENGTH.3 V3P3_LVTTL_4MA",
+          "GPIO.088.000:IOCSR_STD.3 DIS",
+          "GPIO.088.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "AG23": [
+          "DQS16.076.000:RB_T9_SEL_EREG_CFF_DELAY.4 1f",
+          "GPIO.078.000:DRIVE_STRENGTH.0 V3P3_LVTTL_16MA_LVCMOS_2MA"
+        ],
+        "AG25": [
+          "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.5 1f",
+          "DQS16.084.000:RB_T9_SEL_OREG_DFF_DELAY.5 1f",
+          "GPIO.086.000:DRIVE_STRENGTH.1 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "GPIO.086.000:IOCSR_STD.1 DIS",
+          "GPIO.086.000:USE_WEAK_PULLUP.1 0"
+        ],
+        "AG26": [
+          "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.14 1f",
+          "GPIO.082.000:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "GPIO.082.000:IOCSR_STD.2 DIS",
+          "GPIO.082.000:USE_BUS_HOLD.2 1",
+          "GPIO.082.000:USE_WEAK_PULLUP.2 0"
+        ],
+        "AG28": [
+          "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.6 1f",
+          "GPIO.086.000:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "GPIO.086.000:IOCSR_STD.2 DIS",
+          "GPIO.086.000:USE_WEAK_PULLUP.2 0"
+        ],
+        "AH24": [
+          "DQS16.076.000:RB_T9_SEL_EREG_CFF_DELAY.3 1f",
+          "DQS16.076.000:RB_T9_SEL_OREG_DFF_DELAY.3 09",
+          "DQS16.076.000:SET_T3_FOR_CDATA0IN.3 4",
+          "DQS16.076.000:SET_T3_FOR_CDATA1IN.3 4",
+          "GPIO.080.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "GPIO.080.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "AH26": [
+          "DQS16.084.000:OEREG_HR_CLK_EN.11 1",
+          "DQS16.084.000:OUTREG_OUTPUT_SEL.11 SEL_SDR",
+          "DQS16.084.000:RBOE_LVL_FR_CLK_EN.11 1",
+          "DQS16.084.000:RB_T9_SEL_OREG_DFF_DELAY.11 03",
+          "GPIO.084.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "GPIO.084.000:IOCSR_STD.3 DIS",
+          "GPIO.084.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "AH27": [
+          "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.7 1f",
+          "DQS16.084.000:RB_T9_SEL_OREG_DFF_DELAY.7 09",
+          "GPIO.086.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "GPIO.086.000:IOCSR_STD.3 DIS",
+          "GPIO.086.000:USE_WEAK_PULLUP.3 0"
+        ],
+        "C12": [
+          "DQS16.036.081:SET_T3_FOR_CDATA0IN.1 5",
+          "DQS16.036.081:SET_T3_FOR_CDATA1IN.1 5",
+          "GPIO.040.081:USE_WEAK_PULLUP.1 0"
+        ],
+        "D11": [
+          "GPIO.032.081:USE_PCI_DIODE_CLAMP.1 1",
+          "GPIO.032.081:USE_WEAK_PULLUP.1 0"
+        ],
+        "D12": [
+          "DQS16.036.081:RB_FIFO_WCLK_EN.0 1",
+          "DQS16.036.081:RB_FIFO_WCLK_INV.0 1",
+          "DQS16.036.081:RB_T1_SEL_IREG_CFF_DELAY.0 04",
+          "GPIO.040.081:USE_WEAK_PULLUP.0 0"
+        ],
+        "D8": [
+          "GPIO.038.081:USE_WEAK_PULLUP.3 0"
+        ],
+        "V11": [
+          "GPIO.032.000:USE_WEAK_PULLUP.0 0"
+        ],
+        "V12": [
+          "GPIO.040.000:USE_WEAK_PULLUP.0 0"
+        ],
+        "W12": [
+          "GPIO.040.000:USE_BUS_HOLD.1 1",
+          "GPIO.040.000:USE_WEAK_PULLUP.1 0"
+        ],
+        "Y15": [
+          "DQS16.060.000:RB_T9_SEL_EREG_CFF_DELAY.0 1f",
+          "GPIO.064.000:DRIVE_STRENGTH.0 V3P3_LVTTL_16MA_LVCMOS_2MA",
+          "GPIO.064.000:IOCSR_STD.0 DIS",
+          "GPIO.064.000:USE_WEAK_PULLUP.0 0"
+        ]
+      }
+    },
+    "bus": {
+      "rbf_sha256": "6412f1b75cb87e143ba6971dffd52664a7b096e039a81df5dcc11fd944dc2aee",
+      "rbf_bytes": 7007204,
+      "pins": {
+        "d[0]": "V12",
+        "d[1]": "E8",
+        "d[2]": "W12",
+        "d[3]": "D11",
+        "q[0]": "Y15",
+        "q[1]": "AC24",
+        "q[2]": "AA15",
+        "q[3]": "AD26"
+      },
+      "settings": {
+        "AA15": [
+          "DQS16.060.000:RB_T9_SEL_EREG_CFF_DELAY.1 1f",
+          "GPIO.064.000:DRIVE_STRENGTH.1 V3P3_LVTTL_8MA",
+          "GPIO.064.000:IOCSR_STD.1 DIS",
+          "GPIO.064.000:SLEW_RATE_SLOW.1 1",
+          "GPIO.064.000:USE_WEAK_PULLUP.1 0"
+        ],
+        "AC24": [
+          "DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.10 1f",
+          "GPIO.089.008:DRIVE_STRENGTH.2 V3P3_LVTTL_4MA",
+          "GPIO.089.008:IOCSR_STD.2 DIS",
+          "GPIO.089.008:SLEW_RATE_SLOW.2 1",
+          "GPIO.089.008:USE_WEAK_PULLUP.2 0"
+        ],
+        "AD26": [
+          "DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.7 1f",
+          "GPIO.089.006:DRIVE_STRENGTH.3 V3P3_LVTTL_4MA",
+          "GPIO.089.006:IOCSR_STD.3 DIS",
+          "GPIO.089.006:USE_WEAK_PULLUP.3 0"
+        ],
+        "E8": [
+          "GPIO.038.081:USE_WEAK_PULLUP.2 0"
+        ],
+        "W12": [
+          "DQS16.036.000:SET_T3_FOR_CDATA0IN.1 2",
+          "DQS16.036.000:SET_T3_FOR_CDATA1IN.1 2"
+        ],
+        "Y15": [
+          "DQS16.060.000:RB_T9_SEL_EREG_CFF_DELAY.0 1f",
+          "GPIO.064.000:DRIVE_STRENGTH.0 V3P3_LVTTL_4MA",
+          "GPIO.064.000:IOCSR_STD.0 DIS",
+          "GPIO.064.000:SLEW_RATE_SLOW.0 1",
+          "GPIO.064.000:USE_WEAK_PULLUP.0 0"
+        ]
+      }
+    }
+  }
+}

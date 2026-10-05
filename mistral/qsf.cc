@@ -45,15 +45,29 @@ struct QsfCommand
     std::function<void(Context *ctx, const option_map_t &options, const std::vector<std::string> &pos_args)> func;
 };
 
+bool is_wildcard_target(const std::string &target) { return target.find_first_of("*?") != std::string::npos; }
+
 void set_location_assignment_cmd(Context *ctx, const option_map_t &options, const std::vector<std::string> &pos_args)
 {
-    ctx->io_attr[ctx->id(options.at("to").at(0))][id_LOC] = pos_args.at(0);
+    const std::string &target = options.at("to").at(0);
+    if (is_wildcard_target(target))
+        log_error("set_location_assignment target '%s' must name one pin, not a wildcard.\n", target.c_str());
+    ctx->io_attr[ctx->id(target)][id_LOC] = pos_args.at(0);
 }
 
 void set_instance_assignment_cmd(Context *ctx, const option_map_t &options, const std::vector<std::string> &pos_args)
 {
-    IdString target = ctx->id(options.at("to").at(0));
+    const std::string &to = options.at("to").at(0);
     IdString assignment = ctx->id(options.at("name").at(0));
+    if (is_wildcard_target(to)) {
+        // Quartus applies '*'/'?' targets such as SDRAM_* or HDMI_TX_D[*] to
+        // every matching node. Keep them in order for the top-level ports.
+        if (options.at("name").at(0) == "HPS_LOCATION")
+            log_error("HPS_LOCATION target '%s' must name one cell, not a wildcard.\n", to.c_str());
+        ctx->io_attr_patterns.push_back({to, assignment, Property(pos_args.at(0))});
+        return;
+    }
+    IdString target = ctx->id(to);
     ctx->io_attr[target][assignment] = pos_args.at(0);
 
     // Quartus places HPS hard blocks with an instance assignment instead of
@@ -332,6 +346,55 @@ void Arch::read_qsf(std::istream &in)
 {
     std::string buf(std::istreambuf_iterator<char>(in), {});
     QsfParser(buf, getCtx())();
+}
+
+namespace {
+// Quartus node-name matching for assignment targets: '*' matches any run of
+// characters and '?' one character; everything else, including the brackets
+// of bus indices, is literal.
+bool quartus_name_match(const char *pattern, const char *name)
+{
+    while (*pattern) {
+        if (*pattern == '*') {
+            while (*pattern == '*')
+                ++pattern;
+            if (!*pattern)
+                return true;
+            for (; *name; ++name)
+                if (quartus_name_match(pattern, name))
+                    return true;
+            return false;
+        }
+        if (!*name || (*pattern != '?' && *pattern != *name))
+            return false;
+        ++pattern;
+        ++name;
+    }
+    return !*name;
+}
+} // namespace
+
+void Arch::apply_io_attrs(IdString port, CellInfo *cell)
+{
+    // Least to most specific: wildcard targets in file order, then an
+    // assignment to the whole bus (SDRAM_DQ for SDRAM_DQ[3]), then the exact
+    // port name. Locations only come from exact targets.
+    const std::string name = port.str(this);
+    for (const auto &pattern : io_attr_patterns)
+        if (quartus_name_match(pattern.target.c_str(), name.c_str()))
+            cell->attrs[pattern.name] = pattern.value;
+    auto bracket = name.find('[');
+    if (bracket != std::string::npos && bracket > 0 && name.back() == ']') {
+        auto bus = io_attr.find(id(name.substr(0, bracket)));
+        if (bus != io_attr.end())
+            for (const auto &kv : bus->second)
+                if (kv.first != id_LOC)
+                    cell->attrs[kv.first] = kv.second;
+    }
+    auto exact = io_attr.find(port);
+    if (exact != io_attr.end())
+        for (const auto &kv : exact->second)
+            cell->attrs[kv.first] = kv.second;
 }
 
 NEXTPNR_NAMESPACE_END
