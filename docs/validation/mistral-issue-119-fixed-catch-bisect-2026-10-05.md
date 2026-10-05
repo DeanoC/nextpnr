@@ -38,7 +38,10 @@ nextpnr-mistral --json synth.json --device 5CSEBA6U23I7 \
 The controlled endpoints reproduce the earlier Powerboat HIP comparison
 exactly at seed 1: `a93fe013` reaches 132.7669 MHz and `3d4a5b35` reaches
 129.7353 MHz on `core.game.clk`. A deterministic bisect of the 112-commit
-ancestry path classified the exact endpoint midpoint, 131.0 MHz. It identified:
+ancestry path deliberately used 131.0 MHz as its cutoff; the arithmetic
+endpoint midpoint is 131.2511 MHz. Every tested revision was either 129.7353
+MHz or at least 132.6260 MHz, so either cutoff gives the same boundary. It
+identified:
 
 ```text
 4e5ace3c493cd38d9f1fa2a8bd4337b131b04646
