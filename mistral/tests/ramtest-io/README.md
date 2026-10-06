@@ -630,4 +630,100 @@ Raw API responses, all captures and the leased runner remain on powerboat in
 `/tmp/nextpnr-135-investigation/hil-kita` (the incomplete Kit B attempt is in
 `hil-kitb`). The next implementation step is to obtain these address timings
 during normal constrained placement/routing; this experiment changed only
-the three routes in a frozen historical checkpoint.
+the three routes in a frozen historical checkpoint. The fresh build below
+now exercises that step.
+
+## Fresh constrained placement and routing
+
+`normal_build.py` starts from the exact historical failing **synthesis** and
+performs ordinary packing, placement and routing. It rejects physical
+checkpoints, copies the original pin constraints, and changes no RTL or IO
+register requests. No prior fabric placement or routes are imported.
+`address-target.sdc` applies the same native arrival target to all 13 address bits: the 10 ns
+clock period minus a 3.5 ns output maximum leaves 6.5 ns for clock routing,
+clock-to-Q and the fabric-to-GPIO route. This is an empirical optimization
+target derived from the hardware control, not a complete chip-pin budget.
+
+```sh
+python3 -B mistral/tests/ramtest-io/normal_build.py \
+  --source-root /path/to/historical/failing/sources/misteross \
+  --nextpnr /path/to/nextpnr-mistral \
+  --output /tmp/ramtest-fresh-address --gpu-cpu
+```
+
+The default uses the GPU router, seed 2 and normal HeAP placement;
+`--gpu-cpu` selects its CPU reference backend. Router2 is also selectable.
+The output directory must be new. The helper retains the actual compiler
+exit code and final analogue report; it does not suppress timing failures.
+Input synthesis, constraints, command, runner source and tool identities are
+retained with the result.
+
+The complete CPU Router2 trial missed address and internal setup requirements.
+The GPU router with analogue repair met all 13 address targets:
+
+| Address | Fresh native late arrival | Margin against 6.5 ns target |
+| --- | ---: | ---: |
+| A9 | 5.292 ns | 1.208 ns |
+| A10 | 5.815 ns | 0.685 ns |
+| A12 | 4.878 ns | 1.622 ns |
+
+A10 is the slowest of all 13 bits. The final setup WNS is +0.032 ns for
+`ram_clock.clocks[0]`, +2.716 ns for its shifted capture clock, and +2.322 ns
+for video. HPS hold WNS remains **−0.407 ns**, so the compiler exits **1** and
+`complete_timing_pass` is false. The exact original failing artifact's IO probe
+also reports HPS hold at −0.406 ns. The existing F2SDRAM output model has a
+zero minimum delay; this remains conservative qualification work, and the
+32 ps internal setup margin is small. A hardware pass does not convert this
+report into complete timing signoff. Uncharacterized pad/package/board delays
+also remain outside these native address targets.
+
+Analogue repair now uses complete setup WNS rather than reconstructing margin
+from Fmax. Tests cover a shifted-clock IO violation whose actual margin is
+half the reconstructed value, and a physically related violation with no Fmax
+entry. This same-edge fixture's constrained RBF is identical before and after
+the repair correction. The timing-gate regression still rejects 400 MHz with
+and without bitstream output and accepts its 10 MHz control.
+
+Fresh RBF: `d1e5b33a42d99714f88365b579c594a01b0897cbc6031a133d0ef1ee99f7dc43`.
+Experimental package: `53395a6681e78b45f469414600a5f01ea03fe349175ea2d868e2bfccc8df4c39`.
+The strict historical Python reader and FogCast Go inspector agree on its
+payload/package identities. Its embedded historical build ID is retained;
+the separate fresh P&R receipt describes the new physical build. It is an
+experimental envelope, not a fresh producer seal.
+
+The complete Kit A same-boot comparison ran through the renewed target lease
+and volatile development-core API, observing each load for 200 seconds:
+
+| Run | Package | SDRAM sweep | SDRAM errors | ADDR / INVR | HPS DDR P0/P1/P2 |
+| --- | --- | --- | ---: | ---: | --- |
+| 1 | Fresh constrained build | 6/6 PASS | 0 | 0 / 0 | PASS / PASS / PASS |
+| 2 | Original failing control | 6/6 FAIL | 228 | 116 / 112 | PASS / PASS / PASS |
+| 3 | Fresh constrained build again | 6/6 PASS | 0 | 0 / 0 | PASS / PASS / PASS |
+
+All constant patterns had zero errors. The failing control recorded first
+fault `003F3800`, last fault `00FF700F`, first observed word `373F`;
+the varying fault counts/addresses across reloads reinforce the need for
+the failing control in each comparison. Both fresh-build 120-second and final
+200-second captures show completed sweeps with zero errors. The target
+attested the expected package, ABI and embedded build ID at every checkpoint.
+Final Stop restored idle, the lease is free, and the target boot/image
+identities match the start of the run.
+
+- [Fresh-build first pass](normal-pass-first.png)
+- [Original failing control](normal-failing-control.png)
+- [Fresh-build repeat pass](normal-pass-repeat.png)
+
+`normal-reference.json` retains the fresh-build receipt, rejected Router2
+trial, package/consumer identities, observations, source/capture/command hashes,
+cleanup and verification results. Across the affected IO-delay and timing-report
+suites, 41 distinct tests have passing final outcomes; the timing-gate smoke
+also passed. Raw build evidence is in
+`/tmp/nextpnr-135-investigation/normal-address-qualified`, packages in
+`hardware-normal-package`, and the leased runner/API/captures in
+`hil-normal-kita` under the same investigation root on powerboat.
+
+This establishes a passing fresh constrained build at 100 MHz on this kit.
+It changes many physical paths; the earlier three-route control provides
+the isolated evidence about A9/A10/A12. The production FES build recipe is
+unchanged, and this experiment does not qualify 130 MHz or resolve the
+remaining full timing checks described above.
