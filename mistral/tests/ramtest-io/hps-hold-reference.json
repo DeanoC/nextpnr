@@ -1,0 +1,377 @@
+{
+  "classification": "Fitted Quartus reference, different routes from OSS; reports are limited to 2000 paths per case",
+  "corners": {
+    "7_slow_1100mv_-40c": {
+      "input-setup": {
+        "sha256": "096cd0fe54d3142a2e67146a7522cb64bfbbb5d37c6cdedb9736f9a8653867f8",
+        "path_count": 430,
+        "worst_slack_ns": 4.157,
+        "violating_paths": 0,
+        "output_pins_in_report": 0,
+        "output_cell_delay_min_ns": null,
+        "output_cell_delay_max_ns": null,
+        "returned_hold_slack_ns": {}
+      },
+      "input-hold": {
+        "sha256": "e4a613c3952e8268129e30fc33cfc665e08479c2473b9c182a6f7b9e51fe04fa",
+        "path_count": 430,
+        "worst_slack_ns": 0.339,
+        "violating_paths": 0,
+        "output_pins_in_report": 0,
+        "output_cell_delay_min_ns": null,
+        "output_cell_delay_max_ns": null,
+        "returned_hold_slack_ns": {}
+      },
+      "output-setup": {
+        "sha256": "87fc974e9641cadc8fb53f6aafed1cc33492bed43dca1c712b0f27ac56ceeb17",
+        "path_count": 2000,
+        "worst_slack_ns": 3.852,
+        "violating_paths": 0,
+        "output_pins_in_report": 24,
+        "output_cell_delay_min_ns": 0.105,
+        "output_cell_delay_max_ns": 0.41,
+        "returned_hold_slack_ns": {}
+      },
+      "output-hold": {
+        "sha256": "cc026784e362ee6adba964a8fe65dc9bd290d4dade1c636c83b7b5032ed00c3b",
+        "path_count": 2000,
+        "worst_slack_ns": 0.338,
+        "violating_paths": 0,
+        "output_pins_in_report": 261,
+        "output_cell_delay_min_ns": 0.0,
+        "output_cell_delay_max_ns": 0.0,
+        "returned_hold_slack_ns": {
+          "0": 0.818,
+          "1": 0.589,
+          "2": 0.544
+        }
+      }
+    },
+    "7_slow_1100mv_100c": {
+      "input-setup": {
+        "sha256": "ef179e68a2df4c38b07182133b6939e3ad61971abfb2b572bb3f05699130efd9",
+        "path_count": 430,
+        "worst_slack_ns": 4.018,
+        "violating_paths": 0,
+        "output_pins_in_report": 0,
+        "output_cell_delay_min_ns": null,
+        "output_cell_delay_max_ns": null,
+        "returned_hold_slack_ns": {}
+      },
+      "input-hold": {
+        "sha256": "e8dcbbac42b7d7473916dad94f4be2e8fc91262041b55d257e8c53e0382a7191",
+        "path_count": 430,
+        "worst_slack_ns": 0.51,
+        "violating_paths": 0,
+        "output_pins_in_report": 0,
+        "output_cell_delay_min_ns": null,
+        "output_cell_delay_max_ns": null,
+        "returned_hold_slack_ns": {}
+      },
+      "output-setup": {
+        "sha256": "99930be84b4de76a301a63b8764c09bc9d2dbaa9bd10dca78590caace5ad7d20",
+        "path_count": 2000,
+        "worst_slack_ns": 3.83,
+        "violating_paths": 0,
+        "output_pins_in_report": 25,
+        "output_cell_delay_min_ns": 0.093,
+        "output_cell_delay_max_ns": 0.374,
+        "returned_hold_slack_ns": {}
+      },
+      "output-hold": {
+        "sha256": "7f92691a6c1bfd9e00c9b0827979c89c888783a936b94916d5b35abdc80daf44",
+        "path_count": 2000,
+        "worst_slack_ns": 0.43,
+        "violating_paths": 0,
+        "output_pins_in_report": 261,
+        "output_cell_delay_min_ns": 0.0,
+        "output_cell_delay_max_ns": 0.0,
+        "returned_hold_slack_ns": {
+          "0": 0.905,
+          "1": 0.711,
+          "2": 0.567
+        }
+      }
+    },
+    "MIN_fast_1100mv_-40c": {
+      "input-setup": {
+        "sha256": "161bf9c31161189907a375286d6e28e92f953017b8dc3179dda8ec0d06b5e59a",
+        "path_count": 430,
+        "worst_slack_ns": 7.042,
+        "violating_paths": 0,
+        "output_pins_in_report": 0,
+        "output_cell_delay_min_ns": null,
+        "output_cell_delay_max_ns": null,
+        "returned_hold_slack_ns": {}
+      },
+      "input-hold": {
+        "sha256": "d18ebe68d44920418bdd2499b69074542ce3221566a732d41077be286b75d518",
+        "path_count": 430,
+        "worst_slack_ns": 0.141,
+        "violating_paths": 0,
+        "output_pins_in_report": 0,
+        "output_cell_delay_min_ns": null,
+        "output_cell_delay_max_ns": null,
+        "returned_hold_slack_ns": {}
+      },
+      "output-setup": {
+        "sha256": "2b607a30edb31a83aaf3963b577d577dea75072549b08f4403f8be25f2e62760",
+        "path_count": 2000,
+        "worst_slack_ns": 6.962,
+        "violating_paths": 0,
+        "output_pins_in_report": 79,
+        "output_cell_delay_min_ns": 0.045,
+        "output_cell_delay_max_ns": 0.179,
+        "returned_hold_slack_ns": {}
+      },
+      "output-hold": {
+        "sha256": "a69c7592e7822c87b05e3287cdb792af02e8cb0bc74dd0ab29eaa84f5e17c487",
+        "path_count": 2000,
+        "worst_slack_ns": 0.213,
+        "violating_paths": 0,
+        "output_pins_in_report": 245,
+        "output_cell_delay_min_ns": 0.0,
+        "output_cell_delay_max_ns": 0.0,
+        "returned_hold_slack_ns": {
+          "0": 0.582,
+          "1": 0.465,
+          "2": 0.388
+        }
+      }
+    },
+    "MIN_fast_1100mv_100c": {
+      "input-setup": {
+        "sha256": "7b233e831c9e6fce56b491ac13f000f9c0e96c73c9f7aebfc01c9e1c566c0ffc",
+        "path_count": 430,
+        "worst_slack_ns": 6.449,
+        "violating_paths": 0,
+        "output_pins_in_report": 0,
+        "output_cell_delay_min_ns": null,
+        "output_cell_delay_max_ns": null,
+        "returned_hold_slack_ns": {}
+      },
+      "input-hold": {
+        "sha256": "ea3f41209c437d70e13d23e65dd7b091742254cd52bacda57396051136db552a",
+        "path_count": 430,
+        "worst_slack_ns": 0.229,
+        "violating_paths": 0,
+        "output_pins_in_report": 0,
+        "output_cell_delay_min_ns": null,
+        "output_cell_delay_max_ns": null,
+        "returned_hold_slack_ns": {}
+      },
+      "output-setup": {
+        "sha256": "0f6851591cafe96b817ae4ba8e456b2f0dcf3b50a08732381bc32b4756fcd442",
+        "path_count": 2000,
+        "worst_slack_ns": 6.424,
+        "violating_paths": 0,
+        "output_pins_in_report": 90,
+        "output_cell_delay_min_ns": 0.045,
+        "output_cell_delay_max_ns": 0.182,
+        "returned_hold_slack_ns": {}
+      },
+      "output-hold": {
+        "sha256": "8f2f4694f5a1e2ad8013fa7b64309f831781a88485d1a632a26716646b9122e7",
+        "path_count": 2000,
+        "worst_slack_ns": 0.219,
+        "violating_paths": 0,
+        "output_pins_in_report": 243,
+        "output_cell_delay_min_ns": 0.0,
+        "output_cell_delay_max_ns": 0.0,
+        "returned_hold_slack_ns": {
+          "0": 0.726,
+          "1": 0.591,
+          "2": 0.472
+        }
+      }
+    }
+  },
+  "quartus_project": "/tmp/nextpnr-135-investigation/fes-full-overlay/sources/misteross/build/oss-quartus-100/project",
+  "quartus_project_inputs_sha256": {
+    "top.qsf": "34829df44eb4fba6c88a03a954861b9263273798369280a810cae730a7b7c987",
+    "top.qpf": "48cc8645b4d8d5925290b9ae4202e318a64f39cac2b3f1588bb124f4f033b459",
+    "clocks.sdc": "abbf5ec19afcab67ff33d90ad6e3a6a64b7c0d3cc31ab1a837159491cd5fe9ae"
+  },
+  "fixed_route_replay": {
+    "command": [
+      "/tmp/nextpnr-135-build/nextpnr-mistral",
+      "--device",
+      "5CSEBA6U23I7",
+      "--json",
+      "/tmp/nextpnr-135-investigation/normal-address-qualified/final.json",
+      "--no-pack",
+      "--no-place",
+      "--no-route",
+      "--rbf",
+      "/tmp/nextpnr-135-investigation/hps-hold-audit/fixed.rbf",
+      "--compress-rbf",
+      "--report",
+      "/tmp/nextpnr-135-investigation/hps-hold-audit/fixed.json",
+      "--detailed-timing-report",
+      "--timing-report-paths",
+      "128"
+    ],
+    "compiler_returncode": 0,
+    "nextpnr_sha256": "a324ae4579225e76e1fb5544a2db4da20e1525c35784b891be32aaef1f8bf242",
+    "checkpoint_sha256": "01669891908bba6f06fc84696ae466847f9a3247628b3c1a6e4fda23b67c0596",
+    "after_report_sha256": "12392ac32463db2e7e68612949f88fb90283183ae8dd1516fde6df9f6cb40df7",
+    "log_sha256": "cc0bc70acac31f88f0d8d04ab8ea455b6ad430ead05f2d156dff3c1d939aeb6f",
+    "after_timing": {
+      "clocks": {
+        "display.pixel_clk": {
+          "hold_wns_ns": 0.4099999964237213,
+          "setup_wns_ns": 2.322000026702881
+        },
+        "ram_clock.clocks[0]": {
+          "hold_wns_ns": 0.4180000126361847,
+          "setup_wns_ns": 0.20900000631809235
+        },
+        "ram_clock.clocks[1]": {
+          "hold_wns_ns": 5.431000232696533,
+          "setup_wns_ns": 2.7160000801086426
+        }
+      },
+      "final_analogue_model": true
+    },
+    "rbf_sha256": "d1e5b33a42d99714f88365b579c594a01b0897cbc6031a133d0ef1ee99f7dc43",
+    "matches_hardware_tested_rbf": true,
+    "before_fresh_timing": {
+      "clocks": {
+        "display.pixel_clk": {
+          "hold_wns_ns": 0.4099999964237213,
+          "setup_wns_ns": 2.322000026702881
+        },
+        "ram_clock.clocks[0]": {
+          "hold_wns_ns": -0.40700000524520874,
+          "setup_wns_ns": 0.03200000151991844
+        },
+        "ram_clock.clocks[1]": {
+          "hold_wns_ns": 5.431000232696533,
+          "setup_wns_ns": 2.7160000801086426
+        }
+      },
+      "final_analogue_model": true
+    },
+    "before_fresh_report_sha256": "7db4fea41ede64f3611b31f5d41ec5747366dafe72d1952e69dda16676ef39de",
+    "before_replay_timing": {
+      "clocks": {
+        "display.pixel_clk": {
+          "hold_wns_ns": 0.4099999964237213,
+          "setup_wns_ns": 2.322000026702881
+        },
+        "ram_clock.clocks[0]": {
+          "hold_wns_ns": -0.40700000524520874,
+          "setup_wns_ns": 0.20900000631809235
+        },
+        "ram_clock.clocks[1]": {
+          "hold_wns_ns": 5.431000232696533,
+          "setup_wns_ns": 2.7160000801086426
+        }
+      },
+      "final_analogue_model": true
+    },
+    "before_replay_report_sha256": "8330d1458071525aee32c0a520a289907f63b4d8a2d7d182ef6e648083c47a3c",
+    "before_replay_compiler_returncode": 1
+  },
+  "fix_commit": "9e8e8c70",
+  "verification": {
+    "focused_tests": {
+      "count": 45,
+      "passed": 45,
+      "suites": [
+        "IoDelayTest",
+        "TimingReportPathsTest",
+        "CompletedObservationsTest"
+      ]
+    },
+    "timing_gate": {
+      "400MHz_without_rbf_returncode": 1,
+      "400MHz_with_rbf_returncode": 1,
+      "10MHz_with_rbf_returncode": 0
+    },
+    "file_sha256": {
+      "tests.log": "25cecb329eed486d84a7aa6661d74bc23b4c201f7ed40d94a4ccd9a6b6f9de88",
+      "timing-gate.log": "9efc6053b153c2155633d8ba80a3d4932031cc9939db4a95e0337ad0617c715d",
+      "fix-build-final.log": "9f049f58a5f7f697e784cae07f5f5980f896c3ef727b6a795fec3bb9c4977cd3"
+    }
+  },
+  "fresh_build": {
+    "classification": "fresh constrained pack/place/route; native address optimization, not board signoff",
+    "source_root": "/home/deano/fes/out/dev/pr485-160994a0/fes/out/work/misteross-6c459fda396215fda6ac01e7125584d0cdf564b2/sources/misteross",
+    "seed": 2,
+    "router": "gpu",
+    "gpu_cpu": true,
+    "command": [
+      "/tmp/nextpnr-135-build/nextpnr-mistral",
+      "--device",
+      "5CSEBA6U23I7",
+      "--json",
+      "/tmp/nextpnr-135-investigation/normal-address-hold-fixed/synth.json",
+      "--qsf",
+      "/tmp/nextpnr-135-investigation/normal-address-hold-fixed/pins.qsf",
+      "--sdc",
+      "/tmp/nextpnr-135-investigation/normal-address-hold-fixed/address.sdc",
+      "--freq",
+      "74.25",
+      "--router",
+      "gpu",
+      "--seed",
+      "2",
+      "--compress-rbf",
+      "--write",
+      "/tmp/nextpnr-135-investigation/normal-address-hold-fixed/final.json",
+      "--report",
+      "/tmp/nextpnr-135-investigation/normal-address-hold-fixed/timing.json",
+      "--detailed-timing-report",
+      "--timing-report-paths",
+      "128",
+      "--rbf",
+      "/tmp/nextpnr-135-investigation/normal-address-hold-fixed/core.rbf",
+      "--gpu-cpu"
+    ],
+    "nextpnr_sha256": "a324ae4579225e76e1fb5544a2db4da20e1525c35784b891be32aaef1f8bf242",
+    "script_sha256": "2da4a24cdcb9f89ea023ce2ee4d9a766a1ac8514bd66783e1fc6a63d5a4c5cf3",
+    "elapsed_seconds": 392.6082234438509,
+    "compiler_returncode": 0,
+    "all_address_targets_met": true,
+    "complete_timing_pass": true,
+    "timing_summary": {
+      "clocks": {
+        "display.pixel_clk": {
+          "hold_wns_ns": 0.4099999964237213,
+          "setup_wns_ns": 2.322000026702881
+        },
+        "ram_clock.clocks[0]": {
+          "hold_wns_ns": 0.4180000126361847,
+          "setup_wns_ns": 0.03200000151991844
+        },
+        "ram_clock.clocks[1]": {
+          "hold_wns_ns": 5.431000232696533,
+          "setup_wns_ns": 2.7160000801086426
+        }
+      },
+      "final_analogue_model": true
+    },
+    "core_rbf_sha256": "d1e5b33a42d99714f88365b579c594a01b0897cbc6031a133d0ef1ee99f7dc43",
+    "core_rbf_bytes": 2189677,
+    "file_sha256": {
+      "runner-source.py": "2da4a24cdcb9f89ea023ce2ee4d9a766a1ac8514bd66783e1fc6a63d5a4c5cf3",
+      "synth.json": "efe83d370d7d185053a0c446989ee7ffd52277f65da0b3dbe928c714f1be9a0d",
+      "pins.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+      "address.sdc": "8693f1b180752d02241f830406a0740d9565a09702cb02011ebcc0d5d3fa59d1",
+      "command.json": "f4d91c923e2e319b9fb97d50f7129d0b7a509e9442c2dc83b42df3b0ad9d7344",
+      "final.json": "01669891908bba6f06fc84696ae466847f9a3247628b3c1a6e4fda23b67c0596",
+      "timing.json": "3d7ae456a754fd6d614fdd373b469fd850693db60e191f8aeb5b60e0c2bae486",
+      "build.log": "d3ff57ca0d64e6b4892f95615219204788f6c9dfde2889f9c3cd0b12e6790312"
+    },
+    "receipt_sha256": "faf3221f40b162c6ef41bd26f7ecdc45c63c455a7e1c699a3ba00b728b3fb8af",
+    "matches_hardware_tested_rbf": true,
+    "maximum_native_address_arrival_ns": 5.815000057220459
+  },
+  "limitations": [
+    "Native address targets do not cover full SDRAM board/pad/chip requirements; production FES recipe is unchanged.",
+    "130 MHz and all PVT corners remain unqualified.",
+    "HPS model omits ganged clock arcs; Quartus comparison has different placement/routes and limited path coverage.",
+    "Replay setup is +0.209 ns before and after the fix, while fresh setup remains +0.032 ns. Repair calibration is not restored by checkpoint replay; use the fresh result."
+  ]
+}

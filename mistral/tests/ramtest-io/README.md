@@ -727,3 +727,73 @@ It changes many physical paths; the earlier three-route control provides
 the isolated evidence about A9/A10/A12. The production FES build recipe is
 unchanged, and this experiment does not qualify 130 MHz or resolve the
 remaining full timing checks described above.
+
+### HPS hold diagnosis: declined route override corrupted fallback timing
+
+The subsequent hold audit found a software error in
+`Context::getNetinfoRouteDelayQuad`. Its physical-sink envelope was also passed
+to the architecture override. A failed cached Mistral analogue arc writes a
+default zero delay and returns false. The fallback then took the minimum of
+zero and the real route-table minimum, retaining zero. This affected clock
+routes as well as HPS data routes, so both setup and hold could be distorted.
+The scalar route-delay API already used a separate override result.
+
+The fix gives the override its own result and initializes the physical-sink
+envelope only after an override is declined. It does not change the HPS
+clock-to-output minimum, FF hold requirements, routing, RTL or constraints.
+`CompletedObservationsTest.FailedCachedOverridePreservesFallbackRouteMinimum`
+exercises a real unsupported HPS GIN hop: cached and uncached fallback delay
+intervals must agree, retain their positive minimum, and agree with the scalar
+API's maximum. Existing observation tests retain their completed-prefix checks.
+
+Both replaying the hardware-tested `normal-address-qualified/final.json` and
+a fresh normal build now exit **0**, without `--timing-allow-fail`. The fresh
+build uses the original synthesis/QSF, seed 2 and the GPU router CPU reference
+backend, with normal packing, placement and routing. All reported setup/hold
+checks pass under the existing models and address targets. Use its final
+margins as authoritative:
+
+| Clock | Setup WNS | Hold WNS |
+| --- | ---: | ---: |
+| Memory 100 MHz | +0.032 ns | +0.418 ns |
+| Shifted capture 100 MHz | +2.716 ns | +5.431 ns |
+| Video 74.25 MHz | +2.322 ns | +0.410 ns |
+
+The RBF SHA256 remains
+`d1e5b33a42d99714f88365b579c594a01b0897cbc6031a133d0ef1ee99f7dc43`,
+identical to the bitstream tested in the preceding 0 → 228 → 0 comparison.
+The fresh build reproduces those same bytes and meets all 13 address targets
+(maximum native arrival 5.815 ns). The earlier exit-1 receipt is retained as
+historical evidence; the new timing results supersede it, not its hardware
+observations. No additional hardware load was needed for an identical RBF.
+
+The checkpoint replay reports +0.209 ns memory setup **both before and after**
+the fix. This is not a setup improvement caused by the fix. The fresh build
+retains analogue repair's routing calibration; checkpoint replay starts with
+fresh calibration state. The fresh worst setup path starts at HPS
+`cmd_ready_1`, whereas replay selects a fabric-launched path. Until calibrated
+fallback replay is qualified, retain the smaller **32 ps** fresh-build margin.
+Both flows report the corrected +0.418 ns hold margin.
+
+The retained Quartus 17.0.2 OSS 100 MHz fit provides a separate HPS reference.
+Run `quartus_sta -t /absolute/path/to/hps_hold.tcl /absolute/report-directory`
+in the fitted project, then summarize with
+`python3 hps_hold.py --reports /absolute/report-directory --output summary.json`.
+The query preserves that project's SDC and checks all four operating corners,
+limited to 2000 paths per case. HPS output hold WNS is +0.338/+0.430 ns in the
+two slow corners and +0.213/+0.219 ns in the two fast corners. All examined
+output hold CELL delays at the hard-block atom pins are **zero**. Thus an
+invented positive HPS minimum would not match this Quartus reference. The
+Quartus placement/routes differ from the historical OSS fixture; these
+margins are comparison evidence, not transferable OSS slack.
+
+All 45 IO-delay, timing-report and completed-observation unit tests pass.
+The GPU timing-gate smoke continues to reject 400 MHz with and without RBF
+output and accept 10 MHz. `hps-hold-reference.json` retains report hashes,
+before/after replay results, fresh build identities and verification results.
+Raw evidence is in `/tmp/nextpnr-135-investigation/hps-hold-audit` and
+`/tmp/nextpnr-135-investigation/normal-address-hold-fixed` on powerboat.
+
+Passing the existing timing gate does not qualify unmodelled board/pad paths,
+ganged HPS clock arcs, all PVT corners or 130 MHz. The native address targets
+remain optimization constraints, not complete SDRAM chip-pin budgets.
