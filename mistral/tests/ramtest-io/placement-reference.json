@@ -3333,7 +3333,8 @@
       "controller capture/consumption cycle",
       "hardware acceptance"
     ],
-    "checkpoint_sha256": "ebd1a05fe9bb5fd9057d48ff9a447182961c7654b196121b83d6eb242fa134c7"
+    "checkpoint_sha256": "ebd1a05fe9bb5fd9057d48ff9a447182961c7654b196121b83d6eb242fa134c7",
+    "script_sha256": "6a323d3c2d512adbe559ed68b6ef9bfd2004a09727b1d1daf1bff4327ac1bdcc"
   },
   "limits": [
     "Only selected10/2 seed3 was hardware-tested in this study.",
@@ -3342,5 +3343,624 @@
     "Run duration is affected by concurrent host load and is not a speed benchmark.",
     "Independent designs and broader seeds are required before changing architecture defaults.",
     "130MHz, full board bounds, PVT/electrical qualification and controller capture/OE sequencing remain separate."
-  ]
+  ],
+  "paired_extension_results": [
+    {
+      "seed": 4,
+      "timing_weight": 10,
+      "criticality_exponent": 7,
+      "status": "timeout",
+      "receipt_sha256": "cfa8994c3de2f9ea74fe06ef34022ccb15a8afedb3d7b7351ab1131ee14b3eec",
+      "receipt": {
+        "classification": "compiler timeout; incomplete, not a final timing result",
+        "source_root": "/home/deano/fes/out/dev/pr485-160994a0/fes/out/work/misteross-6c459fda396215fda6ac01e7125584d0cdf564b2/sources/misteross",
+        "seed": 4,
+        "router": "gpu",
+        "gpu_cpu": true,
+        "placer_timing_weight": 10,
+        "placer_criticality_exponent": 7,
+        "requested_setup_margin_ps": 500.0,
+        "analogue_rounds": 5,
+        "analogue_candidate_fanout": null,
+        "command": [
+          "/tmp/nextpnr-135-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-135-investigation/placer10-c7-seed4/synth.json",
+          "--qsf",
+          "/tmp/nextpnr-135-investigation/placer10-c7-seed4/pins.qsf",
+          "--sdc",
+          "/tmp/nextpnr-135-investigation/placer10-c7-seed4/address.sdc",
+          "--freq",
+          "74.25",
+          "--router",
+          "gpu",
+          "--seed",
+          "4",
+          "--compress-rbf",
+          "--placer-heap-timingweight",
+          "10",
+          "--placer-heap-critexp",
+          "7",
+          "--write",
+          "/tmp/nextpnr-135-investigation/placer10-c7-seed4/final.json",
+          "--report",
+          "/tmp/nextpnr-135-investigation/placer10-c7-seed4/timing.json",
+          "--detailed-timing-report",
+          "--timing-report-paths",
+          "128",
+          "--rbf",
+          "/tmp/nextpnr-135-investigation/placer10-c7-seed4/core.rbf",
+          "--gpu-cpu",
+          "--gpu-opt",
+          "analogueSlack=500",
+          "--gpu-opt",
+          "analogueRipSlack=500",
+          "--gpu-opt",
+          "analogueRounds=5"
+        ],
+        "timeout_seconds": 1200,
+        "elapsed_seconds": 1200.1396425389685,
+        "nextpnr_sha256": "ad17774db317e6e520cb1090329453444c480027c19d538fcf5c89a244fb06fc",
+        "compiler_returncode": null,
+        "complete_timing_pass": false,
+        "setup_margin_target_met": false,
+        "file_sha256": {
+          "runner-source.py": "9b27b45196b220c032883820e58e333ef1a3602b7991a75f5d5f0b35d796be8c",
+          "synth.json": "efe83d370d7d185053a0c446989ee7ffd52277f65da0b3dbe928c714f1be9a0d",
+          "pins.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+          "address.sdc": "8693f1b180752d02241f830406a0740d9565a09702cb02011ebcc0d5d3fa59d1",
+          "command.json": "672b0e575c86cba6462f726a2388f46ed9dadb0b96ad87c43414aad0b9cd1d9f",
+          "build.log": "109eee89623d0e1707998ab142a327fe5494bb32f48cb3c711f0ed209aabb3e5"
+        }
+      },
+      "hardware_tested": false
+    },
+    {
+      "seed": 4,
+      "timing_weight": 10,
+      "criticality_exponent": 2,
+      "status": "timeout",
+      "receipt_sha256": "ce455c2055dc2c15fc9dc690257949b87a46584f1d85a67981a041c41ee5ee94",
+      "receipt": {
+        "classification": "compiler timeout; incomplete, not a final timing result",
+        "source_root": "/home/deano/fes/out/dev/pr485-160994a0/fes/out/work/misteross-6c459fda396215fda6ac01e7125584d0cdf564b2/sources/misteross",
+        "seed": 4,
+        "router": "gpu",
+        "gpu_cpu": true,
+        "placer_timing_weight": 10,
+        "placer_criticality_exponent": 2,
+        "requested_setup_margin_ps": 500.0,
+        "analogue_rounds": 5,
+        "analogue_candidate_fanout": null,
+        "command": [
+          "/tmp/nextpnr-135-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-135-investigation/placer10-c2-seed4/synth.json",
+          "--qsf",
+          "/tmp/nextpnr-135-investigation/placer10-c2-seed4/pins.qsf",
+          "--sdc",
+          "/tmp/nextpnr-135-investigation/placer10-c2-seed4/address.sdc",
+          "--freq",
+          "74.25",
+          "--router",
+          "gpu",
+          "--seed",
+          "4",
+          "--compress-rbf",
+          "--placer-heap-timingweight",
+          "10",
+          "--placer-heap-critexp",
+          "2",
+          "--write",
+          "/tmp/nextpnr-135-investigation/placer10-c2-seed4/final.json",
+          "--report",
+          "/tmp/nextpnr-135-investigation/placer10-c2-seed4/timing.json",
+          "--detailed-timing-report",
+          "--timing-report-paths",
+          "128",
+          "--rbf",
+          "/tmp/nextpnr-135-investigation/placer10-c2-seed4/core.rbf",
+          "--gpu-cpu",
+          "--gpu-opt",
+          "analogueSlack=500",
+          "--gpu-opt",
+          "analogueRipSlack=500",
+          "--gpu-opt",
+          "analogueRounds=5"
+        ],
+        "timeout_seconds": 1200,
+        "elapsed_seconds": 1200.1265505868942,
+        "nextpnr_sha256": "ad17774db317e6e520cb1090329453444c480027c19d538fcf5c89a244fb06fc",
+        "compiler_returncode": null,
+        "complete_timing_pass": false,
+        "setup_margin_target_met": false,
+        "file_sha256": {
+          "runner-source.py": "9b27b45196b220c032883820e58e333ef1a3602b7991a75f5d5f0b35d796be8c",
+          "synth.json": "efe83d370d7d185053a0c446989ee7ffd52277f65da0b3dbe928c714f1be9a0d",
+          "pins.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+          "address.sdc": "8693f1b180752d02241f830406a0740d9565a09702cb02011ebcc0d5d3fa59d1",
+          "command.json": "5227c5f41e0054020b54bf3848d3d2264108947b4d85837cca6beb8deda7528a",
+          "build.log": "cf638fac3280dbcd1d103e5307abe158ef9e17da8136c960c0b5e14c5ba8e1c3"
+        }
+      },
+      "hardware_tested": false
+    },
+    {
+      "seed": 5,
+      "timing_weight": 10,
+      "criticality_exponent": 7,
+      "status": "complete",
+      "receipt_sha256": "9fdd9d852f5aae7bd7b6cc431f76f774615a01da545742aaee5613c719987c66",
+      "receipt": {
+        "classification": "fresh constrained pack/place/route; native address optimization, not board signoff",
+        "source_root": "/home/deano/fes/out/dev/pr485-160994a0/fes/out/work/misteross-6c459fda396215fda6ac01e7125584d0cdf564b2/sources/misteross",
+        "seed": 5,
+        "router": "gpu",
+        "gpu_cpu": true,
+        "placer_timing_weight": 10,
+        "placer_criticality_exponent": 7,
+        "command": [
+          "/tmp/nextpnr-135-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-135-investigation/placer10-c7-seed5/synth.json",
+          "--qsf",
+          "/tmp/nextpnr-135-investigation/placer10-c7-seed5/pins.qsf",
+          "--sdc",
+          "/tmp/nextpnr-135-investigation/placer10-c7-seed5/address.sdc",
+          "--freq",
+          "74.25",
+          "--router",
+          "gpu",
+          "--seed",
+          "5",
+          "--compress-rbf",
+          "--placer-heap-timingweight",
+          "10",
+          "--placer-heap-critexp",
+          "7",
+          "--write",
+          "/tmp/nextpnr-135-investigation/placer10-c7-seed5/final.json",
+          "--report",
+          "/tmp/nextpnr-135-investigation/placer10-c7-seed5/timing.json",
+          "--detailed-timing-report",
+          "--timing-report-paths",
+          "128",
+          "--rbf",
+          "/tmp/nextpnr-135-investigation/placer10-c7-seed5/core.rbf",
+          "--gpu-cpu",
+          "--gpu-opt",
+          "analogueSlack=500",
+          "--gpu-opt",
+          "analogueRipSlack=500",
+          "--gpu-opt",
+          "analogueRounds=5"
+        ],
+        "nextpnr_sha256": "ad17774db317e6e520cb1090329453444c480027c19d538fcf5c89a244fb06fc",
+        "script_sha256": "9b27b45196b220c032883820e58e333ef1a3602b7991a75f5d5f0b35d796be8c",
+        "elapsed_seconds": 828.5005826987326,
+        "compiler_returncode": 0,
+        "timeout_seconds": 1200,
+        "all_address_targets_met": true,
+        "complete_timing_pass": true,
+        "requested_setup_margin_ps": 500.0,
+        "analogue_rounds": 5,
+        "analogue_candidate_fanout": null,
+        "setup_margin_target_met": true,
+        "address": {
+          "0": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD",
+            "net": "sdram.sdram_a[0]",
+            "arrival_ns": [
+              2.9639999866485596,
+              3.3570001125335693
+            ],
+            "setup_margin_ns": 3.1429998874664307,
+            "hold_margin_ns": 2.9639999866485596
+          },
+          "1": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_1",
+            "net": "sdram.sdram_a[1]",
+            "arrival_ns": [
+              3.6489999294281006,
+              4.156000137329102
+            ],
+            "setup_margin_ns": 2.3439998626708984,
+            "hold_margin_ns": 3.6489999294281006
+          },
+          "10": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_10",
+            "net": "sdram.sdram_a[10]",
+            "arrival_ns": [
+              4.613999843597412,
+              5.656000137329102
+            ],
+            "setup_margin_ns": 0.8439998626708984,
+            "hold_margin_ns": 4.613999843597412
+          },
+          "11": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_11",
+            "net": "sdram.sdram_a[11]",
+            "arrival_ns": [
+              2.1519999504089355,
+              2.4200000762939453
+            ],
+            "setup_margin_ns": 4.079999923706055,
+            "hold_margin_ns": 2.1519999504089355
+          },
+          "12": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_12",
+            "net": "sdram.sdram_a[12]",
+            "arrival_ns": [
+              4.729000091552734,
+              5.76200008392334
+            ],
+            "setup_margin_ns": 0.7379999160766602,
+            "hold_margin_ns": 4.729000091552734
+          },
+          "2": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_2",
+            "net": "sdram.sdram_a[2]",
+            "arrival_ns": [
+              2.6429998874664307,
+              3.1489999294281006
+            ],
+            "setup_margin_ns": 3.3510000705718994,
+            "hold_margin_ns": 2.6429998874664307
+          },
+          "3": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_3",
+            "net": "sdram.sdram_a[3]",
+            "arrival_ns": [
+              2.9049999713897705,
+              3.2730000019073486
+            ],
+            "setup_margin_ns": 3.2269999980926514,
+            "hold_margin_ns": 2.9049999713897705
+          },
+          "4": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_4",
+            "net": "sdram.sdram_a[4]",
+            "arrival_ns": [
+              2.433000087738037,
+              2.8580000400543213
+            ],
+            "setup_margin_ns": 3.6419999599456787,
+            "hold_margin_ns": 2.433000087738037
+          },
+          "5": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_5",
+            "net": "sdram.sdram_a[5]",
+            "arrival_ns": [
+              3.3410000801086426,
+              3.9700000286102295
+            ],
+            "setup_margin_ns": 2.5299999713897705,
+            "hold_margin_ns": 3.3410000801086426
+          },
+          "6": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_6",
+            "net": "sdram.sdram_a[6]",
+            "arrival_ns": [
+              3.5820000171661377,
+              4.288000106811523
+            ],
+            "setup_margin_ns": 2.2119998931884766,
+            "hold_margin_ns": 3.5820000171661377
+          },
+          "7": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_7",
+            "net": "sdram.sdram_a[7]",
+            "arrival_ns": [
+              2.9839999675750732,
+              3.427999973297119
+            ],
+            "setup_margin_ns": 3.072000026702881,
+            "hold_margin_ns": 2.9839999675750732
+          },
+          "8": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_8",
+            "net": "sdram.sdram_a[8]",
+            "arrival_ns": [
+              2.865999937057495,
+              3.1730000972747803
+            ],
+            "setup_margin_ns": 3.3269999027252197,
+            "hold_margin_ns": 2.865999937057495
+          },
+          "9": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_9",
+            "net": "sdram.sdram_a[9]",
+            "arrival_ns": [
+              4.138000011444092,
+              4.886000156402588
+            ],
+            "setup_margin_ns": 1.613999843597412,
+            "hold_margin_ns": 4.138000011444092
+          }
+        },
+        "timing_summary": {
+          "clocks": {
+            "display.pixel_clk": {
+              "hold_wns_ns": 0.4169999957084656,
+              "setup_wns_ns": 2.625
+            },
+            "ram_clock.clocks[0]": {
+              "hold_wns_ns": 0.4020000100135803,
+              "setup_wns_ns": 0.5680000185966492
+            },
+            "ram_clock.clocks[1]": {
+              "hold_wns_ns": 5.434000015258789,
+              "setup_wns_ns": 3.0429999828338623
+            }
+          },
+          "final_analogue_model": true
+        },
+        "core_rbf_sha256": "acf99eb1d09c1943d79ccefa0fddc81f59c3f9bb12efc9907b36448ec33aeb69",
+        "core_rbf_bytes": 2182032,
+        "file_sha256": {
+          "runner-source.py": "9b27b45196b220c032883820e58e333ef1a3602b7991a75f5d5f0b35d796be8c",
+          "synth.json": "efe83d370d7d185053a0c446989ee7ffd52277f65da0b3dbe928c714f1be9a0d",
+          "pins.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+          "address.sdc": "8693f1b180752d02241f830406a0740d9565a09702cb02011ebcc0d5d3fa59d1",
+          "command.json": "b5d322a954dbc2455568eff5f343bb301f9d0bc17b5831bcf359e55049ac2745",
+          "final.json": "d876a01bf51bef3554373672a2857cf10e400f76fcb5d1da283ed1fee13b30f7",
+          "timing.json": "6cd05a9f106e8e67ef6aa4bdbd84dd3d6910fe0de946b4f53c9e10f9d4d859d3",
+          "build.log": "91ca1c384a34a0c2197331cd777be5bfc8c860c1a75ad8f560f78aed3c616067"
+        },
+        "limits": [
+          "All placement and routing are newly generated; no route-only causal isolation.",
+          "6.5 ns is an empirical native GPIO optimization target, not a complete chip-pin budget.",
+          "Uncharacterized pad/package/board and HPS minimum-delay qualifications remain separate.",
+          "Hardware validation is required for this new artifact."
+        ]
+      },
+      "hardware_tested": false
+    },
+    {
+      "seed": 5,
+      "timing_weight": 10,
+      "criticality_exponent": 2,
+      "status": "complete",
+      "receipt_sha256": "9e54d7d3bb7db74c6168c41e98efa9a8babb93bf477ca7808f6d4e070c096788",
+      "receipt": {
+        "classification": "fresh constrained pack/place/route; native address optimization, not board signoff",
+        "source_root": "/home/deano/fes/out/dev/pr485-160994a0/fes/out/work/misteross-6c459fda396215fda6ac01e7125584d0cdf564b2/sources/misteross",
+        "seed": 5,
+        "router": "gpu",
+        "gpu_cpu": true,
+        "placer_timing_weight": 10,
+        "placer_criticality_exponent": 2,
+        "command": [
+          "/tmp/nextpnr-135-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-135-investigation/placer10-c2-seed5/synth.json",
+          "--qsf",
+          "/tmp/nextpnr-135-investigation/placer10-c2-seed5/pins.qsf",
+          "--sdc",
+          "/tmp/nextpnr-135-investigation/placer10-c2-seed5/address.sdc",
+          "--freq",
+          "74.25",
+          "--router",
+          "gpu",
+          "--seed",
+          "5",
+          "--compress-rbf",
+          "--placer-heap-timingweight",
+          "10",
+          "--placer-heap-critexp",
+          "2",
+          "--write",
+          "/tmp/nextpnr-135-investigation/placer10-c2-seed5/final.json",
+          "--report",
+          "/tmp/nextpnr-135-investigation/placer10-c2-seed5/timing.json",
+          "--detailed-timing-report",
+          "--timing-report-paths",
+          "128",
+          "--rbf",
+          "/tmp/nextpnr-135-investigation/placer10-c2-seed5/core.rbf",
+          "--gpu-cpu",
+          "--gpu-opt",
+          "analogueSlack=500",
+          "--gpu-opt",
+          "analogueRipSlack=500",
+          "--gpu-opt",
+          "analogueRounds=5"
+        ],
+        "nextpnr_sha256": "ad17774db317e6e520cb1090329453444c480027c19d538fcf5c89a244fb06fc",
+        "script_sha256": "9b27b45196b220c032883820e58e333ef1a3602b7991a75f5d5f0b35d796be8c",
+        "elapsed_seconds": 1166.096991281025,
+        "compiler_returncode": 0,
+        "timeout_seconds": 1200,
+        "all_address_targets_met": true,
+        "complete_timing_pass": true,
+        "requested_setup_margin_ps": 500.0,
+        "analogue_rounds": 5,
+        "analogue_candidate_fanout": null,
+        "setup_margin_target_met": true,
+        "address": {
+          "0": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD",
+            "net": "sdram.sdram_a[0]",
+            "arrival_ns": [
+              3.322999954223633,
+              4.060999870300293
+            ],
+            "setup_margin_ns": 2.439000129699707,
+            "hold_margin_ns": 3.322999954223633
+          },
+          "1": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_1",
+            "net": "sdram.sdram_a[1]",
+            "arrival_ns": [
+              2.8010001182556152,
+              3.114000082015991
+            ],
+            "setup_margin_ns": 3.385999917984009,
+            "hold_margin_ns": 2.8010001182556152
+          },
+          "10": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_10",
+            "net": "sdram.sdram_a[10]",
+            "arrival_ns": [
+              3.625999927520752,
+              4.125
+            ],
+            "setup_margin_ns": 2.375,
+            "hold_margin_ns": 3.625999927520752
+          },
+          "11": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_11",
+            "net": "sdram.sdram_a[11]",
+            "arrival_ns": [
+              2.434999942779541,
+              2.9089999198913574
+            ],
+            "setup_margin_ns": 3.5910000801086426,
+            "hold_margin_ns": 2.434999942779541
+          },
+          "12": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_12",
+            "net": "sdram.sdram_a[12]",
+            "arrival_ns": [
+              3.688999891281128,
+              4.290999889373779
+            ],
+            "setup_margin_ns": 2.2090001106262207,
+            "hold_margin_ns": 3.688999891281128
+          },
+          "2": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_2",
+            "net": "sdram.sdram_a[2]",
+            "arrival_ns": [
+              2.2929999828338623,
+              2.575000047683716
+            ],
+            "setup_margin_ns": 3.924999952316284,
+            "hold_margin_ns": 2.2929999828338623
+          },
+          "3": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_3",
+            "net": "sdram.sdram_a[3]",
+            "arrival_ns": [
+              3,
+              3.428999900817871
+            ],
+            "setup_margin_ns": 3.071000099182129,
+            "hold_margin_ns": 3
+          },
+          "4": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_4",
+            "net": "sdram.sdram_a[4]",
+            "arrival_ns": [
+              2.4700000286102295,
+              2.9210000038146973
+            ],
+            "setup_margin_ns": 3.5789999961853027,
+            "hold_margin_ns": 2.4700000286102295
+          },
+          "5": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_5",
+            "net": "sdram.sdram_a[5]",
+            "arrival_ns": [
+              3.056999921798706,
+              3.438999891281128
+            ],
+            "setup_margin_ns": 3.061000108718872,
+            "hold_margin_ns": 3.056999921798706
+          },
+          "6": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_6",
+            "net": "sdram.sdram_a[6]",
+            "arrival_ns": [
+              2.937999963760376,
+              3.2860000133514404
+            ],
+            "setup_margin_ns": 3.2139999866485596,
+            "hold_margin_ns": 2.937999963760376
+          },
+          "7": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_7",
+            "net": "sdram.sdram_a[7]",
+            "arrival_ns": [
+              2.8889999389648438,
+              3.2320001125335693
+            ],
+            "setup_margin_ns": 3.2679998874664307,
+            "hold_margin_ns": 2.8889999389648438
+          },
+          "8": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_8",
+            "net": "sdram.sdram_a[8]",
+            "arrival_ns": [
+              3.236999988555908,
+              4.041999816894531
+            ],
+            "setup_margin_ns": 2.4580001831054688,
+            "hold_margin_ns": 3.236999988555908
+          },
+          "9": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_9",
+            "net": "sdram.sdram_a[9]",
+            "arrival_ns": [
+              4.579999923706055,
+              5.658999919891357
+            ],
+            "setup_margin_ns": 0.8410000801086426,
+            "hold_margin_ns": 4.579999923706055
+          }
+        },
+        "timing_summary": {
+          "clocks": {
+            "display.pixel_clk": {
+              "hold_wns_ns": 0.4230000078678131,
+              "setup_wns_ns": 0.9549999833106995
+            },
+            "ram_clock.clocks[0]": {
+              "hold_wns_ns": 0.3400000035762787,
+              "setup_wns_ns": 0.5090000033378601
+            },
+            "ram_clock.clocks[1]": {
+              "hold_wns_ns": 5.480999946594238,
+              "setup_wns_ns": 2.875999927520752
+            }
+          },
+          "final_analogue_model": true
+        },
+        "core_rbf_sha256": "ab03de76fe4b1dcaa51bdc482e74f3edb0498414a7c0739a6518f524852a4c14",
+        "core_rbf_bytes": 2192980,
+        "file_sha256": {
+          "runner-source.py": "9b27b45196b220c032883820e58e333ef1a3602b7991a75f5d5f0b35d796be8c",
+          "synth.json": "efe83d370d7d185053a0c446989ee7ffd52277f65da0b3dbe928c714f1be9a0d",
+          "pins.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+          "address.sdc": "8693f1b180752d02241f830406a0740d9565a09702cb02011ebcc0d5d3fa59d1",
+          "command.json": "15ad30d8400b69d7cea75ec05c3c9c72cf1f672106e77b9dde422704a7c652a8",
+          "final.json": "647032f92549da9a93924482a8ffd1b9f65e2198d1173044c1b67bef40851107",
+          "timing.json": "2a5149cedee11d8b072b3f1444f2eb8770e2092d31966ec76521bb4f79446472",
+          "build.log": "aa82dd12156faa6343fda10d5b54bac2900124681ac505f1c73d8effa97780df"
+        },
+        "limits": [
+          "All placement and routing are newly generated; no route-only causal isolation.",
+          "6.5 ns is an empirical native GPIO optimization target, not a complete chip-pin budget.",
+          "Uncharacterized pad/package/board and HPS minimum-delay qualifications remain separate.",
+          "Hardware validation is required for this new artifact."
+        ]
+      },
+      "hardware_tested": false
+    }
+  ],
+  "conclusion": "Keep architecture defaults unchanged. Same-binary RAM tester pairs: seed4 timeout with both exponents; seed5 passes500ps target with both. Independent menu results mixed. Investigate bounded analogue repair before another parameter sweep.",
+  "next_investigation": {
+    "source": "mistral/analogue.cc: Arch::analogue_repair",
+    "finding": "SavedRouting retains the best measured routing, but a nested gpurouter call must return before the restoration path runs; an external compiler timeout kills the process before that can happen.",
+    "scope": "Investigate an interruptible repair time budget and re-time the restored legal routing; preserve ordinary final setup/hold gates. Do not promote intermediate slacks or weaken the 500ps target classification.",
+    "status": "researched, not implemented"
+  }
 }

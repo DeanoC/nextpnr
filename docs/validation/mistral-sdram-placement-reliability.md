@@ -41,6 +41,18 @@ architecture-wide default.
 Paired seeds 4 and 5 were declared before their results, using both exponents
 with weight 10 and the same limits. Broader design coverage remains necessary.
 
+| Seed | Exponent | Memory setup slack | Memory hold slack | Result |
+| --- | --- | --- | --- | --- |
+| 4 | 7 | unavailable | unavailable | timeout |
+| 4 | 2 | unavailable | unavailable | timeout |
+| 5 | 7 | +568 ps | +402 ps | timing and target pass |
+| 5 | 2 | +509 ps | +340 ps | timing and target pass |
+
+Neither new seed favors exponent 2: seed 4 is incomplete with both settings,
+and seed 5 meets the target with both, with more setup margin at exponent 7.
+These artifacts were not hardware-tested. All seed 4 intermediate timing
+observations remain diagnostic; no final timing qualification is assigned.
+
 After seed 1 failed at 10 / 2, a targeted run raised the analogue candidate
 fanout limit from 64 to 256. It still finished at **-69 ps**, with +420 ps hold
 slack. The longer 1,800-second limit did not affect this comparison: both runs
@@ -121,3 +133,17 @@ pad and load qualification, chip/board setup and hold bounds, forwarded
 clock pulses, DQ turnaround and capture/consumption cycles require separate
 checks. Completing these checks and validating 130 MHz remain later work.
 The historical empirical 6.5 ns native address target is not a chip-pin budget.
+
+## Next repair investigation
+
+The incomplete new runs reached analogue timing before timing out during
+repair. `Arch::analogue_repair` in `mistral/analogue.cc` retains the best
+measured routing and restores it after a failed or worse repair. A nested
+`gpurouter` call must return before that restoration can run, however; the
+external compiler timeout terminates the process first.
+
+The next useful experiment is an interruptible time budget for analogue
+repair, followed by restoration and fresh final timing of the best legal
+routing. An unmet optimization target must remain distinct from the ordinary
+setup/hold gate. This is a researched follow-up direction, not an implemented
+compiler change in this PR.
