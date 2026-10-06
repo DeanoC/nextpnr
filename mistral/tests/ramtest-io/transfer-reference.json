@@ -1,0 +1,783 @@
+{
+  "classification": "full fitted OSS-RTL corner diagnostics; no CPPR credit, native route or hardware signoff",
+  "rates": {
+    "100": {
+      "classification": "correlated fitted-reference diagnostic; native FES clocks and hardware unqualified",
+      "flight_assumption_ns": [
+        0,
+        0.5
+      ],
+      "margin_ns": 0.2,
+      "clock_edge_distortion_assumption_ns": 0.1,
+      "clock_reference": "input-clock rising edge; preserve one absolute read latency across corners",
+      "rejection_cases": 7,
+      "common_clock_translation_check": "1ns shared prefix shift cancels from pulses, read windows and output margins",
+      "evidence_sha256": "b4d7e1cf3853de5e57265be9d42f2577a9e6b640ec9569233bbef95e91b5e2f6",
+      "audit_sha256": "a99785fb79fe2daf9092ebbb92a5ee9bc556ffb0554ad5fc32e85c9e2f23b9c6",
+      "corners": {
+        "7_slow_1100mv_-40c": {
+          "pulse_lower_bounds_ns": {
+            "local_high_min": 4.142999999999999,
+            "local_low_min": 4.997000000000001,
+            "fitted_high_min": 2.3249999999999984,
+            "fitted_low_min": 2.6480000000000006
+          },
+          "read_capture_windows_ns": {
+            "SDRAM_DQ[0]": [
+              20.545,
+              20.851
+            ],
+            "SDRAM_DQ[10]": [
+              20.236,
+              20.506
+            ],
+            "SDRAM_DQ[11]": [
+              20.333,
+              20.62
+            ],
+            "SDRAM_DQ[12]": [
+              20.554,
+              20.855
+            ],
+            "SDRAM_DQ[13]": [
+              20.392,
+              20.677
+            ],
+            "SDRAM_DQ[14]": [
+              20.396,
+              20.673
+            ],
+            "SDRAM_DQ[15]": [
+              20.461,
+              20.74
+            ],
+            "SDRAM_DQ[1]": [
+              20.189,
+              20.439
+            ],
+            "SDRAM_DQ[2]": [
+              20.162,
+              20.417
+            ],
+            "SDRAM_DQ[3]": [
+              20.339,
+              20.618
+            ],
+            "SDRAM_DQ[4]": [
+              20.413,
+              20.699
+            ],
+            "SDRAM_DQ[5]": [
+              20.171,
+              20.421
+            ],
+            "SDRAM_DQ[6]": [
+              20.392,
+              20.676
+            ],
+            "SDRAM_DQ[7]": [
+              20.439,
+              20.718
+            ],
+            "SDRAM_DQ[8]": [
+              20.537,
+              20.851
+            ],
+            "SDRAM_DQ[9]": [
+              20.622,
+              20.924
+            ]
+          },
+          "all_pin_window_ns": [
+            20.622,
+            20.417
+          ],
+          "output_channels": 52,
+          "worst_output_setup": {
+            "pin": "SDRAM_DQ[2]",
+            "channel": "write_oe",
+            "setup_ns": -0.093,
+            "hold_ns": 1.462
+          },
+          "worst_output_hold": {
+            "pin": "SDRAM_BA[0]",
+            "channel": "write_data",
+            "setup_ns": 0.907,
+            "hold_ns": 0.556
+          },
+          "cs_inverter_max_setup_delay_ns": 0.851
+        },
+        "7_slow_1100mv_100c": {
+          "pulse_lower_bounds_ns": {
+            "local_high_min": 4.044999999999999,
+            "local_low_min": 5.0329999999999995,
+            "fitted_high_min": 2.008,
+            "fitted_low_min": 2.592999999999999
+          },
+          "read_capture_windows_ns": {
+            "SDRAM_DQ[0]": [
+              21.25,
+              21.148
+            ],
+            "SDRAM_DQ[10]": [
+              20.987,
+              20.868
+            ],
+            "SDRAM_DQ[11]": [
+              21.082,
+              20.98
+            ],
+            "SDRAM_DQ[12]": [
+              21.333,
+              21.244
+            ],
+            "SDRAM_DQ[13]": [
+              21.178,
+              21.073
+            ],
+            "SDRAM_DQ[14]": [
+              21.152,
+              21.038
+            ],
+            "SDRAM_DQ[15]": [
+              21.215,
+              21.104
+            ],
+            "SDRAM_DQ[1]": [
+              20.96,
+              20.823
+            ],
+            "SDRAM_DQ[2]": [
+              20.937,
+              20.805
+            ],
+            "SDRAM_DQ[3]": [
+              21.087,
+              20.974
+            ],
+            "SDRAM_DQ[4]": [
+              21.161,
+              21.055
+            ],
+            "SDRAM_DQ[5]": [
+              20.943,
+              20.806
+            ],
+            "SDRAM_DQ[6]": [
+              21.138,
+              21.031
+            ],
+            "SDRAM_DQ[7]": [
+              21.197,
+              21.085
+            ],
+            "SDRAM_DQ[8]": [
+              21.245,
+              21.153
+            ],
+            "SDRAM_DQ[9]": [
+              21.329,
+              21.226
+            ]
+          },
+          "all_pin_window_ns": [
+            21.333,
+            20.805
+          ],
+          "output_channels": 52,
+          "worst_output_setup": {
+            "pin": "SDRAM_DQ[2]",
+            "channel": "write_oe",
+            "setup_ns": -0.22,
+            "hold_ns": 1.157
+          },
+          "worst_output_hold": {
+            "pin": "SDRAM_BA[0]",
+            "channel": "write_data",
+            "setup_ns": 0.806,
+            "hold_ns": 0.246
+          },
+          "cs_inverter_max_setup_delay_ns": 0.71
+        },
+        "MIN_fast_1100mv_-40c": {
+          "pulse_lower_bounds_ns": {
+            "local_high_min": 4.3580000000000005,
+            "local_low_min": 4.956,
+            "fitted_high_min": 3.508,
+            "fitted_low_min": 3.883
+          },
+          "read_capture_windows_ns": {
+            "SDRAM_DQ[0]": [
+              17.167,
+              19.483
+            ],
+            "SDRAM_DQ[10]": [
+              17.036,
+              19.347
+            ],
+            "SDRAM_DQ[11]": [
+              17.072,
+              19.391
+            ],
+            "SDRAM_DQ[12]": [
+              17.196,
+              19.519
+            ],
+            "SDRAM_DQ[13]": [
+              17.121,
+              19.437
+            ],
+            "SDRAM_DQ[14]": [
+              17.117,
+              19.431
+            ],
+            "SDRAM_DQ[15]": [
+              17.162,
+              19.476
+            ],
+            "SDRAM_DQ[1]": [
+              17.026,
+              19.33
+            ],
+            "SDRAM_DQ[2]": [
+              17.006,
+              19.311
+            ],
+            "SDRAM_DQ[3]": [
+              17.078,
+              19.392
+            ],
+            "SDRAM_DQ[4]": [
+              17.126,
+              19.443
+            ],
+            "SDRAM_DQ[5]": [
+              17.015,
+              19.32
+            ],
+            "SDRAM_DQ[6]": [
+              17.11,
+              19.426
+            ],
+            "SDRAM_DQ[7]": [
+              17.143,
+              19.457
+            ],
+            "SDRAM_DQ[8]": [
+              17.162,
+              19.481
+            ],
+            "SDRAM_DQ[9]": [
+              17.208,
+              19.521
+            ]
+          },
+          "all_pin_window_ns": [
+            17.208,
+            19.311
+          ],
+          "output_channels": 52,
+          "worst_output_setup": {
+            "pin": "SDRAM_DQ[2]",
+            "channel": "write_oe",
+            "setup_ns": 1.485,
+            "hold_ns": 2.49
+          },
+          "worst_output_hold": {
+            "pin": "SDRAM_BA[0]",
+            "channel": "write_data",
+            "setup_ns": 2.031,
+            "hold_ns": 2.056
+          },
+          "cs_inverter_max_setup_delay_ns": 1.885
+        },
+        "MIN_fast_1100mv_100c": {
+          "pulse_lower_bounds_ns": {
+            "local_high_min": 4.255000000000002,
+            "local_low_min": 5.0489999999999995,
+            "fitted_high_min": 3.3480000000000016,
+            "fitted_low_min": 3.9369999999999994
+          },
+          "read_capture_windows_ns": {
+            "SDRAM_DQ[0]": [
+              17.785,
+              20.065
+            ],
+            "SDRAM_DQ[10]": [
+              17.645,
+              19.925
+            ],
+            "SDRAM_DQ[11]": [
+              17.699,
+              19.987
+            ],
+            "SDRAM_DQ[12]": [
+              17.829,
+              20.119
+            ],
+            "SDRAM_DQ[13]": [
+              17.75,
+              20.035
+            ],
+            "SDRAM_DQ[14]": [
+              17.73,
+              20.011
+            ],
+            "SDRAM_DQ[15]": [
+              17.774,
+              20.055
+            ],
+            "SDRAM_DQ[1]": [
+              17.637,
+              19.907
+            ],
+            "SDRAM_DQ[2]": [
+              17.636,
+              19.911
+            ],
+            "SDRAM_DQ[3]": [
+              17.706,
+              19.989
+            ],
+            "SDRAM_DQ[4]": [
+              17.74,
+              20.024
+            ],
+            "SDRAM_DQ[5]": [
+              17.629,
+              19.901
+            ],
+            "SDRAM_DQ[6]": [
+              17.724,
+              20.007
+            ],
+            "SDRAM_DQ[7]": [
+              17.757,
+              20.037
+            ],
+            "SDRAM_DQ[8]": [
+              17.779,
+              20.063
+            ],
+            "SDRAM_DQ[9]": [
+              17.823,
+              20.104
+            ]
+          },
+          "all_pin_window_ns": [
+            17.829,
+            19.901
+          ],
+          "output_channels": 52,
+          "worst_output_setup": {
+            "pin": "SDRAM_DQ[2]",
+            "channel": "write_oe",
+            "setup_ns": 1.431,
+            "hold_ns": 2.341
+          },
+          "worst_output_hold": {
+            "pin": "SDRAM_BA[0]",
+            "channel": "write_data",
+            "setup_ns": 1.945,
+            "hold_ns": 1.871
+          },
+          "cs_inverter_max_setup_delay_ns": 1.856
+        }
+      },
+      "common_absolute_capture_window_ns": [
+        21.333,
+        19.311
+      ],
+      "common_window_exists": false
+    },
+    "130": {
+      "classification": "correlated fitted-reference diagnostic; native FES clocks and hardware unqualified",
+      "flight_assumption_ns": [
+        0,
+        0.5
+      ],
+      "margin_ns": 0.2,
+      "clock_edge_distortion_assumption_ns": 0.1,
+      "clock_reference": "input-clock rising edge; preserve one absolute read latency across corners",
+      "rejection_cases": 7,
+      "common_clock_translation_check": "1ns shared prefix shift cancels from pulses, read windows and output margins",
+      "evidence_sha256": "c2801e295fd1a4887bf5a15b408ec34c8f6c88e26e255fa4559957c51433bdb8",
+      "audit_sha256": "a99785fb79fe2daf9092ebbb92a5ee9bc556ffb0554ad5fc32e85c9e2f23b9c6",
+      "corners": {
+        "7_slow_1100mv_-40c": {
+          "pulse_lower_bounds_ns": {
+            "local_high_min": 2.9891538461538456,
+            "local_low_min": 3.8431538461538475,
+            "fitted_high_min": 1.1711538461538449,
+            "fitted_low_min": 1.4941538461538453
+          },
+          "read_capture_windows_ns": {
+            "SDRAM_DQ[0]": [
+              18.791154,
+              17.389462
+            ],
+            "SDRAM_DQ[10]": [
+              18.484154,
+              17.047462
+            ],
+            "SDRAM_DQ[11]": [
+              18.579154,
+              17.158462
+            ],
+            "SDRAM_DQ[12]": [
+              18.800154,
+              17.393462
+            ],
+            "SDRAM_DQ[13]": [
+              18.638154,
+              17.215462
+            ],
+            "SDRAM_DQ[14]": [
+              18.642154,
+              17.211462
+            ],
+            "SDRAM_DQ[15]": [
+              18.707154,
+              17.278462
+            ],
+            "SDRAM_DQ[1]": [
+              18.435154,
+              16.977462
+            ],
+            "SDRAM_DQ[2]": [
+              18.408154,
+              16.955462
+            ],
+            "SDRAM_DQ[3]": [
+              18.585154,
+              17.156462
+            ],
+            "SDRAM_DQ[4]": [
+              18.659154,
+              17.237462
+            ],
+            "SDRAM_DQ[5]": [
+              18.417154,
+              16.959462
+            ],
+            "SDRAM_DQ[6]": [
+              18.638154,
+              17.214462
+            ],
+            "SDRAM_DQ[7]": [
+              18.685154,
+              17.256462
+            ],
+            "SDRAM_DQ[8]": [
+              18.783154,
+              17.389462
+            ],
+            "SDRAM_DQ[9]": [
+              18.868154,
+              17.462462
+            ]
+          },
+          "all_pin_window_ns": [
+            18.868154,
+            16.955462
+          ],
+          "output_channels": 52,
+          "worst_output_setup": {
+            "pin": "SDRAM_DQ[2]",
+            "channel": "write_oe",
+            "setup_ns": -1.214846,
+            "hold_ns": 0.278154
+          },
+          "worst_output_hold": {
+            "pin": "SDRAM_BA[0]",
+            "channel": "write_data",
+            "setup_ns": -0.246846,
+            "hold_ns": -0.597846
+          },
+          "cs_inverter_max_setup_delay_ns": -0.302846
+        },
+        "7_slow_1100mv_100c": {
+          "pulse_lower_bounds_ns": {
+            "local_high_min": 2.8911538461538457,
+            "local_low_min": 3.879153846153846,
+            "fitted_high_min": 0.8541538461538465,
+            "fitted_low_min": 1.4391538461538456
+          },
+          "read_capture_windows_ns": {
+            "SDRAM_DQ[0]": [
+              19.496154,
+              17.686462
+            ],
+            "SDRAM_DQ[10]": [
+              19.236154,
+              17.409462
+            ],
+            "SDRAM_DQ[11]": [
+              19.328154,
+              17.518462
+            ],
+            "SDRAM_DQ[12]": [
+              19.579154,
+              17.782462
+            ],
+            "SDRAM_DQ[13]": [
+              19.424154,
+              17.611462
+            ],
+            "SDRAM_DQ[14]": [
+              19.398154,
+              17.576462
+            ],
+            "SDRAM_DQ[15]": [
+              19.461154,
+              17.642462
+            ],
+            "SDRAM_DQ[1]": [
+              19.206154,
+              17.361462
+            ],
+            "SDRAM_DQ[2]": [
+              19.183154,
+              17.343462
+            ],
+            "SDRAM_DQ[3]": [
+              19.333154,
+              17.512462
+            ],
+            "SDRAM_DQ[4]": [
+              19.407154,
+              17.593462
+            ],
+            "SDRAM_DQ[5]": [
+              19.189154,
+              17.344462
+            ],
+            "SDRAM_DQ[6]": [
+              19.384154,
+              17.569462
+            ],
+            "SDRAM_DQ[7]": [
+              19.443154,
+              17.623462
+            ],
+            "SDRAM_DQ[8]": [
+              19.491154,
+              17.691462
+            ],
+            "SDRAM_DQ[9]": [
+              19.575154,
+              17.764462
+            ]
+          },
+          "all_pin_window_ns": [
+            19.579154,
+            17.343462
+          ],
+          "output_channels": 52,
+          "worst_output_setup": {
+            "pin": "SDRAM_DQ[2]",
+            "channel": "write_oe",
+            "setup_ns": -1.341846,
+            "hold_ns": -0.028846
+          },
+          "worst_output_hold": {
+            "pin": "SDRAM_BA[0]",
+            "channel": "write_data",
+            "setup_ns": -0.347846,
+            "hold_ns": -0.907846
+          },
+          "cs_inverter_max_setup_delay_ns": -0.443846
+        },
+        "MIN_fast_1100mv_-40c": {
+          "pulse_lower_bounds_ns": {
+            "local_high_min": 3.2041538461538464,
+            "local_low_min": 3.802153846153847,
+            "fitted_high_min": 2.3541538461538467,
+            "fitted_low_min": 2.7291538461538467
+          },
+          "read_capture_windows_ns": {
+            "SDRAM_DQ[0]": [
+              15.413154,
+              16.021462
+            ],
+            "SDRAM_DQ[10]": [
+              15.283154,
+              15.887462
+            ],
+            "SDRAM_DQ[11]": [
+              15.318154,
+              15.929462
+            ],
+            "SDRAM_DQ[12]": [
+              15.442154,
+              16.057462
+            ],
+            "SDRAM_DQ[13]": [
+              15.367154,
+              15.975462
+            ],
+            "SDRAM_DQ[14]": [
+              15.363154,
+              15.969462
+            ],
+            "SDRAM_DQ[15]": [
+              15.408154,
+              16.014462
+            ],
+            "SDRAM_DQ[1]": [
+              15.272154,
+              15.868462
+            ],
+            "SDRAM_DQ[2]": [
+              15.252154,
+              15.849462
+            ],
+            "SDRAM_DQ[3]": [
+              15.324154,
+              15.930462
+            ],
+            "SDRAM_DQ[4]": [
+              15.372154,
+              15.981462
+            ],
+            "SDRAM_DQ[5]": [
+              15.261154,
+              15.858462
+            ],
+            "SDRAM_DQ[6]": [
+              15.356154,
+              15.964462
+            ],
+            "SDRAM_DQ[7]": [
+              15.389154,
+              15.995462
+            ],
+            "SDRAM_DQ[8]": [
+              15.408154,
+              16.019462
+            ],
+            "SDRAM_DQ[9]": [
+              15.454154,
+              16.059462
+            ]
+          },
+          "all_pin_window_ns": [
+            15.454154,
+            15.849462
+          ],
+          "output_channels": 52,
+          "worst_output_setup": {
+            "pin": "SDRAM_DQ[2]",
+            "channel": "write_oe",
+            "setup_ns": 0.347154,
+            "hold_ns": 1.320154
+          },
+          "worst_output_hold": {
+            "pin": "SDRAM_BA[0]",
+            "channel": "write_data",
+            "setup_ns": 0.877154,
+            "hold_ns": 0.902154
+          },
+          "cs_inverter_max_setup_delay_ns": 0.731154
+        },
+        "MIN_fast_1100mv_100c": {
+          "pulse_lower_bounds_ns": {
+            "local_high_min": 3.1011538461538457,
+            "local_low_min": 3.895153846153846,
+            "fitted_high_min": 2.1941538461538466,
+            "fitted_low_min": 2.783153846153846
+          },
+          "read_capture_windows_ns": {
+            "SDRAM_DQ[0]": [
+              16.031154,
+              16.603462
+            ],
+            "SDRAM_DQ[10]": [
+              15.892154,
+              16.465462
+            ],
+            "SDRAM_DQ[11]": [
+              15.945154,
+              16.525462
+            ],
+            "SDRAM_DQ[12]": [
+              16.075154,
+              16.657462
+            ],
+            "SDRAM_DQ[13]": [
+              15.996154,
+              16.573462
+            ],
+            "SDRAM_DQ[14]": [
+              15.976154,
+              16.549462
+            ],
+            "SDRAM_DQ[15]": [
+              16.020154,
+              16.593462
+            ],
+            "SDRAM_DQ[1]": [
+              15.883154,
+              16.445462
+            ],
+            "SDRAM_DQ[2]": [
+              15.882154,
+              16.449462
+            ],
+            "SDRAM_DQ[3]": [
+              15.952154,
+              16.527462
+            ],
+            "SDRAM_DQ[4]": [
+              15.986154,
+              16.562462
+            ],
+            "SDRAM_DQ[5]": [
+              15.875154,
+              16.439462
+            ],
+            "SDRAM_DQ[6]": [
+              15.970154,
+              16.545462
+            ],
+            "SDRAM_DQ[7]": [
+              16.003154,
+              16.575462
+            ],
+            "SDRAM_DQ[8]": [
+              16.025154,
+              16.601462
+            ],
+            "SDRAM_DQ[9]": [
+              16.069154,
+              16.642462
+            ]
+          },
+          "all_pin_window_ns": [
+            16.075154,
+            16.439462
+          ],
+          "output_channels": 52,
+          "worst_output_setup": {
+            "pin": "SDRAM_DQ[2]",
+            "channel": "write_oe",
+            "setup_ns": 0.298154,
+            "hold_ns": 1.167154
+          },
+          "worst_output_hold": {
+            "pin": "SDRAM_BA[0]",
+            "channel": "write_data",
+            "setup_ns": 0.791154,
+            "hold_ns": 0.717154
+          },
+          "cs_inverter_max_setup_delay_ns": 0.702154
+        }
+      },
+      "common_absolute_capture_window_ns": [
+        19.579154,
+        15.849462
+      ],
+      "common_window_exists": false
+    }
+  }
+}

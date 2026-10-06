@@ -1,0 +1,291 @@
+{
+  "classification": "fitted pad reference observations; not a production model or hardware signoff",
+  "clock_reference": "GPIO register clock or DDIO output mux routing ingress; upstream network excluded",
+  "device": "5CSEBA6U23I7",
+  "io_standard": "3.3-V LVTTL",
+  "output_load_pf": 30.0,
+  "bounds": {
+    "read_ddr_high_hold": {
+      "count": 8,
+      "minimum": {
+        "value_ps": -5320.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "clock_local_ps": 731.0,
+        "data_local_ps": 6051.0,
+        "variant": "ddr",
+        "report": "7_slow_1100mv_100c/input-hold.rpt",
+        "source": "dq[0]",
+        "target": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+        "report_sha256": "60b58057b6d95dbd37d41874cef6be8f3109617b102ebe8b0cc9b9ce6faf97fe"
+      },
+      "maximum": {
+        "value_ps": -2191.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "clock_local_ps": 295.0,
+        "data_local_ps": 2486.0,
+        "variant": "ddr",
+        "report": "MIN_fast_1100mv_-40c/input-hold.rpt",
+        "source": "dq[1]",
+        "target": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+        "report_sha256": "f06c0be240d853ac44fd8a3e87adf6abc0617d0f4a53e22abd488ea53dab07d4"
+      }
+    },
+    "read_ddr_high_setup": {
+      "count": 8,
+      "minimum": {
+        "value_ps": 3143.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "clock_local_ps": 273.0,
+        "data_local_ps": 3416.0,
+        "variant": "ddr",
+        "report": "MIN_fast_1100mv_-40c/input-setup.rpt",
+        "source": "dq[1]",
+        "target": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+        "report_sha256": "ad70a5194fb9c65c37234954c5f293dc447718a2dd9aa769978272edbee202b2"
+      },
+      "maximum": {
+        "value_ps": 6263.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "clock_local_ps": 656.0,
+        "data_local_ps": 6919.0,
+        "variant": "ddr",
+        "report": "7_slow_1100mv_100c/input-setup.rpt",
+        "source": "dq[0]",
+        "target": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|dataout_h[0]",
+        "report_sha256": "f3c83497b2a7865d664b0691c9f1c4e8f85b0569304bb0fb0b5562b8995c54dc"
+      }
+    },
+    "read_ddr_low_hold": {
+      "count": 8,
+      "minimum": {
+        "value_ps": -5297.0,
+        "clock_edge": "F",
+        "data_transition": "RR",
+        "clock_local_ps": 535.0,
+        "data_local_ps": 5832.0,
+        "variant": "ddr",
+        "report": "7_slow_1100mv_100c/input-hold.rpt",
+        "source": "dq[0]",
+        "target": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+        "report_sha256": "60b58057b6d95dbd37d41874cef6be8f3109617b102ebe8b0cc9b9ce6faf97fe"
+      },
+      "maximum": {
+        "value_ps": -2181.0,
+        "clock_edge": "F",
+        "data_transition": "RR",
+        "clock_local_ps": 205.0,
+        "data_local_ps": 2386.0,
+        "variant": "ddr",
+        "report": "MIN_fast_1100mv_-40c/input-hold.rpt",
+        "source": "dq[1]",
+        "target": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+        "report_sha256": "f06c0be240d853ac44fd8a3e87adf6abc0617d0f4a53e22abd488ea53dab07d4"
+      }
+    },
+    "read_ddr_low_setup": {
+      "count": 8,
+      "minimum": {
+        "value_ps": 3142.0,
+        "clock_edge": "F",
+        "data_transition": "FF",
+        "clock_local_ps": 188.0,
+        "data_local_ps": 3330.0,
+        "variant": "ddr",
+        "report": "MIN_fast_1100mv_-40c/input-setup.rpt",
+        "source": "dq[1]",
+        "target": "altddio_in:pads[1].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+        "report_sha256": "ad70a5194fb9c65c37234954c5f293dc447718a2dd9aa769978272edbee202b2"
+      },
+      "maximum": {
+        "value_ps": 6252.0,
+        "clock_edge": "F",
+        "data_transition": "FF",
+        "clock_local_ps": 477.0,
+        "data_local_ps": 6729.0,
+        "variant": "ddr",
+        "report": "7_slow_1100mv_100c/input-setup.rpt",
+        "source": "dq[0]",
+        "target": "altddio_in:pads[0].cap|ddio_in_q9f:auto_generated|ddio_ina[0]~DFFLO",
+        "report_sha256": "f3c83497b2a7865d664b0691c9f1c4e8f85b0569304bb0fb0b5562b8995c54dc"
+      }
+    },
+    "read_sdr_hold": {
+      "count": 12,
+      "minimum": {
+        "value_ps": -5420.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "clock_local_ps": 731.0,
+        "data_local_ps": 6151.0,
+        "variant": "pads",
+        "report": "7_slow_1100mv_100c/input-hold.rpt",
+        "source": "p5",
+        "target": "i5",
+        "report_sha256": "5ed7175fb11b3d8d3ce4176b2d211b84f364646ff6d91c205a8cb24198340150"
+      },
+      "maximum": {
+        "value_ps": -2181.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "clock_local_ps": 295.0,
+        "data_local_ps": 2476.0,
+        "variant": "pads",
+        "report": "MIN_fast_1100mv_-40c/input-hold.rpt",
+        "source": "p7",
+        "target": "i7",
+        "report_sha256": "8533614903061d276b5049d318fc4ca3a00de906db8b38c579523f3ec9c3e4c8"
+      }
+    },
+    "read_sdr_setup": {
+      "count": 12,
+      "minimum": {
+        "value_ps": 3133.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "clock_local_ps": 273.0,
+        "data_local_ps": 3406.0,
+        "variant": "pads",
+        "report": "MIN_fast_1100mv_-40c/input-setup.rpt",
+        "source": "p7",
+        "target": "i7",
+        "report_sha256": "4d1c97d771291f7eba25406cc13b8ef7b63d4f72c420c4a6dc83598f06f561ba"
+      },
+      "maximum": {
+        "value_ps": 6351.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "clock_local_ps": 656.0,
+        "data_local_ps": 7007.0,
+        "variant": "pads",
+        "report": "7_slow_1100mv_100c/input-setup.rpt",
+        "source": "p5",
+        "target": "i5",
+        "report_sha256": "e5bba6fd720969d2d4edc18a952d20a9959cbf20ef18d99efa6031085d1cb99d"
+      }
+    },
+    "write_data_early": {
+      "count": 24,
+      "minimum": {
+        "value_ps": 2512.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "clock_local_ps": 340.0,
+        "data_local_ps": 2172.0,
+        "variant": "pads",
+        "report": "MIN_fast_1100mv_-40c/output-hold.rpt",
+        "source": "o6",
+        "target": "p6",
+        "report_sha256": "1a51b9747ac762cd11d1c0dacae96ce32504ef9da39355a1c4664b801bec2b52"
+      },
+      "maximum": {
+        "value_ps": 4628.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "clock_local_ps": 828.0,
+        "data_local_ps": 3800.0,
+        "variant": "pads",
+        "report": "7_slow_1100mv_100c/output-hold.rpt",
+        "source": "o8",
+        "target": "p8",
+        "report_sha256": "24ba3a63c716b8ae914102d52007bd1041b2af9285e8c737854fe459c18837f6"
+      }
+    },
+    "write_data_late": {
+      "count": 24,
+      "minimum": {
+        "value_ps": 2771.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "clock_local_ps": 366.0,
+        "data_local_ps": 2405.0,
+        "variant": "pads",
+        "report": "MIN_fast_1100mv_-40c/output-setup.rpt",
+        "source": "o6",
+        "target": "p6",
+        "report_sha256": "b5a81df914c7c6b1c8877184d9303377030943369559f8fd1f67cba5566c845e"
+      },
+      "maximum": {
+        "value_ps": 5258.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "clock_local_ps": 918.0,
+        "data_local_ps": 4340.0,
+        "variant": "pads",
+        "report": "7_slow_1100mv_100c/output-setup.rpt",
+        "source": "o8",
+        "target": "p8",
+        "report_sha256": "d81d971f38a8b1d0028340f71ba8c4a53283c8125d0d110242b1c5db7b416d1d"
+      }
+    },
+    "write_oe_early": {
+      "count": 16,
+      "minimum": {
+        "value_ps": 2590.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "clock_local_ps": 412.0,
+        "data_local_ps": 2178.0,
+        "variant": "pads",
+        "report": "MIN_fast_1100mv_-40c/output-hold.rpt",
+        "source": "e8",
+        "target": "p8",
+        "report_sha256": "1a51b9747ac762cd11d1c0dacae96ce32504ef9da39355a1c4664b801bec2b52"
+      },
+      "maximum": {
+        "value_ps": 4739.0,
+        "clock_edge": "R",
+        "data_transition": "FF",
+        "clock_local_ps": 1004.0,
+        "data_local_ps": 3735.0,
+        "variant": "ddr",
+        "report": "7_slow_1100mv_100c/output-hold.rpt",
+        "source": "dq_oe~_Duplicate_1",
+        "target": "dq[1]",
+        "report_sha256": "da64f188539b8d2a0d85f8219e671bcf1ea06a0dcb55cbdcc30ed0f441a5b7bc"
+      }
+    },
+    "write_oe_late": {
+      "count": 16,
+      "minimum": {
+        "value_ps": 2880.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "clock_local_ps": 441.0,
+        "data_local_ps": 2439.0,
+        "variant": "pads",
+        "report": "MIN_fast_1100mv_-40c/output-setup.rpt",
+        "source": "e8",
+        "target": "p8",
+        "report_sha256": "b5a81df914c7c6b1c8877184d9303377030943369559f8fd1f67cba5566c845e"
+      },
+      "maximum": {
+        "value_ps": 5414.0,
+        "clock_edge": "R",
+        "data_transition": "RR",
+        "clock_local_ps": 1109.0,
+        "data_local_ps": 4305.0,
+        "variant": "ddr",
+        "report": "7_slow_1100mv_100c/output-setup.rpt",
+        "source": "dq_oe~_Duplicate_1",
+        "target": "dq[1]",
+        "report_sha256": "5fe34a1d12191254f0fead64abbe67c166eb07ffae6b77898f305143b7c1300a"
+      }
+    }
+  },
+  "input_hashes": {
+    "ddr": {
+      "clocks.sdc": "94f42c2fa83678727a975a9adef7c549e7dce5768067351920f9eac27989be8b",
+      "ddr.v": "7d552c467d8367774dbf61f61505b1a86d1a153b3e2b7efffb2716fcd12447db",
+      "top.qsf": "80a0b51cc467e79d559cfab878c68c71ae9f42d68cbc28742c413137b766e1d1"
+    },
+    "pads": {
+      "clocks.sdc": "94f42c2fa83678727a975a9adef7c549e7dce5768067351920f9eac27989be8b",
+      "pads.v": "73b3c5d8c6c1f9beee6ec3b02ddd34a2e29430b38d8a1b61d7dd052c751a639e",
+      "top.qsf": "483410abbfdded2527061cf67c46f533127c6c414e13433da49d973322481023"
+    }
+  }
+}

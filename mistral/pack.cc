@@ -772,7 +772,7 @@ struct MistralPacker
             ctx->cells.erase(name);
         }
         if (!pads.empty())
-            log_warning("Bidirectional I/O registers: setup/hold, clock-to-pad and clock-to-Q timing are "
+            log_warning("Bidirectional I/O registers: pad setup/hold and clock-to-pad timing are "
                         "uncharacterized; reported fabric Fmax does not establish interface timing closure.\n");
     }
 
@@ -849,7 +849,7 @@ struct MistralPacker
             ctx->cells.erase(ff->name);
         }
         if (!outputs.empty())
-            log_warning("SDR output registers: setup/hold and clock-to-pad timing are uncharacterized; "
+            log_warning("SDR output registers: clock-to-pad timing is uncharacterized; "
                         "reported fabric Fmax does not establish output-interface timing closure.\n");
     }
 
@@ -946,7 +946,7 @@ struct MistralPacker
             ctx->cells.erase(ff->name);
         }
         if (!inputs.empty())
-            log_warning("SDR input registers: setup/hold and GPIO register clock-to-Q timing are uncharacterized; "
+            log_warning("SDR input registers: pad setup/hold timing is uncharacterized; "
                         "reported fabric Fmax does not establish input-interface timing closure.\n");
     }
 
@@ -1315,7 +1315,7 @@ struct MistralPacker
             ctx->cells.erase(ddr->name);
         }
         if (!inputs.empty())
-            log_warning("DDR input registers: setup/hold, GPIO register clock-to-Q, and Q-to-fabric timing are "
+            log_warning("DDR input registers: pad setup/hold and internal DDR handoff timing are "
                         "uncharacterized; "
                         "reported fabric Fmax does not establish input-interface timing closure.\n");
     }
@@ -2811,8 +2811,13 @@ struct MistralPacker
             const Solution &sol = *solved.solution;
             int clocks = req.clocks;
             // Established netlist convention: the first output is named outclk.
-            if (ci->ports.count(ctx->id("outclk[0]")) && !ci->ports.count(id_outclk))
+            if (ci->ports.count(ctx->id("outclk[0]")) && !ci->ports.count(id_outclk)) {
                 ci->renamePort(ctx->id("outclk[0]"), id_outclk);
+                // Default pin maps were assigned before PLL packing. The
+                // renamed port gets its selected counter below; retaining
+                // the old map would freeze a nonexistent outclk[0] BEL pin.
+                ci->pin_data.erase(ctx->id("outclk[0]"));
+            }
             for (auto &port : ci->ports) {
                 if (port.first.in(id_refclk, id_locked, id_rst))
                     continue;
@@ -3063,6 +3068,32 @@ struct MistralPacker
         }
     }
 
+    void propagate_io_clocks()
+    {
+        if (!ctx->settings.count(ctx->id("timing/io_delays"))) return;
+        // A create_clock on an input pad is also the reference for the
+        // uninverted fabric clock behind its input and global buffers.
+        bool changed;
+        do {
+            changed = false;
+            for (const auto &entry : ctx->cells) {
+                auto *cell = entry.second.get();
+                IdString in, out;
+                if (cell->type == id_MISTRAL_IB) { in = id_PAD; out = id_O; }
+                else if (cell->type == id_MISTRAL_CLKBUF) { in = id_A; out = id_Q; }
+                else continue;
+                auto *source = cell->getPort(in), *target = cell->getPort(out);
+                if (!source || !target || !source->clkconstr || target->clkconstr) continue;
+                if (cell->get_pin_state(in) == PIN_INV)
+                    log_error("IO clock constraints do not support inverted input/global buffers.\n");
+                if (source->clkconstr->phase_group == IdString())
+                    source->clkconstr->phase_group = source->name;
+                target->clkconstr = std::make_unique<ClockConstraint>(*source->clkconstr);
+                changed = true;
+            }
+        } while (changed);
+    }
+
     void run()
     {
         init_constant_nets();
@@ -3078,6 +3109,7 @@ struct MistralPacker
         setup_clock_enables();
         setup_plls();
         fold_inverted_pll_clock_buffers();
+        propagate_io_clocks();
         ensure_dsp_control_ports();
         ensure_m10k_control_ports();
         pack_constants();

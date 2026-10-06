@@ -1,0 +1,175 @@
+{
+  "classification": "matched lumped-load reference fits; not SDRAM board or hardware signoff",
+  "device": "5CSEBA6U23I7",
+  "baseline_load_pf": 0,
+  "loaded_pf": 30.0,
+  "count": 16,
+  "minimum_increase_ps": 558.0,
+  "maximum_increase_ps": 1221.0,
+  "paths": [
+    {
+      "variant": "ddr-output-data",
+      "report": "7_slow_1100mv_-40c/output-hold.rpt",
+      "channel": "write_ddr_high",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 3743.0,
+      "loaded_ps": 4331.0,
+      "increase_ps": 588.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "7_slow_1100mv_-40c/output-hold.rpt",
+      "channel": "write_ddr_low",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 3723.0,
+      "loaded_ps": 4311.0,
+      "increase_ps": 588.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "7_slow_1100mv_-40c/output-setup.rpt",
+      "channel": "write_ddr_low",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 3879.0,
+      "loaded_ps": 4893.0,
+      "increase_ps": 1014.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "7_slow_1100mv_-40c/output-setup.rpt",
+      "channel": "write_ddr_high",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 3893.0,
+      "loaded_ps": 4907.0,
+      "increase_ps": 1014.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "7_slow_1100mv_100c/output-hold.rpt",
+      "channel": "write_ddr_high",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 4060.0,
+      "loaded_ps": 4788.0,
+      "increase_ps": 728.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "7_slow_1100mv_100c/output-hold.rpt",
+      "channel": "write_ddr_low",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 4041.0,
+      "loaded_ps": 4769.0,
+      "increase_ps": 728.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "7_slow_1100mv_100c/output-setup.rpt",
+      "channel": "write_ddr_low",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 4228.0,
+      "loaded_ps": 5449.0,
+      "increase_ps": 1221.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "7_slow_1100mv_100c/output-setup.rpt",
+      "channel": "write_ddr_high",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 4240.0,
+      "loaded_ps": 5461.0,
+      "increase_ps": 1221.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "MIN_fast_1100mv_-40c/output-hold.rpt",
+      "channel": "write_ddr_high",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 2102.0,
+      "loaded_ps": 2660.0,
+      "increase_ps": 558.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "MIN_fast_1100mv_-40c/output-hold.rpt",
+      "channel": "write_ddr_low",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 2098.0,
+      "loaded_ps": 2656.0,
+      "increase_ps": 558.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "MIN_fast_1100mv_-40c/output-setup.rpt",
+      "channel": "write_ddr_low",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 2158.0,
+      "loaded_ps": 3003.0,
+      "increase_ps": 845.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "MIN_fast_1100mv_-40c/output-setup.rpt",
+      "channel": "write_ddr_high",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 2158.0,
+      "loaded_ps": 3003.0,
+      "increase_ps": 845.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "MIN_fast_1100mv_100c/output-hold.rpt",
+      "channel": "write_ddr_high",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 2498.0,
+      "loaded_ps": 3141.0,
+      "increase_ps": 643.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "MIN_fast_1100mv_100c/output-hold.rpt",
+      "channel": "write_ddr_low",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 2492.0,
+      "loaded_ps": 3135.0,
+      "increase_ps": 643.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "MIN_fast_1100mv_100c/output-setup.rpt",
+      "channel": "write_ddr_low",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 2550.0,
+      "loaded_ps": 3584.0,
+      "increase_ps": 1034.0
+    },
+    {
+      "variant": "ddr-output-data",
+      "report": "MIN_fast_1100mv_100c/output-setup.rpt",
+      "channel": "write_ddr_high",
+      "source": "FPGA_CLK1_50",
+      "port": "DDR_OUT",
+      "baseline_ps": 2552.0,
+      "loaded_ps": 3586.0,
+      "increase_ps": 1034.0
+    }
+  ],
+  "evidence_sha256": {
+    "baseline": "9502ac44a10ffd760199eb89b5ff90e58e29b662492cab233e6adfd3d1e45ca5",
+    "loaded": "23c576c2fbfb71e49913e51bb471dd39dae4d70f06d6b002133d8deebd40a103"
+  }
+}

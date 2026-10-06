@@ -126,17 +126,14 @@ bool bind_net(Context *ctx, NetInfo *ni, const std::vector<SavedRouting::Entry> 
     return true;
 }
 
-// Worst clock slack in ps: requested period minus achieved period.
+// Worst enforced setup margin in ps, using each path's actual clock window.
 float worst_clock_slack(Context *ctx, TimingAnalyser &tmg, std::string &summary)
 {
-    float worst = std::numeric_limits<float>::max();
     summary.clear();
     for (auto &clock : tmg.get_timing_result().clock_fmax) {
-        float slack = 1e6f / clock.second.constraint - 1e6f / clock.second.achieved;
-        worst = std::min(worst, slack);
         summary += stringf("%s%s %.2f MHz", summary.empty() ? "" : ", ", clock.first.c_str(ctx), clock.second.achieved);
     }
-    return worst;
+    return tmg.get_worst_setup_slack();
 }
 
 } // namespace

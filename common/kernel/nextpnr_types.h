@@ -279,6 +279,27 @@ struct TimingClockingInfo
     DelayQuad clockToQ;    // Output clock-to-Q time
 };
 
+// One registered external-pad relationship, separate from fabric-facing arcs.
+// Input models include the complete pad-to-capture setup/hold checks relative
+// to clock_port's routing ingress. Output models include the complete
+// clock-ingress-to-pad delay (including the output buffer/load). Architectures
+// must supply every applicable capture edge or data/OE launch relationship.
+struct RegisteredIoTiming
+{
+    IdString name; // unique channel name within a pad and direction
+    TimingClockingInfo clocking;
+};
+
+// Limits of a primitive timing model, referred to its real clock routing
+// ingress (not an internal register clock pin). Data-path exceptions cannot
+// relax these physical waveform requirements. Zero disables an individual
+// requirement; architectures without a qualified model return no entries.
+struct PrimitiveClockRequirement
+{
+    IdString clock_port;
+    delay_t min_period = 0, min_high = 0, min_low = 0;
+};
+
 struct PseudoCell
 {
     virtual Loc getLocation() const = 0;
@@ -476,6 +497,9 @@ struct CriticalPath
 // Holds timing information of a single source to sink path of a net
 struct NetSinkTiming
 {
+    // Logical driver of a private registered-pad bridge, when it differs
+    // from (or has no counterpart in) the physical net's driver.
+    std::pair<IdString, IdString> timing_source;
     // Clock event pair
     ClockPair clock_pair;
     // Cell and port (the sink)

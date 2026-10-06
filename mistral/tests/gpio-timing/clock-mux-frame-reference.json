@@ -1,0 +1,34 @@
+{
+  "device": "5CSEBA6U23I7",
+  "pin": "AD20",
+  "classification": "four-corner fitted clock-ingress frame audit, not hardware signoff",
+  "hashes": {
+    "clock-requirements/7_slow_1100mv_-40c/pulse.rpt": "6d406d492576cadc374452cfe093f695266f9e10ddb1cdb2c1ea16f5960a120b",
+    "clock-requirements/7_slow_1100mv_-40c/requirements.tsv": "482c035b5375cefa499c22df7fc586e0800ca0c91f9eb623966d483228988f7a",
+    "clock-requirements/7_slow_1100mv_100c/pulse.rpt": "fc9042ff905707e889bbb35d1615884165c154c16815be9b3584c330fcd06f79",
+    "clock-requirements/7_slow_1100mv_100c/requirements.tsv": "19d6549b5c3a8e83297cd5ec2de5ab7d75a023055ccdd1e77d0ba92776bcfefb",
+    "clock-requirements/MIN_fast_1100mv_-40c/pulse.rpt": "e0d12b4d8611efdcbc3e534013a6e8dfe8179004e708c38a17312b05b0a21a43",
+    "clock-requirements/MIN_fast_1100mv_-40c/requirements.tsv": "89b4a1022a9462cff6272cb598d1d42e418dfcc4b4da239a31397a500840c4ce",
+    "clock-requirements/MIN_fast_1100mv_100c/pulse.rpt": "febd5a0eb19fa5ef852dbc1604dcc7fe6bf489232a5f2efb1db77325779c92fe",
+    "clock-requirements/MIN_fast_1100mv_100c/requirements.tsv": "ad31d85fe9a42c070af90601d93c7718afbb46cfb1a5ba2b103faaa24c7054ea",
+    "clocks.sdc": "984afc9d14c2b3cdaa3263afeb96a967339a734992cfcdfd3e5fff5f65250d62",
+    "top.qsf": "eac80ff01d02ef943aa9fd77b38b350c821821cdaa22a8b93a66e28077e416e2",
+    "ramtest-pads.v": "26e95d0e76391e4ba85e569f56519fcc1963d18e144fc0bbacc4a6f75de39293",
+    "7_slow_1100mv_-40c/output-setup.rpt": "263091afb3d2b8e206f92db0ab6e241bc72d2ba599bdc176fe8e09bbc8440029",
+    "7_slow_1100mv_-40c/output-hold.rpt": "b8f49d14e1e6f2cce2345512a0afbb891c5f7867dfb45b22e84299d94694fc12",
+    "7_slow_1100mv_100c/output-setup.rpt": "61c9466ada7dbf08ecbeb7011b3b950edbf65c0ac969882753f8b9273d2a5d37",
+    "7_slow_1100mv_100c/output-hold.rpt": "d0acf83cfaca4447e33892f211647478e701f0f7549ec00e6e7a25be48ccf8f8",
+    "MIN_fast_1100mv_-40c/output-setup.rpt": "9b626ebd089bd381a9f482bb49c48e2a2c592c599a8dbe5ef3ed8a4ae2d2ae92",
+    "MIN_fast_1100mv_-40c/output-hold.rpt": "41d00ac8a373d0f8d153c5a7a014751efe083819dbe0a764409ae0b50b28ff9a",
+    "MIN_fast_1100mv_100c/output-setup.rpt": "403c21f8fee9079ba0357ea5f8113eb8a5c267dc837a71a050731405215eb68d",
+    "MIN_fast_1100mv_100c/output-hold.rpt": "5daa20cd2036760bc7876566c86490d5e174e808af0c103ad6dfccbc0a944288"
+  },
+  "audit_sha256": "7cb7fd074ac95d904b2e4d7d8dbd12ed0ec82c0d05c0097be7a127c84faf44f0",
+  "matched_prefixes": 32,
+  "ingress_pulse_maximum_ps": {
+    "High Pulse Width": 759.0,
+    "Low Pulse Width": 733.0
+  },
+  "clock_reference": "shared DDIO clkhi/clklo and muxsel routing ingress; local CELL arcs excluded",
+  "rejection_cases": 4
+}

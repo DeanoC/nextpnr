@@ -1,0 +1,95 @@
+{
+  "classification": "controlled route-only hardware-test candidate; no hardware result or board signoff",
+  "original_failing_rbf_sha256": "9cff64b3a51fcf992d6853458779a99f63f3568e821e425b9fd8b7fedc987e05",
+  "candidate_rbf_sha256": "fdf50532b84edc282dab9991469bc541ff5a6e5dfada569f8ed2b7c2e7e2fa72",
+  "candidate_rbf_bytes": 2166657,
+  "candidate_rbf_path": "/tmp/nextpnr-135-investigation/ramtest-100-address-control/candidate.rbf",
+  "changed_routes": [
+    "sdram.sdram_a[10]",
+    "sdram.sdram_a[12]",
+    "sdram.sdram_a[9]"
+  ],
+  "unchanged_cells": 19892,
+  "unchanged_decoded_configuration_lines": 51953,
+  "unchanged_read_boundaries": 16,
+  "unchanged_other_output_boundaries": 49,
+  "internal_timing": {
+    "clocks": {
+      "display.pixel_clk": {
+        "hold_wns_ns": 0.7210000157356262,
+        "setup_wns_ns": 3.1089999675750732
+      },
+      "ram_clock.clocks[0]": {
+        "hold_wns_ns": 0.7250000238418579,
+        "setup_wns_ns": 0.21799999475479126
+      },
+      "ram_clock.clocks[1]": {
+        "hold_wns_ns": 5.718999862670898,
+        "setup_wns_ns": 3.052999973297119
+      }
+    },
+    "final_analogue_model": true
+  },
+  "address_comparison": {
+    "SDRAM_A_MISTRAL_OB_PAD_10.I": {
+      "passing_ns": 4.421,
+      "failing_ns": 6.676,
+      "candidate_ns": 5.604,
+      "improvement_ns": 1.072
+    },
+    "SDRAM_A_MISTRAL_OB_PAD_12.I": {
+      "passing_ns": 6.999,
+      "failing_ns": 8.959,
+      "candidate_ns": 6.169,
+      "improvement_ns": 2.79
+    },
+    "SDRAM_A_MISTRAL_OB_PAD_9.I": {
+      "passing_ns": 6.306,
+      "failing_ns": 8.797,
+      "candidate_ns": 6.002,
+      "improvement_ns": 2.795
+    }
+  },
+  "route_command": [
+    "/tmp/nextpnr-135-build/nextpnr-mistral",
+    "--device",
+    "5CSEBA6U23I7",
+    "--no-pack",
+    "--no-place",
+    "--compress-rbf",
+    "--json",
+    "/tmp/nextpnr-135-investigation/ramtest-100-address-control/input.json",
+    "--router",
+    "router2",
+    "--seed",
+    "2",
+    "--rbf",
+    "/tmp/nextpnr-135-investigation/ramtest-100-address-control/candidate.rbf",
+    "--write",
+    "/tmp/nextpnr-135-investigation/ramtest-100-address-control/final.json",
+    "--report",
+    "/tmp/nextpnr-135-investigation/ramtest-100-address-control/timing.json",
+    "--detailed-timing-report"
+  ],
+  "nextpnr_sha256": "8d2665f678ec891d969842031fca2e4164fb3d34fc46f20c84c6efdd7c7e7c32",
+  "decoder_sha256": "28cc3d82780653fe18e39395b68ad4840c2f35c43e1c8eab447bf9d4440dc7b6",
+  "script_sha256": "e2e717daacbb435de39f36abcb01a44e6a742d9b066323fc3b65ac9363d764f9",
+  "file_sha256": {
+    "input.json": "c6f344beab638dcae2689aa179e941ca52ab98913a1e75bf2a67959a8a5506c8",
+    "final.json": "dc4350d57e0c31d79c724b254ec580b7a0747d138ad0e864f436076f3a657d4e",
+    "timing.json": "b5604b49a98792f6247a9591abec462c13718669ef8bc70ebef3db8126b11533",
+    "route.log": "6fd22ae509e70b25e395413f0bca8556d95b2f29ce3b288b3cc59a9f683782c4",
+    "probe-input.json": "bfba324a97f522a164f18b2e3fccd27bf2580636c94759045a9ba996310da2ed",
+    "probe-final.json": "52701bb3260fd4ba575d411330a3b14f0a5ace674ca55e838703dba0a289df0b",
+    "probe-timing.json": "deacc222f1d0f3c167e7ceac4d8f901f9638aac8154c872388a5ab21242b113e",
+    "probe.log": "0b5e186bb511d7aae80406a05cdb559c591d444f624800b3faeddd63686f6442",
+    "decoded.bt": "8590a4f61ca0305a680e0f2f5045ba3b6c79d2c2167871d293ee7fbfaf03f3d9",
+    "reference-decoded.bt": "90b6de77f79db1f26398f2866cafa95b17871da1c378bdfb3d3af80a27066a7f"
+  },
+  "limits": [
+    "Native GPIO boundary timing excludes unqualified unregistered pad and board delays.",
+    "Synthetic zero-delay probe is not a SDRAM timing requirement or hardware failure.",
+    "All logic, placement, pin maps, PLL/GPIO configuration and other routes are unchanged.",
+    "Hardware comparison with the original failing artifact is required to test causality."
+  ]
+}

@@ -568,8 +568,18 @@ template <typename FrontendType> struct GenericFrontend
     CellInfo *create_iobuf(NetInfo *net, PortType dir, const std::string &name)
     {
         // Skip IOBUF insertion if this is a design checkpoint (where they will already exist)
-        if (ctx->settings.count(ctx->id("synth")))
+        if (ctx->settings.count(ctx->id("synth"))) {
+            // Existing IO buffers are imported as cells, but external timing
+            // constraints still need the top-level port names and pad nets.
+            if (ctx->settings.count(ctx->id("timing/io_delays"))) {
+                PortInfo pinfo;
+                pinfo.name = ctx->id(name);
+                pinfo.net = net;
+                pinfo.type = dir;
+                ctx->ports[pinfo.name] = pinfo;
+            }
             return nullptr;
+        }
         IdString name_id = ctx->id(name);
         if (ctx->cells.count(name_id))
             log_error("Cell '%s' of type '%s' with the same name as a top-level IO is not allowed.\n", name.c_str(),

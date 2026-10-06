@@ -1,0 +1,220 @@
+{
+  "fes_revision": "8f5c5b5982fea01877b223a36cca0024dd15a8c8",
+  "source_archive_sha256": "42933cae1fd407c812123d1ec730023f40e99432d77afcc530191fdb9f629738",
+  "qsf_overlay_sha256": "867b365ffa181e54d3cff066f4b14485e72a22e1ffb4471844b1172297e5bfce",
+  "build_id": "13500000000000000000000000000000",
+  "status": "research overlay; unsealed; not hardware verified",
+  "nextpnr_source": "634043b3e301c9b5166dce7bec00e5192ec8bc6f",
+  "nextpnr_binary_sha256": "b06bec051a48ccbfbfa89abedaa70e74c2550b7ff316ba9c4ff227f46ae0e4c7",
+  "nextpnr_version": "\"nextpnr-mistral\" -- Next Generation Place and Route (Version nextpnr-0.11.1-441-g6f990273)",
+  "yosys_binary_sha256": "b17d20976c97766dd7a4bbc11b0e838c96a8d6f38f617b3a975c9b789373b4e5",
+  "router": "router2",
+  "seed": 2,
+  "final_analogue_model": true,
+  "rates": {
+    "100": {
+      "packed_dq_cells": 16,
+      "registered_pad_checks": 70,
+      "budget": {
+        "status": "diagnostic assumptions only; turnaround and hardware unverified",
+        "memory_mhz": 100,
+        "cas_latency": 2,
+        "datasheet": "https://etron.com/wp-content/uploads/2022/04/EM63B165TSBM_Rev-2.4.pdf",
+        "assumptions_ns": {
+          "clock-flight": [
+            0.0,
+            0.5
+          ],
+          "data-flight": [
+            0.0,
+            0.5
+          ],
+          "read-flight": [
+            0.0,
+            0.5
+          ],
+          "cs-inverter": [
+            0.0,
+            5.0
+          ]
+        },
+        "margin_ns": 0.2,
+        "clock_at_chip_ns": {
+          "rise": [
+            1.24399995803833,
+            7.289999961853027
+          ],
+          "fall": [
+            1.24399995803833,
+            7.309999942779541
+          ]
+        },
+        "delay_budgets_ns": {
+          "input": [
+            3.54399995803833,
+            13.989999961853027
+          ],
+          "output": [
+            -8.289999961853027,
+            0.9560000419616699
+          ],
+          "chip_select": [
+            -8.289999961853027,
+            5.95600004196167
+          ]
+        },
+        "chip_clock_pulse_ns": {
+          "high_min": -1.2460000038146972,
+          "low_min": -1.265999984741211
+        },
+        "chip_clock_pulse_proven": false
+      },
+      "timing_summary": {
+        "clocks": {
+          "display.pixel_clk": {
+            "hold_wns_ns": 0.414000004529953,
+            "setup_wns_ns": -0.3959999978542328
+          },
+          "ram_clock.clocks[0]": {
+            "hold_wns_ns": -2.188999891281128,
+            "setup_wns_ns": -9.206000328063965
+          },
+          "ram_clock.clocks[1]": {
+            "hold_wns_ns": 4.74399995803833,
+            "setup_wns_ns": -0.5519999861717224
+          }
+        },
+        "final_analogue_model": true
+      },
+      "fmax": {
+        "display.pixel_clk": {
+          "achieved": 72.12925720214844,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 39.751949310302734,
+          "constraint": 100
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 90.05763244628906,
+          "constraint": 100
+        }
+      },
+      "artifacts_sha256": {
+        "synth.json": "cfe030a5f839b0af3231f6867cd8e480f02caf429d34da970035fe7f086a40cc",
+        "probed-final.json": "20fa10162b8d46f89fb655b75a0c24f5b0fb9929db8fdb2461ec35ec393edea8",
+        "diagnostic.rbf": "503ce95dcd3501681418e1ccec48e032029910cdfcf6674ea535c3e6dd5fd5e6",
+        "clock-probe-final.json": "134156f7f699fe43d024b0f054ab3c8c1dd688c1823133972dadd9029c38e8ff",
+        "budget/board.sdc": "13140c4902dc9c36a890a2d5fdaaa8530f21009c8c13ff6f026d7e4fceecf217",
+        "budget/timing.json": "f18522c2dd375191c07de869f3d84cf0e5b79532a27206f17134563b048d9008",
+        "budget/diagnostic.rbf": "503ce95dcd3501681418e1ccec48e032029910cdfcf6674ea535c3e6dd5fd5e6"
+      },
+      "strict_gate": {
+        "exit_code": 1,
+        "rbf_emitted": true
+      }
+    },
+    "130": {
+      "packed_dq_cells": 16,
+      "registered_pad_checks": 70,
+      "budget": {
+        "status": "diagnostic assumptions only; turnaround and hardware unverified",
+        "memory_mhz": 130,
+        "cas_latency": 3,
+        "datasheet": "https://etron.com/wp-content/uploads/2022/04/EM63B165TSBM_Rev-2.4.pdf",
+        "assumptions_ns": {
+          "clock-flight": [
+            0.0,
+            0.5
+          ],
+          "data-flight": [
+            0.0,
+            0.5
+          ],
+          "read-flight": [
+            0.0,
+            0.5
+          ],
+          "cs-inverter": [
+            0.0,
+            5.0
+          ]
+        },
+        "margin_ns": 0.2,
+        "clock_at_chip_ns": {
+          "rise": [
+            1.24399995803833,
+            7.289999961853027
+          ],
+          "fall": [
+            1.24399995803833,
+            7.309999942779541
+          ]
+        },
+        "delay_budgets_ns": {
+          "input": [
+            3.54399995803833,
+            13.389999961853027
+          ],
+          "output": [
+            -8.289999961853027,
+            0.9560000419616699
+          ],
+          "chip_select": [
+            -8.289999961853027,
+            5.95600004196167
+          ]
+        },
+        "chip_clock_pulse_ns": {
+          "high_min": -2.400000047683716,
+          "low_min": -2.4200000286102297
+        },
+        "chip_clock_pulse_proven": false
+      },
+      "timing_summary": {
+        "clocks": {
+          "display.pixel_clk": {
+            "hold_wns_ns": 0.414000004529953,
+            "setup_wns_ns": -2.884000062942505
+          },
+          "ram_clock.clocks[0]": {
+            "hold_wns_ns": -3.3429999351501465,
+            "setup_wns_ns": -15.913999557495117
+          },
+          "ram_clock.clocks[1]": {
+            "hold_wns_ns": 2.431999921798706,
+            "setup_wns_ns": 2.697999954223633
+          }
+        },
+        "final_analogue_model": true
+      },
+      "fmax": {
+        "display.pixel_clk": {
+          "achieved": 61.15460205078125,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 18.809738159179688,
+          "constraint": 130.0052032470703
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 282.37445068359375,
+          "constraint": 130.0052032470703
+        }
+      },
+      "artifacts_sha256": {
+        "synth.json": "736624938f1e4ecec358edc460c741abe4129e85d492f301acb37847d852c2b1",
+        "probed-final.json": "063c5b38ff3b2f0187f7b9206a3b75c0a345acdcae00596e6fcc6d60b5240585",
+        "diagnostic.rbf": "689679c5586f4a7126a530f54f7f74f19c0ecc6f964248ea116bf9cc7d9b69cb",
+        "clock-probe-final.json": "da17d8598057a05c15630092e92efd67192a167f99476caf809d1913bcc09411",
+        "budget/board.sdc": "b8789564e811f1adb3adf6949737d674c240c78592963305f677282c30122174",
+        "budget/timing.json": "734b0cbc1d957f8e10c502ca5e77fa013e168292c60871fbaf36ef35ff7cc167",
+        "budget/diagnostic.rbf": "689679c5586f4a7126a530f54f7f74f19c0ecc6f964248ea116bf9cc7d9b69cb"
+      },
+      "strict_gate": {
+        "exit_code": 1,
+        "rbf_emitted": true
+      }
+    }
+  }
+}

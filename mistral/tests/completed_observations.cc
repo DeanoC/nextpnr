@@ -63,6 +63,28 @@ TEST_F(CompletedObservationsTest, RealFailedHpsHopNeverBecomesObservation)
     EXPECT_TRUE(ctx->pip_delay_observed.empty());
     EXPECT_EQ(ctx->pip_type_calibration[CycloneV::GIN].hops, 0);
 }
+TEST_F(CompletedObservationsTest, FailedCachedOverridePreservesFallbackRouteMinimum)
+{
+    port("source", PORT_OUT, gin);
+    auto sink = port("sink", PORT_IN, h6);
+    path({gin, h6});
+    const PortRef endpoint{sink, ctx->id("pin")};
+    // This HPS source has no analogue input wave. Before caching, the
+    // declined override leaves the route-table envelope intact.
+    auto uncached = ctx->getNetinfoRouteDelayQuad(net, endpoint);
+    ASSERT_GT(uncached.minDelay(), 0);
+    ctx->compute_analogue_arcs(true);
+    const auto &cached_endpoint = *net->users.begin();
+    ASSERT_FALSE(ctx->analogue_arc_cache.at(&cached_endpoint).ok);
+    // The cached failed arc writes its default zero delay before declining.
+    // That value must be discarded, just as in the uncached calculation.
+    auto cached = ctx->getNetinfoRouteDelayQuad(net, cached_endpoint);
+    EXPECT_EQ(cached.rise.minDelay(), uncached.rise.minDelay());
+    EXPECT_EQ(cached.rise.maxDelay(), uncached.rise.maxDelay());
+    EXPECT_EQ(cached.fall.minDelay(), uncached.fall.minDelay());
+    EXPECT_EQ(cached.fall.maxDelay(), uncached.fall.maxDelay());
+    EXPECT_EQ(cached.maxDelay(), ctx->getNetinfoRouteDelay(net, cached_endpoint));
+}
 TEST_F(CompletedObservationsTest, CompletedZeroPrefixesSurviveLaterFailureAndRepeatedAggregation)
 {
     auto generated = ctx->add_wire(1, 1, ctx->id("generated_prefix"));

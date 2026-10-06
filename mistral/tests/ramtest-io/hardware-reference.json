@@ -1,0 +1,621 @@
+{
+  "schema_version": 1,
+  "date_utc": "2026-10-06",
+  "classification": "Same-boot exact-package controlled hardware comparison at 100 MHz",
+  "user_authorization": "Either kit is fine",
+  "kit": "Kit A",
+  "target_before": {
+    "target_id": "73dc9f5f-1a12-4a95-a820-a9b4e600769a",
+    "api_version": "v1",
+    "agent_version": "0.1.0",
+    "ready": true,
+    "boot_id": "a607b78c-2041-40d5-8db3-0a26e72dd186",
+    "artifacts": {
+      "record_sha256": "2081b2fe38571b3f8120e295f4981973f7bee1d99ca033a3705547131c612796",
+      "runtime_commit": "5a58053229b5e1772defe5f9bdc34c72f659db71",
+      "agent_sha256": "dd91591c8eb6a9728bb1036cbeaba4025e52de5c747402c2c980bdb046986754",
+      "agent_revision": "5a58053229b5e1772defe5f9bdc34c72f659db71",
+      "kit_sha256": "586b18a5bcaf338c99a55974d9062c65aaaf107bbb44fb2abeeea9a14c4e95b2",
+      "image_sha256": "5032c2d2282da26e79e6f7efc47f9f2a1aa9abca4aad4ca6f19817e82d18ce4a",
+      "idle_sha256": "43dc7e9db350dbdef87b290bfde61f8df37483957c93e81cbd753c30d4cd93b6",
+      "package_id": "519ac44a9d801267eb8a07d7f9258cf2df59fbeb389f3a630d1d5c8f02dfb798"
+    }
+  },
+  "target_after": {
+    "target_id": "73dc9f5f-1a12-4a95-a820-a9b4e600769a",
+    "api_version": "v1",
+    "agent_version": "0.1.0",
+    "ready": true,
+    "boot_id": "a607b78c-2041-40d5-8db3-0a26e72dd186",
+    "artifacts": {
+      "record_sha256": "2081b2fe38571b3f8120e295f4981973f7bee1d99ca033a3705547131c612796",
+      "runtime_commit": "5a58053229b5e1772defe5f9bdc34c72f659db71",
+      "agent_sha256": "dd91591c8eb6a9728bb1036cbeaba4025e52de5c747402c2c980bdb046986754",
+      "agent_revision": "5a58053229b5e1772defe5f9bdc34c72f659db71",
+      "kit_sha256": "586b18a5bcaf338c99a55974d9062c65aaaf107bbb44fb2abeeea9a14c4e95b2",
+      "image_sha256": "5032c2d2282da26e79e6f7efc47f9f2a1aa9abca4aad4ca6f19817e82d18ce4a",
+      "idle_sha256": "43dc7e9db350dbdef87b290bfde61f8df37483957c93e81cbd753c30d4cd93b6",
+      "package_id": "519ac44a9d801267eb8a07d7f9258cf2df59fbeb389f3a630d1d5c8f02dfb798"
+    }
+  },
+  "access": "Renewed target lease; volatile POST /v1/development/core loads; no host library import, reboot, or image change",
+  "changed_nets": [
+    "sdram.sdram_a[9]",
+    "sdram.sdram_a[10]",
+    "sdram.sdram_a[12]"
+  ],
+  "conclusion": "The address-only reroute eliminates the observed errors; failing package fails on both sides of the candidate run. This implicates these three routes as a group.",
+  "limits": [
+    "Does not identify an individual address bit",
+    "Not qualification of all boards, PVT corners, or 130 MHz",
+    "External pad/board timing qualification and normal constrained placement/routing remain outstanding"
+  ],
+  "runs": [
+    {
+      "order": 1,
+      "label": "failing",
+      "observation_seconds": 200,
+      "package_receipt": {
+        "file": "failing.fcore",
+        "package_id": "019484653963d99f455cd907157d293aa9fc833152f6717aa5e100270fe7b69f",
+        "archive_sha256": "f79ac0d9300c61e7ead19832ed4a13c6ea01eea54609b2082250adae4b04e8ec",
+        "payload_sha256": "9cff64b3a51fcf992d6853458779a99f63f3568e821e425b9fd8b7fedc987e05",
+        "embedded_build_id": "26d08971ccc8f584488e1dddd1c53f13",
+        "version": "1.1.0"
+      },
+      "load_attestation": {
+        "state": "active",
+        "game_id": null,
+        "system": null,
+        "expected_core": null,
+        "observed_core": "fes.ramtest",
+        "last_error": null,
+        "development": true,
+        "core_package": {
+          "persistence_mode": "volatile",
+          "package_id": "019484653963d99f455cd907157d293aa9fc833152f6717aa5e100270fe7b69f",
+          "generation": 6,
+          "abi": {
+            "id": "fes.application",
+            "major": 1,
+            "minor": 0
+          },
+          "build_id": "26d08971ccc8f584488e1dddd1c53f13",
+          "active_interfaces": [
+            {
+              "id": "fes.gamepad",
+              "major": 1,
+              "minor": 0
+            },
+            {
+              "id": "fes.memory.hps-ddr",
+              "major": 1,
+              "minor": 0
+            },
+            {
+              "id": "fes.video.fixed-720p60",
+              "major": 1,
+              "minor": 0
+            }
+          ],
+          "gamepad": true
+        }
+      },
+      "screenshot": "hardware-fail-first.png",
+      "decoded": {
+        "classification": "HDMI observation decoded against original RTL glyphs",
+        "state": "FAIL",
+        "rate_mhz": 100,
+        "completed_patterns": 6,
+        "errors": 128,
+        "pattern_errors": {
+          "0000": 0,
+          "FFFF": 0,
+          "5555": 0,
+          "AAAA": 0,
+          "ADDR": 64,
+          "INVR": 64
+        },
+        "first_fault_hex": "007F3000",
+        "last_fault_hex": "00FF600F",
+        "first_got_hex": "2F7F",
+        "hps_ddr": {
+          "P0": {
+            "state": "PASS",
+            "errors": 0
+          },
+          "P1": {
+            "state": "PASS",
+            "errors": 0
+          },
+          "P2": {
+            "state": "PASS",
+            "errors": 0
+          }
+        },
+        "alignment": {
+          "x": 166,
+          "y": -1,
+          "scale": 3,
+          "header_bit_errors": 0
+        },
+        "critical_glyph_bit_errors": 0,
+        "text_rows": {
+          "1": "INVR W 6/6  100 MHZ",
+          "2": "ADDR 03FFFFFF AT 007F3000 00FF600F",
+          "3": "ERR 00000080 WAS 2F7F",
+          "4": "EXP 03FF GOT 03FF",
+          "5": "FAIL",
+          "6": "",
+          "7": "HPS DDR 100 MHZ 30000000-3FFFFFFF",
+          "8": "P0 ADDR W 7/7 38000000 E 00000000 PASS",
+          "9": "P1 ADDR W 7/7 3C000000 E 00000000 PASS",
+          "10": "P2 ADDR W 7/7 40000000 E 00000000 PASS",
+          "11": "P0 AT 00000000 L 00000000",
+          "12": "P1 AT 00000000 L 00000000",
+          "13": "P2 AT 00000000 L 00000000",
+          "14": "P0 BAD 00000000000000000000000000000000",
+          "15": "P1 BAD 0000000000000000",
+          "16": "P2 BAD 0000000000000000",
+          "17": "MB/S WR 1570 0695 0695 RD 1566 0704 0701",
+          "18": "",
+          "19": "BUTTON STOPS",
+          "20": "     50       130      100",
+          "21": "0000                   00000000",
+          "22": "FFFF                   00000000",
+          "23": "5555                   00000000",
+          "24": "AAAA                   00000000",
+          "25": "ADDR                   00000040",
+          "26": "INVR                   00000040",
+          "27": ""
+        },
+        "row_bit_errors": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0,
+          "6": 0,
+          "7": 0,
+          "8": 0,
+          "9": 0,
+          "10": 0,
+          "11": 0,
+          "12": 0,
+          "13": 0,
+          "14": 0,
+          "15": 0,
+          "16": 0,
+          "17": 1,
+          "18": 0,
+          "19": 0,
+          "20": 0,
+          "21": 0,
+          "22": 0,
+          "23": 0,
+          "24": 0,
+          "25": 0,
+          "26": 0,
+          "27": 0
+        },
+        "screenshot_sha256": "eefe3eb4583baa50f377d351a5fbc834d64e38a7ea5e21a1ef3594b749f2cf04",
+        "font_sha256": "870fb68597c26f0fd88b75524171588dfe01d6ffeafb2be6e23c7a4d75fc3b64",
+        "script_sha256": "5fcbf69161497bd8f6a1a8d90dae0c1997dd68189b88c656a4f2b59ea47549ec"
+      },
+      "raw_evidence_sha256": {
+        "capture-10.log": "2a76ac793cb9dc52f8f544db11a51d1b546114dab1737f2672770ec06176e9db",
+        "capture-120.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "capture-180.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "capture-200.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "capture-60.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "debug.json": "193a54a6c3d25e67baa858305c8f3454bb1a52f380c826243e4342f3386e8d7f",
+        "decoded.json": "9f8ae1c83497b4f5b78713425bb9f69676b01655a5f242a3fe69962c6686df59",
+        "load.json": "48c95e37b333aa10c073d2c43583ff2eaf5893a1b776225728b3c1e26da86507",
+        "screen-10.png": "48d7462ab33f8f1b463048f8a8709bebbcc51a725d0cf25a6ba98cb32e22eb69",
+        "screen-120.png": "eefe3eb4583baa50f377d351a5fbc834d64e38a7ea5e21a1ef3594b749f2cf04",
+        "screen-180.png": "eefe3eb4583baa50f377d351a5fbc834d64e38a7ea5e21a1ef3594b749f2cf04",
+        "screen-200.png": "eefe3eb4583baa50f377d351a5fbc834d64e38a7ea5e21a1ef3594b749f2cf04",
+        "screen-60.png": "48ad4f90b2e5d6cc4b76ba164d7ae5db37dd160cca5a299bac580bf66d1aa793",
+        "status-10.json": "48c95e37b333aa10c073d2c43583ff2eaf5893a1b776225728b3c1e26da86507",
+        "status-120.json": "48c95e37b333aa10c073d2c43583ff2eaf5893a1b776225728b3c1e26da86507",
+        "status-180.json": "48c95e37b333aa10c073d2c43583ff2eaf5893a1b776225728b3c1e26da86507",
+        "status-200.json": "48c95e37b333aa10c073d2c43583ff2eaf5893a1b776225728b3c1e26da86507",
+        "status-60.json": "48c95e37b333aa10c073d2c43583ff2eaf5893a1b776225728b3c1e26da86507",
+        "stop.json": "2d8138a8502eae5c6b37559bdb3cf8f7f23dd148b9ba477b8a7bd7f7249eb785"
+      }
+    },
+    {
+      "order": 2,
+      "label": "address-control",
+      "observation_seconds": 200,
+      "package_receipt": {
+        "file": "address-control.fcore",
+        "package_id": "1b941609aa4fe6e6695d4067b2447c0b468665a2f238901c2c4e88efa7e5ccaa",
+        "archive_sha256": "8ffc3cb60ae6756a7120f7ccc71681b28c2e27ee30210c5254d863dd0a61605d",
+        "payload_sha256": "fdf50532b84edc282dab9991469bc541ff5a6e5dfada569f8ed2b7c2e7e2fa72",
+        "embedded_build_id": "26d08971ccc8f584488e1dddd1c53f13",
+        "version": "1.1.0-address-route-control.1"
+      },
+      "load_attestation": {
+        "state": "active",
+        "game_id": null,
+        "system": null,
+        "expected_core": null,
+        "observed_core": "fes.ramtest",
+        "last_error": null,
+        "development": true,
+        "core_package": {
+          "persistence_mode": "volatile",
+          "package_id": "1b941609aa4fe6e6695d4067b2447c0b468665a2f238901c2c4e88efa7e5ccaa",
+          "generation": 7,
+          "abi": {
+            "id": "fes.application",
+            "major": 1,
+            "minor": 0
+          },
+          "build_id": "26d08971ccc8f584488e1dddd1c53f13",
+          "active_interfaces": [
+            {
+              "id": "fes.gamepad",
+              "major": 1,
+              "minor": 0
+            },
+            {
+              "id": "fes.memory.hps-ddr",
+              "major": 1,
+              "minor": 0
+            },
+            {
+              "id": "fes.video.fixed-720p60",
+              "major": 1,
+              "minor": 0
+            }
+          ],
+          "gamepad": true
+        }
+      },
+      "screenshot": "hardware-address-pass.png",
+      "decoded": {
+        "classification": "HDMI observation decoded against original RTL glyphs",
+        "state": "PASS",
+        "rate_mhz": 100,
+        "completed_patterns": 6,
+        "errors": 0,
+        "pattern_errors": {
+          "0000": 0,
+          "FFFF": 0,
+          "5555": 0,
+          "AAAA": 0,
+          "ADDR": 0,
+          "INVR": 0
+        },
+        "first_fault_hex": "00000000",
+        "last_fault_hex": "00000000",
+        "first_got_hex": "0000",
+        "hps_ddr": {
+          "P0": {
+            "state": "PASS",
+            "errors": 0
+          },
+          "P1": {
+            "state": "PASS",
+            "errors": 0
+          },
+          "P2": {
+            "state": "PASS",
+            "errors": 0
+          }
+        },
+        "alignment": {
+          "x": 166,
+          "y": -1,
+          "scale": 3,
+          "header_bit_errors": 0
+        },
+        "critical_glyph_bit_errors": 0,
+        "text_rows": {
+          "1": "INVR W 6/6  100 MHZ",
+          "2": "ADDR 03FFFFFF AT 00000000 00000000",
+          "3": "ERR 00000000 WAS 0000",
+          "4": "EXP 03FF GOT 03FF",
+          "5": "PASS",
+          "6": "",
+          "7": "HPS DDR 100 MHZ 30000000-3FFFFFFF",
+          "8": "P0 ADDR W 7/7 38000000 E 00000000 PASS",
+          "9": "P1 ADDR W 7/7 3C000000 E 00000000 PASS",
+          "10": "P2 ADDR W 7/7 40000000 E 00000000 PASS",
+          "11": "P0 AT 00000000 L 00000000",
+          "12": "P1 AT 00000000 L 00000000",
+          "13": "P2 AT 00000000 L 00000000",
+          "14": "P0 BAD 00000000000000000000000000000000",
+          "15": "P1 BAD 0000000000000000",
+          "16": "P2 BAD 0000000000000000",
+          "17": "MB/S WR 1569 0708 0708 RD 1553 0707 070?",
+          "18": "",
+          "19": "BUTTON STOPS",
+          "20": "     50       130      100",
+          "21": "0000                   00000000",
+          "22": "FFFF                   00000000",
+          "23": "5555                   00000000",
+          "24": "AAAA                   00000000",
+          "25": "ADDR                   00000000",
+          "26": "INVR                   00000000",
+          "27": ""
+        },
+        "row_bit_errors": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0,
+          "6": 0,
+          "7": 0,
+          "8": 0,
+          "9": 0,
+          "10": 0,
+          "11": 0,
+          "12": 0,
+          "13": 0,
+          "14": 0,
+          "15": 0,
+          "16": 0,
+          "17": 4,
+          "18": 0,
+          "19": 0,
+          "20": 0,
+          "21": 0,
+          "22": 0,
+          "23": 0,
+          "24": 0,
+          "25": 0,
+          "26": 0,
+          "27": 0
+        },
+        "screenshot_sha256": "1244cf8618b8c3ef5cbc605bfb84f4a0574ffbaaebca5d45bfa11c665e2a5a98",
+        "font_sha256": "870fb68597c26f0fd88b75524171588dfe01d6ffeafb2be6e23c7a4d75fc3b64",
+        "script_sha256": "5fcbf69161497bd8f6a1a8d90dae0c1997dd68189b88c656a4f2b59ea47549ec"
+      },
+      "raw_evidence_sha256": {
+        "capture-10.log": "ceb4d7e5b1ebffaff3146e131b54f74b475f340f3ec597d8f61596b54ddb0180",
+        "capture-120.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "capture-180.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "capture-200.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "capture-60.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "decoded-120.json": "8a8772c43209862edc1aeffe7dfbcb0ba98226bf6d246124c6e9f83d01ab2955",
+        "decoded.json": "8a8772c43209862edc1aeffe7dfbcb0ba98226bf6d246124c6e9f83d01ab2955",
+        "load.json": "2dc837f904ce73f67e8b90d56a94ce04c5a984dcea547647e9d6feb8c7d398eb",
+        "screen-10.png": "ee48b11574a0c547a26cc47d1c7e074c4477c2657d648097b992b9a8d6431375",
+        "screen-120.png": "1244cf8618b8c3ef5cbc605bfb84f4a0574ffbaaebca5d45bfa11c665e2a5a98",
+        "screen-180.png": "1244cf8618b8c3ef5cbc605bfb84f4a0574ffbaaebca5d45bfa11c665e2a5a98",
+        "screen-200.png": "1244cf8618b8c3ef5cbc605bfb84f4a0574ffbaaebca5d45bfa11c665e2a5a98",
+        "screen-60.png": "3a1f2acbf42fb31bff9243ea77e4edbabaa107839c550b2d4715cd9c66fc73de",
+        "status-10.json": "2dc837f904ce73f67e8b90d56a94ce04c5a984dcea547647e9d6feb8c7d398eb",
+        "status-120.json": "2dc837f904ce73f67e8b90d56a94ce04c5a984dcea547647e9d6feb8c7d398eb",
+        "status-180.json": "2dc837f904ce73f67e8b90d56a94ce04c5a984dcea547647e9d6feb8c7d398eb",
+        "status-200.json": "2dc837f904ce73f67e8b90d56a94ce04c5a984dcea547647e9d6feb8c7d398eb",
+        "status-60.json": "2dc837f904ce73f67e8b90d56a94ce04c5a984dcea547647e9d6feb8c7d398eb",
+        "stop.json": "2d8138a8502eae5c6b37559bdb3cf8f7f23dd148b9ba477b8a7bd7f7249eb785"
+      }
+    },
+    {
+      "order": 3,
+      "label": "failing",
+      "observation_seconds": 200,
+      "package_receipt": {
+        "file": "failing.fcore",
+        "package_id": "019484653963d99f455cd907157d293aa9fc833152f6717aa5e100270fe7b69f",
+        "archive_sha256": "f79ac0d9300c61e7ead19832ed4a13c6ea01eea54609b2082250adae4b04e8ec",
+        "payload_sha256": "9cff64b3a51fcf992d6853458779a99f63f3568e821e425b9fd8b7fedc987e05",
+        "embedded_build_id": "26d08971ccc8f584488e1dddd1c53f13",
+        "version": "1.1.0"
+      },
+      "load_attestation": {
+        "state": "active",
+        "game_id": null,
+        "system": null,
+        "expected_core": null,
+        "observed_core": "fes.ramtest",
+        "last_error": null,
+        "development": true,
+        "core_package": {
+          "persistence_mode": "volatile",
+          "package_id": "019484653963d99f455cd907157d293aa9fc833152f6717aa5e100270fe7b69f",
+          "generation": 8,
+          "abi": {
+            "id": "fes.application",
+            "major": 1,
+            "minor": 0
+          },
+          "build_id": "26d08971ccc8f584488e1dddd1c53f13",
+          "active_interfaces": [
+            {
+              "id": "fes.gamepad",
+              "major": 1,
+              "minor": 0
+            },
+            {
+              "id": "fes.memory.hps-ddr",
+              "major": 1,
+              "minor": 0
+            },
+            {
+              "id": "fes.video.fixed-720p60",
+              "major": 1,
+              "minor": 0
+            }
+          ],
+          "gamepad": true
+        }
+      },
+      "screenshot": "hardware-fail-repeat.png",
+      "decoded": {
+        "classification": "HDMI observation decoded against original RTL glyphs",
+        "state": "FAIL",
+        "rate_mhz": 100,
+        "completed_patterns": 6,
+        "errors": 160,
+        "pattern_errors": {
+          "0000": 0,
+          "FFFF": 0,
+          "5555": 0,
+          "AAAA": 0,
+          "ADDR": 96,
+          "INVR": 64
+        },
+        "first_fault_hex": "007F3000",
+        "last_fault_hex": "00FF600F",
+        "first_got_hex": "2F7F",
+        "hps_ddr": {
+          "P0": {
+            "state": "PASS",
+            "errors": 0
+          },
+          "P1": {
+            "state": "PASS",
+            "errors": 0
+          },
+          "P2": {
+            "state": "PASS",
+            "errors": 0
+          }
+        },
+        "alignment": {
+          "x": 166,
+          "y": -1,
+          "scale": 3,
+          "header_bit_errors": 0
+        },
+        "critical_glyph_bit_errors": 0,
+        "text_rows": {
+          "1": "INVR W 6/6  100 MHZ",
+          "2": "ADDR 03FFFFFF AT 007F3000 00FF600F",
+          "3": "ERR 000000A0 WAS 2F7F",
+          "4": "EXP 03FF GOT 03FF",
+          "5": "FAIL",
+          "6": "",
+          "7": "HPS DDR 100 MHZ 30000000-3FFFFFFF",
+          "8": "P0 ADDR W 7/7 38000000 E 00000000 PASS",
+          "9": "P1 ADDR W 7/7 3C000000 E 00000000 PASS",
+          "10": "P2 ADDR W 7/7 40000000 E 00000000 PASS",
+          "11": "P0 AT 00000000 L 00000000",
+          "12": "P1 AT 00000000 L 00000000",
+          "13": "P2 AT 00000000 L 00000000",
+          "14": "P0 BAD 00000000000000000000000000000000",
+          "15": "P1 BAD 0000000000000000",
+          "16": "P2 BAD 0000000000000000",
+          "17": "MB/S WR 1552 0677 0677 RD 1565 0633 0641",
+          "18": "",
+          "19": "BUTTON STOPS",
+          "20": "     50       130      100",
+          "21": "0000                   00000000",
+          "22": "FFFF                   00000000",
+          "23": "5555                   00000000",
+          "24": "AAAA                   00000000",
+          "25": "ADDR                   00000060",
+          "26": "INVR                   00000040",
+          "27": ""
+        },
+        "row_bit_errors": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0,
+          "6": 0,
+          "7": 0,
+          "8": 0,
+          "9": 0,
+          "10": 0,
+          "11": 0,
+          "12": 0,
+          "13": 0,
+          "14": 0,
+          "15": 0,
+          "16": 0,
+          "17": 1,
+          "18": 0,
+          "19": 0,
+          "20": 0,
+          "21": 0,
+          "22": 0,
+          "23": 0,
+          "24": 0,
+          "25": 0,
+          "26": 0,
+          "27": 0
+        },
+        "screenshot_sha256": "2a0afa3d1dabb83c7240239f2070e683153c798672c3c31d3ca29cc516283504",
+        "font_sha256": "870fb68597c26f0fd88b75524171588dfe01d6ffeafb2be6e23c7a4d75fc3b64",
+        "script_sha256": "5fcbf69161497bd8f6a1a8d90dae0c1997dd68189b88c656a4f2b59ea47549ec"
+      },
+      "raw_evidence_sha256": {
+        "capture-10.log": "2e2fbf3d2d7043e91c82334ed44d1b4e3893c0ca4993caa1ecfe8464a1723a6b",
+        "capture-120.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "capture-180.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "capture-200.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "capture-60.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "decoded-120.json": "9297ec7bcc5137d5bb74e59d1fd58906031533b3b711da7f1dbaf221b3188c08",
+        "decoded.json": "9297ec7bcc5137d5bb74e59d1fd58906031533b3b711da7f1dbaf221b3188c08",
+        "load.json": "f740b5e4086e48b3c8cd21b71017bfb6d2d60c469c865246e6223430b05f799e",
+        "screen-10.png": "74dd1ee3622bcf8a8f0d42e2572f52ecd536be47e7f7ac888bd1ea0c79a6bfe2",
+        "screen-120.png": "2a0afa3d1dabb83c7240239f2070e683153c798672c3c31d3ca29cc516283504",
+        "screen-180.png": "2a0afa3d1dabb83c7240239f2070e683153c798672c3c31d3ca29cc516283504",
+        "screen-200.png": "2a0afa3d1dabb83c7240239f2070e683153c798672c3c31d3ca29cc516283504",
+        "screen-60.png": "2e55047f59bcebe242dbbd78a9d54e6882bed34e26f97e0f6afbc5d6169f029d",
+        "status-10.json": "f740b5e4086e48b3c8cd21b71017bfb6d2d60c469c865246e6223430b05f799e",
+        "status-120.json": "f740b5e4086e48b3c8cd21b71017bfb6d2d60c469c865246e6223430b05f799e",
+        "status-180.json": "f740b5e4086e48b3c8cd21b71017bfb6d2d60c469c865246e6223430b05f799e",
+        "status-200.json": "f740b5e4086e48b3c8cd21b71017bfb6d2d60c469c865246e6223430b05f799e",
+        "status-60.json": "f740b5e4086e48b3c8cd21b71017bfb6d2d60c469c865246e6223430b05f799e",
+        "stop.json": "2d8138a8502eae5c6b37559bdb3cf8f7f23dd148b9ba477b8a7bd7f7249eb785"
+      }
+    }
+  ],
+  "cleanup": {
+    "status": {
+      "state": "idle",
+      "game_id": null,
+      "system": null,
+      "expected_core": null,
+      "observed_core": null,
+      "last_error": null
+    },
+    "lease": {
+      "expires_in_ms": 0,
+      "state": "free",
+      "generation": "670049870a46b8b3e9db516a90e67019fd3d343a36e7eb2a26a63a3812483664",
+      "expires_at": "0001-01-01T00:00:00Z"
+    },
+    "boot_unchanged": true
+  },
+  "raw_evidence_directory": "/tmp/nextpnr-135-investigation/hil-kita",
+  "runner_sha256": "40e600ea9a8fdc866d78e745f329e0f8a53540d806f5818d6f1625e45daf2145",
+  "session_evidence_sha256": {
+    "after-health.json": "03ada23d11fc7e06559b193e9f48e46a35c4f3fbefa51902ad39e462d3cb0552",
+    "after-lease.json": "b33ad13b9493f4b14ebd3712122bda288445faca420dfea73c7473249d736a27",
+    "after-status.json": "2d8138a8502eae5c6b37559bdb3cf8f7f23dd148b9ba477b8a7bd7f7249eb785",
+    "before-health.json": "9729264af0dce58ad182e246ba457d0069e33904837f57e30b8cc7ec921c3f74",
+    "claimed.json": "e4fe074dc76f7a9bd95370bb7b16b2a6c4dab147c4c2e090dbeb45740576b70c",
+    "release.json": "1115bfecee78f1ca22e11bea8b292242d4b5e9af01dd97cbe54fe16692c13e8e",
+    "run.log": "d51ac2b2b14747af550f0c8c4c69a3c66ab3270fd80c0156cd3432a2114115f5",
+    "run.py": "40e600ea9a8fdc866d78e745f329e0f8a53540d806f5818d6f1625e45daf2145"
+  },
+  "kit_b_attempt": {
+    "outcome": "No test result: capture device busy with another process; stopped and released without interfering with capture owner",
+    "raw_evidence_directory": "/tmp/nextpnr-135-investigation/hil-kitb",
+    "after_status": {
+      "state": "idle",
+      "game_id": null,
+      "system": null,
+      "expected_core": null,
+      "observed_core": null,
+      "last_error": null
+    },
+    "confirmed_free_lease": {
+      "expires_in_ms": 0,
+      "state": "free",
+      "generation": "2c4e314ecf1517383d37512ea6442acdcfffcdc749b993d9c12194faf9776546",
+      "expires_at": "0001-01-01T00:00:00Z"
+    }
+  }
+}

@@ -1,0 +1,1099 @@
+{
+  "classification": "comparison of actual full OSS RTL fits; conditional board assumptions, no hardware signoff",
+  "rates": {
+    "100": {
+      "memory_mhz": 100,
+      "corners": {
+        "7_slow_1100mv_-40c": {
+          "input-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[9]",
+              "target": "dq_buf[9].dq_sample",
+              "slack_ns": -4.523,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": -5.862
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[9]",
+              "target": "dq_buf[9].dq_sample",
+              "slack_ns": -4.523,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": -5.862
+            }
+          },
+          "input-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[2]",
+              "target": "dq_buf[2].dq_sample",
+              "slack_ns": 6.526,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": 5.187
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[2]",
+              "target": "dq_buf[2].dq_sample",
+              "slack_ns": 6.526,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": 5.187
+            }
+          },
+          "output-setup": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -0.716,
+              "clock_pessimism_credit_ns": 1.973,
+              "slack_without_credit_ns": -2.689
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -0.716,
+              "clock_pessimism_credit_ns": 1.973,
+              "slack_without_credit_ns": -2.689
+            }
+          },
+          "output-hold": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.a_p[1]",
+              "target": "SDRAM_A[1]",
+              "slack_ns": 2.148,
+              "clock_pessimism_credit_ns": 1.596,
+              "slack_without_credit_ns": 0.552
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ba_p[0]",
+              "target": "SDRAM_BA[0]",
+              "slack_ns": 2.299,
+              "clock_pessimism_credit_ns": 1.973,
+              "slack_without_credit_ns": 0.326
+            }
+          },
+          "capture-handoff-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[4].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[4]",
+              "slack_ns": -1.716,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": -3.055
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[4].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[4]",
+              "slack_ns": -1.716,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": -3.055
+            }
+          },
+          "capture-handoff-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[15].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[15]",
+              "slack_ns": 6.249,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": 4.91
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[15].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[15]",
+              "slack_ns": 6.249,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": 4.91
+            }
+          }
+        },
+        "7_slow_1100mv_100c": {
+          "input-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[12]",
+              "target": "dq_buf[12].dq_sample",
+              "slack_ns": -5.161,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": -6.573
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[12]",
+              "target": "dq_buf[12].dq_sample",
+              "slack_ns": -5.161,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": -6.573
+            }
+          },
+          "input-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[2]",
+              "target": "dq_buf[2].dq_sample",
+              "slack_ns": 6.987,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": 5.575
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[2]",
+              "target": "dq_buf[2].dq_sample",
+              "slack_ns": 6.987,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": 5.575
+            }
+          },
+          "output-setup": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -0.704,
+              "clock_pessimism_credit_ns": 2.126,
+              "slack_without_credit_ns": -2.83
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -0.704,
+              "clock_pessimism_credit_ns": 2.126,
+              "slack_without_credit_ns": -2.83
+            }
+          },
+          "output-hold": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.a_p[1]",
+              "target": "SDRAM_A[1]",
+              "slack_ns": 2.054,
+              "clock_pessimism_credit_ns": 1.767,
+              "slack_without_credit_ns": 0.287
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ba_p[0]",
+              "target": "SDRAM_BA[0]",
+              "slack_ns": 2.142,
+              "clock_pessimism_credit_ns": 2.126,
+              "slack_without_credit_ns": 0.016
+            }
+          },
+          "capture-handoff-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[4].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[4]",
+              "slack_ns": -1.82,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": -3.232
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[4].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[4]",
+              "slack_ns": -1.82,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": -3.232
+            }
+          },
+          "capture-handoff-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[15].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[15]",
+              "slack_ns": 6.146,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": 4.734
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[15].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[15]",
+              "slack_ns": 6.146,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": 4.734
+            }
+          }
+        },
+        "MIN_fast_1100mv_-40c": {
+          "input-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[9]",
+              "target": "dq_buf[9].dq_sample",
+              "slack_ns": -1.866,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": -2.448
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[9]",
+              "target": "dq_buf[9].dq_sample",
+              "slack_ns": -1.866,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": -2.448
+            }
+          },
+          "input-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[2]",
+              "target": "dq_buf[2].dq_sample",
+              "slack_ns": 4.663,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": 4.081
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[2]",
+              "target": "dq_buf[2].dq_sample",
+              "slack_ns": 4.663,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": 4.081
+            }
+          },
+          "output-setup": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -0.733,
+              "clock_pessimism_credit_ns": 0.922,
+              "slack_without_credit_ns": -1.655
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -0.733,
+              "clock_pessimism_credit_ns": 0.922,
+              "slack_without_credit_ns": -1.655
+            }
+          },
+          "output-hold": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.a_p[1]",
+              "target": "SDRAM_A[1]",
+              "slack_ns": 2.67,
+              "clock_pessimism_credit_ns": 0.743,
+              "slack_without_credit_ns": 1.927
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ba_p[0]",
+              "target": "SDRAM_BA[0]",
+              "slack_ns": 2.748,
+              "clock_pessimism_credit_ns": 0.922,
+              "slack_without_credit_ns": 1.826
+            }
+          },
+          "capture-handoff-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[4].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[4]",
+              "slack_ns": 1.829,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": 1.247
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[4].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[4]",
+              "slack_ns": 1.829,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": 1.247
+            }
+          },
+          "capture-handoff-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[15].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[15]",
+              "slack_ns": 5.48,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": 4.898
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[15].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[15]",
+              "slack_ns": 5.48,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": 4.898
+            }
+          }
+        },
+        "MIN_fast_1100mv_100c": {
+          "input-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[12]",
+              "target": "dq_buf[12].dq_sample",
+              "slack_ns": -2.463,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": -3.069
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[12]",
+              "target": "dq_buf[12].dq_sample",
+              "slack_ns": -2.463,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": -3.069
+            }
+          },
+          "input-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[5]",
+              "target": "dq_buf[5].dq_sample",
+              "slack_ns": 5.277,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": 4.671
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[5]",
+              "target": "dq_buf[5].dq_sample",
+              "slack_ns": 5.277,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": 4.671
+            }
+          },
+          "output-setup": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -0.716,
+              "clock_pessimism_credit_ns": 0.968,
+              "slack_without_credit_ns": -1.684
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -0.716,
+              "clock_pessimism_credit_ns": 0.968,
+              "slack_without_credit_ns": -1.684
+            }
+          },
+          "output-hold": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.a_p[1]",
+              "target": "SDRAM_A[1]",
+              "slack_ns": 2.545,
+              "clock_pessimism_credit_ns": 0.79,
+              "slack_without_credit_ns": 1.755
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ba_p[0]",
+              "target": "SDRAM_BA[0]",
+              "slack_ns": 2.609,
+              "clock_pessimism_credit_ns": 0.968,
+              "slack_without_credit_ns": 1.641
+            }
+          },
+          "capture-handoff-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[4].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[4]",
+              "slack_ns": 1.611,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": 1.005
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[4].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[4]",
+              "slack_ns": 1.611,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": 1.005
+            }
+          },
+          "capture-handoff-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[15].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[15]",
+              "slack_ns": 5.501,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": 4.895
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[15].dq_sample",
+              "target": "sdram_addon_port:sdram|rdata[15]",
+              "slack_ns": 5.501,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": 4.895
+            }
+          }
+        }
+      },
+      "report_sha256": {
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_-40c/clocks.rpt": "5343e6babce2352fea52be2621c6aa7cde619e78e83ec8358681d4eff3f83eea",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_-40c/input-setup.rpt": "5c7cb6cd08cd464b62eb0171c0b9420a5384206fd1091f7ae3a5840709b7d85a",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_-40c/input-hold.rpt": "9c4f0d26f2477550fedcd733994e2c023036ab198dec5686b55182c2db51aa5d",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_-40c/output-setup.rpt": "d5398782ec280e50d3e43f5590b9fc732e0ce1f093a8320fa9094bafcd08d4ff",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_-40c/output-hold.rpt": "406470bd8a334b9b427e1173c7ca77dc5243341491c87ff38dab1c1adb36e4f8",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_-40c/capture-handoff-setup.rpt": "d94661c3e98bb97abd3ef045f620c43d6180679f2f9936ab7751e3a9bc115ac2",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_-40c/capture-handoff-hold.rpt": "da91569a48ce6fa17d34d7e7b9431c2160d68200ba13824c6420a754d804dce4",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_100c/clocks.rpt": "5343e6babce2352fea52be2621c6aa7cde619e78e83ec8358681d4eff3f83eea",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_100c/input-setup.rpt": "64768d8d99b7832529112095b039b62c6e04330a31c6b847441d6ea78d805e89",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_100c/input-hold.rpt": "09cdddfad02f9b5302da637357895cc135d94c928a5587bb0551f4e5b1e5ec44",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_100c/output-setup.rpt": "5722b25ec0d1ebabbccd6acd16a6441b69e85aa6451d7b7c1bc58d4c49efb4ea",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_100c/output-hold.rpt": "3a5c94ae3c2850dea407947a62e7ec3eebd7ad05245bfc1da7cb58a63aaafc81",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_100c/capture-handoff-setup.rpt": "d8dfe6584bc0761deea4101cdd754963b750d56248c449c847aee8c9570c0925",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/7_slow_1100mv_100c/capture-handoff-hold.rpt": "e542d3c1c3181e00797fe770869ebb313af632a30a0abf5a00cff03b12f2299b",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_-40c/clocks.rpt": "5343e6babce2352fea52be2621c6aa7cde619e78e83ec8358681d4eff3f83eea",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_-40c/input-setup.rpt": "9ae6f25d2f488529ded349641d26d8461d1c0259026219ddd036471c2e3595af",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_-40c/input-hold.rpt": "4193e5de4e944a9a2c2de48ff06efa498ae17a447debb5269e06e4a20c511c31",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_-40c/output-setup.rpt": "9425fcf27d306649d8048d99c7d169f8608a1c3039c5858fa03c23c5b1a30a59",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_-40c/output-hold.rpt": "7d9c8f8c5737b12657a63b8b0c5c6a0127905b037d6d894bc0208bfca6d2327d",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_-40c/capture-handoff-setup.rpt": "fdb16909418f522a7d2347bd366a729d0feafaaa4597e6e8a78d93398bfff0f0",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_-40c/capture-handoff-hold.rpt": "138a7b667711c920c4fa26a9278a38421f794fbcd6b0f11a024e286f9667626f",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_100c/clocks.rpt": "5343e6babce2352fea52be2621c6aa7cde619e78e83ec8358681d4eff3f83eea",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_100c/input-setup.rpt": "41ccddade4d7e5a0eef3d60ef02f287599e86daa59bd57f3aae2f3c95ea97b43",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_100c/input-hold.rpt": "3f0b8f767d0739a2e920842cd93dd68a30198c428e7a2c6c5d60e0b38b0f3e36",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_100c/output-setup.rpt": "4c562450743eed21cdd37a12e1415a786b623bc8f223fefc1fa0f673b80c9462",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_100c/output-hold.rpt": "22499a5ad5918b846e70a736eec103acf3fd793070964cf8b7734e55e7364ffa",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_100c/capture-handoff-setup.rpt": "7e930e31b3ae41120923865b15e15ee3a49a03b2d76e577bdbbfc47acb7b72e3",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit100/MIN_fast_1100mv_100c/capture-handoff-hold.rpt": "94ea6b676dacf05e52ccf12e2c699d8b2b5691de276f285dd778bb08307cad8e"
+      },
+      "fixed_route_capture_event_shift_ns": [
+        5.161,
+        4.663
+      ],
+      "capture_shift_intersection_width_ns": -0.498,
+      "capture_shift_without_clock_credit_ns": [
+        6.573,
+        4.081
+      ],
+      "capture_shift_width_without_clock_credit_ns": -2.492,
+      "common_shift_exists": false,
+      "forwarded_edge_check": "fabric FF -> DDIO FR -> physical SDRAM_CLK RR, PIN_AD20",
+      "local_pad_observations_ps": {
+        "read_sdr_hold": [
+          -1683.0,
+          -316.0
+        ],
+        "read_sdr_setup": [
+          396.0,
+          1905.0
+        ],
+        "write_data_early": [
+          2472.0,
+          5133.0
+        ],
+        "write_data_late": [
+          2510.0,
+          5276.0
+        ],
+        "write_ddr_high_early": [
+          2607.0,
+          4717.0
+        ],
+        "write_ddr_high_late": [
+          2650.0,
+          4876.0
+        ],
+        "write_ddr_low_early": [
+          2906.0,
+          5209.0
+        ],
+        "write_ddr_low_late": [
+          2949.0,
+          5372.0
+        ],
+        "write_oe_early": [
+          2545.0,
+          5236.0
+        ],
+        "write_oe_late": [
+          2590.0,
+          5416.0
+        ]
+      },
+      "pad_evidence_sha256": "b4d7e1cf3853de5e57265be9d42f2577a9e6b640ec9569233bbef95e91b5e2f6",
+      "audit_sha256": "51c2ae5f5abd0af1c4c26b60ac99a65928b764cabf6d979960af20414a8cf283",
+      "classification": "fixed-route Quartus OSS-RTL diagnostic; no native-model qualification or hardware signoff",
+      "conditions": "30pF fitted pad load; flight 0..0.5ns; margin 0.2ns; Quartus PLL uncertainty also retained",
+      "conditional_inverter_max_ns": 3.3
+    },
+    "130": {
+      "memory_mhz": 130,
+      "corners": {
+        "7_slow_1100mv_-40c": {
+          "input-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[9]",
+              "target": "dq_buf[9].dq_sample",
+              "slack_ns": -11.221,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": -12.56
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[9]",
+              "target": "dq_buf[9].dq_sample",
+              "slack_ns": -11.221,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": -12.56
+            }
+          },
+          "input-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[2]",
+              "target": "dq_buf[2].dq_sample",
+              "slack_ns": 11.526,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": 10.187
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[2]",
+              "target": "dq_buf[2].dq_sample",
+              "slack_ns": 11.526,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": 10.187
+            }
+          },
+          "output-setup": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -1.87,
+              "clock_pessimism_credit_ns": 1.973,
+              "slack_without_credit_ns": -3.843
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -1.87,
+              "clock_pessimism_credit_ns": 1.973,
+              "slack_without_credit_ns": -3.843
+            }
+          },
+          "output-hold": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.a_p[1]",
+              "target": "SDRAM_A[1]",
+              "slack_ns": 0.994,
+              "clock_pessimism_credit_ns": 1.596,
+              "slack_without_credit_ns": -0.602
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ba_p[0]",
+              "target": "SDRAM_BA[0]",
+              "slack_ns": 1.145,
+              "clock_pessimism_credit_ns": 1.973,
+              "slack_without_credit_ns": -0.828
+            }
+          },
+          "capture-handoff-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[11].dq_sample",
+              "target": "dq_oss_hold[11]",
+              "slack_ns": -1.945,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": -3.284
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[11].dq_sample",
+              "target": "dq_oss_hold[11]",
+              "slack_ns": -1.945,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": -3.284
+            }
+          },
+          "capture-handoff-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[12].dq_sample",
+              "target": "dq_oss_hold[12]",
+              "slack_ns": 4.274,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": 2.935
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[12].dq_sample",
+              "target": "dq_oss_hold[12]",
+              "slack_ns": 4.274,
+              "clock_pessimism_credit_ns": 1.339,
+              "slack_without_credit_ns": 2.935
+            }
+          }
+        },
+        "7_slow_1100mv_100c": {
+          "input-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[12]",
+              "target": "dq_buf[12].dq_sample",
+              "slack_ns": -11.859,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": -13.271
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[12]",
+              "target": "dq_buf[12].dq_sample",
+              "slack_ns": -11.859,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": -13.271
+            }
+          },
+          "input-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[2]",
+              "target": "dq_buf[2].dq_sample",
+              "slack_ns": 11.987,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": 10.575
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[2]",
+              "target": "dq_buf[2].dq_sample",
+              "slack_ns": 11.987,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": 10.575
+            }
+          },
+          "output-setup": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -1.858,
+              "clock_pessimism_credit_ns": 2.126,
+              "slack_without_credit_ns": -3.984
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -1.858,
+              "clock_pessimism_credit_ns": 2.126,
+              "slack_without_credit_ns": -3.984
+            }
+          },
+          "output-hold": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.a_p[1]",
+              "target": "SDRAM_A[1]",
+              "slack_ns": 0.9,
+              "clock_pessimism_credit_ns": 1.767,
+              "slack_without_credit_ns": -0.867
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ba_p[0]",
+              "target": "SDRAM_BA[0]",
+              "slack_ns": 0.988,
+              "clock_pessimism_credit_ns": 2.126,
+              "slack_without_credit_ns": -1.138
+            }
+          },
+          "capture-handoff-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[11].dq_sample",
+              "target": "dq_oss_hold[11]",
+              "slack_ns": -2.056,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": -3.468
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[11].dq_sample",
+              "target": "dq_oss_hold[11]",
+              "slack_ns": -2.056,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": -3.468
+            }
+          },
+          "capture-handoff-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[12].dq_sample",
+              "target": "dq_oss_hold[12]",
+              "slack_ns": 4.099,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": 2.687
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[12].dq_sample",
+              "target": "dq_oss_hold[12]",
+              "slack_ns": 4.099,
+              "clock_pessimism_credit_ns": 1.412,
+              "slack_without_credit_ns": 2.687
+            }
+          }
+        },
+        "MIN_fast_1100mv_-40c": {
+          "input-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[9]",
+              "target": "dq_buf[9].dq_sample",
+              "slack_ns": -8.564,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": -9.146
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[9]",
+              "target": "dq_buf[9].dq_sample",
+              "slack_ns": -8.564,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": -9.146
+            }
+          },
+          "input-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[2]",
+              "target": "dq_buf[2].dq_sample",
+              "slack_ns": 9.663,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": 9.081
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[2]",
+              "target": "dq_buf[2].dq_sample",
+              "slack_ns": 9.663,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": 9.081
+            }
+          },
+          "output-setup": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -1.887,
+              "clock_pessimism_credit_ns": 0.922,
+              "slack_without_credit_ns": -2.809
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -1.887,
+              "clock_pessimism_credit_ns": 0.922,
+              "slack_without_credit_ns": -2.809
+            }
+          },
+          "output-hold": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.a_p[1]",
+              "target": "SDRAM_A[1]",
+              "slack_ns": 1.516,
+              "clock_pessimism_credit_ns": 0.743,
+              "slack_without_credit_ns": 0.773
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ba_p[0]",
+              "target": "SDRAM_BA[0]",
+              "slack_ns": 1.594,
+              "clock_pessimism_credit_ns": 0.922,
+              "slack_without_credit_ns": 0.672
+            }
+          },
+          "capture-handoff-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[11].dq_sample",
+              "target": "dq_oss_hold[11]",
+              "slack_ns": 1.691,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": 1.109
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[11].dq_sample",
+              "target": "dq_oss_hold[11]",
+              "slack_ns": 1.691,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": 1.109
+            }
+          },
+          "capture-handoff-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[12].dq_sample",
+              "target": "dq_oss_hold[12]",
+              "slack_ns": 3.36,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": 2.778
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[12].dq_sample",
+              "target": "dq_oss_hold[12]",
+              "slack_ns": 3.36,
+              "clock_pessimism_credit_ns": 0.582,
+              "slack_without_credit_ns": 2.778
+            }
+          }
+        },
+        "MIN_fast_1100mv_100c": {
+          "input-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[12]",
+              "target": "dq_buf[12].dq_sample",
+              "slack_ns": -9.161,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": -9.767
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[12]",
+              "target": "dq_buf[12].dq_sample",
+              "slack_ns": -9.161,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": -9.767
+            }
+          },
+          "input-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "SDRAM_DQ[5]",
+              "target": "dq_buf[5].dq_sample",
+              "slack_ns": 10.277,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": 9.671
+            },
+            "worst_without_credit": {
+              "source": "SDRAM_DQ[5]",
+              "target": "dq_buf[5].dq_sample",
+              "slack_ns": 10.277,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": 9.671
+            }
+          },
+          "output-setup": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -1.87,
+              "clock_pessimism_credit_ns": 0.968,
+              "slack_without_credit_ns": -2.838
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ncs_p",
+              "target": "SDRAM_nCS",
+              "slack_ns": -1.87,
+              "clock_pessimism_credit_ns": 0.968,
+              "slack_without_credit_ns": -2.838
+            }
+          },
+          "output-hold": {
+            "paths": 52,
+            "worst": {
+              "source": "sdram_addon_port:sdram|io_out.a_p[1]",
+              "target": "SDRAM_A[1]",
+              "slack_ns": 1.391,
+              "clock_pessimism_credit_ns": 0.79,
+              "slack_without_credit_ns": 0.601
+            },
+            "worst_without_credit": {
+              "source": "sdram_addon_port:sdram|io_out.ba_p[0]",
+              "target": "SDRAM_BA[0]",
+              "slack_ns": 1.455,
+              "clock_pessimism_credit_ns": 0.968,
+              "slack_without_credit_ns": 0.487
+            }
+          },
+          "capture-handoff-setup": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[11].dq_sample",
+              "target": "dq_oss_hold[11]",
+              "slack_ns": 1.433,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": 0.827
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[11].dq_sample",
+              "target": "dq_oss_hold[11]",
+              "slack_ns": 1.433,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": 0.827
+            }
+          },
+          "capture-handoff-hold": {
+            "paths": 16,
+            "worst": {
+              "source": "dq_buf[12].dq_sample",
+              "target": "dq_oss_hold[12]",
+              "slack_ns": 3.403,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": 2.797
+            },
+            "worst_without_credit": {
+              "source": "dq_buf[12].dq_sample",
+              "target": "dq_oss_hold[12]",
+              "slack_ns": 3.403,
+              "clock_pessimism_credit_ns": 0.606,
+              "slack_without_credit_ns": 2.797
+            }
+          }
+        }
+      },
+      "report_sha256": {
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_-40c/clocks.rpt": "c30bbaa30283aebc40c90ee26b3ab37d45320db783c03b2dbb770f35bca6ce29",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_-40c/input-setup.rpt": "afce1da28dc72cc934ae0f18dcad2506130b569459a76fc14cc2c8e141b3af12",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_-40c/input-hold.rpt": "6bad4d085552670a64f3dd58e26a97f0fe4666c4649ab1d594026e485cbb24d0",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_-40c/output-setup.rpt": "b0976d35f3762920a984b81f0dce5e81e15c874946844d4462cf1d5a75946afa",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_-40c/output-hold.rpt": "cc2d7296df5083bb3e1d22e0270296e53a70cd693e02acb00d78c1540c00ecad",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_-40c/capture-handoff-setup.rpt": "7451a68ff6fb0d269f8881a03e542030a67ea1a76db4e6e45cc4bac8b950c14b",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_-40c/capture-handoff-hold.rpt": "2ef88c0ccafd44a1cb92eead9e4e5dfceb9ea2a95e2ea478f63b7b8bdf80aa73",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_100c/clocks.rpt": "c30bbaa30283aebc40c90ee26b3ab37d45320db783c03b2dbb770f35bca6ce29",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_100c/input-setup.rpt": "3ab03509ee4be9ad124ad17f3f67176cc71514d894bd67ef7fb144d1fa751e6d",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_100c/input-hold.rpt": "aeec86bb033d267166f3d60cb05ed3a393fd0fb0213c814b43101dc8fb1a60b4",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_100c/output-setup.rpt": "a48d613f45a449d4acf62116dd71e773d6b6456066b9a16d10d8874b23442502",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_100c/output-hold.rpt": "b306a8a9078ea1bb91cbab5597084c699c19099270eb415d8e427357a0886f35",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_100c/capture-handoff-setup.rpt": "5d2e8f16f9181e37fc1381137d8f80ca01aef73feed53eaa553c8148408fd131",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/7_slow_1100mv_100c/capture-handoff-hold.rpt": "e0beb23ef878bb64141848d109a980fee5938184ff5f70ed8ae29d6a338e9fa2",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_-40c/clocks.rpt": "c30bbaa30283aebc40c90ee26b3ab37d45320db783c03b2dbb770f35bca6ce29",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_-40c/input-setup.rpt": "63ea319c41a2be6c9437ce9b72bb3ce9a4ab52af4db257741ac9feb912dbc019",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_-40c/input-hold.rpt": "ff91a104ccde1dc87b42936fde574845140ac994a42e7b0f1344a4fad18aad6f",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_-40c/output-setup.rpt": "bfe27c7c23029f79d2176415a3d261af220d9e8ff2c1ce4414e816d400fb06a0",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_-40c/output-hold.rpt": "26134edff72908b481e3bf39fcd9b1a29a730523dc43416fc625d1bff1ceb877",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_-40c/capture-handoff-setup.rpt": "7de6aaa7a1416f64528a67380084245ac55360910379c8b3bc94f575fc52ffb3",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_-40c/capture-handoff-hold.rpt": "12573702bf489a0887031f60d59a1ed058ca8b8ee1ae0ce9f9c4b303549255e7",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_100c/clocks.rpt": "c30bbaa30283aebc40c90ee26b3ab37d45320db783c03b2dbb770f35bca6ce29",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_100c/input-setup.rpt": "f84b9e6777e5fe14666600c2e2358584a320a8d28269f66ed5df03edc165cdb1",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_100c/input-hold.rpt": "873a49115dfe0b24826a55fbf5b9d032b2e7939c8a7c16a97fcbcc29c2d8aea2",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_100c/output-setup.rpt": "69e8cb0f4fd11ba155a54b87c044a35a00a2ca86f28f6ce70db519b9eec50333",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_100c/output-hold.rpt": "f6f641a7460854fffb792cd2d8a1726e052d6570468ac1a7f2cc0c089713ae45",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_100c/capture-handoff-setup.rpt": "ede669bdc76d32d7c45458d815f733329708b63af72b6990cc4e6b9cf4772822",
+        "/tmp/nextpnr-135-investigation/quartus-board-audit130/MIN_fast_1100mv_100c/capture-handoff-hold.rpt": "d4c5dff7b3fcfc521cb108dca1737309f7ed5e1d434131705511bfa80cd0f257"
+      },
+      "fixed_route_capture_event_shift_ns": [
+        11.859,
+        9.663
+      ],
+      "capture_shift_intersection_width_ns": -2.196,
+      "capture_shift_without_clock_credit_ns": [
+        13.271,
+        9.081
+      ],
+      "capture_shift_width_without_clock_credit_ns": -4.19,
+      "common_shift_exists": false,
+      "forwarded_edge_check": "fabric FF -> DDIO FR -> physical SDRAM_CLK RR, PIN_AD20",
+      "local_pad_observations_ps": {
+        "read_sdr_hold": [
+          -1683.0,
+          -316.0
+        ],
+        "read_sdr_setup": [
+          396.0,
+          1905.0
+        ],
+        "write_data_early": [
+          2472.0,
+          5133.0
+        ],
+        "write_data_late": [
+          2510.0,
+          5276.0
+        ],
+        "write_ddr_high_early": [
+          2607.0,
+          4717.0
+        ],
+        "write_ddr_high_late": [
+          2650.0,
+          4876.0
+        ],
+        "write_ddr_low_early": [
+          2906.0,
+          5209.0
+        ],
+        "write_ddr_low_late": [
+          2949.0,
+          5372.0
+        ],
+        "write_oe_early": [
+          2545.0,
+          5236.0
+        ],
+        "write_oe_late": [
+          2590.0,
+          5416.0
+        ]
+      },
+      "pad_evidence_sha256": "c2801e295fd1a4887bf5a15b408ec34c8f6c88e26e255fa4559957c51433bdb8",
+      "audit_sha256": "51c2ae5f5abd0af1c4c26b60ac99a65928b764cabf6d979960af20414a8cf283",
+      "classification": "fixed-route Quartus OSS-RTL diagnostic; no native-model qualification or hardware signoff",
+      "conditions": "30pF fitted pad load; flight 0..0.5ns; margin 0.2ns; Quartus PLL uncertainty also retained",
+      "conditional_inverter_max_ns": 3.3
+    }
+  },
+  "native_comparison": {
+    "100": {
+      "timing_summary": {
+        "clocks": {
+          "display.pixel_clk": {
+            "hold_wns_ns": 0.414000004529953,
+            "setup_wns_ns": -0.3959999978542328
+          },
+          "ram_clock.clocks[0]": {
+            "hold_wns_ns": -2.188999891281128,
+            "setup_wns_ns": -5.877999782562256
+          },
+          "ram_clock.clocks[1]": {
+            "hold_wns_ns": 4.74399995803833,
+            "setup_wns_ns": -0.5519999861717224
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "83a33c3c4b23436be43bd7bef7de46536b2a7b8a137aa0bf309d7c7cc79d9d36",
+      "inverter_max_ns": 3.3
+    },
+    "130": {
+      "timing_summary": {
+        "clocks": {
+          "display.pixel_clk": {
+            "hold_wns_ns": 0.414000004529953,
+            "setup_wns_ns": -2.884000062942505
+          },
+          "ram_clock.clocks[0]": {
+            "hold_wns_ns": -3.3429999351501465,
+            "setup_wns_ns": -11.383999824523926
+          },
+          "ram_clock.clocks[1]": {
+            "hold_wns_ns": 2.431999921798706,
+            "setup_wns_ns": 2.697999954223633
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "460a5493b78273175919c876175fcef0892e0d9b9b6bcb6ac8bffbadbaa8b8f3",
+      "inverter_max_ns": 5.0
+    }
+  },
+  "native_local_pad_envelopes_ps": {
+    "write_data": [
+      0,
+      5280
+    ],
+    "write_oe": [
+      0,
+      5420
+    ],
+    "forwarded_rise": [
+      0,
+      5380
+    ],
+    "forwarded_fall": [
+      0,
+      5400
+    ],
+    "read_setup": 1910,
+    "read_hold": -310
+  },
+  "native_profile_source_sha256": "824d3f49b2a7b7b0c1c7639b197eed9f93f6b05cfff5c075c0f8a3743af996e3",
+  "quartus_query_sha256": "84af9b606687dc7db6dc9a2a17099df5ee91e760b1b9f4e2b8dfa90216773910",
+  "limits": [
+    "Quartus retains derived PLL uncertainty in addition to external margin; native clock uncertainty is not modeled here",
+    "Different placements and timing engines; these total slacks are not an isolated router quality comparison",
+    "Observed minimum local arcs must not be substituted as guaranteed silicon minima",
+    "Signed event shifts on fixed routes do not prescribe PLL phases or controller capture cycles",
+    "Previously reported passing Quartus DDR-capture core is a separate configuration from these OSS high-speed SDR-capture fits",
+    "These fits use newer FES controller RTL with an extra output stage and forced IO packing; they do not reproduce the hardware-passing100MHz OSS baseline. See baseline-reference.json."
+  ]
+}

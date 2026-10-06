@@ -1,0 +1,1729 @@
+{
+  "classification": "full OSS-RTL Quartus evidence; not the user-reported Quartus core or hardware signoff",
+  "fes_revision": "8f5c5b5982fea01877b223a36cca0024dd15a8c8",
+  "macro": "RAM_OSS_HIGH_SPEED",
+  "clock_groups": "no asynchronous cuts; IO zero delays expose paths, not board requirements",
+  "decoded_hashes": {
+    "surrogate": "f6ccddf13e58723b9a9aff6fb257463fd1f73d1d9b7cb146cdfec227c35083cd",
+    "quartus_full": "f8ebc043bb8147ec5bcc90eb22c256c2afb7dfd0bbdfe414b96eb201eadeba70",
+    "native_full": "e4adc68f00b1b2085d7e3ad2017d64cbc93c808556bd9b2d51f2e72a67e7700c"
+  },
+  "input_delay_settings": {
+    "V12": {
+      "RB_T1_SEL_IREG_CFF_DELAY.0": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.0": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.0": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "E8": {
+      "RB_T1_SEL_IREG_CFF_DELAY.6": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.6": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.6": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "D11": {
+      "RB_T1_SEL_IREG_CFF_DELAY.1": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.1": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.1": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "W12": {
+      "RB_T1_SEL_IREG_CFF_DELAY.1": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.1": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.1": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "AH13": {
+      "RB_T1_SEL_IREG_CFF_DELAY.11": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.11": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.11": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "D8": {
+      "RB_T1_SEL_IREG_CFF_DELAY.7": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.7": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.7": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "AH14": {
+      "RB_T1_SEL_IREG_CFF_DELAY.7": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.7": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.7": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "AF7": {
+      "RB_T1_SEL_IREG_CFF_DELAY.14": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.14": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.14": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "AE24": {
+      "RB_T1_SEL_IREG_CFF_DELAY.12": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.12": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.12": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "AD23": {
+      "RB_T1_SEL_IREG_CFF_DELAY.8": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.8": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.8": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "AE6": {
+      "RB_T1_SEL_IREG_CFF_DELAY.3": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.3": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.3": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "AE23": {
+      "RB_T1_SEL_IREG_CFF_DELAY.13": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.13": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.13": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "AG14": {
+      "RB_T1_SEL_IREG_CFF_DELAY.10": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.10": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.10": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "AD5": {
+      "RB_T1_SEL_IREG_CFF_DELAY.2": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.2": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.2": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "AF4": {
+      "RB_T1_SEL_IREG_CFF_DELAY.15": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.15": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.15": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    },
+    "AH3": {
+      "RB_T1_SEL_IREG_CFF_DELAY.10": {
+        "surrogate": "10",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA0IN.10": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      },
+      "SET_T3_FOR_CDATA1IN.10": {
+        "surrogate": "7",
+        "quartus_full": "omitted (database default)",
+        "native_full": "omitted (database default)"
+      }
+    }
+  },
+  "rates": {
+    "100": {
+      "pad_bounds_ps": {
+        "read_sdr_hold": {
+          "minimum": -1683.0,
+          "maximum": -316.0,
+          "count": 128
+        },
+        "read_sdr_setup": {
+          "minimum": 396.0,
+          "maximum": 1905.0,
+          "count": 128
+        },
+        "write_data_early": {
+          "minimum": 2472.0,
+          "maximum": 5133.0,
+          "count": 288
+        },
+        "write_data_late": {
+          "minimum": 2510.0,
+          "maximum": 5276.0,
+          "count": 288
+        },
+        "write_ddr_high_early": {
+          "minimum": 2607.0,
+          "maximum": 4717.0,
+          "count": 4
+        },
+        "write_ddr_high_late": {
+          "minimum": 2650.0,
+          "maximum": 4876.0,
+          "count": 4
+        },
+        "write_ddr_low_early": {
+          "minimum": 2906.0,
+          "maximum": 5209.0,
+          "count": 4
+        },
+        "write_ddr_low_late": {
+          "minimum": 2949.0,
+          "maximum": 5372.0,
+          "count": 4
+        },
+        "write_oe_early": {
+          "minimum": 2545.0,
+          "maximum": 5236.0,
+          "count": 128
+        },
+        "write_oe_late": {
+          "minimum": 2590.0,
+          "maximum": 5416.0,
+          "count": 128
+        }
+      },
+      "hashes": {
+        "evidence.json": "b4d7e1cf3853de5e57265be9d42f2577a9e6b640ec9569233bbef95e91b5e2f6",
+        "project/top.qsf": "34829df44eb4fba6c88a03a954861b9263273798369280a810cae730a7b7c987",
+        "project/clocks.sdc": "abbf5ec19afcab67ff33d90ad6e3a6a64b7c0d3cc31ab1a837159491cd5fe9ae",
+        "project/paths.tcl": "400ff7d7d5b6a49bf8d3033fce53b74b0fddc8a1caa7e334f2c0b1b3c7fc0d83",
+        "project/output_files/top.fit.rpt": "e09df3e01e27e870a48b0225eb387503e5b02c524d5a38790e7c7c74c64eb226",
+        "project/output_files/top.sta.rpt": "fca3f5a55d3c7067475da18b79f004f408ef255d934bd418e84a7cc6bd17f080",
+        "project/output_files/top.rbf": "fa96522ba8f26925dbf571b3058c4ce9391b6b9dbadf1cc33233f8d3aa8364ea"
+      },
+      "exploratory_corner_arithmetic": {
+        "classification": "correlated fitted-reference diagnostic; native FES clocks and hardware unqualified",
+        "flight_assumption_ns": [
+          0,
+          0.5
+        ],
+        "margin_ns": 0.2,
+        "clock_edge_distortion_assumption_ns": 0.1,
+        "clock_reference": "input-clock rising edge; preserve one absolute read latency across corners",
+        "rates": {
+          "100": {
+            "corners": {
+              "7_slow_1100mv_-40c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 4.142999999999999,
+                  "local_low_min": 4.997000000000001,
+                  "fitted_high_min": 2.3249999999999984,
+                  "fitted_low_min": 2.6480000000000006
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    20.545,
+                    20.851
+                  ],
+                  "SDRAM_DQ[10]": [
+                    20.236,
+                    20.506
+                  ],
+                  "SDRAM_DQ[11]": [
+                    20.333,
+                    20.62
+                  ],
+                  "SDRAM_DQ[12]": [
+                    20.554,
+                    20.855
+                  ],
+                  "SDRAM_DQ[13]": [
+                    20.392,
+                    20.677
+                  ],
+                  "SDRAM_DQ[14]": [
+                    20.396,
+                    20.673
+                  ],
+                  "SDRAM_DQ[15]": [
+                    20.461,
+                    20.74
+                  ],
+                  "SDRAM_DQ[1]": [
+                    20.189,
+                    20.439
+                  ],
+                  "SDRAM_DQ[2]": [
+                    20.162,
+                    20.417
+                  ],
+                  "SDRAM_DQ[3]": [
+                    20.339,
+                    20.618
+                  ],
+                  "SDRAM_DQ[4]": [
+                    20.413,
+                    20.699
+                  ],
+                  "SDRAM_DQ[5]": [
+                    20.171,
+                    20.421
+                  ],
+                  "SDRAM_DQ[6]": [
+                    20.392,
+                    20.676
+                  ],
+                  "SDRAM_DQ[7]": [
+                    20.439,
+                    20.718
+                  ],
+                  "SDRAM_DQ[8]": [
+                    20.537,
+                    20.851
+                  ],
+                  "SDRAM_DQ[9]": [
+                    20.622,
+                    20.924
+                  ]
+                },
+                "all_pin_window_ns": [
+                  20.622,
+                  20.417
+                ]
+              },
+              "7_slow_1100mv_100c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 4.044999999999999,
+                  "local_low_min": 5.0329999999999995,
+                  "fitted_high_min": 2.008,
+                  "fitted_low_min": 2.592999999999999
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    21.25,
+                    21.148
+                  ],
+                  "SDRAM_DQ[10]": [
+                    20.987,
+                    20.868
+                  ],
+                  "SDRAM_DQ[11]": [
+                    21.082,
+                    20.98
+                  ],
+                  "SDRAM_DQ[12]": [
+                    21.333,
+                    21.244
+                  ],
+                  "SDRAM_DQ[13]": [
+                    21.178,
+                    21.073
+                  ],
+                  "SDRAM_DQ[14]": [
+                    21.152,
+                    21.038
+                  ],
+                  "SDRAM_DQ[15]": [
+                    21.215,
+                    21.104
+                  ],
+                  "SDRAM_DQ[1]": [
+                    20.96,
+                    20.823
+                  ],
+                  "SDRAM_DQ[2]": [
+                    20.937,
+                    20.805
+                  ],
+                  "SDRAM_DQ[3]": [
+                    21.087,
+                    20.974
+                  ],
+                  "SDRAM_DQ[4]": [
+                    21.161,
+                    21.055
+                  ],
+                  "SDRAM_DQ[5]": [
+                    20.943,
+                    20.806
+                  ],
+                  "SDRAM_DQ[6]": [
+                    21.138,
+                    21.031
+                  ],
+                  "SDRAM_DQ[7]": [
+                    21.197,
+                    21.085
+                  ],
+                  "SDRAM_DQ[8]": [
+                    21.245,
+                    21.153
+                  ],
+                  "SDRAM_DQ[9]": [
+                    21.329,
+                    21.226
+                  ]
+                },
+                "all_pin_window_ns": [
+                  21.333,
+                  20.805
+                ]
+              },
+              "MIN_fast_1100mv_-40c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 4.3580000000000005,
+                  "local_low_min": 4.956,
+                  "fitted_high_min": 3.508,
+                  "fitted_low_min": 3.883
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    17.167,
+                    19.483
+                  ],
+                  "SDRAM_DQ[10]": [
+                    17.036,
+                    19.347
+                  ],
+                  "SDRAM_DQ[11]": [
+                    17.072,
+                    19.391
+                  ],
+                  "SDRAM_DQ[12]": [
+                    17.196,
+                    19.519
+                  ],
+                  "SDRAM_DQ[13]": [
+                    17.121,
+                    19.437
+                  ],
+                  "SDRAM_DQ[14]": [
+                    17.117,
+                    19.431
+                  ],
+                  "SDRAM_DQ[15]": [
+                    17.162,
+                    19.476
+                  ],
+                  "SDRAM_DQ[1]": [
+                    17.026,
+                    19.33
+                  ],
+                  "SDRAM_DQ[2]": [
+                    17.006,
+                    19.311
+                  ],
+                  "SDRAM_DQ[3]": [
+                    17.078,
+                    19.392
+                  ],
+                  "SDRAM_DQ[4]": [
+                    17.126,
+                    19.443
+                  ],
+                  "SDRAM_DQ[5]": [
+                    17.015,
+                    19.32
+                  ],
+                  "SDRAM_DQ[6]": [
+                    17.11,
+                    19.426
+                  ],
+                  "SDRAM_DQ[7]": [
+                    17.143,
+                    19.457
+                  ],
+                  "SDRAM_DQ[8]": [
+                    17.162,
+                    19.481
+                  ],
+                  "SDRAM_DQ[9]": [
+                    17.208,
+                    19.521
+                  ]
+                },
+                "all_pin_window_ns": [
+                  17.208,
+                  19.311
+                ]
+              },
+              "MIN_fast_1100mv_100c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 4.255000000000002,
+                  "local_low_min": 5.0489999999999995,
+                  "fitted_high_min": 3.3480000000000016,
+                  "fitted_low_min": 3.9369999999999994
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    17.785,
+                    20.065
+                  ],
+                  "SDRAM_DQ[10]": [
+                    17.645,
+                    19.925
+                  ],
+                  "SDRAM_DQ[11]": [
+                    17.699,
+                    19.987
+                  ],
+                  "SDRAM_DQ[12]": [
+                    17.829,
+                    20.119
+                  ],
+                  "SDRAM_DQ[13]": [
+                    17.75,
+                    20.035
+                  ],
+                  "SDRAM_DQ[14]": [
+                    17.73,
+                    20.011
+                  ],
+                  "SDRAM_DQ[15]": [
+                    17.774,
+                    20.055
+                  ],
+                  "SDRAM_DQ[1]": [
+                    17.637,
+                    19.907
+                  ],
+                  "SDRAM_DQ[2]": [
+                    17.636,
+                    19.911
+                  ],
+                  "SDRAM_DQ[3]": [
+                    17.706,
+                    19.989
+                  ],
+                  "SDRAM_DQ[4]": [
+                    17.74,
+                    20.024
+                  ],
+                  "SDRAM_DQ[5]": [
+                    17.629,
+                    19.901
+                  ],
+                  "SDRAM_DQ[6]": [
+                    17.724,
+                    20.007
+                  ],
+                  "SDRAM_DQ[7]": [
+                    17.757,
+                    20.037
+                  ],
+                  "SDRAM_DQ[8]": [
+                    17.779,
+                    20.063
+                  ],
+                  "SDRAM_DQ[9]": [
+                    17.823,
+                    20.104
+                  ]
+                },
+                "all_pin_window_ns": [
+                  17.829,
+                  19.901
+                ]
+              }
+            },
+            "common_absolute_capture_window_ns": [
+              21.333,
+              19.311
+            ],
+            "common_window_exists": false
+          },
+          "130": {
+            "corners": {
+              "7_slow_1100mv_-40c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 2.9891538461538456,
+                  "local_low_min": 3.8431538461538475,
+                  "fitted_high_min": 1.1711538461538449,
+                  "fitted_low_min": 1.494153846153847
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    18.791154,
+                    17.389462
+                  ],
+                  "SDRAM_DQ[10]": [
+                    18.482154,
+                    17.044462
+                  ],
+                  "SDRAM_DQ[11]": [
+                    18.579154,
+                    17.158462
+                  ],
+                  "SDRAM_DQ[12]": [
+                    18.800154,
+                    17.393462
+                  ],
+                  "SDRAM_DQ[13]": [
+                    18.638154,
+                    17.215462
+                  ],
+                  "SDRAM_DQ[14]": [
+                    18.642154,
+                    17.211462
+                  ],
+                  "SDRAM_DQ[15]": [
+                    18.707154,
+                    17.278462
+                  ],
+                  "SDRAM_DQ[1]": [
+                    18.435154,
+                    16.977462
+                  ],
+                  "SDRAM_DQ[2]": [
+                    18.408154,
+                    16.955462
+                  ],
+                  "SDRAM_DQ[3]": [
+                    18.585154,
+                    17.156462
+                  ],
+                  "SDRAM_DQ[4]": [
+                    18.659154,
+                    17.237462
+                  ],
+                  "SDRAM_DQ[5]": [
+                    18.417154,
+                    16.959462
+                  ],
+                  "SDRAM_DQ[6]": [
+                    18.638154,
+                    17.214462
+                  ],
+                  "SDRAM_DQ[7]": [
+                    18.685154,
+                    17.256462
+                  ],
+                  "SDRAM_DQ[8]": [
+                    18.783154,
+                    17.389462
+                  ],
+                  "SDRAM_DQ[9]": [
+                    18.868154,
+                    17.462462
+                  ]
+                },
+                "all_pin_window_ns": [
+                  18.868154,
+                  16.955462
+                ]
+              },
+              "7_slow_1100mv_100c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 2.8911538461538457,
+                  "local_low_min": 3.879153846153846,
+                  "fitted_high_min": 0.8541538461538465,
+                  "fitted_low_min": 1.4391538461538456
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    19.496154,
+                    17.686462
+                  ],
+                  "SDRAM_DQ[10]": [
+                    19.233154,
+                    17.406462
+                  ],
+                  "SDRAM_DQ[11]": [
+                    19.328154,
+                    17.518462
+                  ],
+                  "SDRAM_DQ[12]": [
+                    19.579154,
+                    17.782462
+                  ],
+                  "SDRAM_DQ[13]": [
+                    19.424154,
+                    17.611462
+                  ],
+                  "SDRAM_DQ[14]": [
+                    19.398154,
+                    17.576462
+                  ],
+                  "SDRAM_DQ[15]": [
+                    19.461154,
+                    17.642462
+                  ],
+                  "SDRAM_DQ[1]": [
+                    19.206154,
+                    17.361462
+                  ],
+                  "SDRAM_DQ[2]": [
+                    19.183154,
+                    17.343462
+                  ],
+                  "SDRAM_DQ[3]": [
+                    19.333154,
+                    17.512462
+                  ],
+                  "SDRAM_DQ[4]": [
+                    19.407154,
+                    17.593462
+                  ],
+                  "SDRAM_DQ[5]": [
+                    19.189154,
+                    17.344462
+                  ],
+                  "SDRAM_DQ[6]": [
+                    19.384154,
+                    17.569462
+                  ],
+                  "SDRAM_DQ[7]": [
+                    19.443154,
+                    17.623462
+                  ],
+                  "SDRAM_DQ[8]": [
+                    19.491154,
+                    17.691462
+                  ],
+                  "SDRAM_DQ[9]": [
+                    19.575154,
+                    17.764462
+                  ]
+                },
+                "all_pin_window_ns": [
+                  19.579154,
+                  17.343462
+                ]
+              },
+              "MIN_fast_1100mv_-40c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 3.2041538461538464,
+                  "local_low_min": 3.802153846153847,
+                  "fitted_high_min": 2.3541538461538467,
+                  "fitted_low_min": 2.7291538461538467
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    15.413154,
+                    16.021462
+                  ],
+                  "SDRAM_DQ[10]": [
+                    15.282154,
+                    15.885462
+                  ],
+                  "SDRAM_DQ[11]": [
+                    15.318154,
+                    15.929462
+                  ],
+                  "SDRAM_DQ[12]": [
+                    15.442154,
+                    16.057462
+                  ],
+                  "SDRAM_DQ[13]": [
+                    15.367154,
+                    15.975462
+                  ],
+                  "SDRAM_DQ[14]": [
+                    15.363154,
+                    15.969462
+                  ],
+                  "SDRAM_DQ[15]": [
+                    15.408154,
+                    16.014462
+                  ],
+                  "SDRAM_DQ[1]": [
+                    15.272154,
+                    15.868462
+                  ],
+                  "SDRAM_DQ[2]": [
+                    15.252154,
+                    15.849462
+                  ],
+                  "SDRAM_DQ[3]": [
+                    15.324154,
+                    15.930462
+                  ],
+                  "SDRAM_DQ[4]": [
+                    15.372154,
+                    15.981462
+                  ],
+                  "SDRAM_DQ[5]": [
+                    15.261154,
+                    15.858462
+                  ],
+                  "SDRAM_DQ[6]": [
+                    15.356154,
+                    15.964462
+                  ],
+                  "SDRAM_DQ[7]": [
+                    15.389154,
+                    15.995462
+                  ],
+                  "SDRAM_DQ[8]": [
+                    15.408154,
+                    16.019462
+                  ],
+                  "SDRAM_DQ[9]": [
+                    15.454154,
+                    16.059462
+                  ]
+                },
+                "all_pin_window_ns": [
+                  15.454154,
+                  15.849462
+                ]
+              },
+              "MIN_fast_1100mv_100c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 3.1011538461538457,
+                  "local_low_min": 3.895153846153846,
+                  "fitted_high_min": 2.1941538461538466,
+                  "fitted_low_min": 2.783153846153846
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    16.031154,
+                    16.603462
+                  ],
+                  "SDRAM_DQ[10]": [
+                    15.891154,
+                    16.463462
+                  ],
+                  "SDRAM_DQ[11]": [
+                    15.945154,
+                    16.525462
+                  ],
+                  "SDRAM_DQ[12]": [
+                    16.075154,
+                    16.657462
+                  ],
+                  "SDRAM_DQ[13]": [
+                    15.996154,
+                    16.573462
+                  ],
+                  "SDRAM_DQ[14]": [
+                    15.976154,
+                    16.549462
+                  ],
+                  "SDRAM_DQ[15]": [
+                    16.020154,
+                    16.593462
+                  ],
+                  "SDRAM_DQ[1]": [
+                    15.883154,
+                    16.445462
+                  ],
+                  "SDRAM_DQ[2]": [
+                    15.882154,
+                    16.449462
+                  ],
+                  "SDRAM_DQ[3]": [
+                    15.952154,
+                    16.527462
+                  ],
+                  "SDRAM_DQ[4]": [
+                    15.986154,
+                    16.562462
+                  ],
+                  "SDRAM_DQ[5]": [
+                    15.875154,
+                    16.439462
+                  ],
+                  "SDRAM_DQ[6]": [
+                    15.970154,
+                    16.545462
+                  ],
+                  "SDRAM_DQ[7]": [
+                    16.003154,
+                    16.575462
+                  ],
+                  "SDRAM_DQ[8]": [
+                    16.025154,
+                    16.601462
+                  ],
+                  "SDRAM_DQ[9]": [
+                    16.069154,
+                    16.642462
+                  ]
+                },
+                "all_pin_window_ns": [
+                  16.075154,
+                  16.439462
+                ]
+              }
+            },
+            "common_absolute_capture_window_ns": [
+              19.579154,
+              15.849462
+            ],
+            "common_window_exists": false
+          }
+        },
+        "rejection_cases": 6,
+        "common_clock_translation_check": "1ns shared prefix shift cancels from pulses and read windows",
+        "evidence_sha256": "b4d7e1cf3853de5e57265be9d42f2577a9e6b640ec9569233bbef95e91b5e2f6",
+        "audit_sha256": "d1b7f3c0e0bf77bcb8d5fa966f6ea393cb18bd8b22847ae04c8f115b4e5b2804"
+      }
+    },
+    "130": {
+      "pad_bounds_ps": {
+        "read_sdr_hold": {
+          "minimum": -1683.0,
+          "maximum": -316.0,
+          "count": 128
+        },
+        "read_sdr_setup": {
+          "minimum": 396.0,
+          "maximum": 1905.0,
+          "count": 128
+        },
+        "write_data_early": {
+          "minimum": 2472.0,
+          "maximum": 5133.0,
+          "count": 288
+        },
+        "write_data_late": {
+          "minimum": 2510.0,
+          "maximum": 5276.0,
+          "count": 288
+        },
+        "write_ddr_high_early": {
+          "minimum": 2607.0,
+          "maximum": 4717.0,
+          "count": 4
+        },
+        "write_ddr_high_late": {
+          "minimum": 2650.0,
+          "maximum": 4876.0,
+          "count": 4
+        },
+        "write_ddr_low_early": {
+          "minimum": 2906.0,
+          "maximum": 5209.0,
+          "count": 4
+        },
+        "write_ddr_low_late": {
+          "minimum": 2949.0,
+          "maximum": 5372.0,
+          "count": 4
+        },
+        "write_oe_early": {
+          "minimum": 2545.0,
+          "maximum": 5236.0,
+          "count": 128
+        },
+        "write_oe_late": {
+          "minimum": 2590.0,
+          "maximum": 5416.0,
+          "count": 128
+        }
+      },
+      "hashes": {
+        "evidence.json": "c2801e295fd1a4887bf5a15b408ec34c8f6c88e26e255fa4559957c51433bdb8",
+        "project/top.qsf": "6185bc54a17797ab6eb99c0ba9e9263ea46c60b5ddcad845dc8d0ba142bc90d9",
+        "project/clocks.sdc": "abbf5ec19afcab67ff33d90ad6e3a6a64b7c0d3cc31ab1a837159491cd5fe9ae",
+        "project/paths.tcl": "400ff7d7d5b6a49bf8d3033fce53b74b0fddc8a1caa7e334f2c0b1b3c7fc0d83",
+        "project/output_files/top.fit.rpt": "e95ccb47982441623a863bfc43b0295f7d282614f05077f38f128f20c5ed8864",
+        "project/output_files/top.sta.rpt": "884d03a638614f29025c3576233024c7c0431d4fcdb20dc031259f599fcc64dd",
+        "project/output_files/top.rbf": "8a10e98976dcf62e0e53854ba7b107a12833a672be3b68b3af6de706985ac099"
+      },
+      "exploratory_corner_arithmetic": {
+        "classification": "correlated fitted-reference diagnostic; native FES clocks and hardware unqualified",
+        "flight_assumption_ns": [
+          0,
+          0.5
+        ],
+        "margin_ns": 0.2,
+        "clock_edge_distortion_assumption_ns": 0.1,
+        "clock_reference": "input-clock rising edge; preserve one absolute read latency across corners",
+        "rates": {
+          "100": {
+            "corners": {
+              "7_slow_1100mv_-40c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 4.142999999999999,
+                  "local_low_min": 4.997000000000001,
+                  "fitted_high_min": 2.3249999999999984,
+                  "fitted_low_min": 2.6480000000000006
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    20.545,
+                    20.851
+                  ],
+                  "SDRAM_DQ[10]": [
+                    20.238,
+                    20.509
+                  ],
+                  "SDRAM_DQ[11]": [
+                    20.333,
+                    20.62
+                  ],
+                  "SDRAM_DQ[12]": [
+                    20.554,
+                    20.855
+                  ],
+                  "SDRAM_DQ[13]": [
+                    20.392,
+                    20.677
+                  ],
+                  "SDRAM_DQ[14]": [
+                    20.396,
+                    20.673
+                  ],
+                  "SDRAM_DQ[15]": [
+                    20.461,
+                    20.74
+                  ],
+                  "SDRAM_DQ[1]": [
+                    20.189,
+                    20.439
+                  ],
+                  "SDRAM_DQ[2]": [
+                    20.162,
+                    20.417
+                  ],
+                  "SDRAM_DQ[3]": [
+                    20.339,
+                    20.618
+                  ],
+                  "SDRAM_DQ[4]": [
+                    20.413,
+                    20.699
+                  ],
+                  "SDRAM_DQ[5]": [
+                    20.171,
+                    20.421
+                  ],
+                  "SDRAM_DQ[6]": [
+                    20.392,
+                    20.676
+                  ],
+                  "SDRAM_DQ[7]": [
+                    20.439,
+                    20.718
+                  ],
+                  "SDRAM_DQ[8]": [
+                    20.537,
+                    20.851
+                  ],
+                  "SDRAM_DQ[9]": [
+                    20.622,
+                    20.924
+                  ]
+                },
+                "all_pin_window_ns": [
+                  20.622,
+                  20.417
+                ]
+              },
+              "7_slow_1100mv_100c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 4.044999999999999,
+                  "local_low_min": 5.0329999999999995,
+                  "fitted_high_min": 2.008,
+                  "fitted_low_min": 2.592999999999999
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    21.25,
+                    21.148
+                  ],
+                  "SDRAM_DQ[10]": [
+                    20.99,
+                    20.871
+                  ],
+                  "SDRAM_DQ[11]": [
+                    21.082,
+                    20.98
+                  ],
+                  "SDRAM_DQ[12]": [
+                    21.333,
+                    21.244
+                  ],
+                  "SDRAM_DQ[13]": [
+                    21.178,
+                    21.073
+                  ],
+                  "SDRAM_DQ[14]": [
+                    21.152,
+                    21.038
+                  ],
+                  "SDRAM_DQ[15]": [
+                    21.215,
+                    21.104
+                  ],
+                  "SDRAM_DQ[1]": [
+                    20.96,
+                    20.823
+                  ],
+                  "SDRAM_DQ[2]": [
+                    20.937,
+                    20.805
+                  ],
+                  "SDRAM_DQ[3]": [
+                    21.087,
+                    20.974
+                  ],
+                  "SDRAM_DQ[4]": [
+                    21.161,
+                    21.055
+                  ],
+                  "SDRAM_DQ[5]": [
+                    20.943,
+                    20.806
+                  ],
+                  "SDRAM_DQ[6]": [
+                    21.138,
+                    21.031
+                  ],
+                  "SDRAM_DQ[7]": [
+                    21.197,
+                    21.085
+                  ],
+                  "SDRAM_DQ[8]": [
+                    21.245,
+                    21.153
+                  ],
+                  "SDRAM_DQ[9]": [
+                    21.329,
+                    21.226
+                  ]
+                },
+                "all_pin_window_ns": [
+                  21.333,
+                  20.805
+                ]
+              },
+              "MIN_fast_1100mv_-40c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 4.3580000000000005,
+                  "local_low_min": 4.956,
+                  "fitted_high_min": 3.508,
+                  "fitted_low_min": 3.883
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    17.167,
+                    19.483
+                  ],
+                  "SDRAM_DQ[10]": [
+                    17.037,
+                    19.349
+                  ],
+                  "SDRAM_DQ[11]": [
+                    17.072,
+                    19.391
+                  ],
+                  "SDRAM_DQ[12]": [
+                    17.196,
+                    19.519
+                  ],
+                  "SDRAM_DQ[13]": [
+                    17.121,
+                    19.437
+                  ],
+                  "SDRAM_DQ[14]": [
+                    17.117,
+                    19.431
+                  ],
+                  "SDRAM_DQ[15]": [
+                    17.162,
+                    19.476
+                  ],
+                  "SDRAM_DQ[1]": [
+                    17.026,
+                    19.33
+                  ],
+                  "SDRAM_DQ[2]": [
+                    17.006,
+                    19.311
+                  ],
+                  "SDRAM_DQ[3]": [
+                    17.078,
+                    19.392
+                  ],
+                  "SDRAM_DQ[4]": [
+                    17.126,
+                    19.443
+                  ],
+                  "SDRAM_DQ[5]": [
+                    17.015,
+                    19.32
+                  ],
+                  "SDRAM_DQ[6]": [
+                    17.11,
+                    19.426
+                  ],
+                  "SDRAM_DQ[7]": [
+                    17.143,
+                    19.457
+                  ],
+                  "SDRAM_DQ[8]": [
+                    17.162,
+                    19.481
+                  ],
+                  "SDRAM_DQ[9]": [
+                    17.208,
+                    19.521
+                  ]
+                },
+                "all_pin_window_ns": [
+                  17.208,
+                  19.311
+                ]
+              },
+              "MIN_fast_1100mv_100c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 4.255000000000002,
+                  "local_low_min": 5.0489999999999995,
+                  "fitted_high_min": 3.3480000000000016,
+                  "fitted_low_min": 3.9369999999999994
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    17.785,
+                    20.065
+                  ],
+                  "SDRAM_DQ[10]": [
+                    17.646,
+                    19.927
+                  ],
+                  "SDRAM_DQ[11]": [
+                    17.699,
+                    19.987
+                  ],
+                  "SDRAM_DQ[12]": [
+                    17.829,
+                    20.119
+                  ],
+                  "SDRAM_DQ[13]": [
+                    17.75,
+                    20.035
+                  ],
+                  "SDRAM_DQ[14]": [
+                    17.73,
+                    20.011
+                  ],
+                  "SDRAM_DQ[15]": [
+                    17.774,
+                    20.055
+                  ],
+                  "SDRAM_DQ[1]": [
+                    17.637,
+                    19.907
+                  ],
+                  "SDRAM_DQ[2]": [
+                    17.636,
+                    19.911
+                  ],
+                  "SDRAM_DQ[3]": [
+                    17.706,
+                    19.989
+                  ],
+                  "SDRAM_DQ[4]": [
+                    17.74,
+                    20.024
+                  ],
+                  "SDRAM_DQ[5]": [
+                    17.629,
+                    19.901
+                  ],
+                  "SDRAM_DQ[6]": [
+                    17.724,
+                    20.007
+                  ],
+                  "SDRAM_DQ[7]": [
+                    17.757,
+                    20.037
+                  ],
+                  "SDRAM_DQ[8]": [
+                    17.779,
+                    20.063
+                  ],
+                  "SDRAM_DQ[9]": [
+                    17.823,
+                    20.104
+                  ]
+                },
+                "all_pin_window_ns": [
+                  17.829,
+                  19.901
+                ]
+              }
+            },
+            "common_absolute_capture_window_ns": [
+              21.333,
+              19.311
+            ],
+            "common_window_exists": false
+          },
+          "130": {
+            "corners": {
+              "7_slow_1100mv_-40c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 2.9891538461538456,
+                  "local_low_min": 3.8431538461538475,
+                  "fitted_high_min": 1.1711538461538449,
+                  "fitted_low_min": 1.4941538461538453
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    18.791154,
+                    17.389462
+                  ],
+                  "SDRAM_DQ[10]": [
+                    18.484154,
+                    17.047462
+                  ],
+                  "SDRAM_DQ[11]": [
+                    18.579154,
+                    17.158462
+                  ],
+                  "SDRAM_DQ[12]": [
+                    18.800154,
+                    17.393462
+                  ],
+                  "SDRAM_DQ[13]": [
+                    18.638154,
+                    17.215462
+                  ],
+                  "SDRAM_DQ[14]": [
+                    18.642154,
+                    17.211462
+                  ],
+                  "SDRAM_DQ[15]": [
+                    18.707154,
+                    17.278462
+                  ],
+                  "SDRAM_DQ[1]": [
+                    18.435154,
+                    16.977462
+                  ],
+                  "SDRAM_DQ[2]": [
+                    18.408154,
+                    16.955462
+                  ],
+                  "SDRAM_DQ[3]": [
+                    18.585154,
+                    17.156462
+                  ],
+                  "SDRAM_DQ[4]": [
+                    18.659154,
+                    17.237462
+                  ],
+                  "SDRAM_DQ[5]": [
+                    18.417154,
+                    16.959462
+                  ],
+                  "SDRAM_DQ[6]": [
+                    18.638154,
+                    17.214462
+                  ],
+                  "SDRAM_DQ[7]": [
+                    18.685154,
+                    17.256462
+                  ],
+                  "SDRAM_DQ[8]": [
+                    18.783154,
+                    17.389462
+                  ],
+                  "SDRAM_DQ[9]": [
+                    18.868154,
+                    17.462462
+                  ]
+                },
+                "all_pin_window_ns": [
+                  18.868154,
+                  16.955462
+                ]
+              },
+              "7_slow_1100mv_100c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 2.8911538461538457,
+                  "local_low_min": 3.879153846153846,
+                  "fitted_high_min": 0.8541538461538465,
+                  "fitted_low_min": 1.4391538461538456
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    19.496154,
+                    17.686462
+                  ],
+                  "SDRAM_DQ[10]": [
+                    19.236154,
+                    17.409462
+                  ],
+                  "SDRAM_DQ[11]": [
+                    19.328154,
+                    17.518462
+                  ],
+                  "SDRAM_DQ[12]": [
+                    19.579154,
+                    17.782462
+                  ],
+                  "SDRAM_DQ[13]": [
+                    19.424154,
+                    17.611462
+                  ],
+                  "SDRAM_DQ[14]": [
+                    19.398154,
+                    17.576462
+                  ],
+                  "SDRAM_DQ[15]": [
+                    19.461154,
+                    17.642462
+                  ],
+                  "SDRAM_DQ[1]": [
+                    19.206154,
+                    17.361462
+                  ],
+                  "SDRAM_DQ[2]": [
+                    19.183154,
+                    17.343462
+                  ],
+                  "SDRAM_DQ[3]": [
+                    19.333154,
+                    17.512462
+                  ],
+                  "SDRAM_DQ[4]": [
+                    19.407154,
+                    17.593462
+                  ],
+                  "SDRAM_DQ[5]": [
+                    19.189154,
+                    17.344462
+                  ],
+                  "SDRAM_DQ[6]": [
+                    19.384154,
+                    17.569462
+                  ],
+                  "SDRAM_DQ[7]": [
+                    19.443154,
+                    17.623462
+                  ],
+                  "SDRAM_DQ[8]": [
+                    19.491154,
+                    17.691462
+                  ],
+                  "SDRAM_DQ[9]": [
+                    19.575154,
+                    17.764462
+                  ]
+                },
+                "all_pin_window_ns": [
+                  19.579154,
+                  17.343462
+                ]
+              },
+              "MIN_fast_1100mv_-40c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 3.2041538461538464,
+                  "local_low_min": 3.802153846153847,
+                  "fitted_high_min": 2.3541538461538467,
+                  "fitted_low_min": 2.7291538461538467
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    15.413154,
+                    16.021462
+                  ],
+                  "SDRAM_DQ[10]": [
+                    15.283154,
+                    15.887462
+                  ],
+                  "SDRAM_DQ[11]": [
+                    15.318154,
+                    15.929462
+                  ],
+                  "SDRAM_DQ[12]": [
+                    15.442154,
+                    16.057462
+                  ],
+                  "SDRAM_DQ[13]": [
+                    15.367154,
+                    15.975462
+                  ],
+                  "SDRAM_DQ[14]": [
+                    15.363154,
+                    15.969462
+                  ],
+                  "SDRAM_DQ[15]": [
+                    15.408154,
+                    16.014462
+                  ],
+                  "SDRAM_DQ[1]": [
+                    15.272154,
+                    15.868462
+                  ],
+                  "SDRAM_DQ[2]": [
+                    15.252154,
+                    15.849462
+                  ],
+                  "SDRAM_DQ[3]": [
+                    15.324154,
+                    15.930462
+                  ],
+                  "SDRAM_DQ[4]": [
+                    15.372154,
+                    15.981462
+                  ],
+                  "SDRAM_DQ[5]": [
+                    15.261154,
+                    15.858462
+                  ],
+                  "SDRAM_DQ[6]": [
+                    15.356154,
+                    15.964462
+                  ],
+                  "SDRAM_DQ[7]": [
+                    15.389154,
+                    15.995462
+                  ],
+                  "SDRAM_DQ[8]": [
+                    15.408154,
+                    16.019462
+                  ],
+                  "SDRAM_DQ[9]": [
+                    15.454154,
+                    16.059462
+                  ]
+                },
+                "all_pin_window_ns": [
+                  15.454154,
+                  15.849462
+                ]
+              },
+              "MIN_fast_1100mv_100c": {
+                "pulse_lower_bounds_ns": {
+                  "local_high_min": 3.1011538461538457,
+                  "local_low_min": 3.895153846153846,
+                  "fitted_high_min": 2.1941538461538466,
+                  "fitted_low_min": 2.783153846153846
+                },
+                "read_capture_windows_ns": {
+                  "SDRAM_DQ[0]": [
+                    16.031154,
+                    16.603462
+                  ],
+                  "SDRAM_DQ[10]": [
+                    15.892154,
+                    16.465462
+                  ],
+                  "SDRAM_DQ[11]": [
+                    15.945154,
+                    16.525462
+                  ],
+                  "SDRAM_DQ[12]": [
+                    16.075154,
+                    16.657462
+                  ],
+                  "SDRAM_DQ[13]": [
+                    15.996154,
+                    16.573462
+                  ],
+                  "SDRAM_DQ[14]": [
+                    15.976154,
+                    16.549462
+                  ],
+                  "SDRAM_DQ[15]": [
+                    16.020154,
+                    16.593462
+                  ],
+                  "SDRAM_DQ[1]": [
+                    15.883154,
+                    16.445462
+                  ],
+                  "SDRAM_DQ[2]": [
+                    15.882154,
+                    16.449462
+                  ],
+                  "SDRAM_DQ[3]": [
+                    15.952154,
+                    16.527462
+                  ],
+                  "SDRAM_DQ[4]": [
+                    15.986154,
+                    16.562462
+                  ],
+                  "SDRAM_DQ[5]": [
+                    15.875154,
+                    16.439462
+                  ],
+                  "SDRAM_DQ[6]": [
+                    15.970154,
+                    16.545462
+                  ],
+                  "SDRAM_DQ[7]": [
+                    16.003154,
+                    16.575462
+                  ],
+                  "SDRAM_DQ[8]": [
+                    16.025154,
+                    16.601462
+                  ],
+                  "SDRAM_DQ[9]": [
+                    16.069154,
+                    16.642462
+                  ]
+                },
+                "all_pin_window_ns": [
+                  16.075154,
+                  16.439462
+                ]
+              }
+            },
+            "common_absolute_capture_window_ns": [
+              19.579154,
+              15.849462
+            ],
+            "common_window_exists": false
+          }
+        },
+        "rejection_cases": 6,
+        "common_clock_translation_check": "1ns shared prefix shift cancels from pulses and read windows",
+        "evidence_sha256": "c2801e295fd1a4887bf5a15b408ec34c8f6c88e26e255fa4559957c51433bdb8",
+        "audit_sha256": "d1b7f3c0e0bf77bcb8d5fa966f6ea393cb18bd8b22847ae04c8f115b4e5b2804"
+      }
+    }
+  }
+}

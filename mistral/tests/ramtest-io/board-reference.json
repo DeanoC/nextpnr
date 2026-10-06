@@ -1,0 +1,141 @@
+{
+  "classification": "conditional standard-board comparison; no board qualification or hardware signoff",
+  "sources": {
+    "schematic": "https://github.com/MiSTer-devel/Hardware_MiSTer/blob/bbd3619620056a0f44476e27f18b442b4f0a5952/releases/sdram_xsds_3.0.pdf",
+    "memory_capacitance_and_test_conditions": "https://etron.com/wp-content/uploads/2022/04/EM63B165TSBM_Rev-2.4.pdf",
+    "inverter": "https://www.ti.com/lit/ds/symlink/sn74lvc1g04.pdf"
+  },
+  "input_loads_pf": {
+    "two_memory_control_inputs": 11.0,
+    "two_memory_dq_inputs": 12.0,
+    "control_with_extra": 19.0,
+    "dq_with_extra": 20.0
+  },
+  "extra_capacitance_assumption_pf": 8.0,
+  "capacitance_conditions": "Etron Table14, 3.3V/25C, sampled; excludes FPGA and PCB/connector capacitance",
+  "inverter_conditions": "TI15/50pF, 3.3V +/-0.3V, -40..85C; input rise/fall <=2.5ns; exact installed part unverified",
+  "chip_timing_conditions": "Etron AC test load30pF, 1ns input transitions; Notes9/10 require slow-slew compensation",
+  "preserved_native_pad_envelope_pf": 30,
+  "cs_inverter_setup_allowance_ns": 0.71,
+  "inverter_comparisons": {
+    "generic-assumption": {
+      "max_delay_ns": 5.0,
+      "load_test_pf": null,
+      "assumed_inverter_output_load_pf": 13.5,
+      "load_within_test_value": true,
+      "fitted_cs_setup_remaining_ns": -4.29
+    },
+    "TI-SN74LVC1G04-15pF": {
+      "max_delay_ns": 3.3,
+      "load_test_pf": 15,
+      "assumed_inverter_output_load_pf": 13.5,
+      "load_within_test_value": true,
+      "fitted_cs_setup_remaining_ns": -2.59
+    },
+    "TI-SN74LVC1G04-50pF": {
+      "max_delay_ns": 4.2,
+      "load_test_pf": 50,
+      "assumed_inverter_output_load_pf": 13.5,
+      "load_within_test_value": true,
+      "fitted_cs_setup_remaining_ns": -3.49
+    }
+  },
+  "read_capture_window_ns": [
+    21.333,
+    19.311
+  ],
+  "read_window_width_ns": -2.022,
+  "read_phase_selection_supported": false,
+  "decision": "no supported candidate: no common read window",
+  "next_evidence": [
+    "exact inverter identity and load/slew conditions",
+    "native clock/data correlation and corner bounds",
+    "capture phase plus controller consumption cycle",
+    "setup/hold and bus turnaround"
+  ],
+  "reference_sha256": "69cbacc26182d5b02eb703e222b377ee7853b89463d40a8fcc3ebb7db84ed76e",
+  "audit_sha256": "7224685ffaa4c975ce8c0f1497cdef12a9f948f9e07e4f2bb888907fddf965e6",
+  "native_ti100_comparison": {
+    "status": "strictly rejected diagnostic, TI identity/load/slew conditional",
+    "exit_code": 1,
+    "timing_summary": {
+      "clocks": {
+        "display.pixel_clk": {
+          "hold_wns_ns": 0.414000004529953,
+          "setup_wns_ns": -0.3959999978542328
+        },
+        "ram_clock.clocks[0]": {
+          "hold_wns_ns": -2.188999891281128,
+          "setup_wns_ns": -5.877999782562256
+        },
+        "ram_clock.clocks[1]": {
+          "hold_wns_ns": 4.74399995803833,
+          "setup_wns_ns": -0.5519999861717224
+        }
+      },
+      "final_analogue_model": true
+    },
+    "assumptions": {
+      "status": "diagnostic assumptions only; turnaround and hardware unverified",
+      "memory_mhz": 100,
+      "cas_latency": 2,
+      "datasheet": "https://etron.com/wp-content/uploads/2022/04/EM63B165TSBM_Rev-2.4.pdf",
+      "assumptions_ns": {
+        "clock-flight": [
+          0.0,
+          0.5
+        ],
+        "data-flight": [
+          0.0,
+          0.5
+        ],
+        "read-flight": [
+          0.0,
+          0.5
+        ],
+        "cs-inverter": [
+          0.7,
+          3.3
+        ]
+      },
+      "margin_ns": 0.2,
+      "clock_at_chip_ns": {
+        "rise": [
+          1.24399995803833,
+          7.289999961853027
+        ],
+        "fall": [
+          1.24399995803833,
+          7.309999942779541
+        ]
+      },
+      "delay_budgets_ns": {
+        "input": [
+          3.54399995803833,
+          13.989999961853027
+        ],
+        "output": [
+          -8.289999961853027,
+          0.9560000419616699
+        ],
+        "chip_select": [
+          -8.289999961853027,
+          4.25600004196167
+        ]
+      },
+      "chip_clock_pulse_ns": {
+        "high_min": -1.2460000038146972,
+        "low_min": -1.265999984741211
+      },
+      "chip_clock_pulse_proven": false,
+      "source_sha256": {
+        "/tmp/nextpnr-135-investigation/fes-full-overlay/sources/misteross/build/fes-ramtest-100/clock-probe-final.json": "134156f7f699fe43d024b0f054ab3c8c1dd688c1823133972dadd9029c38e8ff",
+        "/tmp/nextpnr-135-investigation/fes-full-overlay/sources/misteross/build/fes-ramtest-100/probed-final.json": "20fa10162b8d46f89fb655b75a0c24f5b0fb9929db8fdb2461ec35ec393edea8"
+      }
+    },
+    "binary_sha256": "8d2665f678ec891d969842031fca2e4164fb3d34fc46f20c84c6efdd7c7e7c32",
+    "rbf_matches_original_routes": true,
+    "log_sha256": "a85550d9fa1227121d5e9b36b147a4d9206f00693271df79cb324199bf149a50"
+  },
+  "schematic_sha256": "ef8c5aef9704bd4482d3bd389ab0f663159d75ffff5908ed0286307893249cf7"
+}

@@ -18,6 +18,7 @@
  */
 
 #include "jsonwrite.h"
+#include "json11.hpp"
 #include <assert.h>
 #include <fstream>
 #include <iostream>
@@ -34,13 +35,7 @@ namespace JsonWriter {
 
 std::string get_string(std::string str)
 {
-    std::string newstr = "\"";
-    for (char c : str) {
-        if (c == '\\')
-            newstr += c;
-        newstr += c;
-    }
-    return newstr + "\"";
+    return json11::Json(str).dump();
 }
 
 std::string get_name(IdString name, Context *ctx) { return get_string(name.c_str(ctx)); }
@@ -64,18 +59,21 @@ struct PortGroup
     std::vector<int> bits;
     PortType dir;
     int offset = 0;
+    bool is_bus = false;
 };
 
 std::vector<PortGroup> group_ports(Context *ctx, const dict<IdString, PortInfo> &ports, bool is_cell = false)
 {
     std::vector<PortGroup> groups;
     dict<std::string, size_t> base_to_group;
+    pool<std::string> scalar_names;
     for (auto &pair : ports) {
         std::string name = pair.second.name.str(ctx);
         if ((name.back() != ']') || (name.find('[') == std::string::npos)) {
+            scalar_names.insert(name);
             groups.push_back(
                     {name,
-                     {{0, (is_cell ? (pair.second.net ? pair.second.net->name.index : -1) : pair.first.index)}},
+                     {{0, pair.second.net ? pair.second.net->name.index : (is_cell ? -1 : pair.first.index)}},
                      {},
                      pair.second.type});
         } else {
@@ -85,7 +83,7 @@ std::vector<PortGroup> group_ports(Context *ctx, const dict<IdString, PortInfo> 
 
             if (!base_to_group.count(basename)) {
                 base_to_group[basename] = groups.size();
-                groups.push_back({basename, {}, {}, pair.second.type});
+                groups.push_back({basename, {}, {}, pair.second.type, 0, true});
             }
 
             auto &grp = groups.at(base_to_group[basename]);
@@ -104,8 +102,27 @@ std::vector<PortGroup> group_ports(Context *ctx, const dict<IdString, PortInfo> 
             NPNR_ASSERT(group.bits.at(vec_idx) == -1);
             group.bits.at(vec_idx) = bit.second;
         }
+        // Width-one, zero-offset buses otherwise reload as scalars (dq[0]
+        // becomes dq), losing the exact port name stored in IO constraints.
+        // Keep that root port's literal name in constrained checkpoints.
+        if (!is_cell && ctx->settings.count(ctx->id("timing/io_delays")) &&
+            group.is_bus && group.offset == 0 && group.bits.size() == 1)
+            group.name += "[0]";
     }
-    return groups;
+    std::vector<PortGroup> result;
+    for (auto &group : groups) {
+        // A packed PLL can have scalar outclk alongside outclk[1], etc.
+        // Grouping that bus as outclk would emit duplicate JSON keys and
+        // silently discard an output on reload. Preserve the literal bits.
+        if (group.is_bus && scalar_names.count(group.name)) {
+            for (auto bit : group.grouped_bits)
+                result.push_back({group.name + "[" + std::to_string(bit.first) + "]", {},
+                                  {bit.second}, group.dir});
+        } else {
+            result.push_back(std::move(group));
+        }
+    }
+    return result;
 }
 
 std::string format_port_bits(const PortGroup &port, int &dummy_idx)
@@ -136,7 +153,22 @@ void write_module(std::ostream &f, Context *ctx)
     else
         f << stringf("    %s: {\n", get_string("top").c_str());
     f << stringf("      \"settings\": {");
-    write_parameters(f, ctx, ctx->settings, true);
+    auto settings = ctx->settings;
+    if (settings.count(ctx->id("timing/io_delays"))) {
+        json11::Json::array clocks;
+        auto interval = [&](DelayPair value) {
+            return json11::Json::array{ctx->getDelayNS(value.minDelay()), ctx->getDelayNS(value.maxDelay())};
+        };
+        for (const auto &entry : ctx->nets) {
+            const auto &clock = entry.second->clkconstr;
+            if (!clock) continue;
+            clocks.emplace_back(json11::Json::object{{"net", entry.first.str(ctx)},
+                {"period", interval(clock->period)}, {"high", interval(clock->high)}, {"low", interval(clock->low)},
+                {"group", clock->phase_group.str(ctx)}, {"phase", ctx->getDelayNS(clock->phase_shift)}});
+        }
+        settings[ctx->id("timing/io_clocks")] = json11::Json(clocks).dump();
+    }
+    write_parameters(f, ctx, settings, true);
     f << stringf("\n      },\n");
     f << stringf("      \"attributes\": {");
     write_parameters(f, ctx, ctx->attrs, true);

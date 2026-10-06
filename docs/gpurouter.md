@@ -213,6 +213,12 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    up to `analogueRounds` rounds and the routing with the best analogue
    slack is kept. A design that already meets signoff is unchanged.
 
+   Repair uses the complete setup WNS exported in `timing_summary`, including
+   constrained IO and related-clock paths. It does not reconstruct a margin
+   from Fmax: that scales half-cycle margins and can omit related crossings
+   without an Fmax entry. `analogueSlack` therefore refers to actual setup
+   margin in picoseconds; hold checks remain part of the final timing gate.
+
    During a re-route round the nets that stay bound keep the analogue
    delay observed for them (`Arch::getArcDelayOverride` answers from the
    observation cache for unchanged arcs, and the entries of the ripped nets

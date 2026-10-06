@@ -1,0 +1,461 @@
+{
+  "classification": "ideal-clock controller cycle diagnostic; assumed return delays; no hardware signoff",
+  "waveform": "CAS2 at100, CAS3 at130, burst1; poison outside launch+delay+tAC through launch+T+delay+2.5ns",
+  "return_delay": "lumped illustrative return delay; not measured board flight or fitted silicon bound",
+  "verilator": "Verilator 5.032 2025-01-01 rev (Debian 5.032-1+b2)",
+  "source_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05",
+  "board_models_sha256": "36ea92e036408ae93dd5d5a92ec5301531e5f650f6ff8e2cf213e6de03c974be",
+  "pll_sha256": "c48d3c58bbbc7b70d7639220787aa1ca93fcae8ba818a0d25abcaf20de1c1e28",
+  "capture_wrapper_sha256": "0ac8e8429fd9986141ea2a0b1bb2437be62a25527d5d8b2e3ba9d6c56d41de2c",
+  "testbench_sha256": "ca0c0cb46eddd36d03abf04f9ad5577a2d7a727bf4256c33aeaa975386ec5c66",
+  "cases": [
+    {
+      "rate_mhz": 100,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 0,
+      "consumed_capture_after_launch_ns": 10.0,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        0.5,
+        12.5
+      ],
+      "log_sha256": "881b28a874df2a06963fad1cbc5126d0086f83ac0c1d364f210a4f2e2b4cd4bd",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 100,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 6,
+      "return_delay_assumption_ns": 0,
+      "consumed_capture_after_launch_ns": 10.0,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        6.0,
+        12.5
+      ],
+      "log_sha256": "07d23c01b08b4f1bc16c0a7aa6cb6b8a4bdc1f0f66180d9bc84b950368b2e211",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 100,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 3,
+      "consumed_capture_after_launch_ns": 10.0,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        3.5,
+        15.5
+      ],
+      "log_sha256": "6115273c4c5522d158a7200f74c8f660cab634ff9a880e8c8466d94074e7cab2",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 100,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 6,
+      "return_delay_assumption_ns": 3,
+      "consumed_capture_after_launch_ns": 10.0,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        9.0,
+        15.5
+      ],
+      "log_sha256": "d2136bebae32102d68338ce621340cd1c23f69d59f1343cc15afc078208fc107",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 100,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 6,
+      "consumed_capture_after_launch_ns": 10.0,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        6.5,
+        18.5
+      ],
+      "log_sha256": "8218e1dfd6b02db0f0e9dec0a3a44c515b16620626928080d24c42af158435d6",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 100,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 6,
+      "return_delay_assumption_ns": 6,
+      "consumed_capture_after_launch_ns": 10.0,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        12.0,
+        18.5
+      ],
+      "log_sha256": "0fdcb48ca47c7c28b15c81ae922d74af4e29fc1cc43e993828e9a550b7e45de5",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 100,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 9,
+      "consumed_capture_after_launch_ns": 10.0,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        9.5,
+        21.5
+      ],
+      "log_sha256": "27119f162893b05a57bd9e264c03230ee61be06b818ff8bbbdd04f277f53a92d",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 100,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 6,
+      "return_delay_assumption_ns": 9,
+      "consumed_capture_after_launch_ns": 10.0,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        15.0,
+        21.5
+      ],
+      "log_sha256": "743f0e3c99297bbb0d1669c7c55464a22b4081703ba910edf54c14f164a5b34a",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 0,
+      "consumed_capture_after_launch_ns": 18.075,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        0.5,
+        10.192
+      ],
+      "log_sha256": "af422e3dcd43e0cb922595b665acac8026a7a0bbfe275365794d4cd12c70b69b",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 5.4,
+      "return_delay_assumption_ns": 0,
+      "consumed_capture_after_launch_ns": 18.075,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        5.4,
+        10.192
+      ],
+      "log_sha256": "553bcf440fc8e7b1d6af8261c3f00fb51fcc6cb3abb4412f238b0b1b32db9da6",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 3,
+      "consumed_capture_after_launch_ns": 18.075,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        3.5,
+        13.192
+      ],
+      "log_sha256": "c1c46d944041a3ce3d0e07936a0a2a8592e498a4f03deea9261dff4b25b8fcae",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 5.4,
+      "return_delay_assumption_ns": 3,
+      "consumed_capture_after_launch_ns": 18.075,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        8.4,
+        13.192
+      ],
+      "log_sha256": "a98652b171a0c35a478a9b49dc4606ed9a02e154161e2aaa61f3435d75eb31cb",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 6,
+      "consumed_capture_after_launch_ns": 18.075,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        6.5,
+        16.192
+      ],
+      "log_sha256": "43db6d6e7628580cad18fb97caba555d767e8cf84e4213fcbd4eaab4f35977e6",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 5.4,
+      "return_delay_assumption_ns": 6,
+      "consumed_capture_after_launch_ns": 18.075,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        11.4,
+        16.192
+      ],
+      "log_sha256": "1fdc368cac83b83459fb42c8e869df8c52a0a14890fcc303a1a6b6c82e24b5e5",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 9,
+      "consumed_capture_after_launch_ns": 18.075,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        9.5,
+        19.192
+      ],
+      "log_sha256": "37db4512d4b1c5258205699ac78975c41e9a21d3975d358fcf99d003803d611a",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 0,
+      "tac_assumption_ns": 5.4,
+      "return_delay_assumption_ns": 9,
+      "consumed_capture_after_launch_ns": 18.075,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        14.4,
+        19.192
+      ],
+      "log_sha256": "3c4b9f301e8fa2a49e1128560670a661b01adb592228cebd166613529336137c",
+      "controller_sha256": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 1,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 0,
+      "consumed_capture_after_launch_ns": 10.383,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        0.5,
+        10.192
+      ],
+      "log_sha256": "d13020cb78ddb2999ef3bc6ea9a1b79008a14da34d154664f88f981994f565ac",
+      "controller_sha256": "723c26ebfb535efa572665633d9c6de82403a6600280750db5ad9a594212e53c"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 1,
+      "tac_assumption_ns": 5.4,
+      "return_delay_assumption_ns": 0,
+      "consumed_capture_after_launch_ns": 10.383,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        5.4,
+        10.192
+      ],
+      "log_sha256": "44ed9333929f2e0c0bc67f2a6cdbc17afa30f46a57aab25b5cb436e78460404d",
+      "controller_sha256": "723c26ebfb535efa572665633d9c6de82403a6600280750db5ad9a594212e53c"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 1,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 3,
+      "consumed_capture_after_launch_ns": 10.383,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        3.5,
+        13.192
+      ],
+      "log_sha256": "6c079e670d95b8e0aa95df314acbfbf9079474d7523756ce89345c9ecf3f74b7",
+      "controller_sha256": "723c26ebfb535efa572665633d9c6de82403a6600280750db5ad9a594212e53c"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 1,
+      "tac_assumption_ns": 5.4,
+      "return_delay_assumption_ns": 3,
+      "consumed_capture_after_launch_ns": 10.383,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        8.4,
+        13.192
+      ],
+      "log_sha256": "c9e57d20ba10b6ffe9a0d1b6e339ffbdbe98143bee6f2581ae88075eebceb41f",
+      "controller_sha256": "723c26ebfb535efa572665633d9c6de82403a6600280750db5ad9a594212e53c"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 1,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 6,
+      "consumed_capture_after_launch_ns": 10.383,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        6.5,
+        16.192
+      ],
+      "log_sha256": "c78d306e8c34a37489165214e446bba49d61d7e40e16be4b9c10ce5aa1d1336a",
+      "controller_sha256": "723c26ebfb535efa572665633d9c6de82403a6600280750db5ad9a594212e53c"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 1,
+      "tac_assumption_ns": 5.4,
+      "return_delay_assumption_ns": 6,
+      "consumed_capture_after_launch_ns": 10.383,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        11.4,
+        16.192
+      ],
+      "log_sha256": "3ad025d307dac35fd9f02c9707567505bf08d5f302a5c61848b0689b321831d8",
+      "controller_sha256": "723c26ebfb535efa572665633d9c6de82403a6600280750db5ad9a594212e53c"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 1,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 9,
+      "consumed_capture_after_launch_ns": 10.383,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        9.5,
+        19.192
+      ],
+      "log_sha256": "3b9f93db988f50afc39ec9f20b84953a305dfab2a35f737b546b62270ddc03b6",
+      "controller_sha256": "723c26ebfb535efa572665633d9c6de82403a6600280750db5ad9a594212e53c"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 1,
+      "tac_assumption_ns": 5.4,
+      "return_delay_assumption_ns": 9,
+      "consumed_capture_after_launch_ns": 10.383,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        14.4,
+        19.192
+      ],
+      "log_sha256": "cfcb7d93575cc3210c5efb392c062488c87b055a65bb34ce477a632ea6d88378",
+      "controller_sha256": "723c26ebfb535efa572665633d9c6de82403a6600280750db5ad9a594212e53c"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 2,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 0,
+      "consumed_capture_after_launch_ns": 2.691,
+      "valid_word": true,
+      "valid_interval_after_launch_ns": [
+        0.5,
+        10.192
+      ],
+      "log_sha256": "54346ed521cc92dd17ef8d893759dee1556ecaa7c77810f85e687b231428840c",
+      "controller_sha256": "4f275010806b21137adffb26c1f1e6665d32d4c03f848c059bfc86b86a31bc12"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 2,
+      "tac_assumption_ns": 5.4,
+      "return_delay_assumption_ns": 0,
+      "consumed_capture_after_launch_ns": 2.691,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        5.4,
+        10.192
+      ],
+      "log_sha256": "646c23a7e28fbe88a16bb23df48710ac6674738041d8e90168d09f4bf4d2b956",
+      "controller_sha256": "4f275010806b21137adffb26c1f1e6665d32d4c03f848c059bfc86b86a31bc12"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 2,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 3,
+      "consumed_capture_after_launch_ns": 2.691,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        3.5,
+        13.192
+      ],
+      "log_sha256": "cbb84201acf0940fadcdaa33af230df08046c3e2d7633f6b483ed4e5444d3046",
+      "controller_sha256": "4f275010806b21137adffb26c1f1e6665d32d4c03f848c059bfc86b86a31bc12"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 2,
+      "tac_assumption_ns": 5.4,
+      "return_delay_assumption_ns": 3,
+      "consumed_capture_after_launch_ns": 2.691,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        8.4,
+        13.192
+      ],
+      "log_sha256": "81a5b1d229ca6b13853664b9a9368b8793f2d0e55dcfc483223426662e5b6566",
+      "controller_sha256": "4f275010806b21137adffb26c1f1e6665d32d4c03f848c059bfc86b86a31bc12"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 2,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 6,
+      "consumed_capture_after_launch_ns": 2.691,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        6.5,
+        16.192
+      ],
+      "log_sha256": "342cac74a70810a5e9dab6fc63f674415eed43c1f4d07212ff64ffc062a1d29e",
+      "controller_sha256": "4f275010806b21137adffb26c1f1e6665d32d4c03f848c059bfc86b86a31bc12"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 2,
+      "tac_assumption_ns": 5.4,
+      "return_delay_assumption_ns": 6,
+      "consumed_capture_after_launch_ns": 2.691,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        11.4,
+        16.192
+      ],
+      "log_sha256": "a9250797cbfbfada1874d22d22e52289cb1fa830cc23d4db3dda4d7e7bde21e3",
+      "controller_sha256": "4f275010806b21137adffb26c1f1e6665d32d4c03f848c059bfc86b86a31bc12"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 2,
+      "tac_assumption_ns": 0.5,
+      "return_delay_assumption_ns": 9,
+      "consumed_capture_after_launch_ns": 2.691,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        9.5,
+        19.192
+      ],
+      "log_sha256": "7d56423071c19eb80af2a025841e7d15aa2f9aa03133d1fb63c68a08597aa12d",
+      "controller_sha256": "4f275010806b21137adffb26c1f1e6665d32d4c03f848c059bfc86b86a31bc12"
+    },
+    {
+      "rate_mhz": 130,
+      "trial_advance_cycles": 2,
+      "tac_assumption_ns": 5.4,
+      "return_delay_assumption_ns": 9,
+      "consumed_capture_after_launch_ns": 2.691,
+      "valid_word": false,
+      "valid_interval_after_launch_ns": [
+        14.4,
+        19.192
+      ],
+      "log_sha256": "0ad4c6fe33775f572f6fcb73de3294f37ea4eb6b79da3c2d5aa7d14172e5abe9",
+      "controller_sha256": "4f275010806b21137adffb26c1f1e6665d32d4c03f848c059bfc86b86a31bc12"
+    }
+  ]
+}

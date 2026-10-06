@@ -190,12 +190,15 @@ DelayQuad Context::getNetinfoRouteDelayQuad(const NetInfo *net_info, const PortR
     if (src_wire == WireId())
         return DelayQuad(0);
 
-    DelayQuad result(std::numeric_limits<delay_t>::max(), std::numeric_limits<delay_t>::lowest());
-
-    if (getArcDelayOverride(net_info, user_info, result)) {
+    DelayQuad override_delay;
+    if (getArcDelayOverride(net_info, user_info, override_delay)) {
         // Arch overrides delay
-        return result;
+        return override_delay;
     }
+
+    // A declined override may have written a partial or cached delay. It
+    // must not participate in the fallback's envelope over physical sinks.
+    DelayQuad result(std::numeric_limits<delay_t>::max(), std::numeric_limits<delay_t>::lowest());
 
     for (auto dst_wire : getNetinfoSinkWires(net_info, user_info)) {
         WireId cursor = dst_wire;

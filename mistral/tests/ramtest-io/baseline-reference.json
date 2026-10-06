@@ -1,0 +1,1308 @@
+{
+  "classification": "exact historical artifacts and differential native-model observations; not board timing signoff",
+  "issue": "https://github.com/DeanoC/nextpnr/issues/135",
+  "builds": {
+    "passing": {
+      "classification": "historical artifact replay; no hardware programming or board signoff",
+      "original_rbf_sha256": "e76deaa51662f65fb614adf36767d8d87c9d9cfd19e7552fb8da88fed261c7da",
+      "original_fmax": {
+        "display.pixel_clk": {
+          "achieved": 88.20675659179688,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 100.86746215820312,
+          "constraint": 100
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 306.936767578125,
+          "constraint": 100
+        }
+      },
+      "source_root": "/home/deano/fes/out/dev/pr404-de32b3d0/fes/out/work/misteross-de32b3d083e98ba7f387ec16da1204cdd05f4284/sources/misteross",
+      "pll_metadata_migrations": [
+        "ram_clock.pll",
+        "video_clock.pll"
+      ],
+      "nextpnr_sha256": "8d2665f678ec891d969842031fca2e4164fb3d34fc46f20c84c6efdd7c7e7c32",
+      "source_sha256": {
+        "build/fes-ramtest-100/routed.json": "eba7d3db5d1da71504b4d58121167a9f977f6b1a53145df8189d6be815f555f0",
+        "build/fes-ramtest-100/synth.json": "8dd70d59be576298dcd35bfff8944f7d8a2610fe26aa441526c9438683526285",
+        "build/fes-ramtest-100/core.rbf": "e76deaa51662f65fb614adf36767d8d87c9d9cfd19e7552fb8da88fed261c7da",
+        "build/fes-ramtest-100/timing.json": "c07e41e1608925733a7c9d93f74b1d9892db2cbe2c4d1f0788a9eb7b443e4cc6",
+        "cores/fes-ramtest/rtl/top.v": "f4754fb3f39b03e62260075d7ee260e7b2b9c91ac94aa267da9e7006a3a4d163",
+        "cores/fes-ramtest/rtl/sdram_addon_port.v": "cca29343fab039cac47d3cfa3695e8b90de256cc1385f92012970dd9c7f21fd2",
+        "cores/fes-ramtest/rtl/ram_pll.v": "c48d3c58bbbc7b70d7639220787aa1ca93fcae8ba818a0d25abcaf20de1c1e28"
+      },
+      "runs": {
+        "baseline": {
+          "returncode": 0,
+          "byte_identical_rbf": true,
+          "timing_summary": {
+            "clocks": {
+              "display.pixel_clk": {
+                "hold_wns_ns": 0.7210000157356262,
+                "setup_wns_ns": 2.13100004196167
+              },
+              "ram_clock.clocks[0]": {
+                "hold_wns_ns": 0.722000002861023,
+                "setup_wns_ns": 0.13500000536441803
+              },
+              "ram_clock.clocks[1]": {
+                "hold_wns_ns": 5.875,
+                "setup_wns_ns": 3.371000051498413
+              }
+            },
+            "final_analogue_model": true
+          },
+          "log_sha256": "997729df4e3b62f4d330a2289ba6ca863f37f2940cc517fe9adb73b0625b4bb9",
+          "report_sha256": "2bf9631491e77b3f994b92616b858953b6326f03d52d919c8c18faaf711002d9"
+        },
+        "probe": {
+          "returncode": 1,
+          "byte_identical_rbf": true,
+          "timing_summary": {
+            "clocks": {
+              "display.pixel_clk": {
+                "hold_wns_ns": 0.42800000309944153,
+                "setup_wns_ns": 1.9010000228881836
+              },
+              "ram_clock.clocks[0]": {
+                "hold_wns_ns": -0.3880000114440918,
+                "setup_wns_ns": -1.809999942779541
+              },
+              "ram_clock.clocks[1]": {
+                "hold_wns_ns": 5.583000183105469,
+                "setup_wns_ns": 3.1059999465942383
+              }
+            },
+            "final_analogue_model": true
+          },
+          "log_sha256": "a04724c689346863c8ee8836e3b2eae19b17d92bd268a22e8db6734555c27da7",
+          "report_sha256": "f4b508f67ae94b27c851d84c74e149e6f06e0f9f661016dc33027809d653938a",
+          "boundary_paths": {
+            "reference": "synthetic input launch zero; outputs relative to fabric clock rising; native GPIO boundaries",
+            "limits": "not complete chip-pin requirements; unregistered pad/package, board and fast-corner qualification remain unresolved",
+            "reads": {
+              "0": {
+                "net": "dq_buf[0].dq_pin",
+                "arrival_ns": [
+                  0.7720000147819519,
+                  0.9929999709129333
+                ]
+              },
+              "10": {
+                "net": "dq_buf[10].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  1.1490000486373901,
+                  1.4149999618530273
+                ]
+              },
+              "11": {
+                "net": "dq_buf[11].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.08299999684095383,
+                  1.9010000228881836
+                ]
+              },
+              "12": {
+                "net": "dq_buf[12].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.9390000104904175,
+                  1.059000015258789
+                ]
+              },
+              "13": {
+                "net": "dq_buf[13].dq_pin",
+                "arrival_ns": [
+                  1.2999999523162842,
+                  1.7690000534057617
+                ]
+              },
+              "14": {
+                "net": "dq_buf[14].dq_pin",
+                "arrival_ns": [
+                  0.6079999804496765,
+                  0.6869999766349792
+                ]
+              },
+              "15": {
+                "net": "dq_buf[15].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.6399999856948853,
+                  0.8220000267028809
+                ]
+              },
+              "1": {
+                "net": "dq_buf[1].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  3.6040000915527344,
+                  4.479000091552734
+                ]
+              },
+              "2": {
+                "net": "dq_buf[2].dq_pin",
+                "arrival_ns": [
+                  3.3529999256134033,
+                  4.081999778747559
+                ]
+              },
+              "3": {
+                "net": "dq_buf[3].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.8519999980926514,
+                  1.0889999866485596
+                ]
+              },
+              "4": {
+                "net": "dq_buf[4].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.08299999684095383,
+                  1.3630000352859497
+                ]
+              },
+              "5": {
+                "net": "dq_buf[5].dq_pin",
+                "arrival_ns": [
+                  3.2839999198913574,
+                  4.158999919891357
+                ]
+              },
+              "6": {
+                "net": "dq_buf[6].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  1.2960000038146973,
+                  1.840999960899353
+                ]
+              },
+              "7": {
+                "net": "dq_buf[7].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.7329999804496765,
+                  0.9729999899864197
+                ]
+              },
+              "8": {
+                "net": "dq_buf[8].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.08299999684095383,
+                  2.046999931335449
+                ]
+              },
+              "9": {
+                "net": "dq_buf[9].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  1.4110000133514404,
+                  1.6430000066757202
+                ]
+              }
+            },
+            "outputs": {
+              "SDRAM_A_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_a[0]",
+                "arrival_ns": [
+                  3.2209999561309814,
+                  3.6050000190734863
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_1.I": {
+                "net": "sdram.sdram_a[1]",
+                "arrival_ns": [
+                  3.877000093460083,
+                  4.23799991607666
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_10.I": {
+                "net": "sdram.sdram_a[10]",
+                "arrival_ns": [
+                  3.928999900817871,
+                  4.421000003814697
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_11.I": {
+                "net": "sdram.sdram_a[11]",
+                "arrival_ns": [
+                  2.996000051498413,
+                  3.687000036239624
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_12.I": {
+                "net": "sdram.sdram_a[12]",
+                "arrival_ns": [
+                  5.642000198364258,
+                  6.999000072479248
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_2.I": {
+                "net": "sdram.sdram_a[2]",
+                "arrival_ns": [
+                  2.694999933242798,
+                  3.2119998931884766
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_3.I": {
+                "net": "sdram.sdram_a[3]",
+                "arrival_ns": [
+                  3.372999906539917,
+                  3.819999933242798
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_4.I": {
+                "net": "sdram.sdram_a[4]",
+                "arrival_ns": [
+                  3.009000062942505,
+                  3.7060000896453857
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_5.I": {
+                "net": "sdram.sdram_a[5]",
+                "arrival_ns": [
+                  3.674999952316284,
+                  4.379000186920166
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_6.I": {
+                "net": "sdram.sdram_a[6]",
+                "arrival_ns": [
+                  3.615000009536743,
+                  4.110000133514404
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_7.I": {
+                "net": "sdram.sdram_a[7]",
+                "arrival_ns": [
+                  4.176000118255615,
+                  5.063000202178955
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_8.I": {
+                "net": "sdram.sdram_a[8]",
+                "arrival_ns": [
+                  3.640000104904175,
+                  4.4039998054504395
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_9.I": {
+                "net": "sdram.sdram_a[9]",
+                "arrival_ns": [
+                  5.304999828338623,
+                  6.306000232696533
+                ]
+              },
+              "SDRAM_BA_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_ba[0]",
+                "arrival_ns": [
+                  3.796999931335449,
+                  4.706999778747559
+                ]
+              },
+              "SDRAM_BA_MISTRAL_OB_PAD_1.I": {
+                "net": "sdram.sdram_ba[1]",
+                "arrival_ns": [
+                  4.084000110626221,
+                  4.715000152587891
+                ]
+              },
+              "SDRAM_CKE_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_cke",
+                "arrival_ns": [
+                  2.0999999046325684,
+                  2.38100004196167
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD.I": {
+                "net": "dq_out[0]",
+                "arrival_ns": [
+                  2.312999963760376,
+                  2.627000093460083
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_1.I": {
+                "net": "dq_out[1]",
+                "arrival_ns": [
+                  4.89900016784668,
+                  5.770999908447266
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_10.I": {
+                "net": "dq_out[10]",
+                "arrival_ns": [
+                  3.0399999618530273,
+                  3.424999952316284
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_11.I": {
+                "net": "dq_out[11]",
+                "arrival_ns": [
+                  3.371000051498413,
+                  3.9130001068115234
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_12.I": {
+                "net": "dq_out[12]",
+                "arrival_ns": [
+                  3.572000026702881,
+                  4.525000095367432
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_13.I": {
+                "net": "dq_out[13]",
+                "arrival_ns": [
+                  3.2009999752044678,
+                  4.045000076293945
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_14.I": {
+                "net": "dq_out[14]",
+                "arrival_ns": [
+                  2.440000057220459,
+                  2.825000047683716
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_15.I": {
+                "net": "dq_out[15]",
+                "arrival_ns": [
+                  2.5220000743865967,
+                  3.010999917984009
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_2.I": {
+                "net": "dq_out[2]",
+                "arrival_ns": [
+                  6.336999893188477,
+                  7.742000102996826
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_3.I": {
+                "net": "dq_out[3]",
+                "arrival_ns": [
+                  2.4790000915527344,
+                  2.9210000038146973
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_4.I": {
+                "net": "dq_out[4]",
+                "arrival_ns": [
+                  3.2160000801086426,
+                  3.7330000400543213
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_5.I": {
+                "net": "dq_out[5]",
+                "arrival_ns": [
+                  5.51200008392334,
+                  6.724999904632568
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_6.I": {
+                "net": "dq_out[6]",
+                "arrival_ns": [
+                  3.3529999256134033,
+                  4.048999786376953
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_7.I": {
+                "net": "dq_out[7]",
+                "arrival_ns": [
+                  2.3459999561309814,
+                  2.7829999923706055
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_8.I": {
+                "net": "dq_out[8]",
+                "arrival_ns": [
+                  3.4179999828338623,
+                  3.875
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_9.I": {
+                "net": "dq_out[9]",
+                "arrival_ns": [
+                  3.9839999675750732,
+                  4.607999801635742
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_9.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.2260000705718994,
+                  3.6029999256134033
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_8.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.2720000743865967,
+                  3.818000078201294
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_7.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  2.6600000858306885,
+                  2.9730000495910645
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_6.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  2.806999921798706,
+                  3.25600004196167
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_5.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  4.841000080108643,
+                  5.559999942779541
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_4.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  2.631999969482422,
+                  2.996999979019165
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_3.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  2.9670000076293945,
+                  3.322000026702881
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_2.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  5.438000202178955,
+                  6.339000225067139
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_15.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.052000045776367,
+                  3.615999937057495
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_14.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  2.941999912261963,
+                  3.303999900817871
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_13.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.640000104904175,
+                  4.132999897003174
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_12.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  2.625,
+                  2.990000009536743
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_11.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.2699999809265137,
+                  3.816999912261963
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_10.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.4079999923706055,
+                  3.8410000801086426
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_1.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  4.835999965667725,
+                  5.554999828338623
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  2.6429998874664307,
+                  3.0299999713897705
+                ]
+              },
+              "SDRAM_nCAS_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_ncas",
+                "arrival_ns": [
+                  3.117000102996826,
+                  3.625
+                ]
+              },
+              "SDRAM_nCS_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_ncs",
+                "arrival_ns": [
+                  3.4600000381469727,
+                  3.984999895095825
+                ]
+              },
+              "SDRAM_nRAS_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_nras",
+                "arrival_ns": [
+                  3.1610000133514404,
+                  3.822000026702881
+                ]
+              },
+              "SDRAM_nWE_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_nwe",
+                "arrival_ns": [
+                  3.614000082015991,
+                  4.283999919891357
+                ]
+              }
+            }
+          }
+        }
+      },
+      "script_sha256": "231d59834708f7edd2205653c1e818ad30d814fe909d60c441409fed672a5a34"
+    },
+    "failing": {
+      "classification": "historical artifact replay; no hardware programming or board signoff",
+      "original_rbf_sha256": "9cff64b3a51fcf992d6853458779a99f63f3568e821e425b9fd8b7fedc987e05",
+      "original_fmax": {
+        "display.pixel_clk": {
+          "achieved": 96.53441619873047,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 102.22858428955078,
+          "constraint": 100
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 256.8053283691406,
+          "constraint": 100
+        }
+      },
+      "source_root": "/home/deano/fes/out/dev/pr485-160994a0/fes/out/work/misteross-6c459fda396215fda6ac01e7125584d0cdf564b2/sources/misteross",
+      "pll_metadata_migrations": [
+        "ram_clock.pll",
+        "video_clock.pll"
+      ],
+      "nextpnr_sha256": "8d2665f678ec891d969842031fca2e4164fb3d34fc46f20c84c6efdd7c7e7c32",
+      "source_sha256": {
+        "build/fes-ramtest-100/routed.json": "21b44d73901ba6a4b57c4f047d69dae9670cd43ca59b88068920803fa76ba836",
+        "build/fes-ramtest-100/synth.json": "efe83d370d7d185053a0c446989ee7ffd52277f65da0b3dbe928c714f1be9a0d",
+        "build/fes-ramtest-100/core.rbf": "9cff64b3a51fcf992d6853458779a99f63f3568e821e425b9fd8b7fedc987e05",
+        "build/fes-ramtest-100/timing.json": "5df08a1c100c03abc3361f1675e22811f9b83500e7191825b4d151af1d6d9d2b",
+        "cores/fes-ramtest/rtl/top.v": "f4754fb3f39b03e62260075d7ee260e7b2b9c91ac94aa267da9e7006a3a4d163",
+        "cores/fes-ramtest/rtl/sdram_addon_port.v": "cca29343fab039cac47d3cfa3695e8b90de256cc1385f92012970dd9c7f21fd2",
+        "cores/fes-ramtest/rtl/ram_pll.v": "c48d3c58bbbc7b70d7639220787aa1ca93fcae8ba818a0d25abcaf20de1c1e28"
+      },
+      "runs": {
+        "baseline": {
+          "returncode": 0,
+          "byte_identical_rbf": true,
+          "timing_summary": {
+            "clocks": {
+              "display.pixel_clk": {
+                "hold_wns_ns": 0.7210000157356262,
+                "setup_wns_ns": 3.1089999675750732
+              },
+              "ram_clock.clocks[0]": {
+                "hold_wns_ns": 0.7250000238418579,
+                "setup_wns_ns": 0.21799999475479126
+              },
+              "ram_clock.clocks[1]": {
+                "hold_wns_ns": 5.718999862670898,
+                "setup_wns_ns": 3.052999973297119
+              }
+            },
+            "final_analogue_model": true
+          },
+          "log_sha256": "07c6f43e67266820593458ded70103e359d8bd450cf843b6dd791a57ae2e8b17",
+          "report_sha256": "b5604b49a98792f6247a9591abec462c13718669ef8bc70ebef3db8126b11533"
+        },
+        "probe": {
+          "returncode": 1,
+          "byte_identical_rbf": true,
+          "timing_summary": {
+            "clocks": {
+              "display.pixel_clk": {
+                "hold_wns_ns": 0.4309999942779541,
+                "setup_wns_ns": 2.869999885559082
+              },
+              "ram_clock.clocks[0]": {
+                "hold_wns_ns": -0.4059999883174896,
+                "setup_wns_ns": -1.809999942779541
+              },
+              "ram_clock.clocks[1]": {
+                "hold_wns_ns": 5.465000152587891,
+                "setup_wns_ns": 2.7990000247955322
+              }
+            },
+            "final_analogue_model": true
+          },
+          "log_sha256": "0b5e186bb511d7aae80406a05cdb559c591d444f624800b3faeddd63686f6442",
+          "report_sha256": "4a67b4d81a990449abe678f58908c7f383f001299f88a7ba941e7c567026e012",
+          "boundary_paths": {
+            "reference": "synthetic input launch zero; outputs relative to fabric clock rising; native GPIO boundaries",
+            "limits": "not complete chip-pin requirements; unregistered pad/package, board and fast-corner qualification remain unresolved",
+            "reads": {
+              "0": {
+                "net": "dq_buf[0].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.8960000276565552,
+                  1.1579999923706055
+                ]
+              },
+              "10": {
+                "net": "dq_buf[10].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  1.6549999713897705,
+                  2.1519999504089355
+                ]
+              },
+              "11": {
+                "net": "dq_buf[11].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.08299999684095383,
+                  2.187000036239624
+                ]
+              },
+              "12": {
+                "net": "dq_buf[12].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  1.2979999780654907,
+                  1.4579999446868896
+                ]
+              },
+              "13": {
+                "net": "dq_buf[13].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  1.5889999866485596,
+                  2.058000087738037
+                ]
+              },
+              "14": {
+                "net": "dq_buf[14].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.972000002861023,
+                  1.3250000476837158
+                ]
+              },
+              "15": {
+                "net": "dq_buf[15].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.5490000247955322,
+                  0.675000011920929
+                ]
+              },
+              "1": {
+                "net": "dq_buf[1].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  3.625,
+                  4.5970001220703125
+                ]
+              },
+              "2": {
+                "net": "dq_buf[2].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  3.700000047683716,
+                  4.49399995803833
+                ]
+              },
+              "3": {
+                "net": "dq_buf[3].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.7689999938011169,
+                  1.034999966621399
+                ]
+              },
+              "4": {
+                "net": "dq_buf[4].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.08299999684095383,
+                  1.7580000162124634
+                ]
+              },
+              "5": {
+                "net": "dq_buf[5].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  3.421999931335449,
+                  4.425000190734863
+                ]
+              },
+              "6": {
+                "net": "dq_buf[6].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  1.3569999933242798,
+                  1.600000023841858
+                ]
+              },
+              "7": {
+                "net": "dq_buf[7].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.5950000286102295,
+                  0.7730000019073486
+                ]
+              },
+              "8": {
+                "net": "dq_buf[8].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  0.08299999684095383,
+                  2.1070001125335693
+                ]
+              },
+              "9": {
+                "net": "dq_buf[9].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+                "arrival_ns": [
+                  1.690000057220459,
+                  1.9450000524520874
+                ]
+              }
+            },
+            "outputs": {
+              "SDRAM_A_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_a[0]",
+                "arrival_ns": [
+                  3.2850000858306885,
+                  3.76200008392334
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_1.I": {
+                "net": "sdram.sdram_a[1]",
+                "arrival_ns": [
+                  4.0879998207092285,
+                  4.635000228881836
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_10.I": {
+                "net": "sdram.sdram_a[10]",
+                "arrival_ns": [
+                  5.320000171661377,
+                  6.676000118255615
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_11.I": {
+                "net": "sdram.sdram_a[11]",
+                "arrival_ns": [
+                  3.188999891281128,
+                  3.6670000553131104
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_12.I": {
+                "net": "sdram.sdram_a[12]",
+                "arrival_ns": [
+                  7.02400016784668,
+                  8.958999633789062
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_2.I": {
+                "net": "sdram.sdram_a[2]",
+                "arrival_ns": [
+                  3.0880000591278076,
+                  3.6989998817443848
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_3.I": {
+                "net": "sdram.sdram_a[3]",
+                "arrival_ns": [
+                  3.309000015258789,
+                  4.0289998054504395
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_4.I": {
+                "net": "sdram.sdram_a[4]",
+                "arrival_ns": [
+                  2.5789999961853027,
+                  3.1050000190734863
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_5.I": {
+                "net": "sdram.sdram_a[5]",
+                "arrival_ns": [
+                  3.691999912261963,
+                  4.232999801635742
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_6.I": {
+                "net": "sdram.sdram_a[6]",
+                "arrival_ns": [
+                  3.9839999675750732,
+                  4.71999979019165
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_7.I": {
+                "net": "sdram.sdram_a[7]",
+                "arrival_ns": [
+                  3.6029999256134033,
+                  4.133999824523926
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_8.I": {
+                "net": "sdram.sdram_a[8]",
+                "arrival_ns": [
+                  3.937999963760376,
+                  4.7729997634887695
+                ]
+              },
+              "SDRAM_A_MISTRAL_OB_PAD_9.I": {
+                "net": "sdram.sdram_a[9]",
+                "arrival_ns": [
+                  6.883999824523926,
+                  8.79699993133545
+                ]
+              },
+              "SDRAM_BA_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_ba[0]",
+                "arrival_ns": [
+                  3.7130000591278076,
+                  4.208000183105469
+                ]
+              },
+              "SDRAM_BA_MISTRAL_OB_PAD_1.I": {
+                "net": "sdram.sdram_ba[1]",
+                "arrival_ns": [
+                  5.058000087738037,
+                  6.034999847412109
+                ]
+              },
+              "SDRAM_CKE_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_cke",
+                "arrival_ns": [
+                  3.075000047683716,
+                  3.815999984741211
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD.I": {
+                "net": "dq_out[0]",
+                "arrival_ns": [
+                  2.13700008392334,
+                  2.4189999103546143
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_1.I": {
+                "net": "dq_out[1]",
+                "arrival_ns": [
+                  5.261000156402588,
+                  6.432000160217285
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_10.I": {
+                "net": "dq_out[10]",
+                "arrival_ns": [
+                  2.996000051498413,
+                  3.5439999103546143
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_11.I": {
+                "net": "dq_out[11]",
+                "arrival_ns": [
+                  3.7239999771118164,
+                  4.210000038146973
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_12.I": {
+                "net": "dq_out[12]",
+                "arrival_ns": [
+                  2.9079999923706055,
+                  3.3910000324249268
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_13.I": {
+                "net": "dq_out[13]",
+                "arrival_ns": [
+                  3.0980000495910645,
+                  3.687000036239624
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_14.I": {
+                "net": "dq_out[14]",
+                "arrival_ns": [
+                  2.381999969482422,
+                  2.7730000019073486
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_15.I": {
+                "net": "dq_out[15]",
+                "arrival_ns": [
+                  2.4019999504089355,
+                  2.875999927520752
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_2.I": {
+                "net": "dq_out[2]",
+                "arrival_ns": [
+                  6.353000164031982,
+                  7.689000129699707
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_3.I": {
+                "net": "dq_out[3]",
+                "arrival_ns": [
+                  2.2869999408721924,
+                  2.6070001125335693
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_4.I": {
+                "net": "dq_out[4]",
+                "arrival_ns": [
+                  3.3359999656677246,
+                  4.249000072479248
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_5.I": {
+                "net": "dq_out[5]",
+                "arrival_ns": [
+                  5.922999858856201,
+                  7.39300012588501
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_6.I": {
+                "net": "dq_out[6]",
+                "arrival_ns": [
+                  3.138000011444092,
+                  3.76200008392334
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_7.I": {
+                "net": "dq_out[7]",
+                "arrival_ns": [
+                  2.3519999980926514,
+                  2.7890000343322754
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_8.I": {
+                "net": "dq_out[8]",
+                "arrival_ns": [
+                  3.9739999771118164,
+                  4.931000232696533
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_9.I": {
+                "net": "dq_out[9]",
+                "arrival_ns": [
+                  3.196000099182129,
+                  3.552999973297119
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_9.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  4.103000164031982,
+                  4.943999767303467
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_8.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  4.395999908447266,
+                  5.3379998207092285
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_7.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.76200008392334,
+                  4.603000164031982
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_6.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.505000114440918,
+                  4.020999908447266
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_5.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  6.060999870300293,
+                  7.199999809265137
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_4.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.9070000648498535,
+                  4.605999946594238
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_3.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.11899995803833,
+                  3.7660000324249268
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_2.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  5.914999961853027,
+                  6.992000102996826
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_15.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  2.500999927520752,
+                  2.9509999752044678
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_14.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.117000102996826,
+                  3.931999921798706
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_13.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.6500000953674316,
+                  4.401000022888184
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_12.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.9019999504089355,
+                  4.60099983215332
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_11.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  4.211999893188477,
+                  5.083000183105469
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_10.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  3.443000078201294,
+                  3.9230000972747803
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD_1.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  6.065999984741211,
+                  7.242000102996826
+                ]
+              },
+              "SDRAM_DQ_MISTRAL_IO_PAD.OE": {
+                "net": "dq_oe",
+                "arrival_ns": [
+                  2.3410000801086426,
+                  2.7119998931884766
+                ]
+              },
+              "SDRAM_nCAS_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_ncas",
+                "arrival_ns": [
+                  3.822000026702881,
+                  4.51200008392334
+                ]
+              },
+              "SDRAM_nCS_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_ncs",
+                "arrival_ns": [
+                  3.7669999599456787,
+                  4.334000110626221
+                ]
+              },
+              "SDRAM_nRAS_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_nras",
+                "arrival_ns": [
+                  3.7820000648498535,
+                  4.645999908447266
+                ]
+              },
+              "SDRAM_nWE_MISTRAL_OB_PAD.I": {
+                "net": "sdram.sdram_nwe",
+                "arrival_ns": [
+                  4.006999969482422,
+                  4.864999771118164
+                ]
+              }
+            }
+          }
+        }
+      },
+      "script_sha256": "231d59834708f7edd2205653c1e818ad30d814fe909d60c441409fed672a5a34"
+    }
+  },
+  "late_delta_failing_minus_passing_ns": {
+    "reads": {
+      "0": 0.165,
+      "10": 0.737,
+      "11": 0.286,
+      "12": 0.399,
+      "13": 0.289,
+      "14": 0.638,
+      "15": -0.147,
+      "1": 0.118,
+      "2": 0.412,
+      "3": -0.054,
+      "4": 0.395,
+      "5": 0.266,
+      "6": -0.241,
+      "7": -0.2,
+      "8": 0.06,
+      "9": 0.302
+    },
+    "outputs": {
+      "SDRAM_A_MISTRAL_OB_PAD.I": 0.157,
+      "SDRAM_A_MISTRAL_OB_PAD_1.I": 0.397,
+      "SDRAM_A_MISTRAL_OB_PAD_10.I": 2.255,
+      "SDRAM_A_MISTRAL_OB_PAD_11.I": -0.02,
+      "SDRAM_A_MISTRAL_OB_PAD_12.I": 1.96,
+      "SDRAM_A_MISTRAL_OB_PAD_2.I": 0.487,
+      "SDRAM_A_MISTRAL_OB_PAD_3.I": 0.209,
+      "SDRAM_A_MISTRAL_OB_PAD_4.I": -0.601,
+      "SDRAM_A_MISTRAL_OB_PAD_5.I": -0.146,
+      "SDRAM_A_MISTRAL_OB_PAD_6.I": 0.61,
+      "SDRAM_A_MISTRAL_OB_PAD_7.I": -0.929,
+      "SDRAM_A_MISTRAL_OB_PAD_8.I": 0.369,
+      "SDRAM_A_MISTRAL_OB_PAD_9.I": 2.491,
+      "SDRAM_BA_MISTRAL_OB_PAD.I": -0.499,
+      "SDRAM_BA_MISTRAL_OB_PAD_1.I": 1.32,
+      "SDRAM_CKE_MISTRAL_OB_PAD.I": 1.435,
+      "SDRAM_DQ_MISTRAL_IO_PAD.I": -0.208,
+      "SDRAM_DQ_MISTRAL_IO_PAD_1.I": 0.661,
+      "SDRAM_DQ_MISTRAL_IO_PAD_10.I": 0.119,
+      "SDRAM_DQ_MISTRAL_IO_PAD_11.I": 0.297,
+      "SDRAM_DQ_MISTRAL_IO_PAD_12.I": -1.134,
+      "SDRAM_DQ_MISTRAL_IO_PAD_13.I": -0.358,
+      "SDRAM_DQ_MISTRAL_IO_PAD_14.I": -0.052,
+      "SDRAM_DQ_MISTRAL_IO_PAD_15.I": -0.135,
+      "SDRAM_DQ_MISTRAL_IO_PAD_2.I": -0.053,
+      "SDRAM_DQ_MISTRAL_IO_PAD_3.I": -0.314,
+      "SDRAM_DQ_MISTRAL_IO_PAD_4.I": 0.516,
+      "SDRAM_DQ_MISTRAL_IO_PAD_5.I": 0.668,
+      "SDRAM_DQ_MISTRAL_IO_PAD_6.I": -0.287,
+      "SDRAM_DQ_MISTRAL_IO_PAD_7.I": 0.006,
+      "SDRAM_DQ_MISTRAL_IO_PAD_8.I": 1.056,
+      "SDRAM_DQ_MISTRAL_IO_PAD_9.I": -1.055,
+      "SDRAM_DQ_MISTRAL_IO_PAD_9.OE": 1.341,
+      "SDRAM_DQ_MISTRAL_IO_PAD_8.OE": 1.52,
+      "SDRAM_DQ_MISTRAL_IO_PAD_7.OE": 1.63,
+      "SDRAM_DQ_MISTRAL_IO_PAD_6.OE": 0.765,
+      "SDRAM_DQ_MISTRAL_IO_PAD_5.OE": 1.64,
+      "SDRAM_DQ_MISTRAL_IO_PAD_4.OE": 1.609,
+      "SDRAM_DQ_MISTRAL_IO_PAD_3.OE": 0.444,
+      "SDRAM_DQ_MISTRAL_IO_PAD_2.OE": 0.653,
+      "SDRAM_DQ_MISTRAL_IO_PAD_15.OE": -0.665,
+      "SDRAM_DQ_MISTRAL_IO_PAD_14.OE": 0.628,
+      "SDRAM_DQ_MISTRAL_IO_PAD_13.OE": 0.268,
+      "SDRAM_DQ_MISTRAL_IO_PAD_12.OE": 1.611,
+      "SDRAM_DQ_MISTRAL_IO_PAD_11.OE": 1.266,
+      "SDRAM_DQ_MISTRAL_IO_PAD_10.OE": 0.082,
+      "SDRAM_DQ_MISTRAL_IO_PAD_1.OE": 1.687,
+      "SDRAM_DQ_MISTRAL_IO_PAD.OE": -0.318,
+      "SDRAM_nCAS_MISTRAL_OB_PAD.I": 0.887,
+      "SDRAM_nCS_MISTRAL_OB_PAD.I": 0.349,
+      "SDRAM_nRAS_MISTRAL_OB_PAD.I": 0.824,
+      "SDRAM_nWE_MISTRAL_OB_PAD.I": 0.581
+    }
+  },
+  "summaries": {
+    "reads": {
+      "passing": {
+        "median_ns": 1.5289999842643738,
+        "max_ns": 4.479000091552734
+      },
+      "failing": {
+        "median_ns": 1.8515000343322754,
+        "max_ns": 4.5970001220703125
+      }
+    },
+    "output_enable_delta_median_ns": 1.0155
+  },
+  "cycle_trace": {
+    "classification": "ideal-clock trace of historical controller; not board/silicon timing",
+    "source_sha256": "cca29343fab039cac47d3cfa3695e8b90de256cc1385f92012970dd9c7f21fd2",
+    "fixture_sha256": "90fdc35cfbac1d4bca6c9c8a84af6d4b0b704851f950a65b363b26a13afd7a23",
+    "fixture_changes": "historical controller has no IO_OUTPUT_REGISTERS parameter; monitor wait_count2 instead of3",
+    "cases": [
+      {
+        "return_delay_assumption_ns": 0,
+        "tac_assumption_ns": 0.5,
+        "consumed_capture_after_launch_ns": 10.0,
+        "valid_word": true,
+        "log_sha256": "3878d5adb0a174fef4ee1b76999fd8803e717d95574933eafa15a88be097748b"
+      },
+      {
+        "return_delay_assumption_ns": 0,
+        "tac_assumption_ns": 6,
+        "consumed_capture_after_launch_ns": 10.0,
+        "valid_word": true,
+        "log_sha256": "18fe871a6d0642261257b354a03736cfa6a694cbe86c9bca0ef5e65193d21a14"
+      },
+      {
+        "return_delay_assumption_ns": 3,
+        "tac_assumption_ns": 0.5,
+        "consumed_capture_after_launch_ns": 10.0,
+        "valid_word": true,
+        "log_sha256": "6ad9b7640eeebb2a37fb70e3daddd5f5688007399158e553d11d801485be7853"
+      },
+      {
+        "return_delay_assumption_ns": 3,
+        "tac_assumption_ns": 6,
+        "consumed_capture_after_launch_ns": 10.0,
+        "valid_word": true,
+        "log_sha256": "6de211cefebea5202aa0b075286e0e5a39c617889b4ed7144b1a4063a718c508"
+      },
+      {
+        "return_delay_assumption_ns": 6,
+        "tac_assumption_ns": 0.5,
+        "consumed_capture_after_launch_ns": 10.0,
+        "valid_word": true,
+        "log_sha256": "681b2d9e35b071723b477972bb9d320cda2f04424f5c8543a4f0fa31a9815e5d"
+      },
+      {
+        "return_delay_assumption_ns": 6,
+        "tac_assumption_ns": 6,
+        "consumed_capture_after_launch_ns": 10.0,
+        "valid_word": false,
+        "log_sha256": "09eaa50f43b01b1ced0556f855624995396919299db96188312055dadb2391eb"
+      },
+      {
+        "return_delay_assumption_ns": 9,
+        "tac_assumption_ns": 0.5,
+        "consumed_capture_after_launch_ns": 10.0,
+        "valid_word": true,
+        "log_sha256": "97ce0ec303d9a129c383e257f7d0a0e06e07bcdba0118903e5e01e1b35f6f13c"
+      },
+      {
+        "return_delay_assumption_ns": 9,
+        "tac_assumption_ns": 6,
+        "consumed_capture_after_launch_ns": 10.0,
+        "valid_word": false,
+        "log_sha256": "1f1971ebef8ddcf3d1b3893e0ee0d9641ce79da37f1f16ba4c04366445dc2f5e"
+      }
+    ]
+  },
+  "decoded_settings": {
+    "gpio_sha256": {
+      "passing": "fa25824d6978deccf0e79dcdf198e2ef0c0248e1d34fad994119b9aa992f5631",
+      "failing": "fa25824d6978deccf0e79dcdf198e2ef0c0248e1d34fad994119b9aa992f5631"
+    },
+    "pll_sha256": {
+      "passing": "3426fc1c9a2a42374a399943ea6f60480cb5df9b0eceb91bc6f2015c6d7846ff",
+      "failing": "3426fc1c9a2a42374a399943ea6f60480cb5df9b0eceb91bc6f2015c6d7846ff"
+    },
+    "gpio_identical": true,
+    "pll_identical": true
+  },
+  "limits": [
+    "The recent IO-packed diagnostic fits use newer controller RTL with an extra output stage and adjusted capture count; they are not the known-passing100MHz build",
+    "Original published internal timing checks did not cover the SDRAM interface",
+    "Probe zero IO requirements intentionally expose paths and are not SDRAM requirements; probe exit1 does not imply hardware failure",
+    "Native unregistered pad/package and fast-corner timing remain unqualified; differential delays are model observations",
+    "Quartus100MHz passing artifact identity is pending; only the user-reported hardware pass is established"
+  ]
+}

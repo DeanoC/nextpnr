@@ -1,0 +1,3 @@
+set_location_assignment PIN_V11 -to clk
+set_location_assignment PIN_AF4 -to din
+set_location_assignment PIN_AF15 -to dout

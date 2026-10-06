@@ -128,7 +128,19 @@ struct TimingAnalyser
 
     TimingResult &get_timing_result() { return result; }
 
-    // After setup(..., ..., true), return extra actual registered endpoint
+    // After analysis with update_crit_paths=true, use complete setup windows,
+    // including phase-related and external IO paths. Reconstructing slack
+    // from Fmax scales a half-cycle margin and can omit physically related
+    // crossings that do not contribute to Fmax.
+    delay_t get_worst_setup_slack() const
+    {
+        delay_t worst = std::numeric_limits<delay_t>::max();
+        for (const auto &clock : result.clock_setup_slack)
+            worst = std::min(worst, clock.second);
+        return worst;
+    }
+
+    // After setup(..., ..., true), return extra registered or constrained IO endpoint
     // paths. The count includes each domain pair's preserved legacy path.
     // This does not change the legacy Fmax, path or hold results.
     std::vector<CriticalPath> get_report_setup_paths(int count);
@@ -151,6 +163,7 @@ struct TimingAnalyser
     void init_ports();
     void get_cell_delays();
     void get_route_delays();
+    void check_primitive_clocks();
     void topo_sort();
     void setup_port_domains();
     void identify_related_domains();
@@ -233,6 +246,21 @@ struct TimingAnalyser
     // Timing data for every cell port
     struct PerPort
     {
+        struct IoDelay
+        {
+            IdString clock;
+            ClockEdge edge;
+            DelayPair delay;
+        };
+        std::optional<IoDelay> io_delay;
+        // Private timing graph aliases; never inserted into Context or routed.
+        struct TimingPort
+        {
+            PortInfo connection;
+            std::optional<TimingClockingInfo> clocking;
+            TimingPortClass cls = TMG_IGNORE;
+        };
+        std::unique_ptr<TimingPort> timing_port;
         CellPortKey cell_port;
         PortType type;
         // per domain timings
@@ -269,6 +297,11 @@ struct TimingAnalyser
 
     CellInfo *cell_info(const CellPortKey &key);
     PortInfo &port_info(const CellPortKey &key);
+    TimingPortClass port_timing_class(const CellInfo *cell, IdString port, int &count) const;
+    TimingClockingInfo port_clocking_info(const CellInfo *cell, IdString port, int index) const;
+    void add_registered_io_boundary(CellInfo *cell, IdString pad, bool input, const RegisteredIoTiming &model,
+                                    const PerPort::IoDelay &constraint);
+    std::vector<std::unique_ptr<NetInfo>> timing_nets;
 
     domain_id_t domain_id(IdString cell, IdString clock_port, ClockEdge edge);
     domain_id_t domain_id(const NetInfo *net, ClockEdge edge);

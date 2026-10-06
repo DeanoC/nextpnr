@@ -1,0 +1,61 @@
+{
+  "classification": "matched lumped-load reference fits; not SDRAM board or hardware signoff",
+  "device": "5CSEBA6U23I7",
+  "baseline_load_pf": 0,
+  "loaded_pf": 30.0,
+  "count": 1344,
+  "minimum_increase_ps": 484.0,
+  "maximum_increase_ps": 1222.0,
+  "evidence_sha256": {
+    "baseline": "dc2f1ee65b8e85de8c5215ce0534eaa194f91288eb189609ee028137c46aa496",
+    "loaded": "7ac9919246867cd62e343085d0df6ae4e191acde5bb83ca9a89b7d28b105da45"
+  },
+  "path_extrema": {
+    "least_increase": {
+      "variant": "ramtest-pads",
+      "report": "MIN_fast_1100mv_-40c/output-fall-hold.rpt",
+      "channel": "write_oe",
+      "source": "data_oe~_Duplicate_7",
+      "port": "SDRAM_DQ[6]",
+      "baseline_ps": 2102.0,
+      "loaded_ps": 2586.0,
+      "increase_ps": 484.0
+    },
+    "greatest_increase": {
+      "variant": "ramtest-pads",
+      "report": "7_slow_1100mv_100c/output-rise-hold.rpt",
+      "channel": "write_oe",
+      "source": "data_oe~_Duplicate_12",
+      "port": "SDRAM_DQ[11]",
+      "baseline_ps": 4004.0,
+      "loaded_ps": 5226.0,
+      "increase_ps": 1222.0
+    },
+    "earliest_loaded": {
+      "variant": "ramtest-pads",
+      "report": "MIN_fast_1100mv_-40c/output-fall-hold.rpt",
+      "channel": "write_data",
+      "source": "SDRAM_nWE~reg0",
+      "port": "SDRAM_nWE",
+      "baseline_ps": 1980.0,
+      "loaded_ps": 2472.0,
+      "increase_ps": 492.0
+    },
+    "latest_loaded": {
+      "variant": "ramtest-pads",
+      "report": "7_slow_1100mv_100c/output-rise-setup.rpt",
+      "channel": "write_oe",
+      "source": "data_oe~_Duplicate_3",
+      "port": "SDRAM_DQ[2]",
+      "baseline_ps": 4194.0,
+      "loaded_ps": 5416.0,
+      "increase_ps": 1222.0
+    }
+  },
+  "channel_counts": {
+    "write_data": 912,
+    "write_ddr_high": 24,
+    "write_ddr_low": 24,
+    "write_oe": 384
+  }
+}
