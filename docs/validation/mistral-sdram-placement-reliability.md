@@ -39,7 +39,7 @@ reporting, this historical comparison is not a same-binary paired experiment.
 The results favor exponent 2 on this fixture, but do not establish a reliable
 architecture-wide default.
 Paired seeds 4 and 5 were declared before their results, using both exponents
-with weight 10 and the same limits. Independent designs remain necessary.
+with weight 10 and the same limits. Broader design coverage remains necessary.
 
 After seed 1 failed at 10 / 2, a targeted run raised the analogue candidate
 fanout limit from 64 to 256. It still finished at **-69 ps**, with +420 ps hold
@@ -53,6 +53,27 @@ and input hashes, complete receipts and timeout records are retained in
 [placement-reference.json](../../mistral/tests/ramtest-io/placement-reference.json).
 The baseline predates structured timeout receipts; its original timeout
 record is retained without assigning a final timing result.
+
+## Independent menu DDR comparison
+
+The retained `mistral/tests/gpurouter/menu_ddr_seed1` fixture supplies a
+second design without using the Atari work. Both seeds use the same compiler,
+weight 10, 500 ps target and five repair rounds, with a 240-second limit.
+Every run finishes legally with passing final analogue setup and hold.
+
+| Seed | Exponent | Setup slack | Hold slack |
+| --- | --- | --- | --- |
+| 1 | 7 | +2.466 ns | +0.748 ns |
+| 1 | 2 | +2.043 ns | +0.732 ns |
+| 2 | 7 | +1.930 ns | +0.696 ns |
+| 2 | 2 | +2.883 ns | +0.731 ns |
+
+The improvement is mixed across seeds. These two designs provide evidence
+for a RAM tester recipe choice, but do not establish a universal advantage
+or justify an architecture-wide default change. This independent comparison
+has no hardware validation claim. Commands, input/output hashes, the declared
+plan and runner snapshot are in
+[menu-placement-reference.json](../../mistral/tests/ramtest-io/menu-placement-reference.json).
 
 ## Selected-artifact hardware comparison
 

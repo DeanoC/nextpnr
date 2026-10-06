@@ -1,0 +1,311 @@
+{
+  "classification": "independent retained menu DDR placement comparison; no hardware acceptance claim",
+  "fixture": "mistral/tests/gpurouter/menu_ddr_seed1",
+  "plan": {
+    "fixture": "retained menu DDR; independent of RAM tester and Atari ST",
+    "seeds": [
+      1,
+      2
+    ],
+    "weight": 10,
+    "exponents": [
+      7,
+      2
+    ],
+    "analogue_target_ps": 500,
+    "analogue_rounds": 5,
+    "timeout_seconds": 240,
+    "acceptance": "retain every run, compare final analogue setup/hold and complete exit status; no hardware claim"
+  },
+  "plan_sha256": "1b68933738d37436dc34835e0717aadeab8ccb4b40a3644d50c3882841705431",
+  "runner_source": "import gzip,hashlib,json,subprocess,time\nfrom pathlib import Path\nROOT=Path('/tmp/nextpnr-135-investigation/menu-placement-study')\nFIXTURE=Path('/home/deano/kepler/worktrees/nextpnr-mistral-sdram-timing-reliability-54cde5d3/mistral/tests/gpurouter/menu_ddr_seed1')\nEXE=Path('/tmp/nextpnr-135-build/nextpnr-mistral')\ndef sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()\nROOT.mkdir(exist_ok=False)\n(ROOT/'runner-source.py').write_bytes(Path(__file__).read_bytes())\n(ROOT/'plan.json').write_text(json.dumps({'fixture':'retained menu DDR; independent of RAM tester and Atari ST','seeds':[1,2],'weight':10,'exponents':[7,2],'analogue_target_ps':500,'analogue_rounds':5,'timeout_seconds':240,'acceptance':'retain every run, compare final analogue setup/hold and complete exit status; no hardware claim'},indent=2)+'\\n')\nfor seed in [1,2]:\n for exponent in [7,2]:\n  out=ROOT/f'seed{seed}-c{exponent}';out.mkdir()\n  (out/'synth.json').write_bytes(gzip.decompress((FIXTURE/'synth.json.gz').read_bytes()))\n  for name in ['constraints.qsf','clocks.sdc']:(out/name).write_bytes((FIXTURE/name).read_bytes())\n  cmd=[str(EXE),'--device','5CSEBA6U23I7','--json',str(out/'synth.json'),'--qsf',str(out/'constraints.qsf'),'--sdc',str(out/'clocks.sdc'),'--freq','74.25','--seed',str(seed),'--router','gpu','--gpu-cpu','--placer-heap-timingweight','10','--placer-heap-critexp',str(exponent),'--gpu-opt','analogueSlack=500','--gpu-opt','analogueRipSlack=500','--gpu-opt','analogueRounds=5','--write',str(out/'final.json'),'--report',str(out/'timing.json'),'--detailed-timing-report','--rbf',str(out/'core.rbf'),'--compress-rbf']\n  (out/'command.json').write_text(json.dumps(cmd,indent=2)+'\\n')\n  start=time.monotonic();status='complete'\n  with (out/'build.log').open('w') as log:\n   try:code=subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,timeout=240).returncode\n   except subprocess.TimeoutExpired:code=None;status='timeout'\n  d={'seed':seed,'exponent':exponent,'weight':10,'status':status,'compiler_returncode':code,'elapsed_seconds':time.monotonic()-start,'nextpnr_sha256':sha(EXE),'runner_sha256':sha(ROOT/'runner-source.py'),'command':cmd,'files':{p.name:sha(p) for p in out.iterdir() if p.is_file()},'hardware_tested':False}\n  if code is not None and (out/'timing.json').exists():\n   d['timing_summary']=json.loads((out/'timing.json').read_text()).get('timing_summary')\n   assert d['timing_summary'] and d['timing_summary']['final_analogue_model']\n   d['complete_timing_pass']=code==0 and all(c['setup_wns_ns']>=0 and c['hold_wns_ns']>=0 for c in d['timing_summary']['clocks'].values())\n  (out/'receipt.json').write_text(json.dumps(d,indent=2)+'\\n')\n  print(json.dumps({k:d[k] for k in ['seed','exponent','status','compiler_returncode','elapsed_seconds']}),flush=True)\n",
+  "runner_sha256": "e9824c38491407acb2bfcafc71b23733d97b1db4bb6021e6b10e8edc264c9246",
+  "runs": [
+    {
+      "receipt_sha256": "c3dfbc20b5b3d4e161c1b91cfa6999c8c600493a00f2166c008252ef3db8cb14",
+      "receipt": {
+        "seed": 1,
+        "exponent": 7,
+        "weight": 10,
+        "status": "complete",
+        "compiler_returncode": 0,
+        "elapsed_seconds": 67.74764444725588,
+        "nextpnr_sha256": "ad17774db317e6e520cb1090329453444c480027c19d538fcf5c89a244fb06fc",
+        "runner_sha256": "e9824c38491407acb2bfcafc71b23733d97b1db4bb6021e6b10e8edc264c9246",
+        "command": [
+          "/tmp/nextpnr-135-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed1-c7/synth.json",
+          "--qsf",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed1-c7/constraints.qsf",
+          "--sdc",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed1-c7/clocks.sdc",
+          "--freq",
+          "74.25",
+          "--seed",
+          "1",
+          "--router",
+          "gpu",
+          "--gpu-cpu",
+          "--placer-heap-timingweight",
+          "10",
+          "--placer-heap-critexp",
+          "7",
+          "--gpu-opt",
+          "analogueSlack=500",
+          "--gpu-opt",
+          "analogueRipSlack=500",
+          "--gpu-opt",
+          "analogueRounds=5",
+          "--write",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed1-c7/final.json",
+          "--report",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed1-c7/timing.json",
+          "--detailed-timing-report",
+          "--rbf",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed1-c7/core.rbf",
+          "--compress-rbf"
+        ],
+        "files": {
+          "timing.json": "744bd416b12aa43ccaa331ccece44f25b5c4d07d53aa81c4f1b5cd6d874bb08f",
+          "final.json": "6fb48702cace1e2def124cd15ec5b7371c38235244cacfd0890fc90aea702e9d",
+          "core.rbf": "f089e304dcfa87a58fe08319c4eb82e596e6ca8ff5d816459e23c802ec82df42",
+          "build.log": "c4cbf7b797ee096cd92295741ef0956c0b20ad8942b2147fb332320294cff399",
+          "command.json": "b72005639febf724c128e89238a086ded1407fa78d9ce722a5b53abeb08f3166",
+          "clocks.sdc": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041",
+          "constraints.qsf": "c38882cbba0b0e3050e86f7d2acd7e7b090fb9329e43e2a6c4f438ab7c7df83f",
+          "synth.json": "8043b9fe871311d9d347fc118162d1b45ab1d1343ac93a8e15944ac6a9488133"
+        },
+        "hardware_tested": false,
+        "timing_summary": {
+          "clocks": {
+            "ddr.scanout.clk": {
+              "hold_wns_ns": 0.7480000257492065,
+              "setup_wns_ns": 2.4660000801086426
+            }
+          },
+          "final_analogue_model": true
+        },
+        "complete_timing_pass": true
+      }
+    },
+    {
+      "receipt_sha256": "a1f2ea3f2b9f3ec3c44ae16d73dbd0b380246d4f66fceb8817edebbfd19c35ae",
+      "receipt": {
+        "seed": 1,
+        "exponent": 2,
+        "weight": 10,
+        "status": "complete",
+        "compiler_returncode": 0,
+        "elapsed_seconds": 177.72933195810765,
+        "nextpnr_sha256": "ad17774db317e6e520cb1090329453444c480027c19d538fcf5c89a244fb06fc",
+        "runner_sha256": "e9824c38491407acb2bfcafc71b23733d97b1db4bb6021e6b10e8edc264c9246",
+        "command": [
+          "/tmp/nextpnr-135-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed1-c2/synth.json",
+          "--qsf",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed1-c2/constraints.qsf",
+          "--sdc",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed1-c2/clocks.sdc",
+          "--freq",
+          "74.25",
+          "--seed",
+          "1",
+          "--router",
+          "gpu",
+          "--gpu-cpu",
+          "--placer-heap-timingweight",
+          "10",
+          "--placer-heap-critexp",
+          "2",
+          "--gpu-opt",
+          "analogueSlack=500",
+          "--gpu-opt",
+          "analogueRipSlack=500",
+          "--gpu-opt",
+          "analogueRounds=5",
+          "--write",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed1-c2/final.json",
+          "--report",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed1-c2/timing.json",
+          "--detailed-timing-report",
+          "--rbf",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed1-c2/core.rbf",
+          "--compress-rbf"
+        ],
+        "files": {
+          "timing.json": "37f17f29c4f7c985474da77584cdf4a06bafcfb6714dda737f7ebba473e4724b",
+          "final.json": "4f67b403b2d684a84ae4e1da96b817bd523083ac9bc53a29a9f15a3a9cafc0ed",
+          "core.rbf": "35922ea1ec53b353c29a76b674840237b2e72d50ee03fb0b3c868d50d9935e4f",
+          "build.log": "970d81578bb68b89600da89c22e21cef21abc9b89267583b970b88ffac7ec48b",
+          "command.json": "9d9c532ef74f62755573514a32a4bc0d97da642faf8e920b0a18989b01d78711",
+          "clocks.sdc": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041",
+          "constraints.qsf": "c38882cbba0b0e3050e86f7d2acd7e7b090fb9329e43e2a6c4f438ab7c7df83f",
+          "synth.json": "8043b9fe871311d9d347fc118162d1b45ab1d1343ac93a8e15944ac6a9488133"
+        },
+        "hardware_tested": false,
+        "timing_summary": {
+          "clocks": {
+            "ddr.scanout.clk": {
+              "hold_wns_ns": 0.7319999933242798,
+              "setup_wns_ns": 2.0429999828338623
+            }
+          },
+          "final_analogue_model": true
+        },
+        "complete_timing_pass": true
+      }
+    },
+    {
+      "receipt_sha256": "e665d524b27a2c0ccd613c33011b55aeff5187083f0e51ea31fed8a9529c117c",
+      "receipt": {
+        "seed": 2,
+        "exponent": 7,
+        "weight": 10,
+        "status": "complete",
+        "compiler_returncode": 0,
+        "elapsed_seconds": 93.45901207113639,
+        "nextpnr_sha256": "ad17774db317e6e520cb1090329453444c480027c19d538fcf5c89a244fb06fc",
+        "runner_sha256": "e9824c38491407acb2bfcafc71b23733d97b1db4bb6021e6b10e8edc264c9246",
+        "command": [
+          "/tmp/nextpnr-135-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed2-c7/synth.json",
+          "--qsf",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed2-c7/constraints.qsf",
+          "--sdc",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed2-c7/clocks.sdc",
+          "--freq",
+          "74.25",
+          "--seed",
+          "2",
+          "--router",
+          "gpu",
+          "--gpu-cpu",
+          "--placer-heap-timingweight",
+          "10",
+          "--placer-heap-critexp",
+          "7",
+          "--gpu-opt",
+          "analogueSlack=500",
+          "--gpu-opt",
+          "analogueRipSlack=500",
+          "--gpu-opt",
+          "analogueRounds=5",
+          "--write",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed2-c7/final.json",
+          "--report",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed2-c7/timing.json",
+          "--detailed-timing-report",
+          "--rbf",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed2-c7/core.rbf",
+          "--compress-rbf"
+        ],
+        "files": {
+          "timing.json": "2c083e1e94a1e2223ba7b9bdc1bc03a063324b843fe37499eba4b2a3a21c5837",
+          "final.json": "2ad4287a6e6e2094ae09331713d853a3ba6ef56d6de75f96480e963c067c29fb",
+          "core.rbf": "2f6d0f25f0a6adb6b295f5ed24564ec50f1ca279cc3c1d6234ebe2d46a6d0890",
+          "build.log": "f3b7b070573227a604b91b4e00bf063e031f29a89689c45b20effcd542bf4197",
+          "command.json": "5adf2a4b5870e12479d7a4fabf23590340c5a5cc3e99f60e774e23e09a718bfc",
+          "clocks.sdc": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041",
+          "constraints.qsf": "c38882cbba0b0e3050e86f7d2acd7e7b090fb9329e43e2a6c4f438ab7c7df83f",
+          "synth.json": "8043b9fe871311d9d347fc118162d1b45ab1d1343ac93a8e15944ac6a9488133"
+        },
+        "hardware_tested": false,
+        "timing_summary": {
+          "clocks": {
+            "ddr.scanout.clk": {
+              "hold_wns_ns": 0.6959999799728394,
+              "setup_wns_ns": 1.9299999475479126
+            }
+          },
+          "final_analogue_model": true
+        },
+        "complete_timing_pass": true
+      }
+    },
+    {
+      "receipt_sha256": "72b5a8f5e7bb711dfc8c2f7a00114c17384e1418472608b0ac5cefd6729fe123",
+      "receipt": {
+        "seed": 2,
+        "exponent": 2,
+        "weight": 10,
+        "status": "complete",
+        "compiler_returncode": 0,
+        "elapsed_seconds": 87.75785939116031,
+        "nextpnr_sha256": "ad17774db317e6e520cb1090329453444c480027c19d538fcf5c89a244fb06fc",
+        "runner_sha256": "e9824c38491407acb2bfcafc71b23733d97b1db4bb6021e6b10e8edc264c9246",
+        "command": [
+          "/tmp/nextpnr-135-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed2-c2/synth.json",
+          "--qsf",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed2-c2/constraints.qsf",
+          "--sdc",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed2-c2/clocks.sdc",
+          "--freq",
+          "74.25",
+          "--seed",
+          "2",
+          "--router",
+          "gpu",
+          "--gpu-cpu",
+          "--placer-heap-timingweight",
+          "10",
+          "--placer-heap-critexp",
+          "2",
+          "--gpu-opt",
+          "analogueSlack=500",
+          "--gpu-opt",
+          "analogueRipSlack=500",
+          "--gpu-opt",
+          "analogueRounds=5",
+          "--write",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed2-c2/final.json",
+          "--report",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed2-c2/timing.json",
+          "--detailed-timing-report",
+          "--rbf",
+          "/tmp/nextpnr-135-investigation/menu-placement-study/seed2-c2/core.rbf",
+          "--compress-rbf"
+        ],
+        "files": {
+          "timing.json": "a87f40907257b1a61cb31d31408ff31360caed5d86bfa31b6db6da9526bb18d9",
+          "final.json": "c9eca7d970c493eb6bf19ef06058b7d216dac65f5e7636580941ad2a3dbe0c18",
+          "core.rbf": "6da1498fbb1a921ce4e99bfa03b591cecd8d5f6d512ce10afa170674a503bdb9",
+          "build.log": "2862a25873fd4f570b79fd1ba2387a387c427ce45b6c0065d04d9c8d6d309da2",
+          "command.json": "f608241ba622b02b865eeb3c20a761833ad94800389a081e8aba8c11b688db29",
+          "clocks.sdc": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041",
+          "constraints.qsf": "c38882cbba0b0e3050e86f7d2acd7e7b090fb9329e43e2a6c4f438ab7c7df83f",
+          "synth.json": "8043b9fe871311d9d347fc118162d1b45ab1d1343ac93a8e15944ac6a9488133"
+        },
+        "hardware_tested": false,
+        "timing_summary": {
+          "clocks": {
+            "ddr.scanout.clk": {
+              "hold_wns_ns": 0.7310000061988831,
+              "setup_wns_ns": 2.882999897003174
+            }
+          },
+          "final_analogue_model": true
+        },
+        "complete_timing_pass": true
+      }
+    }
+  ],
+  "limits": [
+    "Two seeds on one additional design are insufficient for architecture-wide QoR conclusions.",
+    "Timing compares completed final analogue setup/hold results; runtime is not a controlled benchmark.",
+    "No Atari design or worktree was used.",
+    "No candidate in this independent study was hardware-tested."
+  ]
+}

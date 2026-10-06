@@ -35,8 +35,14 @@ def inventory(module):
                 sources[0][1].get('parameters', {}).get('LUT') in ('0'*32, '1'*32))
 
     saved = json.loads(module.get('settings', {}).get('timing/io_delays', '[]'))
+    if not isinstance(saved, list):
+        raise ValueError('Saved IO delay constraints must be an array')
     constraints = {}
     for row in saved:
+        if (not isinstance(row.get('port'), str) or not row['port'] or
+                not isinstance(row.get('clock'), str) or not row['clock'] or
+                not isinstance(row.get('fall'), bool)):
+            raise ValueError('Invalid saved IO delay port, clock or edge')
         key = (row['port'], row['input'])
         if not isinstance(row['input'], bool) or key in constraints:
             raise ValueError('Ambiguous IO delay direction')
@@ -91,6 +97,7 @@ def main():
     args = parser.parse_args()
     result = inventory(json.loads(args.checkpoint.read_text())['modules']['top'])
     result['checkpoint_sha256'] = hashlib.sha256(args.checkpoint.read_bytes()).hexdigest()
+    result['script_sha256'] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     args.output.write_text(json.dumps(result, indent=2)+'\n')
     print(json.dumps({key: result[key] for key in
                       ('active_directions', 'declared_directions', 'all_active_directions_declared', 'missing')},
