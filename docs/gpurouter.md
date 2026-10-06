@@ -67,6 +67,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `repairDisplace`, `repairDisplaceMargin` | true, 0 ps | a stuck repair may displace frozen arcs with at least this much more slack |
 | `repairCongWeight` | 1.0 | present-congestion weight used when re-routing a same-band peer group (0 disables). History cost is ignored in that pass, so an occupied wire costs `(1 + occ * weight)` times delay. |
 | `analogueRounds`, `analogueSlack`, `analogueRipSlack`, `analoguePrior` | 3, 0 ps, 300 ps, 1.25 | Mistral analogue signoff repair (below); `analogueRounds=0` disables it |
+| `analogueTimeBudget` | 300 seconds | Mistral repair time budget, including candidate selection and nested rerouting; finite and nonnegative, `0` disables the limit. Initial routing and final signoff are outside the budget |
 | `analogueCandidates`, `analogueCandidateRounds`, `analogueCandidateArcs` | 4, 2, 200 | analogue-scored candidate selection (below): routes generated per failing sink, passes before each full re-route, failing sinks tried per pass; `analogueCandidates=0` disables it |
 | `analogueCandidateGain`, `analogueCandidateFanout`, `analogueCandidatePrior` | 20 ps, 64, 1.0 | a candidate must raise the net's worst sink slack by this much to be kept; nets with more sinks are left alone; delay prior for unobserved pips while searching candidates |
 | `analogueRipNets` | 64 | nets ripped per re-route round, worst analogue slack first (0: every net with an arc below `analogueRipSlack`) |
@@ -212,6 +213,16 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
    no cost could resolve). This repeats for
    up to `analogueRounds` rounds and the routing with the best analogue
    slack is kept. A design that already meets signoff is unchanged.
+
+   Repair has a cooperative `analogueTimeBudget` (five minutes by default).
+   The initial analogue timing is always obtained before stopping so there
+   is a measured routing to retain. Candidate generation and nested routing
+   check the budget between batches and iterations; an active backend batch,
+   graph setup step or timing analysis completes before cancellation. This
+   is not a hard wall-clock deadline for the whole compilation. A cancelled
+   repair restores the best measured legal routing and runs the ordinary
+   final analogue setup/hold gate. Exhausting the budget does not mean the
+   requested margin was achieved and does not make a timing failure pass.
 
    Repair uses the complete setup WNS exported in `timing_summary`, including
    constrained IO and related-clock paths. It does not reconstruct a margin

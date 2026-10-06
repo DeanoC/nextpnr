@@ -34,6 +34,7 @@
 NEXTPNR_NAMESPACE_BEGIN
 
 struct TimingAnalyser;
+struct GpuRouterCfg;
 
 struct ArchArgs
 {
@@ -534,7 +535,7 @@ struct Arch : BaseArch<ArchRanges>
     bool analogue_repair();
     // Analogue-scored route selection: several GPU candidate routes per
     // failing sink, evaluated with the analogue model, best one kept.
-    bool analogue_candidate_pass(TimingAnalyser &tmg, float target);
+    bool analogue_candidate_pass(TimingAnalyser &tmg, float target, const GpuRouterCfg &repair_cfg);
     // Keep the analogue simulator's routing-mux state in step with a net
     // whose routing changed: removed pips are parked on an unused input,
     // added pips linked.
