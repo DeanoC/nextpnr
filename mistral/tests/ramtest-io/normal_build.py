@@ -28,22 +28,33 @@ def main():
     parser.add_argument('--nextpnr', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True, help='New output directory')
     parser.add_argument('--seed', type=int, default=2)
+    parser.add_argument('--placer-timing-weight', type=int, default=10,
+                        help='HeAP timing weight; default matches the compiler default')
+    parser.add_argument('--placer-criticality-exponent', type=int, default=7,
+                        help='HeAP criticality exponent; default matches the Mistral architecture default')
     parser.add_argument('--router', choices=['gpu', 'router2'], default='gpu')
     parser.add_argument('--gpu-cpu', action='store_true', help='Use the GPU router CPU reference backend')
     parser.add_argument('--setup-margin-ps', type=float, default=0,
                         help='GPU analogue repair setup target; separate from the timing gate')
     parser.add_argument('--analogue-rounds', type=int,
                         help='Override the GPU analogue reroute round limit')
+    parser.add_argument('--analogue-candidate-fanout', type=int,
+                        help='Override the analogue candidate net fanout limit (architecture default 64)')
     parser.add_argument('--timeout-seconds', type=int, default=1200,
                         help='Compiler time limit; timed-out runs retain an incomplete receipt')
     args = parser.parse_args()
+    if args.placer_timing_weight < 0 or args.placer_criticality_exponent <= 0:
+        parser.error('Placer timing weight must be nonnegative and criticality exponent positive')
     if not math.isfinite(args.setup_margin_ps) or args.setup_margin_ps < 0:
         parser.error('--setup-margin-ps must be finite and nonnegative')
     if args.analogue_rounds is not None and args.analogue_rounds < 0:
         parser.error('--analogue-rounds must be nonnegative')
+    if args.analogue_candidate_fanout is not None and args.analogue_candidate_fanout < 0:
+        parser.error('--analogue-candidate-fanout must be nonnegative')
     if args.timeout_seconds <= 0:
         parser.error('--timeout-seconds must be positive')
-    if args.router != 'gpu' and (args.setup_margin_ps or args.analogue_rounds is not None):
+    if args.router != 'gpu' and (args.setup_margin_ps or args.analogue_rounds is not None or
+                                 args.analogue_candidate_fanout is not None):
         parser.error('Analogue repair options require --router gpu')
     here = Path(__file__).resolve().parent
     root = args.source_root.resolve()
@@ -73,6 +84,8 @@ def main():
     command = [str(executable), '--device', '5CSEBA6U23I7', '--json', str(out/'synth.json'),
                '--qsf', str(out/'pins.qsf'), '--sdc', str(out/'address.sdc'), '--freq', '74.25',
                '--router', args.router, '--seed', str(args.seed), '--compress-rbf',
+               '--placer-heap-timingweight', str(args.placer_timing_weight),
+               '--placer-heap-critexp', str(args.placer_criticality_exponent),
                '--write', str(out/'final.json'), '--report', str(out/'timing.json'),
                '--detailed-timing-report', '--timing-report-paths', '128', '--rbf', str(out/'core.rbf')]
     if args.gpu_cpu:
@@ -84,6 +97,8 @@ def main():
                     '--gpu-opt', f'analogueRipSlack={max(300, args.setup_margin_ps):g}']
     if args.analogue_rounds is not None:
         command += ['--gpu-opt', f'analogueRounds={args.analogue_rounds}']
+    if args.analogue_candidate_fanout is not None:
+        command += ['--gpu-opt', f'analogueCandidateFanout={args.analogue_candidate_fanout}']
     (out/'command.json').write_text(json.dumps(command, indent=2)+'\n')
     started = time.monotonic()
     try:
@@ -92,7 +107,10 @@ def main():
     except subprocess.TimeoutExpired:
         timeout = dict(classification='compiler timeout; incomplete, not a final timing result',
                        source_root=str(root), seed=args.seed, router=args.router, gpu_cpu=args.gpu_cpu,
+                       placer_timing_weight=args.placer_timing_weight,
+                       placer_criticality_exponent=args.placer_criticality_exponent,
                        requested_setup_margin_ps=args.setup_margin_ps, analogue_rounds=args.analogue_rounds,
+                       analogue_candidate_fanout=args.analogue_candidate_fanout,
                        command=command, timeout_seconds=args.timeout_seconds,
                        elapsed_seconds=time.monotonic()-started, nextpnr_sha256=executable_sha,
                        compiler_returncode=None, complete_timing_pass=False, setup_margin_target_met=False,
@@ -132,12 +150,15 @@ def main():
     margin_met = all(c['setup_wns_ns'] * 1000 >= args.setup_margin_ps - 1e-4 for c in clocks.values())
     receipt = dict(classification='fresh constrained pack/place/route; native address optimization, not board signoff',
                    source_root=str(root), seed=args.seed, router=args.router, gpu_cpu=args.gpu_cpu,
+                   placer_timing_weight=args.placer_timing_weight,
+                   placer_criticality_exponent=args.placer_criticality_exponent,
                    command=command, nextpnr_sha256=executable_sha, script_sha256=sha(out/'runner-source.py'),
                    elapsed_seconds=elapsed, compiler_returncode=result.returncode,
                    timeout_seconds=args.timeout_seconds,
                    all_address_targets_met=all(row['setup_margin_ns'] >= -1e-5 for row in address.values()),
                    complete_timing_pass=result.returncode == 0 and complete_timing,
                    requested_setup_margin_ps=args.setup_margin_ps, analogue_rounds=args.analogue_rounds,
+                   analogue_candidate_fanout=args.analogue_candidate_fanout,
                    setup_margin_target_met=result.returncode == 0 and margin_met,
                    address=address, timing_summary=report['timing_summary'],
                    core_rbf_sha256=sha(out/'core.rbf'), core_rbf_bytes=(out/'core.rbf').stat().st_size,

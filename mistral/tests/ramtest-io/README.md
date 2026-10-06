@@ -5,6 +5,19 @@ For the closure scope and Atari ST handoff, start with the
 The experiments below include historical and diagnostic RTL snapshots; the
 production command/address IO-register fix already merged in FES #524.
 
+The follow-up [placement reliability study](../../../docs/validation/mistral-sdram-placement-reliability.md)
+records explicit HeAP settings, unsuccessful runs, the selected-artifact
+hardware control and the remaining constraint coverage. Architecture defaults
+are unchanged. To inventory saved SDRAM delay declarations, use:
+
+```sh
+python3 mistral/tests/ramtest-io/constraint_coverage.py \
+  --checkpoint /tmp/ramtest/final.json --output /tmp/ramtest/coverage.json
+```
+
+A successful inventory means all active directions have declarations; it
+does not establish timing or board acceptance.
+
 Use an isolated snapshot of FES; do not modify another task's worktree. The
 current investigation uses FES `8f5c5b5982fea01877b223a36cca0024dd15a8c8`, the
 `build_fes_ramtest.py` synthesis recipe for `RAM_OSS_HIGH_SPEED`, and both
