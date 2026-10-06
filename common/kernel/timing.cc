@@ -1508,14 +1508,20 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
     auto same_clock = launch.clock == capture.clock;
     auto phase_locked = timed_clocks(ctx, launch.clock, capture.clock);
 
+    // External constraints reference a clock event, not a clock pin on the
+    // IO cell. Label their logical clock adjustments with the IO boundary;
+    // only register-to-register skew has two physical clock terminals.
+    auto launch_terminal = std::make_pair(sp_cell->name, register_start ? sp_clk_info.clock_port : sp_port.name);
+    auto capture_terminal = std::make_pair(ep_cell->name, register_end ? ep_clk_info.clock_port : ep_port.name);
+
     if (related_clock) {
         delay_t clock_delay = clock_delays.at(clock_pair);
         if (!is_zero_delay(clock_delay)) {
             CriticalPath::Segment seg_c2c;
             seg_c2c.type = CriticalPath::Segment::Type::CLK_TO_CLK;
             seg_c2c.delay = clock_delay;
-            seg_c2c.from = std::make_pair(sp_cell->name, sp_clk_info.clock_port);
-            seg_c2c.to = std::make_pair(ep_cell->name, ep_clk_info.clock_port);
+            seg_c2c.from = launch_terminal;
+            seg_c2c.to = capture_terminal;
             seg_c2c.net = IdString();
             report.segments.push_back(seg_c2c);
         }
@@ -1528,8 +1534,8 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
         seg_phase.type = CriticalPath::Segment::Type::CLK_TO_CLK;
         seg_phase.delay = clock_period(ctx, launch.clock) -
                           clock_interval(ctx, launch.clock, capture.clock, launch.edge, capture.edge);
-        seg_phase.from = std::make_pair(sp_cell->name, sp_clk_info.clock_port);
-        seg_phase.to = std::make_pair(ep_cell->name, ep_clk_info.clock_port);
+        seg_phase.from = launch_terminal;
+        seg_phase.to = capture_terminal;
         seg_phase.net = IdString();
         report.segments.push_back(seg_phase);
     }
@@ -1547,9 +1553,9 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
             CriticalPath::Segment seg_skew;
             seg_skew.type = CriticalPath::Segment::Type::CLK_SKEW;
             seg_skew.delay = clock_skew;
-            seg_skew.from = std::make_pair(sp_cell->name, sp_clk_info.clock_port);
-            seg_skew.to = std::make_pair(ep_cell->name, ep_clk_info.clock_port);
-            if (same_clock) {
+            seg_skew.from = launch_terminal;
+            seg_skew.to = capture_terminal;
+            if (same_clock && register_start && register_end) {
                 seg_skew.net = launch.clock;
             } else {
                 seg_skew.net = IdString();

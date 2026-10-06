@@ -173,6 +173,33 @@ TEST_F(IoDelayTest, OutputSetupAndNegativeMinimumHold)
     EXPECT_EQ(holds[0].segments.back().type, CriticalPath::Segment::Type::HOLD);
 }
 
+TEST_F(IoDelayTest, ExternalClockAdjustmentsHaveLogicalTerminalsWithoutPhysicalClockRoutes)
+{
+    sdc("set_output_delay -clock memory -min -2 [get_ports dout]\n"
+        "set_output_delay -clock memory -max 4 [get_ports dout]\n");
+    TimingAnalyser timing(ctx.get()); timing.with_clock_skew = true; timing.setup(false, false, true);
+    timing.set_route_delay(CellPortKey(launch->name, id_CLK), DelayPair(500, 700));
+    timing.run(false, false, false, true);
+    auto path = find_path(timing.get_timing_result(), output);
+    ASSERT_FALSE(path.segments.empty());
+    EXPECT_EQ(path.segments.front().type, CriticalPath::Segment::Type::CLK_SKEW);
+    EXPECT_EQ(path.segments.front().delay, 700);
+    EXPECT_EQ(timing.get_setup_slack(CellPortKey(output->name, id_I)),
+              10000 - ctx->getPortClockingInfo(launch, id_Q, 0).clockToQ.maxDelay() - 4000 - 700);
+    auto check = [&](const CriticalPath &report) {
+        for (const auto &segment : report.segments) {
+            if (segment.type != CriticalPath::Segment::Type::CLK_SKEW &&
+                segment.type != CriticalPath::Segment::Type::CLK_TO_CLK) continue;
+            EXPECT_EQ(segment.from, std::make_pair(launch->name, id_CLK));
+            EXPECT_EQ(segment.to, std::make_pair(output->name, id_I));
+            EXPECT_EQ(segment.net, IdString());
+        }
+    };
+    check(path);
+    ASSERT_FALSE(timing.get_timing_result().min_delay_violations.empty());
+    for (const auto &hold : timing.get_timing_result().min_delay_violations) check(hold);
+}
+
 TEST_F(IoDelayTest, FallingReferenceUsesHalfCycleAndMatchesHoldSlack)
 {
     sdc("set_input_delay -clock memory -clock_fall -min -6 [get_ports din]\n"
@@ -184,6 +211,25 @@ TEST_F(IoDelayTest, FallingReferenceUsesHalfCycleAndMatchesHoldSlack)
     EXPECT_EQ(path.clock_pair.start.edge, FALLING_EDGE);
     EXPECT_EQ(path.max_delay, 5000);
     ASSERT_EQ(timing.get_timing_result().min_delay_violations.size(), 1);
+}
+
+TEST_F(IoDelayTest, ExternalInputClockSkewDoesNotClaimAClockRouteFromTheDataPort)
+{
+    sdc("set_input_delay -clock memory -min 1 [get_ports din]\n"
+        "set_input_delay -clock memory -max 3 [get_ports din]\n");
+    TimingAnalyser timing(ctx.get()); timing.with_clock_skew = true; timing.setup(false, false, true);
+    timing.set_route_delay(CellPortKey(capture->name, id_CLK), DelayPair(500, 700));
+    timing.run(false, false, false, true);
+    auto path = find_path(timing.get_timing_result(), capture);
+    ASSERT_FALSE(path.segments.empty());
+    const auto &skew = path.segments.front();
+    EXPECT_EQ(skew.type, CriticalPath::Segment::Type::CLK_SKEW);
+    EXPECT_EQ(skew.delay, -500);
+    EXPECT_EQ(skew.from, std::make_pair(input->name, id_O));
+    EXPECT_EQ(skew.to, std::make_pair(capture->name, id_CLK));
+    EXPECT_EQ(skew.net, IdString());
+    EXPECT_EQ(timing.get_setup_slack(CellPortKey(capture->name, id_DATAIN)),
+              10000 - 3000 + 500 - ctx->getPortClockingInfo(capture, id_DATAIN, 0).setup.maxDelay());
 }
 
 TEST_F(IoDelayTest, BidirectionalDataAndOeReceiveOutputBudget)

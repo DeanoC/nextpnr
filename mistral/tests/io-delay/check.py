@@ -70,7 +70,7 @@ def main():
             reload_report = directory / "reloaded-report.json"
             reload_rc = run([str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7",
                              "--json", str(directory / "routed.json"),
-                             "--no-pack", "--no-place", "--no-route",
+                             "--no-pack", "--no-place", "--no-route", "--verbose",
                              "--report", str(reload_report), "--detailed-timing-report",
                              "--rbf", str(directory / "reloaded.rbf")], directory / "reload.log")
             if reload_rc:

@@ -24,6 +24,11 @@ an output minimum controls hold. A negative output minimum therefore requires
 the old data to remain stable after the reference edge. Input delays appear as
 `source` segments, output maxima as `setup`, and output minima as `hold`.
 
+Clock phase/skew adjustments at an external boundary use that boundary's data
+terminal as a report label. They have no physical clock-route segment: the
+external reference is a clock event, not a clock pin on the IO cell. Physical
+clock-route reporting remains available for register-to-register paths.
+
 The clock can be a `create_clock -name` name, an exact physical net/alias name,
 or a single `[get_clocks ...]` result. PLL clock nets can be selected before
 packing; their period and phase are validated after PLL clocks are derived.
