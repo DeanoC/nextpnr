@@ -536,13 +536,13 @@ on the memory clock and +3.053 ns on the capture clock. A9 improves 2.795 ns,
 A10 1.072 ns and A12 2.790 ns relative to the failing artifact; A9 and A12 are
 also faster than the known-passing artifact at these boundaries.
 
-This is a controlled **hardware-test candidate**, not a timing signoff or a
-confirmed fix. Native boundary arrivals still exclude unqualified pad/board
-delays. Compare this RBF against original failing SHA `9cff64b3a51fcf99…`
+This is a controlled **hardware-test candidate**, with the completed hardware
+comparison recorded below. It is not a board timing signoff. Native boundary
+arrivals still exclude unqualified pad/board delays. Compare this RBF against
+original failing SHA `9cff64b3a51fcf99…`
 using the same kit, boot, clock rate and patterns. A pass would implicate the
 three address routes as a group; a failure would leave read capture, command
-skew and remaining address setup as possible causes. No hardware programming
-has been performed by this investigation.
+skew and remaining address setup as possible causes.
 
 ## Local hardware comparison package bundle
 
@@ -582,5 +582,52 @@ Candidate package ID:
 `1b941609aa4fe6e6695d4067b2447c0b468665a2f238901c2c4e88efa7e5ccaa`.
 Passing control ID: `3593d7e08af70397580b48e4f8469069a643e8c42a88907ed8b2ce4ba4c17d1f`.
 Failing control ID: `019484653963d99f455cd907157d293aa9fc833152f6717aa5e100270fe7b69f`.
-Importing, creating host library entries and programming a target are separate
-steps; none has been performed. The target kit selection is pending user input.
+The completed comparison below loaded the failing and candidate packages through
+the leased target development-core API. No host library entries were created.
+
+## Exact-package hardware comparison, 2026-10-06
+
+The user authorized either kit. Kit B was idle with a free lease and accepted
+the failing package, but its ASUS capture card was held by another process.
+That attempt was stopped and its lease released without recording a test
+outcome. Kit A had a free lease and an available ShadowCast capture card;
+the complete comparison ran there without rebooting or changing its image.
+
+| Same-boot run | Package | SDRAM patterns | SDRAM errors | ADDR / INVR errors | HPS DDR P0/P1/P2 |
+| --- | --- | ---: | ---: | ---: | --- |
+| 1 | Original failing | 6/6 | 128 | 64 / 64 | PASS / PASS / PASS |
+| 2 | Address-route control | 6/6 | 0 | 0 / 0 | PASS / PASS / PASS |
+| 3 | Original failing again | 6/6 | 160 | 96 / 64 | PASS / PASS / PASS |
+
+The four constant patterns had zero errors in all three runs. Both failing
+runs reported first fault `007F3000`, last fault `00FF600F`, first observed word
+`2F7F`. The total is not a fixed count across reloads, consistent with a
+marginal physical path; the three-route candidate removed the observed errors.
+These observations implicate A9/A10/A12 routing **as a group**, not one
+individual address bit. They do not establish every board, frequency or PVT
+corner, or replace the outstanding pad/board timing qualification.
+
+Each package was checked by archive SHA-256 before transfer, and the target
+returned the expected package ID, GP ABI and embedded build ID. The lease was
+renewed throughout all three loads, captures and Stops. Each run was observed
+for 200 seconds, with HDMI snapshots at 10/60/120/180/200 seconds. The 120-second
+and final snapshots show the completed six-pattern sweep. The final Stop
+restored idle, and the lease was released; the kit boot identity was unchanged.
+
+`legacy_screen.py` decodes 1280×720 captures against the original RTL's 8×8
+font at 3× scale. Header and fixed port labels establish pixel alignment;
+every result glyph must match exactly, the six counts must sum to the total,
+and SDRAM/HPS completion must be present. This avoids confusing the displayed
+hexadecimal `80` with `800`. Original PNGs remain unmodified.
+
+- [First failing capture](hardware-fail-first.png)
+- [Passing address-route capture](hardware-address-pass.png)
+- [Repeat failing capture](hardware-fail-repeat.png)
+
+`hardware-reference.json` records target/image/boot identities, package and
+payload digests, decoded observations, capture/command hashes and cleanup.
+Raw API responses, all captures and the leased runner remain on powerboat in
+`/tmp/nextpnr-135-investigation/hil-kita` (the incomplete Kit B attempt is in
+`hil-kitb`). The next implementation step is to obtain these address timings
+during normal constrained placement/routing; this experiment changed only
+the three routes in a frozen historical checkpoint.
