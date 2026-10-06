@@ -308,7 +308,7 @@ void Arch::fes_rip_reserved_shell_pips()
     log_info("FES ripped %d reserved-tile pips from shell nets.\n", ripped);
 }
 
-void Arch::save_fes_pin_maps()
+void Arch::save_fes_pin_maps(bool save_lab_state)
 {
     // Routing does not describe unused memory lanes or folded hard constants.
     // Preserve the complete physical mapping alongside the frozen netlist.
@@ -328,6 +328,10 @@ void Arch::save_fes_pin_maps()
         Json payload = Json::object{{"count", int(ports.size())}, {"pins", ports}};
         ci->attrs[id("FES_PINMAP_V1")] = fes_encode_snapshot(payload);
     }
+    // LAB state becomes a physical snapshot only after routing preparation.
+    // A placed checkpoint needs pin states, not a routed scaffold snapshot.
+    if (!save_lab_state)
+        return;
     Json::array physical_labs;
     for (const auto &lab : labs) {
         Loc loc = getBelLocation(lab.alms[0].lut_bels[0]);

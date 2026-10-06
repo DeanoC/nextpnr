@@ -51,6 +51,7 @@ endmodule
     run(base + ['--json', out / 'synth.json', '--qsf', qsf, '--no-route',
                 '--write', out / 'placed.json'], 'place')
     placed = json.loads((out / 'placed.json').read_text())
+    assert 'FES_LABSTATE_V1' not in placed['modules']['top']['attributes']
 
     def pin_states(design):
         return {n: json.loads(bytes.fromhex(c['attributes']['FES_PINMAP_V1']))['pins']

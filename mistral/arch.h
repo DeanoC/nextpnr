@@ -371,7 +371,7 @@ struct Arch : BaseArch<ArchRanges>
     bool fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const;
     void fes_rip_reserved_shell_pips();
     void lock_fes_scaffold();
-    void save_fes_pin_maps();
+    void save_fes_pin_maps(bool save_lab_state = true);
     bool restore_cell_pin_map(CellInfo *cell);
     void restore_placed_pin_maps();
     void merge_fes_cart(const std::string &filename, const std::string &region);
