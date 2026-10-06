@@ -18,6 +18,29 @@ python3 mistral/tests/ramtest-io/constraint_coverage.py \
 A successful inventory means all active directions have declarations; it
 does not establish timing or board acceptance.
 
+For a qualified registered-pad checkpoint, also audit the actual channels:
+
+```sh
+python3 mistral/tests/ramtest-io/path_coverage.py \
+  --checkpoint /tmp/ramtest/final.json --report /tmp/ramtest/timing.json \
+  --output /tmp/ramtest/path-coverage.json
+```
+
+Generate the checkpoint and detailed report in the same invocation. The report
+must include final analogue timing and per-endpoint `setup_checked`,
+`hold_checked`, `setup_slack_ns` and `hold_slack_ns`. An unchecked slack is
+`null`; an arrival can remain visible after a clock cut. The audit requires
+every expected registered subchannel, the declared reference clock/edge and
+the packed register clock/edge. DQ data and OE are separate channels; DDR
+capture and forwarded clocks require both edges. Unsupported unregistered
+pad directions fail this audit rather than receiving an implied pad model.
+
+Coverage succeeds even when checked slacks are negative. Its separate
+`all_channel_slacks_nonnegative` field does not certify the whole design,
+board delays, waveform or turnaround. The compiler exit status and complete
+timing summary remain mandatory. The [full-board path audit](../../../docs/validation/mistral-sdram-full-board-coverage.md)
+records the retained 100/130 MHz diagnostic replay and its limitations.
+
 Use an isolated snapshot of FES; do not modify another task's worktree. The
 current investigation uses FES `8f5c5b5982fea01877b223a36cca0024dd15a8c8`, the
 `build_fes_ramtest.py` synthesis recipe for `RAM_OSS_HIGH_SPEED`, and both

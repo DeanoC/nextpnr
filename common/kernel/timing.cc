@@ -1095,6 +1095,28 @@ void TimingAnalyser::build_detailed_net_timing_report()
                     sink_timing.clock_pair.end.edge = capture.edge;
                     sink_timing.cell_port = std::make_pair(pd.cell_port.cell, pd.cell_port.port);
                     sink_timing.delay = arr.second.value;
+                    const auto pair_id = domain_pair_id(arr.first, req.first);
+                    const auto &pair = domain_pairs.at(pair_id);
+                    const auto &slack = pd.domain_pairs.at(pair_id);
+                    const bool ordinary_timed = timed_clocks(ctx, launch.clock, capture.clock);
+                    const bool related = clock_delays.count(std::make_pair(launch.clock, capture.clock));
+                    const bool ignored_related = bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
+                                                 launch.clock != capture.clock &&
+                                                 !phase_related_clocks(ctx, launch.clock, capture.clock);
+                    // Match setup and hold gate eligibility, including physically
+                    // related crossings and clock cuts. Untimed arrivals remain
+                    // visible for diagnostics, with no fabricated slack.
+                    sink_timing.setup_checked = !launch.is_async() &&
+                            !ctx->sdc_clock_false(launch.clock, capture.clock) &&
+                            (ordinary_timed || (related && !ignored_related));
+                    sink_timing.hold_checked = sink_timing.setup_checked && !setup_only;
+                    if (sink_timing.setup_checked) {
+                        const delay_t window = ordinary_timed ? pair.period.minDelay()
+                                : std::min(clock_period(ctx, launch.clock), clock_period(ctx, capture.clock));
+                        sink_timing.setup_slack = window + slack.setup_slack;
+                    }
+                    if (sink_timing.hold_checked)
+                        sink_timing.hold_slack = slack.hold_slack;
                     if (pd.timing_port)
                         sink_timing.timing_source = std::make_pair(net->driver.cell->name, net->driver.port);
 

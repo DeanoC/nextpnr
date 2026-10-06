@@ -506,6 +506,9 @@ struct NetSinkTiming
     std::pair<IdString, IdString> cell_port;
     // Delay
     DelayPair delay;
+    // Participation in the final timing gate; an arrival alone is not a check.
+    bool setup_checked = false, hold_checked = false;
+    delay_t setup_slack = 0, hold_slack = 0;
 };
 
 struct TimingResult
