@@ -24,6 +24,8 @@ def main():
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--memory-mhz", type=int, choices=(100, 130), required=True)
+    parser.add_argument("--memory-clock", default="ram_clock.clocks[0]",
+                        help="Saved clock net driving the forwarded SDRAM clock")
     for name in ("clock-flight", "data-flight", "read-flight", "cs-inverter"):
         parser.add_argument("--" + name, nargs=2, type=float, required=True, metavar=("MIN", "MAX"))
     parser.add_argument("--margin", type=float, required=True)
@@ -37,7 +39,7 @@ def main():
         raise ValueError("budget extraction requires final analogue timing, not a router estimate")
     checkpoint = json.loads(args.checkpoint.read_text())["modules"]["top"]
     clocks = json.loads(checkpoint["settings"]["timing/io_clocks"])
-    clock_name = "ram_clock.clocks[0]"
+    clock_name = args.memory_clock
     clock = next(c for c in clocks if c["net"] == clock_name)
     if abs(clock["period"][0] - 1000 / args.memory_mhz) > 0.002:
         raise ValueError("checkpoint clock period does not match the selected memory rate")

@@ -929,3 +929,12 @@ The 500 ps target, closure across seeds, complete SDRAM board/PVT timing,
 integration of these new experimental constraints into the production FES
 recipe, and 130 MHz remain unfinished. The earlier production IO-register
 fix is already merged; it is distinct from these historical constrained builds.
+
+
+## Native DDR comparison after PR158
+
+The [native DDR diagnostic](native-ddr.md) records fixed-rate PLL packing,
+complete 86-channel timing coverage, matched extra-output-stage Quartus fits
+and ideal-clock controller consumption traces at 100/130 MHz. Neither rate
+passes the conditional board timing checks. These diagnostics are separate
+from the user's hardware-passing Quartus 130+ MHz and OSS 117 MHz results.
