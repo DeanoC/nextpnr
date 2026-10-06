@@ -636,20 +636,56 @@ TEST_F(IoDelayTest, RegisteredPadGraphDoesNotChangeCheckpointOrLeakAcrossSetup)
         for (const auto &sink : row["endpoints"].array_items()) {
             EXPECT_EQ(sink["source"]["cell"].string_value(), bidir->name.str(ctx.get()));
             EXPECT_NE(sink["source"]["port"].string_value().find("$timing$"), std::string::npos);
+            EXPECT_TRUE(sink["setup_checked"].bool_value());
+            EXPECT_TRUE(sink["hold_checked"].bool_value());
+            EXPECT_TRUE(sink["setup_slack_ns"].is_number());
+            EXPECT_TRUE(sink["hold_slack_ns"].is_number());
         }
     }
     EXPECT_TRUE(found_pad);
+}
+
+TEST_F(IoDelayTest, DetailedPadCoverageDistinguishesSetupOnly)
+{
+    registered_boundaries();
+    TimingAnalyser timing(ctx.get());
+    timing.setup_only = true;
+    timing.setup(true, false, true);
+    int checked = 0;
+    for (const auto &net : timing.get_timing_result().detailed_net_timings) {
+        for (const auto &sink : net.second) {
+            if (sink.cell_port.first != bidir->name ||
+                sink.cell_port.second.str(ctx.get()).find("PAD$timing$") != 0) continue;
+            ++checked;
+            EXPECT_TRUE(sink.setup_checked);
+            EXPECT_FALSE(sink.hold_checked);
+            EXPECT_EQ(sink.setup_slack, timing.get_setup_slack(CellPortKey(sink.cell_port.first, sink.cell_port.second)));
+        }
+    }
+    EXPECT_EQ(checked, 4); // two capture edges, data and OE
 }
 
 TEST_F(IoDelayTest, RegisteredPadCutsDoNotBypassModelAndClockValidation)
 {
     registered_boundaries();
     sdc("set_false_path -from [get_clocks memory] -to [get_clocks memory]\n");
-    TimingAnalyser cut(ctx.get()); cut.setup(false, false, true);
+    TimingAnalyser cut(ctx.get()); cut.setup(true, false, true);
     EXPECT_EQ(cut.get_criticality(boundary_key("read", "fall", true)), 0);
     EXPECT_EQ(cut.get_criticality(boundary_key("write", "oe", false)), 0);
     EXPECT_TRUE(cut.get_timing_result().clock_setup_slack.empty());
     EXPECT_TRUE(cut.get_timing_result().min_delay_violations.empty());
+    // An arrival can still be reported after a clock cut. It must never be
+    // mistaken for a setup/hold check by coverage consumers.
+    bool found_cut = false;
+    for (const auto &net : cut.get_timing_result().detailed_net_timings) {
+        for (const auto &sink : net.second) {
+            if (sink.cell_port.first != bidir->name) continue;
+            found_cut = true;
+            EXPECT_FALSE(sink.setup_checked);
+            EXPECT_FALSE(sink.hold_checked);
+        }
+    }
+    EXPECT_TRUE(found_cut);
     auto &models = static_cast<IoBoundaryTestContext *>(ctx.get())->boundary_models;
     auto saved = models[{bidir->name, true}];
     models[{bidir->name, true}].front().clocking.clock_port = id_ACLR;

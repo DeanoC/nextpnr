@@ -1,0 +1,259 @@
+{
+  "classification": "complete registered-pad check coverage on rejected diagnostic routes; no board or hardware acceptance",
+  "base_revision": "5063215e99fc6b459b28ca7d603a8e839ff082cf",
+  "compiler_sha256": "101631f6b1a980e9eb7c676e109a1fa42476cf09c29481981692bed3196dd612",
+  "compiler_sources_sha256": {
+    "common/kernel/nextpnr_types.h": "8bbdab2126f00a142de508fef28a43dcd211931f383707d993d9bc557f1ff884",
+    "common/kernel/timing.cc": "4a4cb70a1c7cd36a74673cd3e8cd0954a0de85fa046bc04487c4fb619ec7218c",
+    "common/kernel/report.cc": "b05a02932481355427122238f53d88d6ef66ba830c345b2157cadf80afc2e257"
+  },
+  "audit_sources_sha256": {
+    "mistral/tests/ramtest-io/path_coverage.py": "92488754dac4646e59cd61652801b2ebd9be2894495efd838afa34c3d792c0b2",
+    "mistral/tests/ramtest-io/path_coverage_test.py": "300830f359298204cecad79e2acf9a50ee404643740b4bafba1f7a632627599b",
+    "mistral/tests/ramtest-io/constraint_coverage.py": "6a323d3c2d512adbe559ed68b6ef9bfd2004a09727b1d1daf1bff4327ac1bdcc"
+  },
+  "rates": {
+    "100": {
+      "command": [
+        "/tmp/nextpnr-full-board-build/nextpnr-mistral",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/tmp/nextpnr-full-board-coverage/100/input.json",
+        "--sdc",
+        "/tmp/nextpnr-full-board-coverage/100/board.sdc",
+        "--no-pack",
+        "--no-place",
+        "--no-route",
+        "--write",
+        "/tmp/nextpnr-full-board-coverage/100/final.json",
+        "--report",
+        "/tmp/nextpnr-full-board-coverage/100/timing.json",
+        "--detailed-timing-report",
+        "--rbf",
+        "/tmp/nextpnr-full-board-coverage/100/diagnostic.rbf",
+        "--compress-rbf"
+      ],
+      "exit_code": 1,
+      "all_bel_bindings_unchanged": true,
+      "nonempty_routing_bindings_unchanged": true,
+      "routing_bindings": 21001,
+      "routing_sha256": "1c3e401bed1b1d96d77685f044d3a0956f824b61fa30948db4e6bdeb99c7ac6d",
+      "coverage": {
+        "active_directions": 53,
+        "declared_directions": 53,
+        "expected_channels": 70,
+        "checked_channels": 70,
+        "all_channels_checked": true,
+        "all_channel_slacks_nonnegative": false
+      },
+      "timing_summary": {
+        "clocks": {
+          "display.pixel_clk": {
+            "hold_wns_ns": 0.414000004529953,
+            "setup_wns_ns": -0.3959999978542328
+          },
+          "ram_clock.clocks[0]": {
+            "hold_wns_ns": -2.188999891281128,
+            "setup_wns_ns": -7.578000068664551
+          },
+          "ram_clock.clocks[1]": {
+            "hold_wns_ns": 5.203000068664551,
+            "setup_wns_ns": -0.5519999861717224
+          }
+        },
+        "final_analogue_model": true
+      },
+      "worst_pad_channels": {
+        "setup": {
+          "port": "SDRAM_nCS",
+          "direction": "output",
+          "channel": "data",
+          "slack_ns": -7.578000068664551
+        },
+        "hold": {
+          "port": "SDRAM_BA[1]",
+          "direction": "output",
+          "channel": "data",
+          "slack_ns": -2.188999891281128
+        }
+      },
+      "artifacts_sha256": {
+        "/tmp/nextpnr-full-board-coverage/100/input.json": "3c0de9257d648e9a44d9d8e67deb9f95a95b623382825172ec7fbbea9da84255",
+        "/tmp/nextpnr-full-board-coverage/100/board.sdc": "13140c4902dc9c36a890a2d5fdaaa8530f21009c8c13ff6f026d7e4fceecf217",
+        "/tmp/nextpnr-full-board-coverage/100/final.json": "a16eccb93f4cf6a53b94425ed5045781bd48fc830e25df3891952b59634a40c1",
+        "/tmp/nextpnr-full-board-coverage/100/timing.json": "8a72b4faa4bbbdef2f54c45e18d7731c6f33cf22f688e7a2446e9a21e593daec",
+        "/tmp/nextpnr-full-board-coverage/100/build.log": "939adf461dd7e28aa7757350998c2253ee55ce470e096d1815c300e721946215",
+        "/tmp/nextpnr-full-board-coverage/100/coverage.json": "9a4363188021cb093327dfc7e325a25b12589abdd2bc6ae3faa5ec6fc45845e8",
+        "/tmp/nextpnr-full-board-coverage/100/diagnostic.rbf": "503ce95dcd3501681418e1ccec48e032029910cdfcf6674ea535c3e6dd5fd5e6"
+      },
+      "audit_rejection_checks_passed": 11,
+      "hardware_loaded": false
+    },
+    "130": {
+      "command": [
+        "/tmp/nextpnr-full-board-build/nextpnr-mistral",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/tmp/nextpnr-full-board-coverage/130/input.json",
+        "--sdc",
+        "/tmp/nextpnr-full-board-coverage/130/board.sdc",
+        "--no-pack",
+        "--no-place",
+        "--no-route",
+        "--write",
+        "/tmp/nextpnr-full-board-coverage/130/final.json",
+        "--report",
+        "/tmp/nextpnr-full-board-coverage/130/timing.json",
+        "--detailed-timing-report",
+        "--rbf",
+        "/tmp/nextpnr-full-board-coverage/130/diagnostic.rbf",
+        "--compress-rbf"
+      ],
+      "exit_code": 1,
+      "all_bel_bindings_unchanged": true,
+      "nonempty_routing_bindings_unchanged": true,
+      "routing_bindings": 20801,
+      "routing_sha256": "a42e5314a51679310950484d4ccaf1296755bbc0be23bfd47c0fd6c1c13714bc",
+      "coverage": {
+        "active_directions": 53,
+        "declared_directions": 53,
+        "expected_channels": 70,
+        "checked_channels": 70,
+        "all_channels_checked": true,
+        "all_channel_slacks_nonnegative": false
+      },
+      "timing_summary": {
+        "clocks": {
+          "display.pixel_clk": {
+            "hold_wns_ns": 0.414000004529953,
+            "setup_wns_ns": -2.884000062942505
+          },
+          "ram_clock.clocks[0]": {
+            "hold_wns_ns": -3.3429999351501465,
+            "setup_wns_ns": -11.383999824523926
+          },
+          "ram_clock.clocks[1]": {
+            "hold_wns_ns": 2.8919999599456787,
+            "setup_wns_ns": 2.697999954223633
+          }
+        },
+        "final_analogue_model": true
+      },
+      "worst_pad_channels": {
+        "setup": {
+          "port": "SDRAM_DQ[7]",
+          "direction": "input",
+          "channel": "rise",
+          "slack_ns": -11.383999824523926
+        },
+        "hold": {
+          "port": "SDRAM_BA[1]",
+          "direction": "output",
+          "channel": "data",
+          "slack_ns": -3.3429999351501465
+        }
+      },
+      "artifacts_sha256": {
+        "/tmp/nextpnr-full-board-coverage/130/input.json": "e954193257c48e59af292029e55883a1c3d3fc991ade1348f807fcfd9e6e3eea",
+        "/tmp/nextpnr-full-board-coverage/130/board.sdc": "b8789564e811f1adb3adf6949737d674c240c78592963305f677282c30122174",
+        "/tmp/nextpnr-full-board-coverage/130/final.json": "d3557817a575286eed8d13b11c4fc4dea8ee685132a1232beda9c96eb9a05998",
+        "/tmp/nextpnr-full-board-coverage/130/timing.json": "a1ab80194464d5ca21653688d1d58b0045e339d07a5a9ce4f5281545d5535bb9",
+        "/tmp/nextpnr-full-board-coverage/130/build.log": "e0c7ca7fa38b5610f6f79363b51ccfaa19c87395e08bd3393a1591e7a6ba1b7c",
+        "/tmp/nextpnr-full-board-coverage/130/coverage.json": "3d862ab4995f1f050658c2327cc33d0469cf22bc74cb87041ccc66e66a9f19e8",
+        "/tmp/nextpnr-full-board-coverage/130/diagnostic.rbf": "689679c5586f4a7126a530f54f7f74f19c0ecc6f964248ea116bf9cc7d9b69cb"
+      },
+      "audit_rejection_checks_passed": 11,
+      "hardware_loaded": false
+    }
+  },
+  "unit_tests": {
+    "filter": "IoDelayTest.*",
+    "passed": 32,
+    "log": "/tmp/nextpnr-full-board-io-tests-final.log",
+    "log_sha256": "8b60173b63e3fdfe3bc33de87d94241a7834aeba27533133fd0763264a37fbc9",
+    "test_source_sha256": "003744a95dd2f2263598c2bcdb03e6c5ec75f8cc3184cc3cc6832744cda8870c"
+  },
+  "native_ddr_packing_probe": {
+    "classification": "successful synthesis; whole-design packing rejected; no timing or hardware result",
+    "inputs": {
+      "classification": "isolated native DDR packing diagnostic, not sealed or hardware qualified",
+      "fes_revision": "8f5c5b5982fea01877b223a36cca0024dd15a8c8",
+      "source_sha256": {
+        "cores/fes-pong/rtl/pixel_pll.v": "a27c894279bc4d345f091b33c87b58b38fadde2728d62cf000d6665885166369",
+        "cores/fes-common/rtl/fes_application_gp.v": "93c98cd236b19b1e745d7d2c257d76aaf2c3ed6a0eb3d2ce120d94293f9af920",
+        "cores/fes-common/rtl/fes_video_720p.v": "86442976c2d7d6851e631ded48bf51071ea4eecb7e291ba2a774c8c1cfe0d3df",
+        "cores/fes-common/rtl/fes_hps_ddr.v": "89411a2f0a75306accdba550a492559f4d65a8e8ddd3132c3e98eb99a5500406",
+        "cores/fes-common/rtl/fes_hps_ddr_guard.v": "246df020b761922e0692f014552f5806467e5817be6e9e540886fd2d1f74ce09",
+        "cores/fes-ramtest/rtl/mem_channel.v": "2639e3604b85941cc46e46dea5c59d6b3ca0ad1e333162f9af8303da3f9db5ff",
+        "cores/fes-ramtest/rtl/ram_font.v": "870fb68597c26f0fd88b75524171588dfe01d6ffeafb2be6e23c7a4d75fc3b64",
+        "cores/fes-ramtest/rtl/ram_display.v": "9125d4530481c9ac0cad440b77eb74cec47941de5b99a98be1d5b3bc884865ea",
+        "cores/fes-ramtest/rtl/sdram_addon_port.v": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05",
+        "cores/fes-ramtest/rtl/ddr_rates.v": "ce70cc0af1387e438974ce8f407c371831e76ebb13905cb8526dabc2c9404cfc",
+        "cores/fes-ramtest/rtl/ddr_channel.v": "f0f6286143a292af490efa9d5ae5875d53690e9cc557127bf657050742710843",
+        "cores/fes-ramtest/rtl/top.v": "0ac8e8429fd9986141ea2a0b1bb2437be62a25527d5d8b2e3ba9d6c56d41de2c",
+        "cores/fes-ramtest/rtl/ram_pll.v": "c48d3c58bbbc7b70d7639220787aa1ca93fcae8ba818a0d25abcaf20de1c1e28",
+        "cores/fes-common/generated/fes_application.vh": "3c62b421fe14b23599a7ee3f91ab1107cdce7a05bfc34dc7890da64289447d9f",
+        "cores/fes-ramtest/constraints.qsf": "39ea7bfe2c2b844c13a6395aa7a70d8e79c938ad8fab48bb97164378cdaab4d9"
+      },
+      "recipe_sha256": "0885fee238638beb7351d3d41427d2dabb666d03bb63ee2a748e7c521053db9e"
+    },
+    "inputs_sha256": "5acae7ccd5d0d96eac2bd12256dffc7a04b03a1a853f674facd38ef7907a63f6",
+    "yosys_sha256": "27701f6446973b9076906a741979e6bf5e9da78c9396f2ef75ad94d59e31a8c6",
+    "rates": {
+      "100": {
+        "synthesis_exit_code": 0,
+        "pack_exit_code": 125,
+        "ddr_input_pack_messages": 16,
+        "rejected_unused_pll_output": 0,
+        "artifacts_sha256": {
+          "/tmp/nextpnr-full-board-ddr/100/synth.ys": "ec58308b07d2888591b0496c0e420db90b747ee5926c9fed9f5a39277b33176a",
+          "/tmp/nextpnr-full-board-ddr/100/synth.log": "0a6fd5a75b6efdc6a31b6161b99d67395c6e8942e5e018885239923a5f5e54ee",
+          "/tmp/nextpnr-full-board-ddr/100/synth.json": "ee38779efba03417769d7e4793b463d974e3f094adc5a1abe1fe5f01bb578276",
+          "/tmp/nextpnr-full-board-ddr/100/pack.log": "28a940c45b880cffeb47af99caf4d4f3ad998104fc4be04ac3bbf68fd5145275"
+        },
+        "packed_checkpoint_produced": false,
+        "hardware_loaded": false,
+        "command": [
+          "/tmp/nextpnr-full-board-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-full-board-ddr/100/synth.json",
+          "--qsf",
+          "/tmp/nextpnr-full-board-ddr/source/cores/fes-ramtest/constraints.qsf",
+          "--pack-only",
+          "--write",
+          "/tmp/nextpnr-full-board-ddr/100/packed.json"
+        ]
+      },
+      "130": {
+        "synthesis_exit_code": 0,
+        "pack_exit_code": 125,
+        "ddr_input_pack_messages": 16,
+        "rejected_unused_pll_output": 1,
+        "artifacts_sha256": {
+          "/tmp/nextpnr-full-board-ddr/130/synth.ys": "47132c03241dde1b5c361f798d0240d06998e25ed32d26c3d142b015491cd019",
+          "/tmp/nextpnr-full-board-ddr/130/synth.log": "05eab1c50d8bfa8bab5651b3dcadf25dda772398fa9874a7b953ea19cfed14d4",
+          "/tmp/nextpnr-full-board-ddr/130/synth.json": "63e5e5518600f94d37c440c443e75899bdc6a102013c1763ec0cd9e908ab412c",
+          "/tmp/nextpnr-full-board-ddr/130/pack.log": "dfe8410c0c5a5698de68c98947744a0f2082e572d600074084bc52b60cad544a"
+        },
+        "packed_checkpoint_produced": false,
+        "hardware_loaded": false,
+        "command": [
+          "/tmp/nextpnr-full-board-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-full-board-ddr/130/synth.json",
+          "--qsf",
+          "/tmp/nextpnr-full-board-ddr/source/cores/fes-ramtest/constraints.qsf",
+          "--pack-only",
+          "--write",
+          "/tmp/nextpnr-full-board-ddr/130/packed.json"
+        ]
+      }
+    }
+  }
+}

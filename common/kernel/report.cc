@@ -161,6 +161,12 @@ static Json::array json_report_detailed_net_timings(const Context *ctx)
                                               {"port", sink_timing.cell_port.second.c_str(ctx)},
                                               {"event", clock_event_name(ctx, sink_timing.clock_pair.end)},
                                               {"delay", Json::array({minDelay, maxDelay})}});
+            endpointJson["setup_checked"] = sink_timing.setup_checked;
+            endpointJson["hold_checked"] = sink_timing.hold_checked;
+            endpointJson["setup_slack_ns"] = sink_timing.setup_checked
+                    ? Json(ctx->getDelayNS(sink_timing.setup_slack)) : Json();
+            endpointJson["hold_slack_ns"] = sink_timing.hold_checked
+                    ? Json(ctx->getDelayNS(sink_timing.hold_slack)) : Json();
             if (sink_timing.timing_source.first != IdString())
                 endpointJson["source"] = Json::object{
                         {"cell", sink_timing.timing_source.first.c_str(ctx)},
