@@ -52,6 +52,14 @@ add_nextpnr_architecture(${family}
 )
 
 if (BUILD_TESTS)
+    find_program(MISTRAL_CHECKPOINT_YOSYS yosys)
+    if (MISTRAL_CHECKPOINT_YOSYS)
+        add_test(NAME nextpnr-${family}-placed-checkpoint
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/placed_checkpoint.py
+                    --yosys ${MISTRAL_CHECKPOINT_YOSYS}
+                    --nextpnr $<TARGET_FILE:nextpnr-${family}>
+                    --output ${CMAKE_CURRENT_BINARY_DIR}/tests/placed-checkpoint)
+    endif()
     add_test(NAME nextpnr-${family}-capture-pipeline-locality-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/capture_pipeline_locality_cli.py
                 $<TARGET_FILE:nextpnr-${family}> -v)

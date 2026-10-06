@@ -372,6 +372,8 @@ struct Arch : BaseArch<ArchRanges>
     void fes_rip_reserved_shell_pips();
     void lock_fes_scaffold();
     void save_fes_pin_maps();
+    bool restore_cell_pin_map(CellInfo *cell);
+    void restore_placed_pin_maps();
     void merge_fes_cart(const std::string &filename, const std::string &region);
     bool pack_unbound_cells();
 

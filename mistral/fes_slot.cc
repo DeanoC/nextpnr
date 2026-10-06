@@ -343,6 +343,74 @@ void Arch::save_fes_pin_maps()
             fes_encode_snapshot(Json::object{{"device", args.device}, {"labs", physical_labs}});
 }
 
+bool Arch::restore_cell_pin_map(CellInfo *ci)
+{
+    Context *ctx = getCtx();
+    for (const auto &attr : ci->attrs) {
+        const std::string key = attr.first.str(ctx);
+        if (key.compare(0, 11, "FES_PINMAP_") == 0 && key != "FES_PINMAP_V1")
+            log_error("Unsupported frozen pin-map version for %s.\n", ctx->nameOf(ci));
+    }
+    auto saved = ci->attrs.find(id("FES_PINMAP_V1"));
+    if (saved != ci->attrs.end()) {
+        Json payload = fes_decode_snapshot(saved->second, "pin-map");
+        const Json &ports = payload["pins"];
+        if (!payload.is_object() || payload.object_items().size() != 2 ||
+            !ports.is_object() || !payload["count"].is_number() ||
+            payload["count"].number_value() != double(ports.object_items().size()))
+            log_error("Invalid frozen pin map for %s.\n", ctx->nameOf(ci));
+        for (const auto &port : ci->ports) {
+            if (port.second.net != nullptr && !ports.object_items().count(port.first.str(ctx)))
+                log_error("Incomplete frozen pin map for %s.%s.\n", ctx->nameOf(ci), port.first.c_str(ctx));
+        }
+        ci->pin_data.clear();
+        for (const auto &entry : ports.object_items()) {
+            const auto &data = entry.second.array_items();
+            if (!entry.second.is_array() || data.empty() || !data[0].is_number() ||
+                data[0].number_value() != data[0].int_value() || data[0].int_value() < PIN_SIG ||
+                data[0].int_value() > PIN_INV)
+                log_error("Invalid frozen pin state for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
+            auto &pin = ci->pin_data[id(entry.first)];
+            pin.state = CellPinState(data[0].int_value());
+            std::set<IdString> seen;
+            for (size_t i = 1; i < data.size(); ++i) {
+                if (!data[i].is_string() || !bel_data(ci->bel).pins.count(id(data[i].string_value())))
+                    log_error("Invalid frozen physical pin for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
+                auto logical = ci->ports.find(id(entry.first));
+                PortType direction = getBelPinType(ci->bel, id(data[i].string_value()));
+                if (logical != ci->ports.end() && direction != PORT_INOUT && direction != logical->second.type)
+                    log_error("Wrong frozen pin direction for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
+                if (!seen.insert(id(data[i].string_value())).second)
+                    log_error("Duplicate frozen physical pin for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
+                pin.bel_pins.push_back(id(data[i].string_value()));
+            }
+            auto logical = ci->ports.find(id(entry.first));
+            if (logical != ci->ports.end() && logical->second.net != nullptr && pin.bel_pins.empty() &&
+                logical->second.net->driver.cell != nullptr && (pin.state == PIN_SIG || pin.state == PIN_INV))
+                log_error("Empty frozen signal pin map for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
+        }
+        return true;
+    }
+    return false;
+}
+
+void Arch::restore_placed_pin_maps()
+{
+    // Placed JSON has no routed scaffold to lock, but its packer-folded
+    // constants and input inversions are still part of the logical design.
+    bool restored = false;
+    for (auto &entry : getCtx()->cells) {
+        CellInfo *ci = entry.second.get();
+        if (ci->bel != BelId())
+            restored |= restore_cell_pin_map(ci);
+    }
+    if (restored)
+        assignArchInfo();
+    else
+        log_warning("Placed checkpoint has no pin-state snapshot; regenerate it from synthesis JSON to preserve "
+                    "folded constants and inversions.\n");
+}
+
 void Arch::lock_fes_scaffold()
 {
     Context *ctx = getCtx();
@@ -408,53 +476,9 @@ void Arch::lock_fes_scaffold()
         ci->belStrength = STRENGTH_LOCKED;
         fes_frozen_cells.emplace(ci, ci->bel);
         ++locked_cells;
-        for (const auto &attr : ci->attrs) {
-            const std::string key = attr.first.str(ctx);
-            if (key.compare(0, 11, "FES_PINMAP_") == 0 && key != "FES_PINMAP_V1")
-                log_error("Unsupported frozen pin-map version for %s.\n", ctx->nameOf(ci));
-        }
-        auto saved = ci->attrs.find(id("FES_PINMAP_V1"));
-        if (saved != ci->attrs.end()) {
-            Json payload = fes_decode_snapshot(saved->second, "pin-map");
-            const Json &ports = payload["pins"];
-            if (!payload.is_object() || payload.object_items().size() != 2 ||
-                !ports.is_object() || !payload["count"].is_number() ||
-                payload["count"].number_value() != double(ports.object_items().size()))
-                log_error("Invalid frozen pin map for %s.\n", ctx->nameOf(ci));
-            for (const auto &port : ci->ports) {
-                if (port.second.net != nullptr && !ports.object_items().count(port.first.str(ctx)))
-                    log_error("Incomplete frozen pin map for %s.%s.\n", ctx->nameOf(ci), port.first.c_str(ctx));
-            }
-            ci->pin_data.clear();
-            for (const auto &entry : ports.object_items()) {
-                const auto &data = entry.second.array_items();
-                if (!entry.second.is_array() || data.empty() || !data[0].is_number() ||
-                    data[0].number_value() != data[0].int_value() || data[0].int_value() < PIN_SIG ||
-                    data[0].int_value() > PIN_INV)
-                    log_error("Invalid frozen pin state for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
-                auto &pin = ci->pin_data[id(entry.first)];
-                pin.state = CellPinState(data[0].int_value());
-                std::set<IdString> seen;
-                for (size_t i = 1; i < data.size(); ++i) {
-                    if (!data[i].is_string() || !bel_data(ci->bel).pins.count(id(data[i].string_value())))
-                        log_error("Invalid frozen physical pin for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
-                    auto logical = ci->ports.find(id(entry.first));
-                    PortType direction = getBelPinType(ci->bel, id(data[i].string_value()));
-                    if (logical != ci->ports.end() && direction != PORT_INOUT && direction != logical->second.type)
-                        log_error("Wrong frozen pin direction for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
-                    if (!seen.insert(id(data[i].string_value())).second)
-                        log_error("Duplicate frozen physical pin for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
-                    pin.bel_pins.push_back(id(data[i].string_value()));
-                }
-                auto logical = ci->ports.find(id(entry.first));
-                if (logical != ci->ports.end() && logical->second.net != nullptr && pin.bel_pins.empty() &&
-                    logical->second.net->driver.cell != nullptr && (pin.state == PIN_SIG || pin.state == PIN_INV))
-                    log_error("Empty frozen signal pin map for %s.%s.\n", ctx->nameOf(ci), entry.first.c_str());
-            }
-            continue;
-        }
-        log_error("Missing frozen pin map for %s; rebuild the shell with physical snapshot metadata.\n",
-                  ctx->nameOf(ci));
+        if (!restore_cell_pin_map(ci))
+            log_error("Missing frozen pin map for %s; rebuild the shell with physical snapshot metadata.\n",
+                      ctx->nameOf(ci));
     }
     // Control inversion and LUT annotations were initially derived before
     // restoring folded state. Recompute them without default pin remapping.
