@@ -1,5 +1,10 @@
 # Full FES RAM tester IO investigation
 
+For the closure scope and Atari ST handoff, start with the
+[issue #135 resolution](../../../docs/validation/mistral-sdram-issue-135.md).
+The experiments below include historical and diagnostic RTL snapshots; the
+production command/address IO-register fix already merged in FES #524.
+
 Use an isolated snapshot of FES; do not modify another task's worktree. The
 current investigation uses FES `8f5c5b5982fea01877b223a36cca0024dd15a8c8`, the
 `build_fes_ramtest.py` synthesis recipe for `RAM_OSS_HIGH_SPEED`, and both
@@ -885,4 +890,6 @@ binary was the previously verified HPS timing fix.
 
 This establishes a hardware-passing 100 MHz candidate with more setup margin.
 The 500 ps target, closure across seeds, complete SDRAM board/PVT timing,
-production FES integration and 130 MHz remain unfinished.
+integration of these new experimental constraints into the production FES
+recipe, and 130 MHz remain unfinished. The earlier production IO-register
+fix is already merged; it is distinct from these historical constrained builds.
