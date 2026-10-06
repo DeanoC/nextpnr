@@ -104,7 +104,11 @@ not a newly sealed production FES build.
 
 The original control clearly displays **FAIL** at 100 MHz after all six
 patterns, while HPS DDR passes. Its displayed total is `09E79992`, but its
-six pattern counts sum to `09E79991`. Consequently this is a
+six pattern counts sum to `09E79991`. That one-count gap is the latch fixed
+by [FES #559](https://github.com/DeanoC/fes/issues/559), merged as
+`eba5343030134a2c5b2280384a5f125c3a226143`: the on-screen snapshot copied the
+pattern counts one cycle before the last deferred increment. This control
+was captured before that fix. Consequently this is a
 **PASS 0 → qualitative FAIL → PASS 0** comparison, not a qualified exact
 scalar error-count comparison. The strict decoder rejects that discrepancy;
 `--inspect` retains raw rows and glyph errors without qualifying a result.
