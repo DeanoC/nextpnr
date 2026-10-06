@@ -1,0 +1,42 @@
+{
+  "classification": "local experimental packaging only; no producer reseal, host import or hardware programming",
+  "reroute_receipt_sha256": "2cb0c2646329458725f6e050a4fe7d252c12e470a91a45f86b8cf5a819fd869f",
+  "packaging_source_sha256": "63afff6526b1be6895fd84f51802fdadf9048181d6e93dd37289b821eeb39e8b",
+  "script_sha256": "a1f22c5cbc0edfcb37cd3b790507bbd1326f562a19e89edff191a5e6dab70bdd",
+  "packages": {
+    "passing": {
+      "file": "passing.fcore",
+      "package_id": "3593d7e08af70397580b48e4f8469069a643e8c42a88907ed8b2ce4ba4c17d1f",
+      "archive_sha256": "472b6c599f79157d52ef881773924f1f15ed80df7dc8234543fa9260d663e060",
+      "payload_sha256": "e76deaa51662f65fb614adf36767d8d87c9d9cfd19e7552fb8da88fed261c7da",
+      "embedded_build_id": "2da9f76d05ed0c670a5c70abaddbe783",
+      "version": "1.1.0"
+    },
+    "failing": {
+      "file": "failing.fcore",
+      "package_id": "019484653963d99f455cd907157d293aa9fc833152f6717aa5e100270fe7b69f",
+      "archive_sha256": "f79ac0d9300c61e7ead19832ed4a13c6ea01eea54609b2082250adae4b04e8ec",
+      "payload_sha256": "9cff64b3a51fcf992d6853458779a99f63f3568e821e425b9fd8b7fedc987e05",
+      "embedded_build_id": "26d08971ccc8f584488e1dddd1c53f13",
+      "version": "1.1.0"
+    },
+    "address-control": {
+      "file": "address-control.fcore",
+      "package_id": "1b941609aa4fe6e6695d4067b2447c0b468665a2f238901c2c4e88efa7e5ccaa",
+      "archive_sha256": "8ffc3cb60ae6756a7120f7ccc71681b28c2e27ee30210c5254d863dd0a61605d",
+      "payload_sha256": "fdf50532b84edc282dab9991469bc541ff5a6e5dfada569f8ed2b7c2e7e2fa72",
+      "embedded_build_id": "26d08971ccc8f584488e1dddd1c53f13",
+      "version": "1.1.0-address-route-control.1"
+    }
+  },
+  "consumer_validation": {
+    "reader": "FogCast corepackage.InspectPackage",
+    "inspected_packages": 3,
+    "results_sha256": "80dccc5821f234cce5e3b08896f22af69c90e4b5978aec639b9611d6dbe86846"
+  },
+  "bundle": {
+    "path": "/tmp/nextpnr-135-investigation/hardware-comparison-package/ramtest-address-comparison.tar",
+    "bytes": 6553600,
+    "sha256": "09d5686d629f64ccf566903b57602309fe528d744d9a294d5a87d542717aed90"
+  }
+}

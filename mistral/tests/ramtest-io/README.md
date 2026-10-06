@@ -543,3 +543,44 @@ using the same kit, boot, clock rate and patterns. A pass would implicate the
 three address routes as a group; a failure would leave read capture, command
 skew and remaining address setup as possible causes. No hardware programming
 has been performed by this investigation.
+
+## Local hardware comparison package bundle
+
+`legacy_package.py` creates format-2 diagnostic `.fcore` envelopes for the
+candidate and both exact historical controls. The controls retain their
+original manifest and RBF bytes; the failing archive also matches the original
+producer export byte-for-byte. The candidate retains the FPGA-embedded build
+ID `26d08971ccc8f584488e1dddd1c53f13`, source revision, recipe and ABI because
+none of that logic changed. Its prerelease version, name, payload digest,
+package digest and appended post-route toolchain identity distinguish it.
+
+This is local experimental packaging, not a fresh producer synthesis seal.
+The original build identity is not regenerated or fabricated. The separate
+reroute receipt documents the controlled post-processing; the standard
+producer exporter still requires its own pinned source/build-input evidence.
+Package checks do not confer hardware acceptance.
+
+```sh
+python3 -B mistral/tests/ramtest-io/legacy_package.py \
+  --passing-root /path/to/original/passing/sources/misteross \
+  --failing-root /path/to/original/failing/sources/misteross \
+  --candidate /tmp/nextpnr-135-investigation/ramtest-100-address-control \
+  --output /tmp/ramtest-comparison-packages
+```
+
+The historical strict Python package reader and FogCast's Go
+`corepackage.InspectPackage` both accepted all three generated archives and
+agreed on package/payload identities. Optional `--consumer-results` retains
+the JSONL inspections only when they match those exact three packages.
+The published local bundle is
+`/tmp/nextpnr-135-investigation/hardware-comparison-package/ramtest-address-comparison.tar`.
+It contains the three `.fcore` archives, checksum list, package/reroute receipts,
+consumer inspection evidence, import instructions and an empty hardware-results
+template. `legacy-package-reference.json` identifies the completed bundle.
+
+Candidate package ID:
+`1b941609aa4fe6e6695d4067b2447c0b468665a2f238901c2c4e88efa7e5ccaa`.
+Passing control ID: `3593d7e08af70397580b48e4f8469069a643e8c42a88907ed8b2ce4ba4c17d1f`.
+Failing control ID: `019484653963d99f455cd907157d293aa9fc833152f6717aa5e100270fe7b69f`.
+Importing, creating host library entries and programming a target are separate
+steps; none has been performed. The target kit selection is pending user input.
