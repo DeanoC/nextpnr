@@ -185,14 +185,24 @@ def replay(order, cases, budget):
 
 
 def read_populations(output, manifests):
+    declaration = json.loads((output / "declaration.json").read_bytes())
     summaries = []
     cohorts = {}
+    artifacts = {}
+    execution_identities = []
     for item, manifest in manifests:
         paths = list((output / "collections" / item["cohort_id"]).glob("collection-*.json"))
         if len(paths) != 1 or paths[0].name.startswith("collection-failure-"):
             raise ValueError("evaluation requires all declared collections; omissions are not failures")
         summary = json.loads(paths[0].read_bytes())
         bound = summary.get("cohort_identity", {}).get("manifest", {})
+        if bound.get("binary", {}).get("sha256") != declaration["binary_sha256"]:
+            raise ValueError("collected binary differs from declaration")
+        inputs = {row["role"] + ":" + str(index): row["sha256"]
+                  for index, row in enumerate(bound.get("inputs", []))}
+        if inputs != declaration["input_sha256"]:
+            raise ValueError("collected input differs from declaration")
+        execution_identities.append(bound.get("execution_identity"))
         for field in ("command", "required_clocks", "seeds", "repeats", "environment", "limits"):
             actual = bound.get(field)
             if field == "environment":
@@ -202,7 +212,12 @@ def read_populations(output, manifests):
             elif actual != manifest[field]:
                 raise ValueError(f"collection {field} differs from declaration")
         cohorts[item["cohort_id"]] = item
+        for result in summary["results"]:
+            artifacts[result["run_id"]] = result.get("artifacts", {})
         summaries.append(paths[0])
+    if not execution_identities or any(identity != execution_identities[0]
+                                       for identity in execution_identities):
+        raise ValueError("backend/runtime identity changed between declared populations")
     document = seed_racing.assemble_dataset(summaries)
     if document.get("excluded_runs"):
         raise ValueError("artifactless excluded attempts prevent a complete comparison")
@@ -211,12 +226,41 @@ def read_populations(output, manifests):
     for row in rows:
         item = cohorts[row["cohort_id"]]
         row.update(phase=item["phase"], policy=item["policy"])
+        row["artifact_records"] = artifacts[row["run_id"]]
         by_population.setdefault((item["phase"], item["policy"]), []).append(row)
     for item, _ in manifests:
         population = by_population.get((item["phase"], item["policy"]), [])
         if sorted(row["seed"] for row in population) != sorted(item["seeds"]):
             raise ValueError("missing or duplicated declared candidate")
     return rows
+
+
+def repeat_checks(rows, policies, seeds):
+    checks = []
+    for policy in policies:
+        for seed in seeds:
+            pair = [next(row for row in rows if row["phase"] == phase and
+                         row["policy"] == policy and row["seed"] == seed)
+                    for phase in ("train", "repeat")]
+            check = {"policy": policy, "seed": seed, "statuses": [row["status"] for row in pair],
+                     "classification": "inconclusive: at least one anchor did not complete"}
+            if all(row["status"] == "completed" for row in pair):
+                same = {}
+                for name in ("final_report", "bitstream"):
+                    digests = []
+                    for row in pair:
+                        record = row["artifact_records"].get(name, {})
+                        if record.get("available") is not True:
+                            raise ValueError("completed repeat anchor lacks " + name)
+                        digest = hashlib.sha256(Path(record["path"]).read_bytes()).hexdigest()
+                        if digest != record["sha256"]:
+                            raise ValueError("repeat anchor artifact changed")
+                        digests.append(digest)
+                    same[name + "_byte_identical"] = len(set(digests)) == 1
+                check.update(same)
+                check["classification"] = "repeatable" if all(same.values()) else "mismatch: investigate"
+            checks.append(check)
+    return checks
 
 
 def evaluate(output):
@@ -240,6 +284,7 @@ def evaluate(output):
     result = {"declaration_sha256": hashlib.sha256(canonical(declaration)).hexdigest(),
               "classification": "offline serial full-run simulation; not observed online execution",
               "training_ranking": ranking, "training_statistics": training_statistics,
+              "repeat_checks": repeat_checks(rows, declaration["policies"], declaration["repeat_seeds"]),
               "training_cost_seconds": sum(row["duration_seconds"] for row in train),
               "repeat_check_cost_seconds": sum(row["duration_seconds"] for row in rows if row["phase"] == "repeat"),
               "total_collection_cost_seconds": sum(row["duration_seconds"] for row in rows),

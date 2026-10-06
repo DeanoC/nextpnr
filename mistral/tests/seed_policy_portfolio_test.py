@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import sys
+import hashlib
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -62,6 +64,31 @@ class PortfolioTests(unittest.TestCase):
         result = portfolio.replay(list(cases), cases, 600)
         self.assertFalse(result["success"])
         self.assertEqual(result["consumed_seconds"], 10)
+
+    def test_censored_repeat_is_inconclusive(self):
+        rows = [dict(policy="a", seed=17, phase=phase, status="timeout_per_run")
+                for phase in ("train", "repeat")]
+        check = portfolio.repeat_checks(rows, ["a"], [17])[0]
+        self.assertTrue(check["classification"].startswith("inconclusive"))
+
+    def test_repeat_checks_verify_bytes_not_just_labels(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "artifact"
+            path.write_bytes(b"same")
+            record = dict(available=True, path=str(path), sha256=hashlib.sha256(b"same").hexdigest())
+            rows = [dict(policy="a", seed=17, phase=phase, status="completed",
+                         artifact_records=dict(final_report=record, bitstream=record))
+                    for phase in ("train", "repeat")]
+            self.assertEqual(portfolio.repeat_checks(rows, ["a"], [17])[0]["classification"], "repeatable")
+            path.write_bytes(b"changed")
+            with self.assertRaises(ValueError):
+                portfolio.repeat_checks(rows, ["a"], [17])
+
+    def test_completed_repeat_missing_artifact_rejected(self):
+        rows = [dict(policy="a", seed=17, phase=phase, status="completed", artifact_records={})
+                for phase in ("train", "repeat")]
+        with self.assertRaises(ValueError):
+            portfolio.repeat_checks(rows, ["a"], [17])
 
 
 if __name__ == "__main__":
