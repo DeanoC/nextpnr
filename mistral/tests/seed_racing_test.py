@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import hashlib
 import json
 import os
 import signal
@@ -20,6 +21,17 @@ import seed_racing
 FIXTURE = ROOT / "mistral" / "tests" / "seed_racing" / "synthetic.json"
 VALIDATE_COLLECTION_EXECUTABLE = seed_racing._validate_collection_executable
 PROBE_NATIVE_CONTRACT = seed_racing._probe_native_contract
+
+
+def refresh_cohort_fingerprints(document):
+    for cohort_id, identity in document["cohort_identities"].items():
+        encoded = json.dumps(
+            identity["manifest"], sort_keys=True, separators=(",", ":"),
+            allow_nan=False).encode("utf-8")
+        identity["fingerprint_sha256"] = hashlib.sha256(encoded).hexdigest()
+        for run in document["runs"]:
+            if run["cohort_id"] == cohort_id:
+                run["cohort_fingerprint_sha256"] = identity["fingerprint_sha256"]
 
 
 class DatasetTests(unittest.TestCase):
@@ -98,6 +110,186 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(first["stages"], second["stages"])
         self.assertEqual(len(first["stages"][0]["exploratory"]), 1)
         self.assertIn(first["stages"][0]["exploratory"][0], first["retained"])
+
+    def test_balanced_policy_reserves_timing_and_congestion_ranked_slots(self):
+        def candidate(run_id, overuse, table_wns):
+            return {
+                "run_id": run_id, "duration_seconds": 20,
+                "outcome_observed_seconds": 20,
+                "observations": [{"elapsed_seconds": 5,
+                                  "total_excess_occupancy": overuse,
+                                  "table_wns_ns": table_wns}],
+                "success": False, "final_multi_clock_margin_ns": None,
+            }
+        runs = [candidate("route-leader", 0, -10),
+                candidate("timing-leader", 100, 0),
+                candidate("middle", 50, -1)]
+        result = seed_racing.successive_halving(
+            runs, [5], [2], 0, 7, restart=False,
+            ranking_policy="balanced-prefix-v1")
+        stage = result["stages"][0]
+        self.assertEqual(stage["ranked"], ["timing-leader", "route-leader"])
+        self.assertEqual(stage["ranked_sources"], ["timing", "congestion"])
+        self.assertEqual(result["ranking_policy"], "balanced-prefix-v1")
+
+    def test_balanced_policy_does_not_read_future_observations_or_outcomes(self):
+        def candidate(run_id, overuse, table_wns, future_wns, success):
+            return {
+                "run_id": run_id, "duration_seconds": 20,
+                "outcome_observed_seconds": 20,
+                "observations": [
+                    {"elapsed_seconds": 5, "total_excess_occupancy": overuse,
+                     "table_wns_ns": table_wns},
+                    {"elapsed_seconds": 10, "total_excess_occupancy": 0,
+                     "table_wns_ns": future_wns},
+                ],
+                "success": success,
+                "final_multi_clock_margin_ns": 1 if success else -1,
+            }
+        first = [candidate("a", 10, -1, -100, False),
+                 candidate("b", 20, 0, 100, True)]
+        second = [candidate("a", 10, -1, 100, True),
+                  candidate("b", 20, 0, -100, False)]
+        selections = []
+        for runs in (first, second):
+            result = seed_racing.successive_halving(
+                runs, [5], [1], 0, 7, restart=False,
+                ranking_policy="balanced-prefix-v1")
+            selections.append(result["stages"][0]["promoted"])
+        self.assertEqual(selections, [["b"], ["b"]])
+
+    def test_balanced_policy_uses_congestion_when_prefix_timing_is_unavailable(self):
+        runs = [{
+            "run_id": run_id, "duration_seconds": 20,
+            "outcome_observed_seconds": 20,
+            "observations": [{"elapsed_seconds": 5,
+                              "total_excess_occupancy": overuse}],
+            "success": False, "final_multi_clock_margin_ns": None,
+        } for run_id, overuse in (("worse", 10), ("better", 1))]
+        result = seed_racing.successive_halving(
+            runs, [5], [1], 0, 7, restart=False,
+            ranking_policy="balanced-prefix-v1")
+        self.assertEqual(result["stages"][0]["ranked"], ["better"])
+        self.assertEqual(result["stages"][0]["ranked_sources"], ["congestion"])
+
+    def test_replicate_stratified_evaluation_never_races_repeats_together(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        for identity in document["cohort_identities"].values():
+            identity["manifest"]["repeats"] = 2
+        refresh_cohort_fingerprints(document)
+        repeats = json.loads(json.dumps(document["runs"]))
+        for run in repeats:
+            run["run_id"] += "-repeat-2"
+            run["replicate"] = 2
+        document["runs"].extend(repeats)
+        result = seed_racing.evaluate(
+            document, [5], [3], 1, [0], 10_000,
+            ranking_policy="balanced-prefix-v1", replicate_stratified=True)
+        self.assertEqual(result["evaluation_mode"], "replicate-stratified")
+        self.assertEqual(result["budget_scope"], "per-replicate-stratum")
+        self.assertEqual([item["replicate"] for item in result["replicate_strata"]], [1, 2])
+        self.assertEqual([item["evaluation_population"]["runs"]
+                          for item in result["replicate_strata"]], [8, 8])
+        for item in result["replicate_strata"]:
+            evaluated = item["successive_halving_restart"][0]["stages"][0]["evaluated"]
+            self.assertEqual(len(evaluated), 8)
+            self.assertEqual(len({run_id.endswith("-repeat-2") for run_id in evaluated}), 1)
+
+    def test_replicate_stratification_rejects_missing_or_duplicate_candidates(self):
+        missing = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        missing["runs"][0].pop("replicate")
+        with self.assertRaisesRegex(ValueError, "positive integer replicate"):
+            seed_racing.evaluate(missing, [5], [3], 1, [0], 10_000,
+                                 replicate_stratified=True)
+
+        duplicate = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        repeated = json.loads(json.dumps(duplicate["runs"][0]))
+        repeated["run_id"] += "-duplicate"
+        duplicate["runs"].append(repeated)
+        with self.assertRaisesRegex(ValueError, "duplicate seed candidates"):
+            seed_racing.evaluate(duplicate, [5], [3], 1, [0], 10_000,
+                                 replicate_stratified=True)
+
+        incomplete = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        for identity in incomplete["cohort_identities"].values():
+            identity["manifest"]["repeats"] = 2
+        refresh_cohort_fingerprints(incomplete)
+        repeats = json.loads(json.dumps(incomplete["runs"]))
+        for run in repeats:
+            run["run_id"] += "-repeat-2"
+            run["replicate"] = 2
+        incomplete["runs"].extend(repeats[:-1])
+        with self.assertRaisesRegex(ValueError, "declared candidate population"):
+            seed_racing.evaluate(incomplete, [5], [3], 1, [0], 10_000,
+                                 replicate_stratified=True)
+
+        mismatched = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        for identity in mismatched["cohort_identities"].values():
+            identity["manifest"]["repeats"] = 2
+        refresh_cohort_fingerprints(mismatched)
+        repeats = json.loads(json.dumps(mismatched["runs"]))
+        for run in repeats:
+            run["run_id"] += "-repeat-2"
+            run["replicate"] = 2
+        repeats[-1]["seed"] = "replacement-seed"
+        mismatched["runs"].extend(repeats)
+        with self.assertRaisesRegex(ValueError, "missing 1, extra 1"):
+            seed_racing.evaluate(mismatched, [5], [3], 1, [0], 10_000,
+                                 replicate_stratified=True)
+
+        missing_everywhere = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        for identity in missing_everywhere["cohort_identities"].values():
+            identity["manifest"]["repeats"] = 2
+        refresh_cohort_fingerprints(missing_everywhere)
+        missing_seed = missing_everywhere["runs"][0]["seed"]
+        repeats = json.loads(json.dumps(missing_everywhere["runs"]))
+        for run in repeats:
+            run["run_id"] += "-repeat-2"
+            run["replicate"] = 2
+        missing_everywhere["runs"].extend(repeats)
+        missing_everywhere["runs"] = [
+            run for run in missing_everywhere["runs"] if run["seed"] != missing_seed]
+        with self.assertRaisesRegex(ValueError, "missing 1, extra 0"):
+            seed_racing.evaluate(missing_everywhere, [5], [3], 1, [0], 10_000,
+                                 replicate_stratified=True)
+
+    def test_replicate_stratification_preserves_supported_scalar_seed_labels(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        document["runs"][0]["seed"] = "named-seed"
+        document["runs"][1]["seed"] = 2.5
+        document["runs"][2]["seed"] = None
+        document["cohort_identities"]["synthetic"]["manifest"]["seeds"][:3] = [
+            "named-seed", 2.5, None]
+        refresh_cohort_fingerprints(document)
+        result = seed_racing.evaluate(
+            document, [5], [3], 1, [0], 10_000, replicate_stratified=True)
+        self.assertEqual(result["replicate_strata"][0]["evaluation_population"]["runs"], 8)
+
+    def test_legacy_identity_requires_matching_external_cohort_manifest(self):
+        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        identity_manifest = document["cohort_identities"]["synthetic"]["manifest"]
+        declaration = {
+            "cohort": json.loads(json.dumps(identity_manifest["cohort"])),
+            "seeds": identity_manifest.pop("seeds"),
+            "repeats": identity_manifest.pop("repeats"),
+        }
+        refresh_cohort_fingerprints(document)
+        with self.assertRaisesRegex(ValueError, "declared cohort seeds and repeats"):
+            seed_racing.evaluate(
+                document, [5], [3], 1, [0], 10_000, replicate_stratified=True)
+
+        result = seed_racing.evaluate(
+            document, [5], [3], 1, [0], 10_000, replicate_stratified=True,
+            cohort_manifests=[declaration])
+        self.assertEqual(
+            result["cohort_population_declarations"]["synthetic"]["source"],
+            "external_manifest")
+
+        declaration["cohort"]["mapped_design_id"] = "wrong"
+        with self.assertRaisesRegex(ValueError, "does not match identity"):
+            seed_racing.evaluate(
+                document, [5], [3], 1, [0], 10_000, replicate_stratified=True,
+                cohort_manifests=[declaration])
 
     def test_numeric_seed_is_not_a_tie_breaker_or_feature(self):
         def tied_runs(ids_and_seeds):
@@ -607,6 +799,8 @@ class CollectorTests(unittest.TestCase):
             self.assertEqual([item["status"] for item in results],
                              ["incomplete_evidence", "incomplete_evidence"])
             for result in results:
+                self.assertEqual(result["cohort_identity"]["manifest"]["seeds"], [2, 3])
+                self.assertEqual(result["cohort_identity"]["manifest"]["repeats"], 1)
                 run_dir = Path(result["artifacts"]["stdout"]["path"]).parent
                 immutable = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
                 self.assertEqual(immutable["seed"], result["seed"])

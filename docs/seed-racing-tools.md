@@ -206,6 +206,37 @@ survivors reproducibly across Python versions. Runs that finish by a checkpoint
 leave the active ranking pool: terminal successes are retained immediately and
 terminal failures are recorded but cannot consume a promotion slot.
 
+The default `congestion-first-v1` ranking preserves the original lexicographic
+score: least excess occupancy, least unrouted work, most recent progress, then
+the table timing estimate. `--ranking-policy balanced-prefix-v1` is an explicit
+offline alternative. Its ranked slots alternate between the best prefix table
+WNS and the best congestion score, beginning with timing; already selected
+candidates are skipped. This keeps timing and routability as separate prefix
+objectives without fitting feature weights. Table timing remains only a ranking
+proxy and never replaces final analogue setup-and-hold evidence. The random
+exploratory survivor is selected independently from candidates not chosen by
+either ranked lane.
+
+When a cohort contains repeated executions of each seed label, use
+`--replicate-stratified`. It evaluates each positive integer replicate index as
+a separate race, so repeatability samples of one seed cannot consume multiple
+promotion slots in the same simulated race. The supplied budget applies
+independently to each stratum and the output labels that scope explicitly.
+Within a stratum, duplicate `(cohort, mapped design, constraint family, seed)`
+candidates are rejected using the collector's scalar-label identity.
+Every stratum must also match the seeds and repeat indices sealed in the cohort
+manifest. Equal observed strata are insufficient: if the same artifactless run
+is excluded from every repeat, evaluation fails closed instead of silently
+shrinking the declared population.
+New collection identities seal `seeds` and `repeats` directly. A dataset made
+by an older collector lacks those identity fields and therefore fails closed
+unless each original declaration is supplied explicitly with
+`--cohort-manifest MANIFEST`. The evaluator checks its cohort descriptor
+against the dataset and records the declaration's canonical SHA-256 digest in
+the replay; this is a compatibility path, not an inferred population.
+Combined-run mode remains available for reproducing older descriptive results,
+but it is not representative of a race that launches each seed once.
+
 Each run's `outcome` separates `legal_route` from final analogue timing. It
 must list every expected setup/related-clock constraint in `required_clocks` and
 provide unique matching entries in `analogue_clocks`. Each required entry needs

@@ -28,7 +28,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, BinaryIO, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, BinaryIO, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 try:
     import fcntl
@@ -60,6 +60,7 @@ PREFIX_FEATURES = {
     "displaced_connections", "frozen_connections", "repair_improvement", "timing_model", "analogue_wns_ns",
     "analogue_tns_ns", "analogue_clocks",
 }
+RANKING_POLICIES = ("congestion-first-v1", "balanced-prefix-v1")
 BASE_ENVIRONMENT_VARIABLES = ("PATH",)
 TERMINATION_GRACE_SECONDS = 2.0
 INOTIFY_MUTATION_EVENTS = (0x00000002 | 0x00000004 | 0x00000008 | 0x00000040 | 0x00000080 |
@@ -1235,6 +1236,8 @@ class Collector:
             "artifacts": self.manifest["artifacts"],
             "required_clocks": self.manifest["required_clocks"],
             "limits": self.manifest["limits"],
+            "seeds": self.manifest["seeds"],
+            "repeats": self.manifest["repeats"],
         }
         if execution_identity is not None:
             record["execution_identity"] = dict(execution_identity)
@@ -2214,6 +2217,9 @@ def validate_dataset(document: Mapping[str, Any]) -> List[Dict[str, Any]]:
                    ("cohort_id", "mapped_design_id", "constraint_family")):
             raise ValueError(
                 "run cohort_id, mapped_design_id, and constraint_family must be non-empty strings")
+        if (isinstance(run["seed"], (dict, list, bool)) or
+                not (run["seed"] is None or isinstance(run["seed"], (str, int, float)))):
+            raise ValueError("run seed must be a scalar supported by collection manifests")
         if not isinstance(run["status"], str) or run["status"] not in TERMINAL_STATUSES:
             raise ValueError("run status must be a supported terminal status")
         process_started = run.get("process_started")
@@ -2409,6 +2415,72 @@ def heuristic_score(observation: Optional[Mapping[str, Any]]) -> Tuple[float, ..
     )
 
 
+def _timing_score(observation: Optional[Mapping[str, Any]]) -> Tuple[float, ...]:
+    """Rank a prefix timing estimate without treating it as final timing evidence."""
+    if observation is None:
+        return (-math.inf,)
+    table_wns = observation.get("table_wns_ns")
+    failing = observation.get("table_failing_endpoints")
+    return (
+        float(table_wns) if _finite_number(table_wns) else -math.inf,
+        -float(failing) if _finite_number(failing) else -math.inf,
+        *heuristic_score(observation),
+    )
+
+
+def _rank_candidates(
+    active: Sequence[Mapping[str, Any]], checkpoint: float, ranked_count: int,
+    scheduler_seed: int, stage_index: int, ranking_policy: str,
+) -> Tuple[List[Mapping[str, Any]], List[str]]:
+    """Return a full candidate order and the source of each ranked selection."""
+    if ranking_policy not in RANKING_POLICIES:
+        raise ValueError(f"unsupported ranking policy: {ranking_policy}")
+
+    def ordered(score, namespace):
+        values = [
+            (score(observation_at(run, checkpoint)),
+             _scheduler_key(scheduler_seed, namespace, position), run)
+            for position, run in enumerate(active)
+        ]
+        values.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        return [run for _, _, run in values]
+
+    congestion = ordered(heuristic_score, f"tie:{stage_index}")
+    if ranking_policy == "congestion-first-v1":
+        return congestion, ["congestion"] * min(ranked_count, len(congestion))
+
+    timing = [
+        run for run in ordered(_timing_score, f"balanced-timing:{stage_index}")
+        if _finite_number((observation_at(run, checkpoint) or {}).get("table_wns_ns"))
+    ]
+    congestion = ordered(heuristic_score, f"balanced-congestion:{stage_index}")
+    selected: List[Mapping[str, Any]] = []
+    sources: List[str] = []
+    selected_ids = set()
+    positions = {"timing": 0, "congestion": 0}
+    lanes = {"timing": timing, "congestion": congestion}
+    while len(selected) < min(ranked_count, len(active)):
+        made_progress = False
+        for name in ("timing", "congestion"):
+            lane = lanes[name]
+            while positions[name] < len(lane):
+                candidate = lane[positions[name]]
+                positions[name] += 1
+                marker = candidate["run_id"]
+                if marker in selected_ids:
+                    continue
+                selected.append(candidate)
+                sources.append(name)
+                selected_ids.add(marker)
+                made_progress = True
+                break
+            if len(selected) >= min(ranked_count, len(active)):
+                break
+        if not made_progress:
+            break
+    return selected + [run for run in active if run["run_id"] not in selected_ids], sources
+
+
 def _metrics(retained: Sequence[Mapping[str, Any]], population: Sequence[Mapping[str, Any]], aggregate: float, makespan: float, label: str) -> Dict[str, Any]:
     successes = [run for run in population if run["success"]]
     retained_successes = [run for run in retained if run["success"]]
@@ -2440,6 +2512,7 @@ def successive_halving(
     exploratory_survivors: int, scheduler_seed: int, restart: bool,
     score_overhead_seconds: float = 0.0,
     budget_seconds: Optional[float] = None,
+    ranking_policy: str = "congestion-first-v1",
 ) -> Dict[str, Any]:
     if not checkpoints or len(checkpoints) != len(quotas):
         raise ValueError("checkpoints and quotas must be non-empty and equal length")
@@ -2449,6 +2522,8 @@ def successive_halving(
         raise ValueError("quotas must be positive integers")
     if exploratory_survivors < 0:
         raise ValueError("exploratory_survivors cannot be negative")
+    if ranking_policy not in RANKING_POLICIES:
+        raise ValueError(f"unsupported ranking policy: {ranking_policy}")
     budget_limit = (math.inf if budget_seconds is None else
                     _positive_number(budget_seconds, "budget_seconds"))
     survivors = list(runs)
@@ -2484,15 +2559,13 @@ def successive_halving(
         terminal_successes.extend(run for run in terminal if run["success"])
         # An independent scheduler RNG breaks score ties. Neither numeric seed nor
         # seed-bearing run IDs are visible to ranking.
-        scored = [(heuristic_score(observation_at(run, checkpoint)),
-                   _scheduler_key(scheduler_seed, f"tie:{stage_index}", position), run)
-                  for position, run in enumerate(active)]
-        scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
-        keep = min(quota, len(scored))
+        keep = min(quota, len(active))
         explore = min(exploratory_survivors, keep)
         ranked_count = keep - explore
-        ranked = [run for _, _, run in scored[:ranked_count]]
-        remaining = [run for _, _, run in scored[ranked_count:] if run not in ranked]
+        ranking_order, ranked_sources = _rank_candidates(
+            active, checkpoint, ranked_count, scheduler_seed, stage_index, ranking_policy)
+        ranked = ranking_order[:ranked_count]
+        remaining = ranking_order[ranked_count:]
         remaining = sorted(
             enumerate(remaining),
             key=lambda item: _scheduler_key(
@@ -2504,6 +2577,8 @@ def successive_halving(
             "evaluated": [run["run_id"] for run in evaluated],
             "terminal_successes": [run["run_id"] for run in terminal if run["success"]],
             "terminal_failures": [run["run_id"] for run in terminal if not run["success"]],
+            "ranked": [run["run_id"] for run in ranked],
+            "ranked_sources": ranked_sources,
             "promoted": [run["run_id"] for run in survivors],
             "exploratory": [run["run_id"] for run in explored],
         })
@@ -2522,7 +2597,8 @@ def successive_halving(
     retained = terminal_successes + completed_survivors
     metrics = _metrics(retained, runs, aggregate, aggregate,
                        "restart_execution" if restart else "ideal_resumable_simulation")
-    metrics.update({"policy": "successive_halving", "scheduler_seed": scheduler_seed,
+    metrics.update({"policy": "successive_halving", "ranking_policy": ranking_policy,
+                    "scheduler_seed": scheduler_seed,
                     "scheduler_algorithm": "sha256-order-v1", "stages": stage_records,
                     "retained": [run["run_id"] for run in retained],
                     "budget_seconds": budget_seconds,
@@ -2558,15 +2634,184 @@ def random_full_run_baseline(runs: Sequence[Mapping[str, Any]], budget_seconds: 
     return metrics
 
 
-def evaluate(document: Mapping[str, Any], checkpoints: Sequence[float], quotas: Sequence[int], exploratory: int, scheduler_seeds: Sequence[int], budget: float) -> Dict[str, Any]:
+def _evaluation_population(runs: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    designs = {(run["mapped_design_id"], run["constraint_family"]) for run in runs}
+    return {
+        "runs": len(runs),
+        "cohorts": sorted({run["cohort_id"] for run in runs}),
+        "mapped_design_constraint_families": sorted(
+            {f'{run["mapped_design_id"]}:{run["constraint_family"]}' for run in runs}),
+        "scope": "single-design" if len(designs) == 1 else "cross-design-descriptive",
+    }
+
+
+def _evaluate_population_policies(
+    runs: Sequence[Mapping[str, Any]], checkpoints: Sequence[float], quotas: Sequence[int],
+    exploratory: int, scheduler_seeds: Sequence[int], budget: float, ranking_policy: str,
+) -> Dict[str, Any]:
+    return {
+        "evaluation_population": _evaluation_population(runs),
+        "random_full_run": [
+            random_full_run_baseline(runs, budget, seed) for seed in scheduler_seeds],
+        "successive_halving_ideal": [
+            successive_halving(
+                runs, checkpoints, quotas, exploratory, seed, False,
+                budget_seconds=budget, ranking_policy=ranking_policy)
+            for seed in scheduler_seeds],
+        "successive_halving_restart": [
+            successive_halving(
+                runs, checkpoints, quotas, exploratory, seed, True,
+                budget_seconds=budget, ranking_policy=ranking_policy)
+            for seed in scheduler_seeds],
+    }
+
+
+def _declared_replicate_populations(
+    document: Mapping[str, Any],
+    external_manifests: Sequence[Mapping[str, Any]] = (),
+) -> Tuple[Dict[int, Set[Tuple[str, str, str, str]]], Dict[str, Dict[str, str]]]:
+    identities = document.get("cohort_identities")
+    if not isinstance(identities, dict):
+        raise ValueError("replicate-stratified evaluation requires cohort identities")
+    external_by_cohort: Dict[str, Mapping[str, Any]] = {}
+    for external in external_manifests:
+        cohort = external.get("cohort") if isinstance(external, Mapping) else None
+        cohort_id = cohort.get("id") if isinstance(cohort, Mapping) else None
+        if not isinstance(cohort_id, str) or not cohort_id:
+            raise ValueError("external cohort manifest has no cohort id")
+        if cohort_id in external_by_cohort:
+            raise ValueError(f"duplicate external cohort manifest for {cohort_id!r}")
+        external_by_cohort[cohort_id] = external
+    populations: Dict[int, Set[Tuple[str, str, str, str]]] = {}
+    sources: Dict[str, Dict[str, str]] = {}
+    for cohort_id, identity in identities.items():
+        manifest = identity.get("manifest") if isinstance(identity, dict) else None
+        cohort = manifest.get("cohort") if isinstance(manifest, dict) else None
+        seeds = manifest.get("seeds") if isinstance(manifest, dict) else None
+        repeats = manifest.get("repeats") if isinstance(manifest, dict) else None
+        if (not isinstance(cohort_id, str) or not cohort_id or
+                not isinstance(cohort, dict) or cohort.get("id") != cohort_id):
+            raise ValueError("replicate-stratified cohort identity is incomplete")
+        source = "dataset_identity"
+        declaration: Mapping[str, Any] = manifest
+        if seeds is None and repeats is None:
+            declaration = external_by_cohort.get(cohort_id, {})
+            if not declaration:
+                raise ValueError(
+                    "replicate-stratified evaluation requires declared cohort seeds and repeats")
+            external_cohort = declaration.get("cohort")
+            if external_cohort != cohort:
+                raise ValueError(
+                    f"external cohort manifest does not match identity for {cohort_id!r}")
+            seeds = declaration.get("seeds")
+            repeats = declaration.get("repeats")
+            source = "external_manifest"
+        elif cohort_id in external_by_cohort:
+            external = external_by_cohort[cohort_id]
+            if (external.get("cohort") != cohort or external.get("seeds") != seeds or
+                    external.get("repeats") != repeats):
+                raise ValueError(
+                    f"external cohort manifest conflicts with identity for {cohort_id!r}")
+        if (not isinstance(seeds, list) or not seeds or
+                isinstance(repeats, bool) or not isinstance(repeats, int) or repeats <= 0):
+            raise ValueError(
+                "replicate-stratified evaluation requires declared cohort seeds and repeats")
+        mapped_design_id = cohort.get("mapped_design_id")
+        constraint_family = cohort.get("constraint_family")
+        if not all(isinstance(value, str) and value for value in
+                   (mapped_design_id, constraint_family)):
+            raise ValueError("replicate-stratified cohort identity is incomplete")
+        keys = []
+        for seed in seeds:
+            if (isinstance(seed, (dict, list, bool)) or
+                    not (seed is None or isinstance(seed, (str, int, float)))):
+                raise ValueError("declared cohort seed must be a supported scalar")
+            keys.append((cohort_id, mapped_design_id, constraint_family, str(seed)))
+        if len(set(keys)) != len(keys):
+            raise ValueError(f"cohort {cohort_id!r} declares duplicate seed candidates")
+        encoded = json.dumps(declaration, sort_keys=True, separators=(",", ":"),
+                             allow_nan=False).encode("utf-8")
+        sources[cohort_id] = {
+            "source": source,
+            "canonical_sha256": hashlib.sha256(encoded).hexdigest(),
+        }
+        for replicate in range(1, repeats + 1):
+            populations.setdefault(replicate, set()).update(keys)
+    unexpected = set(external_by_cohort) - set(identities)
+    if unexpected:
+        raise ValueError(
+            f"external cohort manifest has no dataset identity: {sorted(unexpected)[0]!r}")
+    return populations, sources
+
+
+def evaluate(
+    document: Mapping[str, Any], checkpoints: Sequence[float], quotas: Sequence[int],
+    exploratory: int, scheduler_seeds: Sequence[int], budget: float,
+    ranking_policy: str = "congestion-first-v1", replicate_stratified: bool = False,
+    cohort_manifests: Sequence[Mapping[str, Any]] = (),
+) -> Dict[str, Any]:
     runs = validate_dataset(document)
-    # Replicates/prefixes stay together because the unit of scheduling is the complete run.
+    if ranking_policy not in RANKING_POLICIES:
+        raise ValueError(f"unsupported ranking policy: {ranking_policy}")
+    if not replicate_stratified:
+        result = _evaluate_population_policies(
+            runs, checkpoints, quotas, exploratory, scheduler_seeds, budget, ranking_policy)
+        return {"schema_version": SCHEMA_VERSION,
+                "evaluation_mode": "combined-runs",
+                "ranking_policy": ranking_policy, **result}
+
+    strata: Dict[int, List[Mapping[str, Any]]] = {}
+    for run in runs:
+        replicate = run.get("replicate")
+        if isinstance(replicate, bool) or not isinstance(replicate, int) or replicate <= 0:
+            raise ValueError(
+                "replicate-stratified evaluation requires positive integer replicate values")
+        strata.setdefault(replicate, []).append(run)
+    evaluations = []
+    candidate_populations: Dict[int, Set[Tuple[str, str, str, str]]] = {}
+    for replicate, population in sorted(strata.items()):
+        candidate_keys = [
+            (run["cohort_id"], run["mapped_design_id"], run["constraint_family"],
+             str(run["seed"]))
+            for run in population
+        ]
+        if len(set(candidate_keys)) != len(candidate_keys):
+            raise ValueError(
+                f"replicate stratum {replicate} contains duplicate seed candidates")
+        candidate_populations[replicate] = set(candidate_keys)
+
+    declared_populations, declaration_sources = _declared_replicate_populations(
+        document, cohort_manifests)
+    all_replicates = sorted(set(candidate_populations) | set(declared_populations))
+    for replicate in all_replicates:
+        candidate_population = candidate_populations.get(replicate, set())
+        declared_population = declared_populations.get(replicate, set())
+        if candidate_population != declared_population:
+            missing = len(declared_population - candidate_population)
+            extra = len(candidate_population - declared_population)
+            raise ValueError(
+                "replicate stratum does not match its declared candidate population: "
+                f"stratum {replicate} "
+                f"(missing {missing}, extra {extra})")
+
+    for replicate, population in sorted(strata.items()):
+        evaluations.append({
+            "replicate": replicate,
+            **_evaluate_population_policies(
+                population, checkpoints, quotas, exploratory, scheduler_seeds, budget,
+                ranking_policy),
+        })
     return {
         "schema_version": SCHEMA_VERSION,
-        "evaluation_population": {"runs": len(runs), "cohorts": sorted({run["cohort_id"] for run in runs}), "mapped_design_constraint_families": sorted({f'{run["mapped_design_id"]}:{run["constraint_family"]}' for run in runs}), "scope": "single-design" if len({(run["mapped_design_id"], run["constraint_family"]) for run in runs}) == 1 else "cross-design-descriptive"},
-        "random_full_run": [random_full_run_baseline(runs, budget, seed) for seed in scheduler_seeds],
-        "successive_halving_ideal": [successive_halving(runs, checkpoints, quotas, exploratory, seed, False, budget_seconds=budget) for seed in scheduler_seeds],
-        "successive_halving_restart": [successive_halving(runs, checkpoints, quotas, exploratory, seed, True, budget_seconds=budget) for seed in scheduler_seeds],
+        "evaluation_mode": "replicate-stratified",
+        "ranking_policy": ranking_policy,
+        "cohort_population_declarations": declaration_sources,
+        "budget_scope": "per-replicate-stratum",
+        "evaluation_population": {
+            **_evaluation_population(runs),
+            "replicate_strata": len(evaluations),
+        },
+        "replicate_strata": evaluations,
     }
 
 
@@ -2593,6 +2838,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     replay.add_argument("--exploratory-survivors", type=int, default=1)
     replay.add_argument("--scheduler-seeds", default="0,1,2,3,4")
     replay.add_argument("--budget-seconds", required=True, type=float)
+    replay.add_argument("--ranking-policy", choices=RANKING_POLICIES,
+                        default="congestion-first-v1")
+    replay.add_argument("--replicate-stratified", action="store_true")
+    replay.add_argument("--cohort-manifest", action="append", default=[], type=Path,
+                        help="original declaration for a legacy cohort identity")
     replay.add_argument("--output", type=Path)
     arguments = parser.parse_args(argv)
     try:
@@ -2606,7 +2856,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         else:
             with arguments.dataset.open(encoding="utf-8") as stream:
                 document = json.load(stream)
-            result = evaluate(document, _comma_numbers(arguments.checkpoints), _comma_numbers(arguments.quotas, True), arguments.exploratory_survivors, _comma_numbers(arguments.scheduler_seeds, True), arguments.budget_seconds)
+            cohort_manifests = []
+            for path in arguments.cohort_manifest:
+                with path.open(encoding="utf-8") as stream:
+                    cohort_manifests.append(json.load(stream))
+            result = evaluate(
+                document, _comma_numbers(arguments.checkpoints),
+                _comma_numbers(arguments.quotas, True),
+                arguments.exploratory_survivors,
+                _comma_numbers(arguments.scheduler_seeds, True),
+                arguments.budget_seconds,
+                ranking_policy=arguments.ranking_policy,
+                replicate_stratified=arguments.replicate_stratified,
+                cohort_manifests=cohort_manifests)
         if arguments.operation == "dataset":
             pass
         elif getattr(arguments, "output", None) and arguments.operation == "evaluate":
