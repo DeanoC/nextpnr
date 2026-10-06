@@ -29,13 +29,21 @@ original = json.loads((o / 'input.json').read_text())
 base = [a.nextpnr, '--device', '5CSEBA6U23I7', '--freq', '50']
 settings = {'OEREG_HR_CLK_EN.9': '1', 'OUTREG_OUTPUT_SEL.9': 'SEL_SDR',
             'RBOE_LVL_FR_CLK_EN.9': '1'}
-for name in ('direct', 'zero', 'one', 'delayed', 'disabled'):
+for name in ('direct', 'zero', 'one', 'delayed', 'disabled', 'inverted', 'sclr', 'inverted-sclr'):
     case = o / name
     case.mkdir(exist_ok=True)
     j = copy.deepcopy(original)
     ff = next(c for c in j['modules']['top']['cells'].values() if c['type'] == 'MISTRAL_FF')
     if name in ('zero', 'one'):
         ff['connections']['DATAIN'] = ['1' if name == 'one' else '0']
+    if name in ('inverted', 'inverted-sclr'):
+        output = ff['connections']['Q']
+        ff['connections']['Q'] = [9]
+        j['modules']['top']['cells']['output_inverter'] = {
+            'hide_name': 0, 'type': 'MISTRAL_NOT', 'parameters': {}, 'attributes': {},
+            'port_directions': {'A': 'input', 'Q': 'output'}, 'connections': {'A': [9], 'Q': output}}
+    if name in ('sclr', 'inverted-sclr'):
+        ff['connections']['SCLR'] = ff['connections']['DATAIN']
     (case / 'input.json').write_text(json.dumps(j))
     qsf = (f / 'pins.qsf').read_text()
     if name == 'disabled':
@@ -65,7 +73,17 @@ for name in ('direct', 'zero', 'one', 'delayed', 'disabled'):
     expected = dict(settings)
     if name == 'delayed':
         expected['RB_T9_SEL_OREG_DFF_DELAY.9'] = '1f'
+    if name in ('inverted', 'inverted-sclr'):
+        expected['OUTREG_POWER_UP_STATE.9'] = '1'
+        assert any(c['type'] == 'MISTRAL_NOT' for c in cells.values())
+        assert int(sdr[0]['parameters']['IOREG_OUT_POWER_UP'], 2) == 1
+    if name in ('sclr', 'inverted-sclr'):
+        selects = [c for c in cells.values() if c['type'] == 'MISTRAL_ALUT2']
+        assert len(selects) == 1 and int(selects[0]['parameters']['LUT'], 2) == 2
     assert actual == expected, actual
+    run(base + ['--json', case / 'routed.json', '--no-pack', '--no-place', '--no-route',
+                '--compress-rbf', '--rbf', case / 'replayed.rbf'], case / 'replay.log')
+    assert (case / 'top.rbf').read_bytes() == (case / 'replayed.rbf').read_bytes()
     # The pad clock DCMUX keeps its default TCLK input, which the decoder
     # does not print as a route; check the routed clock reaches it.
     nets = json.loads((case / 'routed.json').read_text())['modules']['top']['netnames']
@@ -78,7 +96,9 @@ for name, reason in [('reset', 'asynchronous clear is held active'),
                      ('clock', 'clock must be driven'),
                      ('parameter', 'unsupported register parameters'),
                      ('inverted-clock', 'noninverted clock source'),
-                     ('q-fanout', 'no other Q consumers')]:
+                     ('q-fanout', 'no other Q consumers'),
+                     ('inverted-aclr', 'unsupported preset'),
+                     ('inverter-fanout', 'no other Q consumers')]:
     j = copy.deepcopy(original)
     ff = next(c for c in j['modules']['top']['cells'].values() if c['type'] == 'MISTRAL_FF')
     if name == 'reset': ff['connections']['ACLR'] = ['0']
@@ -94,6 +114,18 @@ for name, reason in [('reset', 'asynchronous clear is held active'),
         j['modules']['top']['cells']['q_fanout'] = {
             'hide_name': 0, 'type': 'MISTRAL_BUF', 'parameters': {}, 'attributes': {},
             'port_directions': {'A': 'input', 'Q': 'output'}, 'connections': {'A': [7], 'Q': [9]}}
+    if name in ('inverted-aclr', 'inverter-fanout'):
+        output = ff['connections']['Q']
+        ff['connections']['Q'] = [9]
+        j['modules']['top']['cells']['output_inverter'] = {
+            'hide_name': 0, 'type': 'MISTRAL_NOT', 'parameters': {}, 'attributes': {},
+            'port_directions': {'A': 'input', 'Q': 'output'}, 'connections': {'A': [9], 'Q': output}}
+        if name == 'inverted-aclr':
+            ff['connections']['ACLR'] = ff['connections']['DATAIN']
+        else:
+            j['modules']['top']['cells']['extra_consumer'] = {
+                'hide_name': 0, 'type': 'MISTRAL_BUF', 'parameters': {}, 'attributes': {},
+                'port_directions': {'A': 'input', 'Q': 'output'}, 'connections': {'A': output, 'Q': [10]}}
     inp = o / (name + '.json')
     inp.write_text(json.dumps(j))
     run(base + ['--json', inp, '--qsf', f / 'pins.qsf'], o / (name + '.log'), reason)
@@ -102,4 +134,4 @@ sdc.write_text((f / 'clocks.sdc').read_text() +
                'set_output_delay -clock FPGA_CLK1_50 2.0 [get_ports SDR_OUT]\n')
 run(base + ['--json', o / 'input.json', '--qsf', f / 'pins.qsf', '--sdc', sdc],
     o / 'set_output_delay.log', 'no supported unregistered IO timing boundary')
-print('PASS disabled packing, six unsupported register requests and registered external timing rejection')
+print('PASS disabled packing, eight unsupported register requests and registered external timing rejection')

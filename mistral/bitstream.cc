@@ -416,6 +416,8 @@ struct MistralBitgen
                 // Forcing D5 to 31 adds about 1.2 ns to the clock-to-pin path
                 // in the GPIO reference fits. Explicit D5_DELAY assignments
                 // are applied below; hold compensation must not be implicit.
+                if (ioreg("IOREG_OUT_POWER_UP"))
+                    NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::OUTREG_POWER_UP_STATE, lane, 1));
             } else if (has_dqs && ci->type == id_MISTRAL_SDRIO) {
                 // Settings of Quartus 17.0.2 packed I/O registers on a
                 // bidirectional or tri-state pad.

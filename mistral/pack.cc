@@ -477,7 +477,8 @@ struct MistralPacker
     // (CEIN for the input register, CEOUT shared by the output and OE
     // registers) and the pad's shared active-high ACLR. Each control input of
     // the pad has a programmable inverter. Sync clear/load and parameters
-    // have no I/O register equivalent and are rejected.
+    // have no routed I/O register equivalent. The SDR output caller can lower
+    // synchronous clear to fabric data selection; other callers reject it.
     struct IoRegControls
     {
         NetInfo *ena = nullptr;
@@ -486,7 +487,8 @@ struct MistralPacker
         bool aclr_inv = false;
     };
 
-    IoRegControls io_register_controls(CellInfo *ff, const std::function<void(const char *)> &fail)
+    IoRegControls io_register_controls(CellInfo *ff, const std::function<void(const char *)> &fail,
+                                      bool lower_sclr = false)
     {
         IoRegControls ctl;
         if (!ff->params.empty())
@@ -510,9 +512,12 @@ struct MistralPacker
             fail("register asynchronous clear is held active");
         if (ctl.aclr)
             ctl.aclr_inv = !ctl.aclr_inv;
-        for (auto port : {id_SCLR, id_SLOAD})
+        for (auto port : {id_SCLR, id_SLOAD}) {
+            if (port == id_SCLR && lower_sclr)
+                continue;
             if (get_pin_needed_muxval(ff, port) != PIN_0)
                 fail("synchronous clear and load have no I/O register equivalent");
+        }
         return ctl;
     }
 
@@ -795,11 +800,20 @@ struct MistralPacker
             };
             if (io->type != id_MISTRAL_OB) fail("FAST_OUTPUT_REGISTER requires a unidirectional output");
             NetInfo *out = io->getPort(id_I);
-            if (!out || !out->driver.cell || out->driver.cell->type != id_MISTRAL_FF || out->driver.port != id_Q ||
-                out->users.entries() != 1)
-                fail("require a directly connected MISTRAL_FF with no other Q consumers");
-            CellInfo *ff = out->driver.cell;
-            IoRegControls ctl = io_register_controls(ff, fail);
+            CellInfo *inverter = nullptr;
+            NetInfo *q = out;
+            if (out && out->driver.cell && out->driver.cell->type == id_MISTRAL_NOT &&
+                out->driver.port == id_Q && out->users.entries() == 1) {
+                inverter = out->driver.cell;
+                q = inverter->getPort(id_A);
+            }
+            if (!q || !q->driver.cell || q->driver.cell->type != id_MISTRAL_FF || q->driver.port != id_Q ||
+                q->users.entries() != 1)
+                fail("require a directly connected MISTRAL_FF or exclusive inverter with no other Q consumers");
+            CellInfo *ff = q->driver.cell;
+            IoRegControls ctl = io_register_controls(ff, fail, true);
+            if (inverter && ctl.aclr)
+                fail("inverted output with asynchronous clear requires an unsupported preset");
             NetInfo *data = ff->getPort(id_DATAIN), *clock = ff->getPort(id_CLK);
             if (!data || !data->driver.cell) fail("register data must be driven");
             if (!clock || !clock->driver.cell || clock->driver.cell->type.in(id_GND, id_VCC, id_MISTRAL_CONST))
@@ -830,6 +844,30 @@ struct MistralPacker
                 clock = buffer->getPort(id_Q);
             }
             if (!clock || !clock->driver.cell) fail("clock buffer must have a connected Q output");
+            // Keep SCLR below the register's clock enable: the selected data
+            // is zero on clear, otherwise DATAIN. GPIO has no routed SCLR
+            // port in this backend, so implement that selection in fabric.
+            if (get_pin_needed_muxval(ff, id_SCLR) != PIN_0) {
+                auto *clear = ff->getPort(id_SCLR);
+                if (!clear || !clear->driver.cell) fail("synchronous clear must be driven");
+                auto *select = ctx->createCell(ctx->idf("%s$sdr_sclr", ctx->nameOf(io)), id_MISTRAL_ALUT2);
+                select->params[id_LUT] = Property(int64_t(0x2), 4);
+                select->addInput(id_A);
+                select->addInput(id_B);
+                select->addOutput(id_Q);
+                select->connectPort(id_A, data);
+                select->connectPort(id_B, clear);
+                data = ctx->createNet(ctx->idf("%s$sdr_data", ctx->nameOf(io)));
+                select->connectPort(id_Q, data);
+            }
+            if (inverter) {
+                // ~(registered data) == register(~data), with complemented
+                // startup state. A live asynchronous clear cannot commute.
+                inverter->disconnectPort(id_A);
+                inverter->connectPort(id_A, data);
+                data = out;
+                io->params[ctx->id("IOREG_OUT_POWER_UP")] = Property(1);
+            }
             io->disconnectPort(id_I);
             io->connectPort(id_I, data);
             io->type = id_MISTRAL_SDROUT;
@@ -845,7 +883,7 @@ struct MistralPacker
             }
             for (auto &port : ff->ports) ff->disconnectPort(port.first);
             log_info("Packed SDR output register '%s' into %s.\n", ctx->nameOf(ff), ctx->nameOfBel(io->bel));
-            ctx->nets.erase(out->name);
+            ctx->nets.erase(q->name);
             ctx->cells.erase(ff->name);
         }
         if (!outputs.empty())
