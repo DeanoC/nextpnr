@@ -797,3 +797,92 @@ Raw evidence is in `/tmp/nextpnr-135-investigation/hps-hold-audit` and
 Passing the existing timing gate does not qualify unmodelled board/pad paths,
 ganged HPS clock arcs, all PVT corners or 130 MHz. The native address targets
 remain optimization constraints, not complete SDRAM chip-pin budgets.
+
+### Extra setup margin: bounded seed comparison and hardware repeat
+
+`normal_build.py` now accepts `--setup-margin-ps`, `--analogue-rounds` and
+`--timeout-seconds`. The requested setup margin is a repair target, separate
+from the timing gate. Receipts record both `complete_timing_pass` and
+`setup_margin_target_met`; reaching zero slack does not imply that a positive
+requested target was achieved. Positive targets also raise `analogueRipSlack`
+to at least that target, so routes between zero and the target are eligible
+for repair. Defaults preserve the original zero-margin, 1200-second recipe.
+
+For this study, the original synthesis/QSF and address SDC were unchanged.
+Three fresh builds used the GPU router CPU reference backend, seeds 1/2/3,
+a **500 ps** setup target and at most **five** analogue reroute rounds:
+
+```sh
+python3 mistral/tests/ramtest-io/normal_build.py \
+  --source-root /path/to/original/failing/misteross \
+  --nextpnr /path/to/nextpnr-mistral \
+  --output /new/output/directory \
+  --gpu-cpu --seed 2 --setup-margin-ps 500 --analogue-rounds 5
+```
+
+| Seed | Result | Final memory setup WNS | Final memory hold WNS | Address targets |
+| --- | --- | ---: | ---: | --- |
+| 1 | Timeout at 1200 seconds; no final result | unavailable | unavailable | unqualified |
+| 2 | Compiler exit 0; full timing gate passes | +0.435 ns | +0.418 ns | all 13 met |
+| 3 | Compiler exit 1; internal setup fails | −0.862 ns | +0.413 ns | all 13 met |
+
+None established the requested 500 ps margin. Seed 1's last intermediate
+setup margin was −0.652 ns; it is not a final signoff result. Seed 3's worst
+internal path launches at `ddr1_test.idle_MISTRAL_FF_Q_23` and ends at
+`ddr1_test.beats_left_MISTRAL_FF_Q_7.ENA`. This isolates a remaining internal
+placement/routing issue even when the address targets pass. Do not infer
+timing closure across seeds from the selected seed-2 result.
+
+Seed 2 improves the fresh setup margin from **32 ps to 435 ps**, with the
+same 20104 cells, logic and BEL placements as the zero-margin seed-2 build.
+Connections were compared by complete net-name/bit alias sets because JSON
+export bit IDs differ. Extra repair changed **455 routes**, including
+`dq_out[2]` and `dq_oe`. Address and fabric read-capture routes remain unchanged.
+The maximum native address arrival remains 5.815 ns. Capture setup/hold remains
++2.716/+5.431 ns; video setup/hold remains +2.322/+0.410 ns.
+
+Selected RBF:
+`a9ec99435c4a858443ca320b278fcdcb84d530756df99f95dbf0d642dcbec421`.
+Experimental package:
+`08796300446c7b94aaf77a8b5fcefd6279007e5c9f2c5600eee80d2df2ea2fba`.
+The package preserves the original embedded build ID and is a post-route
+experimental envelope, not a new producer seal. Strict historical Python
+and FogCast Go package readers agree on its identities.
+
+The selected candidate was tested on Kit A through the renewed lease and
+volatile development-core API, for 200 seconds per load on the same boot:
+
+| Run | Package | SDRAM patterns | Errors | ADDR / INVR | HPS DDR P0/P1/P2 |
+| --- | --- | --- | ---: | ---: | --- |
+| 1 | 435 ps candidate | 6/6 PASS | 0 | 0 / 0 | PASS / PASS / PASS |
+| 2 | Original failing control | 6/6 FAIL | 480 | 264 / 216 | PASS / PASS / PASS |
+| 3 | 435 ps candidate again | 6/6 PASS | 0 | 0 / 0 | PASS / PASS / PASS |
+
+Both 120-second and final 200-second captures show these completed results.
+The control's first/last fault addresses were `003F7000`/`02FF2003`; all constant
+patterns and HPS checks had zero errors. Package, build ID, ABI and volatile
+mode were attested at each checkpoint. Final Stop/release left the target
+**idle/free**, with boot, runtime and image health identical to the start.
+
+- [Candidate first pass](margin-pass-first.png)
+- [Original failing control](margin-failing-control.png)
+- [Candidate repeat pass](margin-pass-repeat.png)
+
+The seed-1 timeout exposed a missing diagnostic receipt. Future timeouts now
+write `timeout-receipt.json`, return 124 and explicitly report no final timing
+result. An actual compiler run with `--timeout-seconds 1` verifies the receipt,
+input/log hashes and absence of an RBF. The study's original seed-1 run used
+the earlier helper; its raw timeout and last intermediate result are retained
+separately, without manufacturing a completed build receipt.
+
+`margin-reference.json` retains every result, original per-build receipts,
+the normalized routing comparison, package identities, decoded observations,
+API/capture hashes and cleanup. Raw evidence is under
+`/tmp/nextpnr-135-investigation/margin500-seed{1,2,3}`,
+`hardware-margin500-package`, `hil-margin500-kita` and `margin-timeout-smoke`
+on powerboat. Only the diagnostic helper changed in this study; the compiler
+binary was the previously verified HPS timing fix.
+
+This establishes a hardware-passing 100 MHz candidate with more setup margin.
+The 500 ps target, closure across seeds, complete SDRAM board/PVT timing,
+production FES integration and 130 MHz remain unfinished.

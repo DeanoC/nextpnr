@@ -1,0 +1,2264 @@
+{
+  "classification": "Bounded three-seed native-address optimization study, not complete SDRAM board signoff",
+  "requested_setup_margin_ps": 500,
+  "analogue_rounds": 5,
+  "compiler_timeout_seconds": 1200,
+  "seeds": {
+    "1": {
+      "status": "timeout",
+      "runner_returncode": 1,
+      "compiler_returncode": null,
+      "final_timing_result_available": false,
+      "last_intermediate_setup_wns_ns": -0.652,
+      "command": [
+        "/tmp/nextpnr-135-build/nextpnr-mistral",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/tmp/nextpnr-135-investigation/margin500-seed1/synth.json",
+        "--qsf",
+        "/tmp/nextpnr-135-investigation/margin500-seed1/pins.qsf",
+        "--sdc",
+        "/tmp/nextpnr-135-investigation/margin500-seed1/address.sdc",
+        "--freq",
+        "74.25",
+        "--router",
+        "gpu",
+        "--seed",
+        "1",
+        "--compress-rbf",
+        "--write",
+        "/tmp/nextpnr-135-investigation/margin500-seed1/final.json",
+        "--report",
+        "/tmp/nextpnr-135-investigation/margin500-seed1/timing.json",
+        "--detailed-timing-report",
+        "--timing-report-paths",
+        "128",
+        "--rbf",
+        "/tmp/nextpnr-135-investigation/margin500-seed1/core.rbf",
+        "--gpu-cpu",
+        "--gpu-opt",
+        "analogueSlack=500",
+        "--gpu-opt",
+        "analogueRipSlack=500",
+        "--gpu-opt",
+        "analogueRounds=5"
+      ],
+      "file_sha256": {
+        "runner-source.py": "8dbedd7f87718a79c056ee57fac3dbf5757d66dfd8dae928c1cf0e6bb8221366",
+        "synth.json": "efe83d370d7d185053a0c446989ee7ffd52277f65da0b3dbe928c714f1be9a0d",
+        "pins.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+        "address.sdc": "8693f1b180752d02241f830406a0740d9565a09702cb02011ebcc0d5d3fa59d1",
+        "command.json": "18ed92c9db6cde1ad6835ba2c31be6a276cc59035b63cb57018df9e845ae2965",
+        "build.log": "83b95d41fdb23a29eb7ae37290d5958cc5130b1cfd8d0f0f1e51382630d743f1"
+      },
+      "runner_log_sha256": "1856223e465295ced4494ecc956ef61c043d45c420252bfa1b2961c0496da02a"
+    },
+    "2": {
+      "status": "complete",
+      "receipt_sha256": "b642b963e697886b23a4e8bb0fb886f23a3f9e9b7aa25efbe3e5df3c33297d38",
+      "receipt": {
+        "classification": "fresh constrained pack/place/route; native address optimization, not board signoff",
+        "source_root": "/home/deano/fes/out/dev/pr485-160994a0/fes/out/work/misteross-6c459fda396215fda6ac01e7125584d0cdf564b2/sources/misteross",
+        "seed": 2,
+        "router": "gpu",
+        "gpu_cpu": true,
+        "command": [
+          "/tmp/nextpnr-135-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-135-investigation/margin500-seed2/synth.json",
+          "--qsf",
+          "/tmp/nextpnr-135-investigation/margin500-seed2/pins.qsf",
+          "--sdc",
+          "/tmp/nextpnr-135-investigation/margin500-seed2/address.sdc",
+          "--freq",
+          "74.25",
+          "--router",
+          "gpu",
+          "--seed",
+          "2",
+          "--compress-rbf",
+          "--write",
+          "/tmp/nextpnr-135-investigation/margin500-seed2/final.json",
+          "--report",
+          "/tmp/nextpnr-135-investigation/margin500-seed2/timing.json",
+          "--detailed-timing-report",
+          "--timing-report-paths",
+          "128",
+          "--rbf",
+          "/tmp/nextpnr-135-investigation/margin500-seed2/core.rbf",
+          "--gpu-cpu",
+          "--gpu-opt",
+          "analogueSlack=500",
+          "--gpu-opt",
+          "analogueRipSlack=500",
+          "--gpu-opt",
+          "analogueRounds=5"
+        ],
+        "nextpnr_sha256": "a324ae4579225e76e1fb5544a2db4da20e1525c35784b891be32aaef1f8bf242",
+        "script_sha256": "8dbedd7f87718a79c056ee57fac3dbf5757d66dfd8dae928c1cf0e6bb8221366",
+        "elapsed_seconds": 351.1936037838459,
+        "compiler_returncode": 0,
+        "all_address_targets_met": true,
+        "complete_timing_pass": true,
+        "requested_setup_margin_ps": 500.0,
+        "analogue_rounds": 5,
+        "setup_margin_target_met": false,
+        "address": {
+          "0": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD",
+            "net": "sdram.sdram_a[0]",
+            "arrival_ns": [
+              2.2899999618530273,
+              2.63700008392334
+            ],
+            "setup_margin_ns": 3.86299991607666,
+            "hold_margin_ns": 2.2899999618530273
+          },
+          "1": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_1",
+            "net": "sdram.sdram_a[1]",
+            "arrival_ns": [
+              3.937999963760376,
+              4.645999908447266
+            ],
+            "setup_margin_ns": 1.8540000915527344,
+            "hold_margin_ns": 3.937999963760376
+          },
+          "10": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_10",
+            "net": "sdram.sdram_a[10]",
+            "arrival_ns": [
+              4.794000148773193,
+              5.815000057220459
+            ],
+            "setup_margin_ns": 0.684999942779541,
+            "hold_margin_ns": 4.794000148773193
+          },
+          "11": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_11",
+            "net": "sdram.sdram_a[11]",
+            "arrival_ns": [
+              2.73799991607666,
+              3.3440001010894775
+            ],
+            "setup_margin_ns": 3.1559998989105225,
+            "hold_margin_ns": 2.73799991607666
+          },
+          "12": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_12",
+            "net": "sdram.sdram_a[12]",
+            "arrival_ns": [
+              4.079999923706055,
+              4.877999782562256
+            ],
+            "setup_margin_ns": 1.6220002174377441,
+            "hold_margin_ns": 4.079999923706055
+          },
+          "2": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_2",
+            "net": "sdram.sdram_a[2]",
+            "arrival_ns": [
+              2.372999906539917,
+              2.7690000534057617
+            ],
+            "setup_margin_ns": 3.7309999465942383,
+            "hold_margin_ns": 2.372999906539917
+          },
+          "3": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_3",
+            "net": "sdram.sdram_a[3]",
+            "arrival_ns": [
+              2.361999988555908,
+              2.7809998989105225
+            ],
+            "setup_margin_ns": 3.7190001010894775,
+            "hold_margin_ns": 2.361999988555908
+          },
+          "4": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_4",
+            "net": "sdram.sdram_a[4]",
+            "arrival_ns": [
+              2.13700008392334,
+              2.4539999961853027
+            ],
+            "setup_margin_ns": 4.046000003814697,
+            "hold_margin_ns": 2.13700008392334
+          },
+          "5": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_5",
+            "net": "sdram.sdram_a[5]",
+            "arrival_ns": [
+              3.559000015258789,
+              4.080999851226807
+            ],
+            "setup_margin_ns": 2.4190001487731934,
+            "hold_margin_ns": 3.559000015258789
+          },
+          "6": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_6",
+            "net": "sdram.sdram_a[6]",
+            "arrival_ns": [
+              3.561000108718872,
+              4.0370001792907715
+            ],
+            "setup_margin_ns": 2.4629998207092285,
+            "hold_margin_ns": 3.561000108718872
+          },
+          "7": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_7",
+            "net": "sdram.sdram_a[7]",
+            "arrival_ns": [
+              3.752000093460083,
+              4.480000019073486
+            ],
+            "setup_margin_ns": 2.0199999809265137,
+            "hold_margin_ns": 3.752000093460083
+          },
+          "8": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_8",
+            "net": "sdram.sdram_a[8]",
+            "arrival_ns": [
+              3.2200000286102295,
+              3.634999990463257
+            ],
+            "setup_margin_ns": 2.865000009536743,
+            "hold_margin_ns": 3.2200000286102295
+          },
+          "9": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_9",
+            "net": "sdram.sdram_a[9]",
+            "arrival_ns": [
+              4.323999881744385,
+              5.291999816894531
+            ],
+            "setup_margin_ns": 1.2080001831054688,
+            "hold_margin_ns": 4.323999881744385
+          }
+        },
+        "timing_summary": {
+          "clocks": {
+            "display.pixel_clk": {
+              "hold_wns_ns": 0.4099999964237213,
+              "setup_wns_ns": 2.322000026702881
+            },
+            "ram_clock.clocks[0]": {
+              "hold_wns_ns": 0.4180000126361847,
+              "setup_wns_ns": 0.4350000023841858
+            },
+            "ram_clock.clocks[1]": {
+              "hold_wns_ns": 5.431000232696533,
+              "setup_wns_ns": 2.7160000801086426
+            }
+          },
+          "final_analogue_model": true
+        },
+        "core_rbf_sha256": "a9ec99435c4a858443ca320b278fcdcb84d530756df99f95dbf0d642dcbec421",
+        "core_rbf_bytes": 2189710,
+        "file_sha256": {
+          "runner-source.py": "8dbedd7f87718a79c056ee57fac3dbf5757d66dfd8dae928c1cf0e6bb8221366",
+          "synth.json": "efe83d370d7d185053a0c446989ee7ffd52277f65da0b3dbe928c714f1be9a0d",
+          "pins.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+          "address.sdc": "8693f1b180752d02241f830406a0740d9565a09702cb02011ebcc0d5d3fa59d1",
+          "command.json": "3a4f009ccc95e70ba822aef323b5b003f522d0fd2cbb58dc802f4e30c90f61fe",
+          "final.json": "4589e6ea9a1ba1d4f8fd42b7a86454a3fa80a2dad00a30aa1dcd3292de022677",
+          "timing.json": "7d243ffd62899558e60cdaf7df63d3013809b00a53530965c06af06ba28e57b6",
+          "build.log": "f7d2f4dc4017f8c329f85fcdcb4c206b5d15fcb3575e58e23f335f1ef63f3cf8"
+        },
+        "limits": [
+          "All placement and routing are newly generated; no route-only causal isolation.",
+          "6.5 ns is an empirical native GPIO optimization target, not a complete chip-pin budget.",
+          "Uncharacterized pad/package/board and HPS minimum-delay qualifications remain separate.",
+          "Hardware validation is required for this new artifact."
+        ]
+      }
+    },
+    "3": {
+      "status": "complete",
+      "receipt_sha256": "76ffce60be071b9ecf1ab3c93d4fe6760aa0fc7e7c6f486f6ac9662714bca012",
+      "receipt": {
+        "classification": "fresh constrained pack/place/route; native address optimization, not board signoff",
+        "source_root": "/home/deano/fes/out/dev/pr485-160994a0/fes/out/work/misteross-6c459fda396215fda6ac01e7125584d0cdf564b2/sources/misteross",
+        "seed": 3,
+        "router": "gpu",
+        "gpu_cpu": true,
+        "command": [
+          "/tmp/nextpnr-135-build/nextpnr-mistral",
+          "--device",
+          "5CSEBA6U23I7",
+          "--json",
+          "/tmp/nextpnr-135-investigation/margin500-seed3/synth.json",
+          "--qsf",
+          "/tmp/nextpnr-135-investigation/margin500-seed3/pins.qsf",
+          "--sdc",
+          "/tmp/nextpnr-135-investigation/margin500-seed3/address.sdc",
+          "--freq",
+          "74.25",
+          "--router",
+          "gpu",
+          "--seed",
+          "3",
+          "--compress-rbf",
+          "--write",
+          "/tmp/nextpnr-135-investigation/margin500-seed3/final.json",
+          "--report",
+          "/tmp/nextpnr-135-investigation/margin500-seed3/timing.json",
+          "--detailed-timing-report",
+          "--timing-report-paths",
+          "128",
+          "--rbf",
+          "/tmp/nextpnr-135-investigation/margin500-seed3/core.rbf",
+          "--gpu-cpu",
+          "--gpu-opt",
+          "analogueSlack=500",
+          "--gpu-opt",
+          "analogueRipSlack=500",
+          "--gpu-opt",
+          "analogueRounds=5"
+        ],
+        "nextpnr_sha256": "a324ae4579225e76e1fb5544a2db4da20e1525c35784b891be32aaef1f8bf242",
+        "script_sha256": "8dbedd7f87718a79c056ee57fac3dbf5757d66dfd8dae928c1cf0e6bb8221366",
+        "elapsed_seconds": 1061.6545802969486,
+        "compiler_returncode": 1,
+        "all_address_targets_met": true,
+        "complete_timing_pass": false,
+        "requested_setup_margin_ps": 500.0,
+        "analogue_rounds": 5,
+        "setup_margin_target_met": false,
+        "address": {
+          "0": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD",
+            "net": "sdram.sdram_a[0]",
+            "arrival_ns": [
+              2.569999933242798,
+              3.0390000343322754
+            ],
+            "setup_margin_ns": 3.4609999656677246,
+            "hold_margin_ns": 2.569999933242798
+          },
+          "1": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_1",
+            "net": "sdram.sdram_a[1]",
+            "arrival_ns": [
+              3.568000078201294,
+              4.117000102996826
+            ],
+            "setup_margin_ns": 2.382999897003174,
+            "hold_margin_ns": 3.568000078201294
+          },
+          "10": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_10",
+            "net": "sdram.sdram_a[10]",
+            "arrival_ns": [
+              4.854000091552734,
+              5.952000141143799
+            ],
+            "setup_margin_ns": 0.5479998588562012,
+            "hold_margin_ns": 4.854000091552734
+          },
+          "11": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_11",
+            "net": "sdram.sdram_a[11]",
+            "arrival_ns": [
+              2.688999891281128,
+              3.2290000915527344
+            ],
+            "setup_margin_ns": 3.2709999084472656,
+            "hold_margin_ns": 2.688999891281128
+          },
+          "12": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_12",
+            "net": "sdram.sdram_a[12]",
+            "arrival_ns": [
+              3.996000051498413,
+              4.8520002365112305
+            ],
+            "setup_margin_ns": 1.6479997634887695,
+            "hold_margin_ns": 3.996000051498413
+          },
+          "2": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_2",
+            "net": "sdram.sdram_a[2]",
+            "arrival_ns": [
+              2.3239998817443848,
+              2.677000045776367
+            ],
+            "setup_margin_ns": 3.822999954223633,
+            "hold_margin_ns": 2.3239998817443848
+          },
+          "3": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_3",
+            "net": "sdram.sdram_a[3]",
+            "arrival_ns": [
+              2.6649999618530273,
+              3.2209999561309814
+            ],
+            "setup_margin_ns": 3.2790000438690186,
+            "hold_margin_ns": 2.6649999618530273
+          },
+          "4": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_4",
+            "net": "sdram.sdram_a[4]",
+            "arrival_ns": [
+              2.368000030517578,
+              2.74399995803833
+            ],
+            "setup_margin_ns": 3.75600004196167,
+            "hold_margin_ns": 2.368000030517578
+          },
+          "5": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_5",
+            "net": "sdram.sdram_a[5]",
+            "arrival_ns": [
+              3.625,
+              4.4029998779296875
+            ],
+            "setup_margin_ns": 2.0970001220703125,
+            "hold_margin_ns": 3.625
+          },
+          "6": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_6",
+            "net": "sdram.sdram_a[6]",
+            "arrival_ns": [
+              3.2950000762939453,
+              3.7950000762939453
+            ],
+            "setup_margin_ns": 2.7049999237060547,
+            "hold_margin_ns": 3.2950000762939453
+          },
+          "7": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_7",
+            "net": "sdram.sdram_a[7]",
+            "arrival_ns": [
+              3.3269999027252197,
+              3.7820000648498535
+            ],
+            "setup_margin_ns": 2.7179999351501465,
+            "hold_margin_ns": 3.3269999027252197
+          },
+          "8": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_8",
+            "net": "sdram.sdram_a[8]",
+            "arrival_ns": [
+              2.9649999141693115,
+              3.365000009536743
+            ],
+            "setup_margin_ns": 3.134999990463257,
+            "hold_margin_ns": 2.9649999141693115
+          },
+          "9": {
+            "cell": "SDRAM_A_MISTRAL_OB_PAD_9",
+            "net": "sdram.sdram_a[9]",
+            "arrival_ns": [
+              4.118000030517578,
+              4.993000030517578
+            ],
+            "setup_margin_ns": 1.5069999694824219,
+            "hold_margin_ns": 4.118000030517578
+          }
+        },
+        "timing_summary": {
+          "clocks": {
+            "display.pixel_clk": {
+              "hold_wns_ns": 0.4180000126361847,
+              "setup_wns_ns": 2.4730000495910645
+            },
+            "ram_clock.clocks[0]": {
+              "hold_wns_ns": 0.4129999876022339,
+              "setup_wns_ns": -0.8619999885559082
+            },
+            "ram_clock.clocks[1]": {
+              "hold_wns_ns": 5.485000133514404,
+              "setup_wns_ns": 2.936000108718872
+            }
+          },
+          "final_analogue_model": true
+        },
+        "core_rbf_sha256": "5f60dd16e0fe9b06e026231e29e9dfd7d78785796390699df01889d70d8dd753",
+        "core_rbf_bytes": 2174547,
+        "file_sha256": {
+          "runner-source.py": "8dbedd7f87718a79c056ee57fac3dbf5757d66dfd8dae928c1cf0e6bb8221366",
+          "synth.json": "efe83d370d7d185053a0c446989ee7ffd52277f65da0b3dbe928c714f1be9a0d",
+          "pins.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+          "address.sdc": "8693f1b180752d02241f830406a0740d9565a09702cb02011ebcc0d5d3fa59d1",
+          "command.json": "98ffd178f68fa180561bf5f7cb4a8fd932b718c0d62870c8aac5fc432e1e54c9",
+          "final.json": "2315d91c91a8597f03e6960f714798c259195117b350fa20460f145fa0fddc4a",
+          "timing.json": "c44d7f3f3b932e2bcde4c2f0cc13e100c49bdcae5ea637eeed0df1cfdd3b3b32",
+          "build.log": "30c0e34f89ad8696405bba0464fea67a15e5e165a302c670e44034f50df34f4c"
+        },
+        "limits": [
+          "All placement and routing are newly generated; no route-only causal isolation.",
+          "6.5 ns is an empirical native GPIO optimization target, not a complete chip-pin budget.",
+          "Uncharacterized pad/package/board and HPS minimum-delay qualifications remain separate.",
+          "Hardware validation is required for this new artifact."
+        ]
+      }
+    }
+  },
+  "selected_seed": 2,
+  "baseline": {
+    "classification": "fresh constrained pack/place/route; native address optimization, not board signoff",
+    "source_root": "/home/deano/fes/out/dev/pr485-160994a0/fes/out/work/misteross-6c459fda396215fda6ac01e7125584d0cdf564b2/sources/misteross",
+    "seed": 2,
+    "router": "gpu",
+    "gpu_cpu": true,
+    "command": [
+      "/tmp/nextpnr-135-build/nextpnr-mistral",
+      "--device",
+      "5CSEBA6U23I7",
+      "--json",
+      "/tmp/nextpnr-135-investigation/normal-address-hold-fixed/synth.json",
+      "--qsf",
+      "/tmp/nextpnr-135-investigation/normal-address-hold-fixed/pins.qsf",
+      "--sdc",
+      "/tmp/nextpnr-135-investigation/normal-address-hold-fixed/address.sdc",
+      "--freq",
+      "74.25",
+      "--router",
+      "gpu",
+      "--seed",
+      "2",
+      "--compress-rbf",
+      "--write",
+      "/tmp/nextpnr-135-investigation/normal-address-hold-fixed/final.json",
+      "--report",
+      "/tmp/nextpnr-135-investigation/normal-address-hold-fixed/timing.json",
+      "--detailed-timing-report",
+      "--timing-report-paths",
+      "128",
+      "--rbf",
+      "/tmp/nextpnr-135-investigation/normal-address-hold-fixed/core.rbf",
+      "--gpu-cpu"
+    ],
+    "nextpnr_sha256": "a324ae4579225e76e1fb5544a2db4da20e1525c35784b891be32aaef1f8bf242",
+    "script_sha256": "2da4a24cdcb9f89ea023ce2ee4d9a766a1ac8514bd66783e1fc6a63d5a4c5cf3",
+    "elapsed_seconds": 392.6082234438509,
+    "compiler_returncode": 0,
+    "all_address_targets_met": true,
+    "complete_timing_pass": true,
+    "address": {
+      "0": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD",
+        "net": "sdram.sdram_a[0]",
+        "arrival_ns": [
+          2.2899999618530273,
+          2.63700008392334
+        ],
+        "setup_margin_ns": 3.86299991607666,
+        "hold_margin_ns": 2.2899999618530273
+      },
+      "1": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_1",
+        "net": "sdram.sdram_a[1]",
+        "arrival_ns": [
+          3.937999963760376,
+          4.645999908447266
+        ],
+        "setup_margin_ns": 1.8540000915527344,
+        "hold_margin_ns": 3.937999963760376
+      },
+      "10": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_10",
+        "net": "sdram.sdram_a[10]",
+        "arrival_ns": [
+          4.794000148773193,
+          5.815000057220459
+        ],
+        "setup_margin_ns": 0.684999942779541,
+        "hold_margin_ns": 4.794000148773193
+      },
+      "11": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_11",
+        "net": "sdram.sdram_a[11]",
+        "arrival_ns": [
+          2.73799991607666,
+          3.3440001010894775
+        ],
+        "setup_margin_ns": 3.1559998989105225,
+        "hold_margin_ns": 2.73799991607666
+      },
+      "12": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_12",
+        "net": "sdram.sdram_a[12]",
+        "arrival_ns": [
+          4.079999923706055,
+          4.877999782562256
+        ],
+        "setup_margin_ns": 1.6220002174377441,
+        "hold_margin_ns": 4.079999923706055
+      },
+      "2": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_2",
+        "net": "sdram.sdram_a[2]",
+        "arrival_ns": [
+          2.372999906539917,
+          2.7690000534057617
+        ],
+        "setup_margin_ns": 3.7309999465942383,
+        "hold_margin_ns": 2.372999906539917
+      },
+      "3": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_3",
+        "net": "sdram.sdram_a[3]",
+        "arrival_ns": [
+          2.361999988555908,
+          2.7809998989105225
+        ],
+        "setup_margin_ns": 3.7190001010894775,
+        "hold_margin_ns": 2.361999988555908
+      },
+      "4": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_4",
+        "net": "sdram.sdram_a[4]",
+        "arrival_ns": [
+          2.13700008392334,
+          2.4539999961853027
+        ],
+        "setup_margin_ns": 4.046000003814697,
+        "hold_margin_ns": 2.13700008392334
+      },
+      "5": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_5",
+        "net": "sdram.sdram_a[5]",
+        "arrival_ns": [
+          3.559000015258789,
+          4.080999851226807
+        ],
+        "setup_margin_ns": 2.4190001487731934,
+        "hold_margin_ns": 3.559000015258789
+      },
+      "6": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_6",
+        "net": "sdram.sdram_a[6]",
+        "arrival_ns": [
+          3.561000108718872,
+          4.0370001792907715
+        ],
+        "setup_margin_ns": 2.4629998207092285,
+        "hold_margin_ns": 3.561000108718872
+      },
+      "7": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_7",
+        "net": "sdram.sdram_a[7]",
+        "arrival_ns": [
+          3.752000093460083,
+          4.480000019073486
+        ],
+        "setup_margin_ns": 2.0199999809265137,
+        "hold_margin_ns": 3.752000093460083
+      },
+      "8": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_8",
+        "net": "sdram.sdram_a[8]",
+        "arrival_ns": [
+          3.2200000286102295,
+          3.634999990463257
+        ],
+        "setup_margin_ns": 2.865000009536743,
+        "hold_margin_ns": 3.2200000286102295
+      },
+      "9": {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_9",
+        "net": "sdram.sdram_a[9]",
+        "arrival_ns": [
+          4.323999881744385,
+          5.291999816894531
+        ],
+        "setup_margin_ns": 1.2080001831054688,
+        "hold_margin_ns": 4.323999881744385
+      }
+    },
+    "timing_summary": {
+      "clocks": {
+        "display.pixel_clk": {
+          "hold_wns_ns": 0.4099999964237213,
+          "setup_wns_ns": 2.322000026702881
+        },
+        "ram_clock.clocks[0]": {
+          "hold_wns_ns": 0.4180000126361847,
+          "setup_wns_ns": 0.03200000151991844
+        },
+        "ram_clock.clocks[1]": {
+          "hold_wns_ns": 5.431000232696533,
+          "setup_wns_ns": 2.7160000801086426
+        }
+      },
+      "final_analogue_model": true
+    },
+    "core_rbf_sha256": "d1e5b33a42d99714f88365b579c594a01b0897cbc6031a133d0ef1ee99f7dc43",
+    "core_rbf_bytes": 2189677,
+    "file_sha256": {
+      "runner-source.py": "2da4a24cdcb9f89ea023ce2ee4d9a766a1ac8514bd66783e1fc6a63d5a4c5cf3",
+      "synth.json": "efe83d370d7d185053a0c446989ee7ffd52277f65da0b3dbe928c714f1be9a0d",
+      "pins.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+      "address.sdc": "8693f1b180752d02241f830406a0740d9565a09702cb02011ebcc0d5d3fa59d1",
+      "command.json": "f4d91c923e2e319b9fb97d50f7129d0b7a509e9442c2dc83b42df3b0ad9d7344",
+      "final.json": "01669891908bba6f06fc84696ae466847f9a3247628b3c1a6e4fda23b67c0596",
+      "timing.json": "3d7ae456a754fd6d614fdd373b469fd850693db60e191f8aeb5b60e0c2bae486",
+      "build.log": "d3ff57ca0d64e6b4892f95615219204788f6c9dfde2889f9c3cd0b12e6790312"
+    },
+    "limits": [
+      "All placement and routing are newly generated; no route-only causal isolation.",
+      "6.5 ns is an empirical native GPIO optimization target, not a complete chip-pin budget.",
+      "Uncharacterized pad/package/board and HPS minimum-delay qualifications remain separate.",
+      "Hardware validation is required for this new artifact."
+    ]
+  },
+  "routing_comparison": {
+    "cell_count": 20104,
+    "logic_changed": [],
+    "bels_changed": [],
+    "changed_routes": [
+      "$PACKER_GND_NET",
+      "$PACKER_VCC_NET",
+      "ddr0_address[18]",
+      "ddr0_burst[0]",
+      "ddr0_burst[6]",
+      "ddr0_burst_MISTRAL_FF_Q_ENA_MISTRAL_ALUT6_Q_D[0]",
+      "ddr0_burst_MISTRAL_FF_Q_ENA_MISTRAL_ALUT6_Q_F[0]",
+      "ddr0_burst_MISTRAL_FF_Q_ENA_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT4_D_Q[4]",
+      "ddr0_rdata[17]",
+      "ddr0_read_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q_F[1]",
+      "ddr0_read_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q_F[3]",
+      "ddr0_read_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q_F[5]",
+      "ddr0_read_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT6_Q_F[1]",
+      "ddr0_read_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q_E[3]",
+      "ddr0_status[295]",
+      "ddr0_status[296]",
+      "ddr0_status[297]",
+      "ddr0_status_MISTRAL_FF_Q_173_DATAIN",
+      "ddr0_status_MISTRAL_FF_Q_29_DATAIN_MISTRAL_ALUT3_Q_B[2]",
+      "ddr0_status_MISTRAL_FF_Q_73_DATAIN_MISTRAL_ALUT4_Q_C_MISTRAL_FF_Q_DATAIN_MISTRAL_NOT_Q_A_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO[1]",
+      "ddr0_status_MISTRAL_FF_Q_73_DATAIN_MISTRAL_ALUT4_Q_C_MISTRAL_FF_Q_DATAIN_MISTRAL_NOT_Q_A_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO[3]",
+      "ddr0_status_MISTRAL_FF_Q_73_DATAIN_MISTRAL_ALUT4_Q_C_MISTRAL_FF_Q_DATAIN_MISTRAL_NOT_Q_A_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_19_CI_MISTRAL_ALUT_ARITH_CO_B_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT2_B_1_Q[3]",
+      "ddr0_status_MISTRAL_FF_Q_73_DATAIN_MISTRAL_ALUT4_Q_C_MISTRAL_FF_Q_DATAIN_MISTRAL_NOT_Q_A_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_19_CI_MISTRAL_ALUT_ARITH_CO_B_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT2_B_3_Q_MISTRAL_ALUT5_D_Q[2]",
+      "ddr0_stopped_MISTRAL_ALUT6_E_Q[5]",
+      "ddr0_test.beats_left_MISTRAL_FF_Q_4_DATAIN_MISTRAL_ALUT3_Q_C[1]",
+      "ddr0_test.beats_left_MISTRAL_FF_Q_5_DATAIN_MISTRAL_ALUT3_Q_C[1]",
+      "ddr0_test.beats_left_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO[1]",
+      "ddr0_test.burst[0]",
+      "ddr0_test.cmd_addr_MISTRAL_FF_Q_11_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO[0]",
+      "ddr0_test.cmd_addr_MISTRAL_FF_Q_11_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO[2]",
+      "ddr0_test.cmd_addr_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT2_Q_B[1]",
+      "ddr0_test.cmd_addr_MISTRAL_FF_Q_21_DATAIN_MISTRAL_ALUT2_Q_B[1]",
+      "ddr0_test.cmd_addr_MISTRAL_FF_Q_22_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO[0]",
+      "ddr0_test.diff[3]",
+      "ddr0_test.diff_MISTRAL_FF_Q_52_DATAIN",
+      "ddr0_test.expected_MISTRAL_FF_Q_10_DATAIN_MISTRAL_ALUT5_Q_C[4]",
+      "ddr0_test.expected_MISTRAL_FF_Q_10_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT2_A_Q[1]",
+      "ddr0_test.expected_MISTRAL_FF_Q_113_DATAIN_MISTRAL_ALUT6_Q_E[3]",
+      "ddr0_test.expected_MISTRAL_FF_Q_37_DATAIN_MISTRAL_ALUT6_Q_F[0]",
+      "ddr0_test.expected_MISTRAL_FF_Q_60_DATAIN_MISTRAL_ALUT5_Q_D[2]",
+      "ddr0_test.expected_MISTRAL_FF_Q_93_DATAIN_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT4_Q_D[1]",
+      "ddr0_test.group_addr[0]",
+      "ddr0_test.group_addr[15]",
+      "ddr0_test.in_flight[4]",
+      "ddr0_test.next_addr[13]",
+      "ddr0_test.next_addr[14]",
+      "ddr0_test.next_addr[18]",
+      "ddr0_test.next_addr[27]",
+      "ddr0_test.next_addr[31]",
+      "ddr0_test.pass_end_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q_D[1]",
+      "ddr0_test.read_next[24]",
+      "ddr0_test.read_room_limit[5]",
+      "ddr0_test.write_cycles[14]",
+      "ddr0_test.writedata[100]",
+      "ddr0_test.writedata[115]",
+      "ddr0_test.writedata[5]",
+      "ddr0_test.writedata[83]",
+      "ddr0_test.writedata_MISTRAL_FF_Q_103_DATAIN_MISTRAL_ALUT6_Q_F[2]",
+      "ddr0_test.writedata_MISTRAL_FF_Q_107_DATAIN",
+      "ddr1_address[2]",
+      "ddr1_be_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT3_Q_B[1]",
+      "ddr1_be_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT3_Q_B[3]",
+      "ddr1_be_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT5_C_Q[2]",
+      "ddr1_be_MISTRAL_FF_Q_5_DATAIN_MISTRAL_ALUT2_Q_B[0]",
+      "ddr1_be_MISTRAL_FF_Q_5_DATAIN_MISTRAL_ALUT2_Q_B[1]",
+      "ddr1_burst[0]",
+      "ddr1_burst_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q_D[3]",
+      "ddr1_rdata[19]",
+      "ddr1_rdata[27]",
+      "ddr1_rdata[55]",
+      "ddr1_read_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q_E[3]",
+      "ddr1_status[286]",
+      "ddr1_status[295]",
+      "ddr1_status[297]",
+      "ddr1_status_MISTRAL_FF_Q_137_DATAIN_MISTRAL_ALUT4_Q_C_MISTRAL_FF_Q_DATAIN_MISTRAL_NOT_Q_A_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT_ARITH_SO_22_CI_MISTRAL_ALUT_ARITH_CO_B_MISTRAL_FF_DATAIN_Q",
+      "ddr1_status_MISTRAL_FF_Q_167_DATAIN",
+      "ddr1_test.beats_left_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT3_Q_C[0]",
+      "ddr1_test.beats_left_MISTRAL_FF_Q_7_DATAIN_MISTRAL_ALUT3_Q_C[1]",
+      "ddr1_test.cmd_end_MISTRAL_ALUT2_A_Q[1]",
+      "ddr1_test.diff[50]",
+      "ddr1_test.diff[55]",
+      "ddr1_test.diff[62]",
+      "ddr1_test.drain_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_NOT_A_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT4_D_Q[2]",
+      "ddr1_test.expected_MISTRAL_FF_Q_34_DATAIN_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_C[2]",
+      "ddr1_test.group_addr[3]",
+      "ddr1_test.group_diff[20]",
+      "ddr1_test.next_addr[11]",
+      "ddr1_test.next_addr[13]",
+      "ddr1_test.next_addr[14]",
+      "ddr1_test.next_addr[17]",
+      "ddr1_test.next_addr[31]",
+      "ddr1_test.next_addr[5]",
+      "ddr1_test.next_addr[8]",
+      "ddr1_test.pass_cycles[25]",
+      "ddr1_test.state_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_E_D_MISTRAL_ALUT2_A_Q[2]",
+      "ddr1_test.write_MISTRAL_ALUT5_D_Q[1]",
+      "ddr1_test.writedata_MISTRAL_FF_Q_13_DATAIN_MISTRAL_ALUT5_Q_B[4]",
+      "ddr2_be_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT3_Q_B[0]",
+      "ddr2_be_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT3_Q_B[2]",
+      "ddr2_be_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT3_B_Q[1]",
+      "ddr2_be_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT3_B_Q[2]",
+      "ddr2_nack",
+      "ddr2_rdata[20]",
+      "ddr2_rdata[23]",
+      "ddr2_rdata[58]",
+      "ddr2_read_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q_F[0]",
+      "ddr2_status[295]",
+      "ddr2_status[296]",
+      "ddr2_status[297]",
+      "ddr2_status[32]",
+      "ddr2_status_MISTRAL_FF_Q_119_DATAIN",
+      "ddr2_status_MISTRAL_FF_Q_173_DATAIN",
+      "ddr2_status_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT4_Q_C_MISTRAL_FF_Q_DATAIN_MISTRAL_NOT_Q_A_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_NOT_A_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_A_E[3]",
+      "ddr2_status_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT4_Q_C_MISTRAL_FF_Q_DATAIN_MISTRAL_NOT_Q_A_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_NOT_A_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_A_Q[1]",
+      "ddr2_status_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT4_Q_C_MISTRAL_FF_Q_DATAIN_MISTRAL_NOT_Q_A_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_NOT_A_Q_MISTRAL_FF_DATAIN_Q",
+      "ddr2_stopped_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_C[0]",
+      "ddr2_stopped_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_C[3]",
+      "ddr2_test.beats_left_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT3_Q_C[1]",
+      "ddr2_test.cmd_addr[26]",
+      "ddr2_test.cmd_addr_MISTRAL_FF_Q_15_DATAIN",
+      "ddr2_test.diff_MISTRAL_FF_Q_37_DATAIN",
+      "ddr2_test.diff_addr[28]",
+      "ddr2_test.expected[50]",
+      "ddr2_test.expected_MISTRAL_FF_Q_10_DATAIN_MISTRAL_ALUT5_Q_E[1]",
+      "ddr2_test.expected_MISTRAL_FF_Q_11_DATAIN_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT5_Q_C[1]",
+      "ddr2_test.expected_MISTRAL_FF_Q_11_DATAIN_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT5_Q_C_MISTRAL_ALUT3_A_Q[1]",
+      "ddr2_test.expected_MISTRAL_FF_Q_13_DATAIN_MISTRAL_ALUT5_Q_E[1]",
+      "ddr2_test.expected_MISTRAL_FF_Q_13_DATAIN_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_C[1]",
+      "ddr2_test.expected_MISTRAL_FF_Q_13_DATAIN_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_C[3]",
+      "ddr2_test.expected_MISTRAL_FF_Q_22_DATAIN_MISTRAL_ALUT5_Q_E[0]",
+      "ddr2_test.expected_MISTRAL_FF_Q_22_DATAIN_MISTRAL_ALUT5_Q_E[3]",
+      "ddr2_test.expected_MISTRAL_FF_Q_22_DATAIN_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_C_MISTRAL_ALUT3_C_1_Q[3]",
+      "ddr2_test.expected_MISTRAL_FF_Q_26_DATAIN_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT6_Q_C[0]",
+      "ddr2_test.expected_MISTRAL_FF_Q_36_DATAIN_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT5_Q_C_MISTRAL_ALUT3_A_1_Q[3]",
+      "ddr2_test.expected_MISTRAL_FF_Q_37_DATAIN_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_B[1]",
+      "ddr2_test.expected_MISTRAL_FF_Q_41_DATAIN_MISTRAL_ALUT6_Q_F[1]",
+      "ddr2_test.expected_MISTRAL_FF_Q_9_DATAIN_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT5_Q_C_MISTRAL_ALUT3_A_1_Q[2]",
+      "ddr2_test.next_addr[23]",
+      "ddr2_test.pass_end_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT6_F_Q[3]",
+      "ddr2_test.read_addr_MISTRAL_NOT_Q_3_A_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q_DATAIN_MISTRAL_NOT_Q_A",
+      "ddr2_test.read_next[4]",
+      "ddr2_test.read_room_limit[9]",
+      "ddr2_test.state_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT4_Q_C[1]",
+      "ddr2_test.state_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT2_B_Q[3]",
+      "ddr2_test.write_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_D_Q[2]",
+      "ddr2_test.writedata[28]",
+      "ddr2_test.writedata[54]",
+      "ddr2_test.writedata_MISTRAL_FF_Q_20_DATAIN_MISTRAL_ALUT3_Q_C[0]",
+      "ddr2_test.writedata_MISTRAL_FF_Q_28_DATAIN_MISTRAL_ALUT5_Q_B[4]",
+      "ddr_speed.adjusted[8]",
+      "ddr_speed.remainder_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT3_Q_B[1]",
+      "ddr_speed.state_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT2_B_Q",
+      "display.ddr0_sync1[173]",
+      "display.ddr1_sync1[213]",
+      "display.ddr1_sync1[283]",
+      "display.ddr2_sync1[173]",
+      "display.port_q_MISTRAL_FF_Q_SCLR[4]",
+      "dq_oe",
+      "dq_out[2]",
+      "endpoint.acknowledged_toggle",
+      "endpoint.gpi_MISTRAL_FF_Q_8_DATAIN_MISTRAL_ALUT5_Q_C_MISTRAL_ALUT4_Q_D[0]",
+      "endpoint.gpo[23]",
+      "endpoint.gpo[4]",
+      "hdmi_scl_in",
+      "hps_ddr.cmd_ready_1",
+      "hps_ddr.command_read1",
+      "hps_ddr.command_read2",
+      "hps_ddr.command_write0",
+      "hps_ddr.command_write2",
+      "hps_ddr.m0_address[10]",
+      "hps_ddr.m0_address[11]",
+      "hps_ddr.m0_address[12]",
+      "hps_ddr.m0_address[13]",
+      "hps_ddr.m0_address[14]",
+      "hps_ddr.m0_address[15]",
+      "hps_ddr.m0_address[16]",
+      "hps_ddr.m0_address[17]",
+      "hps_ddr.m0_address[19]",
+      "hps_ddr.m0_address[1]",
+      "hps_ddr.m0_address[20]",
+      "hps_ddr.m0_address[23]",
+      "hps_ddr.m0_address[25]",
+      "hps_ddr.m0_address[26]",
+      "hps_ddr.m0_address[27]",
+      "hps_ddr.m0_address[2]",
+      "hps_ddr.m0_address[4]",
+      "hps_ddr.m0_address[5]",
+      "hps_ddr.m0_address[6]",
+      "hps_ddr.m0_address[7]",
+      "hps_ddr.m0_address[9]",
+      "hps_ddr.m0_burstcount[0]",
+      "hps_ddr.m0_burstcount[1]",
+      "hps_ddr.m0_burstcount[3]",
+      "hps_ddr.m0_burstcount[4]",
+      "hps_ddr.m0_byteenable[0]",
+      "hps_ddr.m0_byteenable[12]",
+      "hps_ddr.m0_byteenable[15]",
+      "hps_ddr.m0_byteenable[1]",
+      "hps_ddr.m0_byteenable[2]",
+      "hps_ddr.m0_byteenable[3]",
+      "hps_ddr.m0_byteenable[5]",
+      "hps_ddr.m0_byteenable[6]",
+      "hps_ddr.m0_byteenable[9]",
+      "hps_ddr.m0_writedata[100]",
+      "hps_ddr.m0_writedata[101]",
+      "hps_ddr.m0_writedata[102]",
+      "hps_ddr.m0_writedata[103]",
+      "hps_ddr.m0_writedata[105]",
+      "hps_ddr.m0_writedata[10]",
+      "hps_ddr.m0_writedata[110]",
+      "hps_ddr.m0_writedata[111]",
+      "hps_ddr.m0_writedata[113]",
+      "hps_ddr.m0_writedata[114]",
+      "hps_ddr.m0_writedata[115]",
+      "hps_ddr.m0_writedata[116]",
+      "hps_ddr.m0_writedata[117]",
+      "hps_ddr.m0_writedata[118]",
+      "hps_ddr.m0_writedata[121]",
+      "hps_ddr.m0_writedata[122]",
+      "hps_ddr.m0_writedata[123]",
+      "hps_ddr.m0_writedata[125]",
+      "hps_ddr.m0_writedata[126]",
+      "hps_ddr.m0_writedata[14]",
+      "hps_ddr.m0_writedata[15]",
+      "hps_ddr.m0_writedata[16]",
+      "hps_ddr.m0_writedata[21]",
+      "hps_ddr.m0_writedata[24]",
+      "hps_ddr.m0_writedata[25]",
+      "hps_ddr.m0_writedata[26]",
+      "hps_ddr.m0_writedata[28]",
+      "hps_ddr.m0_writedata[2]",
+      "hps_ddr.m0_writedata[30]",
+      "hps_ddr.m0_writedata[31]",
+      "hps_ddr.m0_writedata[32]",
+      "hps_ddr.m0_writedata[34]",
+      "hps_ddr.m0_writedata[35]",
+      "hps_ddr.m0_writedata[36]",
+      "hps_ddr.m0_writedata[37]",
+      "hps_ddr.m0_writedata[38]",
+      "hps_ddr.m0_writedata[40]",
+      "hps_ddr.m0_writedata[41]",
+      "hps_ddr.m0_writedata[44]",
+      "hps_ddr.m0_writedata[45]",
+      "hps_ddr.m0_writedata[47]",
+      "hps_ddr.m0_writedata[49]",
+      "hps_ddr.m0_writedata[50]",
+      "hps_ddr.m0_writedata[52]",
+      "hps_ddr.m0_writedata[55]",
+      "hps_ddr.m0_writedata[57]",
+      "hps_ddr.m0_writedata[59]",
+      "hps_ddr.m0_writedata[5]",
+      "hps_ddr.m0_writedata[60]",
+      "hps_ddr.m0_writedata[61]",
+      "hps_ddr.m0_writedata[63]",
+      "hps_ddr.m0_writedata[65]",
+      "hps_ddr.m0_writedata[66]",
+      "hps_ddr.m0_writedata[67]",
+      "hps_ddr.m0_writedata[68]",
+      "hps_ddr.m0_writedata[69]",
+      "hps_ddr.m0_writedata[6]",
+      "hps_ddr.m0_writedata[73]",
+      "hps_ddr.m0_writedata[75]",
+      "hps_ddr.m0_writedata[77]",
+      "hps_ddr.m0_writedata[78]",
+      "hps_ddr.m0_writedata[7]",
+      "hps_ddr.m0_writedata[81]",
+      "hps_ddr.m0_writedata[82]",
+      "hps_ddr.m0_writedata[83]",
+      "hps_ddr.m0_writedata[84]",
+      "hps_ddr.m0_writedata[85]",
+      "hps_ddr.m0_writedata[86]",
+      "hps_ddr.m0_writedata[87]",
+      "hps_ddr.m0_writedata[89]",
+      "hps_ddr.m0_writedata[91]",
+      "hps_ddr.m0_writedata[94]",
+      "hps_ddr.m0_writedata[98]",
+      "hps_ddr.m0_writedata[9]",
+      "hps_ddr.m0_writedata_MISTRAL_FF_Q_44_DATAIN",
+      "hps_ddr.m0_writedata_MISTRAL_FF_Q_73_DATAIN",
+      "hps_ddr.m0_writedata_MISTRAL_FF_Q_DATAIN",
+      "hps_ddr.m1_address[0]",
+      "hps_ddr.m1_address[10]",
+      "hps_ddr.m1_address[11]",
+      "hps_ddr.m1_address[12]",
+      "hps_ddr.m1_address[13]",
+      "hps_ddr.m1_address[14]",
+      "hps_ddr.m1_address[16]",
+      "hps_ddr.m1_address[17]",
+      "hps_ddr.m1_address[18]",
+      "hps_ddr.m1_address[1]",
+      "hps_ddr.m1_address[24]",
+      "hps_ddr.m1_address[26]",
+      "hps_ddr.m1_address[27]",
+      "hps_ddr.m1_address[28]",
+      "hps_ddr.m1_address[3]",
+      "hps_ddr.m1_address[4]",
+      "hps_ddr.m1_address[5]",
+      "hps_ddr.m1_address[6]",
+      "hps_ddr.m1_address[7]",
+      "hps_ddr.m1_address[8]",
+      "hps_ddr.m1_address[9]",
+      "hps_ddr.m1_address_MISTRAL_FF_Q_16_DATAIN",
+      "hps_ddr.m1_burstcount[0]",
+      "hps_ddr.m1_burstcount[1]",
+      "hps_ddr.m1_burstcount[4]",
+      "hps_ddr.m1_burstcount[5]",
+      "hps_ddr.m1_burstcount[6]",
+      "hps_ddr.m1_byteenable[0]",
+      "hps_ddr.m1_byteenable[1]",
+      "hps_ddr.m1_byteenable[2]",
+      "hps_ddr.m1_byteenable[3]",
+      "hps_ddr.m1_byteenable[5]",
+      "hps_ddr.m1_byteenable[6]",
+      "hps_ddr.m1_byteenable[7]",
+      "hps_ddr.m1_writedata[0]",
+      "hps_ddr.m1_writedata[12]",
+      "hps_ddr.m1_writedata[13]",
+      "hps_ddr.m1_writedata[15]",
+      "hps_ddr.m1_writedata[16]",
+      "hps_ddr.m1_writedata[18]",
+      "hps_ddr.m1_writedata[19]",
+      "hps_ddr.m1_writedata[1]",
+      "hps_ddr.m1_writedata[20]",
+      "hps_ddr.m1_writedata[21]",
+      "hps_ddr.m1_writedata[22]",
+      "hps_ddr.m1_writedata[23]",
+      "hps_ddr.m1_writedata[25]",
+      "hps_ddr.m1_writedata[26]",
+      "hps_ddr.m1_writedata[27]",
+      "hps_ddr.m1_writedata[28]",
+      "hps_ddr.m1_writedata[29]",
+      "hps_ddr.m1_writedata[30]",
+      "hps_ddr.m1_writedata[31]",
+      "hps_ddr.m1_writedata[33]",
+      "hps_ddr.m1_writedata[35]",
+      "hps_ddr.m1_writedata[36]",
+      "hps_ddr.m1_writedata[37]",
+      "hps_ddr.m1_writedata[38]",
+      "hps_ddr.m1_writedata[3]",
+      "hps_ddr.m1_writedata[40]",
+      "hps_ddr.m1_writedata[43]",
+      "hps_ddr.m1_writedata[44]",
+      "hps_ddr.m1_writedata[46]",
+      "hps_ddr.m1_writedata[47]",
+      "hps_ddr.m1_writedata[48]",
+      "hps_ddr.m1_writedata[51]",
+      "hps_ddr.m1_writedata[52]",
+      "hps_ddr.m1_writedata[53]",
+      "hps_ddr.m1_writedata[54]",
+      "hps_ddr.m1_writedata[55]",
+      "hps_ddr.m1_writedata[56]",
+      "hps_ddr.m1_writedata[57]",
+      "hps_ddr.m1_writedata[59]",
+      "hps_ddr.m1_writedata[61]",
+      "hps_ddr.m1_writedata[7]",
+      "hps_ddr.m1_writedata[8]",
+      "hps_ddr.m1_writedata[9]",
+      "hps_ddr.m1_writedata_MISTRAL_FF_Q_27_DATAIN",
+      "hps_ddr.m1_writedata_MISTRAL_FF_Q_51_DATAIN",
+      "hps_ddr.m2_address[12]",
+      "hps_ddr.m2_address[14]",
+      "hps_ddr.m2_address[15]",
+      "hps_ddr.m2_address[16]",
+      "hps_ddr.m2_address[18]",
+      "hps_ddr.m2_address[19]",
+      "hps_ddr.m2_address[20]",
+      "hps_ddr.m2_address[22]",
+      "hps_ddr.m2_address[23]",
+      "hps_ddr.m2_address[26]",
+      "hps_ddr.m2_address[27]",
+      "hps_ddr.m2_address[2]",
+      "hps_ddr.m2_address[3]",
+      "hps_ddr.m2_address[4]",
+      "hps_ddr.m2_address[6]",
+      "hps_ddr.m2_address[8]",
+      "hps_ddr.m2_address[9]",
+      "hps_ddr.m2_burstcount[1]",
+      "hps_ddr.m2_burstcount[3]",
+      "hps_ddr.m2_byteenable[2]",
+      "hps_ddr.m2_byteenable[3]",
+      "hps_ddr.m2_byteenable[4]",
+      "hps_ddr.m2_byteenable[5]",
+      "hps_ddr.m2_byteenable[7]",
+      "hps_ddr.m2_writedata[10]",
+      "hps_ddr.m2_writedata[11]",
+      "hps_ddr.m2_writedata[12]",
+      "hps_ddr.m2_writedata[14]",
+      "hps_ddr.m2_writedata[15]",
+      "hps_ddr.m2_writedata[16]",
+      "hps_ddr.m2_writedata[18]",
+      "hps_ddr.m2_writedata[19]",
+      "hps_ddr.m2_writedata[22]",
+      "hps_ddr.m2_writedata[23]",
+      "hps_ddr.m2_writedata[26]",
+      "hps_ddr.m2_writedata[27]",
+      "hps_ddr.m2_writedata[28]",
+      "hps_ddr.m2_writedata[29]",
+      "hps_ddr.m2_writedata[30]",
+      "hps_ddr.m2_writedata[31]",
+      "hps_ddr.m2_writedata[32]",
+      "hps_ddr.m2_writedata[33]",
+      "hps_ddr.m2_writedata[34]",
+      "hps_ddr.m2_writedata[35]",
+      "hps_ddr.m2_writedata[36]",
+      "hps_ddr.m2_writedata[37]",
+      "hps_ddr.m2_writedata[38]",
+      "hps_ddr.m2_writedata[39]",
+      "hps_ddr.m2_writedata[41]",
+      "hps_ddr.m2_writedata[42]",
+      "hps_ddr.m2_writedata[43]",
+      "hps_ddr.m2_writedata[44]",
+      "hps_ddr.m2_writedata[47]",
+      "hps_ddr.m2_writedata[48]",
+      "hps_ddr.m2_writedata[4]",
+      "hps_ddr.m2_writedata[50]",
+      "hps_ddr.m2_writedata[51]",
+      "hps_ddr.m2_writedata[52]",
+      "hps_ddr.m2_writedata[54]",
+      "hps_ddr.m2_writedata[55]",
+      "hps_ddr.m2_writedata[57]",
+      "hps_ddr.m2_writedata[58]",
+      "hps_ddr.m2_writedata[59]",
+      "hps_ddr.m2_writedata[5]",
+      "hps_ddr.m2_writedata[61]",
+      "hps_ddr.m2_writedata[62]",
+      "hps_ddr.m2_writedata[63]",
+      "hps_ddr.m2_writedata[6]",
+      "hps_ddr.m2_writedata[7]",
+      "hps_ddr.m2_writedata[8]",
+      "hps_ddr.m2_writedata[9]",
+      "hps_ddr.port0.enter_byteenable_MISTRAL_ALUT2_Q_15_A[1]",
+      "hps_ddr.port0.owed_after_MISTRAL_FF_DATAIN_Q[0]",
+      "hps_ddr.port0.returned_data[106]",
+      "hps_ddr.port1.beats_after_MISTRAL_ALUT5_Q_1_D[2]",
+      "hps_ddr.port1.enter_address[8]",
+      "hps_ddr.port1.enter_byteenable_MISTRAL_ALUT2_Q_7_A[1]",
+      "hps_ddr.port1.enter_write_MISTRAL_ALUT3_C_Q",
+      "hps_ddr.port1.enter_write_MISTRAL_ALUT4_D_Q",
+      "hps_ddr.port1.owed_after_MISTRAL_FF_DATAIN_Q[0]",
+      "hps_ddr.port1.skid_address[14]",
+      "hps_ddr.port1.skid_read",
+      "hps_ddr.port1.skid_writedata[27]",
+      "hps_ddr.port1.slot_free",
+      "hps_ddr.port2.enter_byteenable_MISTRAL_ALUT2_Q_A[1]",
+      "hps_ddr.port2.enter_write_MISTRAL_ALUT3_C_Q",
+      "hps_ddr.port2.owed_after_MISTRAL_FF_DATAIN_Q[0]",
+      "hps_ddr.port2.returned_data[30]",
+      "hps_ddr.port2.returned_data[42]",
+      "hps_ddr.port2.returned_data[56]",
+      "hps_ddr.port2.returned_data[60]",
+      "hps_ddr.port2.slot_free",
+      "hps_ddr.rd_data_0[49]",
+      "hps_ddr.rd_data_2[4]",
+      "hps_ddr.rd_data_2[6]",
+      "mem_reset_sync[1]"
+    ],
+    "normalization": "Connections compared by complete net alias/name+bit sets, not export-local JSON bit IDs",
+    "constant_supply_nets_excluded": [
+      "$PACKER_GND_NET",
+      "$PACKER_VCC_NET"
+    ],
+    "sdram_boundary_and_capture_routed_nets_checked": [
+      "SDRAM_A[0]",
+      "SDRAM_A[10]",
+      "SDRAM_A[11]",
+      "SDRAM_A[12]",
+      "SDRAM_A[1]",
+      "SDRAM_A[2]",
+      "SDRAM_A[3]",
+      "SDRAM_A[4]",
+      "SDRAM_A[5]",
+      "SDRAM_A[6]",
+      "SDRAM_A[7]",
+      "SDRAM_A[8]",
+      "SDRAM_A[9]",
+      "SDRAM_BA[0]",
+      "SDRAM_BA[1]",
+      "SDRAM_CKE",
+      "SDRAM_CLK",
+      "SDRAM_DQMH",
+      "SDRAM_DQML",
+      "SDRAM_DQ[0]",
+      "SDRAM_DQ[10]",
+      "SDRAM_DQ[11]",
+      "SDRAM_DQ[12]",
+      "SDRAM_DQ[13]",
+      "SDRAM_DQ[14]",
+      "SDRAM_DQ[15]",
+      "SDRAM_DQ[1]",
+      "SDRAM_DQ[2]",
+      "SDRAM_DQ[3]",
+      "SDRAM_DQ[4]",
+      "SDRAM_DQ[5]",
+      "SDRAM_DQ[6]",
+      "SDRAM_DQ[7]",
+      "SDRAM_DQ[8]",
+      "SDRAM_DQ[9]",
+      "SDRAM_nCAS",
+      "SDRAM_nCS",
+      "SDRAM_nRAS",
+      "SDRAM_nWE",
+      "dq_buf[0].dq_pin",
+      "dq_buf[0].dq_sample",
+      "dq_buf[0].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[10].dq_pin",
+      "dq_buf[10].dq_sample",
+      "dq_buf[11].dq_pin",
+      "dq_buf[11].dq_sample",
+      "dq_buf[11].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[12].dq_pin",
+      "dq_buf[12].dq_sample",
+      "dq_buf[12].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[13].dq_pin",
+      "dq_buf[13].dq_sample",
+      "dq_buf[13].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[14].dq_pin",
+      "dq_buf[14].dq_sample",
+      "dq_buf[14].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[15].dq_pin",
+      "dq_buf[15].dq_sample",
+      "dq_buf[15].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[1].dq_pin",
+      "dq_buf[1].dq_sample",
+      "dq_buf[1].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[2].dq_pin",
+      "dq_buf[2].dq_sample",
+      "dq_buf[3].dq_pin",
+      "dq_buf[3].dq_sample",
+      "dq_buf[3].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[4].dq_pin",
+      "dq_buf[4].dq_sample",
+      "dq_buf[4].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[5].dq_pin",
+      "dq_buf[5].dq_sample",
+      "dq_buf[5].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[6].dq_pin",
+      "dq_buf[6].dq_sample",
+      "dq_buf[6].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[7].dq_pin",
+      "dq_buf[7].dq_sample",
+      "dq_buf[7].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[8].dq_pin",
+      "dq_buf[8].dq_sample",
+      "dq_buf[8].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_buf[9].dq_pin",
+      "dq_buf[9].dq_sample",
+      "dq_buf[9].dq_sample_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+      "dq_oe",
+      "dq_out[0]",
+      "dq_out[10]",
+      "dq_out[11]",
+      "dq_out[12]",
+      "dq_out[13]",
+      "dq_out[14]",
+      "dq_out[15]",
+      "dq_out[1]",
+      "dq_out[2]",
+      "dq_out[3]",
+      "dq_out[4]",
+      "dq_out[5]",
+      "dq_out[6]",
+      "dq_out[7]",
+      "dq_out[8]",
+      "dq_out[9]",
+      "ram_clock.clocks[0]",
+      "ram_clock.clocks[1]",
+      "sdram.sdram_a[0]",
+      "sdram.sdram_a[10]",
+      "sdram.sdram_a[11]",
+      "sdram.sdram_a[12]",
+      "sdram.sdram_a[1]",
+      "sdram.sdram_a[2]",
+      "sdram.sdram_a[3]",
+      "sdram.sdram_a[4]",
+      "sdram.sdram_a[5]",
+      "sdram.sdram_a[6]",
+      "sdram.sdram_a[7]",
+      "sdram.sdram_a[8]",
+      "sdram.sdram_a[9]",
+      "sdram.sdram_ba[0]",
+      "sdram.sdram_ba[1]",
+      "sdram.sdram_cke",
+      "sdram.sdram_ncas",
+      "sdram.sdram_ncs",
+      "sdram.sdram_nras",
+      "sdram.sdram_nwe"
+    ],
+    "changed_sdram_boundary_and_capture_routes": [
+      "dq_oe",
+      "dq_out[2]"
+    ]
+  },
+  "packages": {
+    "classification": "Local experimental post-route envelope; unchanged historical synthesis/build ID, no fresh producer seal",
+    "candidate": "/tmp/nextpnr-135-investigation/margin500-seed2",
+    "requested_setup_margin_ps": 500.0,
+    "setup_margin_target_met": false,
+    "achieved_setup_margin_ns": 0.4350000023841858,
+    "build_receipt_sha256": "b642b963e697886b23a4e8bb0fb886f23a3f9e9b7aa25efbe3e5df3c33297d38",
+    "script_sha256": "b4044325a094d670ebb0b573d2f6375b0176f68153145c42551e9c52219cb2be",
+    "packages": {
+      "failing": {
+        "file": "failing.fcore",
+        "package_id": "019484653963d99f455cd907157d293aa9fc833152f6717aa5e100270fe7b69f",
+        "archive_sha256": "f79ac0d9300c61e7ead19832ed4a13c6ea01eea54609b2082250adae4b04e8ec",
+        "payload_sha256": "9cff64b3a51fcf992d6853458779a99f63f3568e821e425b9fd8b7fedc987e05",
+        "embedded_build_id": "26d08971ccc8f584488e1dddd1c53f13",
+        "version": "1.1.0"
+      },
+      "normal": {
+        "file": "normal.fcore",
+        "package_id": "08796300446c7b94aaf77a8b5fcefd6279007e5c9f2c5600eee80d2df2ea2fba",
+        "archive_sha256": "a1b84c15b2e311e867e45bed1847c0b0a4ce100da0d9a388160bd5807be7d8cd",
+        "payload_sha256": "a9ec99435c4a858443ca320b278fcdcb84d530756df99f95dbf0d642dcbec421",
+        "embedded_build_id": "26d08971ccc8f584488e1dddd1c53f13",
+        "version": "1.1.0-margin500-seed2.1"
+      }
+    },
+    "consumer_validation": {
+      "reader": "FogCast corepackage.InspectPackage",
+      "inspected_packages": 2,
+      "results_sha256": "59a9c21ffcacb437176527ec4ca2c74177b1970a8ff65b9372a03d49bed731f6"
+    }
+  },
+  "packaging_script_sha256": "b4044325a094d670ebb0b573d2f6375b0176f68153145c42551e9c52219cb2be",
+  "hardware": {
+    "target_url": "http://fes-kit-a:8182",
+    "target_id": "73dc9f5f-1a12-4a95-a820-a9b4e600769a",
+    "boot_id": "a607b78c-2041-40d5-8db3-0a26e72dd186",
+    "before_health": {
+      "target_id": "73dc9f5f-1a12-4a95-a820-a9b4e600769a",
+      "api_version": "v1",
+      "agent_version": "0.1.0",
+      "ready": true,
+      "boot_id": "a607b78c-2041-40d5-8db3-0a26e72dd186",
+      "artifacts": {
+        "record_sha256": "2081b2fe38571b3f8120e295f4981973f7bee1d99ca033a3705547131c612796",
+        "runtime_commit": "5a58053229b5e1772defe5f9bdc34c72f659db71",
+        "agent_sha256": "dd91591c8eb6a9728bb1036cbeaba4025e52de5c747402c2c980bdb046986754",
+        "agent_revision": "5a58053229b5e1772defe5f9bdc34c72f659db71",
+        "kit_sha256": "586b18a5bcaf338c99a55974d9062c65aaaf107bbb44fb2abeeea9a14c4e95b2",
+        "image_sha256": "5032c2d2282da26e79e6f7efc47f9f2a1aa9abca4aad4ca6f19817e82d18ce4a",
+        "idle_sha256": "43dc7e9db350dbdef87b290bfde61f8df37483957c93e81cbd753c30d4cd93b6",
+        "package_id": "519ac44a9d801267eb8a07d7f9258cf2df59fbeb389f3a630d1d5c8f02dfb798"
+      }
+    },
+    "after_health": {
+      "target_id": "73dc9f5f-1a12-4a95-a820-a9b4e600769a",
+      "api_version": "v1",
+      "agent_version": "0.1.0",
+      "ready": true,
+      "boot_id": "a607b78c-2041-40d5-8db3-0a26e72dd186",
+      "artifacts": {
+        "record_sha256": "2081b2fe38571b3f8120e295f4981973f7bee1d99ca033a3705547131c612796",
+        "runtime_commit": "5a58053229b5e1772defe5f9bdc34c72f659db71",
+        "agent_sha256": "dd91591c8eb6a9728bb1036cbeaba4025e52de5c747402c2c980bdb046986754",
+        "agent_revision": "5a58053229b5e1772defe5f9bdc34c72f659db71",
+        "kit_sha256": "586b18a5bcaf338c99a55974d9062c65aaaf107bbb44fb2abeeea9a14c4e95b2",
+        "image_sha256": "5032c2d2282da26e79e6f7efc47f9f2a1aa9abca4aad4ca6f19817e82d18ce4a",
+        "idle_sha256": "43dc7e9db350dbdef87b290bfde61f8df37483957c93e81cbd753c30d4cd93b6",
+        "package_id": "519ac44a9d801267eb8a07d7f9258cf2df59fbeb389f3a630d1d5c8f02dfb798"
+      }
+    },
+    "after_status": {
+      "state": "idle",
+      "game_id": null,
+      "system": null,
+      "expected_core": null,
+      "observed_core": null,
+      "last_error": null
+    },
+    "after_lease": {
+      "expires_in_ms": 0,
+      "state": "free",
+      "generation": "0d1507f603ef48111194ede1456d6624b51e5c39a7a928059ef846ceeb5dde2c",
+      "expires_at": "0001-01-01T00:00:00Z"
+    },
+    "runner_sha256": "107f8a1cf9c3149c08e979af147b04d05437daff63cfe5ad93557746a457ecbb",
+    "run_log_sha256": "8b4ef20f636a783d6aa549e9f5fba0e8f645d04f237d8bc376467240fafdf0e7",
+    "runs": [
+      {
+        "run": 1,
+        "label": "normal",
+        "package_id": "08796300446c7b94aaf77a8b5fcefd6279007e5c9f2c5600eee80d2df2ea2fba",
+        "load": {
+          "state": "active",
+          "game_id": null,
+          "system": null,
+          "expected_core": null,
+          "observed_core": "fes.ramtest",
+          "last_error": null,
+          "development": true,
+          "core_package": {
+            "persistence_mode": "volatile",
+            "package_id": "08796300446c7b94aaf77a8b5fcefd6279007e5c9f2c5600eee80d2df2ea2fba",
+            "generation": 12,
+            "abi": {
+              "id": "fes.application",
+              "major": 1,
+              "minor": 0
+            },
+            "build_id": "26d08971ccc8f584488e1dddd1c53f13",
+            "active_interfaces": [
+              {
+                "id": "fes.gamepad",
+                "major": 1,
+                "minor": 0
+              },
+              {
+                "id": "fes.memory.hps-ddr",
+                "major": 1,
+                "minor": 0
+              },
+              {
+                "id": "fes.video.fixed-720p60",
+                "major": 1,
+                "minor": 0
+              }
+            ],
+            "gamepad": true
+          }
+        },
+        "observations": [
+          {
+            "elapsed_seconds": 120,
+            "observation": {
+              "classification": "HDMI observation decoded against original RTL glyphs",
+              "state": "PASS",
+              "rate_mhz": 100,
+              "completed_patterns": 6,
+              "errors": 0,
+              "pattern_errors": {
+                "0000": 0,
+                "FFFF": 0,
+                "5555": 0,
+                "AAAA": 0,
+                "ADDR": 0,
+                "INVR": 0
+              },
+              "first_fault_hex": "00000000",
+              "last_fault_hex": "00000000",
+              "first_got_hex": "0000",
+              "hps_ddr": {
+                "P0": {
+                  "state": "PASS",
+                  "errors": 0
+                },
+                "P1": {
+                  "state": "PASS",
+                  "errors": 0
+                },
+                "P2": {
+                  "state": "PASS",
+                  "errors": 0
+                }
+              },
+              "alignment": {
+                "x": 166,
+                "y": -1,
+                "scale": 3,
+                "header_bit_errors": 0
+              },
+              "critical_glyph_bit_errors": 0,
+              "text_rows": {
+                "1": "INVR W 6/6  100 MHZ",
+                "2": "ADDR 03FFFFFF AT 00000000 00000000",
+                "3": "ERR 00000000 WAS 0000",
+                "4": "EXP 03FF GOT 03FF",
+                "5": "PASS",
+                "6": "",
+                "7": "HPS DDR 100 MHZ 30000000-3FFFFFFF",
+                "8": "P0 ADDR W 7/7 38000000 E 00000000 PASS",
+                "9": "P1 ADDR W 7/7 3C000000 E 00000000 PASS",
+                "10": "P2 ADDR W 7/7 40000000 E 00000000 PASS",
+                "11": "P0 AT 00000000 L 00000000",
+                "12": "P1 AT 00000000 L 00000000",
+                "13": "P2 AT 00000000 L 00000000",
+                "14": "P0 BAD 00000000000000000000000000000000",
+                "15": "P1 BAD 0000000000000000",
+                "16": "P2 BAD 0000000000000000",
+                "17": "MB/S WR 1572 0722 0722 RD 1563 0696 069?",
+                "18": "",
+                "19": "BUTTON STOPS",
+                "20": "     50       130      100",
+                "21": "0000                   00000000",
+                "22": "FFFF                   00000000",
+                "23": "5555                   00000000",
+                "24": "AAAA                   00000000",
+                "25": "ADDR                   00000000",
+                "26": "INVR                   00000000",
+                "27": ""
+              },
+              "row_bit_errors": {
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 5,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0,
+                "24": 0,
+                "25": 0,
+                "26": 0,
+                "27": 0
+              },
+              "screenshot_sha256": "006fd323b9232c64f8010a57d2f161dd5c87fbb9a6027ec31158dbb9084ece83",
+              "font_sha256": "870fb68597c26f0fd88b75524171588dfe01d6ffeafb2be6e23c7a4d75fc3b64",
+              "script_sha256": "5fcbf69161497bd8f6a1a8d90dae0c1997dd68189b88c656a4f2b59ea47549ec"
+            }
+          },
+          {
+            "elapsed_seconds": 200,
+            "observation": {
+              "classification": "HDMI observation decoded against original RTL glyphs",
+              "state": "PASS",
+              "rate_mhz": 100,
+              "completed_patterns": 6,
+              "errors": 0,
+              "pattern_errors": {
+                "0000": 0,
+                "FFFF": 0,
+                "5555": 0,
+                "AAAA": 0,
+                "ADDR": 0,
+                "INVR": 0
+              },
+              "first_fault_hex": "00000000",
+              "last_fault_hex": "00000000",
+              "first_got_hex": "0000",
+              "hps_ddr": {
+                "P0": {
+                  "state": "PASS",
+                  "errors": 0
+                },
+                "P1": {
+                  "state": "PASS",
+                  "errors": 0
+                },
+                "P2": {
+                  "state": "PASS",
+                  "errors": 0
+                }
+              },
+              "alignment": {
+                "x": 166,
+                "y": -1,
+                "scale": 3,
+                "header_bit_errors": 0
+              },
+              "critical_glyph_bit_errors": 0,
+              "text_rows": {
+                "1": "INVR W 6/6  100 MHZ",
+                "2": "ADDR 03FFFFFF AT 00000000 00000000",
+                "3": "ERR 00000000 WAS 0000",
+                "4": "EXP 03FF GOT 03FF",
+                "5": "PASS",
+                "6": "",
+                "7": "HPS DDR 100 MHZ 30000000-3FFFFFFF",
+                "8": "P0 ADDR W 7/7 38000000 E 00000000 PASS",
+                "9": "P1 ADDR W 7/7 3C000000 E 00000000 PASS",
+                "10": "P2 ADDR W 7/7 40000000 E 00000000 PASS",
+                "11": "P0 AT 00000000 L 00000000",
+                "12": "P1 AT 00000000 L 00000000",
+                "13": "P2 AT 00000000 L 00000000",
+                "14": "P0 BAD 00000000000000000000000000000000",
+                "15": "P1 BAD 0000000000000000",
+                "16": "P2 BAD 0000000000000000",
+                "17": "MB/S WR 1572 0722 0722 RD 1563 0696 069?",
+                "18": "",
+                "19": "BUTTON STOPS",
+                "20": "     50       130      100",
+                "21": "0000                   00000000",
+                "22": "FFFF                   00000000",
+                "23": "5555                   00000000",
+                "24": "AAAA                   00000000",
+                "25": "ADDR                   00000000",
+                "26": "INVR                   00000000",
+                "27": ""
+              },
+              "row_bit_errors": {
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 5,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0,
+                "24": 0,
+                "25": 0,
+                "26": 0,
+                "27": 0
+              },
+              "screenshot_sha256": "006fd323b9232c64f8010a57d2f161dd5c87fbb9a6027ec31158dbb9084ece83",
+              "font_sha256": "870fb68597c26f0fd88b75524171588dfe01d6ffeafb2be6e23c7a4d75fc3b64",
+              "script_sha256": "5fcbf69161497bd8f6a1a8d90dae0c1997dd68189b88c656a4f2b59ea47549ec"
+            }
+          }
+        ],
+        "final_screenshot": "margin-pass-first.png",
+        "final_screenshot_sha256": "006fd323b9232c64f8010a57d2f161dd5c87fbb9a6027ec31158dbb9084ece83",
+        "api_evidence_sha256": {
+          "decoded-120.json": "0fb4070942292db5577871129c98788b78e25cdfa7ddb4cf6962f08af28e14d4",
+          "decoded.json": "0fb4070942292db5577871129c98788b78e25cdfa7ddb4cf6962f08af28e14d4",
+          "load.json": "b5131af30342a072cae783027101dd031cc97b5caca35c70e7f9f34cffe38511",
+          "status-10.json": "b5131af30342a072cae783027101dd031cc97b5caca35c70e7f9f34cffe38511",
+          "status-120.json": "b5131af30342a072cae783027101dd031cc97b5caca35c70e7f9f34cffe38511",
+          "status-180.json": "b5131af30342a072cae783027101dd031cc97b5caca35c70e7f9f34cffe38511",
+          "status-200.json": "b5131af30342a072cae783027101dd031cc97b5caca35c70e7f9f34cffe38511",
+          "status-60.json": "b5131af30342a072cae783027101dd031cc97b5caca35c70e7f9f34cffe38511",
+          "stop.json": "2d8138a8502eae5c6b37559bdb3cf8f7f23dd148b9ba477b8a7bd7f7249eb785"
+        }
+      },
+      {
+        "run": 2,
+        "label": "failing",
+        "package_id": "019484653963d99f455cd907157d293aa9fc833152f6717aa5e100270fe7b69f",
+        "load": {
+          "state": "active",
+          "game_id": null,
+          "system": null,
+          "expected_core": null,
+          "observed_core": "fes.ramtest",
+          "last_error": null,
+          "development": true,
+          "core_package": {
+            "persistence_mode": "volatile",
+            "package_id": "019484653963d99f455cd907157d293aa9fc833152f6717aa5e100270fe7b69f",
+            "generation": 13,
+            "abi": {
+              "id": "fes.application",
+              "major": 1,
+              "minor": 0
+            },
+            "build_id": "26d08971ccc8f584488e1dddd1c53f13",
+            "active_interfaces": [
+              {
+                "id": "fes.gamepad",
+                "major": 1,
+                "minor": 0
+              },
+              {
+                "id": "fes.memory.hps-ddr",
+                "major": 1,
+                "minor": 0
+              },
+              {
+                "id": "fes.video.fixed-720p60",
+                "major": 1,
+                "minor": 0
+              }
+            ],
+            "gamepad": true
+          }
+        },
+        "observations": [
+          {
+            "elapsed_seconds": 120,
+            "observation": {
+              "classification": "HDMI observation decoded against original RTL glyphs",
+              "state": "FAIL",
+              "rate_mhz": 100,
+              "completed_patterns": 6,
+              "errors": 480,
+              "pattern_errors": {
+                "0000": 0,
+                "FFFF": 0,
+                "5555": 0,
+                "AAAA": 0,
+                "ADDR": 264,
+                "INVR": 216
+              },
+              "first_fault_hex": "003F7000",
+              "last_fault_hex": "02FF2003",
+              "first_got_hex": "6F3F",
+              "hps_ddr": {
+                "P0": {
+                  "state": "PASS",
+                  "errors": 0
+                },
+                "P1": {
+                  "state": "PASS",
+                  "errors": 0
+                },
+                "P2": {
+                  "state": "PASS",
+                  "errors": 0
+                }
+              },
+              "alignment": {
+                "x": 166,
+                "y": -1,
+                "scale": 3,
+                "header_bit_errors": 0
+              },
+              "critical_glyph_bit_errors": 0,
+              "text_rows": {
+                "1": "INVR W 6/6  100 MHZ",
+                "2": "ADDR 03FFFFFF AT 003F7000 02FF2003",
+                "3": "ERR 000001E0 WAS 6F3F",
+                "4": "EXP 03FF GOT 03FF",
+                "5": "FAIL",
+                "6": "",
+                "7": "HPS DDR 100 MHZ 30000000-3FFFFFFF",
+                "8": "P0 ADDR W 7/7 38000000 E 00000000 PASS",
+                "9": "P1 ADDR W 7/7 3C000000 E 00000000 PASS",
+                "10": "P2 ADDR W 7/7 40000000 E 00000000 PASS",
+                "11": "P0 AT 00000000 L 00000000",
+                "12": "P1 AT 00000000 L 00000000",
+                "13": "P2 AT 00000000 L 00000000",
+                "14": "P0 BAD 00000000000000000000000000000000",
+                "15": "P1 BAD 0000000000000000",
+                "16": "P2 BAD 0000000000000000",
+                "17": "MB/S WR 1508 0713 0713 RD 1542 0665 0656",
+                "18": "",
+                "19": "BUTTON STOPS",
+                "20": "     50       130      100",
+                "21": "0000                   00000000",
+                "22": "FFFF                   00000000",
+                "23": "5555                   00000000",
+                "24": "AAAA                   00000000",
+                "25": "ADDR                   00000108",
+                "26": "INVR                   000000D8",
+                "27": ""
+              },
+              "row_bit_errors": {
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 2,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0,
+                "24": 0,
+                "25": 0,
+                "26": 0,
+                "27": 0
+              },
+              "screenshot_sha256": "5dae5dac2edb6c6b5a6e63ccac25fa246078e2be1a1d9781ac52f846a6b4ed6a",
+              "font_sha256": "870fb68597c26f0fd88b75524171588dfe01d6ffeafb2be6e23c7a4d75fc3b64",
+              "script_sha256": "5fcbf69161497bd8f6a1a8d90dae0c1997dd68189b88c656a4f2b59ea47549ec"
+            }
+          },
+          {
+            "elapsed_seconds": 200,
+            "observation": {
+              "classification": "HDMI observation decoded against original RTL glyphs",
+              "state": "FAIL",
+              "rate_mhz": 100,
+              "completed_patterns": 6,
+              "errors": 480,
+              "pattern_errors": {
+                "0000": 0,
+                "FFFF": 0,
+                "5555": 0,
+                "AAAA": 0,
+                "ADDR": 264,
+                "INVR": 216
+              },
+              "first_fault_hex": "003F7000",
+              "last_fault_hex": "02FF2003",
+              "first_got_hex": "6F3F",
+              "hps_ddr": {
+                "P0": {
+                  "state": "PASS",
+                  "errors": 0
+                },
+                "P1": {
+                  "state": "PASS",
+                  "errors": 0
+                },
+                "P2": {
+                  "state": "PASS",
+                  "errors": 0
+                }
+              },
+              "alignment": {
+                "x": 166,
+                "y": -1,
+                "scale": 3,
+                "header_bit_errors": 0
+              },
+              "critical_glyph_bit_errors": 0,
+              "text_rows": {
+                "1": "INVR W 6/6  100 MHZ",
+                "2": "ADDR 03FFFFFF AT 003F7000 02FF2003",
+                "3": "ERR 000001E0 WAS 6F3F",
+                "4": "EXP 03FF GOT 03FF",
+                "5": "FAIL",
+                "6": "",
+                "7": "HPS DDR 100 MHZ 30000000-3FFFFFFF",
+                "8": "P0 ADDR W 7/7 38000000 E 00000000 PASS",
+                "9": "P1 ADDR W 7/7 3C000000 E 00000000 PASS",
+                "10": "P2 ADDR W 7/7 40000000 E 00000000 PASS",
+                "11": "P0 AT 00000000 L 00000000",
+                "12": "P1 AT 00000000 L 00000000",
+                "13": "P2 AT 00000000 L 00000000",
+                "14": "P0 BAD 00000000000000000000000000000000",
+                "15": "P1 BAD 0000000000000000",
+                "16": "P2 BAD 0000000000000000",
+                "17": "MB/S WR 1508 0713 0713 RD 1542 0665 0656",
+                "18": "",
+                "19": "BUTTON STOPS",
+                "20": "     50       130      100",
+                "21": "0000                   00000000",
+                "22": "FFFF                   00000000",
+                "23": "5555                   00000000",
+                "24": "AAAA                   00000000",
+                "25": "ADDR                   00000108",
+                "26": "INVR                   000000D8",
+                "27": ""
+              },
+              "row_bit_errors": {
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 2,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0,
+                "24": 0,
+                "25": 0,
+                "26": 0,
+                "27": 0
+              },
+              "screenshot_sha256": "5dae5dac2edb6c6b5a6e63ccac25fa246078e2be1a1d9781ac52f846a6b4ed6a",
+              "font_sha256": "870fb68597c26f0fd88b75524171588dfe01d6ffeafb2be6e23c7a4d75fc3b64",
+              "script_sha256": "5fcbf69161497bd8f6a1a8d90dae0c1997dd68189b88c656a4f2b59ea47549ec"
+            }
+          }
+        ],
+        "final_screenshot": "margin-failing-control.png",
+        "final_screenshot_sha256": "5dae5dac2edb6c6b5a6e63ccac25fa246078e2be1a1d9781ac52f846a6b4ed6a",
+        "api_evidence_sha256": {
+          "decoded-120.json": "96f4a94f6dae20e64abccb90cd3ef2626754bbb752034d96b7ab3672298740b2",
+          "decoded.json": "96f4a94f6dae20e64abccb90cd3ef2626754bbb752034d96b7ab3672298740b2",
+          "load.json": "b2a4196c1b61060a6fc5b36374ce9b44b2eb4cc36bf9701d0a98fd8716e63bb6",
+          "status-10.json": "b2a4196c1b61060a6fc5b36374ce9b44b2eb4cc36bf9701d0a98fd8716e63bb6",
+          "status-120.json": "b2a4196c1b61060a6fc5b36374ce9b44b2eb4cc36bf9701d0a98fd8716e63bb6",
+          "status-180.json": "b2a4196c1b61060a6fc5b36374ce9b44b2eb4cc36bf9701d0a98fd8716e63bb6",
+          "status-200.json": "b2a4196c1b61060a6fc5b36374ce9b44b2eb4cc36bf9701d0a98fd8716e63bb6",
+          "status-60.json": "b2a4196c1b61060a6fc5b36374ce9b44b2eb4cc36bf9701d0a98fd8716e63bb6",
+          "stop.json": "2d8138a8502eae5c6b37559bdb3cf8f7f23dd148b9ba477b8a7bd7f7249eb785"
+        }
+      },
+      {
+        "run": 3,
+        "label": "normal",
+        "package_id": "08796300446c7b94aaf77a8b5fcefd6279007e5c9f2c5600eee80d2df2ea2fba",
+        "load": {
+          "state": "active",
+          "game_id": null,
+          "system": null,
+          "expected_core": null,
+          "observed_core": "fes.ramtest",
+          "last_error": null,
+          "development": true,
+          "core_package": {
+            "persistence_mode": "volatile",
+            "package_id": "08796300446c7b94aaf77a8b5fcefd6279007e5c9f2c5600eee80d2df2ea2fba",
+            "generation": 14,
+            "abi": {
+              "id": "fes.application",
+              "major": 1,
+              "minor": 0
+            },
+            "build_id": "26d08971ccc8f584488e1dddd1c53f13",
+            "active_interfaces": [
+              {
+                "id": "fes.gamepad",
+                "major": 1,
+                "minor": 0
+              },
+              {
+                "id": "fes.memory.hps-ddr",
+                "major": 1,
+                "minor": 0
+              },
+              {
+                "id": "fes.video.fixed-720p60",
+                "major": 1,
+                "minor": 0
+              }
+            ],
+            "gamepad": true
+          }
+        },
+        "observations": [
+          {
+            "elapsed_seconds": 120,
+            "observation": {
+              "classification": "HDMI observation decoded against original RTL glyphs",
+              "state": "PASS",
+              "rate_mhz": 100,
+              "completed_patterns": 6,
+              "errors": 0,
+              "pattern_errors": {
+                "0000": 0,
+                "FFFF": 0,
+                "5555": 0,
+                "AAAA": 0,
+                "ADDR": 0,
+                "INVR": 0
+              },
+              "first_fault_hex": "00000000",
+              "last_fault_hex": "00000000",
+              "first_got_hex": "0000",
+              "hps_ddr": {
+                "P0": {
+                  "state": "PASS",
+                  "errors": 0
+                },
+                "P1": {
+                  "state": "PASS",
+                  "errors": 0
+                },
+                "P2": {
+                  "state": "PASS",
+                  "errors": 0
+                }
+              },
+              "alignment": {
+                "x": 166,
+                "y": -1,
+                "scale": 3,
+                "header_bit_errors": 0
+              },
+              "critical_glyph_bit_errors": 0,
+              "text_rows": {
+                "1": "INVR W 6/6  100 MHZ",
+                "2": "ADDR 03FFFFFF AT 00000000 00000000",
+                "3": "ERR 00000000 WAS 0000",
+                "4": "EXP 03FF GOT 03FF",
+                "5": "PASS",
+                "6": "",
+                "7": "HPS DDR 100 MHZ 30000000-3FFFFFFF",
+                "8": "P0 ADDR W 7/7 38000000 E 00000000 PASS",
+                "9": "P1 ADDR W 7/7 3C000000 E 00000000 PASS",
+                "10": "P2 ADDR W 7/7 40000000 E 00000000 PASS",
+                "11": "P0 AT 00000000 L 00000000",
+                "12": "P1 AT 00000000 L 00000000",
+                "13": "P2 AT 00000000 L 00000000",
+                "14": "P0 BAD 00000000000000000000000000000000",
+                "15": "P1 BAD 0000000000000000",
+                "16": "P2 BAD 0000000000000000",
+                "17": "MB/S WR 1572 0656 0656 RD 1566 0683 067?",
+                "18": "",
+                "19": "BUTTON STOPS",
+                "20": "     50       130      100",
+                "21": "0000                   00000000",
+                "22": "FFFF                   00000000",
+                "23": "5555                   00000000",
+                "24": "AAAA                   00000000",
+                "25": "ADDR                   00000000",
+                "26": "INVR                   00000000",
+                "27": ""
+              },
+              "row_bit_errors": {
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 4,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0,
+                "24": 0,
+                "25": 0,
+                "26": 0,
+                "27": 0
+              },
+              "screenshot_sha256": "66c92b441c61c66662476f900cfb0c936b08a0050d5be934fd593d38c957ea4a",
+              "font_sha256": "870fb68597c26f0fd88b75524171588dfe01d6ffeafb2be6e23c7a4d75fc3b64",
+              "script_sha256": "5fcbf69161497bd8f6a1a8d90dae0c1997dd68189b88c656a4f2b59ea47549ec"
+            }
+          },
+          {
+            "elapsed_seconds": 200,
+            "observation": {
+              "classification": "HDMI observation decoded against original RTL glyphs",
+              "state": "PASS",
+              "rate_mhz": 100,
+              "completed_patterns": 6,
+              "errors": 0,
+              "pattern_errors": {
+                "0000": 0,
+                "FFFF": 0,
+                "5555": 0,
+                "AAAA": 0,
+                "ADDR": 0,
+                "INVR": 0
+              },
+              "first_fault_hex": "00000000",
+              "last_fault_hex": "00000000",
+              "first_got_hex": "0000",
+              "hps_ddr": {
+                "P0": {
+                  "state": "PASS",
+                  "errors": 0
+                },
+                "P1": {
+                  "state": "PASS",
+                  "errors": 0
+                },
+                "P2": {
+                  "state": "PASS",
+                  "errors": 0
+                }
+              },
+              "alignment": {
+                "x": 166,
+                "y": -1,
+                "scale": 3,
+                "header_bit_errors": 0
+              },
+              "critical_glyph_bit_errors": 0,
+              "text_rows": {
+                "1": "INVR W 6/6  100 MHZ",
+                "2": "ADDR 03FFFFFF AT 00000000 00000000",
+                "3": "ERR 00000000 WAS 0000",
+                "4": "EXP 03FF GOT 03FF",
+                "5": "PASS",
+                "6": "",
+                "7": "HPS DDR 100 MHZ 30000000-3FFFFFFF",
+                "8": "P0 ADDR W 7/7 38000000 E 00000000 PASS",
+                "9": "P1 ADDR W 7/7 3C000000 E 00000000 PASS",
+                "10": "P2 ADDR W 7/7 40000000 E 00000000 PASS",
+                "11": "P0 AT 00000000 L 00000000",
+                "12": "P1 AT 00000000 L 00000000",
+                "13": "P2 AT 00000000 L 00000000",
+                "14": "P0 BAD 00000000000000000000000000000000",
+                "15": "P1 BAD 0000000000000000",
+                "16": "P2 BAD 0000000000000000",
+                "17": "MB/S WR 1572 0656 0656 RD 1566 0683 067?",
+                "18": "",
+                "19": "BUTTON STOPS",
+                "20": "     50       130      100",
+                "21": "0000                   00000000",
+                "22": "FFFF                   00000000",
+                "23": "5555                   00000000",
+                "24": "AAAA                   00000000",
+                "25": "ADDR                   00000000",
+                "26": "INVR                   00000000",
+                "27": ""
+              },
+              "row_bit_errors": {
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 4,
+                "18": 0,
+                "19": 0,
+                "20": 0,
+                "21": 0,
+                "22": 0,
+                "23": 0,
+                "24": 0,
+                "25": 0,
+                "26": 0,
+                "27": 0
+              },
+              "screenshot_sha256": "66c92b441c61c66662476f900cfb0c936b08a0050d5be934fd593d38c957ea4a",
+              "font_sha256": "870fb68597c26f0fd88b75524171588dfe01d6ffeafb2be6e23c7a4d75fc3b64",
+              "script_sha256": "5fcbf69161497bd8f6a1a8d90dae0c1997dd68189b88c656a4f2b59ea47549ec"
+            }
+          }
+        ],
+        "final_screenshot": "margin-pass-repeat.png",
+        "final_screenshot_sha256": "66c92b441c61c66662476f900cfb0c936b08a0050d5be934fd593d38c957ea4a",
+        "api_evidence_sha256": {
+          "decoded-120.json": "0dec6f4f8a7bebbc858fffecc1db79097320f1a870643dd149df02ee688f5bcf",
+          "decoded.json": "0dec6f4f8a7bebbc858fffecc1db79097320f1a870643dd149df02ee688f5bcf",
+          "load.json": "78045bb13dc9a24cd57cf42a85e85a67797dde628205b591b462af42bb02b29f",
+          "status-10.json": "78045bb13dc9a24cd57cf42a85e85a67797dde628205b591b462af42bb02b29f",
+          "status-120.json": "78045bb13dc9a24cd57cf42a85e85a67797dde628205b591b462af42bb02b29f",
+          "status-180.json": "78045bb13dc9a24cd57cf42a85e85a67797dde628205b591b462af42bb02b29f",
+          "status-200.json": "78045bb13dc9a24cd57cf42a85e85a67797dde628205b591b462af42bb02b29f",
+          "status-60.json": "78045bb13dc9a24cd57cf42a85e85a67797dde628205b591b462af42bb02b29f",
+          "stop.json": "2d8138a8502eae5c6b37559bdb3cf8f7f23dd148b9ba477b8a7bd7f7249eb785"
+        }
+      }
+    ]
+  },
+  "timeout_receipt_smoke": {
+    "runner_returncode": 124,
+    "receipt": {
+      "classification": "compiler timeout; incomplete, not a final timing result",
+      "source_root": "/home/deano/fes/out/dev/pr485-160994a0/fes/out/work/misteross-6c459fda396215fda6ac01e7125584d0cdf564b2/sources/misteross",
+      "seed": 2,
+      "router": "gpu",
+      "gpu_cpu": true,
+      "requested_setup_margin_ps": 500.0,
+      "analogue_rounds": 5,
+      "command": [
+        "/tmp/nextpnr-135-build/nextpnr-mistral",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/tmp/nextpnr-135-investigation/margin-timeout-smoke/synth.json",
+        "--qsf",
+        "/tmp/nextpnr-135-investigation/margin-timeout-smoke/pins.qsf",
+        "--sdc",
+        "/tmp/nextpnr-135-investigation/margin-timeout-smoke/address.sdc",
+        "--freq",
+        "74.25",
+        "--router",
+        "gpu",
+        "--seed",
+        "2",
+        "--compress-rbf",
+        "--write",
+        "/tmp/nextpnr-135-investigation/margin-timeout-smoke/final.json",
+        "--report",
+        "/tmp/nextpnr-135-investigation/margin-timeout-smoke/timing.json",
+        "--detailed-timing-report",
+        "--timing-report-paths",
+        "128",
+        "--rbf",
+        "/tmp/nextpnr-135-investigation/margin-timeout-smoke/core.rbf",
+        "--gpu-cpu",
+        "--gpu-opt",
+        "analogueSlack=500",
+        "--gpu-opt",
+        "analogueRipSlack=500",
+        "--gpu-opt",
+        "analogueRounds=5"
+      ],
+      "timeout_seconds": 1,
+      "elapsed_seconds": 1.011533583048731,
+      "nextpnr_sha256": "a324ae4579225e76e1fb5544a2db4da20e1525c35784b891be32aaef1f8bf242",
+      "compiler_returncode": null,
+      "complete_timing_pass": false,
+      "setup_margin_target_met": false,
+      "file_sha256": {
+        "runner-source.py": "570344ce3fd9d6ef88662de6280ae69db484c86806ad1f8740d4c2e0ead7190d",
+        "synth.json": "efe83d370d7d185053a0c446989ee7ffd52277f65da0b3dbe928c714f1be9a0d",
+        "pins.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+        "address.sdc": "8693f1b180752d02241f830406a0740d9565a09702cb02011ebcc0d5d3fa59d1",
+        "command.json": "8072b2fdea32cfc63b67b79553cc4fa6ff26c4620213dd2bd5b19fea3bdb6b76",
+        "build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "verification": {
+    "invalid_options_rejected": [
+      "negative margin",
+      "NaN margin",
+      "negative round count",
+      "analogue options with router2"
+    ],
+    "actual_timeout_smoke": "Compiler killed at 1 second; exit124, incomplete receipt with no RBF/final timing pass",
+    "new_common_timing_or_router_code_changes": false
+  },
+  "limitations": [
+    "Only seed2 passed the full timing gate. Seed1 timed out before a final result; seed3 failed internal setup.",
+    "Requested500ps target was not reached; selected seed2 achieved435ps.",
+    "Only selected seed2 was hardware-tested. It changes455 routes including DQ output bit2 and OE; no logic or BEL changes.",
+    "Production FES recipe remains unchanged; full board/pad/chip/PVT timing and130MHz remain unqualified."
+  ]
+}
