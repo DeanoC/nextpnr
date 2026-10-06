@@ -36,7 +36,7 @@ MLAB cells.
 | Yosys | `886afa63953e97407153e9f4aae25fcedb639696` |
 | nextpnr source used by the collector binary | `9643627f59c2e8171164e872357219471b366cd1` |
 | nextpnr binary | `aa5bf5001100d26171aaab89af5a50205d81a4fc4fb577ddbdd6948397dad0a9` |
-| evaluator revision | `43d3fc0963341811856cffd44c45982dbe7e5e36` |
+| evaluator revision | `025c0a1b4c62d7aaa713890cabe023d9c3da552c` |
 | Mistral | `7ed06e21c18b047ec5c6d6a7e85e5ea2c8827039` |
 | mapped netlist | `f6c406ab649f52e7b8f993a184b2a717a35fa55063017ab11f7437ff4aa77686` |
 | QSF | `8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4` |
