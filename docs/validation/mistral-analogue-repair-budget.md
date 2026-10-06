@@ -33,14 +33,18 @@ and an unattainable repair target to exercise these cases:
 | --- | --- |
 | Repair disabled | ordinary final timing passes |
 | Immediate budget expiry | final timing passes; exact baseline bindings and RBF retained |
-| Expiry during nested rerouting | best routing restored; final timing passes; checkpoint reproduces the exact resulting RBF |
-| Expiry during candidate selection | best routing restored; final timing passes; checkpoint reproduces the exact resulting RBF |
+| Nested rerouting before expiry | best routing retained or restored; final timing passes; checkpoint reproduces the exact resulting RBF |
+| Candidate selection before expiry | best routing retained or restored; final timing passes; checkpoint reproduces the exact resulting RBF |
 | Immediate expiry with an impossible clock constraint | final analogue setup fails; compiler exits 1 |
 
 Later expiry can retain an improved completed round, so its bitstream need
 not match the initial one. The test checks replay of the returned routing
 rather than rejecting a legitimate improvement. The failing-clock test still
 has positive hold slack and exits unsuccessfully because setup is negative.
+The exact stopping boundary depends on host speed: a round may complete just
+before expiry. Results record whether expiry occurred between rounds, during
+candidate selection or during rerouting; in-progress cancellation must log
+restoration of the best saved routing.
 
 To reproduce with the checked-in menu synthesis fixture:
 

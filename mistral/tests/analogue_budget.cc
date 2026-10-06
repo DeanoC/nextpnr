@@ -14,14 +14,18 @@ TEST(GpuRepairCancellation, RouterReturnsFailureAndReleasesContext)
     ctx->settings[ctx->id("timing_driven")] = Property(0);
     GpuRouterCfg cfg(ctx.get());
     cfg.cpu_backend = true;
-    int checkpoints = 0;
-    // Setup completes before cancellation inside the locked negotiation loop.
-    cfg.stop_requested = [&] { return ++checkpoints >= 6; };
+    // Request cancellation only after routing has acquired the Context lock;
+    // this does not depend on the number of setup/batch checkpoints.
+#ifndef NPNR_DISABLE_THREADS
+    cfg.stop_requested = [&] { return ctx->mutex_owner == boost::this_thread::get_id(); };
+#else
+    cfg.stop_requested = [] { return true; };
+#endif
     EXPECT_FALSE(gpurouter(ctx.get(), cfg));
-    EXPECT_GE(checkpoints, 6);
     // Cancellation must unwind the router without holding the Context lock.
     ctx->lock();
     ctx->unlock();
+    cfg.stop_requested = [] { return true; };
     EXPECT_THROW(GpuCandidateRouter(ctx.get(), cfg), GpuRouterCancelled);
 }
 

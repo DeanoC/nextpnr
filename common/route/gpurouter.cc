@@ -3115,7 +3115,6 @@ struct GpuRouter
 
     bool operator()()
     {
-        cfg.check_stop();
         auto rstart = Clock::now();
         if (telemetry) {
             std::vector<gpuroute::Telemetry::Field> fields;
@@ -3130,6 +3129,7 @@ struct GpuRouter
                                                                         "not_available_for_architecture"));
             telemetry->emit("run_start", "", -1, fields);
         }
+        cfg.check_stop();
         log_info("Running the GPU router...\n");
         if (telemetry)
             telemetry->emit("phase_start", "setup", 0, {});

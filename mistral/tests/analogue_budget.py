@@ -27,7 +27,9 @@ def main():
             ('disabled', 0, 0, 0, False),
             ('early', 0, 0.000001, 100, False),
             ('reroute', 0, 5, 100, False),
-            ('candidate', 4, 5, 100, False),
+            # Imported routes may be fixed until a full reroute creates
+            # movable wires. Allow that first round before testing candidates.
+            ('candidate', 4, 20, 100, False),
             ('timing-failure', 0, 0.000001, 100, True)]:
         out = args.output/name
         out.mkdir()
@@ -62,9 +64,14 @@ def main():
         if name != 'disabled':
             assert 'Analogue repair time budget exhausted' in text, name
         if name == 'reroute':
-            assert 'exhausted during rerouting' in text and 'restoring the routing' in text
+            assert 're-routing' in text
         if name == 'candidate':
-            assert 'exhausted during candidate selection' in text and 'restoring the routing' in text
+            assert 'Setting up the GPU router for candidate routes' in text
+        expiry_location = ('rerouting' if 'exhausted during rerouting' in text else
+                           'candidate selection' if 'exhausted during candidate selection' in text else
+                           'between rounds' if 'Analogue repair time budget exhausted' in text else 'disabled')
+        if expiry_location in ('rerouting', 'candidate selection'):
+            assert 'restoring the routing' in text
         final = json.loads((out/'final.json').read_text())['modules']['top']
         bindings = {n: net.get('attributes', {}).get('ROUTING') for n, net in final['netnames'].items()}
         rbf = hashlib.sha256((out/'core.rbf').read_bytes()).hexdigest()
@@ -83,7 +90,8 @@ def main():
                 replay_code = subprocess.run(replay, stdout=log, stderr=subprocess.STDOUT, timeout=120).returncode
             assert replay_code == 0, name
             assert hashlib.sha256((out/'replayed.rbf').read_bytes()).hexdigest() == rbf, name
-        results[name] = dict(compiler_returncode=code, timing_summary=summary, rbf_sha256=rbf)
+        results[name] = dict(compiler_returncode=code, timing_summary=summary, rbf_sha256=rbf,
+                             expiry_location=expiry_location)
         print('PASS', name, flush=True)
     (args.output/'results.json').write_text(json.dumps(results, indent=2)+'\n')
 

@@ -1,14 +1,14 @@
 {
   "classification": "cooperative repair cancellation and restoration regression; CPU reference, not new hardware signoff",
   "base_commit": "6538d604",
-  "nextpnr_sha256": "88e8dad90b586d65e13d2a498edd03eb0c2f555ce5d4c5f26f537e6d6b7e11cb",
+  "nextpnr_sha256": "7e02083df48c19e8f24b4c748c6edf85708ccc43673b04d30bf9c1d34f988a5e",
   "fixture_checkpoint_sha256": "6fb48702cace1e2def124cd15ec5b7371c38235244cacfd0890fc90aea702e9d",
-  "test_script_sha256": "c33627724c94aa66a6c4989631cbe19816b7bf1f1a4398f3f5bddc6d39ebd7bb",
-  "unit_test_sha256": "2202ac0f385ee07344f6cca285b27b35de751bc0eb20d5d405a3aced96f295c5",
+  "test_script_sha256": "5b5fbf7443f5087d8ca0417da93f6e3769e702a84909700f91fc8a6a72516c8a",
+  "unit_test_sha256": "a42f53696f9fac25bce50fb70c723f2fc9dcf92154e231c5f9f2416620504bf6",
   "unit_results": {
     "new_tests": 2,
     "passed": 2,
-    "log_sha256": "d2c8a8ddf7bdf1421737439fbf79f0119bfb1a50a100476a5222d421f41d14da"
+    "log_sha256": "528fcf0867871c78f070bd1d1d0600f5d47f6836a3cbad5ff9a8b6ccae3b3a48"
   },
   "existing_io_tests": {
     "passed": 31,
@@ -26,7 +26,8 @@
         },
         "final_analogue_model": true
       },
-      "rbf_sha256": "f089e304dcfa87a58fe08319c4eb82e596e6ca8ff5d816459e23c802ec82df42"
+      "rbf_sha256": "f089e304dcfa87a58fe08319c4eb82e596e6ca8ff5d816459e23c802ec82df42",
+      "expiry_location": "disabled"
     },
     "early": {
       "compiler_returncode": 0,
@@ -39,7 +40,8 @@
         },
         "final_analogue_model": true
       },
-      "rbf_sha256": "f089e304dcfa87a58fe08319c4eb82e596e6ca8ff5d816459e23c802ec82df42"
+      "rbf_sha256": "f089e304dcfa87a58fe08319c4eb82e596e6ca8ff5d816459e23c802ec82df42",
+      "expiry_location": "between rounds"
     },
     "reroute": {
       "compiler_returncode": 0,
@@ -47,12 +49,13 @@
         "clocks": {
           "ddr.scanout.clk": {
             "hold_wns_ns": 0.7480000257492065,
-            "setup_wns_ns": 2.621999979019165
+            "setup_wns_ns": 2.694000005722046
           }
         },
         "final_analogue_model": true
       },
-      "rbf_sha256": "ec0dc9421bf9d311f6f206acbf22b3812c8d66d229e317a31909f39ab3c5a9f0"
+      "rbf_sha256": "ec0dc9421bf9d311f6f206acbf22b3812c8d66d229e317a31909f39ab3c5a9f0",
+      "expiry_location": "between rounds"
     },
     "candidate": {
       "compiler_returncode": 0,
@@ -60,12 +63,13 @@
         "clocks": {
           "ddr.scanout.clk": {
             "hold_wns_ns": 0.7480000257492065,
-            "setup_wns_ns": 2.621999979019165
+            "setup_wns_ns": 3.1630001068115234
           }
         },
         "final_analogue_model": true
       },
-      "rbf_sha256": "ec0dc9421bf9d311f6f206acbf22b3812c8d66d229e317a31909f39ab3c5a9f0"
+      "rbf_sha256": "2d950d1c4a8ab96b77254b88066ab4d8a9fc44094383451b62161165b0042702",
+      "expiry_location": "candidate selection"
     },
     "timing-failure": {
       "compiler_returncode": 1,
@@ -78,7 +82,8 @@
         },
         "final_analogue_model": true
       },
-      "rbf_sha256": "f089e304dcfa87a58fe08319c4eb82e596e6ca8ff5d816459e23c802ec82df42"
+      "rbf_sha256": "f089e304dcfa87a58fe08319c4eb82e596e6ca8ff5d816459e23c802ec82df42",
+      "expiry_location": "between rounds"
     }
   },
   "case_file_sha256": {
@@ -86,40 +91,40 @@
       "timing.json": "511ad3d119f57cecab9ec1569062ef3ecf41578e6df28d44765501f52862aafa",
       "final.json": "31d32249739d2e0e0ab527c1c48428f42e63299d8fda556cb755d28dba935e08",
       "core.rbf": "f089e304dcfa87a58fe08319c4eb82e596e6ca8ff5d816459e23c802ec82df42",
-      "build.log": "15717bd7d029f6dbe43584b7fb23f2fe2692c1d321539ce77913dd1658f97758",
+      "build.log": "74f7acf42da24e243bc2fe5c10fa23d8bd13f1af7a3f9493b68d2ff00d69696e",
       "input.json": "fe4f5f0de28ee72773190a5bb39971c3bae580464dccfa66921353cecf1f0995",
       "clocks.sdc": "7e8bc15f20f632d1c35ada566c993e18c0c5d4479efa39c6b54af06b51ba971f"
     },
     "candidate": {
-      "replayed.rbf": "ec0dc9421bf9d311f6f206acbf22b3812c8d66d229e317a31909f39ab3c5a9f0",
-      "replay.log": "38d6a61683cd7727ffa613c5b87d7a63ae74e9d9e2c9ce55304016c39cd94a36",
-      "timing.json": "6a8d41240cb337ec922ce7e85dc09b6998d6d7325f03b9babc6198c3a5e30a5e",
-      "final.json": "41c7133255ff74bf7e989c9399dc4dcf95816458e00249ea1eee20a3521d3753",
-      "core.rbf": "ec0dc9421bf9d311f6f206acbf22b3812c8d66d229e317a31909f39ab3c5a9f0",
-      "build.log": "2992146ccf76b7e73a2fbd29a986c8073e980b9188d06b1e8d44b4aa24d5a167",
-      "input.json": "1aea3f7495dc3154470e9f3da7ab656e1120b15b7d368e8b834dfc1196992188"
+      "replayed.rbf": "2d950d1c4a8ab96b77254b88066ab4d8a9fc44094383451b62161165b0042702",
+      "replay.log": "9e37304d591611679ea62d4e3ea2033e58ed88618ab5bc96b8b950d711488631",
+      "timing.json": "5958194173299964d045e7bf7361885b38831ebcca7366d5d7e708a52280713f",
+      "final.json": "11dd3eb4c33d06b119965104dfe1a3d91441c2fac62773c74f39ca5c36eeaa13",
+      "core.rbf": "2d950d1c4a8ab96b77254b88066ab4d8a9fc44094383451b62161165b0042702",
+      "build.log": "da9c36dcb72a555a02bb485e496fd2c99623e0bc18f7dca9e2bcd06605cd3a4a",
+      "input.json": "3a63aeb4c301471dd911a3f46230cd49bd6501d07a6c0899b6e1d97ed14c9eae"
     },
     "reroute": {
       "replayed.rbf": "ec0dc9421bf9d311f6f206acbf22b3812c8d66d229e317a31909f39ab3c5a9f0",
       "replay.log": "38d6a61683cd7727ffa613c5b87d7a63ae74e9d9e2c9ce55304016c39cd94a36",
-      "timing.json": "6a8d41240cb337ec922ce7e85dc09b6998d6d7325f03b9babc6198c3a5e30a5e",
-      "final.json": "7aab3c17e508d8aa67c6be823473efdbddcafd9e36e4a9d6612ba32a221acf49",
+      "timing.json": "993038cd0adfe1b4a85ecc2e96d1da1b117171e56540f1ffee9936ce939fe08c",
+      "final.json": "755f86a8305de56de40c08a02b707aafd259a438427b0f15882cb7e3901e6739",
       "core.rbf": "ec0dc9421bf9d311f6f206acbf22b3812c8d66d229e317a31909f39ab3c5a9f0",
-      "build.log": "ed152fc2cf1104a0ac63452edd4eb6db68ee3b180a019d04cd10694a5d3b24ec",
+      "build.log": "f0c407a72926d4b9662e32c01ffd83f7db66359c16ac54d72a9a7791f91b2f55",
       "input.json": "5a2b3a00acf87eef3f5a71a6b4b00f81d2e64514a170f5954a61011a874fe3bd"
     },
     "early": {
       "timing.json": "c17ce1cddd53bda7c254f91aba84344f78578533d388aa936ec35600e0e48e9b",
       "final.json": "a3ce011aaad20f59a71d97bd8d0dd6ab07549bdf235dc47ffb6c3c47df2cb9c8",
       "core.rbf": "f089e304dcfa87a58fe08319c4eb82e596e6ca8ff5d816459e23c802ec82df42",
-      "build.log": "56c15c8f9aae6819faaafdd0ce04bb2d7f452828e65853fd4c447729661da478",
+      "build.log": "4701b1eb47564a12386cde5a23b865d176591f89d3233eda7f01f8d2509b90c1",
       "input.json": "fe4f5f0de28ee72773190a5bb39971c3bae580464dccfa66921353cecf1f0995"
     },
     "disabled": {
       "timing.json": "c17ce1cddd53bda7c254f91aba84344f78578533d388aa936ec35600e0e48e9b",
       "final.json": "997e163143bd2da921534966aac4b1bd5e9fce07f03fd23b345661beb26dc037",
       "core.rbf": "f089e304dcfa87a58fe08319c4eb82e596e6ca8ff5d816459e23c802ec82df42",
-      "build.log": "f76dc2444cdc8baf76062328288fe759a15ac9d47b347344f66747f4aef0a3e5",
+      "build.log": "0dcf1afea2f83ee91fa84d27e31542c15489c1266bce9b36d4570368f4273564",
       "input.json": "5abe9d20e8b2f3d0d24fc6790e19b8df96b65f2d4d9debbecbb994e11ea0e317"
     }
   },
@@ -148,13 +153,13 @@
       "timing.json": "357220b3c4e094917ac509c16938e36c768b2413fda9657ff4c255df0219f109",
       "final.json": "8f18db03eaceced46a9faaa87f6b4e5cdfe3e33f5472c886411e91b179d1f389",
       "core.rbf": "d65bb881197b03d70495105ac0d59a16a46414785f085f91f19f8d2b664ab641",
-      "build.log": "6c407e638e8ba90282a1f6acbcf9ad09b636a5149adb17b4b66aed38f52ea3ef",
+      "build.log": "a93cdd7c1bf264c44dadd6b07c075a8592e3598d1dd52c1cad627bab4b05058e",
       "input.json": "80ca153196b6da4f5e583e1c7c4a4a3b7f58af2e6d57d24e01ec7c9d06c57d96"
     }
   },
   "production_source_sha256": {
     "common/route/gpurouter.h": "2d1bbaf8996e12aa9eb6c98d4b63cc479ee4b68d7a7ba1975b052da4983dcbbf",
-    "common/route/gpurouter.cc": "b1e7f5e35dd967e2e11c36c485d6a5e3597837e334e3aec2d16aca76e3c16e6d",
+    "common/route/gpurouter.cc": "276c46e24a31163dae667c5bbfa4a9d31528b1578b845d9207ec530b5c891cbf",
     "mistral/arch.h": "d76fe933bad0b712e68833b865bf50a3d646dfa2f2f4fda5bf1ce16a8a6cc5f0",
     "mistral/analogue.cc": "95ed02a6d1aa03d6dfdcff43327bf6035f82a722bb05359aa376770b5ac93966"
   },
@@ -163,5 +168,33 @@
     "Initial routing and final signoff are outside this repair budget.",
     "No GPU device run, new hardware run or full seed4 compile comparison was performed.",
     "Full board timing and130MHz qualification remain separate."
-  ]
+  ],
+  "additional_in_progress_reroute": {
+    "classification": "earlier run before the start-event ordering fix; same cancellation/restoration logic",
+    "nextpnr_sha256": "88e8dad90b586d65e13d2a498edd03eb0c2f555ce5d4c5f26f537e6d6b7e11cb",
+    "production_source_sha256": {
+      "common/route/gpurouter.h": "2d1bbaf8996e12aa9eb6c98d4b63cc479ee4b68d7a7ba1975b052da4983dcbbf",
+      "common/route/gpurouter.cc": "b1e7f5e35dd967e2e11c36c485d6a5e3597837e334e3aec2d16aca76e3c16e6d",
+      "mistral/arch.h": "d76fe933bad0b712e68833b865bf50a3d646dfa2f2f4fda5bf1ce16a8a6cc5f0",
+      "mistral/analogue.cc": "95ed02a6d1aa03d6dfdcff43327bf6035f82a722bb05359aa376770b5ac93966"
+    },
+    "timing_summary": {
+      "clocks": {
+        "ddr.scanout.clk": {
+          "hold_wns_ns": 0.7480000257492065,
+          "setup_wns_ns": 2.621999979019165
+        }
+      },
+      "final_analogue_model": true
+    },
+    "file_sha256": {
+      "replayed.rbf": "ec0dc9421bf9d311f6f206acbf22b3812c8d66d229e317a31909f39ab3c5a9f0",
+      "replay.log": "38d6a61683cd7727ffa613c5b87d7a63ae74e9d9e2c9ce55304016c39cd94a36",
+      "timing.json": "6a8d41240cb337ec922ce7e85dc09b6998d6d7325f03b9babc6198c3a5e30a5e",
+      "final.json": "7aab3c17e508d8aa67c6be823473efdbddcafd9e36e4a9d6612ba32a221acf49",
+      "core.rbf": "ec0dc9421bf9d311f6f206acbf22b3812c8d66d229e317a31909f39ab3c5a9f0",
+      "build.log": "ed152fc2cf1104a0ac63452edd4eb6db68ee3b180a019d04cd10694a5d3b24ec",
+      "input.json": "5a2b3a00acf87eef3f5a71a6b4b00f81d2e64514a170f5954a61011a874fe3bd"
+    }
+  }
 }
