@@ -1,0 +1,54 @@
+{
+  "quartus": "17.0.2 Build602",
+  "classification": "Host-only inverted SDR register configuration oracle; no external timing or hardware acceptance",
+  "rbf_sha256": "687302a4e8290258fffd4f7f59bd5d5682fc177de6a103119dbe62c788228cbc",
+  "expected": {
+    "OUTREG_POWER_UP_STATE.9": "1",
+    "fabric_registers": 0,
+    "io_registers": 1
+  },
+  "raw_artifact_root": "/tmp/nextpnr-inverted-output-oracle",
+  "sha256": {
+    "top.v": "7798195a2baffda943310fe10f0f1a4b292a4d38f57bfa64a7016b31bda5046f",
+    "top.qsf": "ac6c1dc78fcc50b68efafbda1c8b165e8f27ecdbb798a1ad1e0bfe0c4ba85a93",
+    "top.qpf": "7a131c9521f2b7da8012faedb841cfe89996b4569c20130b402c5f0133da4a56",
+    "clocks.sdc": "09f4c29799b55c79640ab914aa7b40ed5ea2278a7d40369fa86cd5a75223c0a5",
+    "top.bt": "6405d03b16942cdb20669cefb5a64afd5cf2894321132ee61b13ae27c5dbe389",
+    "compile.log": "afe3602c8e47b9359c411f739cd0fe19153e212bc16670d9fa40dedbf05bbbc4",
+    "output_files/top.fit.rpt": "6779b156450072dea2acbd111e29d202ea382852d6d9e4341c21eacb31c3b59a",
+    "output_files/top.sta.rpt": "11be9cd8b51bfead8bf534d658f4e9c3fe8b13893eb7055dc9b86cc1b0705c09"
+  },
+  "native_pack_checks": {
+    "100": {
+      "compiler_exit": 0,
+      "sdr_outputs": 20,
+      "high_startup_outputs": 3,
+      "inputs": {
+        "synth.json": "c10894820fa0bacfb4e2b34d3a3a7556055014381cc3f709d9bae34a3310cb08",
+        "inversion-packed.json": "2689d31c6fc6bf38f1dbb9465f3f7ff9b62579417af6a22c96cb8625286c2f4f",
+        "inversion-pack.log": "b223e3dc400e8ff9d9d189e6940049f73700d4da5f750cec53e51c739a3885fd"
+      }
+    },
+    "130": {
+      "compiler_exit": 0,
+      "sdr_outputs": 20,
+      "high_startup_outputs": 3,
+      "inputs": {
+        "synth.json": "5d1a67945593d0dd6720b2b2ff43d064c6792ba0751c72967bdf45d584f26e71",
+        "inversion-packed.json": "b824ef8bdd483787bfd2aed34acbf44300ff0c94b1ce20b644edfc1cf186c04f",
+        "inversion-pack.log": "2262056e6bf5a2413ce68af99c0f080fb541017b4b44594311bfaa80bc539832"
+      }
+    }
+  },
+  "compiler_source_sha256": {
+    "mistral/pack.cc": "2c0c76e236563abd1568cb7cb1659e8b71889c0440351bd5e7cd83d5272f2b47",
+    "mistral/bitstream.cc": "ebb0fb1867ffa1781133cd4776c163b530f473d8f4c23d9e7db32d4e7ed2ebbd"
+  },
+  "regression": {
+    "root": "/tmp/nextpnr-inverted-output-regression-final",
+    "log_sha256": "8e38529e1c69f1b5e4aded57a86849ba6e2385890de01e32f95ef67aa88f8de6",
+    "direct_prechange_rbf_sha256": "030c8e2f7fc982e6046938fd4ccda0fae03de35cb89580eb88314d7620533dd6",
+    "direct_rbf_sha256": "030c8e2f7fc982e6046938fd4ccda0fae03de35cb89580eb88314d7620533dd6",
+    "sequence_log_sha256": "a5062fc35222a2a95b3f3d5d934f78bc0904ea4dc669e9b07298c87fb2679ad1"
+  }
+}
