@@ -2862,8 +2862,11 @@ struct MistralPacker
                 shifted |= sol.outputs[i].phase_ps != 0;
             for (int i = 0; i < clocks; ++i) {
                 outputs[i] = ci->getPort(mistral_pll_output_port(ctx, ci, i));
+                // A fixed-rate build can leave a configured counter unused.
+                // Keep it in the solver/configuration, without reserving a
+                // global-clock lane or requiring an artificial consumer.
                 if (!outputs[i] || outputs[i]->users.empty())
-                    log_error("PLL '%s': output %d must feed clock buffers.\n", ctx->nameOf(ci), i);
+                    continue;
                 for (auto user : outputs[i]->users) {
                     if (!ctx->is_clkbuf_cell(user.cell->type) || user.port != id_A)
                         log_error("PLL '%s': output %d must feed only clock buffers.\n", ctx->nameOf(ci), i);
@@ -2904,6 +2907,8 @@ struct MistralPacker
             if (buffered_ref)
                 set_clock(buffered_ref, ref_period, 50, "reference ");
             for (int i = 0; i < clocks; ++i) {
+                if (!outputs[i])
+                    continue;
                 double hz = sol.outputs[i].achieved_hz.to_double();
                 int period = ctx->getDelayFromNS(1.0e9 / hz);
                 set_clock(outputs[i], period, req.outputs[i].duty);
@@ -2994,6 +2999,8 @@ struct MistralPacker
                 };
                 bool available = true;
                 for (int i = 0; i < clocks && available; ++i) {
+                    if (branches[i].empty())
+                        continue;
                     BelId lane;
                     for (int counter : counter_order) {
                         if (std::find(assign.begin(), assign.end(), counter) != assign.end())
@@ -3025,6 +3032,8 @@ struct MistralPacker
                     reset_choice();
                     available = true;
                     for (int i = 0; i < clocks && available; ++i) {
+                        if (branches[i].empty())
+                        continue;
                         bool placed = false;
                         for (int counter : counter_order) {
                             if (std::find(assign.begin(), assign.end(), counter) != assign.end())
@@ -3046,6 +3055,18 @@ struct MistralPacker
                 }
                 if (!available)
                     continue;
+                // Assign unused counters last: they must not take the only
+                // counter with a free lane from a connected output.
+                for (int i = 0; i < clocks; ++i) {
+                    if (!branches[i].empty())
+                        continue;
+                    for (int counter : counter_order)
+                        if (std::find(assign.begin(), assign.end(), counter) == assign.end()) {
+                            assign[i] = counter;
+                            break;
+                        }
+                    NPNR_ASSERT(assign[i] != -1);
+                }
                 chosen = candidate;
                 counters = assign;
                 ctx->bindBel(chosen, ci, STRENGTH_LOCKED);

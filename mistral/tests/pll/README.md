@@ -43,6 +43,29 @@ negative phases; inexact duty requests; requests for which no Quartus VCO
 reproduces every output within its 500 Hz / 100 ppm tolerance; and the edge
 cases listed under "Limits" below. Reset must be tied low or driven.
 
+## Configured outputs without consumers
+
+A configured output may be disconnected or have no consumers after synthesis
+(for example, a fixed-rate SDRAM build retaining a multi-rate PLL). It remains
+part of the VCO solution and receives a distinct physical counter, with its
+requested divider, duty cycle and phase. It reserves no global-clock lane.
+Connected outputs receive counters first, so an unused output cannot take a
+counter needed to reach an available lane. Live outputs still require clock
+buffers; direct fabric consumers remain errors.
+
+```sh
+python3 mistral/tests/pll/unused_outputs.py --yosys "$YOSYS" --nextpnr "$NEXTPNR" \
+  --output /tmp/pll-unused-outputs
+```
+
+This routes the three-PLL `mister3` fixture with every output used, then with
+each core output unused in turn. It checks distinct counter assignments,
+clock-buffer counts, preserved counter/pin-map attributes and byte-identical
+RBF replay. Separate disconnected-output pack checks cover absent nets.
+Timing failure is allowed for these configuration regressions; they establish
+neither board timing nor hardware acceptance. The all-used RBF also matched
+the pre-change compiler byte for byte in the recorded validation.
+
 ## General solver
 
 Quartus exposes its PLL legality engine to `quartus_sh`

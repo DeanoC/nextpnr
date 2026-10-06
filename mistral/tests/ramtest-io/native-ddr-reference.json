@@ -1,0 +1,558 @@
+{
+  "classification": "Native DDR diagnostic; no board timing closure or hardware qualification",
+  "base_nextpnr": "0c5ed400",
+  "inputs": {
+    "classification": "isolated native DDR packing diagnostic, not sealed or hardware qualified",
+    "fes_revision": "8f5c5b5982fea01877b223a36cca0024dd15a8c8",
+    "source_sha256": {
+      "cores/fes-pong/rtl/pixel_pll.v": "a27c894279bc4d345f091b33c87b58b38fadde2728d62cf000d6665885166369",
+      "cores/fes-common/rtl/fes_application_gp.v": "93c98cd236b19b1e745d7d2c257d76aaf2c3ed6a0eb3d2ce120d94293f9af920",
+      "cores/fes-common/rtl/fes_video_720p.v": "86442976c2d7d6851e631ded48bf51071ea4eecb7e291ba2a774c8c1cfe0d3df",
+      "cores/fes-common/rtl/fes_hps_ddr.v": "89411a2f0a75306accdba550a492559f4d65a8e8ddd3132c3e98eb99a5500406",
+      "cores/fes-common/rtl/fes_hps_ddr_guard.v": "246df020b761922e0692f014552f5806467e5817be6e9e540886fd2d1f74ce09",
+      "cores/fes-ramtest/rtl/mem_channel.v": "2639e3604b85941cc46e46dea5c59d6b3ca0ad1e333162f9af8303da3f9db5ff",
+      "cores/fes-ramtest/rtl/ram_font.v": "870fb68597c26f0fd88b75524171588dfe01d6ffeafb2be6e23c7a4d75fc3b64",
+      "cores/fes-ramtest/rtl/ram_display.v": "9125d4530481c9ac0cad440b77eb74cec47941de5b99a98be1d5b3bc884865ea",
+      "cores/fes-ramtest/rtl/sdram_addon_port.v": "00a6a8cdb5d185c16cef595ba6a9303242870d96aab8b24e010839169f6e2d05",
+      "cores/fes-ramtest/rtl/ddr_rates.v": "ce70cc0af1387e438974ce8f407c371831e76ebb13905cb8526dabc2c9404cfc",
+      "cores/fes-ramtest/rtl/ddr_channel.v": "f0f6286143a292af490efa9d5ae5875d53690e9cc557127bf657050742710843",
+      "cores/fes-ramtest/rtl/top.v": "0ac8e8429fd9986141ea2a0b1bb2437be62a25527d5d8b2e3ba9d6c56d41de2c",
+      "cores/fes-ramtest/rtl/ram_pll.v": "c48d3c58bbbc7b70d7639220787aa1ca93fcae8ba818a0d25abcaf20de1c1e28",
+      "cores/fes-common/generated/fes_application.vh": "3c62b421fe14b23599a7ee3f91ab1107cdce7a05bfc34dc7890da64289447d9f",
+      "cores/fes-ramtest/constraints.qsf": "39ea7bfe2c2b844c13a6395aa7a70d8e79c938ad8fab48bb97164378cdaab4d9"
+    },
+    "recipe_sha256": "0885fee238638beb7351d3d41427d2dabb666d03bb63ee2a748e7c521053db9e"
+  },
+  "raw_artifact_root": "/tmp/nextpnr-full-board-ddr",
+  "quartus": {
+    "100": {
+      "input-setup": {
+        "paths": 128,
+        "worst_slack_ns": -14.54
+      },
+      "input-hold": {
+        "paths": 128,
+        "worst_slack_ns": 9.141
+      },
+      "output-setup": {
+        "paths": 208,
+        "worst_slack_ns": -2.433
+      },
+      "output-hold": {
+        "paths": 208,
+        "worst_slack_ns": 1.865
+      },
+      "capture-handoff-setup": {
+        "paths": 64,
+        "worst_slack_ns": -0.238
+      },
+      "capture-handoff-hold": {
+        "paths": 64,
+        "worst_slack_ns": 1.732
+      }
+    },
+    "130": {
+      "input-setup": {
+        "paths": 128,
+        "worst_slack_ns": -11.665
+      },
+      "input-hold": {
+        "paths": 128,
+        "worst_slack_ns": 5.712
+      },
+      "output-setup": {
+        "paths": 208,
+        "worst_slack_ns": -3.587
+      },
+      "output-hold": {
+        "paths": 208,
+        "worst_slack_ns": 0.9
+      },
+      "capture-handoff-setup": {
+        "paths": 64,
+        "worst_slack_ns": -2.493
+      },
+      "capture-handoff-hold": {
+        "paths": 64,
+        "worst_slack_ns": 3.441
+      }
+    }
+  },
+  "native_cycle": [
+    {
+      "rate": 100,
+      "return_delay_ns": 0,
+      "tac_ns": 0.5,
+      "data": "dead",
+      "capture_ns": 131370.417,
+      "launch_ns": 131370.0,
+      "valid_from_ns": 131370.5,
+      "valid_until_ns": 131382.5,
+      "capture_after_launch_ns": 0.417,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 100,
+      "return_delay_ns": 0,
+      "tac_ns": 6,
+      "data": "dead",
+      "capture_ns": 131370.417,
+      "launch_ns": 131370.0,
+      "valid_from_ns": 131376.0,
+      "valid_until_ns": 131382.5,
+      "capture_after_launch_ns": 0.417,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 100,
+      "return_delay_ns": 3,
+      "tac_ns": 0.5,
+      "data": "dead",
+      "capture_ns": 131370.417,
+      "launch_ns": 131370.0,
+      "valid_from_ns": 131373.5,
+      "valid_until_ns": 131385.5,
+      "capture_after_launch_ns": 0.417,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 100,
+      "return_delay_ns": 3,
+      "tac_ns": 6,
+      "data": "dead",
+      "capture_ns": 131370.417,
+      "launch_ns": 131370.0,
+      "valid_from_ns": 131379.0,
+      "valid_until_ns": 131385.5,
+      "capture_after_launch_ns": 0.417,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 100,
+      "return_delay_ns": 6,
+      "tac_ns": 0.5,
+      "data": "dead",
+      "capture_ns": 131370.417,
+      "launch_ns": 131370.0,
+      "valid_from_ns": 131376.5,
+      "valid_until_ns": 131388.5,
+      "capture_after_launch_ns": 0.417,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 100,
+      "return_delay_ns": 6,
+      "tac_ns": 6,
+      "data": "dead",
+      "capture_ns": 131370.417,
+      "launch_ns": 131370.0,
+      "valid_from_ns": 131382.0,
+      "valid_until_ns": 131388.5,
+      "capture_after_launch_ns": 0.417,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 100,
+      "return_delay_ns": 9,
+      "tac_ns": 0.5,
+      "data": "dead",
+      "capture_ns": 131370.417,
+      "launch_ns": 131370.0,
+      "valid_from_ns": 131379.5,
+      "valid_until_ns": 131391.5,
+      "capture_after_launch_ns": 0.417,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 100,
+      "return_delay_ns": 9,
+      "tac_ns": 6,
+      "data": "dead",
+      "capture_ns": 131370.417,
+      "launch_ns": 131370.0,
+      "valid_from_ns": 131385.0,
+      "valid_until_ns": 131391.5,
+      "capture_after_launch_ns": 0.417,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 130,
+      "return_delay_ns": 0,
+      "tac_ns": 0.5,
+      "data": "beef",
+      "capture_ns": 101060.188,
+      "launch_ns": 101057.497,
+      "valid_from_ns": 101057.997,
+      "valid_until_ns": 101067.689,
+      "capture_after_launch_ns": 2.691,
+      "captured_valid_word": true
+    },
+    {
+      "rate": 130,
+      "return_delay_ns": 0,
+      "tac_ns": 5.4,
+      "data": "dead",
+      "capture_ns": 101060.188,
+      "launch_ns": 101057.497,
+      "valid_from_ns": 101062.897,
+      "valid_until_ns": 101067.689,
+      "capture_after_launch_ns": 2.691,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 130,
+      "return_delay_ns": 3,
+      "tac_ns": 0.5,
+      "data": "dead",
+      "capture_ns": 101060.188,
+      "launch_ns": 101057.497,
+      "valid_from_ns": 101060.997,
+      "valid_until_ns": 101070.689,
+      "capture_after_launch_ns": 2.691,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 130,
+      "return_delay_ns": 3,
+      "tac_ns": 5.4,
+      "data": "dead",
+      "capture_ns": 101060.188,
+      "launch_ns": 101057.497,
+      "valid_from_ns": 101065.897,
+      "valid_until_ns": 101070.689,
+      "capture_after_launch_ns": 2.691,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 130,
+      "return_delay_ns": 6,
+      "tac_ns": 0.5,
+      "data": "dead",
+      "capture_ns": 101060.188,
+      "launch_ns": 101057.497,
+      "valid_from_ns": 101063.997,
+      "valid_until_ns": 101073.689,
+      "capture_after_launch_ns": 2.691,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 130,
+      "return_delay_ns": 6,
+      "tac_ns": 5.4,
+      "data": "dead",
+      "capture_ns": 101060.188,
+      "launch_ns": 101057.497,
+      "valid_from_ns": 101068.897,
+      "valid_until_ns": 101073.689,
+      "capture_after_launch_ns": 2.691,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 130,
+      "return_delay_ns": 9,
+      "tac_ns": 0.5,
+      "data": "dead",
+      "capture_ns": 101060.188,
+      "launch_ns": 101057.497,
+      "valid_from_ns": 101066.997,
+      "valid_until_ns": 101076.689,
+      "capture_after_launch_ns": 2.691,
+      "captured_valid_word": false
+    },
+    {
+      "rate": 130,
+      "return_delay_ns": 9,
+      "tac_ns": 5.4,
+      "data": "dead",
+      "capture_ns": 101060.188,
+      "launch_ns": 101057.497,
+      "valid_from_ns": 101071.897,
+      "valid_until_ns": 101076.689,
+      "capture_after_launch_ns": 2.691,
+      "captured_valid_word": false
+    }
+  ],
+  "oss": {
+    "100": {
+      "active_directions": 53,
+      "declared_directions": 53,
+      "expected_channels": 86,
+      "checked_channels": 86,
+      "all_channels_checked": true,
+      "all_channel_slacks_nonnegative": false,
+      "timing_summary": {
+        "clocks": {
+          "display.pixel_clk": {
+            "hold_wns_ns": 0.40299999713897705,
+            "setup_wns_ns": 1.0540000200271606
+          },
+          "dq_buf[9].dq_capture$ddr_clock": {
+            "hold_wns_ns": 0.6399999856948853,
+            "setup_wns_ns": 5.948999881744385
+          },
+          "ram_clock.clocks[1]": {
+            "hold_wns_ns": -2.188999891281128,
+            "setup_wns_ns": -14.24899959564209
+          }
+        },
+        "final_analogue_model": true
+      },
+      "strict_compiler_exit": 1,
+      "budget": {
+        "status": "diagnostic assumptions only; turnaround and hardware unverified",
+        "memory_mhz": 100,
+        "cas_latency": 2,
+        "datasheet": "https://etron.com/wp-content/uploads/2022/04/EM63B165TSBM_Rev-2.4.pdf",
+        "assumptions_ns": {
+          "clock-flight": [
+            0.0,
+            0.5
+          ],
+          "data-flight": [
+            0.0,
+            0.5
+          ],
+          "read-flight": [
+            0.0,
+            0.5
+          ],
+          "cs-inverter": [
+            0.0,
+            5.0
+          ]
+        },
+        "margin_ns": 0.2,
+        "clock_at_chip_ns": {
+          "rise": [
+            1.24399995803833,
+            7.289999961853027
+          ],
+          "fall": [
+            1.24399995803833,
+            7.309999942779541
+          ]
+        },
+        "delay_budgets_ns": {
+          "input": [
+            3.54399995803833,
+            13.989999961853027
+          ],
+          "output": [
+            -8.289999961853027,
+            0.9560000419616699
+          ],
+          "chip_select": [
+            -8.289999961853027,
+            5.95600004196167
+          ]
+        },
+        "chip_clock_pulse_ns": {
+          "high_min": -1.2460000038146972,
+          "low_min": -1.265999984741211
+        },
+        "chip_clock_pulse_proven": false,
+        "source_sha256": {
+          "/tmp/nextpnr-full-board-ddr/100/probe-timing.json": "66fc3bf6ddfe807dc43400d549291e38df2e05d251e1baf7590636b67a33939f",
+          "/tmp/nextpnr-full-board-ddr/100/probe-final.json": "96704b2da567ff892d32f645cfe86dab113d88926a04989abd012d644c736111"
+        }
+      }
+    },
+    "130": {
+      "active_directions": 53,
+      "declared_directions": 53,
+      "expected_channels": 86,
+      "checked_channels": 86,
+      "all_channels_checked": true,
+      "all_channel_slacks_nonnegative": false,
+      "timing_summary": {
+        "clocks": {
+          "display.pixel_clk": {
+            "hold_wns_ns": 0.4230000078678131,
+            "setup_wns_ns": 2.0339999198913574
+          },
+          "dq_buf[9].dq_capture$ddr_clock": {
+            "hold_wns_ns": 2.691999912261963,
+            "setup_wns_ns": 2.9860000610351562
+          },
+          "ram_clock.clocks[0]": {
+            "hold_wns_ns": -3.3429999351501465,
+            "setup_wns_ns": -11.37399959564209
+          }
+        },
+        "final_analogue_model": true
+      },
+      "strict_compiler_exit": 1,
+      "budget": {
+        "status": "diagnostic assumptions only; turnaround and hardware unverified",
+        "memory_mhz": 130,
+        "cas_latency": 3,
+        "datasheet": "https://etron.com/wp-content/uploads/2022/04/EM63B165TSBM_Rev-2.4.pdf",
+        "assumptions_ns": {
+          "clock-flight": [
+            0.0,
+            0.5
+          ],
+          "data-flight": [
+            0.0,
+            0.5
+          ],
+          "read-flight": [
+            0.0,
+            0.5
+          ],
+          "cs-inverter": [
+            0.0,
+            5.0
+          ]
+        },
+        "margin_ns": 0.2,
+        "clock_at_chip_ns": {
+          "rise": [
+            1.24399995803833,
+            7.289999961853027
+          ],
+          "fall": [
+            1.24399995803833,
+            7.309999942779541
+          ]
+        },
+        "delay_budgets_ns": {
+          "input": [
+            3.54399995803833,
+            13.389999961853027
+          ],
+          "output": [
+            -8.289999961853027,
+            0.9560000419616699
+          ],
+          "chip_select": [
+            -8.289999961853027,
+            5.95600004196167
+          ]
+        },
+        "chip_clock_pulse_ns": {
+          "high_min": -2.400000047683716,
+          "low_min": -2.4200000286102297
+        },
+        "chip_clock_pulse_proven": false,
+        "source_sha256": {
+          "/tmp/nextpnr-full-board-ddr/130/probe-timing.json": "957112c981e3dd61cbf83bfb6eba1b357fd774b5bbbf9129f1c141ee18377e1a",
+          "/tmp/nextpnr-full-board-ddr/130/probe-final.json": "187af2080a9235009ac4871b5f05555cbe6d6be94420b7d372b09aa9c0219807"
+        }
+      }
+    }
+  },
+  "artifact_sha256": {
+    "100/synth.ys": "ec58308b07d2888591b0496c0e420db90b747ee5926c9fed9f5a39277b33176a",
+    "100/synth.json": "ee38779efba03417769d7e4793b463d974e3f094adc5a1abe1fe5f01bb578276",
+    "100/probe.sdc": "812b317588189b3056cfe46f0a5fc6d4685bbb6a53441fc89c1b298edad6e4b0",
+    "100/probe-final.json": "96704b2da567ff892d32f645cfe86dab113d88926a04989abd012d644c736111",
+    "100/probe-timing.json": "66fc3bf6ddfe807dc43400d549291e38df2e05d251e1baf7590636b67a33939f",
+    "100/probe.rbf": "8a6105de0e0c378bd4edb6017444ad3690226801b221cc7cc5819e9d010bdb53",
+    "100/probe-route.log": "212f8d36c8afb2744c79b2badecf0a906c8cbb647f7158144926f8cfe2bded05",
+    "100/final-candidate-packed.json": "085f70e67a40497d23bb695f545f78d8154e16d9f8ff55cc6a1283a94eb83631",
+    "100/final-candidate-pack.log": "7821228b1b11a2e099d20987bd07d55a3ee7d07cea2a80736ca17989681581a1",
+    "100/board-final.json": "48f060d868ab6c2e66e7ed6e8881643fa4aa98e81bfae618c5f254fef86cf3d8",
+    "100/board-timing.json": "75f8f2ae905ca0d583b77231c99dd3a981b6ff2c3ef32621d11fcdf12a5f71ca",
+    "100/board.rbf": "8a6105de0e0c378bd4edb6017444ad3690226801b221cc7cc5819e9d010bdb53",
+    "100/board-build.log": "b1a97a9939a21b299bff5004b576ffc5a261d75ef3c49fccfc9715f75e983b39",
+    "100/budget/board.sdc": "99d72330f813f659047278db09b6ab2a9c4815703e60948377546279e360eb06",
+    "100/coverage.json": "6faca2db21687ceaab6b793b2f33a302b78557d5b4baf48f46ba137a090f21ad",
+    "quartus-100/top.qsf": "81f113f31216cf8410ca8d9a25ca79f03ee7efc33d78bd68abdfc86e31768874",
+    "quartus-100/clocks.sdc": "0ce506bff4c3fb8201f161b06233121a47befc651d1466aa86d22c53c1c52479",
+    "quartus-100/compile.log": "9f31b33119db3b4c0723076e7764c69b5d61e826b6427bb3ddbca6c81a95c6f9",
+    "quartus-100/board.tcl": "ab4d6d468f1e19f40d201a9c16b76ac1d2a31bb70265227738161e922d5b73a1",
+    "quartus-100/board.log": "37886f3091f9cde0e9db49eed391506fb2336d2268e844fd2e551fc24d865bde",
+    "quartus-100/output_files/top.sta.rpt": "9c313b07badbffc20c1e474c2b8fd18c5569e9900b4094c1e6482926cdbc2e23",
+    "quartus-100/output_files/top.fit.rpt": "75190680616be3b7ad80628abeff755d785114054259cea81ed6b310df6c02ee",
+    "quartus-100/output_files/top.rbf": "2d9621d5651a8e20c58c1fc1cc35d701391380ac8497d7b96381236ea598cf39",
+    "quartus-100/board-reports/7_slow_1100mv_-40c/capture-handoff-hold.rpt": "db4eb85db4c6ef0a738e7bcc1ed9e309e343b8946384dd3b05432c74a21909d4",
+    "quartus-100/board-reports/7_slow_1100mv_-40c/capture-handoff-setup.rpt": "8658653204f80d1b6c33ed1389db7add2771768289c5ecd03acc627d7757b5e1",
+    "quartus-100/board-reports/7_slow_1100mv_-40c/clocks.rpt": "28af2b772bb6a5a1c500b882e383b15b53333c9618e917e878e5fe522d694bae",
+    "quartus-100/board-reports/7_slow_1100mv_-40c/input-hold.rpt": "6fc26018dcb20918373a57305754a8f03a315d0d6a35c59a7f14c0ef27f1ad14",
+    "quartus-100/board-reports/7_slow_1100mv_-40c/input-setup.rpt": "098808423cb39817b1b43e99e4e10f36b11537fb38cbdcd3b58c92614a7b3454",
+    "quartus-100/board-reports/7_slow_1100mv_-40c/output-hold.rpt": "1e73db6a999f517d564a39101a67135a4562a996bab37076f435d3683ba1aba5",
+    "quartus-100/board-reports/7_slow_1100mv_-40c/output-setup.rpt": "83fbbfe12db8bc002bb57ca8c1ae01fe9f59f35b2dfe4d30675d8380a87cf45a",
+    "quartus-100/board-reports/7_slow_1100mv_100c/capture-handoff-hold.rpt": "c535d5d25cae9ec30a0d309cf6fd9486d17ea0067718d82841f1e4cdb913f63e",
+    "quartus-100/board-reports/7_slow_1100mv_100c/capture-handoff-setup.rpt": "edf484beb2f2000b6300d85b27e80a91d516aadd329c75804bd7840bcf69f4af",
+    "quartus-100/board-reports/7_slow_1100mv_100c/clocks.rpt": "28af2b772bb6a5a1c500b882e383b15b53333c9618e917e878e5fe522d694bae",
+    "quartus-100/board-reports/7_slow_1100mv_100c/input-hold.rpt": "17f31fe147e26bd24006c64ecf6659cdd92a4169ef958c1d81db518982a369ad",
+    "quartus-100/board-reports/7_slow_1100mv_100c/input-setup.rpt": "837c70a7a8f82628b333d833d420bb28d05d5acb5a1b115c0b618ad89fdefc8f",
+    "quartus-100/board-reports/7_slow_1100mv_100c/output-hold.rpt": "bb516251d7362460ca02eaa750e7cebc4dc4d56f7629b8a522be12b3fa710f9b",
+    "quartus-100/board-reports/7_slow_1100mv_100c/output-setup.rpt": "7ff57b4775b8aa5110c1f3fb21d87869f945ab543df736e9d9e15c696e300582",
+    "quartus-100/board-reports/MIN_fast_1100mv_-40c/capture-handoff-hold.rpt": "8bf9143081945a4a317f1c2578db64056b1233b691a05115e127dcb4dce8d323",
+    "quartus-100/board-reports/MIN_fast_1100mv_-40c/capture-handoff-setup.rpt": "4c0613760d50cdaf72bd678629b0784084a432c018f1c22e478135380ccc8aa8",
+    "quartus-100/board-reports/MIN_fast_1100mv_-40c/clocks.rpt": "28af2b772bb6a5a1c500b882e383b15b53333c9618e917e878e5fe522d694bae",
+    "quartus-100/board-reports/MIN_fast_1100mv_-40c/input-hold.rpt": "9fec33eada776df45f7608c0266551c486d06a83a64d7c3af8e58ba655f778dc",
+    "quartus-100/board-reports/MIN_fast_1100mv_-40c/input-setup.rpt": "590c5b53de064c577f9961db006957602703b1908a86364e4eb795281fde568f",
+    "quartus-100/board-reports/MIN_fast_1100mv_-40c/output-hold.rpt": "83891eeb7d6039190b6f09e96a6e9c8b140da10dc586667861751c5342ce8d86",
+    "quartus-100/board-reports/MIN_fast_1100mv_-40c/output-setup.rpt": "750fb547cc36c48a6392a28563947910a157c893d2f0bda8970f082a6c103c58",
+    "quartus-100/board-reports/MIN_fast_1100mv_100c/capture-handoff-hold.rpt": "2fc3d82bf77fb343fc942b613abbb3b8279ff161a7ee4d23e342d603df0cfb30",
+    "quartus-100/board-reports/MIN_fast_1100mv_100c/capture-handoff-setup.rpt": "94a2d4addb161f72213e89311edb2af581f8c0b6b276e387aa867083d0433ae7",
+    "quartus-100/board-reports/MIN_fast_1100mv_100c/clocks.rpt": "28af2b772bb6a5a1c500b882e383b15b53333c9618e917e878e5fe522d694bae",
+    "quartus-100/board-reports/MIN_fast_1100mv_100c/input-hold.rpt": "eafaaeed60c2b95eeda433ad6f5735d709def29dd9250ccfc2cce49f677d0977",
+    "quartus-100/board-reports/MIN_fast_1100mv_100c/input-setup.rpt": "fb676cb07453297232ff41a0ebe2db58efc0ccd783b72da46ca5809777afa86d",
+    "quartus-100/board-reports/MIN_fast_1100mv_100c/output-hold.rpt": "bc479bcf7249cd42d593647faec2818ec93f6e04d17952efbffdaeb260156484",
+    "quartus-100/board-reports/MIN_fast_1100mv_100c/output-setup.rpt": "1cc53c84c12aeb757bc031cec9b4a27a116f105e1c427ae1e40769d6b34bfd20",
+    "130/synth.ys": "47132c03241dde1b5c361f798d0240d06998e25ed32d26c3d142b015491cd019",
+    "130/synth.json": "63e5e5518600f94d37c440c443e75899bdc6a102013c1763ec0cd9e908ab412c",
+    "130/probe.sdc": "9ad02455f666cbf32b89bdffa0b792c8a3d368da1c62eb2ebe94b18f50ed30c2",
+    "130/probe-final.json": "187af2080a9235009ac4871b5f05555cbe6d6be94420b7d372b09aa9c0219807",
+    "130/probe-timing.json": "957112c981e3dd61cbf83bfb6eba1b357fd774b5bbbf9129f1c141ee18377e1a",
+    "130/probe.rbf": "45ddd07a92d402b8d6a13bc8290520080ac7258b7686fc9122330085a028586e",
+    "130/probe-route.log": "3fd22dda785a5d4e91312bd4cd2cd5fa605d68ca70a1ca92a8061be1305ea6eb",
+    "130/final-candidate-packed.json": "95c6612512cf8d3233270b1df978c5f15538a9dafbf642bf8bd8bdfa3c0c89a0",
+    "130/final-candidate-pack.log": "8a9829355aa881600c467b953ae742758883260e14788035340011b44da941c8",
+    "130/board-final.json": "aeab74a94a890bb1f850b987212f963e9d3ef82a0a062079f6b6dce036106752",
+    "130/board-timing.json": "cc3296818fadaa58f1997e0b1b8a57b794a5f485602e37695479780703a15a2c",
+    "130/board.rbf": "45ddd07a92d402b8d6a13bc8290520080ac7258b7686fc9122330085a028586e",
+    "130/board-build.log": "849082f0be85af0db29c95db07cf16c4bda4fc91770ec835eb7e6e74958a3074",
+    "130/budget/board.sdc": "b8789564e811f1adb3adf6949737d674c240c78592963305f677282c30122174",
+    "130/coverage.json": "8698c9a678e150b9fe20e5c6ec41055e71c6debe3fc48a3bc094daacf61103c0",
+    "quartus-130/top.qsf": "ee827bd7ff5ee8d3316b67abc483d631e4e9acbe3308b7458a453fe2894e74c8",
+    "quartus-130/clocks.sdc": "0ce506bff4c3fb8201f161b06233121a47befc651d1466aa86d22c53c1c52479",
+    "quartus-130/compile.log": "db0fbca96c8e7ed342074459b4c43376c9e036f781bff4590150fe49692f8d19",
+    "quartus-130/board.tcl": "22e7707361f7fc972d4b40c6f48f33222328fdd77363c7750278c817209de6aa",
+    "quartus-130/board.log": "5aa6de845229003312bf80b5523fcbc14170973f56b71af6d9ef14f4f9c1ae45",
+    "quartus-130/output_files/top.sta.rpt": "78f5bfb5349bf1631f8cf81dc8d46f261bcf67c31fc0916bdf9dc201517b2b37",
+    "quartus-130/output_files/top.fit.rpt": "781ea9607ee83c6d3fcfe979e8281940b1ce0b3156223f2cb061ac89de39667e",
+    "quartus-130/output_files/top.rbf": "e6544b6d46f4ca5be885eab1f340424f3b92fb6a672056dcee8d19166bdef8c8",
+    "quartus-130/board-reports/7_slow_1100mv_-40c/capture-handoff-hold.rpt": "59be644c1fda90c4ae9efa45b3eccaa3bcf75898d0d294d0ff53026e54bd06d6",
+    "quartus-130/board-reports/7_slow_1100mv_-40c/capture-handoff-setup.rpt": "2f1ae67c4b35550fad528b04d48673e41a662b124c5bfc8b1b23c9e5e2c7953e",
+    "quartus-130/board-reports/7_slow_1100mv_-40c/clocks.rpt": "966075087f7c44a8065880cc5ef672cacae74baf75d7bdf9d3470bae2d420ca5",
+    "quartus-130/board-reports/7_slow_1100mv_-40c/input-hold.rpt": "1f667a1fb491a61df7b85108c875ecbef60e97d8319e8385e8d2beb8e8520d71",
+    "quartus-130/board-reports/7_slow_1100mv_-40c/input-setup.rpt": "80de7f6ef79280a5f5d3da5990515635e02c05f851d6a7c0cbdf81cd8ea899e0",
+    "quartus-130/board-reports/7_slow_1100mv_-40c/output-hold.rpt": "9afbd6d12b38c06937a8b4361334963ef7ec0536aece948fcc158acaad2bbfab",
+    "quartus-130/board-reports/7_slow_1100mv_-40c/output-setup.rpt": "38f79ee127c1ad2529f4bbab096d7f265265ec0487ea9d47ccd9ea562ed0d24d",
+    "quartus-130/board-reports/7_slow_1100mv_100c/capture-handoff-hold.rpt": "8a3c40e8a7a5800c6c0e489141a24492f4b65d3e4bfd4eedc321e5893798ca61",
+    "quartus-130/board-reports/7_slow_1100mv_100c/capture-handoff-setup.rpt": "7010541be6e1aa8b2c64fc576bb30fcc3ef14fdaecdb5aca825d500b48927803",
+    "quartus-130/board-reports/7_slow_1100mv_100c/clocks.rpt": "966075087f7c44a8065880cc5ef672cacae74baf75d7bdf9d3470bae2d420ca5",
+    "quartus-130/board-reports/7_slow_1100mv_100c/input-hold.rpt": "4d68ef0e8097b34ab1a93fc6e3882c250024519d951c3978dd664c6c39febc7e",
+    "quartus-130/board-reports/7_slow_1100mv_100c/input-setup.rpt": "d9515700ec81e64d0850af1ccaa87f16419e2365fff58177a6ee21fcc8b56c77",
+    "quartus-130/board-reports/7_slow_1100mv_100c/output-hold.rpt": "c51ec1197199379582b550d9a2f19077b9b2a213a822d4106505484d9d6566ed",
+    "quartus-130/board-reports/7_slow_1100mv_100c/output-setup.rpt": "c9707f3318cab213350cf95a4ee7221dcb8030afd1e321cbf5fca3efccc84647",
+    "quartus-130/board-reports/MIN_fast_1100mv_-40c/capture-handoff-hold.rpt": "1fdeec6a5868eda3586dac908a66e113f02e37d735a43d46889e47656b213a47",
+    "quartus-130/board-reports/MIN_fast_1100mv_-40c/capture-handoff-setup.rpt": "92f83d4f57edcc848d03259c6dcc0c5688fa175f5e3511a49dceaa421eb91bfe",
+    "quartus-130/board-reports/MIN_fast_1100mv_-40c/clocks.rpt": "966075087f7c44a8065880cc5ef672cacae74baf75d7bdf9d3470bae2d420ca5",
+    "quartus-130/board-reports/MIN_fast_1100mv_-40c/input-hold.rpt": "39caae2258d7f8ee2f6c0e6031d1dfc9c3420a4dcfeda0b7ead798f4f5be9bf4",
+    "quartus-130/board-reports/MIN_fast_1100mv_-40c/input-setup.rpt": "a01ca44686449a6e9bf088dda4d548cd6c704da5eb594102b31fdaf0dcc7bfd8",
+    "quartus-130/board-reports/MIN_fast_1100mv_-40c/output-hold.rpt": "5ec3deb7c42f703170bcd81ccb08573e8ca1d623b0b3f02694b97072b0f34757",
+    "quartus-130/board-reports/MIN_fast_1100mv_-40c/output-setup.rpt": "81781a7bc18d8e7819861f0e05a5c889354afb19421f04304308869ed1f240fe",
+    "quartus-130/board-reports/MIN_fast_1100mv_100c/capture-handoff-hold.rpt": "5b6c92314bbbeae7af81684d71d977f1d8582ab914cb8527fcd87e3190ac022d",
+    "quartus-130/board-reports/MIN_fast_1100mv_100c/capture-handoff-setup.rpt": "c14a5815098e47a2d7282768a5148717acef1dee4f9e4ead80265a4205edfd9a",
+    "quartus-130/board-reports/MIN_fast_1100mv_100c/clocks.rpt": "966075087f7c44a8065880cc5ef672cacae74baf75d7bdf9d3470bae2d420ca5",
+    "quartus-130/board-reports/MIN_fast_1100mv_100c/input-hold.rpt": "41805b74604b482cd9a517c00dd5b6d889b31ea1f80dbc876e0bb5e01c20e0a3",
+    "quartus-130/board-reports/MIN_fast_1100mv_100c/input-setup.rpt": "b4d3b1d7b672ab5bff77315837354a593f9dd4dbe5c9afac12c3698bfa4ff0cb",
+    "quartus-130/board-reports/MIN_fast_1100mv_100c/output-hold.rpt": "1df081b5d3a59e5348a8947b35ede60530c83f1896876e934ff59a0f61f7ca2f",
+    "quartus-130/board-reports/MIN_fast_1100mv_100c/output-setup.rpt": "5ee8b514e612494676b399753545d9cf3c0d30d385ab34256cef07bc2497a670",
+    "tools/nextpnr-initial-unused-fix": "53847eaa7fe0980a2bd53d069b1dbbc426eb9d16e8764ea04915e791c8d83639",
+    "tools/initial-pack.cc": "486cf1a8a010aa9a46eac7293eae079d18af30776b5210e9c21007a0649be612",
+    "native-cycle/trace.sv": "2caa0e25993bb16a7525627e9f09040d5dab61d62747dffec616712ca1c8c946",
+    "candidate-pins.qsf": "324135257558f5b9859e210fb550913e37a2c2353c2d41c21fef749689e9a780"
+  },
+  "board_models_sha256": "36ea92e036408ae93dd5d5a92ec5301531e5f650f6ff8e2cf213e6de03c974be",
+  "routing_provenance": "Fresh routes used initial-pack.cc and nextpnr-initial-unused-fix: unused counters allocated before connected counters. Final compiler allocates unused counters last. Final pack checks use that implementation; strict board replays preserve frozen initial routes/counters.",
+  "regression_root": "/tmp/nextpnr-unused-pll-regression-final2",
+  "regression_all_used_rbf_sha256": "b09a9e47cc56b75cbc5fd5910416333e851577765f0ff9102ca0715d6e075576",
+  "regression_all_used_prechange_rbf_sha256": "b09a9e47cc56b75cbc5fd5910416333e851577765f0ff9102ca0715d6e075576"
+}
