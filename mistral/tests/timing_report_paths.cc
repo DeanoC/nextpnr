@@ -406,6 +406,26 @@ TEST_F(TimingReportPathsTest, PhysicallyRelatedOnlyLaunchClockCarriesFinalSlacks
     EXPECT_TRUE(summary["hold_wns_ns"].is_number());
 }
 
+TEST_F(TimingReportPathsTest, RepairSlackIncludesViolationWithoutAnFmaxEntry)
+{
+    auto *related_clock = physically_related_clock("related_clock");
+    auto *related_launch = other_launch(related_clock);
+    related_launch->disconnectPort(id_DATAIN);
+    auto *endpoint = rising.front(); auto *logic = cone.at(endpoint->name);
+    for (auto pin : {id_A, id_B}) {
+        logic->disconnectPort(pin); logic->connectPort(pin, related_launch->getPort(id_Q));
+    }
+    ctx->assignArchInfo();
+    TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
+    for (auto pin : {id_A, id_B})
+        timing.set_route_delay(CellPortKey(logic->name, pin), DelayPair(12000));
+    timing.run(false, false, false, true);
+    const auto &result = timing.get_timing_result();
+    ASSERT_FALSE(result.clock_fmax.count(related_clock->name));
+    ASSERT_LT(result.clock_setup_slack.at(related_clock->name), 0);
+    EXPECT_EQ(timing.get_worst_setup_slack(), result.clock_setup_slack.at(related_clock->name));
+}
+
 TEST_F(TimingReportPathsTest, InvalidPublicLimitsFailWithoutChangingResults)
 {
     TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);

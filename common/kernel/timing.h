@@ -128,6 +128,18 @@ struct TimingAnalyser
 
     TimingResult &get_timing_result() { return result; }
 
+    // After analysis with update_crit_paths=true, use complete setup windows,
+    // including phase-related and external IO paths. Reconstructing slack
+    // from Fmax scales a half-cycle margin and can omit physically related
+    // crossings that do not contribute to Fmax.
+    delay_t get_worst_setup_slack() const
+    {
+        delay_t worst = std::numeric_limits<delay_t>::max();
+        for (const auto &clock : result.clock_setup_slack)
+            worst = std::min(worst, clock.second);
+        return worst;
+    }
+
     // After setup(..., ..., true), return extra registered or constrained IO endpoint
     // paths. The count includes each domain pair's preserved legacy path.
     // This does not change the legacy Fmax, path or hold results.

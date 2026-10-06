@@ -279,6 +279,7 @@ TEST_F(IoDelayTest, PhaseRelatedOutputAndClockSkewUseRealWindows)
     TimingAnalyser timing(ctx.get()); timing.with_clock_skew = true; timing.setup(false, false, true);
     auto info = ctx->getPortClockingInfo(launch, id_Q, 0);
     EXPECT_EQ(timing.get_setup_slack(CellPortKey(output->name, id_I)), 5000 - info.clockToQ.maxDelay() - 2000);
+    EXPECT_EQ(timing.get_worst_setup_slack(), 5000 - info.clockToQ.maxDelay() - 2000);
     auto path = find_path(timing.get_timing_result(), output);
     EXPECT_EQ(path.max_delay, 5000);
     const auto &holds = timing.get_timing_result().min_delay_violations;
@@ -286,9 +287,31 @@ TEST_F(IoDelayTest, PhaseRelatedOutputAndClockSkewUseRealWindows)
     EXPECT_EQ(holds[0].segments.front().type, CriticalPath::Segment::Type::CLK_TO_CLK);
     EXPECT_EQ(holds[0].segments.front().delay, 5000);
     timing.set_route_delay(CellPortKey(launch->name, id_CLK), DelayPair(500, 700));
-    timing.run(false);
+    timing.run(false, false, false, true);
     EXPECT_EQ(timing.get_setup_slack(CellPortKey(output->name, id_I)),
               5000 - info.clockToQ.maxDelay() - 2000 - 700);
+    EXPECT_EQ(timing.get_worst_setup_slack(), 5000 - info.clockToQ.maxDelay() - 2000 - 700);
+}
+
+TEST_F(IoDelayTest, WorstSetupSlackDoesNotScalePhaseRelatedIoMarginByFmax)
+{
+    auto *shifted = net("shifted");
+    shifted->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+    clock->clkconstr->phase_group = shifted->clkconstr->phase_group = ctx->id("pll");
+    shifted->clkconstr->phase_shift = 5000;
+    sdc("set_output_delay -clock shifted -min 0 [get_ports dout]\n"
+        "set_output_delay -clock shifted -max 4.5 [get_ports dout]\n");
+    TimingAnalyser timing(ctx.get()); timing.with_clock_skew = true; timing.setup(false, false, true);
+    const auto margin = 5000 - ctx->getPortClockingInfo(launch, id_Q, 0).clockToQ.maxDelay() - 4500;
+    ASSERT_LT(margin, 0);
+    EXPECT_EQ(timing.get_worst_setup_slack(), margin);
+    const auto &fmax = timing.get_timing_result().clock_fmax.at(clock->name);
+    const double reconstructed_ns = 1000.0 / fmax.constraint - 1000.0 / fmax.achieved;
+    EXPECT_NEAR(reconstructed_ns, 2 * ctx->getDelayNS(margin), 1e-5);
+
+    sdc("set_false_path -from [get_clocks memory] -to [get_clocks shifted]\n");
+    timing.setup(false, false, true);
+    EXPECT_EQ(timing.get_worst_setup_slack(), std::numeric_limits<delay_t>::max());
 }
 
 TEST_F(IoDelayTest, RegisteredIoAndVirtualClocksFailExplicitly)
