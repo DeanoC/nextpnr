@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <limits>
 #include <thread>
 
@@ -257,7 +258,7 @@ void Arch::analogue_relink(const std::vector<PipId> &removed, const std::vector<
     }
 }
 
-bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target)
+bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target, const GpuRouterCfg &repair_cfg)
 {
     Context *ctx = getCtx();
     NPNR_ASSERT(bitstream_configured && analogue_cache_valid);
@@ -316,12 +317,19 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target)
 
     const float saved_prior = pip_delay_prior;
     pip_delay_prior = search_prior;
-    GpuRouterCfg cfg(ctx);
+    GpuRouterCfg cfg = repair_cfg;
     // The top-level router owns the exclusive telemetry stream. Candidate
     // searches are downstream helpers and must not try to create it again.
     cfg.telemetry_path.clear();
-    GpuCandidateRouter cr(ctx, cfg);
+    std::unique_ptr<GpuCandidateRouter> router;
+    try {
+        router = std::make_unique<GpuCandidateRouter>(ctx, cfg);
+    } catch (...) {
+        pip_delay_prior = saved_prior;
+        throw;
+    }
     pip_delay_prior = saved_prior;
+    auto &cr = *router;
 
     int tried = 0, generated = 0, improved = 0, rejected = 0;
     float total_gain = 0.0f;
@@ -376,6 +384,7 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target)
         std::vector<DelayQuad> best_delay;
         std::vector<SavedRouting::Entry> best_entries;
         for (size_t c = 0; c < cands.size(); c++) {
+            cfg.check_stop();
             std::vector<SavedRouting::Entry> entries;
             std::vector<PipId> new_pips;
             for (auto &w : cands[c].wires) {
@@ -465,6 +474,13 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target)
 bool Arch::analogue_repair()
 {
     Context *ctx = getCtx();
+    const double budget = ctx->setting<double>("gpurouter/analogueTimeBudget", 300.0);
+    if (!std::isfinite(budget) || budget < 0)
+        log_error("analogueTimeBudget must be finite and nonnegative (seconds; 0 disables).\n");
+    const auto started = std::chrono::steady_clock::now();
+    auto expired = [budget, started]() {
+        return budget > 0 && std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count() >= budget;
+    };
     const int rounds = ctx->setting<int>("gpurouter/analogueRounds", 3);
     // Candidate-selection passes before each full re-route (0 disables)
     const int cand_rounds = ctx->setting<int>("gpurouter/analogueCandidateRounds", 2);
@@ -551,11 +567,27 @@ bool Arch::analogue_repair()
             continue;
         }
 
+        if (expired()) {
+            log_info("Analogue repair time budget exhausted (%.3f seconds); keeping the best measured routing.\n", budget);
+            break;
+        }
+
         auto t1 = std::chrono::steady_clock::now();
         compute_analogue_arcs(true);
         if (candidates && cand_passes < cand_rounds) {
             cand_passes++;
-            bool changed = analogue_candidate_pass(tmg, target);
+            GpuRouterCfg cfg(ctx);
+            cfg.stop_requested = expired;
+            // A cancelled pass may already have rebound some candidates.
+            current_timed = false;
+            bool changed;
+            try {
+                changed = analogue_candidate_pass(tmg, target, cfg);
+            } catch (const GpuRouterCancelled &) {
+                log_info("Analogue repair time budget exhausted during candidate selection; restoring the best routing.\n");
+                result = false;
+                break;
+            }
             bitstream_configured = false;
             if (changed) {
                 current_timed = false;
@@ -629,6 +661,7 @@ bool Arch::analogue_repair()
         current_timed = false;
         try {
             GpuRouterCfg cfg(ctx);
+            cfg.stop_requested = expired;
             cfg.legality_timing_gate = !signoff_after_route;
             // The top-level router has already closed its complete stream;
             // analogue repair helpers must not reopen the exclusive path.
@@ -641,8 +674,11 @@ bool Arch::analogue_repair()
         }
         if (!user_repair_slack)
             settings.erase(repair_slack_key);
-        if (!result)
+        if (!result) {
+            if (expired())
+                log_info("Analogue repair time budget exhausted during rerouting; restoring the best routing.\n");
             break;
+        }
         if (revert) {
             // A full re-route optimises the calibrated table and can leave
             // many nets slower under the analogue model than they were;

@@ -935,6 +935,7 @@ struct GpuRouter
     int last_fail_status = 0, last_fail_reason = 0, last_fail_expanded = 0;
     std::vector<HostTask> route_tasks(const std::vector<HostTask> &tasks, bool use_bb, bool large_lane)
     {
+        cfg.check_stop();
         std::vector<gpuroute::TaskDesc> tds;
         std::vector<gpuroute::ArcDesc> ads;
         std::vector<int32_t> seeds;
@@ -1037,9 +1038,11 @@ struct GpuRouter
         }
         std::vector<gpuroute::ArcResult> results;
         std::vector<gpuroute::PathEntry> paths;
+        cfg.check_stop();
         auto t0 = Clock::now();
         backend_for(tasks.size())->route(make_params(use_bb), tds, ads, seeds, seed_delay, seed_load, large_lane,
                                          results, paths);
+        cfg.check_stop();
         gpu_time += secs_since(t0);
         if (verify_backend && repair_mode && !repair_cong && !candidate_mode && use_bb) {
             // The first arc of each task as plain Dijkstra on the same costs,
@@ -1067,7 +1070,9 @@ struct GpuRouter
                 std::vector<gpuroute::ArcResult> vres;
                 std::vector<gpuroute::PathEntry> vpaths;
                 auto tv = Clock::now();
+                cfg.check_stop();
                 verify_backend->route(vp, vtds, ads, seeds, seed_delay, seed_load, true, vres, vpaths);
+                cfg.check_stop();
                 verify_secs += secs_since(tv);
                 verify_launched += int64_t(vtds.size());
                 for (auto &td : vtds) {
@@ -1418,6 +1423,7 @@ struct GpuRouter
                     has_frozen_arcs |= ad.frozen;
         congestion_plateau.begin(has_frozen_arcs);
         do {
+            cfg.check_stop();
             auto istart = Clock::now();
             gpu_time = 0.0;
             ctx->sorted_shuffle(route_queue);
@@ -2475,6 +2481,7 @@ struct GpuRouter
             tmg.run(false);
         };
         for (int round = 1; round <= cfg.repair_rounds; round++) {
+            cfg.check_stop();
             refresh_timing();
             float wns = design_wns();
             if (telemetry) {
@@ -2720,8 +2727,11 @@ struct GpuRouter
 
         log_info("Setting up routing resources...\n");
         setup_net_indices();
+        cfg.check_stop();
         setup_graph();
+        cfg.check_stop();
         setup_nets();
+        cfg.check_stop();
         find_all_reserved_wires();
         fit_estimate();
 
@@ -2829,6 +2839,7 @@ struct GpuRouter
 
     std::vector<std::vector<GpuRouteTree>> route_candidates(const std::vector<std::pair<int, int>> &sinks, int count)
     {
+        cfg.check_stop();
         std::vector<CandidateJob> jobs(sinks.size());
         std::vector<std::vector<GpuRouteTree>> result(sinks.size());
         if (count <= 0)
@@ -3104,6 +3115,7 @@ struct GpuRouter
 
     bool operator()()
     {
+        cfg.check_stop();
         auto rstart = Clock::now();
         if (telemetry) {
             std::vector<gpuroute::Telemetry::Field> fields;
@@ -3125,6 +3137,7 @@ struct GpuRouter
         if (telemetry)
             telemetry->emit("phase_end", "setup", 0,
                             {gpuroute::Telemetry::Field::string("backend", backend->name())});
+        cfg.check_stop();
 
         std::unique_lock<Context> lock{*ctx};
 
@@ -3150,6 +3163,7 @@ struct GpuRouter
             timing_repair();
         // Bind into the Arch; anything the Arch rejects is negotiated again
         while (true) {
+            cfg.check_stop();
             bind_and_check_all();
             if (failed_nets.empty())
                 break;
@@ -3244,7 +3258,17 @@ bool gpurouter(Context *ctx, const GpuRouterCfg &cfg, bool consume_telemetry)
         ctx->settings.erase(ctx->id("gpurouter/telemetrySeed"));
     }
     GpuRouter rt(ctx, cfg);
-    return rt();
+    try {
+        return rt();
+    } catch (const GpuRouterCancelled &) {
+        log_warning("GPU routing cancelled at a batch/iteration boundary.\n");
+        if (rt.telemetry)
+            rt.telemetry->emit("run_end", "", -1,
+                               {gpuroute::Telemetry::Field::string("status", "cancelled"),
+                                gpuroute::Telemetry::Field::boolean_value("routing_legal", false),
+                                gpuroute::Telemetry::Field::null_value("analogue_timing_pass", "cancelled")});
+        return false;
+    }
 }
 
 struct GpuCandidateRouter::Impl
@@ -3257,7 +3281,9 @@ GpuCandidateRouter::GpuCandidateRouter(Context *ctx, const GpuRouterCfg &cfg) : 
 {
     log_info("Setting up the GPU router for candidate routes...\n");
     impl->rt.reserve_bound_routing = true;
+    cfg.check_stop();
     impl->rt.setup_all();
+    cfg.check_stop();
 }
 
 GpuCandidateRouter::~GpuCandidateRouter() {}

@@ -23,6 +23,7 @@
 #define GPUROUTER_H
 
 #include <memory>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -30,9 +31,22 @@
 
 NEXTPNR_NAMESPACE_BEGIN
 
+// Internal cooperative cancellation. Candidate callers must restore their
+// saved bindings; gpurouter returns false after unwinding its router state.
+struct GpuRouterCancelled {};
+
 struct GpuRouterCfg
 {
     GpuRouterCfg(Context *ctx);
+
+    // Empty leaves ordinary routing unbounded. Checked on the calling thread
+    // between batches/iterations, never while a backend launch is in flight.
+    std::function<bool()> stop_requested;
+    void check_stop() const
+    {
+        if (stop_requested && stop_requested())
+            throw GpuRouterCancelled{};
+    }
 
     // Whether the router1 legality check that ends the route reports a
     // missed clock constraint as an error. An architecture that signs off
