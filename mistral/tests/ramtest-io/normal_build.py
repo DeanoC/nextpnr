@@ -7,6 +7,7 @@ Retain unsuccessful compiler results as diagnostics; never label them signoff.
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 import re
 import subprocess
@@ -29,7 +30,21 @@ def main():
     parser.add_argument('--seed', type=int, default=2)
     parser.add_argument('--router', choices=['gpu', 'router2'], default='gpu')
     parser.add_argument('--gpu-cpu', action='store_true', help='Use the GPU router CPU reference backend')
+    parser.add_argument('--setup-margin-ps', type=float, default=0,
+                        help='GPU analogue repair setup target; separate from the timing gate')
+    parser.add_argument('--analogue-rounds', type=int,
+                        help='Override the GPU analogue reroute round limit')
+    parser.add_argument('--timeout-seconds', type=int, default=1200,
+                        help='Compiler time limit; timed-out runs retain an incomplete receipt')
     args = parser.parse_args()
+    if not math.isfinite(args.setup_margin_ps) or args.setup_margin_ps < 0:
+        parser.error('--setup-margin-ps must be finite and nonnegative')
+    if args.analogue_rounds is not None and args.analogue_rounds < 0:
+        parser.error('--analogue-rounds must be nonnegative')
+    if args.timeout_seconds <= 0:
+        parser.error('--timeout-seconds must be positive')
+    if args.router != 'gpu' and (args.setup_margin_ps or args.analogue_rounds is not None):
+        parser.error('Analogue repair options require --router gpu')
     here = Path(__file__).resolve().parent
     root = args.source_root.resolve()
     source = root/'build/fes-ramtest-100/synth.json'
@@ -64,10 +79,29 @@ def main():
         if args.router != 'gpu':
             raise ValueError('--gpu-cpu requires --router gpu')
         command.append('--gpu-cpu')
+    if args.setup_margin_ps:
+        command += ['--gpu-opt', f'analogueSlack={args.setup_margin_ps:g}',
+                    '--gpu-opt', f'analogueRipSlack={max(300, args.setup_margin_ps):g}']
+    if args.analogue_rounds is not None:
+        command += ['--gpu-opt', f'analogueRounds={args.analogue_rounds}']
     (out/'command.json').write_text(json.dumps(command, indent=2)+'\n')
     started = time.monotonic()
-    with (out/'build.log').open('w') as log:
-        result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=1200)
+    try:
+        with (out/'build.log').open('w') as log:
+            result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=args.timeout_seconds)
+    except subprocess.TimeoutExpired:
+        timeout = dict(classification='compiler timeout; incomplete, not a final timing result',
+                       source_root=str(root), seed=args.seed, router=args.router, gpu_cpu=args.gpu_cpu,
+                       requested_setup_margin_ps=args.setup_margin_ps, analogue_rounds=args.analogue_rounds,
+                       command=command, timeout_seconds=args.timeout_seconds,
+                       elapsed_seconds=time.monotonic()-started, nextpnr_sha256=executable_sha,
+                       compiler_returncode=None, complete_timing_pass=False, setup_margin_target_met=False,
+                       file_sha256={name: sha(out/name) for name in
+                                    ('runner-source.py', 'synth.json', 'pins.qsf', 'address.sdc',
+                                     'command.json', 'build.log')})
+        (out/'timeout-receipt.json').write_text(json.dumps(timeout, indent=2)+'\n')
+        print(json.dumps(timeout, indent=2))
+        raise SystemExit(124)
     elapsed = time.monotonic()-started
     report = load(out/'timing.json')
     final = load(out/'final.json')['modules']['top']
@@ -95,12 +129,16 @@ def main():
         raise ValueError('Missing address timing endpoints')
     clocks = report['timing_summary']['clocks']
     complete_timing = all(c['setup_wns_ns'] >= 0 and c['hold_wns_ns'] >= 0 for c in clocks.values())
+    margin_met = all(c['setup_wns_ns'] * 1000 >= args.setup_margin_ps - 1e-4 for c in clocks.values())
     receipt = dict(classification='fresh constrained pack/place/route; native address optimization, not board signoff',
                    source_root=str(root), seed=args.seed, router=args.router, gpu_cpu=args.gpu_cpu,
                    command=command, nextpnr_sha256=executable_sha, script_sha256=sha(out/'runner-source.py'),
                    elapsed_seconds=elapsed, compiler_returncode=result.returncode,
+                   timeout_seconds=args.timeout_seconds,
                    all_address_targets_met=all(row['setup_margin_ns'] >= -1e-5 for row in address.values()),
                    complete_timing_pass=result.returncode == 0 and complete_timing,
+                   requested_setup_margin_ps=args.setup_margin_ps, analogue_rounds=args.analogue_rounds,
+                   setup_margin_target_met=result.returncode == 0 and margin_met,
                    address=address, timing_summary=report['timing_summary'],
                    core_rbf_sha256=sha(out/'core.rbf'), core_rbf_bytes=(out/'core.rbf').stat().st_size,
                    file_sha256={name: sha(out/name) for name in
