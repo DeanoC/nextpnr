@@ -31,8 +31,13 @@ analogue timing; incomplete runs have no final slack.
 | 10 / 2 | 3 | +507 ps | timing and target pass |
 
 Weight 30 and exponent 2 change two parameters relative to the baseline.
-The 10 / 2 controls isolate the exponent change. Their results favor exponent
-2 on this fixture, but do not establish a reliable architecture-wide default.
+The 10 / 2 controls separate the weight change from the exponent change.
+The retained 10 / 7 baseline used the compiler before PR #153's final
+clock-terminal reporting fix; the new runs use the rebuilt compiler after
+that fix. Both executable hashes are recorded. Although that fix concerns
+reporting, this historical comparison is not a same-binary paired experiment.
+The results favor exponent 2 on this fixture, but do not establish a reliable
+architecture-wide default.
 Paired seeds 4 and 5 were declared before their results, using both exponents
 with weight 10 and the same limits. Independent designs remain necessary.
 
