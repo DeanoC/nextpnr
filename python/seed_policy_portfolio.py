@@ -26,8 +26,23 @@ def write_new(path, value):
         stream.write(canonical(value) + b"\n")
 
 
+def fixture_hashes(manifest):
+    """Use the collector's working-directory and child-PATH resolution rules."""
+    normalized = seed_racing.validate_collection_manifest(manifest)
+    environment = seed_racing._child_environment(normalized["environment"])
+    binary = seed_racing._resolved_binary(normalized["command"][0], normalized["cwd"], environment)
+    if binary is None:
+        raise ValueError(f"cannot resolve cohort executable: {normalized['command'][0]}")
+    base = Path(normalized["cwd"]) if normalized["cwd"] else Path.cwd()
+    inputs = {row["role"] + ":" + str(index):
+              hashlib.sha256((base / Path(row["path"])).resolve().read_bytes()).hexdigest()
+              for index, row in enumerate(normalized["inputs"])}
+    return hashlib.sha256(binary.read_bytes()).hexdigest(), inputs
+
+
 def prepare(template, output):
     """Seal all populations and argv before the first training route."""
+    binary_sha256, inputs = fixture_hashes(template)
     output.mkdir(parents=True, exist_ok=False)
     plans = []
     for phase, seeds in (("train", list(range(17, 25))), ("heldout", list(range(25, 33))),
@@ -52,10 +67,8 @@ def prepare(template, output):
             plans.append({"phase": phase, "policy": policy, "manifest": filename,
                           "manifest_sha256": hashlib.sha256(canonical(manifest)).hexdigest(),
                           "cohort_id": manifest["cohort"]["id"], "seeds": seeds})
-    inputs = {row["role"] + ":" + str(index): hashlib.sha256(Path(row["path"]).read_bytes()).hexdigest()
-              for index, row in enumerate(template["inputs"])}
     declaration = {"schema_version": 1, "design": template["cohort"],
-                   "binary_sha256": hashlib.sha256(Path(template["command"][0]).read_bytes()).hexdigest(),
+                   "binary_sha256": binary_sha256,
                    "input_sha256": inputs, "policies": ["critexp-2", "critexp-5", "critexp-8"],
                    "baseline": "critexp-5", "training_seeds": list(range(17, 25)),
                    "heldout_seeds": list(range(25, 33)), "repeat_seeds": [17],
@@ -80,10 +93,9 @@ def load_declared(output):
             raise ValueError("collection manifest differs from its predeclaration")
         if manifest["cohort"]["id"] != item["cohort_id"] or manifest["seeds"] != item["seeds"]:
             raise ValueError("population differs from its predeclaration")
-        if hashlib.sha256(Path(manifest["command"][0]).read_bytes()).hexdigest() != declaration["binary_sha256"]:
+        binary_sha256, inputs = fixture_hashes(manifest)
+        if binary_sha256 != declaration["binary_sha256"]:
             raise ValueError("declared binary changed")
-        inputs = {row["role"] + ":" + str(index): hashlib.sha256(Path(row["path"]).read_bytes()).hexdigest()
-                  for index, row in enumerate(manifest["inputs"])}
         if inputs != declaration["input_sha256"]:
             raise ValueError("declared fixture changed")
         manifests.append((item, manifest))
