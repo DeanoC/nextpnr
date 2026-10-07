@@ -124,19 +124,56 @@ def load_plan(output):
     return plan, groups
 
 
+def validate_runtimes(records, amendment=None):
+    identities = [r["execution_identity"] for r in records]
+    if amendment is None:
+        if any(identity != identities[0] for identity in identities):
+            raise ValueError("backend/runtime changed across families")
+        return
+    normalized = []
+    for record in records:
+        identity = record["execution_identity"]
+        manifest = record["runtime_manifest"]
+        runtime_id = "sha256:" + digest(manifest)
+        kernel = manifest["platform"]["release"]
+        if identity["runtime_environment_id"] != runtime_id or \
+                amendment["authorized_runtimes"].get(runtime_id) != kernel:
+            raise ValueError("runtime is outside the explicit kernel amendment")
+        value = copy.deepcopy(manifest)
+        del value["platform"]["release"]
+        normalized.append(dict(backend=identity["backend"], manifest=value))
+    if any(value != normalized[0] for value in normalized):
+        raise ValueError("kernel amendment cannot authorize binary/library/CPU/backend changes")
+
+
+def load_amendment(output, plan):
+    path = output / "kernel-amendment.json"
+    if not path.exists():
+        return None
+    amendment = json.loads(path.read_bytes())
+    if amendment.get("plan_sha256") != digest(plan) or amendment.get("kind") != "kernel-only-transition":
+        raise ValueError("kernel amendment is not bound to this experiment")
+    return amendment
+
+
 def read_rows(output, families, groups):
     rows = []
-    identities = []
+    records = []
+    plan = json.loads((output / "plan.json").read_bytes())
     for family in families:
-        population = portfolio.read_populations(output / family["name"], groups[family["name"]])
-        for item, _ in groups[family["name"]]:
+        for item, manifest in groups[family["name"]]:
+            # Authenticate each cohort unchanged; only this screen layer handles
+            # explicitly declared inter-cohort kernel strata.
+            population = portfolio.read_populations(output / family["name"], [(item, manifest)])
             path = next((output / family["name"] / "collections" / item["cohort_id"]).glob("collection-*.json"))
-            identities.append(json.loads(path.read_bytes())["cohort_identity"]["manifest"]["execution_identity"])
-        for row in population:
-            row["family"] = family["name"]
-        rows.extend(population)
-    if any(identity != identities[0] for identity in identities):
-        raise ValueError("backend/runtime changed across families")
+            bound = json.loads(path.read_bytes())["cohort_identity"]["manifest"]
+            runtime = bound["binary"]["runtime_environment"]["manifest"]
+            records.append(dict(execution_identity=bound["execution_identity"], runtime_manifest=runtime))
+            for row in population:
+                row.update(family=family["name"], kernel_release=runtime["platform"]["release"],
+                           runtime_environment_id=bound["execution_identity"]["runtime_environment_id"])
+            rows.extend(population)
+    validate_runtimes(records, load_amendment(output, plan))
     return rows
 
 
@@ -212,9 +249,14 @@ def evaluate(output):
         stats = {policy: dict(successes=sum(r["success"] for r in cases.values() if r["policy"] == policy),
                               cost_seconds=sum(r["duration_seconds"] for r in cases.values() if r["policy"] == policy))
                  for policy in plan["policies"]}
+        kernels = sorted({r["kernel_release"] for r in cases.values()})
         reports.append(dict(family=family["name"], baseline=family["baseline"], observed_statistics=stats,
+                            kernel_releases=kernels, cross_kernel_cost_comparison=len(kernels) > 1,
+                            policy_kernel_strata={p: sorted({r["kernel_release"] for r in cases.values()
+                                                            if r["policy"] == p}) for p in plan["policies"]},
                             schedules=schedules))
     result = dict(plan_sha256=digest(plan), classification="offline full-run serial counterfactuals, not online execution",
+                  kernel_amendment=load_amendment(output, plan),
                   training_selection=selection, heldout_families=reports,
                   total_process_cost_seconds=sum(r["duration_seconds"] for r in rows),
                   training_charge_per_use_seconds={str(n): selection["training_cost_seconds"] / n
@@ -224,6 +266,8 @@ def evaluate(output):
                                "20 permutations reuse the same cases; no independent-population confidence claim.",
                                "No observed amortized deployment; add training charge to search cost, not to baseline.",
                                "Process times include restart/startup/cleanup; cohort freezing and evaluation overhead are separate."])
+    if result["kernel_amendment"]:
+        result["limitations"].append("Explicit kernel transition: mixed RAM-test runtime costs are descriptive/confounded; no small-speedup claim.")
     portfolio.write_new(output / "evaluation.json", result)
     return result
 

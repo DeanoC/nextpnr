@@ -4,6 +4,7 @@ import sys
 import tempfile
 import hashlib
 import json
+import copy
 import unittest
 from unittest import mock
 
@@ -115,6 +116,53 @@ class ScreenTests(unittest.TestCase):
             count = sum(len(screen.seed_racing.Collector(m, root / "dry").run(dry_run=True))
                         for group in groups.values() for _, m in group)
             self.assertEqual(count, 104)
+
+
+class KernelAmendmentTests(unittest.TestCase):
+    def setUp(self):
+        old = dict(platform=dict(sysname="Linux", machine="x86_64", release="old"),
+                   cpu=dict(model="same"), files=[dict(path="binary", sha256="same")])
+        new = copy.deepcopy(old)
+        new["platform"]["release"] = "new"
+        self.records = [dict(execution_identity=dict(backend="cuda:fixed-device",
+                                                    runtime_environment_id="sha256:" + screen.digest(m)),
+                             runtime_manifest=m) for m in (old, new)]
+        self.amendment = dict(authorized_runtimes={r["execution_identity"]["runtime_environment_id"]:
+                                                  r["runtime_manifest"]["platform"]["release"] for r in self.records})
+
+    def test_undeclared_transition_rejected(self):
+        with self.assertRaises(ValueError):
+            screen.validate_runtimes(self.records)
+
+    def test_explicit_kernel_only_transition_accepted(self):
+        screen.validate_runtimes(self.records, self.amendment)
+
+    def test_new_binary_cannot_be_allowed_even_by_added_runtime_hash(self):
+        records = copy.deepcopy(self.records)
+        records[1]["runtime_manifest"]["files"][0]["sha256"] = "different"
+        runtime_id = "sha256:" + screen.digest(records[1]["runtime_manifest"])
+        records[1]["execution_identity"]["runtime_environment_id"] = runtime_id
+        amendment = copy.deepcopy(self.amendment)
+        amendment["authorized_runtimes"][runtime_id] = "new"
+        with self.assertRaises(ValueError):
+            screen.validate_runtimes(records, amendment)
+
+    def test_gpu_change_rejected(self):
+        records = copy.deepcopy(self.records)
+        records[1]["execution_identity"]["backend"] = "cuda:other-device"
+        with self.assertRaises(ValueError):
+            screen.validate_runtimes(records, self.amendment)
+
+    def test_unlisted_runtime_rejected(self):
+        amendment = dict(authorized_runtimes={})
+        with self.assertRaises(ValueError):
+            screen.validate_runtimes(self.records, amendment)
+
+    def test_manifest_digest_tampering_rejected(self):
+        records = copy.deepcopy(self.records)
+        records[1]["runtime_manifest"]["platform"]["release"] = "old"
+        with self.assertRaises(ValueError):
+            screen.validate_runtimes(records, self.amendment)
 
 
 if __name__ == "__main__":
