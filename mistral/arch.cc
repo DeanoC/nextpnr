@@ -1010,6 +1010,8 @@ bool Arch::route()
 
     route_globals();
 
+    fes_check_boundary_connectivity();
+
     std::string router = str_or_default(settings, id_router, defaultRouter);
     bool result;
     if (router == "router1") {
