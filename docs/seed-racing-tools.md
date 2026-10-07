@@ -271,7 +271,11 @@ python3 mistral/tests/seed_policy_portfolio_test.py
 
 `prepare` requires the retained Atari template and makes a fresh directory;
 its fixed populations, policies, limits, order and hashes are declared before
-PNR. Publish the canonical declaration digest before collecting. `run` admits
+PNR. Input paths are resolved relative to the manifest's `cwd`, not the
+portfolio command's directory. Executables use the collector's resolution
+rules, including the recorded child environment's `PATH` for bare names.
+Preparation and declaration reload use the same rules. Publish the canonical
+declaration digest before collecting. `run` admits
 only declared cohorts under its retained deadline and free-space guard, locks
 the operator, validates retained complete collections, and refuses incomplete
 reruns. `evaluate` requires every declared attempt and the frozen training
