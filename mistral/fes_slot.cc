@@ -642,6 +642,85 @@ bool Arch::fes_pip_preserves_cram(PipId pip) const
            fes_frozen_pips.count(pip) || fes_cram_allowed_muxes.count(pip.dst);
 }
 
+void Arch::fes_check_boundary_connectivity() const
+{
+    if (!fes_has_cram_region)
+        return;
+    const Context *ctx = getCtx();
+    // A necessary connectivity check, not a routing or timing guarantee.
+    // Ignore all movable routing so another cart net cannot cause a false
+    // rejection. Only immutable ownership/selections and architecture rules
+    // prune this graph. Run after LAB pin mapping and global routing.
+    std::vector<const NetInfo *> boundary_nets;
+    for (const auto &item : ctx->nets) {
+        const NetInfo *net = item.second.get();
+        if (net->is_global || net->driver.cell == nullptr || fes_cell_is_slot(net->driver.cell) ||
+            net->driver.cell->belStrength < STRENGTH_LOCKED || !fes_net_touches_slot(net))
+            continue;
+        boundary_nets.push_back(net);
+    }
+    std::sort(boundary_nets.begin(), boundary_nets.end(), [&](const NetInfo *a, const NetInfo *b) {
+        return a->name.str(ctx) < b->name.str(ctx);
+    });
+    for (const NetInfo *net : boundary_nets) {
+        WireId source = ctx->getNetinfoSourceWire(net);
+        if (source == WireId())
+            continue;
+        pool<WireId> pending;
+        for (const auto &user : net->users)
+            if (fes_cell_is_slot(user.cell))
+                for (WireId sink : ctx->getNetinfoSinkWires(net, user))
+                    if (sink != WireId())
+                        pending.insert(sink);
+        if (pending.empty())
+            continue;
+        pool<WireId> seen;
+        std::vector<WireId> queue{source};
+        seen.insert(source);
+        pending.erase(source);
+        std::set<std::string> blockers;
+        size_t fence_blocks = 0;
+        for (size_t head = 0; head < queue.size() && !pending.empty(); ++head) {
+            for (PipId pip : getPipsDownhill(queue[head])) {
+                WireId dst = getPipDstWire(pip);
+                if (!pip_allowed_for_net(pip, net)) {
+                    if (!fes_pip_preserves_cram(pip))
+                        ++fence_blocks;
+                    continue;
+                }
+                const NetInfo *owner = getBoundWireNet(dst);
+                if (owner != nullptr) {
+                    const auto &binding = owner->wires.at(dst);
+                    if (binding.strength >= STRENGTH_LOCKED && (owner != net || binding.pip != pip)) {
+                        if (owner != net)
+                            blockers.insert(owner->name.str(ctx));
+                        continue;
+                    }
+                }
+                if (!seen.insert(dst).second)
+                    continue;
+                pending.erase(dst);
+                queue.push_back(dst);
+            }
+        }
+        if (pending.empty())
+            continue;
+        std::vector<std::string> sinks;
+        for (WireId sink : pending)
+            sinks.push_back(getWireName(sink).str(ctx));
+        std::sort(sinks.begin(), sinks.end());
+        log_nonfatal_error("FES boundary net '%s' from %s cannot reach %s with frozen routing and CRAM fence "
+                           "%d,%d,%d,%d (%zu reachable wires, %zu fence-blocked pips).\n",
+                           net->name.c_str(ctx), getWireName(source).str(ctx).c_str(), sinks.front().c_str(),
+                           fes_cram_region[0], fes_cram_region[1], fes_cram_region[2], fes_cram_region[3],
+                           seen.size(), fence_blocks);
+        for (const auto &owner : blockers)
+            log_info("FES boundary exit blocked by frozen net '%s'.\n", owner.c_str());
+        log_error("FES frozen boundary cannot reach placed cart sinks; choose reachable cart placement or rebuild "
+                  "the shell with usable boundary routes inside the CRAM fence.\n");
+    }
+}
+
 bool Arch::fes_pip_in_plug_halo(PipId pip) const
 {
     if (!fes_has_reserved_rect)

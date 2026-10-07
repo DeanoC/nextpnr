@@ -365,6 +365,7 @@ struct Arch : BaseArch<ArchRanges>
     void fes_trim_net_orphans(NetInfo *net);
     void fes_lock_protected_routing();
     void fes_validate_cram_routing() const;
+    void fes_check_boundary_connectivity() const;
     void fes_constrain_slot_region();
     void fes_report_slot_capacity(IdString region_name, const std::vector<CellInfo *> &slot_cells) const;
     bool fes_pip_in_plug_halo(PipId pip) const;
@@ -452,7 +453,8 @@ struct Arch : BaseArch<ArchRanges>
         return BaseArch::checkPipAvail(pip);
     }
 
-    bool checkPipAvailForNet(PipId pip, const NetInfo *net) const override
+    // Architecture constraints before the per-pip ownership check.
+    bool pip_allowed_for_net(PipId pip, const NetInfo *net) const
     {
         if (is_pip_blocked(pip))
             return false;
@@ -472,7 +474,12 @@ struct Arch : BaseArch<ArchRanges>
             if (!slot_user && in_socket && BaseArch::checkPipAvail(pip))
                 return false;
         }
-        return BaseArch::checkPipAvailForNet(pip, net);
+        return true;
+    }
+
+    bool checkPipAvailForNet(PipId pip, const NetInfo *net) const override
+    {
+        return pip_allowed_for_net(pip, net) && BaseArch::checkPipAvailForNet(pip, net);
     }
 
     // -------------------------------------------------
