@@ -455,6 +455,8 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         prevalidate_lut_driver_copy_prefix(ctx);
     }
     const bool routed = ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "route";
+    if (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() == "place")
+        ctx->restore_placed_pin_maps();
     if (vm.count("fes-cram-region")) {
         if (!routed)
             log_error("FES CRAM region requires an already routed scaffold.\n");

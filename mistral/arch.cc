@@ -999,6 +999,7 @@ bool Arch::place()
         lut_driver_copy_selection >= 0)
         log_error("Requested LUT driver copy candidate was not qualified; routing was not started.\n");
     getCtx()->attrs[id_step] = std::string("place");
+    save_fes_pin_maps(false);
     archInfoToAttributes();
     return true;
 }
