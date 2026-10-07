@@ -77,7 +77,9 @@ endmodule
         cell = bad['modules']['top']['cells']['arithmetic']
         payload = json.loads(bytes.fromhex(cell['attributes']['FES_PINMAP_V1']))
         edit(cell, payload)
-        if label != 'unknown-version':
+        # An edit may remove the snapshot. Leaving the key absent is the case
+        # under test; rewriting it would hide a partial annotation.
+        if 'FES_PINMAP_V1' in cell['attributes']:
             cell['attributes']['FES_PINMAP_V1'] = json.dumps(payload).encode().hex()
         f = out / (label + '.json')
         f.write_text(json.dumps(bad))
@@ -98,7 +100,24 @@ endmodule
         c['attributes']['FES_PINMAP_V2'] = c['attributes'].pop('FES_PINMAP_V1')
 
     corrupt('unknown-version', unknown_version, 'Unsupported frozen pin-map version')
-    print('PASS: placed folded inversions/constants survive routing; identical frozen replay; four malformed snapshots rejected')
+
+    def partial(c, p):
+        del c['attributes']['FES_PINMAP_V1']
+
+    corrupt('partial', partial,
+            'partially annotated: arithmetic has no FES_PINMAP_V1 (1 placed cell missing)')
+
+    legacy = copy.deepcopy(placed)
+    for cell in legacy['modules']['top']['cells'].values():
+        cell['attributes'].pop('FES_PINMAP_V1', None)
+    legacy_path = out / 'legacy.json'
+    legacy_path.write_text(json.dumps(legacy))
+    run(base + ['--json', legacy_path, '--no-pack', '--no-place', '--no-route'], 'legacy')
+    legacy_log = (out / 'legacy.log').read_text()
+    assert 'Placed checkpoint has no pin-state snapshot' in legacy_log, legacy_log
+    assert 'partially annotated' not in legacy_log, legacy_log
+    print('PASS: placed folded inversions/constants survive routing; identical frozen replay; '
+          'malformed snapshots rejected; partial annotation rejected; legacy checkpoint warned')
 
 
 if __name__ == '__main__':

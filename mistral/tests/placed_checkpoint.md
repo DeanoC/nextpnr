@@ -10,10 +10,12 @@ preparation still runs normally.
 `placed_checkpoint.py` synthesizes a two-element arithmetic chain with a folded
 input inversion and hard constants, writes a placed checkpoint, resumes routing,
 and compares every saved pin state against the resulting routed snapshot. A
-frozen routed replay must produce the identical RBF. Four malformed placed
-snapshots exercise invalid states, invalid physical pins, incomplete maps and
-unsupported versions. The previous compiler fails because the placed snapshot
-omits the folded states.
+frozen routed replay must produce the identical RBF. Malformed placed
+snapshots exercise invalid states, invalid physical pins, incomplete maps,
+unsupported versions, and a pin-state snapshot present on only some placed
+cells. A checkpoint that omits the snapshot on every placed cell still loads
+and warns. The previous compiler fails because the placed snapshot omits the
+folded states.
 
 Run with an explicit output directory on a filesystem with adequate space:
 
@@ -30,4 +32,6 @@ With `BUILD_TESTS` enabled and Yosys available, CTest registers this as
 Older placed JSON without pin snapshots remains readable with a warning. Its
 missing states cannot be inferred from the disconnected ports: regenerate the
 checkpoint from synthesis JSON before relying on its logical equivalence.
+A checkpoint that annotates only some placed cells is rejected. The omitted
+cells would keep JSON defaults and could drop folded constants or inversions.
 Existing routed checkpoints retain their stricter complete-scaffold validation.

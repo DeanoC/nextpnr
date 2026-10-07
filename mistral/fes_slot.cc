@@ -402,17 +402,35 @@ void Arch::restore_placed_pin_maps()
 {
     // Placed JSON has no routed scaffold to lock, but its packer-folded
     // constants and input inversions are still part of the logical design.
-    bool restored = false;
-    for (auto &entry : getCtx()->cells) {
+    // Legacy checkpoints omit the snapshot on every placed cell and stay
+    // readable with a warning. A snapshot on only some placed cells leaves
+    // the rest on JSON defaults, which can drop folded constants or inversions.
+    Context *ctx = getCtx();
+    int annotated = 0;
+    int missing = 0;
+    CellInfo *first_missing = nullptr;
+    for (auto &entry : ctx->cells) {
         CellInfo *ci = entry.second.get();
-        if (ci->bel != BelId())
-            restored |= restore_cell_pin_map(ci);
+        if (ci->bel == BelId())
+            continue;
+        if (restore_cell_pin_map(ci)) {
+            ++annotated;
+            continue;
+        }
+        if (first_missing == nullptr)
+            first_missing = ci;
+        ++missing;
     }
-    if (restored)
-        assignArchInfo();
-    else
+    if (annotated == 0) {
         log_warning("Placed checkpoint has no pin-state snapshot; regenerate it from synthesis JSON to preserve "
                     "folded constants and inversions.\n");
+        return;
+    }
+    if (missing != 0)
+        log_error("Placed checkpoint is only partially annotated: %s has no FES_PINMAP_V1 (%d placed %s missing). "
+                  "Regenerate it from synthesis JSON so every placed cell carries the pin-state snapshot.\n",
+                  ctx->nameOf(first_missing), missing, missing == 1 ? "cell" : "cells");
+    assignArchInfo();
 }
 
 void Arch::lock_fes_scaffold()
