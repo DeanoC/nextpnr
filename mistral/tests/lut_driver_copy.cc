@@ -859,6 +859,11 @@ TEST_F(LutDriverCopyTest, NativeClockSkewRejectsAnUnskewedGainThatWorsensRegiste
     for (auto *cell : {inputs[0], inputs[1]}) ctx->unbindBel(cell->bel);
     place(inputs[0], 30, 26, STRENGTH_LOCKED);
     place(inputs[1], 24, 17, STRENGTH_LOCKED);
+    // Keep the distant, late-clocked launch on the slower physical D mux
+    // level. The short C branch uses physical F; logical arity is irrelevant.
+    source->pin_data[id_A].bel_pins = {id_D};
+    source->pin_data[id_B].bel_pins = {id_E0};
+    source->pin_data[id_C].bel_pins = {id_F0};
     // Retain the carry links, but remove the head decoder branch which would
     // otherwise hide middle.A behind an unchanged, slightly longer prefix.
     head->disconnectPort(id_A); head->pin_data[id_A].state = PIN_0;

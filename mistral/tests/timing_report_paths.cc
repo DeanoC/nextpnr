@@ -461,14 +461,19 @@ TEST_F(TimingReportPathsTest, KnownUnrelatedEndpointHasFiniteTransferBoundsWitho
     EXPECT_FALSE(row.setup_window.has_value()); EXPECT_FALSE(row.setup_margin.has_value());
     EXPECT_FALSE(row.hold_margin.has_value());
     EXPECT_EQ(row.max_path_delay, path_delay(native_setup_path(timing, endpoint, row)));
-    // The two aliases take distinct characterized LUT arcs. The shortest
-    // transfer uses B, independently of the longest native setup backpointer.
-    DelayQuad fastest;
-    ASSERT_TRUE(ctx->getCellDelay(logic, id_B, id_Q, fastest));
+    // The two aliases take distinct physical LUT arcs. Find the shortest
+    // transfer independently of the longest native setup backpointer; input
+    // reassignment can change which logical alias is fastest.
     const auto capture = ctx->getPortClockingInfo(endpoint, id_DATAIN, 0);
     const auto start = ctx->getPortClockingInfo(independent, id_Q, 0);
-    const int64_t shortest = int64_t(start.clockToQ.minDelay()) +
-        ctx->getNetinfoRouteDelay(independent->getPort(id_Q), PortRef{logic, id_B}) + fastest.minDelay() +
+    int64_t shortest_input = std::numeric_limits<int64_t>::max();
+    for (IdString pin : {id_A, id_B}) {
+        DelayQuad arc;
+        ASSERT_TRUE(ctx->getCellDelay(logic, pin, id_Q, arc));
+        shortest_input = std::min(shortest_input,
+            int64_t(ctx->getNetinfoRouteDelay(independent->getPort(id_Q), PortRef{logic, pin})) + arc.minDelay());
+    }
+    const int64_t shortest = int64_t(start.clockToQ.minDelay()) + shortest_input +
         ctx->getNetinfoRouteDelay(logic->getPort(id_Q), PortRef{endpoint, id_DATAIN}) - capture.hold.maxDelay();
     EXPECT_EQ(row.min_path_delay, shortest);
     EXPECT_LT(row.min_path_delay, row.max_path_delay);

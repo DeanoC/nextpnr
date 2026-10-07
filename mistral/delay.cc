@@ -721,39 +721,47 @@ bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort
     if (cell->type.in(id_MISTRAL_NOT, id_MISTRAL_BUF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
                       id_MISTRAL_ALUT5, id_MISTRAL_ALUT6)) {
         if (toPort == id_Q) {
-            if (cell->type == id_MISTRAL_ALUT6 && fromPort == id_A) {
-                delay = DelayQuad{/* RF */ 592, /* RR */ 605, /* FF */ 567, /* FR */ 573};
+            // Logical input names no longer identify mux levels after
+            // reassign_alm_inputs. Before binding, use the placement pin map
+            // so hypothetical cells and their real trials use the same model.
+            const int width = cell->type == id_MISTRAL_ALUT6 ? 6 : cell->type == id_MISTRAL_ALUT5 ? 5 :
+                              cell->type == id_MISTRAL_ALUT4 ? 4 : cell->type == id_MISTRAL_ALUT3 ? 3 :
+                              cell->type == id_MISTRAL_ALUT2 ? 2 : 1;
+            const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
+            if (std::find(inputs.begin(), inputs.begin() + width, fromPort) == inputs.begin() + width)
+                return false;
+            IdString physical = comb_pinmap.at(fromPort);
+            auto pin = cell->pin_data.find(fromPort);
+            // Planning copies can inherit a BEL and pin map from a cell of
+            // another type. Only its actual occupant owns the physical map.
+            if (cell->bel != BelId() && getBoundBelCell(cell->bel) == cell && pin != cell->pin_data.end() &&
+                pin->second.bel_pins.size() == 1)
+                physical = pin->second.bel_pins.front();
+            const bool l6 = cell->type == id_MISTRAL_ALUT6;
+            switch (physical.index) {
+            case ID_A:
+                delay = l6 ? DelayQuad{592, 605, 567, 573} : DelayQuad{580, 583, 560, 574};
                 return true;
-            } else if ((cell->type == id_MISTRAL_ALUT5 && fromPort == id_A) ||
-                       (cell->type == id_MISTRAL_ALUT6 && fromPort == id_B)) {
-                delay = DelayQuad{/* RF */ 580, /* RR */ 583, /* FF */ 560, /* FR */ 574};
+            case ID_B:
+                delay = l6 ? DelayQuad{580, 583, 560, 574} : DelayQuad{429, 496, 440, 510};
                 return true;
-            } else if ((cell->type == id_MISTRAL_ALUT4 && fromPort == id_A) ||
-                       (cell->type == id_MISTRAL_ALUT5 && fromPort == id_B) ||
-                       (cell->type == id_MISTRAL_ALUT6 && fromPort == id_C)) {
-                delay = DelayQuad{/* RR */ 429, /* RF */ 496, /* FR */ 440, /* FF */ 510};
+            case ID_C:
+            case ID_D:
+                // C/D exchange the middle mux levels between the two L6
+                // halves; keep the earliest early and latest late delays.
+                delay = l6 ? DelayQuad{429, 499, 440, 512} : DelayQuad{432, 499, 444, 512};
                 return true;
-            } else if ((cell->type == id_MISTRAL_ALUT3 && fromPort == id_A) ||
-                       (cell->type == id_MISTRAL_ALUT4 && fromPort == id_B) ||
-                       (cell->type == id_MISTRAL_ALUT5 && fromPort == id_C) ||
-                       (cell->type == id_MISTRAL_ALUT6 && fromPort == id_D)) {
-                delay = DelayQuad{/* RR */ 432, /* RF */ 499, /* FR */ 444, /* FF */ 512};
+            case ID_E0:
+            case ID_E1:
+                // E selects the final L6 mux, but the penultimate L5 mux.
+                delay = l6 ? DelayQuad{90, 96, 83, 97} : DelayQuad{263, 354, 362, 400};
                 return true;
-            } else if ((cell->type == id_MISTRAL_ALUT2 && fromPort == id_A) ||
-                       (cell->type == id_MISTRAL_ALUT3 && fromPort == id_B) ||
-                       (cell->type == id_MISTRAL_ALUT4 && fromPort == id_C) ||
-                       (cell->type == id_MISTRAL_ALUT5 && fromPort == id_D) ||
-                       (cell->type == id_MISTRAL_ALUT6 && fromPort == id_E)) {
-                delay = DelayQuad{/* RR */ 263, /* RF */ 354, /* FF */ 362, /* FR */ 400};
+            case ID_F0:
+            case ID_F1:
+                delay = l6 ? DelayQuad{263, 354, 362, 400} : DelayQuad{90, 96, 83, 97};
                 return true;
-            } else if ((cell->type.in(id_MISTRAL_NOT, id_MISTRAL_BUF) && fromPort == id_A) ||
-                       (cell->type == id_MISTRAL_ALUT2 && fromPort == id_B) ||
-                       (cell->type == id_MISTRAL_ALUT3 && fromPort == id_C) ||
-                       (cell->type == id_MISTRAL_ALUT4 && fromPort == id_D) ||
-                       (cell->type == id_MISTRAL_ALUT5 && fromPort == id_E) ||
-                       (cell->type == id_MISTRAL_ALUT6 && fromPort == id_F)) {
-                delay = DelayQuad{/* RR */ 90, /* RF */ 96, /* FF */ 83, /* FR */ 97};
-                return true;
+            default:
+                return false;
             }
         }
     } else if (cell->type == id_MISTRAL_ALUT_ARITH) {

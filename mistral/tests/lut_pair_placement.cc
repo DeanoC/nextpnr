@@ -439,9 +439,10 @@ TEST_F(LutPairPlacementTest, NativeRelatedClockHoldRejectsARealShorterSetupPath)
     ctx->settings[ctx->id("target_freq")] = 125e6;
     ASSERT_NE(clock_source(clock, "hold_primary_clock", true), nullptr);
     auto *capture_clock = clock;
-    // Eight real identity LUT arcs create a late common-root capture clock.
-    // Native A-to-Q max delay is 400ps per stage; no delay is injected.
-    for (int index = 0; index < 8; ++index) {
+    // Six real identity LUT arcs on physical B create a late common-root
+    // capture clock. The default F input is too fast to cross the hold
+    // boundary; choose the physical mux level explicitly, without injection.
+    for (int index = 0; index < 6; ++index) {
         auto name = "hold_clock_stage_" + std::to_string(index);
         auto *cell = ctx->createCell(ctx->id(name), id_MISTRAL_ALUT2);
         cell->params[id_LUT] = Property(0xa, 4); cell->addInput(id_A); cell->addInput(id_B); cell->addOutput(id_Q);
@@ -449,6 +450,7 @@ TEST_F(LutPairPlacementTest, NativeRelatedClockHoldRejectsARealShorterSetupPath)
         capture_clock = ctx->createNet(ctx->id(name + "$q")); capture_clock->is_global = true;
         cell->connectPort(id_Q, capture_clock); ctx->assign_comb_info(cell); ctx->assign_default_pinmap(cell);
         place(cell, 2, 35, STRENGTH_LOCKED, 6 * index);
+        cell->pin_data[id_A].bel_pins = {id_B};
     }
     capture_clock->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
     capture_clock->clkconstr->phase_shift = 0;

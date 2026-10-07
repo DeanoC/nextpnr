@@ -516,7 +516,7 @@ class LocalRemapPinTest : public EnableReplicationTest
     {
         EnableReplicationTest::SetUp();
         ctx->local_remap_optimize_pins = true;
-        ctx->unbindBel(source_a->bel); place(source_a, 15, 20);
+        ctx->unbindBel(source_b->bel); place(source_b, 15, 20);
         // The original cone computes !a && b, so swapping its inputs requires
         // an actual truth-table change rather than a symmetric XOR mask.
         driver->params[id_LUT] = 0x80;
@@ -527,7 +527,7 @@ class LocalRemapPinTest : public EnableReplicationTest
         side_b->disconnectPort(id_DATAIN); side_b->connectPort(id_DATAIN, source_b->getPort(id_Q));
         ctx->assignArchInfo();
         place(extra_a, 30, 21); place(extra_b, 30, 21);
-        place(side_a, 15, 21); place(side_b, 30, 22);
+        place(side_a, 30, 22); place(side_b, 15, 21);
         input_a_hole = make_hole(source_a->getPort(id_Q), "removed_input_a_user");
         input_b_hole = make_hole(source_b->getPort(id_Q), "removed_input_b_user");
         make_hole(enable, "removed_enable_user");
@@ -620,8 +620,9 @@ TEST_F(LocalRemapPinTest, ChangedOrderPreservesTruthTableAndEveryUnselectedUserS
     ASSERT_NE(net, enable);
     auto *copy = net->driver.cell;
     ASSERT_EQ(copy->type, id_MISTRAL_ALUT2);
-    // The distant source gets the faster B pin; both pin states were folded
-    // into the composed mask. This exercises the backend's apply_order path.
+    // The distant source gets the faster physical F input on logical A;
+    // both pin states were folded into the composed mask. This exercises the
+    // backend's apply_order path.
     EXPECT_EQ(copy->getPort(id_A), source_b->getPort(id_Q));
     EXPECT_EQ(copy->getPort(id_B), source_a->getPort(id_Q));
     EXPECT_EQ(copy->params.at(id_LUT).as_int64(), 0x2);
