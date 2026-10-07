@@ -119,6 +119,7 @@ def run(output):
             if directory.exists():
                 summaries = list(directory.glob("collection-*.json"))
                 if len(summaries) == 1 and not summaries[0].name.startswith("collection-failure-"):
+                    read_populations(output, [(item, manifest)])
                     print("RETAIN", item["cohort_id"], flush=True)
                     continue
                 raise ValueError("incomplete prior collection: inspect evidence; do not silently rerun it")
@@ -203,7 +204,8 @@ def read_populations(output, manifests):
         if inputs != declaration["input_sha256"]:
             raise ValueError("collected input differs from declaration")
         execution_identities.append(bound.get("execution_identity"))
-        for field in ("command", "required_clocks", "seeds", "repeats", "environment", "limits"):
+        for field in ("cohort", "architecture", "artifacts", "command", "required_clocks",
+                      "seeds", "repeats", "environment", "limits"):
             actual = bound.get(field)
             if field == "environment":
                 # Collector includes deterministic platform-minimum environment.
@@ -224,6 +226,8 @@ def read_populations(output, manifests):
     rows = seed_racing.validate_dataset(document)
     by_population = {}
     for row in rows:
+        if row.get("process_started") is not True:
+            raise ValueError("unstarted candidates cannot supply observed full-run costs")
         item = cohorts[row["cohort_id"]]
         row.update(phase=item["phase"], policy=item["policy"])
         row["artifact_records"] = artifacts[row["run_id"]]
@@ -244,7 +248,7 @@ def repeat_checks(rows, policies, seeds):
                     for phase in ("train", "repeat")]
             check = {"policy": policy, "seed": seed, "statuses": [row["status"] for row in pair],
                      "classification": "inconclusive: at least one anchor did not complete"}
-            if all(row["status"] == "completed" for row in pair):
+            if all(row["status"] in ("completed", "analogue_timing_failure") for row in pair):
                 same = {}
                 for name in ("final_report", "bitstream"):
                     digests = []
@@ -263,7 +267,7 @@ def repeat_checks(rows, policies, seeds):
     return checks
 
 
-def evaluate(output):
+def evaluate(output, report_path=None):
     declaration, manifests = load_declared(output)
     rows = read_populations(output, manifests)
     train = [row for row in rows if row["phase"] == "train"]
@@ -296,7 +300,7 @@ def evaluate(output):
                                "Time-bounded failure is not proof of permanent failure.",
                                "Training and repeat costs are separate and must be charged for first deployment.",
                                "No checkpoint/resume, learned predictor, live termination or default-policy change."]}
-    write_new(output / "evaluation.json", result)
+    write_new(report_path or output / "evaluation.json", result)
     return result
 
 
@@ -304,6 +308,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=("prepare", "run", "evaluate"))
     parser.add_argument("--template", type=Path)
+    parser.add_argument("--report", type=Path, help="new evaluation file; existing evidence is never overwritten")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.operation == "prepare":
@@ -311,7 +316,7 @@ def main():
     elif args.operation == "run":
         run(args.output.resolve())
     else:
-        print(json.dumps(evaluate(args.output.resolve()), indent=2, allow_nan=False))
+        print(json.dumps(evaluate(args.output.resolve(), args.report), indent=2, allow_nan=False))
 
 
 if __name__ == "__main__":

@@ -2,7 +2,9 @@
 import sys
 import hashlib
 import tempfile
+import json
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python"))
@@ -89,6 +91,62 @@ class PortfolioTests(unittest.TestCase):
                 for phase in ("train", "repeat")]
         with self.assertRaises(ValueError):
             portfolio.repeat_checks(rows, ["a"], [17])
+
+    def test_legal_timing_failures_still_have_repeatable_final_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "artifact"
+            path.write_bytes(b"timing failed")
+            record = dict(available=True, path=str(path), sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+            rows = [dict(policy="a", seed=17, phase=phase, status="analogue_timing_failure",
+                         artifact_records=dict(final_report=record, bitstream=record))
+                    for phase in ("train", "repeat")]
+            self.assertEqual(portfolio.repeat_checks(rows, ["a"], [17])[0]["classification"], "repeatable")
+
+
+class PopulationTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.manifest = dict(cohort=dict(id="c"), architecture="mistral", artifacts={},
+                             command=["pnr"], required_clocks=["clk"], seeds=[17], repeats=1,
+                             environment={}, limits=dict(per_run_seconds=600))
+        self.item = dict(cohort_id="c", phase="train", policy="a", seeds=[17])
+        self.bound = dict(self.manifest, binary=dict(sha256="binary"), inputs=[],
+                          execution_identity=dict(backend="cuda", runtime_environment_id="frozen"))
+        self.row = dict(run_id="r", cohort_id="c", seed=17, process_started=True)
+        portfolio.write_new(self.root / "declaration.json", dict(binary_sha256="binary", input_sha256={}))
+        (self.root / "collections" / "c").mkdir(parents=True)
+
+    def read(self, rows=None):
+        path = self.root / "collections" / "c" / "collection-1.json"
+        path.write_text(json.dumps(dict(cohort_identity=dict(manifest=self.bound),
+                                        results=[dict(run_id="r", artifacts={})])))
+        with mock.patch.object(portfolio.seed_racing, "assemble_dataset", return_value={}), \
+                mock.patch.object(portfolio.seed_racing, "validate_dataset", return_value=rows or [self.row]):
+            return portfolio.read_populations(self.root, [(self.item, self.manifest)])
+
+    def test_bound_population_accepted(self):
+        self.assertEqual(self.read()[0]["phase"], "train")
+
+    def test_changed_population_rejected(self):
+        self.bound["seeds"] = [18]
+        with self.assertRaises(ValueError):
+            self.read()
+
+    def test_changed_binary_rejected(self):
+        self.bound["binary"] = dict(sha256="other")
+        with self.assertRaises(ValueError):
+            self.read()
+
+    def test_duplicate_candidates_rejected(self):
+        with self.assertRaises(ValueError):
+            self.read([dict(self.row), dict(self.row)])
+
+    def test_unstarted_candidate_is_not_a_failure_label(self):
+        self.row["process_started"] = False
+        with self.assertRaises(ValueError):
+            self.read()
 
 
 if __name__ == "__main__":

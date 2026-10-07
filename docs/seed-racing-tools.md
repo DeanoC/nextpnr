@@ -252,3 +252,30 @@ random, ideal-resumable, and restart policies; an unaffordable stage or final
 run is censored. Aggregate serial compute remains distinct from any
 future measured concurrent makespan. Synthetic results are diagnostics, not a
 performance claim.
+
+## Bounded full-run placement-policy screen
+
+`python/seed_policy_portfolio.py` is an experiment-specific wrapper around the
+same authenticated collector, not a general optimizer or early terminator.
+See [the pre-result declaration](seed-policy-portfolio-plan.md) and
+[the completed Atari screen](validation/seed-policy-portfolio-2026-10-07.md).
+It varies criticality exponent only, freezes training selection before held-out
+collection, and compares full-run serial schedules without prefix prediction.
+
+```sh
+python3 python/seed_policy_portfolio.py prepare --template ATARI_MANIFEST --output NEW_EVIDENCE_DIRECTORY
+timeout --signal=INT --kill-after=30s 32400 python3 python/seed_policy_portfolio.py run --output NEW_EVIDENCE_DIRECTORY
+python3 python/seed_policy_portfolio.py evaluate --output NEW_EVIDENCE_DIRECTORY
+python3 mistral/tests/seed_policy_portfolio_test.py
+```
+
+`prepare` requires the retained Atari template and makes a fresh directory;
+its fixed populations, policies, limits, order and hashes are declared before
+PNR. Publish the canonical declaration digest before collecting. `run` admits
+only declared cohorts under its retained deadline and free-space guard, locks
+the operator, validates retained complete collections, and refuses incomplete
+reruns. `evaluate` requires every declared attempt and the frozen training
+selection. Use `--report NEW_FILE` to re-evaluate without overwriting the
+original report. Raw artifacts stay outside git. Search budgets exclude
+training/repeat costs, which must be added for first-use economics. No default
+behavior, C++ routing logic, hardware programming or runtime contract changes.
