@@ -59,6 +59,11 @@ if (BUILD_TESTS)
                     --yosys ${MISTRAL_CHECKPOINT_YOSYS}
                     --nextpnr $<TARGET_FILE:nextpnr-${family}>
                     --output ${CMAKE_CURRENT_BINARY_DIR}/tests/placed-checkpoint)
+        add_test(NAME nextpnr-${family}-physical-lut-timing
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/physical_lut_timing.py
+                    --yosys ${MISTRAL_CHECKPOINT_YOSYS}
+                    --nextpnr $<TARGET_FILE:nextpnr-${family}>
+                    --output ${CMAKE_CURRENT_BINARY_DIR}/tests/physical-lut-timing)
     endif()
     add_test(NAME nextpnr-${family}-capture-pipeline-locality-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/capture_pipeline_locality_cli.py
