@@ -887,7 +887,7 @@ void Arch::assign_default_pinmap(CellInfo *cell)
         auto &pinmap = cell->pin_data[port.first].bel_pins;
         if ((is_comb_cell(cell->type) || cell->type.in(id_MISTRAL_BUF, id_MISTRAL_MLAB)) &&
             comb_pinmap.count(port.first)) {
-            pinmap = {comb_pinmap.at(port.first)};
+            pinmap = {lut_placement_pin(cell, port.first)};
             continue;
         }
         if (!pinmap.empty())

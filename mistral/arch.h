@@ -665,6 +665,7 @@ struct Arch : BaseArch<ArchRanges>
     // --mistral-ff4: also place flip-flops on the secondary registers (FF1/FF3)
     // of each ALM. Off by default; set from the command line only.
     bool lab_ff4 = false;
+    bool arrival_pin_assignment = false; // Explicit opt-in for placement estimates and private LUT pins.
 
     bool is_comb_cell(IdString cell_type) const;        // lab.cc
     bool is_alm_legal(uint32_t lab, uint8_t alm) const; // lab.cc
@@ -682,6 +683,7 @@ struct Arch : BaseArch<ArchRanges>
     void assign_control_sets(uint32_t lab);                 // lab.cc
     int park_open_aclr(uint32_t lab);                          // lab.cc
     void reassign_alm_inputs(uint32_t lab, uint8_t alm);    // lab.cc
+    int optimise_private_lut_pins(uint32_t lab, uint8_t alm, int half, const dict<IdString, delay_t> &arrival);
     void update_alm_input_count(uint32_t lab, uint8_t alm); // lab.cc
 
     uint64_t compute_lut_mask(uint32_t lab, uint8_t alm);  // lab.cc
@@ -762,6 +764,7 @@ struct Arch : BaseArch<ArchRanges>
 
     void assign_default_pinmap(CellInfo *cell);
     static const dict<IdString, IdString> comb_pinmap;
+    IdString lut_placement_pin(const CellInfo *cell, IdString port) const;
 
     // -------------------------------------------------
 

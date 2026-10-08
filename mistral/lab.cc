@@ -20,6 +20,7 @@
 #include "design_utils.h"
 #include "log.h"
 #include "nextpnr.h"
+#include "timing.h"
 #include "util.h"
 
 #include <algorithm>
@@ -924,6 +925,7 @@ bool Arch::is_lab_ctrlset_legal(uint32_t lab) const
 void Arch::lab_pre_route()
 {
     log_info("Preparing LABs for routing...\n");
+    std::vector<uint32_t> fresh_labs;
     // A user BEL lock fixes the site on a fresh route. LUT pins are still
     // reassigned, and a flip-flop with no LUT still gets a data route-through.
     // A scaffold reload locks the restored cells at STRENGTH_LOCKED. Rewriting
@@ -944,10 +946,86 @@ void Arch::lab_pre_route()
         }
         if (scaffold)
             continue;
+        fresh_labs.push_back(lab);
         assign_control_sets(lab);
         for (uint8_t alm = 0; alm < 10; alm++)
             reassign_alm_inputs(lab, alm);
     }
+    // Experimental heuristic: use a single arrival snapshot after legalising
+    // the pin maps. Final routing and setup/hold analysis must qualify it.
+    if (arrival_pin_assignment) {
+        TimingAnalyser timing(getCtx());
+        timing.setup();
+        int changed = 0;
+        for (uint32_t lab : fresh_labs)
+            for (uint8_t alm = 0; alm < 10; ++alm)
+                for (int half = 0; half < 2; ++half) {
+                    CellInfo *cell = getBoundBelCell(labs.at(lab).alms.at(alm).lut_bels[half]);
+                    if (!cell)
+                        continue;
+                    dict<IdString, delay_t> arrival;
+                    for (const auto &port : cell->ports) {
+                        delay_t value;
+                        if (port.second.type == PORT_IN &&
+                            timing.get_max_arrival(CellPortKey(cell->name, port.first), value))
+                            arrival[port.first] = value;
+                    }
+                    changed += optimise_private_lut_pins(lab, alm, half, arrival);
+                }
+        log_info("Arrival-based private LUT pin assignment changed %d input mappings.\n", changed);
+    }
+}
+
+int Arch::optimise_private_lut_pins(uint32_t lab, uint8_t alm, int half, const dict<IdString, delay_t> &arrival)
+{
+    auto &data = labs.at(lab).alms.at(alm);
+    CellInfo *cell = getBoundBelCell(data.lut_bels[half]);
+    CellInfo *mate = getBoundBelCell(data.lut_bels[1 - half]);
+    if (!cell || cell->belStrength == STRENGTH_LOCKED || data.carry_mode || data.l6_mode ||
+        !cell->type.in(id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4, id_MISTRAL_ALUT5))
+        return 0;
+    // E/F inputs may also feed registers directly. Leave those ALMs alone;
+    // registers driven by COMBOUT are unaffected by a LUT input permutation.
+    for (BelId bel : data.ff_bels) {
+        CellInfo *ff = getBoundBelCell(bel);
+        if (!ff)
+            continue;
+        NetInfo *din = ff->getPort(id_DATAIN);
+        if (ff->belStrength == STRENGTH_LOCKED || ff->getPort(id_SDATA) ||
+            (din && din != cell->getPort(id_Q) && (!mate || din != mate->getPort(id_Q))))
+            return 0;
+    }
+    pool<IdString> reserved;
+    if (mate)
+        for (const auto &port : mate->ports)
+            if (port.second.type == PORT_IN && port.second.net)
+                for (IdString pin : mate->pin_data.at(port.first).bel_pins)
+                    reserved.insert(pin);
+    std::vector<IdString> logical, physical;
+    const std::array<IdString, 5> inputs{id_A, id_B, id_C, id_D, id_E};
+    dict<IdString, delay_t> delays;
+    for (IdString port : inputs) {
+        if (!cell->getPort(port) || !arrival.count(port))
+            continue;
+        auto &pins = cell->pin_data.at(port).bel_pins;
+        if (pins.size() != 1 || reserved.count(pins[0]))
+            continue;
+        DelayQuad delay;
+        if (!getCellDelay(cell, port, id_Q, delay))
+            continue;
+        logical.push_back(port);
+        physical.push_back(pins[0]);
+        delays[pins[0]] = delay.maxDelay();
+    }
+    std::stable_sort(logical.begin(), logical.end(), [&](IdString a, IdString b) { return arrival.at(a) > arrival.at(b); });
+    std::stable_sort(physical.begin(), physical.end(), [&](IdString a, IdString b) { return delays.at(a) < delays.at(b); });
+    int changed = 0;
+    for (size_t i = 0; i < logical.size(); ++i) {
+        auto &pins = cell->pin_data.at(logical[i]).bel_pins;
+        changed += pins[0] != physical[i];
+        pins[0] = physical[i];
+    }
+    return changed;
 }
 
 void Arch::assign_control_sets(uint32_t lab)
@@ -1316,13 +1394,36 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
     // Get cells into an array for fast access
 }
 
-// This default cell-bel pin mapping is used to provide estimates during placement only. It will have errors and
-// overlaps and a correct mapping will be resolved twixt placement and routing
+// Arithmetic/MLAB placement scaffold. Boolean LUTs use lut_placement_pin;
+// sharing and half-specific reservations are resolved before routing.
 const dict<IdString, IdString> Arch::comb_pinmap = {
         {id_A, id_F0}, // fastest input first
         {id_B, id_E0}, {id_C, id_D}, {id_D, id_C},       {id_D0, id_C},       {id_D1, id_B},
         {id_E, id_B},  {id_F, id_A}, {id_Q, id_COMBOUT}, {id_SO, id_COMBOUT},
 };
+
+IdString Arch::lut_placement_pin(const CellInfo *cell, IdString port) const
+{
+    if (!arrival_pin_assignment)
+        return comb_pinmap.at(port);
+    if (!cell->type.in(id_MISTRAL_NOT, id_MISTRAL_BUF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
+                       id_MISTRAL_ALUT5, id_MISTRAL_ALUT6) ||
+        port == id_Q)
+        return comb_pinmap.at(port);
+    const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
+    // Estimate an isolated LUT. C/D and the two E/F halves have equal cell
+    // delays; pairing can still reserve A/B for shared signals later.
+    const std::array<IdString, 5> l5_pins{id_C, id_E0, id_F0, id_B, id_A};
+    const std::array<IdString, 6> l6_pins{id_A, id_B, id_C, id_D, id_E0, id_F0};
+    int allocated = 0;
+    for (IdString input : inputs) {
+        if (input == port)
+            return cell->type == id_MISTRAL_ALUT6 ? l6_pins.at(allocated) : l5_pins.at(allocated);
+        if (cell->getPort(input) != nullptr)
+            ++allocated;
+    }
+    return comb_pinmap.at(port);
+}
 
 namespace {
 // gets the value of the ith LUT init property of a given cell

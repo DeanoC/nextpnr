@@ -91,6 +91,9 @@ if (BUILD_TESTS)
     add_test(NAME nextpnr-${family}-remap-plan-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/remap_plan_cli.py
                 $<TARGET_FILE:nextpnr-${family}> -v)
+    add_test(NAME nextpnr-${family}-arrival-pin-assignment-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/arrival_pin_assignment_cli.py
+                $<TARGET_FILE:nextpnr-${family}>)
     add_test(NAME nextpnr-${family}-local-remap-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/local_remap_cli.py
                 $<TARGET_FILE:nextpnr-${family}> -v)

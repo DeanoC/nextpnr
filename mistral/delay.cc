@@ -730,7 +730,9 @@ bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort
             const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
             if (std::find(inputs.begin(), inputs.begin() + width, fromPort) == inputs.begin() + width)
                 return false;
-            IdString physical = comb_pinmap.at(fromPort);
+            // Match the isolated-cell allocation used by reassign_alm_inputs.
+            // comb_pinmap is a routing scaffold, not the final mux allocation.
+            IdString physical = lut_placement_pin(cell, fromPort);
             auto pin = cell->pin_data.find(fromPort);
             // Planning copies can inherit a BEL and pin map from a cell of
             // another type. Only its actual occupant owns the physical map.
