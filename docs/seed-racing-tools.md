@@ -308,8 +308,11 @@ Mistral defaults, and freezes all identities/populations before PNR. Publish
 the canonical plan digest before starting. This is not a general optimizer.
 
 `run` automatically evaluates complete evidence; missing/incomplete cohorts
-fail closed. Its original deadline persists across restart. Re-evaluation
-requires a new file, never overwriting results. Kernel variation is rejected
+fail closed. Its original deadline persists across restart. Finalization on
+restart reauthenticates the evidence and recomputes the evaluation before
+reusing a byte-identical existing report; mismatches fail closed. An existing
+completion marker must bind the plan and retains its original timestamp.
+Explicit re-evaluation requires a new file, never overwriting results. Kernel variation is rejected
 unless a separately recorded plan-bound amendment lists exact runtime/kernel
 pairs and full runtime manifests match except kernel release. Reports flag
 cross-kernel costs. Training charges precede search and amortization is
