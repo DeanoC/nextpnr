@@ -90,6 +90,11 @@ timing or final analogue signoff. Final routing is still required.
 
 ## Issue #171 validation, 2026-10-08
 
+The original results below were recorded on checkpoint `a95851bf`, before
+main's LUT6 select-delay correction (`434b8664`). They are historical results
+for that timing model; calibration files must be regenerated after timing model
+changes. The main-integration validation is recorded separately below.
+
 The retained st569 SG1000 synthesis JSON was tested on `5CSEBA6U23I7`, with
 HeAP timing weight 2000, criticality exponent 5, and unchanged RTL/netlist inputs.
 The branch starts at `e35e0088`; the older #112 investigation starts at
@@ -216,6 +221,29 @@ slack improves.
 Input hashes, exact routed commands and final clock reports are retained in
 [`validation/mistral-critical-cohort-171.json`](validation/mistral-critical-cohort-171.json).
 The local logs and full artifacts are under `/tmp/sg1000-cohort-171`.
+
+## Integration with main, 2026-10-08
+
+Merged main `6053c560` into this branch. Test registration retains both the
+cohort CLI and LUT6 fixture tests. The shared LUT-delay helper uses main's
+corrected physical E/F select delays. Virtual and actual FF route-through
+selection both honor FES reservations, retaining main's checkpoint restoration,
+socket input accounting and bitstream mux corrections.
+
+A fresh paired seed-3 baseline/calibrated run with the unchanged st569 inputs
+reaches **49.6401 MHz in both modes**, with **-0.997 ns system setup** and
+**+0.730 ns hold**. Pixel and audio pass. No trial survives all guards at
+budget 64; the final timing summaries and RBF bytes match the baseline exactly.
+The earlier seed-3 closure belongs to the previous timing model and is not
+current closure evidence. Regenerate calibration after timing-model changes.
+
+All 54 native tests passed (40 cohort, 11 FF4, two pin-map and one LUT6 timing).
+Five CTests passed (cohort CLI, both LUT6 fixtures, placement checkpoint and
+physical LUT timing), along with the FES reservation/route-preparation script.
+The added reservation regression checks that placement preview and routing
+both preserve the FF data connection when its paired LUT is reserved.
+Full commands and hashes are in `main_sync_validation` in the validation JSON;
+logs and routed artifacts are under `/tmp/sg1000-cohort-171/main-sync-*`.
 
 ## Reproduction
 

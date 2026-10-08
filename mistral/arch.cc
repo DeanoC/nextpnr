@@ -22,6 +22,7 @@
 #include <memory>
 #include <sstream>
 
+#include "json11.hpp"
 #include "log.h"
 #include "nextpnr.h"
 
@@ -274,8 +275,78 @@ IdStringList Arch::getBelName(BelId bel) const
     return IdStringList(ids);
 }
 
+void Arch::record_fes_reservation(const std::string &kind, const std::string &spec)
+{
+    fes_reservation_declarations.emplace_back(kind, spec);
+    if (fes_restoring_reservations)
+        return;
+    json11::Json::array entries;
+    for (const auto &entry : fes_reservation_declarations)
+        entries.emplace_back(json11::Json::array{entry.first, entry.second});
+    getCtx()->settings[id("mistral/fes_reservations_v1")] = json11::Json(entries).dump();
+}
+
+void Arch::restore_fes_reservations()
+{
+    for (const auto &setting : getCtx()->settings) {
+        const std::string name = setting.first.str(getCtx());
+        if (name.find("mistral/fes_reservations_") == 0 && name != "mistral/fes_reservations_v1")
+            log_error("Unsupported FES reservation snapshot version '%s'.\n", name.c_str());
+    }
+    auto found = getCtx()->settings.find(id("mistral/fes_reservations_v1"));
+    if (found == getCtx()->settings.end())
+        return;
+    if (!found->second.is_string)
+        log_error("Invalid FES reservation snapshot: expected a string.\n");
+    std::string error;
+    const auto snapshot = json11::Json::parse(found->second.as_string(), error);
+    if (!error.empty() || !snapshot.is_array())
+        log_error("Invalid FES reservation snapshot: expected a declaration array.\n");
+    for (const auto &entry : snapshot.array_items()) {
+        if (!entry.is_array() || entry.array_items().size() != 2 || !entry[0].is_string() ||
+            !entry[1].is_string() || entry[1].string_value().empty() ||
+            entry[1].string_value().find('\0') != std::string::npos ||
+            (entry[0].string_value() != "BEL" && entry[0].string_value() != "RECT" &&
+             entry[0].string_value() != "GROUP"))
+            log_error("Invalid FES reservation snapshot declaration.\n");
+    }
+    fes_restoring_reservations = true;
+    for (const auto &entry : snapshot.array_items()) {
+        const auto &kind = entry[0].string_value();
+        const auto &spec = entry[1].string_value();
+        if (kind == "BEL") note_reserved_bel(spec);
+        else if (kind == "RECT") note_reserved_rect(spec);
+        else note_reserved_rect_group(spec);
+    }
+    fes_restoring_reservations = false;
+    fes_restored_reservations = true;
+}
+
+bool Arch::capture_fes_qsf_reservation(const std::string &kind, const std::string &spec)
+{
+    if (!fes_checking_qsf_reservations)
+        return false;
+    fes_qsf_reservation_declarations.emplace_back(kind, spec);
+    return true;
+}
+
+void Arch::begin_fes_qsf_reservation_check()
+{
+    fes_checking_qsf_reservations = fes_restored_reservations;
+    fes_qsf_reservation_declarations.clear();
+}
+
+void Arch::finish_fes_qsf_reservation_check()
+{
+    if (fes_checking_qsf_reservations && !fes_qsf_reservation_declarations.empty() &&
+        fes_qsf_reservation_declarations != fes_reservation_declarations)
+        log_error("QSF FES reservations differ from the saved checkpoint.\n");
+    fes_checking_qsf_reservations = false;
+}
+
 void Arch::note_reserved_bel(const std::string &name)
 {
+    if (capture_fes_qsf_reservation("BEL", name)) return;
     BelId bel = getCtx()->getBelByNameStr(name);
     if (bel == BelId())
         log_error("FES_RESERVED_BEL '%s' is not a device BEL.\n", name.c_str());
@@ -296,11 +367,13 @@ void Arch::note_reserved_bel(const std::string &name)
     // FES_RESERVED_RECT/_GROUP declared before or after it) rather than
     // declaring a rectangle of its own, so it must not trip the "region name
     // already declared" duplicate check in note_reserved_rect/_group.
+    record_fes_reservation("BEL", name);
     log_info("FES reserved BEL %s (region 'cart')\n", name.c_str());
 }
 
 void Arch::note_reserved_rect(const std::string &spec)
 {
+    if (capture_fes_qsf_reservation("RECT", spec)) return;
     std::istringstream in(spec);
     std::vector<std::string> tokens;
     for (std::string tok; in >> tok;)
@@ -349,11 +422,13 @@ void Arch::note_reserved_rect(const std::string &spec)
     fes_reserved_rects.push_back(FesReservedRect{name, x0, y0, x1, y1});
     fes_has_reserved_rect = true;
     fes_declared_region_names.insert(region_id);
+    record_fes_reservation("RECT", spec);
     log_info("FES reserved rect '%s' %d %d %d %d (%d bels)\n", name.c_str(), x0, y0, x1, y1, count);
 }
 
 void Arch::note_reserved_rect_group(const std::string &spec)
 {
+    if (capture_fes_qsf_reservation("GROUP", spec)) return;
     std::istringstream in(spec);
     std::vector<std::string> tokens;
     for (std::string tok; in >> tok;)
@@ -425,6 +500,7 @@ void Arch::note_reserved_rect_group(const std::string &spec)
         fes_bel_region[bel] = group_id;
     fes_region_bels[group_id] = std::move(merged);
     fes_declared_region_names.insert(group_id);
+    record_fes_reservation("GROUP", spec);
     log_info("FES reserved rect group '%s' absorbs %zu regions (%zu bels); they are no longer independently "
              "available.\n",
              group_name.c_str(), members.size(), fes_region_bels.at(group_id).size());

@@ -691,12 +691,14 @@ bool Arch::get_lut_pin_delay(IdString physical, bool l6, DelayQuad &delay) const
         return true;
     case ID_E0:
     case ID_E1:
-        // E selects the final L6 mux, but the penultimate L5 mux.
-        delay = l6 ? DelayQuad{90, 96, 83, 97} : DelayQuad{263, 354, 362, 400};
+        // Decoded Quartus L5/L6 fixtures place the slower select
+        // on physical E and the fast select on physical F in both
+        // modes. Truth-table variable order is not delay order.
+        delay = DelayQuad{263, 354, 362, 400};
         return true;
     case ID_F0:
     case ID_F1:
-        delay = l6 ? DelayQuad{263, 354, 362, 400} : DelayQuad{90, 96, 83, 97};
+        delay = DelayQuad{90, 96, 83, 97};
         return true;
     default:
         return false;

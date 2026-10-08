@@ -569,15 +569,13 @@ template <typename FrontendType> struct GenericFrontend
     {
         // Skip IOBUF insertion if this is a design checkpoint (where they will already exist)
         if (ctx->settings.count(ctx->id("synth"))) {
-            // Existing IO buffers are imported as cells, but external timing
-            // constraints still need the top-level port names and pad nets.
-            if (ctx->settings.count(ctx->id("timing/io_delays"))) {
-                PortInfo pinfo;
-                pinfo.name = ctx->id(name);
-                pinfo.net = net;
-                pinfo.type = dir;
-                ctx->ports[pinfo.name] = pinfo;
-            }
+            // Existing IO buffers are imported as cells. Preserve the external
+            // interface even when the checkpoint has no IO delay constraints.
+            PortInfo pinfo;
+            pinfo.name = ctx->id(name);
+            pinfo.net = net;
+            pinfo.type = dir;
+            ctx->ports[pinfo.name] = pinfo;
             return nullptr;
         }
         IdString name_id = ctx->id(name);

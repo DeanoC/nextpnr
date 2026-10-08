@@ -221,7 +221,7 @@
       "log": "/tmp/sg1000-cohort-171/retained-checkpoint-native-tests.log"
     }
   },
-  "adoption": "Experimental, opt-in default zero; retained checkpoint closes only seed3 across the five tested seeds; seed1 regresses after route",
+  "adoption": "Experimental, opt-in default zero. Checkpoint a95851bf historical seed3 closure predates main LUT6 correction; merged-main6053c560 seed3 baseline and enabled both49.640106MHz and fail setup by0.997ns; enabled keeps0moves and identical baseline RBF.",
   "initial_full_lab_experiment": {
     "placement": [
       {
@@ -2708,7 +2708,8 @@
     "Wire calibration preserves measured baseline values and predicts geometry changes; it does not model changed congestion or guarantee arbitrary-seed closure",
     "Strict per-endpoint setup/related-hold guards retained; already-failing endpoints cannot trade away slack",
     "Hardware acceptance unavailable: both repaired seed3 and matching baseline raw RBF diagnostics time out at development probe; target recovered to ready/idle with lease free",
-    "Wider seeds1/4/5 all fail final system timing; seed1 regresses43.544525->43.070030MHz, seed4 improves46.002392->46.904316MHz, seed5 improves51.6182->51.7143MHz"
+    "Wider seeds1/4/5 all fail final system timing; seed1 regresses43.544525->43.070030MHz, seed4 improves46.002392->46.904316MHz, seed5 improves51.6182->51.7143MHz",
+    "Fresh merged-main seed3 no longer closes timing after corrected LUT6 delays; historical calibration reports must be regenerated for the current timing model"
   ],
   "before_ff_route_through_preview": {
     "routing": [
@@ -4931,6 +4932,241 @@
         "path": "/tmp/sg1000-cohort-171/wider-checkpoint-1-4-5/s5-model.json",
         "sha256": "7c665d4e02cbeb8aee141d7c85aecd3b17a6adffcaee9b53b545e3d30a8716e3"
       }
+    }
+  },
+  "main_sync_validation": {
+    "pre_merge_head": "4999b70894d10e5e4a90edfe2e745c9badc20a2f",
+    "merge_target": "6053c560dca0a86d74aa60063234a1fd513fadab",
+    "conflict_files": [
+      "mistral/CMakeLists.txt",
+      "mistral/delay.cc",
+      "mistral/lab.cc"
+    ],
+    "resolution": "Additive test registration; corrected main LUT6 E/F timing retained in shared delay helper; FES reservation checks shared by virtual/actual route-through selection; main checkpoint/socket protections retained",
+    "binary_sha256": "a6dc8f9a044da9a515568d1ba6f5a52d9c6ec876d2b82257bd90f2ff274ae178",
+    "build_log": "/tmp/sg1000-cohort-171/main-sync-build.log",
+    "ctest": {
+      "passed": 5,
+      "log": "/tmp/sg1000-cohort-171/main-sync-ctest.log"
+    },
+    "fes_route_preparation": {
+      "passed": true,
+      "log": "/tmp/sg1000-cohort-171/main-sync-fes.log"
+    },
+    "source_sha256": {
+      "mistral/critical_cohort.cc": "56beff48cad6b0add21bcdf0c793a38a1efa44b80564c589e4bfca2ba5f262a6",
+      "mistral/critical_cohort.h": "099320d4c2b7a95ce2fe31d6d02e3c95a352c121a7ee250718d5fddbd34ec765",
+      "mistral/main.cc": "2b3476be29483b82c4e24860bff5b4dd8ca4d0a1b1d991d21e6b01c851c1166c",
+      "mistral/arch.h": "c2de7f23dd641df3fcfb7dfd752032e34f0f764c0a8a63b869cbd1a94d3f92a3",
+      "mistral/arch.cc": "3b702ccdd72a1a7699cc7e5c6fa469f11542686821964f6559fe942d4bfcd3b6",
+      "mistral/CMakeLists.txt": "f7ff20254e0332ae14ecc093706847b7ebc3ffb95ac07520fa40a2a09152f2fd",
+      "mistral/tests/critical_cohort.cc": "cecdfe133829af2f6693721586d401462ac18860e649a505e7ada21abaa1289e",
+      "mistral/tests/critical_cohort_cli.py": "f1c7e464af72091f4059a6a22a127d6269305af7b70c2313d026fe1c4753d273",
+      "mistral/tests/critical_cohort_qor.py": "070de6e58b015f7bf5dcf961aaf7f3e6a462cb68da722a433d7717f74daa6e93",
+      "mistral/lab.cc": "0654325dc042db22839bdcdf3efcb6b99cb2e5f1261cd003a05b226fcf10f654",
+      "mistral/delay.cc": "97128e9c1f7c40f3db6128b18e4b84694d856506c52b6c0ea2bc4ecc70903c25",
+      "mistral/critical_cohort_model.cc": "0d6a22ab87132b3cd138b823c9a53a02eac4c322fc48642e856febd7df4b4326",
+      "mistral/critical_cohort_model.h": "1b9977b3036f73bafd2d6e0db71d2032d656ef7da7f9d5d540641ad6adb338ec",
+      "mistral/bitstream.cc": "845a2e62e87872bab167ccda451193caa21b9b68fb1f80024abfdd172c9c77ce",
+      "mistral/fes_slot.cc": "485ab4491d9bf5d4e4f5327445d06c5f75ae9b75a6ff3809a1c9cd5e2b6b610e",
+      "mistral/pack.cc": "0b343732d6cd4e33f8c7f433ad5b84efa1983447cf08a466d74f666ad2269d46"
+    },
+    "seed3": {
+      "inputs": {
+        "json": {
+          "path": "/home/deano/fes/out/dev/st569-cbb54b99/out/work/misteross-cbb54b993525fde52acc5f8aeaf27bd7b69bd334/sources/misteross/build/fes-sg1000-oss/synth.json",
+          "sha256": "f90b0eaa41cd92bb29ff5c2f9bfc099116dd58906a94ea3134d3a74a1039ba8c"
+        },
+        "qsf": {
+          "path": "/home/deano/fes/sources/misteross/cores/fes-sg1000/constraints-oss.qsf",
+          "sha256": "f3c6a4ca98d73ebca6787e0115f155d0bfcdbc2d7528d16efc995285e9484190"
+        },
+        "sdc": {
+          "path": "/home/deano/fes/sources/misteross/cores/fes-sg1000/clocks-oss.sdc",
+          "sha256": "cbb3bf26a8553741d93a4d37eccc43e5de056f63606a50a1e264fcb33c664fe2"
+        }
+      },
+      "route": true,
+      "guided": true,
+      "calibrated": true,
+      "runs": [
+        {
+          "seed": 3,
+          "budget": 0,
+          "command": [
+            "/home/deano/kepler/worktrees/nextpnr-171-mistral-fes-sg1000-worst-54cde5d3/build/nextpnr-mistral",
+            "--device",
+            "5CSEBA6U23I7",
+            "--json",
+            "/home/deano/fes/out/dev/st569-cbb54b99/out/work/misteross-cbb54b993525fde52acc5f8aeaf27bd7b69bd334/sources/misteross/build/fes-sg1000-oss/synth.json",
+            "--qsf",
+            "/home/deano/fes/sources/misteross/cores/fes-sg1000/constraints-oss.qsf",
+            "--sdc",
+            "/home/deano/fes/sources/misteross/cores/fes-sg1000/clocks-oss.sdc",
+            "--freq",
+            "74.25",
+            "--placer",
+            "heap",
+            "--placer-heap-timingweight",
+            "2000",
+            "--placer-heap-critexp",
+            "5",
+            "--timing-allow-fail",
+            "--seed",
+            "3",
+            "--critical-cohort-budget",
+            "0",
+            "--write",
+            "/tmp/sg1000-cohort-171/main-sync-seed3/s3-b0.json",
+            "--report",
+            "/tmp/sg1000-cohort-171/main-sync-seed3/s3-b0-timing.json",
+            "--router",
+            "gpu",
+            "--gpu-device",
+            "0",
+            "--rbf",
+            "/tmp/sg1000-cohort-171/main-sync-seed3/s3-b0.rbf",
+            "--timing-report-paths",
+            "16",
+            "--critical-cohort-model-out",
+            "/tmp/sg1000-cohort-171/main-sync-seed3/s3-model.json"
+          ],
+          "exit_code": 0,
+          "wall_seconds": 242.11169901303947,
+          "timing_pass": false,
+          "fmax": {
+            "pixel_clk": {
+              "achieved": 95.80379486083984,
+              "constraint": 74.25006866455078
+            },
+            "system_clock.clocks[0]": {
+              "achieved": 49.640106201171875,
+              "constraint": 52.22477340698242
+            },
+            "system_clock.clocks[1]": {
+              "achieved": 199.20318603515625,
+              "constraint": 12.288031578063965
+            }
+          },
+          "timing_summary": {
+            "clocks": {
+              "pixel_clk": {
+                "hold_wns_ns": 1.2660000324249268,
+                "setup_wns_ns": 3.0299999713897705
+              },
+              "system_clock.clocks[0]": {
+                "hold_wns_ns": 0.7300000190734863,
+                "setup_wns_ns": -0.996999979019165
+              },
+              "system_clock.clocks[1]": {
+                "hold_wns_ns": 1.121999979019165,
+                "setup_wns_ns": 76.36000061035156
+              }
+            },
+            "final_analogue_model": true
+          },
+          "rbf_sha256": "f6f91a48bb4366228d3b3aadd998bbced771fcdf0b8ac44e926ab5682aa469b1",
+          "timing_report_sha256": "30a8bd5eb99656cc8a202b25f39c3943d44c3a28f9f36584b8dbd3771fa94b4a"
+        },
+        {
+          "seed": 3,
+          "budget": 64,
+          "command": [
+            "/home/deano/kepler/worktrees/nextpnr-171-mistral-fes-sg1000-worst-54cde5d3/build/nextpnr-mistral",
+            "--device",
+            "5CSEBA6U23I7",
+            "--json",
+            "/home/deano/fes/out/dev/st569-cbb54b99/out/work/misteross-cbb54b993525fde52acc5f8aeaf27bd7b69bd334/sources/misteross/build/fes-sg1000-oss/synth.json",
+            "--qsf",
+            "/home/deano/fes/sources/misteross/cores/fes-sg1000/constraints-oss.qsf",
+            "--sdc",
+            "/home/deano/fes/sources/misteross/cores/fes-sg1000/clocks-oss.sdc",
+            "--freq",
+            "74.25",
+            "--placer",
+            "heap",
+            "--placer-heap-timingweight",
+            "2000",
+            "--placer-heap-critexp",
+            "5",
+            "--timing-allow-fail",
+            "--seed",
+            "3",
+            "--critical-cohort-budget",
+            "64",
+            "--write",
+            "/tmp/sg1000-cohort-171/main-sync-seed3/s3-b64.json",
+            "--report",
+            "/tmp/sg1000-cohort-171/main-sync-seed3/s3-b64-timing.json",
+            "--router",
+            "gpu",
+            "--gpu-device",
+            "0",
+            "--rbf",
+            "/tmp/sg1000-cohort-171/main-sync-seed3/s3-b64.rbf",
+            "--timing-report-paths",
+            "16",
+            "--critical-cohort-report",
+            "/tmp/sg1000-cohort-171/main-sync-seed3/s3-model.json"
+          ],
+          "exit_code": 0,
+          "wall_seconds": 254.6584049188532,
+          "timing_pass": false,
+          "fmax": {
+            "pixel_clk": {
+              "achieved": 95.80379486083984,
+              "constraint": 74.25006866455078
+            },
+            "system_clock.clocks[0]": {
+              "achieved": 49.640106201171875,
+              "constraint": 52.22477340698242
+            },
+            "system_clock.clocks[1]": {
+              "achieved": 199.20318603515625,
+              "constraint": 12.288031578063965
+            }
+          },
+          "timing_summary": {
+            "clocks": {
+              "pixel_clk": {
+                "hold_wns_ns": 1.2660000324249268,
+                "setup_wns_ns": 3.0299999713897705
+              },
+              "system_clock.clocks[0]": {
+                "hold_wns_ns": 0.7300000190734863,
+                "setup_wns_ns": -0.996999979019165
+              },
+              "system_clock.clocks[1]": {
+                "hold_wns_ns": 1.121999979019165,
+                "setup_wns_ns": 76.36000061035156
+              }
+            },
+            "final_analogue_model": true
+          },
+          "repair": {
+            "attempted": 64,
+            "attempt_limit": 128,
+            "nodes": 4910,
+            "node_limit": 100000,
+            "timed": 64,
+            "timing_limit": 64,
+            "kept": 0
+          },
+          "rbf_sha256": "f6f91a48bb4366228d3b3aadd998bbced771fcdf0b8ac44e926ab5682aa469b1",
+          "timing_report_sha256": "30a8bd5eb99656cc8a202b25f39c3943d44c3a28f9f36584b8dbd3771fa94b4a"
+        }
+      ],
+      "rbfs_byte_identical": true
+    },
+    "model_sha256": "433ff39b8a1461ef59b730b1504935250304f0176ad87943dfa4bc04782e2b53",
+    "model_arc_count": 26674,
+    "native_tests": {
+      "passed": 54,
+      "cohort": 40,
+      "lab_ff4": 11,
+      "lab_pinmap": 2,
+      "lut6_timing": 1,
+      "log": "/tmp/sg1000-cohort-171/main-sync-native.log"
     }
   }
 }

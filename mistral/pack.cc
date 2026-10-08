@@ -3129,9 +3129,9 @@ struct MistralPacker
 
     void propagate_io_clocks()
     {
-        if (!ctx->settings.count(ctx->id("timing/io_delays"))) return;
         // A create_clock on an input pad is also the reference for the
-        // uninverted fabric clock behind its input and global buffers.
+        // uninverted fabric clock behind its input and global buffers,
+        // whether or not any external IO delays were declared.
         bool changed;
         do {
             changed = false;

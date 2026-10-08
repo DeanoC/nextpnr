@@ -347,6 +347,32 @@ TEST_F(CriticalCohort, RouteThroughPreviewMatchesInsertedGraphEarlyAndLateTiming
     ctx->check();
 }
 
+TEST_F(CriticalCohort, ReservedLutPreservesDataInputInPreviewAndRouting)
+{
+    auto *logic = timing_cone(clock("clk", 3000));
+    auto *capture = (*logic->getPort(id_Q)->users.begin()).cell;
+    const auto data = ctx->bel_data(capture->bel).lab_data;
+    const auto lut = ctx->labs.at(data.lab).alms.at(data.alm).lut_bels.at(data.idx / 2);
+    ctx->note_reserved_bel(ctx->getBelName(lut).str(ctx.get()));
+    auto *input = capture->getPort(id_DATAIN);
+    float predicted = 0;
+    critical_cohort_pin_preview(ctx.get(), [&]() {
+        EXPECT_EQ(ctx->get_alm_route_through_ff(data.lab, data.alm, data.idx / 2), nullptr);
+        TimingAnalyser timing(ctx.get());
+        critical_cohort_setup_timing(ctx.get(), timing);
+        predicted = timing.get_setup_slack({capture->name, id_DATAIN});
+    });
+    for (uint32_t lab = 0; lab < ctx->labs.size(); ++lab)
+        for (uint8_t alm = 0; alm < 10; ++alm)
+            ctx->reassign_alm_inputs(lab, alm);
+    EXPECT_EQ(ctx->getBoundBelCell(lut), nullptr);
+    EXPECT_EQ(capture->getPort(id_DATAIN), input);
+    TimingAnalyser actual(ctx.get());
+    actual.setup(false, false, true);
+    EXPECT_EQ(actual.get_setup_slack({capture->name, id_DATAIN}), predicted);
+    ctx->check();
+}
+
 TEST_F(CriticalCohort, RouteThroughSelectionMatchesFourRegisterRoutingPriority)
 {
     ctx->lab_ff4 = true;

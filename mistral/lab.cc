@@ -496,7 +496,15 @@ bool Arch::is_alm_legal(uint32_t lab, uint8_t alm) const
             }
             // Find a way of routing the input through fabric, if it's not driven by the LUT
             if (ff->ffInfo.datain && (!luts[i] || (ff->ffInfo.datain != luts[i]->combInfo.comb_out))) {
-                if (route_thru_lut_avail)
+                bool helper_allowed = route_thru_lut_avail;
+                if (helper_allowed && !fes_bel_region.empty()) {
+                    CellInfo candidate(const_cast<Context *>(getCtx()), ff->name, id_MISTRAL_BUF);
+                    auto slot = ff->attrs.find(id("FES_SLOT"));
+                    if (slot != ff->attrs.end())
+                        candidate.attrs[id("FES_SLOT")] = slot->second;
+                    helper_allowed = fes_placement_allowed(alm_data.lut_bels[i], &candidate);
+                }
+                if (helper_allowed)
                     route_thru_lut_avail = false;
                 else if (ef_available)
                     ef_available = false;
@@ -1261,7 +1269,15 @@ CellInfo *Arch::get_alm_route_through_ff(uint32_t lab, uint8_t alm, uint8_t half
         // FF0 top and FF3 bottom have priority in the four-register model.
         const int j = (half == 1 && lab_ff4) ? 1 - n : n;
         auto *ff = getBoundBelCell(data.ff_bels.at(half * 2 + j));
-        if (ff && ff->ffInfo.datain && ff->belStrength != STRENGTH_LOCKED)
+        if (!ff || !ff->ffInfo.datain || ff->belStrength == STRENGTH_LOCKED)
+            continue;
+        // Selection is shared with placement STA; a virtual helper must obey
+        // the same FES reservation rules as the helper inserted for routing.
+        CellInfo candidate(const_cast<Context *>(getCtx()), idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
+        auto slot = ff->attrs.find(id("FES_SLOT"));
+        if (slot != ff->attrs.end())
+            candidate.attrs[id("FES_SLOT")] = slot->second;
+        if (fes_placement_allowed(data.lut_bels.at(half), &candidate))
             return ff;
     }
     return nullptr;
@@ -1276,13 +1292,17 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
         auto *ff = get_alm_route_through_ff(lab, alm, i);
         if (!ff)
             continue;
-        CellInfo *rt_lut = createCell(idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
+        CellInfo candidate(getCtx(), idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
+        auto slot = ff->attrs.find(id("FES_SLOT"));
+        if (slot != ff->attrs.end())
+            candidate.attrs[id("FES_SLOT")] = slot->second;
+        if (!fes_placement_allowed(alm_data.lut_bels[i], &candidate))
+            continue;
+        CellInfo *rt_lut = createCell(candidate.name, candidate.type);
         // The route-through becomes the FF's DATAIN sink. Preserve the
         // socket boundary marker so FES routing still recognizes it as a
         // cart endpoint when checking pips inside the socket.
-        auto slot = ff->attrs.find(id("FES_SLOT"));
-        if (slot != ff->attrs.end())
-            rt_lut->attrs[id("FES_SLOT")] = slot->second;
+        rt_lut->attrs = candidate.attrs;
         rt_lut->addInput(id_A);
         rt_lut->addOutput(id_Q);
         // Disconnect the original data input to the FF, and connect it to the route-thru LUT instead

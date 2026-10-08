@@ -1202,7 +1202,7 @@ void Arch::fes_report_slot_capacity(IdString region_name, const std::vector<Cell
     std::map<const NetInfo *, Group> sclr_groups;
     for (CellInfo *ci : slot_cells) {
         BelBucketId bucket = getBelBucketForCellType(ci->type);
-        if (bucket == id_MISTRAL_COMB) {
+        if (bucket == id_MISTRAL_COMB || ci->type == id_MISTRAL_BUF) {
             ++comb_cells;
             // Same accounting as update_alm_input_count: used inputs less
             // those shared with the previous carry cell.
@@ -1226,7 +1226,16 @@ void Arch::fes_report_slot_capacity(IdString region_name, const std::vector<Cell
             // paired with the LUT that drives it (pair_unbound_lut_ffs).
             const NetInfo *datain = ci->getPort(id_DATAIN);
             const CellInfo *driver = datain ? datain->driver.cell : nullptr;
-            const bool paired = driver != nullptr && ci->cluster != ClusterId() && ci->cluster == driver->name;
+            bool paired = driver != nullptr && ci->cluster != ClusterId() && ci->cluster == driver->name;
+            // A late, bound identity helper already accounts for this external
+            // data input as a LUT input. Its parent FF needs no second fabric
+            // input; the helper was inserted after clustering.
+            if (!paired && driver != nullptr && driver->type == id_MISTRAL_BUF &&
+                driver->name == idf("%s$ROUTETHRU", nameOf(ci)) && driver->getPort(id_Q) == datain &&
+                fes_cell_slot_region(driver) == region_name && ci->bel != BelId() && driver->bel != BelId()) {
+                const auto &ff_site = bel_data(ci->bel).lab_data;
+                paired = labs.at(ff_site.lab).alms.at(ff_site.alm).lut_bels.at(ff_site.idx / 2) == driver->bel;
+            }
             if (!paired)
                 ++ff_fabric;
             if (ci->ffInfo.sdata)

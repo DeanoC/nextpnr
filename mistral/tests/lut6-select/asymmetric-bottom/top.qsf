@@ -1,0 +1,44 @@
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEBA6U23I7
+set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name VERILOG_FILE top.v
+set_global_assignment -name SDC_FILE clocks.sdc
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_location_assignment PIN_V11 -to clk
+set_instance_assignment -name VIRTUAL_PIN ON -to din[*]
+set_instance_assignment -name VIRTUAL_PIN ON -to dout[*]
+set_global_assignment -name REMOVE_DUPLICATE_REGISTERS OFF
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+
+set_location_assignment LABCELL_X29_Y77_N39 -to lut6
+
+set_global_assignment -name LAST_QUARTUS_VERSION "17.0.2 Lite Edition"
+set_location_assignment LABCELL_X29_Y79_N33 -to y5
+set_location_assignment LABCELL_X29_Y79_N33 -to lut5~SUM_OUT
+set_location_assignment LABCELL_X29_Y79_N33 -to lut5~COUT
+set_location_assignment LABCELL_X29_Y79_N33 -to lut5~SHAREOUT
+set_location_assignment LABCELL_X29_Y77_N39 -to y6
+set_location_assignment LABCELL_X29_Y77_N39 -to lut6~SUM_OUT
+set_location_assignment LABCELL_X29_Y77_N39 -to lut6~COUT
+set_location_assignment LABCELL_X29_Y77_N39 -to lut6~SHAREOUT
+set_location_assignment FF_X29_Y79_N34 -to dout[0]~reg0
+set_location_assignment FF_X29_Y77_N40 -to dout[1]~reg0
+set_location_assignment FF_X29_Y79_N8 -to q[0]
+set_location_assignment FF_X29_Y79_N44 -to q[1]
+set_location_assignment FF_X29_Y79_N11 -to q[2]
+set_location_assignment FF_X29_Y79_N32 -to q[3]
+set_location_assignment FF_X29_Y79_N47 -to q[4]
+set_location_assignment FF_X29_Y77_N35 -to q[5]
+set_location_assignment IOIBUF_X32_Y0_N1 -to clk~input
+set_instance_assignment -name IO_STANDARD "2.5 V" -to clk
+set_location_assignment LABCELL_X30_Y79_N0 -to dout[0]
+set_location_assignment LABCELL_X29_Y76_N3 -to dout[1]
+set_location_assignment LABCELL_X30_Y79_N6 -to din[0]
+set_location_assignment LABCELL_X30_Y79_N45 -to din[1]
+set_location_assignment LABCELL_X30_Y79_N18 -to din[2]
+set_location_assignment LABCELL_X30_Y79_N57 -to din[3]
+set_location_assignment LABCELL_X30_Y79_N30 -to din[4]
+set_location_assignment LABCELL_X29_Y75_N0 -to din[5]
+set_location_assignment LABCELL_X24_Y22_N0 -to ~QUARTUS_CREATED_GND~I
+set_location_assignment CLKCTRL_G6 -to clk~inputCLKENA0
+set_global_assignment -name ROUTING_BACK_ANNOTATION_FILE top.rcf
