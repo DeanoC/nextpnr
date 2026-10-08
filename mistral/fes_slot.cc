@@ -1202,7 +1202,7 @@ void Arch::fes_report_slot_capacity(IdString region_name, const std::vector<Cell
     std::map<const NetInfo *, Group> sclr_groups;
     for (CellInfo *ci : slot_cells) {
         BelBucketId bucket = getBelBucketForCellType(ci->type);
-        if (bucket == id_MISTRAL_COMB) {
+        if (bucket == id_MISTRAL_COMB || ci->type == id_MISTRAL_BUF) {
             ++comb_cells;
             // Same accounting as update_alm_input_count: used inputs less
             // those shared with the previous carry cell.

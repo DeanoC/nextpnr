@@ -352,6 +352,11 @@ struct Arch : BaseArch<ArchRanges>
     std::vector<IdString> getBelPins(BelId bel) const override;
 
     bool isBelLocationValid(BelId bel, bool explain_invalid = false) const override;
+    void restore_fes_reservations();
+    void begin_fes_qsf_reservation_check();
+    void finish_fes_qsf_reservation_check();
+    bool capture_fes_qsf_reservation(const std::string &kind, const std::string &spec);
+    void record_fes_reservation(const std::string &kind, const std::string &spec);
     void note_reserved_bel(const std::string &name);
     void note_reserved_rect(const std::string &spec);
     void note_reserved_rect_group(const std::string &spec);
@@ -795,6 +800,11 @@ struct Arch : BaseArch<ArchRanges>
         std::string name;
         int x0, y0, x1, y1;
     };
+    std::vector<std::pair<std::string, std::string>> fes_reservation_declarations;
+    std::vector<std::pair<std::string, std::string>> fes_qsf_reservation_declarations;
+    bool fes_restoring_reservations = false;
+    bool fes_restored_reservations = false;
+    bool fes_checking_qsf_reservations = false;
     std::vector<FesReservedRect> fes_reserved_rects;
     dict<BelId, IdString> fes_bel_region;
     dict<IdString, std::set<BelId>> fes_region_bels;
