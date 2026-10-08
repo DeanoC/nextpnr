@@ -34,6 +34,7 @@
 #include "json11.hpp"
 #include "lut_driver_copy.h"
 #include "lut_pair_placement.h"
+#include "critical_cohort_model.h"
 
 USING_NEXTPNR_NAMESPACE
 
@@ -103,6 +104,12 @@ po::options_description MistralCommandHandler::getArchOptions()
 
     specific.add_options()("replicate-enables", po::value<int>(),
                            "replicate timing-critical LUT enables after placement (budget 0..8, default 0)");
+    specific.add_options()("critical-cohort-budget", po::value<int>(),
+                           "repair failing setup paths by relocating data neighborhoods (STA trials 0..64, default 0)");
+    specific.add_options()("critical-cohort-model-out", po::value<std::string>(),
+                           "write final analogue data-arc calibration for the baseline placement (repair budget 0)");
+    specific.add_options()("critical-cohort-report", po::value<std::string>(),
+                           "guide critical-cohort repair with a prior final analogue timing report");
     specific.add_options()("remap-critical", po::value<std::string>(), "prior routed timing report for local LUT remapping");
     specific.add_options()("remap-optimize-pins", "optimize local-remap LUT input order for predicted delay");
     specific.add_options()("remap-preserve-ffs", "keep every original FF placement during local remapping");
@@ -141,6 +148,12 @@ void MistralCommandHandler::customBitstream(Context *ctx)
                       std::error_code(errno, std::generic_category()).message().c_str());
         }
         out.write(reinterpret_cast<const char *>(data.data()), data.size());
+        if (vm.count("critical-cohort-model-out")) {
+            std::ofstream model(vm["critical-cohort-model-out"].as<std::string>());
+            if (!model.is_open())
+                log_error("Failed to open critical cohort route model output.\n");
+            write_critical_cohort_route_model(ctx, model);
+        }
     } else if (vm.count("report") && vm.count("no-route") && ctx->attrs.count(id_step) &&
                ctx->attrs.at(id_step).as_string() == "place") {
         // Placement and optional remap probes keep their STA results local.
@@ -204,6 +217,36 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             log_error("Capture pipeline locality cannot combine with single-capture locality.\n");
     }
     preload_capture_pipeline_locality(ctx, capture_pipeline);
+    if (vm.count("critical-cohort-model-out") &&
+        (!vm.count("rbf") || vm.count("no-route") || vm.count("no-pack") || vm.count("no-place") ||
+         vm.count("pack-only") || vm.count("fes-cart") || vm.count("fes-scaffold") ||
+         (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != "")))
+        log_error("Critical cohort route model export requires a fresh ordinary full route with --rbf.\n");
+    ctx->critical_cohort_budget = 0;
+    ctx->critical_cohort_report.clear();
+    if (vm.count("critical-cohort-budget")) {
+        int budget = vm["critical-cohort-budget"].as<int>();
+        if (budget < 0 || budget > 64)
+            log_error("--critical-cohort-budget must be between 0 and 64.\n");
+        if (budget && (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") ||
+                       vm.count("fes-cart") || vm.count("fes-scaffold") ||
+                       (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != "")))
+            log_error("Critical cohort repair requires fresh ordinary HeAP placement.\n");
+        ctx->critical_cohort_budget = budget;
+    }
+    if (vm.count("critical-cohort-model-out") && ctx->critical_cohort_budget)
+        log_error("Critical cohort route model export requires --critical-cohort-budget 0 (unrepaired baseline).\n");
+    if (vm.count("critical-cohort-report")) {
+        if (!ctx->critical_cohort_budget)
+            log_error("--critical-cohort-report requires a positive --critical-cohort-budget.\n");
+        auto in = open_ifstream_and_log_error(vm["critical-cohort-report"].as<std::string>(), "critical cohort report");
+        ctx->critical_cohort_report.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        std::string error;
+        auto report = json11::Json::parse(ctx->critical_cohort_report, error);
+        if (!error.empty() || !report["critical_paths"].is_array() ||
+            !report["timing_summary"]["final_analogue_model"].bool_value())
+            log_error("Critical cohort guidance requires a final analogue timing report.\n");
+    }
     if (vm.count("balance-reduction-root")) {
         if (vm.count("fes-cart") || vm.count("fes-scaffold") ||
             (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
