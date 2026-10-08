@@ -165,5 +165,77 @@ class KernelAmendmentTests(unittest.TestCase):
             screen.validate_runtimes(records, self.amendment)
 
 
+class FinalizationTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.output = Path(temporary.name)
+        self.plan = dict(families=[], amortization_uses=[1], wall_limit_seconds=10)
+        screen.portfolio.write_new(self.output / "training-selection.json", {})
+        for name, value in (("load_plan", (self.plan, {})),
+                            ("frozen_selection", dict(training_cost_seconds=10, ranking=[])),
+                            ("read_rows", []), ("load_amendment", None)):
+            patch = mock.patch.object(screen, name, return_value=value)
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_restart_after_evaluation_creates_completion_without_overwriting(self):
+        screen.evaluate(self.output)
+        path = self.output / "evaluation.json"
+        original = path.read_bytes()
+        with mock.patch.object(screen.seed_racing.Collector, "run") as collector:
+            screen.run(self.output)
+            collector.assert_not_called()
+        self.assertEqual(path.read_bytes(), original)
+        completion = json.loads((self.output / "completion.json").read_bytes())
+        self.assertEqual(completion["plan_sha256"], screen.digest(self.plan))
+
+    def test_completed_run_is_idempotent_and_preserves_timestamp(self):
+        screen.run(self.output)
+        original = {name: (self.output / name).read_bytes()
+                    for name in ("evaluation.json", "completion.json", "deadline.json")}
+        with mock.patch.object(screen.time, "time", return_value=9999999999):
+            screen.run(self.output)
+        self.assertEqual(original, {name: (self.output / name).read_bytes() for name in original})
+
+    def test_corrupt_or_mismatched_evaluation_fails_without_completion(self):
+        path = self.output / "evaluation.json"
+        for contents in (b"{", b"{}\n"):
+            path.write_bytes(contents)
+            with self.assertRaisesRegex(ValueError, "existing evaluation differs"):
+                screen.run(self.output)
+            self.assertEqual(path.read_bytes(), contents)
+            self.assertFalse((self.output / "completion.json").exists())
+
+    def test_existing_evaluation_is_recomputed_not_trusted(self):
+        screen.evaluate(self.output)
+        original = (self.output / "evaluation.json").read_bytes()
+        with mock.patch.object(screen, "read_rows", return_value=[dict(duration_seconds=1)]):
+            with self.assertRaisesRegex(ValueError, "existing evaluation differs"):
+                screen.run(self.output)
+        self.assertEqual((self.output / "evaluation.json").read_bytes(), original)
+        self.assertFalse((self.output / "completion.json").exists())
+
+    def test_invalid_completion_is_not_overwritten(self):
+        screen.evaluate(self.output)
+        path = self.output / "completion.json"
+        for value in (dict(completed_unix=1, plan_sha256="wrong"),
+                      dict(completed_unix=True, plan_sha256=screen.digest(self.plan)),
+                      dict(completed_unix=float("nan"), plan_sha256=screen.digest(self.plan)), []):
+            path.write_bytes(json.dumps(value).encode())
+            original = path.read_bytes()
+            with self.assertRaisesRegex(ValueError, "invalid existing completion"):
+                screen.run(self.output)
+            self.assertEqual(path.read_bytes(), original)
+
+    def test_explicit_evaluation_remains_exclusive_create(self):
+        report = self.output / "separate-report.json"
+        screen.evaluate(self.output, report)
+        original = report.read_bytes()
+        with self.assertRaises(FileExistsError):
+            screen.evaluate(self.output, report)
+        self.assertEqual(report.read_bytes(), original)
+
+
 if __name__ == "__main__":
     unittest.main()
