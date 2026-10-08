@@ -173,6 +173,7 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
+    ctx->restore_fes_reservations();
     // LAB packing models are enabled only from the command line. A JSON written with one records it, and is refused
     // without the same option: its placement (and, for CLKB, its routing) relies on that model.
     auto lab_model = [&](const char *setting, const char *option) {
@@ -469,7 +470,9 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     if (vm.count("qsf")) {
         std::string filename = vm["qsf"].as<std::string>();
         auto in = open_ifstream_and_log_error(filename, "input QSF file");
+        ctx->begin_fes_qsf_reservation_check();
         ctx->read_qsf(in);
+        ctx->finish_fes_qsf_reservation_check();
     }
     if (vm.count("fes-cart")) {
         std::string region = vm.count("fes-cart-region") ? vm["fes-cart-region"].as<std::string>() : "cart";

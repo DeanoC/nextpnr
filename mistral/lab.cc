@@ -496,7 +496,15 @@ bool Arch::is_alm_legal(uint32_t lab, uint8_t alm) const
             }
             // Find a way of routing the input through fabric, if it's not driven by the LUT
             if (ff->ffInfo.datain && (!luts[i] || (ff->ffInfo.datain != luts[i]->combInfo.comb_out))) {
-                if (route_thru_lut_avail)
+                bool helper_allowed = route_thru_lut_avail;
+                if (helper_allowed && !fes_bel_region.empty()) {
+                    CellInfo candidate(const_cast<Context *>(getCtx()), ff->name, id_MISTRAL_BUF);
+                    auto slot = ff->attrs.find(id("FES_SLOT"));
+                    if (slot != ff->attrs.end())
+                        candidate.attrs[id("FES_SLOT")] = slot->second;
+                    helper_allowed = fes_placement_allowed(alm_data.lut_bels[i], &candidate);
+                }
+                if (helper_allowed)
                     route_thru_lut_avail = false;
                 else if (ef_available)
                     ef_available = false;
@@ -1271,13 +1279,20 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
             // this half has no LUT.
             if (ff->belStrength == STRENGTH_LOCKED)
                 continue;
-            CellInfo *rt_lut = createCell(idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
+            // A late helper must obey the same reservation rules as placed
+            // cells. The FF's explicit BEL exemption belongs to its FF site,
+            // not the paired LUT. Keep the original E/F data path if forbidden.
+            CellInfo candidate(getCtx(), idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
+            auto slot = ff->attrs.find(id("FES_SLOT"));
+            if (slot != ff->attrs.end())
+                candidate.attrs[id("FES_SLOT")] = slot->second;
+            if (!fes_placement_allowed(alm_data.lut_bels[i], &candidate))
+                continue;
+            CellInfo *rt_lut = createCell(candidate.name, candidate.type);
             // The route-through becomes the FF's DATAIN sink. Preserve the
             // socket boundary marker so FES routing still recognizes it as a
             // cart endpoint when checking pips inside the socket.
-            auto slot = ff->attrs.find(id("FES_SLOT"));
-            if (slot != ff->attrs.end())
-                rt_lut->attrs[id("FES_SLOT")] = slot->second;
+            rt_lut->attrs = candidate.attrs;
             rt_lut->addInput(id_A);
             rt_lut->addOutput(id_Q);
             // Disconnect the original data input to the FF, and connect it to the route-thru LUT instead
