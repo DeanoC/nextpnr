@@ -28,6 +28,28 @@ def write_new(path, value):
         stream.write(canonical(value) + b"\n")
 
 
+def input_records(manifest):
+    base = Path(manifest["cwd"] or Path.cwd())
+    records = []
+    for item in manifest["inputs"]:
+        path = (base / item["path"]).resolve()
+        records.append(dict(item, path=str(path), sha256=sha(path.read_bytes())))
+    return records
+
+
+def finish(output, plan, decision, existing):
+    decision["plan_sha256"] = sha(canonical(plan))
+    if existing is not None:
+        if existing != decision:
+            raise ValueError("saved decision differs from authenticated collections")
+        directories = {p.name for p in (output / "collections").iterdir() if p.is_dir()}
+        if directories != {r["name"] for r in decision["observed"]}:
+            raise ValueError("saved decision has unrecorded collections")
+        print("VERIFIED_FINALIZED", flush=True)
+    else:
+        write_new(output / "decision.json", decision)
+
+
 def prepare(repo, template_path, output):
     import seed_racing
     if subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip() != SOURCE or \
@@ -57,7 +79,7 @@ def prepare(repo, template_path, output):
             cases.append(dict(name=name, exponent=exponent, seed=seed, role=role, fanout=fanout,
                               manifest_sha256=sha(canonical(manifest))))
     plan = dict(source_revision=SOURCE, binary_sha256=sha(binary.read_bytes()),
-                inputs=[dict(item, sha256=sha(Path(item["path"]).read_bytes())) for item in template["inputs"]],
+                inputs=input_records(manifest),
                 required_clocks=template["required_clocks"], max_invocations=8, per_run_seconds=600,
                 wall_seconds=5400, target_net=NET, cases=cases,
                 gate="both historical failures must remain legal, miss pixel setup and show target net with >64 distinct sinks on same-domain critical path; controls must pass",
@@ -113,8 +135,8 @@ def run(output, dry_run=False):
         if sha(Path(manifest["command"][0]).read_bytes()) != plan["binary_sha256"]:
             raise ValueError("binary changed")
         manifests.append(manifest)
-    for item in plan["inputs"]:
-        if sha(Path(item["path"]).read_bytes()) != item["sha256"]:
+    for manifest in manifests:
+        if input_records(manifest) != plan["inputs"]:
             raise ValueError("input changed")
     if dry_run:
         total = sum(len(seed_racing.Collector(m, output / "dry" / c["name"]).run(dry_run=True))
@@ -125,26 +147,30 @@ def run(output, dry_run=False):
         return
     with (output / "operator.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        existing = None
         if (output / "decision.json").exists():
-            print("ALREADY_FINALIZED; inspect immutable decision")
-            return
+            existing = json.loads((output / "decision.json").read_bytes())
+            if not isinstance(existing, dict) or existing.get("plan_sha256") != sha(canonical(plan)):
+                raise ValueError("saved decision is not bound to this plan")
         deadline_path = output / "deadline.json"
-        if not deadline_path.exists():
+        if not deadline_path.exists() and existing is None:
             write_new(deadline_path, dict(deadline_unix=time.time() + plan["wall_seconds"]))
-        deadline = json.loads(deadline_path.read_bytes())["deadline_unix"]
+        deadline = json.loads(deadline_path.read_bytes())["deadline_unix"] if deadline_path.exists() else 0
         observed, identities = [], []
         gate_failed = False
         for index, (case, manifest) in enumerate(zip(plan["cases"], manifests)):
             if index == 2 and gate_failed:
-                write_new(output / "decision.json", dict(classification="STOP: historical bottleneck not reproduced", observed=observed))
+                finish(output, plan, dict(classification="STOP: historical bottleneck not reproduced", observed=observed), existing)
                 print("STOP_REPRODUCTION", flush=True)
                 return
             if index == 4 and any(not r["success"] for r in observed if r["role"] == "control"):
-                write_new(output / "decision.json", dict(classification="STOP: passing controls did not reproduce", observed=observed))
+                finish(output, plan, dict(classification="STOP: passing controls did not reproduce", observed=observed), existing)
                 print("STOP_CONTROLS", flush=True)
                 return
             directory = output / "collections" / case["name"]
             if not directory.exists():
+                if existing is not None:
+                    raise ValueError("saved decision lacks a completed collection; no new runs admitted")
                 if time.time() + 720 > deadline or shutil.disk_usage(output).free < 12 * 1024**3:
                     raise ValueError("deadline/free-space admission guard")
                 print("START", case["name"], flush=True)
@@ -171,8 +197,8 @@ def run(output, dry_run=False):
                 gate_failed |= not record["reproduction_gate"]
             observed.append(record)
             print("DONE", json.dumps(record, sort_keys=True), flush=True)
-        write_new(output / "decision.json", dict(classification="completed diagnostic pairs; not confirmation", observed=observed,
-                                                  process_seconds=sum(r["seconds"] for r in observed)))
+        finish(output, plan, dict(classification="completed diagnostic pairs; not confirmation", observed=observed,
+                                 process_seconds=sum(r["seconds"] for r in observed)), existing)
 
 
 if __name__ == "__main__":

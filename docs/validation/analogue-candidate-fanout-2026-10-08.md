@@ -155,6 +155,23 @@ new budget after the negative gate. Existing complete collections are reused
 only after authentication; incomplete prior collections fail closed. A recorded
 stop decision admits no further processes.
 
+Review hardening: new decisions include the canonical `plan_sha256`. On a
+subsequent `run`, the runner checks that binding, reauthenticates every recorded
+collection, recomputes the stop/completion decision and compares all observations
+before reporting `VERIFIED_FINALIZED`. Missing, altered or unrecorded collections
+fail closed; finalized evidence can never admit a replacement process. Declared
+relative inputs are hashed against the generated manifest's `cwd`, not the
+invoking shell directory, in both preparation and runtime validation.
+
+The original stop record whose digest appears below predates the plan-binding
+field and is preserved unchanged. The hardened runner deliberately rejects such
+legacy decisions rather than inferring a binding or rewriting historical
+evidence. Historical collection authentication remains available independently
+through the existing dataset reader. Eight new regressions cover decision
+reauthentication and working-directory resolution, bringing the diagnostic
+suite to 14 tests and the focused repository total to 147. No new PNR runs were
+needed for these fixes.
+
 | Artifact | File-byte SHA-256 |
 | --- | --- |
 | Plan | `db92390984d87dd37ebd0d5c8ec350bed2670cc3ae1b3d7475a8202c373788a6` |
