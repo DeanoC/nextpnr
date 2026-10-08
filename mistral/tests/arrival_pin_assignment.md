@@ -66,10 +66,13 @@ On the original C64 netlist, timing weight 2000, exponent 5, GPU 0:
 | 2 | Unavailable | 1200 s timeout |
 | 3 | −0.729 ns | System fails; video and all holds pass |
 | 4 | +0.038 ns | All clocks pass setup and hold |
+| 5 | +0.575 ns | All clocks pass setup and hold |
 
 Seed 4 achieved 52.33 MHz system and 83.93 MHz video in 302.11 seconds.
-Qualification is incomplete: this table does not establish a success rate
-or isolate the benefit relative to a current-main control.
+Seed 5 achieved 53.84 MHz system and 80.74 MHz video in 179.92 seconds.
+Two of five seeds pass all setup and hold clocks; one times out. Matched
+current-main controls remain pending, so these results do not yet isolate
+the benefit of the option on this revision.
 
 A supplemental run on a newer Pong netlist (`5c98f1fc35188c74`, FES
 `d2d1a0ea`) with the option **disabled**, GPU 1, passed seven of eight seeds;
