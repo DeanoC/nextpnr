@@ -118,9 +118,24 @@ harness run exactly reproduces seed 3's final clock frequencies, setup/hold
 summaries, accepted moves and search counters. Baseline RBF files are byte
 identical before and after calibration export on both seeds.
 
+Additional paired baseline/calibrated runs on seeds 1, 4 and 5 use the
+immutable checkpoint binary and the same input hashes. These runs are
+sequential; all reported values use the final analogue model.
+
+| Seed | Baseline system MHz | Repaired system MHz | Setup WNS (ns) | Hold WNS (ns) | All timing passes |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 43.5445 | 43.0700 | -4.070 | +0.724 | No |
+| 4 | 46.0024 | 46.9043 | -2.172 | +0.791 | No |
+| 5 | 51.6182 | 51.7143 | -0.189 | +0.748 | No |
+
+Seeds 4 and 5 improve but remain below the system constraint. Seed 1
+regresses; pixel and audio remain passing on all three seeds. Across all five
+tested seeds, only seed 3 closes every final clock/setup/hold constraint.
+This supports retaining the disabled-by-default experimental status.
+
 The experiment remains disabled by default. Timing closure is demonstrated for
-seed 3; **#171 and #112 remain open**, because seed 2 still fails and no hardware
-execution was performed. Routing changes can still regress predictions.
+seed 3; **#171 and #112 remain open**, because seed 2 still fails and hardware
+acceptance is unavailable. Routing changes can still regress predictions.
 
 The earlier physical-pin-only model, before register route-through prediction,
 kept three seed-3 cohorts and reached 51.2164 MHz. Modeling the buffers accepted
@@ -139,6 +154,18 @@ allow tied failing inputs to improve individually while retaining the strict
 per-endpoint guards, producing the passing seed-3 result above. Exact commands
 and the earlier experiments remain in the validation record.
 
+Follow-up seed-2 candidate experiments retained all timing guards. Adding
+singleton combinational alternatives reduced final system timing to 47.9272 MHz.
+Reserving two hop slots for near-worst register controls, including wires under
+700 ps, accepted an additional enable-register move but reached only 48.0307 MHz
+on seed 2. It improved seed 3 to 52.9773 MHz (+0.272 ns setup), so the outcome
+depends on the route. Neither policy was retained. Both rejected seed-2
+routes made a VRAM address input the worst endpoint, despite preserving
+predicted endpoint timing. Seed 2's tied `idle_addr` bits 7 and 9 share their enable driver in LAB (15,23); bit 7's data driver is
+also there, while bit 9's data driver is in LAB (12,15). Moving bit 9 toward
+its enable can worsen its data input. A future search should consider both
+input cones and verify the resulting complete route.
+
 A guard allowing already-failing endpoints to trade slack within their clock
 pair's old worst margin was also evaluated. It achieved 48.4614/50.8001 MHz
 without guidance and 47.3664/51.3795 MHz with guidance, for seeds 2/3 respectively.
@@ -155,7 +182,18 @@ runs and the original QSF/SDC. Baseline and enabled runs shared the GPU in pairs
 `--timing-allow-fail` allowed collection of failed final reports; zero process
 exit status is not timing acceptance. Initial placed-checkpoint route replays
 were discarded: without IO-delay settings, those checkpoints do not preserve
-the generated PLL clock constraints. No hardware execution was performed.
+the generated PLL clock constraints.
+
+The passing seed-3 RBF and its matching baseline were each uploaded to the
+designated MiSTer Pi through the leased raw-RBF diagnostic endpoint. Both
+timed out at the development probe and reported `stopping` with
+`reboot_required`; the repaired-image HDMI capture was blank. This does not
+establish hardware timing or gameplay acceptance, and the shared baseline
+failure prevents attributing it to the repair. The lease client recovered
+through its development reboot path after each Stop. Final target health was
+ready, runtime idle and lease free. Evidence is in the validation JSON and
+`/tmp/sg1000-cohort-171/hardware-seed3`. The checkpoint is available in
+[draft PR #181](https://github.com/DeanoC/nextpnr/pull/181).
 
 Validation passed 39 cohort backend tests, 13 existing LAB/register/pin-map
 tests, eight CLI tests, and the placed-checkpoint and physical-LUT timing
