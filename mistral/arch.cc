@@ -27,6 +27,7 @@
 
 #include "placer1.h"
 #include "placer_heap.h"
+#include "critical_gather.h"
 #include "lut_driver_copy.h"
 #include "lut_pair_placement.h"
 #include "router1.h"
@@ -967,6 +968,10 @@ bool Arch::place()
     } else {
         log_error("Mistral architecture does not support placer '%s'\n", placer.c_str());
     }
+
+    // HeAP refine cannot close a hop longer than its 3-tile radius. Do this
+    // before the printed placement is consumed by routing.
+    gather_critical_paths(getCtx());
 
     if (enable_replication_budget)
         replicate_enables(enable_replication_budget);
