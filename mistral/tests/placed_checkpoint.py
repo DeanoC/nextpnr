@@ -60,6 +60,11 @@ endmodule
     assert 'timing/io_delays' not in settings
     expected_clocks = json.loads(settings['timing/io_clocks'])
     assert expected_clocks and all(c['period'] == [40, 40] for c in expected_clocks), expected_clocks
+    run(base + ['--json', out / 'placed.json', '--no-pack', '--no-place', '--no-route',
+                '--write', out / 'copied.json'], 'copy')
+    copied = json.loads((out / 'copied.json').read_text())
+    copied_clocks = json.loads(copied['modules']['top']['settings']['timing/io_clocks'])
+    assert {c['net']: c for c in copied_clocks} == {c['net']: c for c in expected_clocks}, copied_clocks
 
     def pin_states(design):
         return {n: json.loads(bytes.fromhex(c['attributes']['FES_PINMAP_V1']))['pins']
@@ -69,7 +74,7 @@ endmodule
     expected = pin_states(placed)
     assert expected and expected['arithmetic']['A'][0] == 3, expected.get('arithmetic')
     assert any(data[0] == 2 for pins in expected.values() for data in pins.values())
-    run(base + ['--json', out / 'placed.json', '--no-pack', '--no-place',
+    run(base + ['--json', out / 'copied.json', '--no-pack', '--no-place',
                 '--write', out / 'routed.json', '--report', out / 'timing.json',
                 '--rbf', out / 'original.rbf'], 'resume')
     routed = json.loads((out / 'routed.json').read_text())

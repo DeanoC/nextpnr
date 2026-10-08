@@ -15,6 +15,8 @@ while the default is 50 MHz, and checks both the saved clock table and the
 resumed timing report. This catches silent fallback to the default frequency.
 Mistral also propagates that constraint through uninverted input and global
 buffers without requiring an external IO delay declaration.
+The test copies placed JSON without packing, placement, routing or a timing
+report before resuming, ensuring a pure checkpoint copy keeps the clock table.
 
 `placed_checkpoint.py` synthesizes a two-element arithmetic chain with a folded
 input inversion and hard constants, writes a placed checkpoint, resumes routing,

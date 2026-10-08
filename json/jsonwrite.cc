@@ -19,6 +19,7 @@
 
 #include "jsonwrite.h"
 #include "json11.hpp"
+#include "io_delay.h"
 #include <assert.h>
 #include <fstream>
 #include <iostream>
@@ -146,6 +147,9 @@ std::string format_port_bits(const PortGroup &port, int &dummy_idx)
 
 void write_module(std::ostream &f, Context *ctx)
 {
+    // A pure JSON checkpoint copy runs no timing analysis. Materialize its
+    // saved clock constraints before capturing the live table below.
+    restore_io_clocks(ctx);
     auto val = ctx->attrs.find(ctx->id("module"));
     int dummy_idx = int(ctx->idstring_idx_to_str->size()) + 1000;
     if (val != ctx->attrs.end())
