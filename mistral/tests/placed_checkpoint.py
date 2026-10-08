@@ -18,6 +18,7 @@ def main():
     fixture.write_text('''module top(input clk, a, b, output [1:0] q);
 wire inverted_a, sum, carry, chain_carry;
 reg [1:0] value;
+reg [1:0] sampled_value;
 MISTRAL_NOT invert_a (.A(a), .Q(inverted_a));
 MISTRAL_ALUT_ARITH #(.LUT0(16'hAAAA), .LUT1(16'hCCCC)) arithmetic (
     .A(inverted_a), .B(b), .C(1'b0), .D0(1'b1), .D1(1'b1), .CI(1'b0),
@@ -26,7 +27,8 @@ MISTRAL_ALUT_ARITH #(.LUT0(16'h0000), .LUT1(16'hFFFF)) carry_end (
     .A(1'b0), .B(1'b0), .C(1'b0), .D0(1'b1), .D1(1'b1),
     .CI(chain_carry), .SO(carry));
 always @(posedge clk) value <= {carry, sum};
-assign q = value;
+always @(posedge clk) sampled_value <= value;
+assign q = sampled_value;
 endmodule
 ''')
     qsf = out / 'pins.qsf'

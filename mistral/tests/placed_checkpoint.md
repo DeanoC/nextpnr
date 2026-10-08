@@ -13,6 +13,8 @@ external IO delays. Resume restores these clocks without rereading SDC against
 ports removed by packing. The regression gives the input a 25 MHz constraint
 while the default is 50 MHz, and checks both the saved clock table and the
 resumed timing report. This catches silent fallback to the default frequency.
+Mistral also propagates that constraint through uninverted input and global
+buffers without requiring an external IO delay declaration.
 
 `placed_checkpoint.py` synthesizes a two-element arithmetic chain with a folded
 input inversion and hard constants, writes a placed checkpoint, resumes routing,
