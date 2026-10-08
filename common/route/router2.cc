@@ -157,12 +157,12 @@ struct Router2
                 nets.at(i).cy += drv_loc.y;
             }
 
+            nets.at(i).src_wire = ctx->getNetinfoSourceWire(ni);
             for (auto usr : ni->users.enumerate()) {
-                WireId src_wire = ctx->getNetinfoSourceWire(ni);
                 for (auto &dst_wire : ctx->getNetinfoSinkWires(ni, usr.value)) {
-                    nets.at(i).src_wire = src_wire;
-                    if (ni->driver.cell == nullptr)
-                        src_wire = dst_wire;
+                    // An undriven pin uses its own location only to build the
+                    // bounding box, never as the net's physical source.
+                    WireId src_wire = ni->driver.cell == nullptr ? dst_wire : nets.at(i).src_wire;
                     if (ni->driver.cell == nullptr && dst_wire == WireId())
                         continue;
                     if (src_wire == WireId())
@@ -1652,7 +1652,9 @@ struct Router2
     delay_t get_route_delay(int net, store_index<PortRef> usr_idx, int phys_idx)
     {
         auto &nd = nets.at(net);
-        if (nets_by_udata.at(net)->constant_value != IdString())
+        // Undriven nets have no physical source or timed signal path. Like
+        // route_net(), do not treat an arbitrary sink as their source.
+        if (nets_by_udata.at(net)->driver.cell == nullptr || nets_by_udata.at(net)->constant_value != IdString())
             return 0;
         auto &ad = nd.arcs.at(usr_idx.idx()).at(phys_idx);
         WireId cursor = ad.sink_wire;
