@@ -4,6 +4,7 @@ import argparse
 import copy
 import hashlib
 import json
+import math
 from pathlib import Path
 import shutil
 import time
@@ -222,7 +223,7 @@ def charged_replay(order, cases, budget, training_charge):
     return result
 
 
-def evaluate(output, report_path=None):
+def evaluate(output, report_path=None, *, reuse_existing=False):
     plan, groups = load_plan(output)
     # Never create a missing training selection retrospectively after held-out outcomes.
     if not (output / "training-selection.json").is_file():
@@ -268,8 +269,27 @@ def evaluate(output, report_path=None):
                                "Process times include restart/startup/cleanup; cohort freezing and evaluation overhead are separate."])
     if result["kernel_amendment"]:
         result["limitations"].append("Explicit kernel transition: mixed RAM-test runtime costs are descriptive/confounded; no small-speedup claim.")
-    portfolio.write_new(report_path or output / "evaluation.json", result)
+    path = report_path or output / "evaluation.json"
+    if reuse_existing and path.exists():
+        if path.read_bytes() != portfolio.canonical(result) + b"\n":
+            raise ValueError("existing evaluation differs from authenticated results")
+    else:
+        portfolio.write_new(path, result)
     return result
+
+
+def finalize(output, plan):
+    # Reauthenticate and recompute even when both final artifacts already exist.
+    evaluate(output, reuse_existing=True)
+    path = output / "completion.json"
+    if path.exists():
+        completion = json.loads(path.read_bytes())
+        timestamp = completion.get("completed_unix") if isinstance(completion, dict) else None
+        if not isinstance(completion, dict) or completion.get("plan_sha256") != digest(plan) or \
+                type(timestamp) not in (int, float) or not math.isfinite(timestamp) or timestamp <= 0:
+            raise ValueError("invalid existing completion marker")
+    else:
+        portfolio.write_new(path, dict(completed_unix=time.time(), plan_sha256=digest(plan)))
 
 
 def run(output):
@@ -300,8 +320,7 @@ def run(output):
                     results = seed_racing.Collector(manifest, directory).run()
                     print("DONE", phase, family["name"], item["policy"],
                           [(r["seed"], r["status"], round(r["elapsed_seconds"], 3)) for r in results], flush=True)
-        evaluate(output)
-        portfolio.write_new(output / "completion.json", dict(completed_unix=time.time(), plan_sha256=digest(plan)))
+        finalize(output, plan)
         print("COMPLETE", digest(plan), flush=True)
 
 
