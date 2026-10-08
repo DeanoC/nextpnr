@@ -63,7 +63,9 @@ input and local wires. Pairs follow native STA: IO-delay mode uses the routed
 quad's early/late envelope; otherwise both entries use the maximum wire delay.
 It also records the normalized logical graph, parameters,
 port states, device/LAB models, clock periods/phases, timing settings, native
-clocking/primitive timing and physical LUT tables. This export can use budget 0.
+clocking/primitive timing and physical LUT tables. Export requires repair budget
+0 (the default); a positive `--critical-cohort-budget` is rejected before packing
+so the model describes the unrepaired baseline placement.
 
 Pass that file to `--critical-cohort-report` on a fresh placement with the same
 seed and inputs. Calibration requires matching data-arc source/sink BELs,

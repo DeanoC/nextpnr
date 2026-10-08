@@ -5168,5 +5168,59 @@
       "lut6_timing": 1,
       "log": "/tmp/sg1000-cohort-171/main-sync-native.log"
     }
+  },
+  "review_export_validation": {
+    "review_url": "https://github.com/DeanoC/nextpnr/pull/181#discussion_r4223634481",
+    "base_head": "ba3eca41ed3d40b1da53dc0387e62fc1c8d0bfdb",
+    "change": "Require zero cohort repair budget for model export before packing; repaired BEL locations cannot calibrate the original fresh placement.",
+    "regression_before": {
+      "tests": 2,
+      "failed_subcases": [
+        {
+          "repair_budget": 1,
+          "unexpected_exit_code": 0
+        },
+        {
+          "repair_budget": 64,
+          "unexpected_exit_code": 0
+        }
+      ],
+      "baseline_export_subcases_passed": [
+        "omitted budget",
+        "explicit zero budget"
+      ],
+      "log": "/tmp/sg1000-cohort-171/review-export-before.log"
+    },
+    "build": {
+      "passed": true,
+      "command": [
+        "cmake",
+        "--build",
+        "build",
+        "-j8"
+      ],
+      "log": "/tmp/sg1000-cohort-171/review-export-build.log"
+    },
+    "cli": {
+      "passed": true,
+      "test_cases": 10,
+      "command": [
+        "ctest",
+        "--test-dir",
+        "build",
+        "-R",
+        "^nextpnr-mistral-critical-cohort-cli$",
+        "--output-on-failure"
+      ],
+      "wall_seconds": 73.37,
+      "log": "/tmp/sg1000-cohort-171/review-export-ctest.log",
+      "coverage": "Positive budgets 1/64 reject with no model/RBF files; omitted/zero budgets complete baseline route and write a final analogue model; existing invalid budget, mode, checkpoint and guidance checks remain passing."
+    },
+    "binary_sha256": "6194a917859c5d8484e5d7c539f3d9e7b156b07e95c55ad903ce1c91ee565d5a",
+    "source_sha256": {
+      "mistral/main.cc": "71fd578d7f3c6b8086d5f1260546d54c2cb86c2afdf7a17720352f765ee6d888",
+      "mistral/tests/critical_cohort_cli.py": "e636ea138a5cf821f1a8924ffe056ece81cf275d33ff4c5ac39b67381c448ad8"
+    },
+    "scope": "CLI validation only; cohort backend, timing and placement unchanged. Main integration and historical route evidence above were not rerun."
   }
 }

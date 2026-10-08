@@ -11,7 +11,7 @@ BINARY = sys.argv.pop(1)
 
 
 class CriticalCohortCli(unittest.TestCase):
-    def run_design(self, options=(), step=None, settings=None, report=None):
+    def run_design(self, options=(), step=None, settings=None, report=None, route=False):
         with tempfile.TemporaryDirectory(prefix="critical-cohort-cli-") as directory:
             root = Path(directory)
             module = dict(attributes={"top": 1}, ports={}, cells={}, netnames={})
@@ -26,13 +26,43 @@ class CriticalCohortCli(unittest.TestCase):
                 guidance.write_text(json.dumps(report))
                 options = [*options, "--critical-cohort-report", str(guidance)]
             return subprocess.run([BINARY, "--device", "5CSEBA6U23I7", "--json", str(source),
-                                   "--no-route", *options], stdout=subprocess.PIPE,
+                                   *([] if route else ["--no-route"]), *options], stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, text=True, timeout=60)
 
     def test_model_export_requires_full_bitstream_route(self):
         result = self.run_design(["--critical-cohort-model-out", "/tmp/unused-cohort-model.json"])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("requires a fresh ordinary full route with --rbf", result.stdout)
+
+    def test_model_export_rejects_positive_repair_budget(self):
+        with tempfile.TemporaryDirectory(prefix="cohort-model-export-") as directory:
+            model = Path(directory) / "model.json"
+            bitstream = Path(directory) / "design.rbf"
+            for budget in (1, 64):
+                with self.subTest(budget=budget):
+                    result = self.run_design(["--critical-cohort-model-out", str(model),
+                                              "--rbf", str(bitstream),
+                                              "--critical-cohort-budget", str(budget)], route=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("requires --critical-cohort-budget 0", result.stdout)
+                    self.assertFalse(model.exists())
+                    self.assertFalse(bitstream.exists())
+
+    def test_model_export_accepts_baseline_budget(self):
+        with tempfile.TemporaryDirectory(prefix="cohort-model-export-") as directory:
+            for budget in (None, 0):
+                with self.subTest(budget=budget):
+                    model = Path(directory) / f"model-{budget}.json"
+                    bitstream = Path(directory) / f"design-{budget}.rbf"
+                    options = ["--critical-cohort-model-out", str(model), "--rbf", str(bitstream)]
+                    if budget is not None:
+                        options += ["--critical-cohort-budget", str(budget)]
+                    result = self.run_design(options, route=True)
+                    self.assertEqual(result.returncode, 0, result.stdout)
+                    self.assertTrue(bitstream.exists())
+                    report = json.loads(model.read_text())
+                    self.assertTrue(report["timing_summary"]["final_analogue_model"])
+                    self.assertIn("cohort_route_model", report)
 
     def test_invalid_budget(self):
         for budget in (-1, 65):

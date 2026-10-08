@@ -107,7 +107,7 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("critical-cohort-budget", po::value<int>(),
                            "repair failing setup paths by relocating data neighborhoods (STA trials 0..64, default 0)");
     specific.add_options()("critical-cohort-model-out", po::value<std::string>(),
-                           "write final analogue data-arc calibration for the matching baseline placement");
+                           "write final analogue data-arc calibration for the baseline placement (repair budget 0)");
     specific.add_options()("critical-cohort-report", po::value<std::string>(),
                            "guide critical-cohort repair with a prior final analogue timing report");
     specific.add_options()("remap-critical", po::value<std::string>(), "prior routed timing report for local LUT remapping");
@@ -234,6 +234,8 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             log_error("Critical cohort repair requires fresh ordinary HeAP placement.\n");
         ctx->critical_cohort_budget = budget;
     }
+    if (vm.count("critical-cohort-model-out") && ctx->critical_cohort_budget)
+        log_error("Critical cohort route model export requires --critical-cohort-budget 0 (unrepaired baseline).\n");
     if (vm.count("critical-cohort-report")) {
         if (!ctx->critical_cohort_budget)
             log_error("--critical-cohort-report requires a positive --critical-cohort-budget.\n");
