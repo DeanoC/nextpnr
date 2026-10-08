@@ -113,6 +113,45 @@ endmodule
     path.write_text(json.dumps(design))
     run(base + ['--json', path, '--no-pack', '--no-place', '--no-route'], 'bad-version',
         'Unsupported FES reservation snapshot version')
+    # Exactly 42 fabric inputs in one LAB: five LUT pairs each share two
+    # inputs (50 - 10), plus two FF inputs. FF4 preparation inserts one helper
+    # and sends the other FF through E/F. Counting the helper AND its parent
+    # FF input incorrectly rounds this legal design up to two LABs.
+    boundary = out / 'boundary.v'
+    lines = ['module top(input clk, input [41:0] d, output [11:0] q);']
+    for pair in range(5):
+        for half in range(2):
+            bits = [pair*8, pair*8+1] + [pair*8+2+half*3+j for j in range(3)]
+            ports = ', '.join(f'.{pin}(d[{bit}])' for pin, bit in zip('ABCDE', bits))
+            lines.append(f'(* BEL="MISTRAL_COMB.24.1.{pair*6+half}", FES_SLOT="cart" *) '
+                         f"MISTRAL_ALUT5 #(.LUT(32'h96696996)) lut_{pair}_{half} "
+                         f'({ports}, .Q(q[{pair*2+half}]));')
+    for index in range(2):
+        lines.append(f'(* BEL="MISTRAL_FF.24.1.{32+index}", FES_SLOT="cart" *) '
+                     f'MISTRAL_FF ff_{index} (.CLK(clk), .DATAIN(d[{40+index}]), .Q(q[{10+index}]), '
+                     ".ACLR(1'b1), .ENA(1'b1), .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));")
+    lines.append('endmodule')
+    boundary.write_text('\n'.join(lines)+'\n')
+    run([args.yosys.resolve(), '-p', f'read_verilog {boundary}; synth_intel_alm -nolutram -nodsp -top top; '
+         f'write_json {out / "boundary-synth.json"}'], 'boundary-synth')
+    boundary_pins='AG5 AD19 AD12 AE12 W8 Y8 AD11 AD10 AE11 Y5 AF10 Y4 AE9 AB4 AE7 AF6 AF8 AF5 AE4 AH2 AH4 AH5 AH6 AG6 AF9 AE8 T8 V13 U10 AA4 U11 T12 T11 T13 Y11 AA26 AA13 AA11 W11 Y19 AB23 AC23 AC22 C12 AB26 AD17 D12 Y17 AB25 V12 E8 D11 W12 AH13'.split()
+    boundary_ports=['clk']+[f'd[{i}]' for i in range(42)]+[f'q[{i}]' for i in range(12)]
+    boundary_pin_text=''.join(f'set_location_assignment PIN_{pin} -to {port}\n'
+                              for pin,port in zip(['V11']+boundary_pins,boundary_ports))
+    boundary_pin_qsf=out/'boundary-pins.qsf';boundary_pin_qsf.write_text(boundary_pin_text)
+    boundary_qsf=out/'boundary.qsf'
+    boundary_qsf.write_text(boundary_pin_text+'set_global_assignment -name FES_RESERVED_RECT "24 1 24 1"\n')
+    run(base + ['--mistral-ff4','--json',out/'boundary-synth.json','--qsf',boundary_pin_qsf,'--no-route',
+                '--write',out/'boundary-placed.json'], 'boundary-place')
+    run(base + ['--mistral-ff4','--json',out/'boundary-placed.json','--no-pack','--no-place',
+                '--qsf',boundary_qsf,'--write',out/'boundary-routed.json'], 'boundary-route')
+    run(base + ['--mistral-ff4','--json',out/'boundary-routed.json','--no-pack','--no-place','--no-route',
+                '--write',out/'boundary-copy.json'], 'boundary-reload')
+    assert '42 unique inputs' in (out/'boundary-reload.log').read_text()
+    assert '(51 LUT inputs, best-case 10 shared, 1 FF fabric inputs)' in (out/'boundary-reload.log').read_text()
+    cells=load('boundary-routed.json')['cells']
+    assert sum(name.endswith('$ROUTETHRU') for name in cells)==1
+    assert 'LAB inputs need at least 1 LABs' in (out/'boundary-reload.log').read_text()
     print('FES reservation checkpoint and route preparation passed')
 
 
