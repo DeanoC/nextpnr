@@ -867,8 +867,12 @@ struct MistralBitgen
             cv->bmux_b_set(block_type, pos, CycloneV::SCLR_DIS, 0, true);
         } else {
             // Combinational mode - TODO: flop feedback and more modes...
-            cv->bmux_m_set(block_type, pos, CycloneV::TMODE, alm, alm_data.l6_mode ? CycloneV::C_E : CycloneV::E_0);
-            cv->bmux_m_set(block_type, pos, CycloneV::BMODE, alm, alm_data.l6_mode ? CycloneV::D_E : CycloneV::E_1);
+            // The L6 selections are also the device defaults. Reversed
+            // C_E/D_E requests were rejected silently, leaving those defaults.
+            NPNR_ASSERT(cv->bmux_m_set(block_type, pos, CycloneV::TMODE, alm,
+                                      alm_data.l6_mode ? CycloneV::D_E : CycloneV::E_0));
+            NPNR_ASSERT(cv->bmux_m_set(block_type, pos, CycloneV::BMODE, alm,
+                                      alm_data.l6_mode ? CycloneV::C_E : CycloneV::E_1));
             // LUT function
             cv->bmux_r_set(block_type, pos, CycloneV::LUT_MASK, alm, ctx->compute_lut_mask(lab, alm));
         }

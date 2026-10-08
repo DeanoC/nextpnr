@@ -1,0 +1,151 @@
+{
+  "quartus_mask": "dbeb310475cb0e58",
+  "source_init": "d2c4b6e1987a35f0",
+  "cell_location": "LABCELL_X29_Y77_N36",
+  "corner_max_delays_ns": {
+    "arcs-7_slow_1100mv_-40c": {
+      "A": 0.701,
+      "B": 0.679,
+      "C": 0.597,
+      "D": 0.599,
+      "E0": 0.343,
+      "F0": 0.103
+    },
+    "arcs-7_slow_1100mv_100c": {
+      "A": 0.598,
+      "B": 0.579,
+      "C": 0.503,
+      "D": 0.504,
+      "F0": 0.089,
+      "E0": 0.297
+    },
+    "arcs-MIN_fast_1100mv_-40c": {
+      "A": 0.223,
+      "C": 0.203,
+      "B": 0.22,
+      "D": 0.206,
+      "F0": 0.042,
+      "E0": 0.118
+    },
+    "arcs-MIN_fast_1100mv_100c": {
+      "A": 0.224,
+      "C": 0.207,
+      "D": 0.209,
+      "B": 0.221,
+      "F0": 0.039,
+      "E0": 0.124
+    }
+  },
+  "source_register_to_mistral_physical_input": {
+    "0": "D",
+    "1": "C",
+    "2": "F0",
+    "3": "E0",
+    "4": "A",
+    "5": "B"
+  },
+  "decoded_routes": {
+    "0": [
+      "LAB.029.077.6:FFB1L",
+      "LAB.029.077.6:D"
+    ],
+    "1": [
+      "LAB.029.077.5:FFB1L",
+      "LAB.029.077.6:C"
+    ],
+    "2": [
+      "LAB.029.077.2:FFT1",
+      "H3.029.077.0000",
+      "TD.029.077.0022",
+      "LAB.029.077.6:F0"
+    ],
+    "3": [
+      "LAB.029.077.3:FFB1L",
+      "LAB.029.077.6:E0"
+    ],
+    "4": [
+      "LAB.029.077.3:FFT1L",
+      "LAB.029.077.6:A"
+    ],
+    "5": [
+      "LAB.029.077.2:FFB1L",
+      "LAB.029.077.6:B"
+    ]
+  },
+  "predictions": [
+    {
+      "swap_ef": false,
+      "swap_cd": false,
+      "predicted_mask": "dbeb310475cb0e58",
+      "mismatching_bits": 0
+    },
+    {
+      "swap_ef": false,
+      "swap_cd": true,
+      "predicted_mask": "debb30147c5b05e8",
+      "mismatching_bits": 16
+    },
+    {
+      "swap_ef": true,
+      "swap_cd": false,
+      "predicted_mask": "dbeb7c5b30140e58",
+      "mismatching_bits": 20
+    },
+    {
+      "swap_ef": true,
+      "swap_cd": true,
+      "predicted_mask": "debb75cb310405e8",
+      "mismatching_bits": 26
+    }
+  ],
+  "cell_delays": [
+    {
+      "launch": "q[4]",
+      "input": "dataa",
+      "rr_max": "0.598",
+      "rf_max": "0.584",
+      "fr_max": "0.565",
+      "ff_max": "0.559"
+    },
+    {
+      "launch": "q[5]",
+      "input": "datab",
+      "rr_max": "0.579",
+      "rf_max": "0.575",
+      "fr_max": "0.569",
+      "ff_max": "0.555"
+    },
+    {
+      "launch": "q[1]",
+      "input": "datac",
+      "rr_max": "0.423",
+      "rf_max": "0.489",
+      "fr_max": "0.435",
+      "ff_max": "0.503"
+    },
+    {
+      "launch": "q[0]",
+      "input": "datad",
+      "rr_max": "0.423",
+      "rf_max": "0.489",
+      "fr_max": "0.423",
+      "ff_max": "0.504"
+    },
+    {
+      "launch": "q[2]",
+      "input": "dataf",
+      "rr_max": "0.083",
+      "rf_max": "0.089",
+      "fr_max": "0.088",
+      "ff_max": "0.077"
+    },
+    {
+      "launch": "q[3]",
+      "input": "datae",
+      "rr_max": "0.246",
+      "rf_max": "0.297",
+      "fr_max": "0.227",
+      "ff_max": "0.217"
+    }
+  ]
+}

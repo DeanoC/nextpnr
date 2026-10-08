@@ -52,6 +52,11 @@ add_nextpnr_architecture(${family}
 )
 
 if (BUILD_TESTS)
+    foreach(LUT6_SELECT_FIXTURE asymmetric asymmetric-bottom)
+        add_test(NAME nextpnr-${family}-lut6-select-${LUT6_SELECT_FIXTURE}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut6-select/check.py
+                    ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut6-select/${LUT6_SELECT_FIXTURE})
+    endforeach()
     find_program(MISTRAL_CHECKPOINT_YOSYS yosys)
     if (MISTRAL_CHECKPOINT_YOSYS)
         add_test(NAME nextpnr-${family}-placed-checkpoint

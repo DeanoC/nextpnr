@@ -1,0 +1,12 @@
+launch	edge	cell	location	wysiwyg	src	dst	input	output	rr_max	rf_max	fr_max	ff_max
+q[0]	edge_45	lut6	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	lut6|dataa	lut6|combout	dataa	combout	0.598	0.583	0.565	0.558
+q[4]	edge_47	lut6	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	lut6|datac	lut6|combout	datac	combout	0.424	0.488	0.423	0.502
+q[1]	edge_46	lut6	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	lut6|datab	lut6|combout	datab	combout	0.579	0.574	0.569	0.554
+q[4]	edge_0	lut5	LABCELL_X29_Y79_N33	cyclonev_lcell_comb	lut5|dataa	lut5|combout	dataa	combout	0.598	0.583	0.565	0.558
+q[3]	edge_48	lut6	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	lut6|datad	lut6|combout	datad	combout	0.423	0.488	0.435	0.502
+q[3]	edge_3	lut5	LABCELL_X29_Y79_N33	cyclonev_lcell_comb	lut5|datae	lut5|combout	datae	combout	0.204	0.263	0.335	0.296
+q[2]	edge_49	lut6	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	lut6|datae	lut6|combout	datae	combout	0.204	0.263	0.335	0.296
+q[2]	edge_1	lut5	LABCELL_X29_Y79_N33	cyclonev_lcell_comb	lut5|datab	lut5|combout	datab	combout	0.579	0.574	0.569	0.554
+q[0]	edge_2	lut5	LABCELL_X29_Y79_N33	cyclonev_lcell_comb	lut5|datac	lut5|combout	datac	combout	0.424	0.488	0.423	0.502
+q[1]	edge_4	lut5	LABCELL_X29_Y79_N33	cyclonev_lcell_comb	lut5|dataf	lut5|combout	dataf	combout	0.083	0.089	0.090	0.075
+q[5]	edge_50	lut6	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	lut6|dataf	lut6|combout	dataf	combout	0.083	0.089	0.090	0.075
