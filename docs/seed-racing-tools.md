@@ -271,7 +271,11 @@ python3 mistral/tests/seed_policy_portfolio_test.py
 
 `prepare` requires the retained Atari template and makes a fresh directory;
 its fixed populations, policies, limits, order and hashes are declared before
-PNR. Publish the canonical declaration digest before collecting. `run` admits
+PNR. Input paths are resolved relative to the manifest's `cwd`, not the
+portfolio command's directory. Executables use the collector's resolution
+rules, including the recorded child environment's `PATH` for bare names.
+Preparation and declaration reload use the same rules. Publish the canonical
+declaration digest before collecting. `run` admits
 only declared cohorts under its retained deadline and free-space guard, locks
 the operator, validates retained complete collections, and refuses incomplete
 reruns. `evaluate` requires every declared attempt and the frozen training
@@ -279,3 +283,34 @@ selection. Use `--report NEW_FILE` to re-evaluate without overwriting the
 original report. Raw artifacts stay outside git. Search budgets exclude
 training/repeat costs, which must be added for first-use economics. No default
 behavior, C++ routing logic, hardware programming or runtime contract changes.
+
+## Family-separated policy screen
+
+`python/seed_policy_multifamily.py` implements the fixed five-family follow-up
+screen, using the same collector and per-cohort authentication. See its
+[pre-result plan](seed-policy-multifamily-plan.md),
+[kernel amendment](validation/seed-policy-multifamily-kernel-amendment-2026-10-07.md)
+and [completed results](validation/seed-policy-multifamily-2026-10-08.md).
+
+```sh
+python3 python/seed_policy_multifamily.py prepare --config CONFIG_JSON --output NEW_EVIDENCE_DIRECTORY
+python3 python/seed_policy_multifamily.py dry-run --output NEW_EVIDENCE_DIRECTORY
+timeout --signal=INT --kill-after=30s 72000 python3 python/seed_policy_multifamily.py run --output NEW_EVIDENCE_DIRECTORY
+python3 python/seed_policy_multifamily.py evaluate --output NEW_EVIDENCE_DIRECTORY --report NEW_REPORT_FILE
+python3 mistral/tests/seed_policy_multifamily_test.py
+```
+
+The config selects a common binary/source and five family templates, with
+unique `name`, `phase` (`train`/`heldout`), retained `baseline` policy and `weight`.
+Exactly two families train and three are held out; mapped bytes cannot overlap.
+Preparation checks baseline/weight against the retained template including
+Mistral defaults, and freezes all identities/populations before PNR. Publish
+the canonical plan digest before starting. This is not a general optimizer.
+
+`run` automatically evaluates complete evidence; missing/incomplete cohorts
+fail closed. Its original deadline persists across restart. Re-evaluation
+requires a new file, never overwriting results. Kernel variation is rejected
+unless a separately recorded plan-bound amendment lists exact runtime/kernel
+pairs and full runtime manifests match except kernel release. Reports flag
+cross-kernel costs. Training charges precede search and amortization is
+explicitly hypothetical; no future labels or durations choose candidate order.

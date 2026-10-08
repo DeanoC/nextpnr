@@ -3,6 +3,7 @@ import sys
 import hashlib
 import tempfile
 import json
+import os
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -101,6 +102,56 @@ class PortfolioTests(unittest.TestCase):
                          artifact_records=dict(final_report=record, bitstream=record))
                     for phase in ("train", "repeat")]
             self.assertEqual(portfolio.repeat_checks(rows, ["a"], [17])[0]["classification"], "repeatable")
+
+
+class PathResolutionTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.fixture = self.root / "fixture"
+        (self.fixture / "bin").mkdir(parents=True)
+        self.binary = self.fixture / "bin" / "nextpnr-mistral"
+        self.binary.write_bytes(b"test executable")
+        self.binary.chmod(0o755)
+        (self.fixture / "synth.json").write_bytes(b"fixture netlist")
+        # A conflicting file at the caller's cwd must never supply the digest.
+        (self.root / "synth.json").write_bytes(b"wrong netlist")
+        self.manifest = dict(
+            cohort=dict(id="template", design_id="test", mapped_design_id="mapped", constraint_family="clocks"),
+            architecture="mistral", command=["bin/nextpnr-mistral", "--seed", "{seed}",
+                                            "--placer-heap-critexp", "5", "--placer-heap-timingweight", "2000"],
+            seeds=[1], repeats=1, limits=dict(per_run_seconds=600, total_seconds=720, concurrency=1),
+            inputs=[dict(path="synth.json", role="mapped_netlist")], cwd=str(self.fixture),
+            provenance=dict(source_revision="test", dirty=False, runtime_environment_id="auto"))
+
+    def prepare_and_load(self):
+        old_cwd = Path.cwd()
+        try:
+            os.chdir(self.root)
+            declaration = portfolio.prepare(self.manifest, self.root / "evidence")
+            loaded, manifests = portfolio.load_declared(self.root / "evidence")
+        finally:
+            os.chdir(old_cwd)
+        self.assertEqual(loaded, declaration)
+        self.assertEqual(len(manifests), 9)
+        self.assertEqual(declaration["binary_sha256"], hashlib.sha256(self.binary.read_bytes()).hexdigest())
+        self.assertEqual(declaration["input_sha256"]["mapped_netlist:0"],
+                         hashlib.sha256(b"fixture netlist").hexdigest())
+
+    def test_relative_binary_and_inputs_use_manifest_cwd(self):
+        self.prepare_and_load()
+
+    def test_executable_uses_declared_child_path(self):
+        self.manifest["command"][0] = "nextpnr-mistral"
+        self.manifest["environment"] = dict(PATH=str(self.binary.parent))
+        with mock.patch.dict(os.environ, {"PATH": str(self.root)}):
+            self.prepare_and_load()
+
+    def test_absolute_inputs_ignore_cwd(self):
+        self.manifest["inputs"][0]["path"] = str(self.fixture / "synth.json")
+        self.manifest["command"][0] = str(self.binary)
+        self.prepare_and_load()
 
 
 class PopulationTests(unittest.TestCase):
