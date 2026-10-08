@@ -20,7 +20,9 @@ function build_nextpnr {
 }
 
 function run_tests {
+    python3 common/route/tests/router2_profile.py
     ctest --test-dir build -R '^nextpnr-heap-control-set-test$' --output-on-failure
+    python3 mistral/tests/router2_profile.py --nextpnr build/nextpnr-mistral --output build/router2-profile
     python3 mistral/tests/router2_undriven.py --nextpnr build/nextpnr-mistral --output build/router2-undriven
 }
 
