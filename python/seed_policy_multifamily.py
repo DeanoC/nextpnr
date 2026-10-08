@@ -222,7 +222,7 @@ def charged_replay(order, cases, budget, training_charge):
     return result
 
 
-def evaluate(output):
+def evaluate(output, report_path=None):
     plan, groups = load_plan(output)
     # Never create a missing training selection retrospectively after held-out outcomes.
     if not (output / "training-selection.json").is_file():
@@ -268,7 +268,7 @@ def evaluate(output):
                                "Process times include restart/startup/cleanup; cohort freezing and evaluation overhead are separate."])
     if result["kernel_amendment"]:
         result["limitations"].append("Explicit kernel transition: mixed RAM-test runtime costs are descriptive/confounded; no small-speedup claim.")
-    portfolio.write_new(output / "evaluation.json", result)
+    portfolio.write_new(report_path or output / "evaluation.json", result)
     return result
 
 
@@ -309,6 +309,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=["prepare", "run", "evaluate", "dry-run"])
     parser.add_argument("--config", type=Path)
+    parser.add_argument("--report", type=Path, help="fresh evaluation path; existing evidence is never overwritten")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     output = args.output.resolve()
@@ -319,7 +320,7 @@ def main():
     elif args.operation == "run":
         run(output)
     elif args.operation == "evaluate":
-        evaluate(output)
+        evaluate(output, args.report)
     else:
         plan, groups = load_plan(output)
         count = sum(len(seed_racing.Collector(manifest, output / "dry-run" / item["cohort_id"]).run(dry_run=True))
