@@ -66,6 +66,18 @@ endmodule
     copied_clocks = json.loads(copied['modules']['top']['settings']['timing/io_clocks'])
     assert {c['net']: c for c in copied_clocks} == {c['net']: c for c in expected_clocks}, copied_clocks
 
+    def external_ports(design):
+        module = design['modules']['top']
+        aliases = {}
+        for name, net in module['netnames'].items():
+            for index, bit in enumerate(net['bits']):
+                aliases.setdefault(bit, set()).add((name, index))
+        return {name: (port['direction'], [sorted(aliases[bit]) for bit in port['bits']])
+                for name, port in module['ports'].items()}
+
+    expected_ports = external_ports(placed)
+    assert expected_ports and external_ports(copied) == expected_ports
+
     def pin_states(design):
         return {n: json.loads(bytes.fromhex(c['attributes']['FES_PINMAP_V1']))['pins']
                 for n, c in design['modules']['top']['cells'].items()
@@ -78,6 +90,7 @@ endmodule
                 '--write', out / 'routed.json', '--report', out / 'timing.json',
                 '--rbf', out / 'original.rbf'], 'resume')
     routed = json.loads((out / 'routed.json').read_text())
+    assert external_ports(routed) == expected_ports
     actual_clocks = json.loads(routed['modules']['top']['settings']['timing/io_clocks'])
     actual_by_net = {c['net']: c for c in actual_clocks}
     assert all(actual_by_net[c['net']] == c for c in expected_clocks), actual_clocks
