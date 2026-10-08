@@ -1,0 +1,8 @@
+mux=1781 value=187 accepted=0
+mux=1781 value=443 accepted=1
+mux=1781 value=600 accepted=1
+mux=1781 value=601 accepted=0
+mux=129 value=187 accepted=1
+mux=129 value=443 accepted=0
+mux=129 value=600 accepted=0
+mux=129 value=601 accepted=1

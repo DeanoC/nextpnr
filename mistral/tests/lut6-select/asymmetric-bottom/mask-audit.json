@@ -1,0 +1,161 @@
+{
+  "quartus_mask": "fa5e7d9b031682c4",
+  "source_init": "d2c4b6e1987a35f0",
+  "cell_location": "LABCELL_X29_Y77_N39",
+  "corner_max_delays_ns": {
+    "arcs-7_slow_1100mv_-40c": {
+      "A": 0.701,
+      "D": 0.597,
+      "B": 0.679,
+      "C": 0.595,
+      "E1": 0.353,
+      "F1": 0.103
+    },
+    "arcs-7_slow_1100mv_100c": {
+      "A": 0.598,
+      "D": 0.502,
+      "B": 0.579,
+      "C": 0.502,
+      "E1": 0.335,
+      "F1": 0.09
+    },
+    "arcs-MIN_fast_1100mv_-40c": {
+      "A": 0.223,
+      "D": 0.206,
+      "B": 0.22,
+      "C": 0.202,
+      "E1": 0.122,
+      "F1": 0.043
+    },
+    "arcs-MIN_fast_1100mv_100c": {
+      "A": 0.224,
+      "D": 0.209,
+      "B": 0.22,
+      "C": 0.207,
+      "E1": 0.13,
+      "F1": 0.041
+    }
+  },
+  "source_register_to_mistral_physical_input": {
+    "0": "A",
+    "1": "B",
+    "2": "E1",
+    "3": "C",
+    "4": "D",
+    "5": "F1"
+  },
+  "decoded_routes": {
+    "0": [
+      "LAB.029.079.1:FFT1",
+      "V2.028.077.0019",
+      "H6.029.077.0013",
+      "TD.029.077.0025",
+      "LAB.029.077.6:A"
+    ],
+    "1": [
+      "LAB.029.079.7:FFT1",
+      "V2.028.077.0015",
+      "TD.029.077.0014",
+      "LAB.029.077.6:B"
+    ],
+    "2": [
+      "LAB.029.079.1:FFB1",
+      "V2.028.077.0020",
+      "TD.029.077.0004",
+      "LAB.029.077.6:E1"
+    ],
+    "3": [
+      "LAB.029.079.5:FFT1",
+      "V2.028.077.0013",
+      "TD.029.077.0010",
+      "LAB.029.077.6:C"
+    ],
+    "4": [
+      "LAB.029.079.7:FFB1",
+      "V2.028.077.0017",
+      "H6.029.077.0017",
+      "TD.029.077.0044",
+      "LAB.029.077.6:D"
+    ],
+    "5": [
+      "LAB.029.077.5:FFB1L",
+      "LAB.029.077.6:F1"
+    ]
+  },
+  "predictions": [
+    {
+      "swap_ef": false,
+      "swap_cd": false,
+      "predicted_mask": "fa5e7d9b031682c4",
+      "mismatching_bits": 0
+    },
+    {
+      "swap_ef": false,
+      "swap_cd": true,
+      "predicted_mask": "f5ae79db01368c24",
+      "mismatching_bits": 18
+    },
+    {
+      "swap_ef": true,
+      "swap_cd": false,
+      "predicted_mask": "fa5e013679db82c4",
+      "mismatching_bits": 20
+    },
+    {
+      "swap_ef": true,
+      "swap_cd": true,
+      "predicted_mask": "f5ae03167d9b8c24",
+      "mismatching_bits": 34
+    }
+  ],
+  "cell_delays": [
+    {
+      "launch": "q[0]",
+      "input": "dataa",
+      "rr_max": "0.598",
+      "rf_max": "0.583",
+      "fr_max": "0.565",
+      "ff_max": "0.558"
+    },
+    {
+      "launch": "q[4]",
+      "input": "datac",
+      "rr_max": "0.424",
+      "rf_max": "0.488",
+      "fr_max": "0.423",
+      "ff_max": "0.502"
+    },
+    {
+      "launch": "q[1]",
+      "input": "datab",
+      "rr_max": "0.579",
+      "rf_max": "0.574",
+      "fr_max": "0.569",
+      "ff_max": "0.554"
+    },
+    {
+      "launch": "q[3]",
+      "input": "datad",
+      "rr_max": "0.423",
+      "rf_max": "0.488",
+      "fr_max": "0.435",
+      "ff_max": "0.502"
+    },
+    {
+      "launch": "q[2]",
+      "input": "datae",
+      "rr_max": "0.204",
+      "rf_max": "0.263",
+      "fr_max": "0.335",
+      "ff_max": "0.296"
+    },
+    {
+      "launch": "q[5]",
+      "input": "dataf",
+      "rr_max": "0.083",
+      "rf_max": "0.089",
+      "fr_max": "0.090",
+      "ff_max": "0.075"
+    }
+  ]
+}

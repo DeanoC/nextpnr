@@ -92,3 +92,32 @@ TEST_F(LabPinmapTest, RestoredScaffoldPreservesPinmapsAndDataInput)
     EXPECT_EQ(socket->getPort(id_DATAIN), data);
     EXPECT_EQ(ctx->cells.size(), cell_count);
 }
+
+TEST(LutPlacementTiming, Lut6PhysicalFIsFasterThanE)
+{
+    // Independent Quartus asymmetric-LUT audit traces the launch registers
+    // through decoded RBF routing: E0 is slow, F0 fast. The source LUT's
+    // truth-table variable order must not exchange these physical delays.
+    for (int half : {0, 1}) {
+        ArchArgs args;
+        args.device = "5CSEBA6U23I7";
+        Context ctx(args);
+        auto *cell = ctx.createCell(ctx.id("lut6"), id_MISTRAL_ALUT6);
+        for (IdString pin : {id_A, id_B, id_C, id_D, id_E, id_F}) {
+            cell->addInput(pin);
+            cell->connectPort(pin, ctx.createNet(pin));
+        }
+        cell->addOutput(id_Q);
+        cell->connectPort(id_Q, ctx.createNet(id_Q));
+        ctx.assignArchInfo();
+        ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, half)), cell, STRENGTH_STRONG);
+        ctx.lab_pre_route();
+        EXPECT_EQ(cell->pin_data.at(id_E).bel_pins, std::vector<IdString>{half ? id_E1 : id_E0});
+        EXPECT_EQ(cell->pin_data.at(id_F).bel_pins, std::vector<IdString>{half ? id_F1 : id_F0});
+        DelayQuad slow, fast;
+        ASSERT_TRUE(ctx.getCellDelay(cell, id_E, id_Q, slow));
+        ASSERT_TRUE(ctx.getCellDelay(cell, id_F, id_Q, fast));
+        EXPECT_LT(fast.maxRiseDelay(), slow.minRiseDelay());
+        EXPECT_LT(fast.maxFallDelay(), slow.minFallDelay());
+    }
+}
