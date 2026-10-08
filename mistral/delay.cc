@@ -674,6 +674,37 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
     NPNR_ASSERT_FALSE("unreachable");
 }
 
+bool Arch::get_lut_pin_delay(IdString physical, bool l6, DelayQuad &delay) const
+{
+    switch (physical.index) {
+    case ID_A:
+        delay = l6 ? DelayQuad{592, 605, 567, 573} : DelayQuad{580, 583, 560, 574};
+        return true;
+    case ID_B:
+        delay = l6 ? DelayQuad{580, 583, 560, 574} : DelayQuad{429, 496, 440, 510};
+        return true;
+    case ID_C:
+    case ID_D:
+        // C/D exchange the middle mux levels between the two L6
+        // halves; keep the earliest early and latest late delays.
+        delay = l6 ? DelayQuad{429, 499, 440, 512} : DelayQuad{432, 499, 444, 512};
+        return true;
+    case ID_E0:
+    case ID_E1:
+        // Decoded Quartus L5/L6 fixtures place the slower select
+        // on physical E and the fast select on physical F in both
+        // modes. Truth-table variable order is not delay order.
+        delay = DelayQuad{263, 354, 362, 400};
+        return true;
+    case ID_F0:
+    case ID_F1:
+        delay = DelayQuad{90, 96, 83, 97};
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort, DelayQuad &delay) const
 {
     if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
@@ -740,33 +771,7 @@ bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort
                 pin->second.bel_pins.size() == 1)
                 physical = pin->second.bel_pins.front();
             const bool l6 = cell->type == id_MISTRAL_ALUT6;
-            switch (physical.index) {
-            case ID_A:
-                delay = l6 ? DelayQuad{592, 605, 567, 573} : DelayQuad{580, 583, 560, 574};
-                return true;
-            case ID_B:
-                delay = l6 ? DelayQuad{580, 583, 560, 574} : DelayQuad{429, 496, 440, 510};
-                return true;
-            case ID_C:
-            case ID_D:
-                // C/D exchange the middle mux levels between the two L6
-                // halves; keep the earliest early and latest late delays.
-                delay = l6 ? DelayQuad{429, 499, 440, 512} : DelayQuad{432, 499, 444, 512};
-                return true;
-            case ID_E0:
-            case ID_E1:
-                // Decoded Quartus L5/L6 fixtures place the slower select
-                // on physical E and the fast select on physical F in both
-                // modes. Truth-table variable order is not delay order.
-                delay = DelayQuad{263, 354, 362, 400};
-                return true;
-            case ID_F0:
-            case ID_F1:
-                delay = DelayQuad{90, 96, 83, 97};
-                return true;
-            default:
-                return false;
-            }
+            return get_lut_pin_delay(physical, l6, delay);
         }
     } else if (cell->type == id_MISTRAL_ALUT_ARITH) {
         if (toPort == id_CO) {

@@ -506,6 +506,7 @@ struct Arch : BaseArch<ArchRanges>
     std::vector<PrimitiveClockRequirement> getPrimitiveClockRequirements(const CellInfo *cell) const override;
     bool getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort,
                       DelayQuad &delay) const override;                                                      // delay.cc
+    bool get_lut_pin_delay(IdString physical, bool l6, DelayQuad &delay) const; // delay.cc
     DelayQuad getPipDelay(PipId pip) const override;                                                         // delay.cc
     // The per-type table the routers use until analogue_repair() calibrates it.
     DelayQuad getPipDelayTable(PipId pip) const;
@@ -571,6 +572,8 @@ struct Arch : BaseArch<ArchRanges>
     bool pack() override;
     bool place() override;
     int enable_replication_budget = 0; // Explicit opt-in; never inherited from JSON settings.
+    int critical_cohort_budget = 0; // CLI only; number of complete placement STA trials.
+    std::string critical_cohort_report; // CLI only; optional prior routed timing guidance.
     void replicate_enables(int budget);
     std::string local_remap_report; // CLI only, never read from serialized settings.
     int local_remap_selection = -1;
@@ -684,6 +687,8 @@ struct Arch : BaseArch<ArchRanges>
     int park_open_aclr(uint32_t lab);                          // lab.cc
     void reassign_alm_inputs(uint32_t lab, uint8_t alm);    // lab.cc
     int optimise_private_lut_pins(uint32_t lab, uint8_t alm, int half, const dict<IdString, delay_t> &arrival);
+    CellInfo *get_alm_route_through_ff(uint32_t lab, uint8_t alm, uint8_t half) const; // lab.cc
+    void assign_alm_lut_inputs(uint32_t lab, uint8_t alm); // LUT pins only; no netlist mutation.
     void update_alm_input_count(uint32_t lab, uint8_t alm); // lab.cc
 
     uint64_t compute_lut_mask(uint32_t lab, uint8_t alm);  // lab.cc

@@ -6,6 +6,8 @@ allocation of an isolated cell. After legal ALM input allocation, a single
 arrival snapshot assigns later arriving private inputs to faster physical pins.
 The option is off by default. A saved JSON setting records provenance and does
 not enable the heuristic on a new run without the command-line option.
+The option is initialized when the context is created, including Python
+`--run` invocations that create their design without `--json`.
 
 Only ordinary two- through five-input Boolean LUTs are permuted. The physical
 input set stays fixed; inputs reserved by the other ALM half remain fixed.
@@ -70,9 +72,13 @@ On the original C64 netlist, timing weight 2000, exponent 5, GPU 0:
 
 Seed 4 achieved 52.33 MHz system and 83.93 MHz video in 302.11 seconds.
 Seed 5 achieved 53.84 MHz system and 80.74 MHz video in 179.92 seconds.
-Two of five seeds pass all setup and hold clocks; one times out. Matched
-current-main controls remain pending, so these results do not yet isolate
-the benefit of the option on this revision.
+Two of five seeds pass all setup and hold clocks; one times out. The
+matched option-disabled seed 4 control on GPU 0 timed out at 1200 seconds.
+On GPU 1, seed 5 with the option disabled achieved 49.35 MHz system
+(−1.115 ns setup) in 520.66 seconds; enabling it achieved 53.84 MHz
+(+0.575 ns setup) in 182.17 seconds, with all setup and hold clocks passing.
+These controls use the same netlist, constraints, seed and placer profile.
+These numerical results predate the later main merge and CLI-hook fix.
 
 A supplemental run on a newer Pong netlist (`5c98f1fc35188c74`, FES
 `d2d1a0ea`) with the option **disabled**, GPU 1, passed seven of eight seeds;

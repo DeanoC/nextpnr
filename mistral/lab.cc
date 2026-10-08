@@ -1227,17 +1227,15 @@ static void assign_mlab_inputs(Context *ctx, CellInfo *cell, int lut)
 
 } // namespace
 
-void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
+void Arch::assign_alm_lut_inputs(uint32_t lab, uint8_t alm)
 {
     // Based on the usage of LUTs inside the ALM, set up cell-bel pin map for the combinational cells in the ALM
     // so that each physical bel pin is only used for one net; and the logical functions can be implemented correctly.
-    // This function should also insert route-through LUTs to legalise flipflop inputs as needed.
+    // Route-through insertion is separate so placement can preview these pins without changing the netlist.
     auto &alm_data = labs.at(lab).alms.at(alm);
     alm_data.l6_mode = false;
     alm_data.carry_mode = false;
     std::array<CellInfo *, 2> luts{getBoundBelCell(alm_data.lut_bels[0]), getBoundBelCell(alm_data.lut_bels[1])};
-    std::array<CellInfo *, 4> ffs{getBoundBelCell(alm_data.ff_bels[0]), getBoundBelCell(alm_data.ff_bels[1]),
-                                  getBoundBelCell(alm_data.ff_bels[2]), getBoundBelCell(alm_data.ff_bels[3])};
 
     bool found_mlab = false;
     for (int i = 0; i < 2; i++) {
@@ -1338,54 +1336,64 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
             }
         }
     }
+}
 
-    // FF route-through insertion
-    for (int i = 0; i < 2; i++) {
-        // FF route-through will never be inserted if LUT is used
-        if (luts[i])
+CellInfo *Arch::get_alm_route_through_ff(uint32_t lab, uint8_t alm, uint8_t half) const
+{
+    const auto &data = labs.at(lab).alms.at(alm);
+    if (getBoundBelCell(data.lut_bels.at(half)) || data.l6_mode || data.carry_mode)
+        return nullptr;
+    for (int n = 0; n < 2; ++n) {
+        // FF0 top and FF3 bottom have priority in the four-register model.
+        const int j = (half == 1 && lab_ff4) ? 1 - n : n;
+        auto *ff = getBoundBelCell(data.ff_bels.at(half * 2 + j));
+        if (!ff || !ff->ffInfo.datain || ff->belStrength == STRENGTH_LOCKED)
             continue;
-        for (int n = 0; n < 2; n++) {
-            // Quartus gives the route-through to the control-group-0 register of the half (FF0 top, FF3 bottom) and
-            // packs the other one through E/F. Only --mistral-ff4 places a second FF here, so the order is otherwise
-            // irrelevant.
-            const int j = (i == 1 && lab_ff4) ? 1 - n : n;
-            CellInfo *ff = ffs[i * 2 + j];
-            if (!ff || !ff->ffInfo.datain || alm_data.l6_mode || alm_data.carry_mode)
-                continue;
-            // A restored scaffold flip-flop is STRENGTH_LOCKED and already has
-            // its data route. A user BEL lock still gets a route-through when
-            // this half has no LUT.
-            if (ff->belStrength == STRENGTH_LOCKED)
-                continue;
-            // A late helper must obey the same reservation rules as placed
-            // cells. The FF's explicit BEL exemption belongs to its FF site,
-            // not the paired LUT. Keep the original E/F data path if forbidden.
-            CellInfo candidate(getCtx(), idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
-            auto slot = ff->attrs.find(id("FES_SLOT"));
-            if (slot != ff->attrs.end())
-                candidate.attrs[id("FES_SLOT")] = slot->second;
-            if (!fes_placement_allowed(alm_data.lut_bels[i], &candidate))
-                continue;
-            CellInfo *rt_lut = createCell(candidate.name, candidate.type);
-            // The route-through becomes the FF's DATAIN sink. Preserve the
-            // socket boundary marker so FES routing still recognizes it as a
-            // cart endpoint when checking pips inside the socket.
-            rt_lut->attrs = candidate.attrs;
-            rt_lut->addInput(id_A);
-            rt_lut->addOutput(id_Q);
-            // Disconnect the original data input to the FF, and connect it to the route-thru LUT instead
-            NetInfo *datain = ff->getPort(id_DATAIN);
-            ff->disconnectPort(id_DATAIN);
-            rt_lut->connectPort(id_A, datain);
-            rt_lut->connectPorts(id_Q, ff, id_DATAIN);
-            // Assign route-thru LUT physical ports, input goes to the first half-specific input
-            rt_lut->pin_data[id_A].bel_pins.push_back(i ? id_D : id_C);
-            rt_lut->pin_data[id_Q].bel_pins.push_back(id_COMBOUT);
-            assign_comb_info(rt_lut);
-            // Place the route-thru LUT at the relevant combinational bel
-            bindBel(alm_data.lut_bels[i], rt_lut, STRENGTH_STRONG);
-            break;
-        }
+        // Selection is shared with placement STA; a virtual helper must obey
+        // the same FES reservation rules as the helper inserted for routing.
+        CellInfo candidate(const_cast<Context *>(getCtx()), idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
+        auto slot = ff->attrs.find(id("FES_SLOT"));
+        if (slot != ff->attrs.end())
+            candidate.attrs[id("FES_SLOT")] = slot->second;
+        if (fes_placement_allowed(data.lut_bels.at(half), &candidate))
+            return ff;
+    }
+    return nullptr;
+}
+
+void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
+{
+    assign_alm_lut_inputs(lab, alm);
+    auto &alm_data = labs.at(lab).alms.at(alm);
+    // FF route-through insertion; selection is also used by placement STA.
+    for (uint8_t i = 0; i < 2; ++i) {
+        auto *ff = get_alm_route_through_ff(lab, alm, i);
+        if (!ff)
+            continue;
+        CellInfo candidate(getCtx(), idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
+        auto slot = ff->attrs.find(id("FES_SLOT"));
+        if (slot != ff->attrs.end())
+            candidate.attrs[id("FES_SLOT")] = slot->second;
+        if (!fes_placement_allowed(alm_data.lut_bels[i], &candidate))
+            continue;
+        CellInfo *rt_lut = createCell(candidate.name, candidate.type);
+        // The route-through becomes the FF's DATAIN sink. Preserve the
+        // socket boundary marker so FES routing still recognizes it as a
+        // cart endpoint when checking pips inside the socket.
+        rt_lut->attrs = candidate.attrs;
+        rt_lut->addInput(id_A);
+        rt_lut->addOutput(id_Q);
+        // Disconnect the original data input to the FF, and connect it to the route-thru LUT instead
+        NetInfo *datain = ff->getPort(id_DATAIN);
+        ff->disconnectPort(id_DATAIN);
+        rt_lut->connectPort(id_A, datain);
+        rt_lut->connectPorts(id_Q, ff, id_DATAIN);
+        // Assign route-thru LUT physical ports, input goes to the first half-specific input
+        rt_lut->pin_data[id_A].bel_pins.push_back(i ? id_D : id_C);
+        rt_lut->pin_data[id_Q].bel_pins.push_back(id_COMBOUT);
+        assign_comb_info(rt_lut);
+        // Place the route-thru LUT at the relevant combinational bel
+        bindBel(alm_data.lut_bels[i], rt_lut, STRENGTH_STRONG);
     }
 
     // TODO: in the future, as well as the reassignment here we will also have pseudo PIPs in front of the ALM so that
