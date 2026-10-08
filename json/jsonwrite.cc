@@ -154,7 +154,10 @@ void write_module(std::ostream &f, Context *ctx)
         f << stringf("    %s: {\n", get_string("top").c_str());
     f << stringf("      \"settings\": {");
     auto settings = ctx->settings;
-    if (settings.count(ctx->id("timing/io_delays"))) {
+    {
+        // Clock constraints also matter in designs without external IO delays.
+        // In particular, packed/derived clocks cannot be reconstructed by
+        // rereading an SDC against the original top-level ports after reload.
         json11::Json::array clocks;
         auto interval = [&](DelayPair value) {
             return json11::Json::array{ctx->getDelayNS(value.minDelay()), ctx->getDelayNS(value.maxDelay())};

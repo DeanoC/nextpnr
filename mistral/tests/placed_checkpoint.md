@@ -7,6 +7,13 @@ records the existing `FES_PINMAP_V1` snapshots and restores them before resumed
 routing. It does not lock the placement as a routed FES scaffold; LAB routing
 preparation still runs normally.
 
+Placed and routed JSON also record every live clock constraint, including
+period, duty cycle, phase group and phase shift, even when the design has no
+external IO delays. Resume restores these clocks without rereading SDC against
+ports removed by packing. The regression gives the input a 25 MHz constraint
+while the default is 50 MHz, and checks both the saved clock table and the
+resumed timing report. This catches silent fallback to the default frequency.
+
 `placed_checkpoint.py` synthesizes a two-element arithmetic chain with a folded
 input inversion and hard constants, writes a placed checkpoint, resumes routing,
 and compares every saved pin state against the resulting routed snapshot. A

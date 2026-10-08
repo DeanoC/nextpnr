@@ -48,10 +48,16 @@ endmodule
          f'synth_intel_alm -nobram -nolutram -nodsp -top top; write_json {out / "synth.json"}'], 'synth')
     base = [args.nextpnr.resolve(), '--device', '5CSEBA6U23I7', '--freq', '50',
             '--timing-allow-fail', '--compress-rbf']
-    run(base + ['--json', out / 'synth.json', '--qsf', qsf, '--no-route',
+    sdc = out / 'clocks.sdc'
+    sdc.write_text('create_clock -name reference -period 40 [get_ports {clk}]\n')
+    run(base + ['--json', out / 'synth.json', '--qsf', qsf, '--sdc', sdc, '--no-route',
                 '--write', out / 'placed.json'], 'place')
     placed = json.loads((out / 'placed.json').read_text())
     assert 'FES_LABSTATE_V1' not in placed['modules']['top']['attributes']
+    settings = placed['modules']['top']['settings']
+    assert 'timing/io_delays' not in settings
+    expected_clocks = json.loads(settings['timing/io_clocks'])
+    assert expected_clocks and all(c['period'] == [40, 40] for c in expected_clocks), expected_clocks
 
     def pin_states(design):
         return {n: json.loads(bytes.fromhex(c['attributes']['FES_PINMAP_V1']))['pins']
@@ -62,8 +68,14 @@ endmodule
     assert expected and expected['arithmetic']['A'][0] == 3, expected.get('arithmetic')
     assert any(data[0] == 2 for pins in expected.values() for data in pins.values())
     run(base + ['--json', out / 'placed.json', '--no-pack', '--no-place',
-                '--write', out / 'routed.json', '--rbf', out / 'original.rbf'], 'resume')
+                '--write', out / 'routed.json', '--report', out / 'timing.json',
+                '--rbf', out / 'original.rbf'], 'resume')
     routed = json.loads((out / 'routed.json').read_text())
+    actual_clocks = json.loads(routed['modules']['top']['settings']['timing/io_clocks'])
+    actual_by_net = {c['net']: c for c in actual_clocks}
+    assert all(actual_by_net[c['net']] == c for c in expected_clocks), actual_clocks
+    timing = json.loads((out / 'timing.json').read_text())
+    assert timing['fmax'] and all(abs(c['constraint'] - 25) < 1e-6 for c in timing['fmax'].values()), timing['fmax']
     actual = pin_states(routed)
     for n, pins in expected.items():
         for port, data in pins.items():
