@@ -74,6 +74,22 @@ class Profile
     std::exception_ptr failure;
     std::thread writer;
 
+#if defined(_WIN32)
+    static std::wstring utf8_to_utf16(const std::string &utf8)
+    {
+        if (utf8.empty())
+            throw std::runtime_error("Cannot write router2 profile: " + utf8);
+        int needed = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8.c_str(), int(utf8.size()), nullptr, 0);
+        if (needed <= 0)
+            throw std::runtime_error("Cannot write router2 profile: " + utf8);
+        std::wstring wide(size_t(needed), L'\0');
+        if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8.c_str(), int(utf8.size()), &wide[0], needed) !=
+            needed)
+            throw std::runtime_error("Cannot write router2 profile: " + utf8);
+        return wide;
+    }
+#endif
+
     void write(bool completed)
     {
         struct Row {
@@ -146,8 +162,9 @@ class Profile
         for (unsigned n = 0; n < 10000 && !created; ++n) {
 #if defined(_WIN32)
             temporary = path + ".tmp." + std::to_string(GetCurrentProcessId()) + "." + std::to_string(n);
-            HANDLE handle = CreateFileA(temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW,
-                                        FILE_ATTRIBUTE_NORMAL, nullptr);
+            std::wstring wide_tmp = utf8_to_utf16(temporary);
+            HANDLE handle = CreateFileW(wide_tmp.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL,
+                                        nullptr);
             if (handle == INVALID_HANDLE_VALUE) {
                 DWORD error = GetLastError();
                 if (error == ERROR_ALREADY_EXISTS || error == ERROR_FILE_EXISTS)
@@ -159,7 +176,7 @@ class Profile
             ok = ok && written == DWORD(payload.size()) && FlushFileBuffers(handle);
             CloseHandle(handle);
             if (!ok) {
-                DeleteFileA(temporary.c_str());
+                DeleteFileW(wide_tmp.c_str());
                 throw std::runtime_error("Cannot write router2 profile: " + path);
             }
 #else
@@ -184,8 +201,10 @@ class Profile
         if (!created)
             throw std::runtime_error("Cannot write router2 profile: " + path);
 #if defined(_WIN32)
-        if (!MoveFileExA(temporary.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
-            DeleteFileA(temporary.c_str());
+        std::wstring wide_tmp = utf8_to_utf16(temporary);
+        std::wstring wide_path = utf8_to_utf16(path);
+        if (!MoveFileExW(wide_tmp.c_str(), wide_path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+            DeleteFileW(wide_tmp.c_str());
             throw std::runtime_error("Cannot write router2 profile: " + path);
         }
 #else

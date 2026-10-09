@@ -62,6 +62,19 @@ int main(int argc, char **argv)
         assert(router2_win32_shim().replace_existing >= 1);
         assert(router2_win32_shim().create_new >= 1);
 #endif
+    } else if (mode == "utf8") {
+        write_text(dest, "stale-destination\n");
+        snapshot_cycle(dest, false);
+        assert(read_text(dest).find("router2-profile-v1") != std::string::npos);
+#ifdef ROUTER2_PROFILE_WIN32_SHIM
+        auto &shim = router2_win32_shim();
+        assert(shim.create_w >= 1 && shim.replace_w >= 1);
+        assert(shim.create_a == 0 && shim.replace_a == 0 && shim.delete_a == 0);
+        for (const auto &created : shim.created)
+            assert(created.find('\xC3') != std::string::npos);
+        for (const auto &pair : shim.replaced)
+            assert(pair.second == dest);
+#endif
     } else if (mode == "neighbor") {
         const std::string neighbor = dest + ".tmp";
         const std::string secret = "neighbor-secret-keep\n";

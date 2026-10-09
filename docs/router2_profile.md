@@ -3,9 +3,11 @@
 `--router2-profile FILE` enables an optional router2 observer. It writes an
 atomic JSON snapshot once per second and when router2 finishes. Snapshots use a
 unique exclusive sibling temporary and replace `FILE` with overwrite semantics
-on Windows (`MoveFileEx` with `MOVEFILE_REPLACE_EXISTING`; POSIX `rename`
-already replaces). A killed router leaves its last complete snapshot, with
-`completed: false`; a missing snapshot establishes no progress information.
+on Windows (`MoveFileExW` with `MOVEFILE_REPLACE_EXISTING` after UTF-8 to UTF-16
+conversion; POSIX `rename` already replaces). Win32 A APIs are not used because
+they follow the ANSI code page, not UCRT UTF-8. A killed router leaves its last
+complete snapshot, with `completed: false`; a missing snapshot establishes no
+progress information.
 The destination must be writable before routing starts. Observer paths are per
 invocation: GUI Open JSON and checkpoint reload restore the invocation path
 after every parse, clearing an inherited path and reapplying an explicit CLI

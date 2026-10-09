@@ -199,6 +199,8 @@ def run_snapshot(binary: Path, tmp: Path, win32: bool):
     run([str(binary), str(dest), "replace"])
     dest_hb = tmp / ("win-hb.json" if win32 else "posix-hb.json")
     run([str(binary), str(dest_hb), "replace", "heartbeat"])
+    dest_utf8 = tmp / ("caf\u00e9-" + ("win" if win32 else "posix") + ".json")
+    run([str(binary), str(dest_utf8), "utf8"])
     dest_n = tmp / ("win-n.json" if win32 else "posix-n.json")
     run([str(binary), str(dest_n), "neighbor"])
     dest_s = tmp / ("win-s.json" if win32 else "posix-s.json")
