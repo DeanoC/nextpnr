@@ -42,6 +42,7 @@
 #include "nextpnr.h"
 #include "nextpnr_assertions.h"
 #include "router1.h"
+#include "router2_profile.h"
 #include "timing.h"
 #include "util.h"
 
@@ -116,6 +117,7 @@ struct Router2
 
     Context *ctx;
     Router2Cfg cfg;
+    std::unique_ptr<router2_diagnostics::Profile> profile;
 
     Router2(Context *ctx, const Router2Cfg &cfg) : ctx(ctx), cfg(cfg), tmg(ctx)
     {
@@ -1142,6 +1144,7 @@ struct Router2
         // Nothing to do if net is undriven
         if (net->driver.cell == nullptr)
             return true;
+        router2_diagnostics::Profile::Visit profile_visit(profile.get(), net->udata);
 
         bool have_failures = false;
         t.processed_sinks.clear();
@@ -1700,6 +1703,12 @@ struct Router2
         auto rstart = std::chrono::high_resolution_clock::now();
         setup_resources();
         setup_nets();
+        if (!cfg.profile_path.empty()) {
+            std::vector<std::pair<std::string, int>> names;
+            for (auto net : nets_by_udata)
+                names.emplace_back(net->name.str(ctx), int(net->users.entries()));
+            profile.reset(new router2_diagnostics::Profile(cfg.profile_path, names));
+        }
         setup_wires();
         find_all_reserved_wires();
         partition_nets();
@@ -1832,6 +1841,8 @@ struct Router2
         timing_analysis(ctx, true /* slack_histogram */, true /* print_fmax */, true /* print_path */,
                         true /* warn_on_failure */, true /* update_results */);
 
+        if (profile)
+            profile->finish(true);
         lock.unlock();
     }
 };
@@ -1864,6 +1875,8 @@ Router2Cfg::Router2Cfg(Context *ctx)
         estimate_weight = ctx->setting<float>("router2/estimateWeight", 1.25f);
     }
     perf_profile = ctx->setting<bool>("router2/perfProfile", false);
+    if (ctx->settings.count(ctx->id("router2/profilePath")))
+        profile_path = ctx->settings.at(ctx->id("router2/profilePath")).as_string();
     if (ctx->settings.count(ctx->id("router2/heatmap")))
         heatmap = ctx->settings.at(ctx->id("router2/heatmap")).as_string();
     else

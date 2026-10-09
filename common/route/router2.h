@@ -58,6 +58,7 @@ struct Router2Cfg
     bool perf_profile = false;
 
     std::string heatmap;
+    std::string profile_path;
     std::function<float(Context *ctx, WireId wire, PipId pip, float crit_weight)> get_base_cost = default_base_cost;
 };
 

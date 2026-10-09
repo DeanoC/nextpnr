@@ -421,6 +421,8 @@ po::options_description CommandHandler::getGeneralOptions()
     general.add_options()("gpu-opt", po::value<std::vector<std::string>>(),
                           "GPU router tuning setting as name=value (sets gpurouter/<name>; see docs/gpurouter.md)");
 
+    general.add_options()("router2-profile", po::value<std::string>(),
+                          "write bounded router2 active/slow net snapshots once per second to JSON");
     general.add_options()("report", po::value<std::string>(),
                           "write timing and utilization report in JSON format to file");
     general.add_options()("detailed-timing-report", "Append detailed net timing data to the JSON report");
@@ -554,6 +556,8 @@ void CommandHandler::setupContext(Context *ctx)
 
     if (vm.count("router2-heatmap"))
         ctx->settings[ctx->id("router2/heatmap")] = vm["router2-heatmap"].as<std::string>();
+    if (vm.count("router2-profile"))
+        ctx->settings[ctx->id("router2/profilePath")] = vm["router2-profile"].as<std::string>();
     if (vm.count("tmg-ripup") || vm.count("router2-tmg-ripup"))
         ctx->settings[ctx->id("router/tmg_ripup")] = true;
 
@@ -620,6 +624,11 @@ void CommandHandler::setupContext(Context *ctx)
 
 void CommandHandler::restoreTelemetrySettings(Context *ctx)
 {
+    // Observer destinations belong to this invocation, never to a checkpoint.
+    IdString cpu_path_key = ctx->id("router2/profilePath");
+    ctx->settings.erase(cpu_path_key);
+    if (vm.count("router2-profile"))
+        ctx->settings[cpu_path_key] = vm["router2-profile"].as<std::string>();
     IdString path_key = ctx->id("gpurouter/telemetryPath");
     IdString seed_key = ctx->id("gpurouter/telemetrySeed");
     if (!vm.count("gpu-telemetry")) {
@@ -836,26 +845,12 @@ void CommandHandler::load_json(Context *ctx, std::string filename)
 {
     setupContext(ctx);
     setupArchContext(ctx);
-    IdString path_key = ctx->id("gpurouter/telemetryPath");
-    IdString seed_key = ctx->id("gpurouter/telemetrySeed");
-    auto old_path = ctx->settings.find(path_key);
-    bool telemetry_pending = old_path != ctx->settings.end();
-    Property telemetry_path = telemetry_pending ? old_path->second : Property();
-    auto old_seed = ctx->settings.find(seed_key);
-    bool telemetry_seed_pending = telemetry_pending && old_seed != ctx->settings.end();
-    Property pending_seed = telemetry_seed_pending ? old_seed->second : Property();
     {
         auto f = open_ifstream_and_log_error(filename, "JSON file");
         if (!parse_json(f, filename, ctx))
             log_error("Loading design failed.\n");
-        ctx->settings.erase(path_key);
-        ctx->settings.erase(seed_key);
-        if (telemetry_pending) {
-            ctx->settings[path_key] = telemetry_path;
-            if (telemetry_seed_pending)
-                ctx->settings[seed_key] = pending_seed;
-        }
     }
+    restoreTelemetrySettings(ctx);
 }
 
 void CommandHandler::clear() { vm.clear(); }
