@@ -27,6 +27,10 @@ set(SOURCES
     local_remap_cut_policy.h
     capture_locality.cc
     capture_pipeline_locality.cc
+    critical_cohort.cc
+    critical_cohort.h
+    critical_cohort_model.cc
+    critical_cohort_model.h
     reduction_balance.cc
     placed_reduction.cc
     reduction_balance_plan.h
@@ -47,11 +51,14 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/analogue_budget.cc tests/bel_id.cc tests/completed_observations.cc tests/lab_pinmap.cc tests/lab_ff4.cc tests/fes_cram.cc tests/fes_boundary.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/io_delay.cc
+    TEST_SOURCES tests/critical_cohort.cc tests/analogue_budget.cc tests/bel_id.cc tests/completed_observations.cc tests/lab_pinmap.cc tests/lab_ff4.cc tests/fes_cram.cc tests/fes_boundary.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/io_delay.cc
     MAIN_SOURCE  main.cc
 )
 
 if (BUILD_TESTS)
+    add_test(NAME nextpnr-${family}-critical-cohort-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/critical_cohort_cli.py
+                $<TARGET_FILE:nextpnr-${family}> -v)
     foreach(LUT6_SELECT_FIXTURE asymmetric asymmetric-bottom)
         add_test(NAME nextpnr-${family}-lut6-select-${LUT6_SELECT_FIXTURE}
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut6-select/check.py

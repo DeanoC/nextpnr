@@ -845,26 +845,12 @@ void CommandHandler::load_json(Context *ctx, std::string filename)
 {
     setupContext(ctx);
     setupArchContext(ctx);
-    IdString path_key = ctx->id("gpurouter/telemetryPath");
-    IdString seed_key = ctx->id("gpurouter/telemetrySeed");
-    auto old_path = ctx->settings.find(path_key);
-    bool telemetry_pending = old_path != ctx->settings.end();
-    Property telemetry_path = telemetry_pending ? old_path->second : Property();
-    auto old_seed = ctx->settings.find(seed_key);
-    bool telemetry_seed_pending = telemetry_pending && old_seed != ctx->settings.end();
-    Property pending_seed = telemetry_seed_pending ? old_seed->second : Property();
     {
         auto f = open_ifstream_and_log_error(filename, "JSON file");
         if (!parse_json(f, filename, ctx))
             log_error("Loading design failed.\n");
-        ctx->settings.erase(path_key);
-        ctx->settings.erase(seed_key);
-        if (telemetry_pending) {
-            ctx->settings[path_key] = telemetry_path;
-            if (telemetry_seed_pending)
-                ctx->settings[seed_key] = pending_seed;
-        }
     }
+    restoreTelemetrySettings(ctx);
 }
 
 void CommandHandler::clear() { vm.clear(); }

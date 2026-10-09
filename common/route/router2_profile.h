@@ -34,6 +34,19 @@
 #include <thread>
 #include <vector>
 
+#if defined(_WIN32)
+#ifndef ROUTER2_PROFILE_WIN32_SHIM
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+#else
+#include <cerrno>
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 #include "json11.hpp"
 
 namespace router2_diagnostics {
@@ -127,12 +140,60 @@ class Profile
             {"calls_started", double(calls_started)}, {"calls_finished", double(calls_finished)},
             {"active_net_count", double(active_count)}, {"active", encode(active, true)},
             {"slowest", encode(slowest, false)}};
-        const auto temporary = path + ".tmp";
-        std::ofstream output(temporary, std::ios::trunc);
-        output << snapshot.dump() << '\n';
-        output.close();
-        if (!output || std::rename(temporary.c_str(), path.c_str()) != 0)
+        const auto payload = snapshot.dump() + '\n';
+        std::string temporary;
+        bool created = false;
+        for (unsigned n = 0; n < 10000 && !created; ++n) {
+#if defined(_WIN32)
+            temporary = path + ".tmp." + std::to_string(GetCurrentProcessId()) + "." + std::to_string(n);
+            HANDLE handle = CreateFileA(temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW,
+                                        FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (handle == INVALID_HANDLE_VALUE) {
+                DWORD error = GetLastError();
+                if (error == ERROR_ALREADY_EXISTS || error == ERROR_FILE_EXISTS)
+                    continue;
+                throw std::runtime_error("Cannot write router2 profile: " + path);
+            }
+            DWORD written = 0;
+            BOOL ok = WriteFile(handle, payload.data(), DWORD(payload.size()), &written, nullptr);
+            ok = ok && written == DWORD(payload.size()) && FlushFileBuffers(handle);
+            CloseHandle(handle);
+            if (!ok) {
+                DeleteFileA(temporary.c_str());
+                throw std::runtime_error("Cannot write router2 profile: " + path);
+            }
+#else
+            temporary = path + ".tmp." + std::to_string(getpid()) + "." + std::to_string(n);
+            int fd = ::open(temporary.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0644);
+            if (fd < 0) {
+                if (errno == EEXIST)
+                    continue;
+                throw std::runtime_error("Cannot write router2 profile: " + path);
+            }
+            ssize_t written = ::write(fd, payload.data(), payload.size());
+            bool ok = written == ssize_t(payload.size()) && ::fsync(fd) == 0;
+            if (::close(fd) != 0)
+                ok = false;
+            if (!ok) {
+                ::unlink(temporary.c_str());
+                throw std::runtime_error("Cannot write router2 profile: " + path);
+            }
+#endif
+            created = true;
+        }
+        if (!created)
             throw std::runtime_error("Cannot write router2 profile: " + path);
+#if defined(_WIN32)
+        if (!MoveFileExA(temporary.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+            DeleteFileA(temporary.c_str());
+            throw std::runtime_error("Cannot write router2 profile: " + path);
+        }
+#else
+        if (std::rename(temporary.c_str(), path.c_str()) != 0) {
+            ::unlink(temporary.c_str());
+            throw std::runtime_error("Cannot write router2 profile: " + path);
+        }
+#endif
     }
 
   public:
