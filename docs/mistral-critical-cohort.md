@@ -40,7 +40,8 @@ creating cells or nets. Frozen LABs keep their existing timing and pin maps.
 
 Every candidate must leave all participants placed, preserve relative constraints,
 and pass legality checks for every occupied BEL in affected LABs. Fresh STA
-must improve worst setup slack by at least 20 ps, preserve every clock's
+must improve worst setup slack by at least 20 ps or satisfy the focused endpoint
+rule below. Every trial must preserve every clock's
 constraint and achieved frequency, preserve available clocked endpoint timing
 rows, avoid new or worse related hold failures, and keep passing setup endpoints
 passing. Failing setup endpoints and untimed clock-pair path bounds cannot
@@ -81,9 +82,11 @@ values. This remains a prediction of changed geometry and congestion.
 Calibrated searches select current critical arcs after each accepted move. They
 also consider up to eight direct LUT/register packing candidates, alternate
 slots and singleton alternatives for unclustered critical registers. Other
-cohorts preserve their arrangement. A register candidate can improve its selected
-critical input by at least 20 ps while global worst setup stays nonregressing;
-all clock, endpoint, passing-setup and related-hold guards still apply. This
+cohorts preserve their arrangement. A calibrated candidate whose selected hop
+ends at a clocked input can improve that input by at least 20 ps while global
+worst setup stays nonregressing. This includes memory address and control inputs,
+moving either the driver or sink, and both singleton and neighborhood cohorts.
+All clock, endpoint, passing-setup and related-hold guards still apply. This
 allows tied failing inputs to improve individually. Ordinary uncalibrated
 searches retain the neighborhood candidates and original register slots.
 
@@ -200,7 +203,7 @@ failure prevents attributing it to the repair. The lease client recovered
 through its development reboot path after each Stop. Final target health was
 ready, runtime idle and lease free. Evidence is in the validation JSON and
 `/tmp/sg1000-cohort-171/hardware-seed3`. The checkpoint is available in
-[draft PR #181](https://github.com/DeanoC/nextpnr/pull/181).
+[merged PR #181](https://github.com/DeanoC/nextpnr/pull/181).
 
 Validation passed 39 cohort backend tests, 13 existing LAB/register/pin-map
 tests, eight CLI tests, and the placed-checkpoint and physical-LUT timing
@@ -247,6 +250,58 @@ both preserve the FF data connection when its paired LUT is reserved.
 Full commands and hashes are in `main_sync_validation` in the validation JSON;
 logs and routed artifacts are under `/tmp/sg1000-cohort-171/main-sync-*`.
 
+## Memory-input focus follow-up, 2026-10-09
+
+After PR #181 merged, calibrated cohort proposals now focus on the selected
+clocked sink input when moving either end of a hop. Previously only singleton
+FF sink proposals used this rule. A driver cohort can now improve one of two
+tied memory inputs without requiring the clock's worst setup margin to improve.
+The native regression exercises two tied M10K address inputs with a fixed
+memory and launch register, through model export/import and the production
+repair loop. All 41 `CriticalCohort.*` tests pass. No timing guard, search limit
+or default changes.
+
+The original st569 synthesis JSON is no longer available. An older retained
+netlist fails current-main packing because its ROM has an asynchronous M10K
+read. Instead, unmodified committed FES source `cbb54b99` was synthesized once
+with Yosys `5391eeb1e` and a zero BUILD_ID, preserving the registered ROM's
+latency. The fixed JSON hash is
+`17a82eb53e43d8975d5231e367802f9198598735cb6499b4f863406db6f630b8`.
+The QSF/SDC match the original hashes, but this is a **new diagnostic netlist**,
+not the original st569 input or a sealed package.
+
+Fifteen sequential full GPU routes compare merged main `84404572` with repair
+disabled, its calibrated repair at budget 64, and the focus candidate at budget
+64. Each seed exports a fresh disabled-repair model shared by both enabled
+runs. All rows use final analogue timing, HeAP weight 2000, exponent 5 and
+the unchanged JSON/QSF/SDC.
+
+| Seed | Disabled MHz | Main repair MHz | Focus repair MHz | Focus setup / hold WNS (ns) | Focus all timing passes |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 51.2558 | 50.9295 | 50.9295 | -0.487 / +0.785 | No |
+| 2 | 44.7527 | 49.2441 | 49.2441 | -1.159 / +0.773 | No |
+| 3 | 46.8450 | 47.4676 | 48.4426 | -1.495 / +0.769 | No |
+| 4 | 52.3999 | 52.3999 | 52.3999 | +0.064 / +0.770 | Yes |
+| 5 | 51.8914 | 52.4962 | 52.4962 | +0.099 / +0.775 | Yes |
+
+Seed 3 gains **0.9750 MHz** over main repair, accepting ten cohorts rather
+than seven. Its original worst endpoint is VRAM `A1ADDR[9]`, with a 4.198 ns
+wire from LAB (13,28) to memory (5,54). Pixel drops from 99.1277 to 97.1157 MHz
+but still passes; audio and every hold margin pass. Seeds 1, 2, 4 and 5 have
+byte-identical timing reports and RBFs between main and focus repair. Seed 4
+remains entirely unmoved, preserving its passing baseline. Seed 1's regression
+against disabled repair belongs to both enabled modes and demonstrates the
+remaining prediction risk. Its node budget ends the search after 21 timing
+trials; budget 64 is an upper bound.
+
+Retain the focus change as a disabled-by-default experiment. It adds safe
+predicted progress for tied clocked inputs and improves one complete route,
+but seeds 1, 2 and 3 still miss the 52.224773 MHz system constraint. **#171
+remains open.** These artifacts have no hardware acceptance claim. Commands,
+compiler/source/input hashes, calibration hashes, every final clock margin,
+RBF hashes and the runner snapshot are in
+[`validation/mistral-critical-cohort-memory-input-171.json`](validation/mistral-critical-cohort-memory-input-171.json).
+
 ## Reproduction
 
 Use one unchanged synthesis JSON for both budgets; do not rebuild RTL between
@@ -262,7 +317,7 @@ python3 mistral/tests/critical_cohort_qor.py \
 
 Add `--guided` to use each seed's fresh baseline route as guidance for its enabled
 run, or `--calibrated` to export and import its complete measured wire model.
-The passing seed-3 result uses `--calibrated`. Omit `--route` for placement-only
+The historical passing seed-3 result uses `--calibrated`. Omit `--route` for placement-only
 comparisons. The harness runs sequentially,
 records commands, input hashes, process status, timing status and final reports,
 requires every final clock's setup and hold margins as well as Fmax to pass,

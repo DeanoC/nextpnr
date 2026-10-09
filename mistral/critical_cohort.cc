@@ -878,8 +878,14 @@ void repair_critical_cohorts(Context *ctx, int timing_budget)
                         if (destinations.size() > kMaxDestinations)
                             destinations.resize(kMaxDestinations);
                         std::vector<CellPortKey> focus;
-                        if (model->active() && sink_end && seed.size() == 1 && cell->type == id_MISTRAL_FF)
-                            focus.emplace_back(cell->name, hops[i].port);
+                        int clock_info_count = 0;
+                        if (model->active() &&
+                            ctx->getPortTimingClass(hops[i].sink, hops[i].port, clock_info_count) == TMG_REGISTER_INPUT)
+                            // Tied clocked endpoints need individual progress:
+                            // shortening one memory address wire can leave the
+                            // clock's worst margin unchanged. All endpoint and
+                            // clock guards still apply to either moved end.
+                            focus.emplace_back(hops[i].sink->name, hops[i].port);
                         proposals.push_back({std::move(seed), home, std::move(destinations), std::move(focus)});
                     }
                 }

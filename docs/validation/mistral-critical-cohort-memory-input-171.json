@@ -1,0 +1,1658 @@
+{
+  "base_head": "84404572d607f8acc1beb07ab2e928466346fb80",
+  "benchmark": "FES cbb54b99 registered-memory SG1000, zero BUILD_ID, Yosys 5391eeb1e; fresh fixed diagnostic input",
+  "inputs": {
+    "synth.json": {
+      "path": "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+      "sha256": "17a82eb53e43d8975d5231e367802f9198598735cb6499b4f863406db6f630b8"
+    },
+    "constraints-oss.qsf": {
+      "path": "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+      "sha256": "f3c6a4ca98d73ebca6787e0115f155d0bfcdbc2d7528d16efc995285e9484190"
+    },
+    "clocks-oss.sdc": {
+      "path": "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+      "sha256": "cbb3bf26a8553741d93a4d37eccc43e5de056f63606a50a1e264fcb33c664fe2"
+    }
+  },
+  "runs": [
+    {
+      "seed": 2,
+      "variant": "baseline",
+      "budget": 0,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/main",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "2",
+        "--critical-cohort-budget",
+        "0",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s2-baseline.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s2-baseline.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s2-baseline-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-model-out",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s2-model.json"
+      ],
+      "binary_sha256": "71c13286e8796853c8d28a91e79d4d3a7297a9182405fcc7ab529239f5fc3a92",
+      "timing_pass": false,
+      "exit_code": 0,
+      "wall_seconds": 122.16101144487038,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 101.68802642822266,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 44.752742767333984,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 190.8032684326172,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.1169999837875366,
+            "setup_wns_ns": 3.634000062942505
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.777999997138977,
+            "setup_wns_ns": -3.197000026702881
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 0.8519999980926514,
+            "setup_wns_ns": 76.13899993896484
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "edc4b6d93c471147a0372063c87c020499c58f6854cb466916706f82640fb5cc",
+      "rbf_sha256": "b519af7ea5bff7e7995ed954ca2104bc1f02968914f98d725069126a1915ec71",
+      "model_sha256": "005f1bb200bed232c6e9cae8bcb39356db20dbad391d4c923bd4942189f2cb27",
+      "log_sha256": "8dc215705ec476740678f0ee3b5dcf3c7fe89889a4b4dcb08f37e31f1b1b169c",
+      "calibration_sha256": "005f1bb200bed232c6e9cae8bcb39356db20dbad391d4c923bd4942189f2cb27",
+      "worst_system_endpoint": {
+        "cell": "machine.vdp.vram_sprite_block.ram.0.2",
+        "loc": [
+          26,
+          35
+        ],
+        "port": "A1WE"
+      }
+    },
+    {
+      "seed": 2,
+      "variant": "control",
+      "budget": 64,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/main",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "2",
+        "--critical-cohort-budget",
+        "64",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s2-control.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s2-control.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s2-control-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s2-model.json"
+      ],
+      "binary_sha256": "71c13286e8796853c8d28a91e79d4d3a7297a9182405fcc7ab529239f5fc3a92",
+      "timing_pass": false,
+      "exit_code": 0,
+      "wall_seconds": 115.53906876780093,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 99.75062561035156,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 49.24410629272461,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 190.8032684326172,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.1230000257492065,
+            "setup_wns_ns": 3.443000078201294
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7730000019073486,
+            "setup_wns_ns": -1.159000039100647
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 0.8519999980926514,
+            "setup_wns_ns": 76.13899993896484
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "eec63559ba0ee963fafab8cc206ee7284f2ce703e8464588c3f0daa9680b7a1a",
+      "rbf_sha256": "2ddcc1c941460bb937a14fc3f6a115dac6255b80e1e5c5eafb86f845503b13eb",
+      "repair": {
+        "attempted": 67,
+        "attempt_limit": 128,
+        "nodes": 31200,
+        "node_limit": 100000,
+        "timed": 64,
+        "timing_limit": 64,
+        "kept": 4
+      },
+      "log_sha256": "6a6e96f8bdcb90ba69594a4b004420befff07398c258e61c859bd5a76004cce1",
+      "calibration_sha256": "005f1bb200bed232c6e9cae8bcb39356db20dbad391d4c923bd4942189f2cb27",
+      "worst_system_endpoint": {
+        "cell": "machine.cpu.cpu.state_MISTRAL_FF_Q_29",
+        "loc": [
+          11,
+          52
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "seed": 2,
+      "variant": "focus",
+      "budget": 64,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/focus",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "2",
+        "--critical-cohort-budget",
+        "64",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s2-focus.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s2-focus.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s2-focus-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s2-model.json"
+      ],
+      "binary_sha256": "5adf61715d831be651176e8e4b077a29debbe6a0430b2b1cd30887774cfd1d5f",
+      "timing_pass": false,
+      "exit_code": 0,
+      "wall_seconds": 119.28713423991576,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 99.75062561035156,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 49.24410629272461,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 190.8032684326172,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.1230000257492065,
+            "setup_wns_ns": 3.443000078201294
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7730000019073486,
+            "setup_wns_ns": -1.159000039100647
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 0.8519999980926514,
+            "setup_wns_ns": 76.13899993896484
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "eec63559ba0ee963fafab8cc206ee7284f2ce703e8464588c3f0daa9680b7a1a",
+      "rbf_sha256": "2ddcc1c941460bb937a14fc3f6a115dac6255b80e1e5c5eafb86f845503b13eb",
+      "repair": {
+        "attempted": 67,
+        "attempt_limit": 128,
+        "nodes": 31200,
+        "node_limit": 100000,
+        "timed": 64,
+        "timing_limit": 64,
+        "kept": 4
+      },
+      "log_sha256": "ae4eeec1bccd799a8a69be3b3f68fa80af8f240147a9c0a0e45692d1188e8910",
+      "calibration_sha256": "005f1bb200bed232c6e9cae8bcb39356db20dbad391d4c923bd4942189f2cb27",
+      "worst_system_endpoint": {
+        "cell": "machine.cpu.cpu.state_MISTRAL_FF_Q_29",
+        "loc": [
+          11,
+          52
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "seed": 3,
+      "variant": "baseline",
+      "budget": 0,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/main",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "3",
+        "--critical-cohort-budget",
+        "0",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s3-baseline.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s3-baseline.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s3-baseline-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-model-out",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s3-model.json"
+      ],
+      "binary_sha256": "71c13286e8796853c8d28a91e79d4d3a7297a9182405fcc7ab529239f5fc3a92",
+      "timing_pass": false,
+      "exit_code": 0,
+      "wall_seconds": 174.8161955489777,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 99.41345977783203,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 46.84498977661133,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 219.20211791992188,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.3830000162124634,
+            "setup_wns_ns": 3.4089999198913574
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7689999938011169,
+            "setup_wns_ns": -2.1989998817443848
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 1.1239999532699585,
+            "setup_wns_ns": 76.81800079345703
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "c4f577b7d235c1629742c7767aa42d2ecc5ffd296388c8b97ba5adbf161e26af",
+      "rbf_sha256": "5fc32c4e31f81f5ceb7e7f2e6cb70409fdf9d8ef5546d6f88b89c7e7819eb43f",
+      "model_sha256": "14e914e8fe5e03a0e8ac3c0ec307960f971ff1de1525fd0a4814cdbf47f6ee50",
+      "log_sha256": "db6675c5eb2846cca2bd71afb6109189720760b799435c0430661d0dc28f1cac",
+      "calibration_sha256": "14e914e8fe5e03a0e8ac3c0ec307960f971ff1de1525fd0a4814cdbf47f6ee50",
+      "worst_system_endpoint": {
+        "cell": "machine.vdp.vram_name_block.ram.0.12",
+        "loc": [
+          5,
+          54
+        ],
+        "port": "A1ADDR[9]"
+      }
+    },
+    {
+      "seed": 3,
+      "variant": "control",
+      "budget": 64,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/main",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "3",
+        "--critical-cohort-budget",
+        "64",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s3-control.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s3-control.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s3-control-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s3-model.json"
+      ],
+      "binary_sha256": "71c13286e8796853c8d28a91e79d4d3a7297a9182405fcc7ab529239f5fc3a92",
+      "timing_pass": false,
+      "exit_code": 0,
+      "wall_seconds": 176.1971789500676,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 99.12767028808594,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 47.46760559082031,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 219.20211791992188,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.36899995803833,
+            "setup_wns_ns": 3.380000114440918
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7689999938011169,
+            "setup_wns_ns": -1.9190000295639038
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 1.1239999532699585,
+            "setup_wns_ns": 76.81800079345703
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "fb6a90accc16bff862a66880163e50a09881b3e79acf92fbeedd3fdfe95066a4",
+      "rbf_sha256": "e4e55ab15169fe42b23767f24a7c2777302097c04a1e9f6a8456ef471248ef58",
+      "repair": {
+        "attempted": 80,
+        "attempt_limit": 128,
+        "nodes": 68009,
+        "node_limit": 100000,
+        "timed": 64,
+        "timing_limit": 64,
+        "kept": 7
+      },
+      "log_sha256": "90705deb5308c6052288e40d0d5575a03cef3939abc6a0a874edbbcc1ed2cb34",
+      "calibration_sha256": "14e914e8fe5e03a0e8ac3c0ec307960f971ff1de1525fd0a4814cdbf47f6ee50",
+      "worst_system_endpoint": {
+        "cell": "machine.cpu.cpu.jump_target_MISTRAL_FF_Q_12",
+        "loc": [
+          15,
+          35
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "seed": 3,
+      "variant": "focus",
+      "budget": 64,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/focus",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "3",
+        "--critical-cohort-budget",
+        "64",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s3-focus.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s3-focus.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s3-focus-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s3-model.json"
+      ],
+      "binary_sha256": "5adf61715d831be651176e8e4b077a29debbe6a0430b2b1cd30887774cfd1d5f",
+      "timing_pass": false,
+      "exit_code": 0,
+      "wall_seconds": 153.2783255581744,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 97.11566162109375,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 48.44257354736328,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 219.20211791992188,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.36899995803833,
+            "setup_wns_ns": 3.1710000038146973
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7689999938011169,
+            "setup_wns_ns": -1.4950000047683716
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 1.1239999532699585,
+            "setup_wns_ns": 76.81800079345703
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "28e4a2e5f95a6a13364aac1ee4313431e84708934c914b34b353b011f503a765",
+      "rbf_sha256": "d4a4c12ad76a96d76c34a598bd2388edfc2bf234daccbbe453e546efc3c772a0",
+      "repair": {
+        "attempted": 83,
+        "attempt_limit": 128,
+        "nodes": 89904,
+        "node_limit": 100000,
+        "timed": 64,
+        "timing_limit": 64,
+        "kept": 10
+      },
+      "log_sha256": "ab587d243b940329bb3e4dacc0616f5e249046992061101e805b21c89809dc9f",
+      "calibration_sha256": "14e914e8fe5e03a0e8ac3c0ec307960f971ff1de1525fd0a4814cdbf47f6ee50",
+      "worst_system_endpoint": {
+        "cell": "machine.vdp.vram_color_block.ram.0.3",
+        "loc": [
+          5,
+          6
+        ],
+        "port": "A1WE"
+      }
+    },
+    {
+      "seed": 1,
+      "variant": "baseline",
+      "budget": 0,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/main",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "1",
+        "--critical-cohort-budget",
+        "0",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s1-baseline.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s1-baseline.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s1-baseline-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-model-out",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s1-model.json"
+      ],
+      "binary_sha256": "71c13286e8796853c8d28a91e79d4d3a7297a9182405fcc7ab529239f5fc3a92",
+      "timing_pass": false,
+      "exit_code": 0,
+      "wall_seconds": 114.92101570777595,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 105.85371398925781,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 51.25576400756836,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 223.06492614746094,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.0670000314712524,
+            "setup_wns_ns": 4.020999908447266
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7850000262260437,
+            "setup_wns_ns": -0.3619999885559082
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 1.0800000429153442,
+            "setup_wns_ns": 76.89700317382812
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "8fb001b8eedc9f4f2ab94654c7d2315ae8eea1e9c4339061da93b9b62beecc39",
+      "rbf_sha256": "e109148d1d28bbaab75fe7c2d34e04bb2103cf4c8e0e9901f6ff33ce875ac87b",
+      "model_sha256": "ca5994a2654dffcb8eca66886044e27a817db220da6f80a97f4dd465a620ae42",
+      "log_sha256": "0e700bd2d43e33784976b245cd2517b9008a35cc3e67258995289ae8346d3cf6",
+      "calibration_sha256": "ca5994a2654dffcb8eca66886044e27a817db220da6f80a97f4dd465a620ae42",
+      "worst_system_endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_9",
+        "loc": [
+          23,
+          18
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "seed": 1,
+      "variant": "control",
+      "budget": 64,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/main",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "1",
+        "--critical-cohort-budget",
+        "64",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s1-control.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s1-control.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s1-control-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s1-model.json"
+      ],
+      "binary_sha256": "71c13286e8796853c8d28a91e79d4d3a7297a9182405fcc7ab529239f5fc3a92",
+      "timing_pass": false,
+      "exit_code": 0,
+      "wall_seconds": 100.99437730014324,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 101.53314971923828,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 50.92946243286133,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 223.06492614746094,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.0670000314712524,
+            "setup_wns_ns": 3.61899995803833
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7850000262260437,
+            "setup_wns_ns": -0.4869999885559082
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 1.0800000429153442,
+            "setup_wns_ns": 76.89700317382812
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "f139cc87d32c2dd2f08721461bf297b84f1b6c17cde7adf4161462fad8f7c0ed",
+      "rbf_sha256": "81b6677a60a12f038ecd083ecba371b57a0ffabf4daca9b36d7c78e246142fe0",
+      "repair": {
+        "attempted": 34,
+        "attempt_limit": 128,
+        "nodes": 100000,
+        "node_limit": 100000,
+        "timed": 21,
+        "timing_limit": 64,
+        "kept": 4
+      },
+      "log_sha256": "7bb578134af5fe9d02681608160cac4d1b8315986375b6c11fad0d493e84d9b9",
+      "calibration_sha256": "ca5994a2654dffcb8eca66886044e27a817db220da6f80a97f4dd465a620ae42",
+      "worst_system_endpoint": {
+        "cell": "machine.cpu.cpu.index_sel_MISTRAL_FF_Q_1",
+        "loc": [
+          16,
+          14
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "seed": 1,
+      "variant": "focus",
+      "budget": 64,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/focus",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "1",
+        "--critical-cohort-budget",
+        "64",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s1-focus.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s1-focus.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s1-focus-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s1-model.json"
+      ],
+      "binary_sha256": "5adf61715d831be651176e8e4b077a29debbe6a0430b2b1cd30887774cfd1d5f",
+      "timing_pass": false,
+      "exit_code": 0,
+      "wall_seconds": 106.78553983662277,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 101.53314971923828,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 50.92946243286133,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 223.06492614746094,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.0670000314712524,
+            "setup_wns_ns": 3.61899995803833
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7850000262260437,
+            "setup_wns_ns": -0.4869999885559082
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 1.0800000429153442,
+            "setup_wns_ns": 76.89700317382812
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "f139cc87d32c2dd2f08721461bf297b84f1b6c17cde7adf4161462fad8f7c0ed",
+      "rbf_sha256": "81b6677a60a12f038ecd083ecba371b57a0ffabf4daca9b36d7c78e246142fe0",
+      "repair": {
+        "attempted": 34,
+        "attempt_limit": 128,
+        "nodes": 100000,
+        "node_limit": 100000,
+        "timed": 21,
+        "timing_limit": 64,
+        "kept": 4
+      },
+      "log_sha256": "5c53fe447a35c2da53ff00bd70a2b182d2d2bd3854d29a7f0abd66135b147027",
+      "calibration_sha256": "ca5994a2654dffcb8eca66886044e27a817db220da6f80a97f4dd465a620ae42",
+      "worst_system_endpoint": {
+        "cell": "machine.cpu.cpu.index_sel_MISTRAL_FF_Q_1",
+        "loc": [
+          16,
+          14
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "seed": 4,
+      "variant": "baseline",
+      "budget": 0,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/main",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "4",
+        "--critical-cohort-budget",
+        "0",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s4-baseline.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s4-baseline.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s4-baseline-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-model-out",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s4-model.json"
+      ],
+      "binary_sha256": "71c13286e8796853c8d28a91e79d4d3a7297a9182405fcc7ab529239f5fc3a92",
+      "timing_pass": true,
+      "exit_code": 0,
+      "wall_seconds": 81.55661318497732,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 96.1353530883789,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 52.39991760253906,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 211.72982788085938,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.2280000448226929,
+            "setup_wns_ns": 3.065999984741211
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7699999809265137,
+            "setup_wns_ns": 0.06400000303983688
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 1.1139999628067017,
+            "setup_wns_ns": 76.65699768066406
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "1573e928efd0c7ef4b74e106915124394d8026a36d919cbcc2763f54929747a5",
+      "rbf_sha256": "94f138b70b846849d8e7b6a1aa2e5304e3935f93ad882d0456954ce7f3e96310",
+      "model_sha256": "89a10915c4553440d54c698f9650e94134cb85af200a102344044d967b1fe9d8",
+      "log_sha256": "53434c5d8413291f6801912d197ca8029e991e014ea5d78c5cfe1112cc79ba24",
+      "calibration_sha256": "89a10915c4553440d54c698f9650e94134cb85af200a102344044d967b1fe9d8",
+      "worst_system_endpoint": {
+        "cell": "machine.cpu.cpu.de_MISTRAL_FF_Q_3",
+        "loc": [
+          11,
+          17
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "seed": 4,
+      "variant": "control",
+      "budget": 64,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/main",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "4",
+        "--critical-cohort-budget",
+        "64",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s4-control.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s4-control.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s4-control-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s4-model.json"
+      ],
+      "binary_sha256": "71c13286e8796853c8d28a91e79d4d3a7297a9182405fcc7ab529239f5fc3a92",
+      "timing_pass": true,
+      "exit_code": 0,
+      "wall_seconds": 64.98818687908351,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 96.1353530883789,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 52.39991760253906,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 211.72982788085938,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.2280000448226929,
+            "setup_wns_ns": 3.065999984741211
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7699999809265137,
+            "setup_wns_ns": 0.06400000303983688
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 1.1139999628067017,
+            "setup_wns_ns": 76.65699768066406
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "1573e928efd0c7ef4b74e106915124394d8026a36d919cbcc2763f54929747a5",
+      "rbf_sha256": "94f138b70b846849d8e7b6a1aa2e5304e3935f93ad882d0456954ce7f3e96310",
+      "repair": {
+        "attempted": 0,
+        "attempt_limit": 128,
+        "nodes": 0,
+        "node_limit": 100000,
+        "timed": 0,
+        "timing_limit": 64,
+        "kept": 0
+      },
+      "log_sha256": "1cdcce19b59309c9d7fe87944db57110a4afd3334cb730fc08a2c374fdc8d954",
+      "calibration_sha256": "89a10915c4553440d54c698f9650e94134cb85af200a102344044d967b1fe9d8",
+      "worst_system_endpoint": {
+        "cell": "machine.cpu.cpu.de_MISTRAL_FF_Q_3",
+        "loc": [
+          11,
+          17
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "seed": 4,
+      "variant": "focus",
+      "budget": 64,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/focus",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "4",
+        "--critical-cohort-budget",
+        "64",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s4-focus.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s4-focus.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s4-focus-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s4-model.json"
+      ],
+      "binary_sha256": "5adf61715d831be651176e8e4b077a29debbe6a0430b2b1cd30887774cfd1d5f",
+      "timing_pass": true,
+      "exit_code": 0,
+      "wall_seconds": 67.23784598708153,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 96.1353530883789,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 52.39991760253906,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 211.72982788085938,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.2280000448226929,
+            "setup_wns_ns": 3.065999984741211
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7699999809265137,
+            "setup_wns_ns": 0.06400000303983688
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 1.1139999628067017,
+            "setup_wns_ns": 76.65699768066406
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "1573e928efd0c7ef4b74e106915124394d8026a36d919cbcc2763f54929747a5",
+      "rbf_sha256": "94f138b70b846849d8e7b6a1aa2e5304e3935f93ad882d0456954ce7f3e96310",
+      "repair": {
+        "attempted": 0,
+        "attempt_limit": 128,
+        "nodes": 0,
+        "node_limit": 100000,
+        "timed": 0,
+        "timing_limit": 64,
+        "kept": 0
+      },
+      "log_sha256": "0662e8d37ff29e0f1be9d8cd14f4d9d4bebb383d7b6476dcd98b313ecdf61b15",
+      "calibration_sha256": "89a10915c4553440d54c698f9650e94134cb85af200a102344044d967b1fe9d8",
+      "worst_system_endpoint": {
+        "cell": "machine.cpu.cpu.de_MISTRAL_FF_Q_3",
+        "loc": [
+          11,
+          17
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "seed": 5,
+      "variant": "baseline",
+      "budget": 0,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/main",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "5",
+        "--critical-cohort-budget",
+        "0",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s5-baseline.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s5-baseline.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s5-baseline-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-model-out",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s5-model.json"
+      ],
+      "binary_sha256": "71c13286e8796853c8d28a91e79d4d3a7297a9182405fcc7ab529239f5fc3a92",
+      "timing_pass": false,
+      "exit_code": 0,
+      "wall_seconds": 71.25242308201268,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 100.29084777832031,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 51.89144515991211,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 233.2633514404297,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.1610000133514404,
+            "setup_wns_ns": 3.496999979019165
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7749999761581421,
+            "setup_wns_ns": -0.12300000339746475
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 1.1649999618530273,
+            "setup_wns_ns": 77.09300231933594
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "4a700ebe27cc0a0e4c71f56f4f927650c871e8061bef0a6633f5f4d44aa69948",
+      "rbf_sha256": "7a9453666f9d35af5572d97d3fd9a8ddb2e0cd1e196f78b1bc0c47740bf6044c",
+      "model_sha256": "cd1fcdb6607bcceffae60e7b032d78df1eeed0d17f46a09857ea42bff2a6c5ef",
+      "log_sha256": "221929930b8ec7a17cd639831ab92aca68bb3891216479153c17f6eccadefef9",
+      "calibration_sha256": "cd1fcdb6607bcceffae60e7b032d78df1eeed0d17f46a09857ea42bff2a6c5ef",
+      "worst_system_endpoint": {
+        "cell": "machine.cpu.cpu.debug_hl_MISTRAL_FF_Q_11",
+        "loc": [
+          8,
+          45
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "seed": 5,
+      "variant": "control",
+      "budget": 64,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/main",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "5",
+        "--critical-cohort-budget",
+        "64",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s5-control.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s5-control.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s5-control-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s5-model.json"
+      ],
+      "binary_sha256": "71c13286e8796853c8d28a91e79d4d3a7297a9182405fcc7ab529239f5fc3a92",
+      "timing_pass": true,
+      "exit_code": 0,
+      "wall_seconds": 42.273666355293244,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 100.22048950195312,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 52.496192932128906,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 233.2633514404297,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.1729999780654907,
+            "setup_wns_ns": 3.490000009536743
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7749999761581421,
+            "setup_wns_ns": 0.0989999994635582
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 1.1649999618530273,
+            "setup_wns_ns": 77.09300231933594
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "fdb6d30e2575f69c4f4d03aa0a5cca0b2a27386041d709640697bdbcab348222",
+      "rbf_sha256": "8d7ec385466e9f1d28c7ba8b22eafa995bd8e6bb563c10fcd93a808c40883878",
+      "repair": {
+        "attempted": 9,
+        "attempt_limit": 128,
+        "nodes": 1284,
+        "node_limit": 100000,
+        "timed": 7,
+        "timing_limit": 64,
+        "kept": 3
+      },
+      "log_sha256": "a556534936b6709a36158245785ccbc0c35b8b7a9a0f531b4fab7c0a155dbcfe",
+      "calibration_sha256": "cd1fcdb6607bcceffae60e7b032d78df1eeed0d17f46a09857ea42bff2a6c5ef",
+      "worst_system_endpoint": {
+        "cell": "machine.cpu.cpu.a_reg_MISTRAL_FF_Q_7",
+        "loc": [
+          9,
+          47
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "seed": 5,
+      "variant": "focus",
+      "budget": 64,
+      "command": [
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/binaries/focus",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/synth.json",
+        "--qsf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/constraints-oss.qsf",
+        "--sdc",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/inputs/clocks-oss.sdc",
+        "--freq",
+        "74.25",
+        "--placer",
+        "heap",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--timing-allow-fail",
+        "--seed",
+        "5",
+        "--critical-cohort-budget",
+        "64",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--rbf",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s5-focus.rbf",
+        "--write",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s5-focus.json",
+        "--report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s5-focus-timing.json",
+        "--timing-report-paths",
+        "16",
+        "--critical-cohort-report",
+        "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/routes/s5-model.json"
+      ],
+      "binary_sha256": "5adf61715d831be651176e8e4b077a29debbe6a0430b2b1cd30887774cfd1d5f",
+      "timing_pass": true,
+      "exit_code": 0,
+      "wall_seconds": 42.61777765117586,
+      "fmax": {
+        "pixel_clk": {
+          "achieved": 100.22048950195312,
+          "constraint": 74.25006866455078
+        },
+        "system_clock.clocks[0]": {
+          "achieved": 52.496192932128906,
+          "constraint": 52.22477340698242
+        },
+        "system_clock.clocks[1]": {
+          "achieved": 233.2633514404297,
+          "constraint": 12.288031578063965
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "pixel_clk": {
+            "hold_wns_ns": 1.1729999780654907,
+            "setup_wns_ns": 3.490000009536743
+          },
+          "system_clock.clocks[0]": {
+            "hold_wns_ns": 0.7749999761581421,
+            "setup_wns_ns": 0.0989999994635582
+          },
+          "system_clock.clocks[1]": {
+            "hold_wns_ns": 1.1649999618530273,
+            "setup_wns_ns": 77.09300231933594
+          }
+        },
+        "final_analogue_model": true
+      },
+      "report_sha256": "fdb6d30e2575f69c4f4d03aa0a5cca0b2a27386041d709640697bdbcab348222",
+      "rbf_sha256": "8d7ec385466e9f1d28c7ba8b22eafa995bd8e6bb563c10fcd93a808c40883878",
+      "repair": {
+        "attempted": 9,
+        "attempt_limit": 128,
+        "nodes": 1284,
+        "node_limit": 100000,
+        "timed": 7,
+        "timing_limit": 64,
+        "kept": 3
+      },
+      "log_sha256": "1c510ff088bd1a65b2ebfb75256f46764cbf0b85d0250d855d34e7701313e1f8",
+      "calibration_sha256": "cd1fcdb6607bcceffae60e7b032d78df1eeed0d17f46a09857ea42bff2a6c5ef",
+      "worst_system_endpoint": {
+        "cell": "machine.cpu.cpu.a_reg_MISTRAL_FF_Q_7",
+        "loc": [
+          9,
+          47
+        ],
+        "port": "DATAIN"
+      }
+    }
+  ],
+  "issue": "https://github.com/DeanoC/nextpnr/issues/171",
+  "date": "2026-10-09",
+  "candidate": {
+    "base_head": "84404572d607f8acc1beb07ab2e928466346fb80",
+    "patch_sha256": "58d037f5b2e8eeb9cdb415a71fedded53173d3b40c6305b676a59c7fe4760b32",
+    "source_sha256": {
+      "mistral/critical_cohort.cc": "35eb073f7e0d5e70a4802473bcd310261ab1db16f4a8d54996eaed9c996e7319",
+      "mistral/tests/critical_cohort.cc": "81df9c22be55068ebd4e047c617da5b6d939ded8c65290d773b5a1c1d152f9d4"
+    },
+    "binary_sha256": {
+      "main": "71c13286e8796853c8d28a91e79d4d3a7297a9182405fcc7ab529239f5fc3a92",
+      "focus": "5adf61715d831be651176e8e4b077a29debbe6a0430b2b1cd30887774cfd1d5f"
+    },
+    "tests": {
+      "filter": "CriticalCohort.*",
+      "passed": 41,
+      "log_sha256": "0f92e6b64cd521ff255f76ca997a8ace61167e04d7c05c57ca524e98a8bc9dc4"
+    },
+    "mistral_dependency": "8fcc4cb41c51f8918f1d3ad70def2febcbf20d8f",
+    "build_configuration": {
+      "architecture": "mistral",
+      "type": "Release",
+      "gpu_router": "HIP",
+      "gpu_architectures": "gfx1100",
+      "ipo": false,
+      "gui": false,
+      "python": false,
+      "tests": true
+    }
+  },
+  "synthesis": {
+    "source_revision": "cbb54b993525fde52acc5f8aeaf27bd7b69bd334",
+    "build_id": "00000000000000000000000000000000",
+    "sealed": false,
+    "purpose": "Fixed diagnostic SG1000 registered-memory benchmark; fresh input, not original st569 netlist",
+    "yosys_version": "Yosys 0.69+ (git sha1 5391eeb1e, Release, GNU /usr/bin/c++ 14.2.0) [github.com/DeanoC/yosys at HEAD]",
+    "yosys_sha256": "c811af4c0d3c30a870da8fb773915a5536d92dc84a95b8494273c3778b0419b9",
+    "command": [
+      "/tmp/alphamister-router2-toolchains/slots/ef8ee0983d36d1c1a957442c505b75251d3e3415e0e16696ad238051592aef6f/install/bin/yosys",
+      "-p",
+      "read_verilog -sv -DFES_SG1000_OSS=1 -DFES_SG1000_ROM_LINK=1 -DFES_COLECO_OSS=1 -I cores/fes-sg1000/generated cores/fes-common/rtl/fes_z80_ce.sv cores/fes-coleco/rtl/coleco_system_pll.v cores/fes-common/rtl/pixel_pll.v cores/fes-common/rtl/fes_audio_i2s.v cores/fes-common/rtl/fes_audio_output.v cores/fes-common/rtl/fes_sn76489.sv cores/fes-common/rtl/fes_computer_gp.v cores/fes-common/rtl/coleco_dpram.v cores/fes-common/rtl/coleco_video_dpram.v cores/fes-common/rtl/coleco_vdp.sv cores/fes-common/rtl/coleco_video_720p.v cores/fes-sg1000/rtl/sg1000_machine.sv cores/fes-sg1000/rtl/sg1000_rom_link.v cores/fes-common/rtl/z80/fes_z80_alu.sv cores/fes-common/rtl/z80/fes_z80_engine.sv cores/fes-common/rtl/z80/fes_z80_bus.sv cores/fes-common/rtl/z80/fes_z80_nmos.sv cores/fes-sg1000/rtl/top.v; chparam -set BUILD_ID 128'h00000000000000000000000000000000 top; synth_intel_alm -nolutram -nodsp -top top; stat; write_json build/fes-sg1000-oss/synth.json"
+    ],
+    "cwd": "/home/deano/kepler/tasks/1509b7e6-c800-4267-ac0f-41b75a314973/attachments/memory-input/registered/source/sources/misteross",
+    "inputs": {
+      "scripts/build_fes_sg1000_oss.py": "2472eb35384dace7eeb1e9c0204afcfff3cd556965bab41f4f14c33e10f29496",
+      "scripts/compiler_read_audit.py": "ecece0f4037da5a3592be569bae9328af155abd156d59d2c88f5763f95894e7a",
+      "scripts/source_repository.py": "29ab5ad573767ebe32c171a391e675852b968a4c570365ad3a2ec9637c0ca003",
+      "scripts/fes_build_common.py": "f430ce25e17e8481faa932a9422c723e9fe37eead2eb10607526ae4d8678ce00",
+      "scripts/rom_map.py": "96d0f0001660b82773704eb44ccf1808354728b8395f0d6b05574047bdcf8853",
+      "scripts/cyclonev_rbf.py": "613bacbeedd4f51842dacd92b60c169e9fd7708bb3323b92eceedb4a64be63a3",
+      "scripts/search_placer_qor.py": "63d2112db9082b64b8a45c36f858d4f521caf9b61acea8c60f923e8c3c749fde",
+      "cores/fes-sg1000/generated/fes_simple_computer.vh": "e6828a75c8edcfa947ee55e33e0223a629b0ad9b0463b2f584f20d8224c77ab2",
+      "toolchains/registered-memory.lock": "d27eb7661a891cc0f4fef02ea236bd1b0de4481d3c4d40fa9ea611ce8c3c9677",
+      "cores/fes-sg1000/constraints-oss.qsf": "f3c6a4ca98d73ebca6787e0115f155d0bfcdbc2d7528d16efc995285e9484190",
+      "cores/fes-sg1000/clocks-oss.sdc": "cbb3bf26a8553741d93a4d37eccc43e5de056f63606a50a1e264fcb33c664fe2",
+      "cores/fes-common/rtl/fes_z80_ce.sv": "929b78e9f0683ac189de2a670fb263a3711bbc05b1c0b3490f6467281259b6bf",
+      "cores/fes-coleco/rtl/coleco_system_pll.v": "3ee89d3059a99ee5711edf7e61e28585900a3e9185b0d8fdf520c9fbd5dfb874",
+      "cores/fes-common/rtl/pixel_pll.v": "968e716e518d98735fac4ae98bf877de078e049b689cbe9ab06a362938deb2c4",
+      "cores/fes-common/rtl/fes_audio_i2s.v": "14c24da8c166a623c41bc0ae57fc26c345ed6c419f825f2ba1f4f5057c4435f4",
+      "cores/fes-common/rtl/fes_audio_output.v": "e686a035484907d1690d7e0cd8e91d6ace86146b38bf4d85d4f500690ddfb0dd",
+      "cores/fes-common/rtl/fes_sn76489.sv": "08a654ab4e1407c54ed7e107be3a464d621fc123be1722b5cab3be3ace3809ee",
+      "cores/fes-common/rtl/fes_computer_gp.v": "3062239b6548397d6f5662b2f759f2b9d5e93e288c50f23a9c3213c474ba785c",
+      "cores/fes-common/rtl/coleco_dpram.v": "28352a1223a4c93b93e64306eb2566e4b70e8d40c462b6b9adfd2771e40116db",
+      "cores/fes-common/rtl/coleco_video_dpram.v": "334f1fe4978586f9c106fceafc08efba1621574446736d7f3296a0a6808cea44",
+      "cores/fes-common/rtl/coleco_vdp.sv": "c3a56a5792231dc44e432091bce15535e8000f63844625ba3b1be1baca45fbe2",
+      "cores/fes-common/rtl/coleco_video_720p.v": "a8d6bb452ee62b583058fc734d637078f918250fa79296a6646643bf00ea4f8c",
+      "cores/fes-sg1000/rtl/sg1000_machine.sv": "6922eca3aafc720ab6cbb9bead8744f227d9d857c15c51992fc0253989dd56cd",
+      "cores/fes-sg1000/rtl/sg1000_rom_link.v": "b4d797deb81b7805966c6fafb2adeb7de868ea9ccfd31ffc3e1d2a612529633f",
+      "cores/fes-common/rtl/z80/fes_z80_alu.sv": "bc26e87e40d625d9e45a2d72d64d94f92b82271106aada1853545a0211800ff1",
+      "cores/fes-common/rtl/z80/fes_z80_engine.sv": "84aa178edfa7a563019632d0b6a3fd6856e0af9a74772521688bc2c61a812b01",
+      "cores/fes-common/rtl/z80/fes_z80_bus.sv": "f58e1428cdecf799a232c830f301cc9156fb48119b082cce9e5c8b36161c6069",
+      "cores/fes-common/rtl/z80/fes_z80_nmos.sv": "8ce941c86e55b1ac3604e6f505dd9fbce40fe3a8b3f612989177f4f64ff31c9b",
+      "cores/fes-sg1000/rtl/top.v": "9e8b69022fd878bbc8bd6daeabf4318556e73e7a96771a4d166ef59487d87380"
+    }
+  },
+  "synthesis_evidence": {
+    "status": "pass",
+    "synth_only": true,
+    "synthesis_cells": {
+      "$logic_and": 2,
+      "$specify2": 11,
+      "$specify3": 2,
+      "$specrule": 7,
+      "MISTRAL_ALUT2": 532,
+      "MISTRAL_ALUT3": 715,
+      "MISTRAL_ALUT4": 1009,
+      "MISTRAL_ALUT5": 1554,
+      "MISTRAL_ALUT6": 640,
+      "MISTRAL_ALUT_ARITH": 1028,
+      "MISTRAL_CLKBUF": 4,
+      "MISTRAL_FF": 1198,
+      "MISTRAL_IB": 1,
+      "MISTRAL_IO": 2,
+      "MISTRAL_M10K": 64,
+      "MISTRAL_M10K_TDP": 67,
+      "MISTRAL_NOT": 63,
+      "MISTRAL_OB": 32,
+      "altera_pll": 2,
+      "cyclonev_hps_interface_mpu_general_purpose": 1,
+      "cyclonev_hps_interface_peripheral_i2c": 1
+    }
+  },
+  "comparisons": [
+    {
+      "seed": 1,
+      "system_mhz": {
+        "baseline": 51.25576400756836,
+        "control": 50.92946243286133,
+        "focus": 50.92946243286133
+      },
+      "focus_minus_control_mhz": 0.0,
+      "control_focus_identical_rbf": true,
+      "control_focus_identical_report": true,
+      "all_timing_pass": {
+        "baseline": false,
+        "control": false,
+        "focus": false
+      }
+    },
+    {
+      "seed": 2,
+      "system_mhz": {
+        "baseline": 44.752742767333984,
+        "control": 49.24410629272461,
+        "focus": 49.24410629272461
+      },
+      "focus_minus_control_mhz": 0.0,
+      "control_focus_identical_rbf": true,
+      "control_focus_identical_report": true,
+      "all_timing_pass": {
+        "baseline": false,
+        "control": false,
+        "focus": false
+      }
+    },
+    {
+      "seed": 3,
+      "system_mhz": {
+        "baseline": 46.84498977661133,
+        "control": 47.46760559082031,
+        "focus": 48.44257354736328
+      },
+      "focus_minus_control_mhz": 0.9749679565429688,
+      "control_focus_identical_rbf": false,
+      "control_focus_identical_report": false,
+      "all_timing_pass": {
+        "baseline": false,
+        "control": false,
+        "focus": false
+      }
+    },
+    {
+      "seed": 4,
+      "system_mhz": {
+        "baseline": 52.39991760253906,
+        "control": 52.39991760253906,
+        "focus": 52.39991760253906
+      },
+      "focus_minus_control_mhz": 0.0,
+      "control_focus_identical_rbf": true,
+      "control_focus_identical_report": true,
+      "all_timing_pass": {
+        "baseline": true,
+        "control": true,
+        "focus": true
+      }
+    },
+    {
+      "seed": 5,
+      "system_mhz": {
+        "baseline": 51.89144515991211,
+        "control": 52.496192932128906,
+        "focus": 52.496192932128906
+      },
+      "focus_minus_control_mhz": 0.0,
+      "control_focus_identical_rbf": true,
+      "control_focus_identical_report": true,
+      "all_timing_pass": {
+        "baseline": false,
+        "control": true,
+        "focus": true
+      }
+    }
+  ],
+  "runner_snapshot": "#!/usr/bin/env python3\nimport argparse, hashlib, json, re, subprocess, time\nfrom pathlib import Path\np=argparse.ArgumentParser()\np.add_argument('--main',type=Path,required=True)\np.add_argument('--candidate',type=Path)\np.add_argument('--seeds',type=int,nargs='+',required=True)\np.add_argument('--variants',choices=['baseline','control','focus'],nargs='+',default=['baseline','control','focus'])\na=p.parse_args()\nroot=Path(__file__).resolve().parent\ninputs=root/'inputs'; out=root/'routes'; out.mkdir(exist_ok=True)\nsummary_path=root/'summary.json'\nsummary=json.loads(summary_path.read_text()) if summary_path.exists() else {'base_head':'84404572d607f8acc1beb07ab2e928466346fb80','benchmark':'FES cbb54b99 registered-memory SG1000, zero BUILD_ID, Yosys 5391eeb1e; fresh fixed diagnostic input','inputs':{},'runs':[]}\nfor name in ['synth.json','constraints-oss.qsf','clocks-oss.sdc']:\n path=inputs/name; row={'path':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}\n if name in summary['inputs']: assert row==summary['inputs'][name]\n summary['inputs'][name]=row\nfor seed in a.seeds:\n for variant in a.variants:\n  assert not any(r['seed']==seed and r['variant']==variant for r in summary['runs']), 'Duplicate run requires separate output directory'\n  binary=a.candidate if variant=='focus' else a.main\n  assert binary and binary.exists(), 'Missing variant binary'\n  budget=0 if variant=='baseline' else 64\n  tag=f's{seed}-{variant}'; report=out/(tag+'-timing.json'); model=out/f's{seed}-model.json'\n  command=[str(binary.resolve()),'--device','5CSEBA6U23I7','--json',str(inputs/'synth.json'),'--qsf',str(inputs/'constraints-oss.qsf'),'--sdc',str(inputs/'clocks-oss.sdc'),'--freq','74.25','--placer','heap','--placer-heap-timingweight','2000','--placer-heap-critexp','5','--timing-allow-fail','--seed',str(seed),'--critical-cohort-budget',str(budget),'--router','gpu','--gpu-device','0','--rbf',str(out/(tag+'.rbf')),'--write',str(out/(tag+'.json')),'--report',str(report),'--timing-report-paths','16']\n  if variant=='baseline': command+=['--critical-cohort-model-out',str(model)]\n  else:\n   assert model.exists(), 'Baseline model required'\n   command+=['--critical-cohort-report',str(model)]\n  row={'seed':seed,'variant':variant,'budget':budget,'command':command,'binary_sha256':hashlib.sha256(binary.read_bytes()).hexdigest(),'timing_pass':False}\n  report.unlink(missing_ok=True)\n  if variant=='baseline': model.unlink(missing_ok=True)\n  start=time.monotonic()\n  with (out/(tag+'.log')).open('w') as log:\n   try: row['exit_code']=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,timeout=1800).returncode\n   except subprocess.TimeoutExpired: row['exit_code']='timeout'\n  row['wall_seconds']=time.monotonic()-start\n  if row['exit_code']==0 and report.exists():\n   data=json.loads(report.read_text());row['fmax']=data.get('fmax',{});row['timing_summary']=data.get('timing_summary',{})\n   clocks=row['fmax']; margins=row['timing_summary'].get('clocks',{})\n   row['timing_pass']=bool(clocks) and bool(margins) and row['timing_summary'].get('final_analogue_model',False) and all(c['achieved']>=c['constraint'] for c in clocks.values()) and all(c['setup_wns_ns']>=0 and c['hold_wns_ns']>=0 for c in margins.values())\n   row['report_sha256']=hashlib.sha256(report.read_bytes()).hexdigest()\n   rbf=out/(tag+'.rbf');row['rbf_sha256']=hashlib.sha256(rbf.read_bytes()).hexdigest()\n   if variant=='baseline': row['model_sha256']=hashlib.sha256(model.read_bytes()).hexdigest()\n  log=(out/(tag+'.log')).read_text()\n  match=re.search(r'Critical cohort: attempted=(\\d+)/(\\d+) nodes=(\\d+)/(\\d+) timed=(\\d+)/(\\d+) kept=(\\d+)',log)\n  if match: row['repair']=dict(zip(['attempted','attempt_limit','nodes','node_limit','timed','timing_limit','kept'],map(int,match.groups())))\n  summary['runs'].append(row);summary_path.write_text(json.dumps(summary,indent=2)+'\\n')\n  print(tag,'exit=',row['exit_code'],'pass=',row['timing_pass'],'fmax=',row.get('fmax'),'repair=',row.get('repair'),flush=True)\n  if row['exit_code']!=0: raise SystemExit('Route process failed; inspect log before continuing')\n",
+  "limitations": [
+    "Fresh diagnostic zero-BUILD_ID netlist, distinct from original st569 synthesis SHA f90b0eaa41cd92bb29ff5c2f9bfc099116dd58906a94ea3134d3a74a1039ba8c; original file no longer exists.",
+    "Older retained d2d1a0ea synthesis SHA 100ac17f55aac3eb31334d493ba8a09339e41c78750d652dc7c7ba6611b07d6b failed main packing due asynchronous machine.rom.lane9 M10K read; no semantic netlist edits used to bypass it.",
+    "Not a sealed package or hardware acceptance.",
+    "One SG1000 design across five seeds; no architecture-wide default change.",
+    "Seed 1 current-main repair regresses its baseline despite native guards; placement timing remains predictive."
+  ],
+  "adoption": "Retain disabled-by-default experimental endpoint focus: seed 3 improves over current-main control; other four seeds preserve control timing and bitstream. Issue 171 remains open."
+}
