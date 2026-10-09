@@ -1091,3 +1091,84 @@ TEST_F(CriticalCohort, CalibratedRepairImprovesOneOfTwoTiedEnableEndpoints)
     });
     ctx->check();
 }
+
+TEST_F(CriticalCohort, CalibratedRepairImprovesOneOfTwoTiedMemoryAddressInputs)
+{
+    auto create = [&]() {
+        auto *clk = clock("clk", 1000);
+        auto *launch = ff(clk, 30, 20, 8);
+        ctx->unbindBel(launch->bel);
+        ctx->bindBel(bel(30, 20, 8), launch, STRENGTH_USER);
+        auto *memory = ctx->createCell(ctx->id("memory"), id_MISTRAL_M10K);
+        memory->addInput(id_CLK1);
+        memory->connectPort(id_CLK1, clk);
+        memory->pin_data[id_CLK1].bel_pins = {ctx->id("CLKIN[0]")};
+        for (int bit = 0; bit < 2; ++bit) {
+            auto *logic = lut(24, 3, 6 * bit);
+            logic->disconnectPort(id_A);
+            logic->connectPort(id_A, launch->getPort(id_Q));
+            auto port = ctx->idf("A1ADDR[%d]", bit);
+            memory->addInput(port);
+            memory->connectPort(port, logic->getPort(id_Q));
+            memory->pin_data[port].bel_pins = {ctx->idf("ADDRA[%d]", bit)};
+        }
+        ctx->bindBel(bel(5, 52, 0), memory, STRENGTH_USER);
+        ctx->assignArchInfo();
+        return memory;
+    };
+    create();
+    for (uint32_t lab = 0; lab < ctx->labs.size(); ++lab)
+        for (uint8_t alm = 0; alm < 10; ++alm)
+            ctx->reassign_alm_inputs(lab, alm);
+    TimingAnalyser actual(ctx.get());
+    actual.with_clock_skew = false;
+    actual.setup(false, false, true);
+    ctx->timing_result = actual.get_timing_result();
+    ctx->timing_result_is_final_analogue = true;
+    std::ostringstream out;
+    write_critical_cohort_route_model(ctx.get(), out);
+    std::string error;
+    auto report = json11::Json::parse(out.str(), error).object_items();
+    auto metadata = report.at("cohort_route_model").object_items();
+    auto arcs = metadata.at("arcs").array_items();
+    for (auto &entry : arcs) {
+        auto row = entry.object_items();
+        row["wire"] = row.at("port").string_value().find("A1ADDR[") == 0 ? json11::Json::array{1200, 1500}
+                                                                          : json11::Json::array{100, 250};
+        row["local"] = json11::Json::array{0, 0};
+        entry = row;
+    }
+    metadata["arcs"] = arcs;
+    report["cohort_route_model"] = metadata;
+    auto text = json11::Json(report).dump();
+    serial = 0;
+    SetUp();
+    auto *memory = create();
+    const auto first = CellPortKey(memory->name, ctx->id("A1ADDR[0]"));
+    const auto second = CellPortKey(memory->name, ctx->id("A1ADDR[1]"));
+    std::unique_ptr<CriticalCohortRouteModel> model;
+    TimingAnalyser before(ctx.get());
+    before.with_clock_skew = false;
+    critical_cohort_pin_preview(ctx.get(), [&]() {
+        model = std::make_unique<CriticalCohortRouteModel>(ctx.get(), text);
+        critical_cohort_setup_timing(ctx.get(), before);
+        model->apply(ctx.get(), before);
+    });
+    ASSERT_EQ(before.get_setup_slack(first), before.get_setup_slack(second));
+    ASSERT_LT(before.get_setup_slack(first), 0);
+    ctx->settings[ctx->id("timing_driven")] = 1;
+    ctx->critical_cohort_report = text;
+    repair_critical_cohorts(ctx.get(), 1);
+    TimingAnalyser after(ctx.get());
+    after.with_clock_skew = false;
+    critical_cohort_pin_preview(ctx.get(), [&]() {
+        critical_cohort_setup_timing(ctx.get(), after);
+        model->apply(ctx.get(), after);
+        EXPECT_EQ(before.get_timing_result().clock_setup_slack, after.get_timing_result().clock_setup_slack);
+        const auto first_gain = after.get_setup_slack(first) - before.get_setup_slack(first);
+        const auto second_gain = after.get_setup_slack(second) - before.get_setup_slack(second);
+        EXPECT_GE(std::max(first_gain, second_gain), 20);
+        EXPECT_EQ(std::min(first_gain, second_gain), 0);
+    });
+    ctx->check();
+}
