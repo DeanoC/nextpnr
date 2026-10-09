@@ -334,6 +334,50 @@ class LutPairPlacementTest : public ::testing::Test {
         place(cell, x, y, STRENGTH_LOCKED); return cell;
     }
 
+    void unsupported_capture_clock()
+    {
+        // Independent roots without a phase relation have no native setup or
+        // hold window. Opposite edges of one constrained clock are supported.
+        auto *other = ctx->createNet(ctx->id("unsupported_capture_clock")); other->is_global = true;
+        other->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+        ASSERT_NE(clock_source(clock, "unsupported_launch_root"), nullptr);
+        ASSERT_NE(clock_source(other, "unsupported_capture_root"), nullptr);
+        sink->disconnectPort(id_CLK); sink->connectPort(id_CLK, other); ctx->assign_ff_info(sink);
+        TimingAnalyser timing(ctx.get()); timing.with_clock_skew = true; timing.setup(false, false, true);
+        std::vector<EndpointClockPairTiming> rows;
+        ASSERT_TRUE(timing.get_endpoint_clock_pair_timings(CellPortKey(sink->name, id_ENA), rows));
+        ASSERT_FALSE(rows.empty());
+        for (const auto &row : rows) {
+            ASSERT_NE(row.launch.clock, row.capture.clock);
+            ASSERT_FALSE(row.setup_timed); ASSERT_FALSE(row.setup_window); ASSERT_FALSE(row.setup_margin);
+            ASSERT_FALSE(row.hold_related); ASSERT_FALSE(row.hold_margin);
+        }
+    }
+
+    void expect_opposite_edge_windows()
+    {
+        clock->clkconstr->period = DelayPair(8000);
+        clock->clkconstr->high = DelayPair(3000); clock->clkconstr->low = DelayPair(5000);
+        ctx->settings[ctx->id("target_freq")] = 125e6;
+        for (bool falling_launch : {false, true}) {
+            for (auto *cell : inputs) {
+                cell->pin_data[id_CLK].state = falling_launch ? PIN_INV : PIN_SIG;
+                ctx->assign_ff_info(cell);
+            }
+            sink->pin_data[id_CLK].state = falling_launch ? PIN_SIG : PIN_INV; ctx->assign_ff_info(sink);
+            TimingAnalyser timing(ctx.get()); timing.with_clock_skew = true; timing.setup(false, false, true);
+            std::vector<EndpointClockPairTiming> rows;
+            ASSERT_TRUE(timing.get_endpoint_clock_pair_timings(CellPortKey(sink->name, id_ENA), rows));
+            ASSERT_FALSE(rows.empty());
+            for (const auto &row : rows) {
+                ASSERT_EQ(row.launch.clock, row.capture.clock); ASSERT_NE(row.launch.edge, row.capture.edge);
+                ASSERT_TRUE(row.setup_timed); ASSERT_TRUE(row.setup_window); ASSERT_TRUE(row.setup_margin);
+                EXPECT_EQ(*row.setup_window, falling_launch ? 5000 : 3000);
+                ASSERT_TRUE(row.hold_related); ASSERT_TRUE(row.hold_margin); EXPECT_GE(*row.hold_margin, 0);
+            }
+        }
+    }
+
     CellInfo *clock_source(NetInfo *net, const std::string &name, bool require_left = false)
     {
         auto *cell = ctx->createCell(ctx->id(name), id_MISTRAL_CLKBUF);
@@ -413,23 +457,18 @@ TEST_F(LutPairPlacementTest, TimedInnerSideUserRegressionRejectsEveryOtherwiseTa
     saved.expect(ctx.get());
 }
 
-TEST_F(LutPairPlacementTest, UnsupportedOppositeEdgeHoldCoverageRejectsBeforeAnyMove)
+TEST_F(LutPairPlacementTest, UnsupportedCaptureClockRelationRejectsBeforeAnyMove)
 {
-    ctx->unbindBel(sink->bel);
-    clock->clkconstr->period = DelayPair(8000); clock->clkconstr->high = clock->clkconstr->low = DelayPair(4000);
-    ctx->settings[ctx->id("target_freq")] = 125e6;
-    sink->pin_data[id_CLK].state = PIN_INV; ctx->assign_ff_info(sink); ctx->assign_default_pinmap(sink);
-    place(sink, 30, 20, STRENGTH_LOCKED, 8);
-    TimingAnalyser before(ctx.get()); before.with_clock_skew = true; before.setup(false, false, true);
-    std::vector<EndpointClockPairTiming> rows;
-    ASSERT_TRUE(before.get_endpoint_clock_pair_timings(CellPortKey(sink->name, id_ENA), rows)); ASSERT_FALSE(rows.empty());
-    for (const auto &row : rows) { ASSERT_TRUE(row.setup_timed); ASSERT_FALSE(row.hold_related); ASSERT_FALSE(row.hold_margin); }
+    ASSERT_NO_FATAL_FAILURE(unsupported_capture_clock());
     PairSnapshot saved(ctx.get()); PairLog log;
     EXPECT_FALSE(ctx->remap_lut_pair_critical(report(), -1));
-    EXPECT_NE(log.stream.str().find("reason=endpoint-related-hold-coverage-unavailable"), std::string::npos) << log.stream.str();
     EXPECT_EQ(log.stream.str().find("LUT pair placement trial"), std::string::npos);
-    EXPECT_NE(log.stream.str().find("LUT pair placement: 0 qualified candidates; no candidate applied."), std::string::npos);
     saved.expect(ctx.get());
+}
+
+TEST_F(LutPairPlacementTest, SupportedOppositeEdgeNativeWindowsAreTimed)
+{
+    ASSERT_NO_FATAL_FAILURE(expect_opposite_edge_windows());
 }
 
 TEST_F(LutPairPlacementTest, NativeRelatedClockHoldRejectsARealShorterSetupPath)
@@ -1034,22 +1073,33 @@ TEST_F(LutPairCopyTest, KnownUnrelatedOriginalSideUserKeepsItsFiniteMaxAndMinBou
     EXPECT_NE(log.stream.str().find("reference_free=1"), std::string::npos) << log.stream.str();
 }
 
-TEST_F(LutPairCopyTest, UnsupportedHoldCoverageAndRealNegativeHoldRejectSafely)
+TEST_F(LutPairCopyTest, UnsupportedCaptureClockRelationRejectsBeforeAnyMove)
 {
-    auto old_state = sink->pin_data[id_CLK].state;
-    sink->pin_data[id_CLK].state = PIN_INV; ctx->assign_ff_info(sink);
-    { PairSnapshot saved(ctx.get()); PairLog log; rejected(saved);
-      EXPECT_EQ(log.stream.str().find("LUT pair copy trial "), std::string::npos); }
-    sink->pin_data[id_CLK].state = old_state; ctx->assign_ff_info(sink);
+    ASSERT_NO_FATAL_FAILURE(unsupported_capture_clock());
+    PairSnapshot saved(ctx.get()); PairLog log;
+    rejected(saved);
+    EXPECT_EQ(log.stream.str().find("LUT pair copy trial "), std::string::npos);
+}
+
+TEST_F(LutPairCopyTest, SupportedOppositeEdgeNativeWindowsAreTimed)
+{
+    ASSERT_NO_FATAL_FAILURE(expect_opposite_edge_windows());
+}
+
+TEST_F(LutPairCopyTest, RealNegativeHoldRejectsSafely)
+{
     clock->clkconstr->period = DelayPair(8000); clock->clkconstr->high = clock->clkconstr->low = DelayPair(4000);
     clock->clkconstr->phase_group = ctx->id("copy_hold_phase"); ctx->settings[ctx->id("target_freq")] = 125e6;
     ASSERT_NE(clock_source(clock, "copy_primary_clock", true), nullptr); auto *capture = clock;
-    for (int i = 0; i < 8; ++i) {
+    // Real slow physical B arcs place the hold boundary between the original
+    // cone and the shorter copy, matching the native placement guard fixture.
+    for (int i = 0; i < 6; ++i) {
         auto *cell = ctx->createCell(ctx->idf("copy_clock_stage_%d", i), id_MISTRAL_ALUT2);
         cell->params[id_LUT] = Property(0xa, 4); cell->addInput(id_A); cell->addInput(id_B); cell->addOutput(id_Q);
         cell->connectPort(id_A, capture); cell->pin_data[id_B].state = PIN_0;
         capture = ctx->createNet(ctx->idf("copy_clock_q_%d", i)); capture->is_global = true; cell->connectPort(id_Q, capture);
         ctx->assign_comb_info(cell); ctx->assign_default_pinmap(cell); place(cell, 2, 35, STRENGTH_LOCKED, 6 * i);
+        cell->pin_data[id_A].bel_pins = {id_B};
     }
     capture->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr); capture->clkconstr->phase_shift = 0;
     sink->disconnectPort(id_CLK); sink->connectPort(id_CLK, capture); ctx->assign_ff_info(sink);
