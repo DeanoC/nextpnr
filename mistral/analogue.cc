@@ -43,6 +43,7 @@
 #include <limits>
 #include <thread>
 
+#include "analogue_jobs.h"
 #include "gpurouter.h"
 #include "log.h"
 #include "nextpnr.h"
@@ -180,19 +181,11 @@ void Arch::compute_analogue_arcs(bool observe)
     }
     // Each arc is an independent simulation over const device data.
     const int nthreads = std::max(1, std::min(int(std::thread::hardware_concurrency()), 32));
-    std::vector<std::thread> threads;
-    std::atomic<size_t> next(0);
-    for (int t = 0; t < nthreads; t++)
-        threads.emplace_back([&]() {
-            for (size_t i = next.fetch_add(64); i < jobs.size(); i = next.fetch_add(64))
-                for (size_t j = i; j < std::min(i + 64, jobs.size()); j++) {
-                    auto &job = jobs[j];
-                    job.ok = analogue_arc_delay(job.ni, *job.usr, job.delay,
-                                                observe && !job.ni->is_global ? &job.hops : nullptr);
-                }
-        });
-    for (auto &th : threads)
-        th.join();
+    nextpnr_mistral_workers::run(jobs.size(), nthreads, [&](size_t index) {
+        auto &job = jobs[index];
+        job.ok = analogue_arc_delay(job.ni, *job.usr, job.delay,
+                                    observe && !job.ni->is_global ? &job.hops : nullptr);
+    });
     analogue_arc_cache.clear();
     analogue_arc_cache.reserve(jobs.size());
     for (auto &job : jobs)
