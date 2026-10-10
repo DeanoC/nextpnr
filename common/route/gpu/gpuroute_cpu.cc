@@ -58,6 +58,21 @@ struct Pile
     int32_t wire;
 };
 
+// Only the opt-in exact CPU search uses this heap. The approximate CPU
+// backend retains the GPU kernel's frontier compaction and K-best stepping.
+struct ExactPile
+{
+    float f, g;
+    int32_t wire;
+};
+struct ExactLater
+{
+    bool operator()(const ExactPile &a, const ExactPile &b) const
+    {
+        return a.f > b.f || (a.f == b.f && a.wire > b.wire);
+    }
+};
+
 // Lexicographic (g, lo) order, matching the kernel's packed 64-bit compare
 inline bool less_pair(float g1, uint32_t lo1, float g2, uint32_t lo2)
 {
@@ -118,6 +133,7 @@ class CpuBackend : public Backend
 
         std::unordered_map<int32_t, Entry> table;
         std::vector<Pile> far, far2, near;
+        std::vector<ExactPile> exact_frontier;
         struct Cand
         {
             float g;
@@ -145,6 +161,15 @@ class CpuBackend : public Backend
                 // 1./2. table and seeds
                 table.clear();
                 far.clear();
+                exact_frontier.clear();
+                auto exact_push = [&](float g, int32_t wire) {
+                    const float f = g + h_est(g_.wire_x[wire], g_.wire_y[wire]);
+                    // The scan reference never chooses a NaN as its minimum.
+                    if (std::isnan(f))
+                        return;
+                    exact_frontier.push_back(ExactPile{f, g, wire});
+                    std::push_heap(exact_frontier.begin(), exact_frontier.end(), ExactLater());
+                };
                 const float seed_scale =
                         p.seed_delay_weight * (p.seed_delay_floor + (1.0f - p.seed_delay_floor) * arc.crit);
                 const int nseed = task.tree_cnt + path_pos;
@@ -173,7 +198,10 @@ class CpuBackend : public Backend
                     e.g = seed_scale * d;
                     e.sdelay = d;
                     e.sload = ld;
-                    far.push_back(Pile{e.g, w});
+                    if (p.exact)
+                        exact_push(e.g, w);
+                    else
+                        far.push_back(Pile{e.g, w});
                 }
 
                 bool have_best = false;
@@ -185,66 +213,73 @@ class CpuBackend : public Backend
 
                 // 3. K-best steps
                 while (!overflow) {
-                    // pass 1: compact the frontier, track the f range
-                    far2.clear();
-                    float minf = INF, maxf = 0.0f;
-                    for (const Pile &e : far) {
-                        auto it = table.find(e.wire);
-                        if (it == table.end() || it->second.g != e.g)
-                            continue;
-                        const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
-                        if (f >= prune)
-                            continue;
-                        minf = std::min(minf, f);
-                        maxf = std::max(maxf, f);
-                        far2.push_back(e);
-                    }
-                    if (far2.empty() || minf == INF || (have_best && minf >= best_g))
-                        break;
-                    const float range = maxf - minf;
-                    const float binw = range > 1e-6f ? range / (float)NBINS : 0.0f;
-
-                    // pass 2: histogram and threshold
-                    float thr = INF;
-                    if (binw > 0.0f) {
-                        std::fill(hist.begin(), hist.end(), 0);
-                        for (const Pile &e : far2) {
-                            const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
-                            int b = (int)((f - minf) / binw);
-                            b = b < 0 ? 0 : (b >= NBINS ? NBINS - 1 : b);
-                            hist[b]++;
-                        }
-                        int cum = 0;
-                        int want = p.expand_k;
-                        if (p.expand_div > 0 && int(far2.size()) / p.expand_div > want)
-                            want = int(far2.size()) / p.expand_div;
-                        for (int b = 0; b < NBINS; b++) {
-                            cum += hist[b];
-                            if (cum >= want) {
-                                thr = minf + (float)(b + 1) * binw;
-                                break;
-                            }
-                        }
-                    }
-
-                    // pass 3: split into this step's expansion set and the rest
-                    near.clear();
-                    far.clear();
                     if (p.exact) {
-                        // exactly one entry: the lowest f, then the lowest wire
-                        size_t best = 0;
-                        float bestf = INF;
-                        for (size_t i = 0; i < far2.size(); i++) {
-                            const Pile &e = far2[i];
+                        // Same lowest-(f,wire) choice as the scan reference,
+                        // without rescanning the entire frontier per expansion.
+                        // An improved g leaves an obsolete heap entry; discard
+                        // it using the same equality check as scan compaction.
+                        near.clear();
+                        while (!exact_frontier.empty()) {
+                            const auto e = exact_frontier.front();
+                            const auto it = table.find(e.wire);
+                            if (it != table.end() && it->second.g == e.g && e.f < prune) {
+                                if (have_best && e.f >= best_g)
+                                    break;
+                                near.push_back(Pile{e.g, e.wire});
+                            }
+                            std::pop_heap(exact_frontier.begin(), exact_frontier.end(), ExactLater());
+                            exact_frontier.pop_back();
+                            if (!near.empty())
+                                break;
+                        }
+                        if (near.empty())
+                            break;
+                    } else {
+                        // pass 1: compact the frontier, track the f range
+                        far2.clear();
+                        float minf = INF, maxf = 0.0f;
+                        for (const Pile &e : far) {
+                            auto it = table.find(e.wire);
+                            if (it == table.end() || it->second.g != e.g)
+                                continue;
                             const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
-                            if (f < bestf || (f == bestf && e.wire < far2[best].wire)) {
-                                bestf = f;
-                                best = i;
+                            if (f >= prune)
+                                continue;
+                            minf = std::min(minf, f);
+                            maxf = std::max(maxf, f);
+                            far2.push_back(e);
+                        }
+                        if (far2.empty() || minf == INF || (have_best && minf >= best_g))
+                            break;
+                        const float range = maxf - minf;
+                        const float binw = range > 1e-6f ? range / (float)NBINS : 0.0f;
+
+                        // pass 2: histogram and threshold
+                        float thr = INF;
+                        if (binw > 0.0f) {
+                            std::fill(hist.begin(), hist.end(), 0);
+                            for (const Pile &e : far2) {
+                                const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
+                                int b = (int)((f - minf) / binw);
+                                b = b < 0 ? 0 : (b >= NBINS ? NBINS - 1 : b);
+                                hist[b]++;
+                            }
+                            int cum = 0;
+                            int want = p.expand_k;
+                            if (p.expand_div > 0 && int(far2.size()) / p.expand_div > want)
+                                want = int(far2.size()) / p.expand_div;
+                            for (int b = 0; b < NBINS; b++) {
+                                cum += hist[b];
+                                if (cum >= want) {
+                                    thr = minf + (float)(b + 1) * binw;
+                                    break;
+                                }
                             }
                         }
-                        for (size_t i = 0; i < far2.size(); i++)
-                            (i == best ? near : far).push_back(far2[i]);
-                    } else
+
+                        // pass 3: split into this step's expansion set and the rest
+                        near.clear();
+                        far.clear();
                         for (const Pile &e : far2) {
                             const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
                             if (f < thr)
@@ -252,6 +287,7 @@ class CpuBackend : public Backend
                             else
                                 far.push_back(e);
                         }
+                    }
                     prune = have_best ? best_g : INF;
 
                     // phase A: relax against the step-start table
@@ -323,8 +359,12 @@ class CpuBackend : public Backend
                             e.lo = cd.edge;
                         }
                         // re-queue only when g itself improves
-                        if (cd.g < old_g)
-                            far.push_back(Pile{cd.g, cd.wire});
+                        if (cd.g < old_g) {
+                            if (p.exact)
+                                exact_push(cd.g, cd.wire);
+                            else
+                                far.push_back(Pile{cd.g, cd.wire});
+                        }
                     }
                     steps++;
                 }
