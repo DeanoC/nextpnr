@@ -1,3 +1,4 @@
+#include <array>
 #include <memory>
 
 #include "gtest/gtest.h"
@@ -120,4 +121,126 @@ TEST(LutPlacementTiming, Lut6PhysicalFIsFasterThanE)
         EXPECT_LT(fast.maxRiseDelay(), slow.minRiseDelay());
         EXPECT_LT(fast.maxFallDelay(), slow.minFallDelay());
     }
+}
+
+TEST(LutPlacementTiming, IsolatedCellEstimatesMatchBothPhysicalHalves)
+{
+    const std::array<IdString, 6> types{id_MISTRAL_BUF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3,
+                                       id_MISTRAL_ALUT4, id_MISTRAL_ALUT5, id_MISTRAL_ALUT6};
+    const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
+    for (int half : {0, 1}) {
+        ArchArgs args;
+        args.device = "5CSEBA6U23I7";
+        Context ctx(args);
+        ctx.arrival_pin_assignment = true;
+        std::array<CellInfo *, 6> cells;
+        std::array<std::array<DelayQuad, 6>, 6> unplaced, placed;
+        for (int width = 1; width <= 6; ++width) {
+            auto *cell = ctx.createCell(ctx.idf("lut%d", width), types[width - 1]);
+            cells[width - 1] = cell;
+            for (int input = 0; input < width; ++input) {
+                cell->addInput(inputs[input]);
+                cell->connectPort(inputs[input], ctx.createNet(ctx.idf("input%d_%d", width, input)));
+            }
+            cell->addOutput(id_Q);
+            cell->connectPort(id_Q, ctx.createNet(ctx.idf("output%d", width)));
+        }
+        ctx.assignArchInfo();
+        for (int width = 1; width <= 6; ++width) {
+            auto *cell = cells[width - 1];
+            for (int input = 0; input < width; ++input)
+                ASSERT_TRUE(ctx.getCellDelay(cell, inputs[input], id_Q, unplaced[width - 1][input]));
+            ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 6 * (width - 1) + half)), cell, STRENGTH_STRONG);
+            for (int input = 0; input < width; ++input)
+                ASSERT_TRUE(ctx.getCellDelay(cell, inputs[input], id_Q, placed[width - 1][input]));
+        }
+        ctx.lab_pre_route();
+        for (int width = 1; width <= 6; ++width) {
+            for (int input = 0; input < width; ++input) {
+                SCOPED_TRACE(std::to_string(half) + "/" + std::to_string(width) + "/" + std::to_string(input));
+                DelayQuad actual;
+                ASSERT_TRUE(ctx.getCellDelay(cells[width - 1], inputs[input], id_Q, actual));
+                for (const auto &estimate : {unplaced[width - 1][input], placed[width - 1][input]}) {
+                    EXPECT_EQ(estimate.minRiseDelay(), actual.minRiseDelay());
+                    EXPECT_EQ(estimate.maxRiseDelay(), actual.maxRiseDelay());
+                    EXPECT_EQ(estimate.minFallDelay(), actual.minFallDelay());
+                    EXPECT_EQ(estimate.maxFallDelay(), actual.maxFallDelay());
+                }
+            }
+        }
+    }
+}
+
+TEST(LutInputArrival, PrivateLateInputGetsFastPinAndSharedInputsStayFixed)
+{
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    Context ctx(args);
+    ctx.arrival_pin_assignment = true;
+    const std::array<IdString, 5> inputs{id_A, id_B, id_C, id_D, id_E};
+    std::array<CellInfo *, 2> cells;
+    auto shared = ctx.createNet(ctx.id("shared"));
+    auto shared_b = ctx.createNet(ctx.id("shared_b"));
+    for (int half = 0; half < 2; ++half) {
+        auto cell = ctx.createCell(ctx.idf("lut%d", half), id_MISTRAL_ALUT5);
+        cells[half] = cell;
+        for (IdString pin : inputs) {
+            cell->addInput(pin);
+            cell->connectPort(pin, pin == id_A ? shared : pin == id_B ? shared_b : ctx.createNet(ctx.idf("input%d_%s", half, ctx.nameOf(pin))));
+        }
+        cell->addOutput(id_Q);
+        cell->connectPort(id_Q, ctx.createNet(ctx.idf("output%d", half)));
+        cell->params[id_LUT] = Property(half ? 0x695ac3f0U : 0xc6935a0fU, 32);
+        cell->pin_data[id_D].state = PIN_INV;
+    }
+    ctx.assignArchInfo();
+    for (int half = 0; half < 2; ++half)
+        ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, half)), cells[half], STRENGTH_STRONG);
+    ctx.lab_pre_route();
+    const uint32_t lab = ctx.bel_data(cells[0]->bel).lab_data.lab;
+    dict<IdString, delay_t> arrival{{id_A, 10000}, {id_B, 100}, {id_C, 200}, {id_D, 4000}, {id_E, 300}};
+    auto shared_pin = cells[0]->pin_data.at(id_A).bel_pins;
+    auto mate_shared_pin = cells[1]->pin_data.at(id_A).bel_pins;
+    auto check_function = [&]() {
+        uint64_t mask = ctx.compute_lut_mask(lab, 0);
+        for (int half = 0; half < 2; ++half)
+            for (int bits = 0; bits < 32; ++bits) {
+                int physical_bits = 0;
+                for (int k = 0; k < 5; ++k) {
+                    const auto &mapping = cells[half]->pin_data.at(inputs[k]);
+                    IdString pin = mapping.bel_pins.at(0);
+                    int position = pin == id_A ? 0 : pin == id_B ? 1 : pin.in(id_C, id_D) ? 2 : pin.in(id_E0, id_E1) ? 3 : 4;
+                    bool value = bool((bits >> k) & 1) ^ (mapping.state != PIN_INV);
+                    physical_bits |= int(value) << position;
+                }
+                bool expected = (cells[half]->params.at(id_LUT).as_int64() >> bits) & 1;
+                EXPECT_EQ(bool((mask >> (physical_bits + 32 * half)) & 1), !expected);
+            }
+    };
+    check_function();
+    EXPECT_GT(ctx.optimise_private_lut_pins(lab, 0, 0, arrival), 0);
+    EXPECT_EQ(cells[0]->pin_data.at(id_A).bel_pins, shared_pin);
+    EXPECT_EQ(cells[1]->pin_data.at(id_A).bel_pins, mate_shared_pin);
+    check_function();
+    EXPECT_EQ(cells[0]->pin_data.at(id_D).bel_pins, std::vector<IdString>{id_F0});
+    EXPECT_GT(ctx.optimise_private_lut_pins(lab, 0, 1, arrival), 0);
+    EXPECT_EQ(cells[1]->pin_data.at(id_D).bel_pins, std::vector<IdString>{id_F1});
+    EXPECT_EQ(cells[1]->pin_data.at(id_A).bel_pins, mate_shared_pin);
+    check_function();
+    auto ff = ctx.createCell(ctx.id("direct_input_ff"), id_MISTRAL_FF);
+    ff->addInput(id_DATAIN);
+    ff->addOutput(id_Q);
+    ff->connectPort(id_DATAIN, ctx.createNet(ctx.id("direct_input")));
+    ctx.createNet(ctx.id("$PACKER_VCC_NET"));
+    ctx.assign_ff_info(ff);
+    auto ff_bel = ctx.getBelByLocation(Loc(24, 1, 2));
+    ctx.bindBel(ff_bel, ff, STRENGTH_STRONG);
+    arrival[id_E] = 20000;
+    EXPECT_EQ(ctx.optimise_private_lut_pins(lab, 0, 0, arrival), 0);
+    ctx.unbindBel(ff_bel);
+    EXPECT_GT(ctx.optimise_private_lut_pins(lab, 0, 0, arrival), 0);
+    check_function();
+    ctx.unbindBel(cells[0]->bel);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 0)), cells[0], STRENGTH_LOCKED);
+    EXPECT_EQ(ctx.optimise_private_lut_pins(lab, 0, 0, arrival), 0);
 }
