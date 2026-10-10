@@ -1,0 +1,1481 @@
+{
+  "schema": 1,
+  "classification": "Historical-recipe reconstruction, not authenticated historical117 reproduction",
+  "input_sha256": "f90717c8f06708485a125aad1488531a45f9f92e725bad0a969c8a5ddafe0b65",
+  "seed": 2,
+  "runs": [
+    {
+      "lane": "current-model",
+      "run_id": "baseline",
+      "manifest": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/baseline/manifest.json",
+      "manifest_sha256": "53508f819ab3eb92ab0cea8427b0ac11ab53aa4b99a60ba21772a345a62bf546",
+      "timing_report_sha256": "d25ec6e85293d6b74ac960168af17d1364b72a66e8c7fe6646e637ad1d41e17d",
+      "binary_sha256": "0c76fd861248a5e272ec786306de4c8dd88b56d436141715b15dbb78d6304c60",
+      "gpu_identity": {
+        "ordinal": 1,
+        "unique_id": "0x73f8101733408480",
+        "model": "AMD Radeon AI PRO R9700",
+        "architecture": "gfx1201"
+      },
+      "elapsed_seconds": 547.4955316348933,
+      "fmax": {
+        "display.pixel_clk": {
+          "achieved": 78.63489532470703,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 87.2295913696289,
+          "constraint": 130.0052032470703
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 285.4747619628906,
+          "constraint": 130.0052032470703
+        }
+      },
+      "clock_windows": {
+        "status": "observed",
+        "clocks": {
+          "display.pixel_clk": {
+            "setup_wns_ns": 0.7509999871253967,
+            "hold_wns_ns": 0.7789999842643738,
+            "reported_setup_hold_pass": true,
+            "max_passing_setup_reserve_ns": 0.7509999871253967,
+            "max_passing_hold_reserve_ns": 0.7789999842643738
+          },
+          "ram_clock.clocks[0]": {
+            "setup_wns_ns": -3.7720000743865967,
+            "hold_wns_ns": 0.7590000033378601,
+            "reported_setup_hold_pass": false,
+            "max_passing_setup_reserve_ns": null,
+            "max_passing_hold_reserve_ns": 0.7590000033378601
+          },
+          "ram_clock.clocks[1]": {
+            "setup_wns_ns": 2.7230000495910645,
+            "hold_wns_ns": 4.020999908447266,
+            "reported_setup_hold_pass": true,
+            "max_passing_setup_reserve_ns": 2.7230000495910645,
+            "max_passing_hold_reserve_ns": 4.020999908447266
+          }
+        },
+        "final_analogue_model": true,
+        "missing_expected_clocks": [],
+        "all_reported_windows_pass": false,
+        "reserve_status": "unqualified",
+        "with_reserve_pass": null,
+        "hardware_acceptance": false,
+        "scope": "Native launch-clock aggregation of enforced setup/hold windows; complete path/interface coverage and a justified uncertainty reserve remain separate."
+      },
+      "worst_positive_edge_memory_path": {
+        "launch": "posedge ram_clock.clocks[0]",
+        "capture": "posedge ram_clock.clocks[0]",
+        "setup_window_ns": 7.691999912261963,
+        "sum_delay_ns": 11.463999923318624,
+        "setup_margin_ns": -3.7720000110566616,
+        "delay_by_segment_type_ns": {
+          "clk-skew": -0.03700000047683716,
+          "clk-to-q": 0.7310000061988831,
+          "routing": 7.2439998388290405,
+          "logic": 3.7220000736415386,
+          "setup": -0.19599999487400055
+        },
+        "first_segment": {
+          "delay": -0.03700000047683716,
+          "from": {
+            "cell": "ddr0_status_MISTRAL_FF_Q_259",
+            "loc": [
+              10,
+              11
+            ],
+            "port": "CLK"
+          },
+          "to": {
+            "cell": "ddr0_test.cmd_addr_MISTRAL_FF_Q_27",
+            "loc": [
+              10,
+              9
+            ],
+            "port": "CLK"
+          },
+          "type": "clk-skew"
+        },
+        "last_segment": {
+          "delay": -0.19599999487400055,
+          "from": {
+            "cell": "ddr0_test.cmd_addr_MISTRAL_FF_Q_27",
+            "loc": [
+              10,
+              9
+            ],
+            "port": "DATAIN"
+          },
+          "to": {
+            "cell": "ddr0_test.cmd_addr_MISTRAL_FF_Q_27",
+            "loc": [
+              10,
+              9
+            ],
+            "port": "DATAIN"
+          },
+          "type": "setup"
+        }
+      },
+      "hardware_acceptance": false,
+      "complete_interface_coverage": "not_established",
+      "routing_checksum_lines": [
+        "Info: Checksum: 0x5734d6fd",
+        "Info: Checksum: 0xc5c253db",
+        "Info: Checksum: 0x1f6d9661"
+      ]
+    },
+    {
+      "lane": "current-model",
+      "run_id": "reconstructed-subset-routed-retry1",
+      "manifest": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/reconstructed-subset-routed-retry1/manifest.json",
+      "manifest_sha256": "ec01accba2359feb7295a14217a998a1ea24418d7aa4558b74336a0c5b8cd547",
+      "timing_report_sha256": "5523f3e46d221a2ba9ff707ca7017ebbbd3d125a2c706fb9e021d1e848e8d1a6",
+      "binary_sha256": "0c76fd861248a5e272ec786306de4c8dd88b56d436141715b15dbb78d6304c60",
+      "gpu_identity": {
+        "ordinal": 1,
+        "unique_id": "0x73f8101733408480",
+        "model": "AMD Radeon AI PRO R9700",
+        "architecture": "gfx1201"
+      },
+      "elapsed_seconds": 861.6642858078703,
+      "fmax": {
+        "display.pixel_clk": {
+          "achieved": 79.21419525146484,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 90.86779022216797,
+          "constraint": 130.0052032470703
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 292.27789306640625,
+          "constraint": 130.0052032470703
+        }
+      },
+      "clock_windows": {
+        "status": "observed",
+        "clocks": {
+          "display.pixel_clk": {
+            "setup_wns_ns": 0.843999981880188,
+            "hold_wns_ns": 0.7440000176429749,
+            "reported_setup_hold_pass": true,
+            "max_passing_setup_reserve_ns": 0.843999981880188,
+            "max_passing_hold_reserve_ns": 0.7440000176429749
+          },
+          "ram_clock.clocks[0]": {
+            "setup_wns_ns": -3.312999963760376,
+            "hold_wns_ns": 0.753000020980835,
+            "reported_setup_hold_pass": false,
+            "max_passing_setup_reserve_ns": null,
+            "max_passing_hold_reserve_ns": 0.753000020980835
+          },
+          "ram_clock.clocks[1]": {
+            "setup_wns_ns": 2.7760000228881836,
+            "hold_wns_ns": 3.750999927520752,
+            "reported_setup_hold_pass": true,
+            "max_passing_setup_reserve_ns": 2.7760000228881836,
+            "max_passing_hold_reserve_ns": 3.750999927520752
+          }
+        },
+        "final_analogue_model": true,
+        "missing_expected_clocks": [],
+        "all_reported_windows_pass": false,
+        "reserve_status": "unqualified",
+        "with_reserve_pass": null,
+        "hardware_acceptance": false,
+        "scope": "Native launch-clock aggregation of enforced setup/hold windows; complete path/interface coverage and a justified uncertainty reserve remain separate."
+      },
+      "worst_positive_edge_memory_path": {
+        "launch": "posedge ram_clock.clocks[0]",
+        "capture": "posedge ram_clock.clocks[0]",
+        "setup_window_ns": 7.691999912261963,
+        "sum_delay_ns": 11.005000051110983,
+        "setup_margin_ns": -3.31300013884902,
+        "delay_by_segment_type_ns": {
+          "clk-skew": 0.017000000923871994,
+          "clk-to-q": 0.7310000061988831,
+          "routing": 6.175999969244003,
+          "logic": 4.277000069618225,
+          "setup": -0.19599999487400055
+        },
+        "first_segment": {
+          "delay": 0.017000000923871994,
+          "from": {
+            "cell": "ram_clock.locked_MISTRAL_ALUT2_A_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_DATAIN",
+            "loc": [
+              11,
+              32
+            ],
+            "port": "CLK"
+          },
+          "to": {
+            "cell": "hps_ddr.port0.draining_MISTRAL_FF_Q",
+            "loc": [
+              15,
+              1
+            ],
+            "port": "CLK"
+          },
+          "type": "clk-skew"
+        },
+        "last_segment": {
+          "delay": -0.19599999487400055,
+          "from": {
+            "cell": "hps_ddr.port0.draining_MISTRAL_FF_Q",
+            "loc": [
+              15,
+              1
+            ],
+            "port": "DATAIN"
+          },
+          "to": {
+            "cell": "hps_ddr.port0.draining_MISTRAL_FF_Q",
+            "loc": [
+              15,
+              1
+            ],
+            "port": "DATAIN"
+          },
+          "type": "setup"
+        }
+      },
+      "hardware_acceptance": false,
+      "complete_interface_coverage": "not_established",
+      "routing_checksum_lines": [
+        "Info: Checksum: 0x319be9b7",
+        "Info: Checksum: 0x64671949",
+        "Info: Checksum: 0xf8f00f40",
+        "Info: Checksum: 0x90ed1568",
+        "Info: Checksum: 0x052ea4ff"
+      ]
+    },
+    {
+      "lane": "current-model",
+      "run_id": "three-local-routed",
+      "manifest": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/three-local-routed/manifest.json",
+      "manifest_sha256": "a440a940f4667bcf904b901e45c5e3d53171a29c3572c35791a52b2b392e014c",
+      "timing_report_sha256": "eb4110ca61764032aba8a172a4b5e96698739147a8c81c64ef96858fc7f22037",
+      "binary_sha256": "0c76fd861248a5e272ec786306de4c8dd88b56d436141715b15dbb78d6304c60",
+      "gpu_identity": {
+        "ordinal": 1,
+        "unique_id": "0x73f8101733408480",
+        "model": "AMD Radeon AI PRO R9700",
+        "architecture": "gfx1201"
+      },
+      "elapsed_seconds": 899.6126554319635,
+      "fmax": {
+        "display.pixel_clk": {
+          "achieved": 80.16031646728516,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 91.05809020996094,
+          "constraint": 130.0052032470703
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 292.27789306640625,
+          "constraint": 130.0052032470703
+        }
+      },
+      "clock_windows": {
+        "status": "observed",
+        "clocks": {
+          "display.pixel_clk": {
+            "setup_wns_ns": 0.9929999709129333,
+            "hold_wns_ns": 0.7440000176429749,
+            "reported_setup_hold_pass": true,
+            "max_passing_setup_reserve_ns": 0.9929999709129333,
+            "max_passing_hold_reserve_ns": 0.7440000176429749
+          },
+          "ram_clock.clocks[0]": {
+            "setup_wns_ns": -3.2899999618530273,
+            "hold_wns_ns": 0.753000020980835,
+            "reported_setup_hold_pass": false,
+            "max_passing_setup_reserve_ns": null,
+            "max_passing_hold_reserve_ns": 0.753000020980835
+          },
+          "ram_clock.clocks[1]": {
+            "setup_wns_ns": 2.7760000228881836,
+            "hold_wns_ns": 3.750999927520752,
+            "reported_setup_hold_pass": true,
+            "max_passing_setup_reserve_ns": 2.7760000228881836,
+            "max_passing_hold_reserve_ns": 3.750999927520752
+          }
+        },
+        "final_analogue_model": true,
+        "missing_expected_clocks": [],
+        "all_reported_windows_pass": false,
+        "reserve_status": "unqualified",
+        "with_reserve_pass": null,
+        "hardware_acceptance": false,
+        "scope": "Native launch-clock aggregation of enforced setup/hold windows; complete path/interface coverage and a justified uncertainty reserve remain separate."
+      },
+      "worst_positive_edge_memory_path": {
+        "launch": "posedge ram_clock.clocks[0]",
+        "capture": "posedge ram_clock.clocks[0]",
+        "setup_window_ns": 7.691999912261963,
+        "sum_delay_ns": 10.982000049203634,
+        "setup_margin_ns": -3.2900001369416714,
+        "delay_by_segment_type_ns": {
+          "clk-skew": 0.017000000923871994,
+          "clk-to-q": 0.7310000061988831,
+          "routing": 6.152999967336655,
+          "logic": 4.277000069618225,
+          "setup": -0.19599999487400055
+        },
+        "first_segment": {
+          "delay": 0.017000000923871994,
+          "from": {
+            "cell": "ram_clock.locked_MISTRAL_ALUT2_A_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_DATAIN",
+            "loc": [
+              11,
+              32
+            ],
+            "port": "CLK"
+          },
+          "to": {
+            "cell": "hps_ddr.port0.draining_MISTRAL_FF_Q",
+            "loc": [
+              15,
+              1
+            ],
+            "port": "CLK"
+          },
+          "type": "clk-skew"
+        },
+        "last_segment": {
+          "delay": -0.19599999487400055,
+          "from": {
+            "cell": "hps_ddr.port0.draining_MISTRAL_FF_Q",
+            "loc": [
+              15,
+              1
+            ],
+            "port": "DATAIN"
+          },
+          "to": {
+            "cell": "hps_ddr.port0.draining_MISTRAL_FF_Q",
+            "loc": [
+              15,
+              1
+            ],
+            "port": "DATAIN"
+          },
+          "type": "setup"
+        }
+      },
+      "hardware_acceptance": false,
+      "complete_interface_coverage": "not_established",
+      "routing_checksum_lines": [
+        "Info: Checksum: 0x319be9b7",
+        "Info: Checksum: 0x70da99b0",
+        "Info: Checksum: 0x5ace5bb7",
+        "Info: Checksum: 0x43208259",
+        "Info: Checksum: 0xc88e1b6d"
+      ]
+    },
+    {
+      "lane": "current-model",
+      "run_id": "unplaced-balanced",
+      "manifest": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/unplaced-balanced/manifest.json",
+      "manifest_sha256": "cbe6317f0e032504b8c785ab7ef8bde05ce5677f5ae6089511c8cff9cbe1cd31",
+      "timing_report_sha256": "f6916a31aec2817cc36e481102e64746a3db4b1eb365aaf7e1fdb58aebf78732",
+      "binary_sha256": "0c76fd861248a5e272ec786306de4c8dd88b56d436141715b15dbb78d6304c60",
+      "gpu_identity": {
+        "ordinal": 1,
+        "unique_id": "0x73f8101733408480",
+        "model": "AMD Radeon AI PRO R9700",
+        "architecture": "gfx1201"
+      },
+      "elapsed_seconds": 633.4892465402372,
+      "fmax": {
+        "display.pixel_clk": {
+          "achieved": 79.33988952636719,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 90.81002807617188,
+          "constraint": 130.0052032470703
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 288.2598571777344,
+          "constraint": 130.0052032470703
+        }
+      },
+      "clock_windows": {
+        "status": "observed",
+        "clocks": {
+          "display.pixel_clk": {
+            "setup_wns_ns": 0.8640000224113464,
+            "hold_wns_ns": 0.7440000176429749,
+            "reported_setup_hold_pass": true,
+            "max_passing_setup_reserve_ns": 0.8640000224113464,
+            "max_passing_hold_reserve_ns": 0.7440000176429749
+          },
+          "ram_clock.clocks[0]": {
+            "setup_wns_ns": -3.319999933242798,
+            "hold_wns_ns": 0.753000020980835,
+            "reported_setup_hold_pass": false,
+            "max_passing_setup_reserve_ns": null,
+            "max_passing_hold_reserve_ns": 0.753000020980835
+          },
+          "ram_clock.clocks[1]": {
+            "setup_wns_ns": 2.744999885559082,
+            "hold_wns_ns": 3.750999927520752,
+            "reported_setup_hold_pass": true,
+            "max_passing_setup_reserve_ns": 2.744999885559082,
+            "max_passing_hold_reserve_ns": 3.750999927520752
+          }
+        },
+        "final_analogue_model": true,
+        "missing_expected_clocks": [],
+        "all_reported_windows_pass": false,
+        "reserve_status": "unqualified",
+        "with_reserve_pass": null,
+        "hardware_acceptance": false,
+        "scope": "Native launch-clock aggregation of enforced setup/hold windows; complete path/interface coverage and a justified uncertainty reserve remain separate."
+      },
+      "worst_positive_edge_memory_path": {
+        "launch": "posedge ram_clock.clocks[0]",
+        "capture": "posedge ram_clock.clocks[0]",
+        "setup_window_ns": 7.691999912261963,
+        "sum_delay_ns": 11.01200008019805,
+        "setup_margin_ns": -3.3200001679360867,
+        "delay_by_segment_type_ns": {
+          "clk-skew": 0.017000000923871994,
+          "clk-to-q": 0.7310000061988831,
+          "routing": 6.18299999833107,
+          "logic": 4.277000069618225,
+          "setup": -0.19599999487400055
+        },
+        "first_segment": {
+          "delay": 0.017000000923871994,
+          "from": {
+            "cell": "ram_clock.locked_MISTRAL_ALUT2_A_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_DATAIN",
+            "loc": [
+              11,
+              32
+            ],
+            "port": "CLK"
+          },
+          "to": {
+            "cell": "hps_ddr.port0.draining_MISTRAL_FF_Q",
+            "loc": [
+              15,
+              1
+            ],
+            "port": "CLK"
+          },
+          "type": "clk-skew"
+        },
+        "last_segment": {
+          "delay": -0.19599999487400055,
+          "from": {
+            "cell": "hps_ddr.port0.draining_MISTRAL_FF_Q",
+            "loc": [
+              15,
+              1
+            ],
+            "port": "DATAIN"
+          },
+          "to": {
+            "cell": "hps_ddr.port0.draining_MISTRAL_FF_Q",
+            "loc": [
+              15,
+              1
+            ],
+            "port": "DATAIN"
+          },
+          "type": "setup"
+        }
+      },
+      "hardware_acceptance": false,
+      "complete_interface_coverage": "not_established",
+      "routing_checksum_lines": [
+        "Info: Checksum: 0x319be9b7",
+        "Info: Checksum: 0x3646424d",
+        "Info: Checksum: 0xbba8a586",
+        "Info: Checksum: 0x5c057efb",
+        "Info: Checksum: 0xca7eca31"
+      ]
+    },
+    {
+      "lane": "older-model",
+      "run_id": "baseline-gpu0",
+      "manifest": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/older-model/baseline-gpu0/manifest.json",
+      "manifest_sha256": "c385e6b504a13b18be42dddef6ed8825850358a95acc21497be22435b355d597",
+      "timing_report_sha256": "c1ed1879cb359949554da62790b428d11e73349c45f3b5712d1f23565e870750",
+      "binary_sha256": "fd28a85f6edee106ca79d4fd483063a4eb40e3928c36e3749c8d813dadee1f27",
+      "gpu_identity": {
+        "ordinal": 0,
+        "unique_id": "0x63e81b58a39ea1f3",
+        "model": "AMD Radeon RX 7900 XTX",
+        "architecture": "gfx1100"
+      },
+      "elapsed_seconds": 1112.7978043449111,
+      "fmax": {
+        "display.pixel_clk": {
+          "achieved": 96.320556640625,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 105.77532958984375,
+          "constraint": 130.0052032470703
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 375.0871276855469,
+          "constraint": 130.0052032470703
+        }
+      },
+      "clock_windows": {
+        "status": "not_exported",
+        "clocks": {},
+        "final_analogue_model": null,
+        "missing_expected_clocks": [
+          "display.pixel_clk",
+          "ram_clock.clocks[0]",
+          "ram_clock.clocks[1]"
+        ],
+        "all_reported_windows_pass": null,
+        "reserve_status": "unqualified",
+        "with_reserve_pass": null,
+        "hardware_acceptance": false,
+        "scope": "Native launch-clock aggregation of enforced setup/hold windows; complete path/interface coverage and a justified uncertainty reserve remain separate."
+      },
+      "worst_positive_edge_memory_path": {
+        "launch": "posedge ram_clock.clocks[0]",
+        "capture": "posedge ram_clock.clocks[0]",
+        "setup_window_ns": 7.691999912261963,
+        "sum_delay_ns": 9.454000160098076,
+        "setup_margin_ns": -1.762000247836113,
+        "delay_by_segment_type_ns": {
+          "clk-skew": 0.1899999976158142,
+          "clk-to-q": 1.378999948501587,
+          "routing": 7.984000205993652,
+          "logic": 0.09700000286102295,
+          "setup": -0.19599999487400055
+        },
+        "first_segment": {
+          "delay": 0.1899999976158142,
+          "from": {
+            "cell": "hps_ddr.f2sdram",
+            "loc": [
+              52,
+              53
+            ],
+            "port": "rd_clk_0"
+          },
+          "to": {
+            "cell": "hps_ddr.port0.returned_data_MISTRAL_FF_Q_47",
+            "loc": [
+              19,
+              16
+            ],
+            "port": "CLK"
+          },
+          "type": "clk-skew"
+        },
+        "last_segment": {
+          "delay": -0.19599999487400055,
+          "from": {
+            "cell": "hps_ddr.port0.returned_data_MISTRAL_FF_Q_47",
+            "loc": [
+              19,
+              16
+            ],
+            "port": "DATAIN"
+          },
+          "to": {
+            "cell": "hps_ddr.port0.returned_data_MISTRAL_FF_Q_47",
+            "loc": [
+              19,
+              16
+            ],
+            "port": "DATAIN"
+          },
+          "type": "setup"
+        }
+      },
+      "hardware_acceptance": false,
+      "complete_interface_coverage": "not_established",
+      "routing_checksum_lines": [
+        "Info: Checksum: 0xfd7e68ce",
+        "Info: Checksum: 0x38a85bf4",
+        "Info: Checksum: 0x293d1c0c",
+        "Info: Checksum: 0x3f0b75c6",
+        "Info: Checksum: 0x7ea00a36"
+      ]
+    },
+    {
+      "lane": "older-model",
+      "run_id": "three-local-routed",
+      "manifest": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/older-model/three-local-routed/manifest.json",
+      "manifest_sha256": "1b9f6df1a5f5992d810ba8d6acdb5439217d36ed438ac833c6db3e3fc5defe37",
+      "timing_report_sha256": "cba758f09ae3828dbe698c2a0bd6b472c4a75433cc227273d2203c611a06949b",
+      "binary_sha256": "fd28a85f6edee106ca79d4fd483063a4eb40e3928c36e3749c8d813dadee1f27",
+      "gpu_identity": {
+        "ordinal": 0,
+        "unique_id": "0x63e81b58a39ea1f3",
+        "model": "AMD Radeon RX 7900 XTX",
+        "architecture": "gfx1100"
+      },
+      "elapsed_seconds": 2288.7017856910825,
+      "fmax": {
+        "display.pixel_clk": {
+          "achieved": 87.57334899902344,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 104.12328338623047,
+          "constraint": 130.0052032470703
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 341.5796203613281,
+          "constraint": 130.0052032470703
+        }
+      },
+      "clock_windows": {
+        "status": "not_exported",
+        "clocks": {},
+        "final_analogue_model": null,
+        "missing_expected_clocks": [
+          "display.pixel_clk",
+          "ram_clock.clocks[0]",
+          "ram_clock.clocks[1]"
+        ],
+        "all_reported_windows_pass": null,
+        "reserve_status": "unqualified",
+        "with_reserve_pass": null,
+        "hardware_acceptance": false,
+        "scope": "Native launch-clock aggregation of enforced setup/hold windows; complete path/interface coverage and a justified uncertainty reserve remain separate."
+      },
+      "worst_positive_edge_memory_path": {
+        "launch": "posedge ram_clock.clocks[0]",
+        "capture": "posedge ram_clock.clocks[0]",
+        "setup_window_ns": 7.691999912261963,
+        "sum_delay_ns": 9.6039999127388,
+        "setup_margin_ns": -1.9120000004768372,
+        "delay_by_segment_type_ns": {
+          "clk-skew": -0.10199999809265137,
+          "clk-to-q": 0.7310000061988831,
+          "routing": 8.461999893188477,
+          "setup": 0.5130000114440918
+        },
+        "first_segment": {
+          "delay": -0.10199999809265137,
+          "from": {
+            "cell": "hps_ddr.m1_writedata_MISTRAL_FF_Q_4",
+            "loc": [
+              15,
+              13
+            ],
+            "port": "CLK"
+          },
+          "to": {
+            "cell": "hps_ddr.f2sdram",
+            "loc": [
+              52,
+              53
+            ],
+            "port": "wr_clk_2"
+          },
+          "type": "clk-skew"
+        },
+        "last_segment": {
+          "delay": 0.5130000114440918,
+          "from": {
+            "cell": "hps_ddr.f2sdram",
+            "loc": [
+              52,
+              53
+            ],
+            "port": "wr_data_2[4]"
+          },
+          "to": {
+            "cell": "hps_ddr.f2sdram",
+            "loc": [
+              52,
+              53
+            ],
+            "port": "wr_data_2[4]"
+          },
+          "type": "setup"
+        }
+      },
+      "hardware_acceptance": false,
+      "complete_interface_coverage": "not_established",
+      "routing_checksum_lines": [
+        "Info: Checksum: 0x802ccef7",
+        "Info: Checksum: 0x7d90614c",
+        "Info: Checksum: 0xe40bd802",
+        "Info: Checksum: 0x204e71eb",
+        "Info: Checksum: 0xd31eabfe"
+      ]
+    },
+    {
+      "lane": "published-model",
+      "run_id": "baseline-gpu0-resumed1",
+      "manifest": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/baseline-gpu0-resumed1/manifest.json",
+      "manifest_sha256": "f96c539a6d7e976bc820c6ce8d346d63de09b538dda2e37f59851015e5eaf008",
+      "timing_report_sha256": "86568c863fde9a01255d30b4b5294aa6126d16e38fe4ad7be34c937a485da1ab",
+      "binary_sha256": "a05b1e190d25543c36e849ab5762cec3864753911762da698e9f44433ba10ba7",
+      "gpu_identity": {
+        "ordinal": 0,
+        "unique_id": "0x63e81b58a39ea1f3",
+        "model": "AMD Radeon RX 7900 XTX",
+        "architecture": "gfx1100"
+      },
+      "elapsed_seconds": 1232.638634072151,
+      "fmax": {
+        "display.pixel_clk": {
+          "achieved": 94.5000991821289,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 106.15711212158203,
+          "constraint": 130.0052032470703
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 347.7934875488281,
+          "constraint": 130.0052032470703
+        }
+      },
+      "clock_windows": {
+        "status": "not_exported",
+        "clocks": {},
+        "final_analogue_model": null,
+        "missing_expected_clocks": [
+          "display.pixel_clk",
+          "ram_clock.clocks[0]",
+          "ram_clock.clocks[1]"
+        ],
+        "all_reported_windows_pass": null,
+        "reserve_status": "unqualified",
+        "with_reserve_pass": null,
+        "hardware_acceptance": false,
+        "scope": "Native launch-clock aggregation of enforced setup/hold windows; complete path/interface coverage and a justified uncertainty reserve remain separate."
+      },
+      "worst_positive_edge_memory_path": {
+        "launch": "posedge ram_clock.clocks[0]",
+        "capture": "posedge ram_clock.clocks[0]",
+        "setup_window_ns": 7.691999912261963,
+        "sum_delay_ns": 9.419999808073044,
+        "setup_margin_ns": -1.727999895811081,
+        "delay_by_segment_type_ns": {
+          "clk-skew": 0.21699999272823334,
+          "clk-to-q": 1.1770000457763672,
+          "routing": 7.421999752521515,
+          "logic": 0.800000011920929,
+          "setup": -0.19599999487400055
+        },
+        "first_segment": {
+          "delay": 0.21699999272823334,
+          "from": {
+            "cell": "hps_ddr.f2sdram",
+            "loc": [
+              52,
+              53
+            ],
+            "port": "cmd_port_clk_1"
+          },
+          "to": {
+            "cell": "hps_ddr.m1_burstcount_MISTRAL_FF_Q_7",
+            "loc": [
+              28,
+              5
+            ],
+            "port": "CLK"
+          },
+          "type": "clk-skew"
+        },
+        "last_segment": {
+          "delay": -0.19599999487400055,
+          "from": {
+            "cell": "hps_ddr.m1_burstcount_MISTRAL_FF_Q_7",
+            "loc": [
+              28,
+              5
+            ],
+            "port": "ENA"
+          },
+          "to": {
+            "cell": "hps_ddr.m1_burstcount_MISTRAL_FF_Q_7",
+            "loc": [
+              28,
+              5
+            ],
+            "port": "ENA"
+          },
+          "type": "setup"
+        }
+      },
+      "hardware_acceptance": false,
+      "complete_interface_coverage": "not_established",
+      "routing_checksum_lines": [
+        "Info: Checksum: 0x0ed149a9",
+        "Info: Checksum: 0x0be7abfc",
+        "Info: Checksum: 0x0468c90d",
+        "Info: Checksum: 0xe8967823",
+        "Info: Checksum: 0x9c77d9c7"
+      ]
+    },
+    {
+      "lane": "published-model",
+      "run_id": "reconstructed-subset-routed",
+      "manifest": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/reconstructed-subset-routed/manifest.json",
+      "manifest_sha256": "718fe972cec923d4d0936fd93b0c1d93b5a707e8b891a0c0b81bb18772a258f4",
+      "timing_report_sha256": "8c67b8628ea5f9cd7b2de6fc57f4bd14bc4e295a0353b0379c1bc1f06ae009f0",
+      "binary_sha256": "a05b1e190d25543c36e849ab5762cec3864753911762da698e9f44433ba10ba7",
+      "gpu_identity": {
+        "ordinal": 0,
+        "unique_id": "0x63e81b58a39ea1f3",
+        "model": "AMD Radeon RX 7900 XTX",
+        "architecture": "gfx1100"
+      },
+      "elapsed_seconds": 787.1348056350835,
+      "fmax": {
+        "display.pixel_clk": {
+          "achieved": 93.23139953613281,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 114.32491302490234,
+          "constraint": 130.0052032470703
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 378.5823974609375,
+          "constraint": 130.0052032470703
+        }
+      },
+      "clock_windows": {
+        "status": "not_exported",
+        "clocks": {},
+        "final_analogue_model": null,
+        "missing_expected_clocks": [
+          "display.pixel_clk",
+          "ram_clock.clocks[0]",
+          "ram_clock.clocks[1]"
+        ],
+        "all_reported_windows_pass": null,
+        "reserve_status": "unqualified",
+        "with_reserve_pass": null,
+        "hardware_acceptance": false,
+        "scope": "Native launch-clock aggregation of enforced setup/hold windows; complete path/interface coverage and a justified uncertainty reserve remain separate."
+      },
+      "worst_positive_edge_memory_path": {
+        "launch": "posedge ram_clock.clocks[0]",
+        "capture": "posedge ram_clock.clocks[0]",
+        "setup_window_ns": 7.691999912261963,
+        "sum_delay_ns": 8.74699991941452,
+        "setup_margin_ns": -1.0550000071525574,
+        "delay_by_segment_type_ns": {
+          "clk-skew": 0.20900000631809235,
+          "clk-to-q": 1.1770000457763672,
+          "routing": 6.756999850273132,
+          "logic": 0.800000011920929,
+          "setup": -0.19599999487400055
+        },
+        "first_segment": {
+          "delay": 0.20900000631809235,
+          "from": {
+            "cell": "hps_ddr.f2sdram",
+            "loc": [
+              52,
+              53
+            ],
+            "port": "cmd_port_clk_1"
+          },
+          "to": {
+            "cell": "hps_ddr.port1.skid_address_MISTRAL_FF_Q_28",
+            "loc": [
+              24,
+              12
+            ],
+            "port": "CLK"
+          },
+          "type": "clk-skew"
+        },
+        "last_segment": {
+          "delay": -0.19599999487400055,
+          "from": {
+            "cell": "hps_ddr.port1.skid_address_MISTRAL_FF_Q_28",
+            "loc": [
+              24,
+              12
+            ],
+            "port": "ENA"
+          },
+          "to": {
+            "cell": "hps_ddr.port1.skid_address_MISTRAL_FF_Q_28",
+            "loc": [
+              24,
+              12
+            ],
+            "port": "ENA"
+          },
+          "type": "setup"
+        }
+      },
+      "hardware_acceptance": false,
+      "complete_interface_coverage": "not_established",
+      "routing_checksum_lines": [
+        "Info: Checksum: 0x453ce667",
+        "Info: Checksum: 0xad1d8564",
+        "Info: Checksum: 0x00388cd3",
+        "Info: Checksum: 0x4e4ddf48",
+        "Info: Checksum: 0xf9063f81"
+      ]
+    },
+    {
+      "lane": "published-model",
+      "run_id": "three-local-routed",
+      "manifest": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/three-local-routed/manifest.json",
+      "manifest_sha256": "bcb249f71c655b94229775cb4d6197dd2d3e49c8b01c2c80f927e0c17c6fedd8",
+      "timing_report_sha256": "d70522cb38589c03899ea991f9423470df50d44d7e94e69def5e18e12cf50692",
+      "binary_sha256": "a05b1e190d25543c36e849ab5762cec3864753911762da698e9f44433ba10ba7",
+      "gpu_identity": {
+        "ordinal": 0,
+        "unique_id": "0x63e81b58a39ea1f3",
+        "model": "AMD Radeon RX 7900 XTX",
+        "architecture": "gfx1100"
+      },
+      "elapsed_seconds": 760.9808391178958,
+      "fmax": {
+        "display.pixel_clk": {
+          "achieved": 95.1293716430664,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 108.31888580322266,
+          "constraint": 130.0052032470703
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 305.0333251953125,
+          "constraint": 130.0052032470703
+        }
+      },
+      "clock_windows": {
+        "status": "not_exported",
+        "clocks": {},
+        "final_analogue_model": null,
+        "missing_expected_clocks": [
+          "display.pixel_clk",
+          "ram_clock.clocks[0]",
+          "ram_clock.clocks[1]"
+        ],
+        "all_reported_windows_pass": null,
+        "reserve_status": "unqualified",
+        "with_reserve_pass": null,
+        "hardware_acceptance": false,
+        "scope": "Native launch-clock aggregation of enforced setup/hold windows; complete path/interface coverage and a justified uncertainty reserve remain separate."
+      },
+      "worst_positive_edge_memory_path": {
+        "launch": "posedge ram_clock.clocks[0]",
+        "capture": "posedge ram_clock.clocks[0]",
+        "setup_window_ns": 7.691999912261963,
+        "sum_delay_ns": 9.232000042684376,
+        "setup_margin_ns": -1.5400001304224133,
+        "delay_by_segment_type_ns": {
+          "clk-skew": 0.004999999888241291,
+          "clk-to-q": 0.7310000061988831,
+          "routing": 7.585999995470047,
+          "logic": 1.1060000360012054,
+          "setup": -0.19599999487400055
+        },
+        "first_segment": {
+          "delay": 0.004999999888241291,
+          "from": {
+            "cell": "ddr0_errors_MISTRAL_FF_Q_27",
+            "loc": [
+              9,
+              32
+            ],
+            "port": "CLK"
+          },
+          "to": {
+            "cell": "ddr0_errors_MISTRAL_FF_Q_18",
+            "loc": [
+              2,
+              5
+            ],
+            "port": "CLK"
+          },
+          "type": "clk-skew"
+        },
+        "last_segment": {
+          "delay": -0.19599999487400055,
+          "from": {
+            "cell": "ddr0_errors_MISTRAL_FF_Q_18",
+            "loc": [
+              2,
+              5
+            ],
+            "port": "ENA"
+          },
+          "to": {
+            "cell": "ddr0_errors_MISTRAL_FF_Q_18",
+            "loc": [
+              2,
+              5
+            ],
+            "port": "ENA"
+          },
+          "type": "setup"
+        }
+      },
+      "hardware_acceptance": false,
+      "complete_interface_coverage": "not_established",
+      "routing_checksum_lines": [
+        "Info: Checksum: 0x453ce667",
+        "Info: Checksum: 0xa9f20898",
+        "Info: Checksum: 0xbe83f170",
+        "Info: Checksum: 0x792c9b04",
+        "Info: Checksum: 0x64cfbcdd"
+      ]
+    }
+  ],
+  "compiler_cross_comparison": "Full-flow comparison; compiler/dependencies/GPU/model/placement/route are not isolated",
+  "reserve_status": "unqualified",
+  "published_source_qualification": {
+    "source_commit": "ae5350d7b3ea1a14bd10fefbcc0d7f272a331eb6",
+    "binary_sha256": "a05b1e190d25543c36e849ab5762cec3864753911762da698e9f44433ba10ba7",
+    "native_tests": {
+      "status": "qualified_for_reconstruction",
+      "single_process_bulk_suite_passed": false,
+      "bulk_resource_terminated": true,
+      "individual_unit_passes": 170,
+      "skipped": [
+        "PlacedTimeoutTest.ActualSnapshotPreflight"
+      ],
+      "cli_passes": [
+        "nextpnr-mistral-timing-report-paths-cli",
+        "nextpnr-mistral-lut-driver-copy-cli",
+        "nextpnr-mistral-decomposition-cli",
+        "nextpnr-mistral-comb-remap-plan-cli",
+        "nextpnr-mistral-remap-plan-cli",
+        "nextpnr-mistral-local-remap-cli",
+        "nextpnr-mistral-reduction-balance-cli"
+      ],
+      "complete_cli_suite_passed": true,
+      "last_cli_resumed_after_turn_interruption": true,
+      "hardware_acceptance": false
+    },
+    "test_receipt": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/qualified-native-tests.json",
+    "test_receipt_sha256": "46e82edf2e0f425efc4aba9bb6bc57401b184f6ea5eb4d208ef0efdf371c8727"
+  },
+  "confirmed_placement_policy_differences": {
+    "historical_source": "ae5350d7b3ea1a14bd10fefbcc0d7f272a331eb6",
+    "current_source": "9cf5fc12f0f91ffc279a46adb0d9c1f2a27d768e",
+    "file": "mistral/arch.cc",
+    "historical_ordinary": {
+      "placeAllAtOnce": false,
+      "ff_control_set_affinity": false
+    },
+    "current_ordinary": {
+      "placeAllAtOnce": true,
+      "ff_control_set_affinity": true,
+      "control_sets_exclusive": false,
+      "signature": [
+        "CLK",
+        "SCLR",
+        "SLOAD",
+        "ENA",
+        "ACLR",
+        "inversion states"
+      ]
+    },
+    "causal_effect_on_qor": "not_isolated",
+    "introducing_commit": "4e5ace3c493cd38d9f1fa2a8bd4337b131b04646"
+  },
+  "historical_unstacked_control_comparison": {
+    "recorded_memory_mhz": 106.157112,
+    "reconstructed_memory_mhz": 106.15711212158203,
+    "matches_recorded_six_decimal_precision": true,
+    "original_input_byte_match": false,
+    "identical_route_or_rbf_established": false,
+    "source_and_dependency_changes_isolated": false
+  },
+  "published_final_profile": {
+    "memory_gain_vs_unstacked_mhz": 8.167800903320312,
+    "memory_gap_to_recorded_driver_copy_mhz": 3.0184326171875,
+    "all_recorded_families_selected": true,
+    "historical_candidate_identities_recovered": false,
+    "capture_moves": 43,
+    "historical_capture_moves": 60,
+    "source_receipt": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/remaining-subset-qualification.json",
+    "source_receipt_sha256": "26a2ffb510dc07b44ed500b538d78fa72ccdbf0a70b864de88284ce0bb9665c6",
+    "reported_setup_pair_observations": [
+      {
+        "run_id": "baseline-gpu0-resumed1",
+        "report_sha256": "86568c863fde9a01255d30b4b5294aa6126d16e38fe4ad7be34c937a485da1ab",
+        "reported_setup_pairs": [
+          {
+            "launch": "<async>",
+            "capture": "posedge ram_clock.clocks[0]",
+            "reported_paths": 4,
+            "minimum_reported_setup_margin_ns": 9.769000515341759,
+            "setup_windows_ns": [
+              13.468000411987305
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "negedge ram_clock.clocks[0]",
+            "capture": "posedge ram_clock.clocks[0]",
+            "reported_paths": 16,
+            "minimum_reported_setup_margin_ns": 2.07599988381844,
+            "setup_windows_ns": [
+              3.8459999561309814
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "posedge display.pixel_clk",
+            "capture": "posedge display.pixel_clk",
+            "reported_paths": 1822,
+            "minimum_reported_setup_margin_ns": 2.8860002607107162,
+            "setup_windows_ns": [
+              13.468000411987305
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "posedge display.pixel_clk",
+            "capture": "posedge ram_clock.clocks[0]",
+            "reported_paths": 5,
+            "minimum_reported_setup_margin_ns": 9.70600040256977,
+            "setup_windows_ns": [
+              13.468000411987305
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "posedge ram_clock.clocks[0]",
+            "capture": "posedge display.pixel_clk",
+            "reported_paths": 1142,
+            "minimum_reported_setup_margin_ns": 3.106999710202217,
+            "setup_windows_ns": [
+              7.691999912261963
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "posedge ram_clock.clocks[0]",
+            "capture": "posedge ram_clock.clocks[0]",
+            "reported_paths": 12285,
+            "minimum_reported_setup_margin_ns": -1.727999895811081,
+            "setup_windows_ns": [
+              7.691999912261963
+            ],
+            "reported_setup_pass": false
+          },
+          {
+            "launch": "posedge ram_clock.clocks[1]",
+            "capture": "negedge ram_clock.clocks[0]",
+            "reported_paths": 16,
+            "minimum_reported_setup_margin_ns": 3.131000001914799,
+            "setup_windows_ns": [
+              5
+            ],
+            "reported_setup_pass": true
+          }
+        ],
+        "hold_evidence": "No hold aggregate/path export in this compiler; not established",
+        "complete_interface_coverage": "not established",
+        "hardware_acceptance": false
+      },
+      {
+        "run_id": "three-local-routed",
+        "report_sha256": "d70522cb38589c03899ea991f9423470df50d44d7e94e69def5e18e12cf50692",
+        "reported_setup_pairs": [
+          {
+            "launch": "<async>",
+            "capture": "posedge ram_clock.clocks[0]",
+            "reported_paths": 4,
+            "minimum_reported_setup_margin_ns": 9.705000385642052,
+            "setup_windows_ns": [
+              13.468000411987305
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "negedge ram_clock.clocks[0]",
+            "capture": "posedge ram_clock.clocks[0]",
+            "reported_paths": 16,
+            "minimum_reported_setup_margin_ns": 2.069999904371798,
+            "setup_windows_ns": [
+              3.8459999561309814
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "posedge display.pixel_clk",
+            "capture": "posedge display.pixel_clk",
+            "reported_paths": 1822,
+            "minimum_reported_setup_margin_ns": 2.956000290811062,
+            "setup_windows_ns": [
+              13.468000411987305
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "posedge display.pixel_clk",
+            "capture": "posedge ram_clock.clocks[0]",
+            "reported_paths": 5,
+            "minimum_reported_setup_margin_ns": 9.845000460743904,
+            "setup_windows_ns": [
+              13.468000411987305
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "posedge ram_clock.clocks[0]",
+            "capture": "posedge display.pixel_clk",
+            "reported_paths": 1142,
+            "minimum_reported_setup_margin_ns": 2.7639997750520706,
+            "setup_windows_ns": [
+              7.691999912261963
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "posedge ram_clock.clocks[0]",
+            "capture": "posedge ram_clock.clocks[0]",
+            "reported_paths": 12285,
+            "minimum_reported_setup_margin_ns": -1.5400001304224133,
+            "setup_windows_ns": [
+              7.691999912261963
+            ],
+            "reported_setup_pass": false
+          },
+          {
+            "launch": "posedge ram_clock.clocks[1]",
+            "capture": "negedge ram_clock.clocks[0]",
+            "reported_paths": 16,
+            "minimum_reported_setup_margin_ns": 2.8690000139176846,
+            "setup_windows_ns": [
+              5
+            ],
+            "reported_setup_pass": true
+          }
+        ],
+        "hold_evidence": "No hold aggregate/path export in this compiler; not established",
+        "complete_interface_coverage": "not established",
+        "hardware_acceptance": false
+      },
+      {
+        "run_id": "reconstructed-subset-routed",
+        "report_sha256": "8c67b8628ea5f9cd7b2de6fc57f4bd14bc4e295a0353b0379c1bc1f06ae009f0",
+        "reported_setup_pairs": [
+          {
+            "launch": "<async>",
+            "capture": "posedge ram_clock.clocks[0]",
+            "reported_paths": 4,
+            "minimum_reported_setup_margin_ns": 9.227000460028648,
+            "setup_windows_ns": [
+              13.468000411987305
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "negedge ram_clock.clocks[0]",
+            "capture": "posedge ram_clock.clocks[0]",
+            "reported_paths": 16,
+            "minimum_reported_setup_margin_ns": 2.069999904371798,
+            "setup_windows_ns": [
+              3.8459999561309814
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "posedge display.pixel_clk",
+            "capture": "posedge display.pixel_clk",
+            "reported_paths": 1822,
+            "minimum_reported_setup_margin_ns": 2.7420001849532127,
+            "setup_windows_ns": [
+              13.468000411987305
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "posedge display.pixel_clk",
+            "capture": "posedge ram_clock.clocks[0]",
+            "reported_paths": 5,
+            "minimum_reported_setup_margin_ns": 9.915000513195992,
+            "setup_windows_ns": [
+              13.468000411987305
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "posedge ram_clock.clocks[0]",
+            "capture": "posedge display.pixel_clk",
+            "reported_paths": 1142,
+            "minimum_reported_setup_margin_ns": 3.0339997559785843,
+            "setup_windows_ns": [
+              7.691999912261963
+            ],
+            "reported_setup_pass": true
+          },
+          {
+            "launch": "posedge ram_clock.clocks[0]",
+            "capture": "posedge ram_clock.clocks[0]",
+            "reported_paths": 12285,
+            "minimum_reported_setup_margin_ns": -1.0550000071525574,
+            "setup_windows_ns": [
+              7.691999912261963
+            ],
+            "reported_setup_pass": false
+          },
+          {
+            "launch": "posedge ram_clock.clocks[1]",
+            "capture": "negedge ram_clock.clocks[0]",
+            "reported_paths": 16,
+            "minimum_reported_setup_margin_ns": 3.2829999290406704,
+            "setup_windows_ns": [
+              5
+            ],
+            "reported_setup_pass": true
+          }
+        ],
+        "hold_evidence": "No hold aggregate/path export in this compiler; not established",
+        "complete_interface_coverage": "not established",
+        "hardware_acceptance": false
+      }
+    ],
+    "hold_evidence": "not_exported; not claimed passed",
+    "independent_physical_equivalence_proof": "not_recreated",
+    "hardware_acceptance": false
+  },
+  "cross_gpu_replay": {
+    "status": "failed_backend_initialization",
+    "run_id": "full-stack-gpu1",
+    "exit_code": 125,
+    "elapsed_seconds": 548.3759328629822,
+    "manifest": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-gpu1-comparison/full-stack-gpu1/manifest.json",
+    "manifest_sha256": "d3e93428a25baa7fb4e74f29b2c504b803e3b11c10711879cf57674d4c0a4116",
+    "error": "HIP invalid argument at hipMemcpy HostToDevice during backend initialization",
+    "timing_result_available": false,
+    "gpu1_small_probe_status": "all_four_passed",
+    "gpu0_backend_probes_passed": [
+      "three-wire two-hop",
+      "synthetic graph at 2740007 wires and 27175224 edges"
+    ],
+    "search_and_transfer_source_changed_between_ae5350_and_9cf": false,
+    "backend_identity_source_changed": true,
+    "root_cause": "unknown; both GPU0 and GPU1 full flows fail although standalone backend probes pass",
+    "gpu1_backend_probes": {
+      "receipt": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-gpu1-comparison/backend-probe/gpu1-receipt.json",
+      "receipt_sha256": "7fc6028944b580e76a7444e15ba7e46ed79232c44995de6d172c2bd84ba47404",
+      "cold_probe": {
+        "classification": "Same published production backend, no prior device-description call; synthetic RAM-test resource counts",
+        "command": [
+          "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-gpu1-comparison/backend-probe/probe-cold",
+          "1",
+          "2740007",
+          "27175224"
+        ],
+        "exit_code": 0,
+        "output": "shape wires=2740007 edges=27175224\nPASS hip:AMD Radeon AI PRO R9700 path_len=2 cost=2\n"
+      }
+    },
+    "unchanged_full_profile_retry": {
+      "run_id": "full-stack-gpu1-retry1",
+      "status": "failed_backend_initialization",
+      "manifest": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-gpu1-comparison/full-stack-gpu1-retry1/manifest.json",
+      "source_or_runtime_filter_changes": false,
+      "exit_code": 125,
+      "elapsed_seconds": 557.5344018843025,
+      "manifest_sha256": "805477be051b5f2c7f9de8a604d8153070cfe2e8264d83a8a25e842f40a4c959",
+      "input_hashes_unchanged": true,
+      "timing_result_available": false,
+      "error": "HIP invalid argument at hipMemcpy HostToDevice during backend initialization"
+    }
+  },
+  "driver_copy_ablation": {
+    "status": "failed_backend_initialization",
+    "profile": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-driver-ablation/frozen-profile.json",
+    "run_manifest": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-driver-ablation/full-stack-no-driver-gpu0/manifest.json",
+    "reference_memory_mhz": 114.32491302490234,
+    "source_input_seed_gpu_and_other_pass_choices_fixed": true,
+    "changed_option": "driver copying disabled",
+    "full_flow_comparison": true,
+    "hardware_acceptance": false,
+    "exit_code": 125,
+    "elapsed_seconds": 572.0794724100269,
+    "manifest_sha256": "31d8cf23bef5c8508e16474b7fb79dc9c500002295a5ed5149995dec40f9af6f",
+    "input_hashes_unchanged": true,
+    "timing_result_available": false,
+    "error": "HIP invalid argument at hipMemcpy HostToDevice during backend initialization"
+  },
+  "hip_upload_trace": {
+    "classification": "Diagnostic only; no completed routing or timing",
+    "native_binary_sha256": "a05b1e190d25543c36e849ab5762cec3864753911762da698e9f44433ba10ba7",
+    "trace_library_sha256": "be7dfc245f02d98a1d477eeb51325b87d722762d82fe961c4ae423eaab4fde62",
+    "placed_graph_upload": {
+      "classification": "Bounded backend upload diagnostic; no benchmark or checkpoint replay qualification claimed",
+      "command": [
+        "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/build/nextpnr-mistral",
+        "--json",
+        "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/driver-subset-selected/design.json",
+        "--device",
+        "5CSEBA6U23I7",
+        "--no-pack",
+        "--no-place",
+        "--router",
+        "gpu",
+        "--gpu-device",
+        "0",
+        "--timing-allow-fail",
+        "--rbf",
+        "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/hip-upload-diagnostic/diagnostic-only.rbf"
+      ],
+      "environment_overrides": {
+        "LD_PRELOAD": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/hip-upload-diagnostic/trace.so",
+        "HIP_UPLOAD_TRACE_STOP_AFTER": "9",
+        "TMPDIR": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/hip-upload-diagnostic"
+      },
+      "exit_code": 77,
+      "elapsed_seconds": 5.75300523173064
+    },
+    "fresh_full_process_upload": {
+      "status": "upload_diagnostic_stopped",
+      "exit_code": 77,
+      "elapsed_seconds": 563.2424746570177,
+      "graph_uploads_passed": 9,
+      "input_hashes_unchanged": true,
+      "manifest_path": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/hip-upload-diagnostic/full-process-upload/manifest.json",
+      "manifest_sha256": "d3ed2b90e0e490f9018eb25558c3c414836a4b80903443d8470b6a6b4419ed5c",
+      "log_path": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/hip-upload-diagnostic/full-process-upload/run.log",
+      "log_sha256": "c5694fd1f8f9ede252ac41b6c8ba0536c6b0f0a5b9d2cf549633d52f2333f7b1"
+    },
+    "root_cause": "Unknown; prior full flows failed on both GPUs, instrumented fresh flow passed uploads. Trace may perturb host layout or timing; no fix established.",
+    "best_completed_memory_mhz": 114.32491302490234,
+    "complete_instrumented_control": {
+      "status": "completed",
+      "exit_code": 0,
+      "elapsed_seconds": 815.2843834143132,
+      "fmax": {
+        "display.pixel_clk": {
+          "achieved": 94.62528228759766,
+          "constraint": 74.25006866455078
+        },
+        "ram_clock.clocks[0]": {
+          "achieved": 115.36686706542969,
+          "constraint": 130.0052032470703
+        },
+        "ram_clock.clocks[1]": {
+          "achieved": 300.2429504394531,
+          "constraint": 130.0052032470703
+        }
+      },
+      "input_hashes_unchanged": true,
+      "classification": "Instrumented fresh full-process no-driver control; not a clean ablation against uninstrumented reference",
+      "manifest_path": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/hip-upload-diagnostic/full-process-route/manifest.json",
+      "manifest_sha256": "40cf1f9b0d342912145ecc77732922a01077027b69ac702b9c693a4970f676ea"
+    }
+  }
+}

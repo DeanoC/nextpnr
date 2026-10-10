@@ -1,0 +1,388 @@
+{
+  "schema": "mistral-ramtest-reconstruction-baseline-v1",
+  "baseline_id": "ramtest-reconstructed-114mhz-seed2-20261010",
+  "scope": "Historical-source reconstructed old-input research baseline; current-main and hardware acceptance require separate validation",
+  "selected_reference": {
+    "run_id": "reconstructed-subset-routed",
+    "status": "completed",
+    "classification": "Reconstructed historical-input full flow with published historical source and selected retained dependencies; not original117 reproduction",
+    "source_commit": "ae5350d7b3ea1a14bd10fefbcc0d7f272a331eb6",
+    "binary_sha256": "a05b1e190d25543c36e849ab5762cec3864753911762da698e9f44433ba10ba7",
+    "input_hashes": {
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/synthesis/synth.json": "f90717c8f06708485a125aad1488531a45f9f92e725bad0a969c8a5ddafe0b65",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross/cores/fes-ramtest/constraints.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross/boards/de10nano/clocks.sdc": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041"
+    },
+    "build_id": "7168b508ab424b70f1c0f87b2035d821",
+    "seed": 2,
+    "device": "5CSEBA6U23I7",
+    "exact_command": [
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/build/nextpnr-mistral",
+      "--json",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/synthesis/synth.json",
+      "--device",
+      "5CSEBA6U23I7",
+      "--qsf",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross/cores/fes-ramtest/constraints.qsf",
+      "--sdc",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross/boards/de10nano/clocks.sdc",
+      "--freq",
+      "74.25",
+      "--seed",
+      "2",
+      "--placer-heap-timingweight",
+      "10",
+      "--placer-heap-critexp",
+      "2",
+      "--replicate-enables",
+      "4",
+      "--timing-allow-fail",
+      "--detailed-timing-report",
+      "--timing-report-paths",
+      "16384",
+      "--write",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/reconstructed-subset-routed/design.json",
+      "--report",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/reconstructed-subset-routed/timing.json",
+      "--balance-reduction-root",
+      "ddr0_test.group_valid_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT6_F_E_MISTRAL_ALUT5_Q_1",
+      "--router",
+      "gpu",
+      "--gpu-device",
+      "0",
+      "--rbf",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/reconstructed-subset-routed/core.rbf",
+      "--remap-plan",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/three-local-plan.json",
+      "--remap-comb-critical",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/routed-compatible-selection-hints.json",
+      "--remap-comb-candidate",
+      "0",
+      "--remap-decompose-critical",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/placed2-subset-selected/timing.json",
+      "--remap-decompose-candidate",
+      "0",
+      "--remap-lut-driver-critical",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/decomposition-subset-selected/timing.json",
+      "--remap-lut-driver-candidate",
+      "0"
+    ],
+    "cwd": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross",
+    "environment": {
+      "NEXTPNR_*": "cleared except explicit entries",
+      "TMPDIR": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/tmp",
+      "NEXTPNR_TIMING_CLOCK_PAIRS": "1",
+      "NEXTPNR_MISTRAL_CAPTURE_LOCALITY": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/comb-routed-guide-selected/timing.json 64 24",
+      "NEXTPNR_MISTRAL_PLACED_REDUCTION": "ddr0_test.group_valid_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT4_Q 6 0 250\nddr0_test.group_valid_MISTRAL_ALUT6_E_F_MISTRAL_ALUT5_Q 6 0 200"
+    },
+    "route": true,
+    "historical_unplaced_balance": true,
+    "historical_synthesis_byte_match": false,
+    "hardware_acceptance": false,
+    "gpu_identity": {
+      "ordinal": 0,
+      "unique_id": "0x63e81b58a39ea1f3",
+      "model": "AMD Radeon RX 7900 XTX",
+      "architecture": "gfx1100"
+    },
+    "exit_code": 0,
+    "elapsed_seconds": 787.1348056350835,
+    "input_hashes_unchanged": true,
+    "artifacts": {
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/reconstructed-subset-routed/core.rbf": "c4ed33540bc96751718a18e801ad6192d62374802326f08521165118a515d129",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/reconstructed-subset-routed/design.json": "9652186fd4546da62349ba95e169550de6c43ad90135f9e6efa3e10210ea6c55",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/reconstructed-subset-routed/gpu-before.txt": "ccca43caac268d75edc14c08835510f87acad90ec62597d8ff61b7f37b94cffc",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/reconstructed-subset-routed/run.log": "5561a9665f9f1b5f5d9f8b70bf588871b8b342bc6dcd00a26773c043c14bb87a",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/reconstructed-subset-routed/timing.json": "8c67b8628ea5f9cd7b2de6fc57f4bd14bc4e295a0353b0379c1bc1f06ae009f0"
+    },
+    "fmax": {
+      "display.pixel_clk": {
+        "achieved": 93.23139953613281,
+        "constraint": 74.25006866455078
+      },
+      "ram_clock.clocks[0]": {
+        "achieved": 114.32491302490234,
+        "constraint": 130.0052032470703
+      },
+      "ram_clock.clocks[1]": {
+        "achieved": 378.5823974609375,
+        "constraint": 130.0052032470703
+      }
+    },
+    "report_keys": [
+      "critical_paths",
+      "detailed_net_timings",
+      "fmax",
+      "timing_report_paths",
+      "utilization"
+    ]
+  },
+  "compiler_matched_unstacked_control": {
+    "run_id": "baseline-gpu0-resumed1",
+    "status": "completed",
+    "classification": "Reconstructed historical-input full flow with published historical source and selected retained dependencies; not original117 reproduction",
+    "source_commit": "ae5350d7b3ea1a14bd10fefbcc0d7f272a331eb6",
+    "binary_sha256": "a05b1e190d25543c36e849ab5762cec3864753911762da698e9f44433ba10ba7",
+    "input_hashes": {
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/synthesis/synth.json": "f90717c8f06708485a125aad1488531a45f9f92e725bad0a969c8a5ddafe0b65",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross/cores/fes-ramtest/constraints.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross/boards/de10nano/clocks.sdc": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041"
+    },
+    "build_id": "7168b508ab424b70f1c0f87b2035d821",
+    "seed": 2,
+    "device": "5CSEBA6U23I7",
+    "exact_command": [
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/build/nextpnr-mistral",
+      "--json",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/synthesis/synth.json",
+      "--device",
+      "5CSEBA6U23I7",
+      "--qsf",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross/cores/fes-ramtest/constraints.qsf",
+      "--sdc",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross/boards/de10nano/clocks.sdc",
+      "--freq",
+      "74.25",
+      "--seed",
+      "2",
+      "--placer-heap-timingweight",
+      "10",
+      "--placer-heap-critexp",
+      "2",
+      "--replicate-enables",
+      "4",
+      "--timing-allow-fail",
+      "--detailed-timing-report",
+      "--timing-report-paths",
+      "16384",
+      "--write",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/baseline-gpu0-resumed1/design.json",
+      "--report",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/baseline-gpu0-resumed1/timing.json",
+      "--router",
+      "gpu",
+      "--gpu-device",
+      "0",
+      "--rbf",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/baseline-gpu0-resumed1/core.rbf"
+    ],
+    "cwd": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross",
+    "environment": {
+      "NEXTPNR_*": "cleared except explicit entries",
+      "TMPDIR": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/tmp",
+      "NEXTPNR_TIMING_CLOCK_PAIRS": "1"
+    },
+    "route": true,
+    "historical_unplaced_balance": false,
+    "historical_synthesis_byte_match": false,
+    "hardware_acceptance": false,
+    "gpu_identity": {
+      "ordinal": 0,
+      "unique_id": "0x63e81b58a39ea1f3",
+      "model": "AMD Radeon RX 7900 XTX",
+      "architecture": "gfx1100"
+    },
+    "exit_code": 0,
+    "elapsed_seconds": 1232.638634072151,
+    "input_hashes_unchanged": true,
+    "artifacts": {
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/baseline-gpu0-resumed1/core.rbf": "e98584bda5eca572a638698d4050d16d82aed0c5680773a14561c213aefecc9c",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/baseline-gpu0-resumed1/design.json": "8d54437d669f613d67de9a8eb06246ac5f2517efa9b8b54019c4bf1796c27aee",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/baseline-gpu0-resumed1/gpu-before.txt": "77eb77d5423e886ac4e90631bfef6ff3debc96cebf17e56dfc8becfc20dae82d",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/baseline-gpu0-resumed1/run.log": "e7a01427e67713fbe32d3a120b2c1d5ea98ab413c4ddb7b6a3f1a833893a684b",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/baseline-gpu0-resumed1/timing.json": "86568c863fde9a01255d30b4b5294aa6126d16e38fe4ad7be34c937a485da1ab"
+    },
+    "fmax": {
+      "display.pixel_clk": {
+        "achieved": 94.5000991821289,
+        "constraint": 74.25006866455078
+      },
+      "ram_clock.clocks[0]": {
+        "achieved": 106.15711212158203,
+        "constraint": 130.0052032470703
+      },
+      "ram_clock.clocks[1]": {
+        "achieved": 347.7934875488281,
+        "constraint": 130.0052032470703
+      }
+    },
+    "report_keys": [
+      "critical_paths",
+      "detailed_net_timings",
+      "fmax",
+      "timing_report_paths",
+      "utilization"
+    ]
+  },
+  "selection_guide_sha256": {
+    "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/three-local-plan.json": "82eb7dd19b9be377312bd7915c558d79426f72f82c33b6f96f44d107e4c1a56d",
+    "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/routed-compatible-selection-hints.json": "ecb8d52d13fc30ae319005a2039431725a7713376f38c46a7597af06b6a70bfa",
+    "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/placed2-subset-selected/timing.json": "f749098fc9be3c19eeaa12afdde7b76eebe1c3b3633bcb21d198bef949988c86",
+    "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/decomposition-subset-selected/timing.json": "8c2d62aa21f5bd9795b17a09c20353e1160a02f9b2eab9ba8fe99ae237b45e28",
+    "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/comb-routed-guide-selected/timing.json": "63fd4bda6a080d2fbf2143219b4e4aeff706e9171b81d9b8aa1f98f8d2915490"
+  },
+  "build_receipt": {
+    "source_commit": "ae5350d7b3ea1a14bd10fefbcc0d7f272a331eb6",
+    "classification": "Fresh build of published historical source, not missing measured5dd executable",
+    "source_archive_sha256": "9f53d5890bcb7f42576e147e253b5840ece20de5f602d2c1328c16baf2f1af74",
+    "dependencies": {
+      "mistral": {
+        "commit": "7ed06e21c18b047ec5c6d6a7e85e5ea2c8827039",
+        "archive_sha256": "8c2e33dc52f503bcc4dd451d182ceb4058fd5d589e5ddf8f582e640ebcc4fbeb",
+        "source_path": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/dependency"
+      },
+      "3rdparty/googletest": {
+        "commit": "52eb8108c5bdec04579160ae17225d66034bd723",
+        "archive_sha256": "3a8fea2f310f73e090dbf10dc16260ab959cccf77bc5482f453d1f4bc3af4bcb",
+        "source_path": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/source/3rdparty/googletest"
+      },
+      "tests": {
+        "commit": "ce154121819a04ec921a4a6f6850c28f33c81b6c",
+        "archive_sha256": "2dda78e45875c65b8f917f78253d1b9a856e7e29e5b273571cfe9e996de013ca",
+        "source_path": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/source/tests"
+      }
+    },
+    "status": "built",
+    "configure_command": [
+      "cmake",
+      "-S",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/source",
+      "-B",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/build",
+      "-G",
+      "Ninja",
+      "-DARCH=mistral",
+      "-DBUILD_GUI=OFF",
+      "-DBUILD_PYTHON=OFF",
+      "-DBUILD_TESTS=ON",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DUSE_IPO=OFF",
+      "-DUSE_OPENMP=OFF",
+      "-DGPU_ROUTER=HIP",
+      "-DGPU_BUILD_TARGETS=gfx1100;gfx1201",
+      "-DCMAKE_HIP_ARCHITECTURES=gfx1100;gfx1201",
+      "-DCMAKE_HIP_COMPILER=/opt/rocm/core-7.14/lib/llvm/bin/clang++",
+      "-DMISTRAL_ROOT=/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/dependency"
+    ],
+    "configure_exit_code": 0,
+    "build_command": [
+      "cmake",
+      "--build",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/build",
+      "--target",
+      "nextpnr-mistral",
+      "-j",
+      "6"
+    ],
+    "build_exit_code": 0,
+    "binary_sha256": "a05b1e190d25543c36e849ab5762cec3864753911762da698e9f44433ba10ba7",
+    "retained_receipt_path": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/build-receipt.json",
+    "retained_receipt_sha256": "d278139442dc4ee2412c371663ef60fbe1665524a490c5f4e2ed6fabeb66bbbc"
+  },
+  "instrumented_no_driver_control": {
+    "classification": "Instrumented fresh full-process no-driver control; not a clean ablation against uninstrumented reference",
+    "status": "completed",
+    "exact_command": [
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-source/build/nextpnr-mistral",
+      "--json",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/synthesis/synth.json",
+      "--device",
+      "5CSEBA6U23I7",
+      "--qsf",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross/cores/fes-ramtest/constraints.qsf",
+      "--sdc",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross/boards/de10nano/clocks.sdc",
+      "--freq",
+      "74.25",
+      "--seed",
+      "2",
+      "--placer-heap-timingweight",
+      "10",
+      "--placer-heap-critexp",
+      "2",
+      "--replicate-enables",
+      "4",
+      "--timing-allow-fail",
+      "--detailed-timing-report",
+      "--timing-report-paths",
+      "16384",
+      "--write",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/hip-upload-diagnostic/full-process-route/design.json",
+      "--report",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/hip-upload-diagnostic/full-process-route/timing.json",
+      "--balance-reduction-root",
+      "ddr0_test.group_valid_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT6_F_E_MISTRAL_ALUT5_Q_1",
+      "--router",
+      "gpu",
+      "--gpu-device",
+      "0",
+      "--rbf",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/hip-upload-diagnostic/full-process-route/design.rbf",
+      "--remap-plan",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/three-local-plan.json",
+      "--remap-comb-critical",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/routed-compatible-selection-hints.json",
+      "--remap-comb-candidate",
+      "0",
+      "--remap-decompose-critical",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/placed2-subset-selected/timing.json",
+      "--remap-decompose-candidate",
+      "0"
+    ],
+    "binary_sha256": "a05b1e190d25543c36e849ab5762cec3864753911762da698e9f44433ba10ba7",
+    "trace_library_sha256": "be7dfc245f02d98a1d477eeb51325b87d722762d82fe961c4ae423eaab4fde62",
+    "input_hashes": {
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/synthesis/synth.json": "f90717c8f06708485a125aad1488531a45f9f92e725bad0a969c8a5ddafe0b65",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross/cores/fes-ramtest/constraints.qsf": "8f97054248c681aca77fc26f55d6e91478164cc7726ec03034b4e459f1ea48d4",
+      "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/ramtest-baseline-v2/fes-source/sources/misteross/boards/de10nano/clocks.sdc": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041"
+    },
+    "environment_overrides": {
+      "TMPDIR": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/hip-upload-diagnostic/full-process-route",
+      "NEXTPNR_TIMING_CLOCK_PAIRS": "1",
+      "NEXTPNR_MISTRAL_CAPTURE_LOCALITY": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/published-model/comb-routed-guide-selected/timing.json 64 24",
+      "NEXTPNR_MISTRAL_PLACED_REDUCTION": "ddr0_test.group_valid_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT4_Q 6 0 250\nddr0_test.group_valid_MISTRAL_ALUT6_E_F_MISTRAL_ALUT5_Q 6 0 200",
+      "LD_PRELOAD": "/home/deano/kepler/worktrees/nextpnr-investigate-mistral-gpu-qor-264-54cde5d3/build/investigation/recreate-117-profile-20261009/hip-upload-diagnostic/trace-v2.so"
+    },
+    "timeout_seconds": 1800,
+    "exit_code": 0,
+    "elapsed_seconds": 815.2843834143132,
+    "input_hashes_unchanged": true,
+    "artifact_hashes": {
+      "timing.json": "0ff241df91ad1bf13c20d82f9301e0377309cb46b9d73c81253e74d3d844ad93",
+      "run.log": "02dc41e61a851e0d0ab3917064d975344094a8e498cff0024a121a3902e4e18b",
+      "gpu-before.txt": "7e4aed75db17c5995d1969c587c134b2babc2b4adfe22695e84e5a0d9bffda04",
+      "design.json": "8070f734d9266b4fe80394c560a4e9c53627d8cd916aec1430dd3181d580d203",
+      "design.rbf": "9536c899f72d07a9c2a790dacd2106d565f2440e901bd14ea75b142adfa79b00"
+    },
+    "fmax": {
+      "display.pixel_clk": {
+        "achieved": 94.62528228759766,
+        "constraint": 74.25006866455078
+      },
+      "ram_clock.clocks[0]": {
+        "achieved": 115.36686706542969,
+        "constraint": 130.0052032470703
+      },
+      "ram_clock.clocks[1]": {
+        "achieved": 300.2429504394531,
+        "constraint": 130.0052032470703
+      }
+    },
+    "hardware_acceptance": false
+  },
+  "acceptance": {
+    "130mhz_memory_setup_pass": false,
+    "hold_coverage": "not established by historical compiler",
+    "complete_external_interface_coverage": "not established",
+    "original_historical117_artifact_reproduction": false,
+    "hardware_acceptance": false
+  },
+  "replay_requirements": [
+    "Verify compiler, input, QSF, SDC and guide hashes; retained local files are prerequisites, not bundled fixtures.",
+    "Rewrite all output paths and TMPDIR to a fresh directory on the main disk.",
+    "Check free GPU identity rather than reusing an ordinal blindly.",
+    "Clear inherited NEXTPNR settings; restore only recorded explicit entries.",
+    "Run fresh packing and placement for remapping; preserve native guide qualification.",
+    "Do not transfer timing claims across compiler/model/RTL revisions or treat partial selection reports as signoff."
+  ]
+}

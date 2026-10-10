@@ -13,6 +13,13 @@ Design goals: at least router1-class timing with router2-class run time,
 and results that do not depend on GPU scheduling (two runs with the same
 seed produce the same routing).
 
+## RAM-test reconstruction baseline
+
+The [selected 114.325 MHz research baseline](investigations/mistral-gpu-qor/ramtest-reconstructed-baseline.md)
+records a completed historical-source RAM-test profile, compiler-matched controls,
+exact commands and artifact hashes. It still misses the 130 MHz memory target;
+current-main validation and hardware acceptance remain separate.
+
 ## Building
 
 ```sh
