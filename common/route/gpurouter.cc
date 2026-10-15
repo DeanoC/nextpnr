@@ -1317,7 +1317,7 @@ struct GpuRouter
             if (!ctx->checkWireAvail(cw)) {
                 NetInfo *bound_net = ctx->getBoundWireNet(cw);
                 if (bound_net != net) {
-                    if (ctx->verbose)
+                    if (ctx->verbose || bind_diagnostics++ < 8)
                         log_info("Failed to bind wire %s to net %s, bound to net %s\n", ctx->nameOfWire(cw),
                                  net->name.c_str(ctx), bound_net ? bound_net->name.c_str(ctx) : "nullptr");
                     success = false;
@@ -1336,7 +1336,7 @@ struct GpuRouter
                 if (ctx->getBoundPipNet(p) == nullptr)
                     to_bind.push_back(p);
             } else if (!ad.pre_routed || ctx->getBoundPipNet(p) != net) {
-                if (ctx->verbose)
+                if (ctx->verbose || bind_diagnostics++ < 8)
                     log_info("Failed to bind pip %s to net %s\n", ctx->nameOfPip(p), net->name.c_str(ctx));
                 success = false;
                 break;
@@ -1355,9 +1355,13 @@ struct GpuRouter
         return success;
     }
 
+    // Bound normal-log diagnostics per binding pass, even for very large designs.
+    int bind_diagnostics = 0;
+
     bool bind_and_check_all()
     {
         ctx->check();
+        bind_diagnostics = 0;
         bool success = true;
         // Unbind every net's router-made routing before binding any: a net
         // the negotiation moved off a wire still holds it in the Arch until
@@ -3161,7 +3165,10 @@ struct GpuRouter
         }
         if (timing_driven && cfg.repair_rounds > 0)
             timing_repair();
-        // Bind into the Arch; anything the Arch rejects is negotiated again
+        // Bind into the Arch; anything the Arch rejects is negotiated again.
+        // Congestion-free retries bypass the negotiation loop's failure check,
+        // so give binding its own small budget, independent of maxIter.
+        int arch_retries = 0;
         while (true) {
             cfg.check_stop();
             bind_and_check_all();
@@ -3171,18 +3178,30 @@ struct GpuRouter
             // there is no congestion, negotiate() therefore returns without
             // reaching its own maxIter check, even if Arch rejects the same
             // net again at the next binding pass.
-            if (iter > cfg.max_iter) {
+            if (iter > cfg.max_iter || arch_retries >= cfg.arch_retry_limit) {
                 std::string names;
                 for (int n : failed_nets) {
                     if (!names.empty())
                         names += ", ";
                     names += ctx->nameOf(nets_by_udata.at(n));
                 }
-                log_error("GPU router architecture bind did not converge after %d routing iterations "
-                          "(rejected nets: %s).\n",
-                          cfg.max_iter, names.c_str());
+                // log_error throws, so the opt-in collector never sees a terminal record
+                // unless it is flushed before this exit.
+                if (telemetry)
+                    telemetry->emit("run_end", "", -1,
+                                    {gpuroute::Telemetry::Field::string("status", "architecture_binding_failure"),
+                                     gpuroute::Telemetry::Field::boolean_value("routing_legal", false),
+                                     gpuroute::Telemetry::Field::null_value(
+                                             "analogue_timing_pass", mistral_analogue_downstream
+                                                                             ? "downstream_phase"
+                                                                             : "not_available_for_architecture")});
+                log_error("GPU router architecture bind did not converge after %d re-routing attempts "
+                          "(%d routing iterations; rejected nets: %s).\n",
+                          arch_retries, iter - 1, names.c_str());
             }
-            log_info("    %zu nets rejected by the architecture, re-routing\n", failed_nets.size());
+            ++arch_retries;
+            log_info("    %zu nets rejected by the architecture, re-routing (attempt %d/%d)\n",
+                     failed_nets.size(), arch_retries, cfg.arch_retry_limit);
             for (auto cn : failed_nets)
                 route_queue.push_back(cn);
             if (!negotiate()) {
@@ -3349,6 +3368,9 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     telemetry_seed =
             telemetry_seed_setting == ctx->settings.end() ? std::string() : telemetry_seed_setting->second.as_string();
     max_iter = ctx->setting<int>("gpurouter/maxIter", 2000);
+    arch_retry_limit = ctx->setting<int>("gpurouter/archRetryLimit", 8);
+    if (arch_retry_limit < 0)
+        log_error("gpurouter/archRetryLimit must be nonnegative.\n");
 }
 
 NEXTPNR_NAMESPACE_END
