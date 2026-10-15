@@ -459,27 +459,32 @@ struct Arch : BaseArch<ArchRanges>
     }
 
     // Architecture constraints before the per-pip ownership check.
-    bool pip_allowed_for_net(PipId pip, const NetInfo *net) const
+    const char *pip_rejection_reason(PipId pip, const NetInfo *net) const
     {
         if (is_pip_blocked(pip))
-            return false;
+            return "reserved_route_requires_other_source";
         if (WireId(pip.src).is_nextpnr_created() && pll_private_pips.count(pip) &&
             !(net && net->driver.cell && net->driver.cell->type == id_altera_pll))
-            return false;
+            return "pll_private_output_requires_pll_driver";
         if (WireId(pip.dst).is_nextpnr_created() && pll_private_ref_pips.count(pip) && !net_feeds_pll(net))
-            return false;
+            return "pll_private_reference_requires_pll_sink";
         if (!fes_pip_preserves_cram(pip))
-            return false;
+            return "fes_scaffold_cram_preservation";
         if (fes_fence_active && fes_has_reserved_rect && net != nullptr) {
             const bool slot_driven = fes_cell_is_slot(net->driver.cell);
             const bool slot_user = fes_net_touches_slot(net);
             const bool in_socket = fes_pip_in_socket(pip);
             if (slot_driven && !fes_pip_in_plug_halo(pip) && !fes_pip_reaches_net_shell_tile(pip, net))
-                return false;
+                return "fes_slot_route_outside_plug_halo_and_shell";
             if (!slot_user && in_socket && BaseArch::checkPipAvail(pip))
-                return false;
+                return "fes_non_slot_route_enters_socket";
         }
-        return true;
+        return nullptr;
+    }
+
+    bool pip_allowed_for_net(PipId pip, const NetInfo *net) const
+    {
+        return pip_rejection_reason(pip, net) == nullptr;
     }
 
     bool checkPipAvailForNet(PipId pip, const NetInfo *net) const override

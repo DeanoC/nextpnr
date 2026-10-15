@@ -90,6 +90,16 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 
 ## Algorithm
 
+Architecture-binding rejection diagnostics are printed without `--verbose` for up to
+eight connections per binding pass (`--verbose` prints every rejection). Each entry
+includes the net, driver and sink ports, user and physical-pin indices, frozen and
+pre-routed flags, rejected wire/pip, pip endpoints, and resource owners/conflicts.
+Mistral pip rejections also name the rule: reserved source, private PLL output or
+reference, scaffold CRAM preservation, slot route outside its plug halo/shell, or
+a non-slot route entering the socket. If no Mistral rule rejects the pip, the
+failure is reported as a pip ownership conflict. These diagnostics describe the
+binding state before the rejected connection is ripped up.
+
 ### Host side (`common/route/gpurouter.cc`)
 
 1. **Graph flattening.** All wires are numbered tile-major (ties within a
