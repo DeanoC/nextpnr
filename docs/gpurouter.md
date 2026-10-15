@@ -82,6 +82,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `candidateMargin`, `candidateUnbounded`, `candidateExpandK` | 8, true, = `expandK` | candidate searches use the net's bounding box widened by this many tiles; whether the two primary candidates may fall back to the search without a box; frontier entries expanded per step (they run one net at a time, so 2048 makes a pass about a third faster, with different routes) |
 | `cpuLaneNets` | 0 | batches of at most this many nets run on the host backend (0: never) |
 | `repairVerify`, `repairVerifyArcs` | false, 300 | diagnostic: re-run the first arc of the first N bounded pure-delay repair tasks as an exact Dijkstra on the host and report how often and by how much the K-best weighted-A* search misses the minimum-delay route (slow: seconds per search; candidate searches are not verified) |
+| `archRetryLimit` | 8 | maximum re-routing attempts after architecture binding rejects a route, independent of `maxIter`; 0 fails immediately. Normal logs name up to eight rejected wires/pips and their nets per binding pass; the final error lists the rejected nets |
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
 | `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 4, 22 | device scratch: concurrent nets and log2 table size per lane |

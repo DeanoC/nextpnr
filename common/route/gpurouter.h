@@ -158,6 +158,9 @@ struct GpuRouterCfg
     std::string telemetry_seed;
     // Stop after this many iterations without convergence
     int max_iter;
+    // Maximum re-routing attempts after architecture binding rejects a route.
+    // Zero fails on the first rejection. Independent of the congestion budget.
+    int arch_retry_limit;
 };
 
 // Returns true when the whole design routed (and, as with router2, after the
