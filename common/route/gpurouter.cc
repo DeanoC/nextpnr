@@ -1293,6 +1293,35 @@ struct GpuRouter
     // ------------------------------------------------------------------
     // Final binding into the Arch (ported from router2)
 
+    void log_bind_rejection(NetInfo *net, store_index<PortRef> user, int phys_pin, WireId wire, PipId pip)
+    {
+        auto &usr = net->users.at(user);
+        const auto &ad = nets.at(net->udata).arcs.at(user.idx()).at(phys_pin);
+        log_info("    rejected connection: net=%s driver=%s.%s sink=%s.%s user=%d phys_pin=%d "
+                 "frozen=%d pre_routed=%d\n",
+                 ctx->nameOf(net), net->driver.cell ? ctx->nameOf(net->driver.cell) : "<none>",
+                 net->driver.port.c_str(ctx), usr.cell ? ctx->nameOf(usr.cell) : "<none>",
+                 usr.port.c_str(ctx), user.idx(), phys_pin, int(ad.frozen), int(ad.pre_routed));
+        NetInfo *bound = ctx->getBoundWireNet(wire);
+        NetInfo *conflict = ctx->getConflictingWireNet(wire);
+        log_info("        wire=%s bound_net=%s conflicting_net=%s\n", ctx->nameOfWire(wire),
+                 bound ? ctx->nameOf(bound) : "<none>", conflict ? ctx->nameOf(conflict) : "<none>");
+        if (pip == PipId())
+            return;
+        bound = ctx->getBoundPipNet(pip);
+        conflict = ctx->getConflictingPipNet(pip);
+        WireId conflict_wire = ctx->getConflictingPipWire(pip);
+        log_info("        pip=%s src=%s dst=%s bound_net=%s conflicting_net=%s conflicting_wire=%s\n",
+                 ctx->nameOfPip(pip), ctx->nameOfWire(ctx->getPipSrcWire(pip)),
+                 ctx->nameOfWire(ctx->getPipDstWire(pip)), bound ? ctx->nameOf(bound) : "<none>",
+                 conflict ? ctx->nameOf(conflict) : "<none>",
+                 conflict_wire != WireId() ? ctx->nameOfWire(conflict_wire) : "<none>");
+#ifdef ARCH_MISTRAL
+        const char *reason = ctx->pip_rejection_reason(pip, net);
+        log_info("        architecture_rule=%s\n", reason ? reason : "pip_ownership_conflict");
+#endif
+    }
+
     bool bind_and_check(NetInfo *net, store_index<PortRef> usr_idx, int phys_pin)
     {
         bool success = true;
@@ -1318,8 +1347,7 @@ struct GpuRouter
                 NetInfo *bound_net = ctx->getBoundWireNet(cw);
                 if (bound_net != net) {
                     if (ctx->verbose || bind_diagnostics++ < 8)
-                        log_info("Failed to bind wire %s to net %s, bound to net %s\n", ctx->nameOfWire(cw),
-                                 net->name.c_str(ctx), bound_net ? bound_net->name.c_str(ctx) : "nullptr");
+                        log_bind_rejection(net, usr_idx, phys_pin, cw, PipId());
                     success = false;
                     break;
                 }
@@ -1337,7 +1365,7 @@ struct GpuRouter
                     to_bind.push_back(p);
             } else if (!ad.pre_routed || ctx->getBoundPipNet(p) != net) {
                 if (ctx->verbose || bind_diagnostics++ < 8)
-                    log_info("Failed to bind pip %s to net %s\n", ctx->nameOfPip(p), net->name.c_str(ctx));
+                    log_bind_rejection(net, usr_idx, phys_pin, cw, p);
                 success = false;
                 break;
             }
