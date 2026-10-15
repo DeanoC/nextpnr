@@ -24,11 +24,45 @@ harness = r'''
 namespace gpuroute {
 struct Telemetry {
     struct Field {
-        static Field string(const char *, const char *) { return {}; }
-        static Field boolean_value(const char *, bool) { return {}; }
-        static Field null_value(const char *, const char *) { return {}; }
+        enum Kind { STRING, BOOLEAN, NULL_VALUE };
+        std::string name, text;
+        bool boolean = false;
+        Kind kind = STRING;
+        static Field string(const char *name, const char *value)
+        {
+            Field field;
+            field.name = name;
+            field.text = value;
+            field.kind = STRING;
+            return field;
+        }
+        static Field boolean_value(const char *name, bool value)
+        {
+            Field field;
+            field.name = name;
+            field.boolean = value;
+            field.kind = BOOLEAN;
+            return field;
+        }
+        static Field null_value(const char *name, const char *reason)
+        {
+            Field field;
+            field.name = name;
+            field.text = reason;
+            field.kind = NULL_VALUE;
+            return field;
+        }
     };
-    void emit(const char *, const char *, int, std::initializer_list<Field>) {}
+    struct Event {
+        std::string event, phase;
+        int attempt = 0;
+        std::vector<Field> fields;
+    };
+    std::vector<Event> events;
+    void emit(const char *event, const char *phase, int attempt, std::initializer_list<Field> fields)
+    {
+        events.push_back(Event{event, phase, attempt, std::vector<Field>(fields)});
+    }
 };
 }
 std::string error;
@@ -66,6 +100,30 @@ struct Router {
         return true;
     }
 };
+void expect_arch_binding_run_end(const gpuroute::Telemetry &telemetry, const char *analogue_reason)
+{
+    assert(telemetry.events.size() == 1);
+    const auto &event = telemetry.events[0];
+    assert(event.event == "run_end");
+    assert(event.phase.empty());
+    assert(event.attempt == -1);
+    const gpuroute::Telemetry::Field *status = nullptr;
+    const gpuroute::Telemetry::Field *legal = nullptr;
+    const gpuroute::Telemetry::Field *analogue = nullptr;
+    for (const auto &field : event.fields) {
+        if (field.name == "status")
+            status = &field;
+        else if (field.name == "routing_legal")
+            legal = &field;
+        else if (field.name == "analogue_timing_pass")
+            analogue = &field;
+    }
+    assert(status && status->kind == gpuroute::Telemetry::Field::STRING &&
+           status->text == "architecture_binding_failure");
+    assert(legal && legal->kind == gpuroute::Telemetry::Field::BOOLEAN && !legal->boolean);
+    assert(analogue && analogue->kind == gpuroute::Telemetry::Field::NULL_VALUE &&
+           analogue->text == analogue_reason);
+}
 int main() {
     for (int limit : {0, 1, 8}) {
         Router r; r.cfg.arch_retry_limit = limit;
@@ -73,14 +131,25 @@ int main() {
         assert(r.retries == limit);
         assert(error.find("rejected_net") != std::string::npos);
         assert(error.find(std::to_string(limit) + " re-routing attempts") != std::string::npos);
+        expect_arch_binding_run_end(*r.telemetry, "not_available_for_architecture");
     }
     Router transient; transient.reject_passes = 2;
     assert(transient.run()); assert(transient.retries == 2); assert(transient.repairs == 2);
+    assert(transient.telemetry->events.empty());
     Router clean; clean.reject_passes = 0;
     assert(clean.run()); assert(clean.retries == 0);
+    assert(clean.telemetry->events.empty());
     Router global; global.cfg.max_iter = 5;
     try { global.run(); assert(false); } catch (const std::runtime_error &) {}
     assert(global.retries == 1);
+    expect_arch_binding_run_end(*global.telemetry, "not_available_for_architecture");
+    Router downstream; downstream.cfg.arch_retry_limit = 0;
+    downstream.mistral_analogue_downstream = true;
+    try { downstream.run(); assert(false); } catch (const std::runtime_error &) {}
+    expect_arch_binding_run_end(*downstream.telemetry, "downstream_phase");
+    Router silent; silent.telemetry = nullptr; silent.cfg.arch_retry_limit = 0;
+    try { silent.run(); assert(false); } catch (const std::runtime_error &) {}
+    assert(silent.retries == 0);
 }
 '''
 with tempfile.TemporaryDirectory(prefix='gpurouter-arch-retry-') as tmp:

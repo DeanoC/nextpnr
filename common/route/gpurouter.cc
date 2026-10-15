@@ -3185,6 +3185,16 @@ struct GpuRouter
                         names += ", ";
                     names += ctx->nameOf(nets_by_udata.at(n));
                 }
+                // log_error throws, so the opt-in collector never sees a terminal record
+                // unless it is flushed before this exit.
+                if (telemetry)
+                    telemetry->emit("run_end", "", -1,
+                                    {gpuroute::Telemetry::Field::string("status", "architecture_binding_failure"),
+                                     gpuroute::Telemetry::Field::boolean_value("routing_legal", false),
+                                     gpuroute::Telemetry::Field::null_value(
+                                             "analogue_timing_pass", mistral_analogue_downstream
+                                                                             ? "downstream_phase"
+                                                                             : "not_available_for_architecture")});
                 log_error("GPU router architecture bind did not converge after %d re-routing attempts "
                           "(%d routing iterations; rejected nets: %s).\n",
                           arch_retries, iter - 1, names.c_str());
