@@ -305,7 +305,7 @@ class CpuBackend : public Backend
                         for (int ei = g_.out_off[u]; ei < g_.out_off[u + 1]; ei++) {
                             const int v = g_.out_dst[ei];
                             float c = g_.edge_cost[ei];
-                            if (c < 0.0f)
+                            if (c < 0.0f || (g_.edge_region[ei] && !task.allow_reserved))
                                 continue;
                             c += p.pip_adder;
                             const int vx = g_.wire_x[v], vy = g_.wire_y[v];

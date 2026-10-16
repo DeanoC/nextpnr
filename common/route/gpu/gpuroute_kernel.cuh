@@ -78,6 +78,7 @@ struct DevGraph
     const int32_t *out_off;
     const int32_t *out_dst;
     const float *edge_cost;
+    const uint8_t *edge_region;
     const int16_t *wx;
     const int16_t *wy;
     int32_t *reserved;
@@ -462,7 +463,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                         for (int ei = e0; ei < e1; ei++) {
                             const int v = g.out_dst[ei];
                             float c = g.edge_cost[ei];
-                            if (c < 0.0f)
+                            if (c < 0.0f || (g.edge_region[ei] && !task.allow_reserved))
                                 continue;
                             c += p.pip_adder;
                             const int vx = g.wx[v], vy = g.wy[v];
@@ -753,6 +754,7 @@ class DeviceBackend : public Backend
             out_off_.upload(graph.out_off, (size_t)graph.n_wires + 1);
             out_dst_.upload(graph.out_dst, (size_t)graph.n_edges);
             edge_cost_.upload(graph.edge_cost, (size_t)graph.n_edges);
+            edge_region_.upload(graph.edge_region, (size_t)graph.n_edges);
             wx_.upload(graph.wire_x, graph.n_wires);
             wy_.upload(graph.wire_y, graph.n_wires);
             reserved_.upload(graph.wire_reserved, graph.n_wires);
@@ -819,6 +821,7 @@ class DeviceBackend : public Backend
         g.out_off = out_off_.ptr;
         g.out_dst = out_dst_.ptr;
         g.edge_cost = edge_cost_.ptr;
+        g.edge_region = edge_region_.ptr;
         g.wx = wx_.ptr;
         g.wy = wy_.ptr;
         g.reserved = reserved_.ptr;
@@ -851,6 +854,7 @@ class DeviceBackend : public Backend
     int32_t n_wires_ = 0;
     DevBuf<int32_t> out_off_, out_dst_;
     DevBuf<float> edge_cost_;
+    DevBuf<uint8_t> edge_region_;
     DevBuf<int16_t> wx_, wy_;
     DevBuf<int32_t> reserved_;
     DevBuf<uint8_t> flags_;

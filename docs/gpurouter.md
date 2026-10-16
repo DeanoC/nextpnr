@@ -100,6 +100,20 @@ a non-slot route entering the socket. If no Mistral rule rejects the pip, the
 failure is reported as a pip ownership conflict. These diagnostics describe the
 binding state before the rejected connection is ripped up.
 
+An architecture whose per-pip rule depends on the net (not only on global
+availability) can also keep those pips out of the search. The Arch reports them
+once, before routing, through `pipInReservedRegion`, and says which nets may use
+them through `netMayUseReservedRegion`; the host marks the matching CSR edges and
+the search then skips a marked edge for any task that may not enter that region.
+Mistral uses this for its frozen socket fence, so a shell net that does not touch
+the slot is never offered a socket pip. Without the gate the search proposes the
+pip, the binding pass rejects it, and the net is re-routed from a state that
+already paid for the rejected proposal — the same final routing, but with
+needless binding-retry rounds, and with the retry budget spent on proposals the
+architecture refuses. The route is otherwise unchanged: the fence only removes
+candidates, so a design whose accepted route already avoided the region produces
+identical placement and routing checksums.
+
 ### Host side (`common/route/gpurouter.cc`)
 
 1. **Graph flattening.** All wires are numbered tile-major (ties within a

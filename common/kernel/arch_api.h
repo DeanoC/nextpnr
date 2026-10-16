@@ -95,6 +95,11 @@ template <typename R> struct ArchAPI : BaseCtx
     virtual void unbindPip(PipId pip) = 0;
     virtual bool checkPipAvail(PipId pip) const = 0;
     virtual bool checkPipAvailForNet(PipId pip, const NetInfo *net) const = 0;
+    // A pip the shared routing graph must not offer to a net that may not
+    // enter a reserved region. Default: no such pips.
+    virtual bool pipInReservedRegion(PipId) const { return false; }
+    // Whether this net may use pips reported by pipInReservedRegion.
+    virtual bool netMayUseReservedRegion(const NetInfo *) const { return true; }
     virtual NetInfo *getBoundPipNet(PipId pip) const = 0;
     virtual WireId getConflictingPipWire(PipId pip) const = 0;
     virtual NetInfo *getConflictingPipNet(PipId pip) const = 0;
