@@ -311,30 +311,6 @@ class PlacedReductionTest : public ::testing::Test {
         return cell;
     }
 
-    // Exchange logical variables and their truth-table bits together. This
-    // preserves the function while selecting the placement's real mux levels.
-    void exchange_inputs(CellInfo *cell, unsigned a, unsigned b)
-    {
-        auto *a_net = cell->getPort(cube_pins[a]);
-        auto *b_net = cell->getPort(cube_pins[b]);
-        const auto a_state = cell->get_pin_state(cube_pins[a]);
-        const auto b_state = cell->get_pin_state(cube_pins[b]);
-        cell->disconnectPort(cube_pins[a]); cell->disconnectPort(cube_pins[b]);
-        cell->connectPort(cube_pins[a], b_net); cell->connectPort(cube_pins[b], a_net);
-        cell->pin_data[cube_pins[a]].state = b_state;
-        cell->pin_data[cube_pins[b]].state = a_state;
-        const unsigned width = cell->combInfo.lut_input_count;
-        const auto original = uint64_t(cell->params.at(id_LUT).as_int64());
-        uint64_t changed = 0;
-        for (unsigned row = 0; row < (1u << width); ++row) {
-            unsigned old_row = row;
-            if (((row >> a) ^ (row >> b)) & 1) old_row ^= (1u << a) | (1u << b);
-            changed |= ((original >> old_row) & 1) << row;
-        }
-        cell->params[id_LUT] = Property(int64_t(changed), 1u << width);
-        ctx->assign_comb_info(cell); ctx->update_bel(cell->bel);
-    }
-
     void place(CellInfo *cell, int x, int y, PlaceStrength strength = STRENGTH_WEAK)
     {
         for (auto bel : ctx->getBelsByTile(x, y)) {
@@ -812,13 +788,12 @@ TEST_F(TwelveReductionTest, SelectedRewriteIsExhaustiveAndPreservesEveryRegister
     ctx->check();
 }
 
-TEST_F(TwelveReductionTest, PositiveSubDefaultGainNeedsItsExplicitMinimum)
+TEST_F(TwelveReductionTest, DefaultMinimumAdmitsIsolatedPinChain)
 {
     // Compact the generic cone, including all twelve launch registers, into
-    // one LAB. With real architecture arcs the original critical chain has
-    // 512 + (300 + 97) + (300 + 97) ps after its first input route; the
-    // balanced chain has 605 + 300 + 400 ps. That leaves a genuine but tiny
-    // positive opportunity. Any trial outside this LAB pays extra routing.
+    // one LAB. The chain stays on logical E, which isolated ALUT5 allocation
+    // binds to physical A. Comb_pinmap used to call logical A the 97ps pin and
+    // left only a 1ps balance. Any trial outside this LAB pays extra routing.
     for (auto *cell : {leaf, middle, root}) ctx->unbindBel(cell->bel);
     auto *extra_source = inputs[11]->driver.cell;
     ctx->unbindBel(extra_source->bel);
@@ -852,10 +827,8 @@ TEST_F(TwelveReductionTest, PositiveSubDefaultGainNeedsItsExplicitMinimum)
     ASSERT_TRUE(place_in_empty_alm(leaf));
     ASSERT_TRUE(place_in_empty_alm(middle));
     EXPECT_NE(ctx->getBelLocation(leaf->bel).z / 6, ctx->getBelLocation(middle->bel).z / 6);
-    // Keep the intermediate signals on logical A, mapped to physical F by
-    // placement. Exchange the truth-table variables to preserve the function.
-    exchange_inputs(middle, 0, 4);
-    exchange_inputs(root, 0, 4);
+    // The chain stays on logical E. That is physical A for an isolated ALUT5,
+    // not the comb_pinmap fast pin.
     assert_legal();
     ctx->check();
     CubeSnapshot before(ctx.get());
@@ -868,12 +841,10 @@ TEST_F(TwelveReductionTest, PositiveSubDefaultGainNeedsItsExplicitMinimum)
     std::vector<bool> values;
     for (unsigned row = 0; row < (1u << 12); ++row) values.push_back(evaluate(output, row));
 
-    // The old three-field diagnostic and explicit default must both reject
-    // and restore exactly. A lower positive threshold changes admission only.
+    // An unreachable minimum rejects and restores. The default 250ps minimum
+    // admits this balance.
     const auto diagnostic = root->name.str(ctx.get()) + " 1 0";
-    EXPECT_THROW(diagnostic_placed_reduction(ctx.get(), diagnostic.c_str()), log_execution_error_exception);
-    before.expect_exact(ctx.get());
-    EXPECT_THROW(diagnostic_placed_reduction(ctx.get(), (diagnostic + " 250").c_str()),
+    EXPECT_THROW(diagnostic_placed_reduction(ctx.get(), (diagnostic + " 100000").c_str()),
                  log_execution_error_exception);
     before.expect_exact(ctx.get());
     PlacedReductionLog evidence;
@@ -882,7 +853,7 @@ TEST_F(TwelveReductionTest, PositiveSubDefaultGainNeedsItsExplicitMinimum)
         evidence.stream << "Fixture " << cell->name.str(ctx.get()) << " @ " << at.x << ',' << at.y << ',' << at.z
                         << " strength=" << int(cell->belStrength) << '\n';
     }
-    ASSERT_NO_THROW(diagnostic_placed_reduction(ctx.get(), (diagnostic + " 1").c_str())) << evidence.stream.str();
+    ASSERT_NO_THROW(diagnostic_placed_reduction(ctx.get(), diagnostic.c_str())) << evidence.stream.str();
     ASSERT_EQ(root->type, id_MISTRAL_ALUT2);
     EXPECT_EQ(leaf->type, id_MISTRAL_ALUT6);
     EXPECT_EQ(middle->type, id_MISTRAL_ALUT6);
@@ -904,8 +875,7 @@ TEST_F(TwelveReductionTest, PositiveSubDefaultGainNeedsItsExplicitMinimum)
     TimingAnalyser timing_after(ctx.get());
     timing_after.setup(false, false, true);
     const auto branch_gain = timing_after.get_setup_slack(root_port) - branch_slack;
-    EXPECT_GE(branch_gain, 1);
-    EXPECT_LT(branch_gain, 250);
+    EXPECT_GE(branch_gain, 250);
     EXPECT_GE(timing_after.get_setup_slack(sink_port), endpoint_slack);
     EXPECT_TRUE(timing_after.get_timing_result().min_delay_violations.empty());
     for (const auto &clock_fmax : timing_before.get_timing_result().clock_fmax) {
@@ -922,8 +892,6 @@ TEST_F(TwelveReductionTest, PositiveSubDefaultGainNeedsItsExplicitMinimum)
 TEST_F(NarrowSearchTest, BlockedOriginalUpgradesStillReachTwoSameLabAlms)
 {
     ASSERT_NO_FATAL_FAILURE(compact_with_blocked_upgrades(2));
-    exchange_inputs(middle, 0, 4);
-    exchange_inputs(root, 0, 4);
     ReductionBalancePlan plan;
     ASSERT_TRUE(plan_reduction(ctx.get(), root->name.str(ctx.get()), true, plan));
     ASSERT_EQ(plan.literals.size(), 12u);
@@ -947,7 +915,7 @@ TEST_F(NarrowSearchTest, BlockedOriginalUpgradesStillReachTwoSameLabAlms)
 
     // Both original sites are blocked for their future ALUT6s. The obsolete
     // quota counted the two halves of the first empty ALM and never reached
-    // the next jointly legal same-LAB pair. That loses this real 1 ps gain.
+    // the next jointly legal same-LAB pair.
     std::string listing;
     {
         PlacedReductionLog evidence;
@@ -982,8 +950,7 @@ TEST_F(NarrowSearchTest, BlockedOriginalUpgradesStillReachTwoSameLabAlms)
     TimingAnalyser timing_after(ctx.get());
     timing_after.setup(false, false, true);
     const auto gain = timing_after.get_setup_slack(CellPortKey(root->name, id_Q)) - old_branch;
-    EXPECT_GE(gain, 1);
-    EXPECT_LT(gain, 250);
+    EXPECT_GE(gain, 250);
     EXPECT_GE(timing_after.get_setup_slack(CellPortKey(sink->name, id_ENA)), old_endpoint);
     EXPECT_TRUE(timing_after.get_timing_result().min_delay_violations.empty());
     for (const auto &clock_fmax : timing_before.get_timing_result().clock_fmax) {
@@ -1029,7 +996,8 @@ TEST_F(NarrowSearchTest, FutureAlut2ArcsChooseTheActualFasterFirstTuple)
     ASSERT_TRUE(ctx->getCellDelay(&future_root, id_B, id_Q, b_arc));
     ASSERT_TRUE(ctx->getCellDelay(root, id_A, id_Q, original_a));
     ASSERT_TRUE(ctx->getCellDelay(root, id_B, id_Q, original_b));
-    EXPECT_EQ(a_arc.maxDelay(), 97);
+    // Isolated L5 allocation is A→C (max 512) then B→E (max 400), not comb_pinmap A→F.
+    EXPECT_EQ(a_arc.maxDelay(), 512);
     EXPECT_EQ(b_arc.maxDelay(), 400);
     // Both primitives use the same hardware L5 mode and placement pin map.
     EXPECT_EQ(a_arc.maxDelay(), original_a.maxDelay());
@@ -1072,12 +1040,12 @@ TEST_F(NarrowSearchTest, FutureAlut2ArcsChooseTheActualFasterFirstTuple)
         [](const Measurement &a, const Measurement &b) { return a.root_arrival < b.root_arrival; });
     const auto old_best = std::min_element(measurements.begin(), measurements.end(),
         [](const Measurement &a, const Measurement &b) { return a.leaf_only < b.leaf_only; });
-    // The five root-neighborhood LABs contain a measured rank reversal, not
-    // merely the two delay constants. The logged production prefix below
-    // independently checks its choice despite the additional far-old-site LABs.
+    // Isolated ALUT2 delays are A=512 and B=400. The old comb_pinmap gap
+    // (A=97) made the leaf-only winner at least 80ps worse in full arrival.
+    // Legal delays agree, so the leaf-only winner is a full-arrival winner.
     for (const auto &row : measurements) {
         if (row.leaf_only == old_best->leaf_only) {
-            EXPECT_GE(row.root_arrival - fastest->root_arrival, 80);
+            EXPECT_EQ(row.root_arrival, fastest->root_arrival);
         }
     }
     std::string listing;

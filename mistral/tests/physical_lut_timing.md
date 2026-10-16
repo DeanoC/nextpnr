@@ -18,9 +18,12 @@ buffers and inverters, use L5 mode. The mux-level assignments follow
 `get_phys_pin_val`: E selects the final mux in L6 mode, while F selects the final
 mux in L5 mode. C/D exchange the middle levels between the two L6 halves, so
 their existing early/late envelope is used. Unbound cells and hypothetical
-planning cells use the placement pin map with the same physical delay tables,
-so future-cell scoring agrees with real placement trials. The underlying tables
-retain their existing device, voltage and temperature limitations.
+planning cells use the isolated-cell allocation with the same physical delay
+tables, so future-cell scoring agrees with real placement trials. That order is
+C, E, F, B, A for a LUT with five or fewer inputs, and A through F for LUT6.
+`comb_pinmap` stays the arithmetic and MLAB scaffold; it is not the Boolean LUT
+delay map. The underlying tables retain their existing device, voltage and
+temperature limitations.
 
 `physical_lut_timing.py` synthesizes L5/L6 functions and an input inversion that
 the packer folds into the L5 pin state. Five routed replays rotate every input's

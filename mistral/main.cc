@@ -90,7 +90,7 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
     specific.add_options()("compress-rbf", "generate compressed bitstream");
     specific.add_options()("arrival-pin-assignment",
-                           "estimate physical LUT placement inputs and assign private inputs by arrival time (opt-in)");
+                           "permute private LUT inputs by arrival after legalisation (opt-in)");
     specific.add_options()("fes-scaffold", "lock loaded shell BEL+routing to STRENGTH_USER");
     specific.add_options()("fes-cart", po::value<std::string>(), "merge unbound cart JSON into the reserved socket");
     specific.add_options()("fes-cart-region", po::value<std::string>(),

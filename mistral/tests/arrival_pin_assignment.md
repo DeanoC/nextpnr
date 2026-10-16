@@ -1,11 +1,12 @@
 # Arrival-based private LUT input assignment
 
-`--arrival-pin-assignment` enables two related heuristics for a fresh Mistral
-placement and route. Boolean LUT placement estimates use the physical input
-allocation of an isolated cell. After legal ALM input allocation, a single
-arrival snapshot assigns later arriving private inputs to faster physical pins.
-The option is off by default. A saved JSON setting records provenance and does
-not enable the heuristic on a new run without the command-line option.
+Boolean LUT placement estimates always use the physical input allocation of an
+isolated cell, the order `assign_alm_lut_inputs` writes for a LUT with no
+shared partner. `--arrival-pin-assignment` is an additional heuristic. After
+legal ALM input allocation, a single arrival snapshot assigns later arriving
+private inputs to faster physical pins. The option is off by default. A saved
+JSON setting records provenance and does not enable the heuristic on a new run
+without the command-line option.
 The option is initialized when the context is created, including Python
 `--run` invocations that create their design without `--json`.
 

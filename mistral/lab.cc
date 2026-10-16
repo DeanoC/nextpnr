@@ -1199,6 +1199,7 @@ static IdString get_lut_pin(CellInfo *cell, int i)
 
 static void assign_lut6_inputs(CellInfo *cell, int lut)
 {
+    // Logical order matches lut_placement_pin. E0/F0 and E1/F1 share delays.
     std::array<IdString, 6> phys_pins{id_A, id_B, id_C, id_D, (lut == 1) ? id_E1 : id_E0, (lut == 1) ? id_F1 : id_F0};
     int phys_idx = 0;
     for (int i = 0; i < 6; i++) {
@@ -1289,6 +1290,7 @@ void Arch::assign_alm_lut_inputs(uint32_t lab, uint8_t alm)
                 continue;
             // Work out which physical ports are available
             std::vector<IdString> avail_phys_ports;
+            // D/C, then E, F, B, A. lut_placement_pin uses this isolated order.
             // D/C always available and dedicated to the half, in L5 mode
             avail_phys_ports.push_back((i == 1) ? id_D : id_C);
             // In arithmetic mode, Ei can only be used for D0 and Fi can only be used for D1
@@ -1412,23 +1414,47 @@ const dict<IdString, IdString> Arch::comb_pinmap = {
 
 IdString Arch::lut_placement_pin(const CellInfo *cell, IdString port) const
 {
-    if (!arrival_pin_assignment)
-        return comb_pinmap.at(port);
     if (!cell->type.in(id_MISTRAL_NOT, id_MISTRAL_BUF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
                        id_MISTRAL_ALUT5, id_MISTRAL_ALUT6) ||
         port == id_Q)
         return comb_pinmap.at(port);
     const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
-    // Estimate an isolated LUT. C/D and the two E/F halves have equal cell
-    // delays; pairing can still reserve A/B for shared signals later.
+    // Isolated allocation from assign_lut6_inputs / assign_alm_lut_inputs.
+    // comb_pinmap is fastest-first and does not match that write, so using it
+    // made the placer treat LUT6 A as the fast pin and F as the slow pin.
+    // C/D and the two E/F halves have equal cell delays; pairing can still
+    // reserve A/B for shared signals later.
     const std::array<IdString, 5> l5_pins{id_C, id_E0, id_F0, id_B, id_A};
     const std::array<IdString, 6> l6_pins{id_A, id_B, id_C, id_D, id_E0, id_F0};
+    const bool l6 = cell->type == id_MISTRAL_ALUT6;
+    const int width = l6                               ? 6
+                      : cell->type == id_MISTRAL_ALUT5 ? 5
+                      : cell->type == id_MISTRAL_ALUT4 ? 4
+                      : cell->type == id_MISTRAL_ALUT3 ? 3
+                      : cell->type == id_MISTRAL_ALUT2 ? 2
+                                                       : 1;
+    bool any_connected = false;
+    for (int i = 0; i < width; ++i)
+        if (cell->getPort(inputs[i]) != nullptr)
+            any_connected = true;
     int allocated = 0;
-    for (IdString input : inputs) {
-        if (input == port)
-            return cell->type == id_MISTRAL_ALUT6 ? l6_pins.at(allocated) : l5_pins.at(allocated);
-        if (cell->getPort(input) != nullptr)
+    for (int i = 0; i < width; ++i) {
+        if (inputs[i] != port) {
+            // Legalisation skips a disconnected input. A cell with no nets is
+            // a hypothetical full LUT, so every logical input still counts.
+            if (any_connected && cell->getPort(inputs[i]) == nullptr)
+                continue;
             ++allocated;
+            continue;
+        }
+        if (l6) {
+            if (allocated >= int(l6_pins.size()))
+                break;
+            return l6_pins.at(allocated);
+        }
+        if (allocated >= int(l5_pins.size()))
+            break;
+        return l5_pins.at(allocated);
     }
     return comb_pinmap.at(port);
 }
