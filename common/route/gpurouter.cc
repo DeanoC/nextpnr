@@ -97,6 +97,7 @@ struct GpuRouter
     dict<WireId, int32_t> wire_to_idx;
     std::vector<int32_t> out_off, out_dst;
     std::vector<float> edge_cost;
+    std::vector<uint8_t> edge_region;
     std::vector<int16_t> wx, wy;
     std::vector<int32_t> reserved;
     std::vector<uint8_t> wflags;
@@ -275,6 +276,7 @@ struct GpuRouter
         const int64_t m = out_off[n];
         out_dst.resize(m);
         edge_cost.resize(m);
+        edge_region.resize(m);
         const delay_t eps = ctx->getDelayEpsilon();
         parallel_chunks(n, [&](size_t b, size_t e) {
             for (size_t i = b; i < e; i++) {
@@ -288,6 +290,7 @@ struct GpuRouter
                     else if (c < 1e-6f)
                         c = 1e-6f;
                     edge_cost[k] = c;
+                    edge_region[k] = ctx->pipInReservedRegion(pip) ? 1 : 0;
                     k++;
                 }
             }
@@ -1034,6 +1037,7 @@ struct GpuRouter
             td.bb_y0 = int16_t(std::max(nd.bb.y0, 0));
             td.bb_x1 = int16_t(std::min(nd.bb.x1, ctx->getGridDimX()));
             td.bb_y1 = int16_t(std::min(nd.bb.y1, ctx->getGridDimY()));
+            td.allow_reserved = ctx->netMayUseReservedRegion(ni) ? 1 : 0;
             tds.push_back(td);
         }
         std::vector<gpuroute::ArcResult> results;
@@ -2773,6 +2777,7 @@ struct GpuRouter
         gd.out_off = out_off.data();
         gd.out_dst = out_dst.data();
         gd.edge_cost = edge_cost.data();
+        gd.edge_region = edge_region.data();
         gd.wire_x = wx.data();
         gd.wire_y = wy.data();
         gd.wire_reserved = reserved.data();

@@ -49,6 +49,11 @@ struct GraphData
     const int32_t *out_off = nullptr;   // n_wires + 1
     const int32_t *out_dst = nullptr;   // n_edges
     const float *edge_cost = nullptr;   // n_edges
+    // n_edges. 1 if a non-member net must not use the pip. nullptr means no
+    // edge is reserved, the same as an all-zero array. Backends honour that
+    // default so a caller that does not care about reserved regions (including
+    // hand-built test graphs) never has to allocate a dummy buffer.
+    const uint8_t *edge_region = nullptr;
     const int16_t *wire_x = nullptr;    // n_wires, notional location
     const int16_t *wire_y = nullptr;    // n_wires
     const int32_t *wire_reserved = nullptr; // n_wires, -1 or the only net allowed to use the wire
@@ -103,6 +108,7 @@ struct TaskDesc
     int32_t path_off = 0, path_cap = 0; // output region (in pairs) for this task
     int32_t cx = 0, cy = 0, hpwl = 1, fanout = 1;
     int16_t bb_x0 = 0, bb_y0 = 0, bb_x1 = 0, bb_y1 = 0;
+    int32_t allow_reserved = 1; // 0: do not expand edge_region edges
 };
 
 struct ArcDesc

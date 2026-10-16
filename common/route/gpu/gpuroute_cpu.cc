@@ -88,6 +88,14 @@ class CpuBackend : public Backend
               std::string & /*error*/) override
     {
         g_ = graph;
+        // A null region is "no architecture-reserved pips". Materialise zeros
+        // once so the search can load edge_region[ei] on every usable edge.
+        if (g_.edge_region == nullptr && g_.n_edges > 0) {
+            edge_region_none_.assign((size_t)g_.n_edges, 0);
+            g_.edge_region = edge_region_none_.data();
+        } else {
+            edge_region_none_.clear();
+        }
         small_cap_ = 1 << small_bits;
         large_cap_ = 1 << large_bits;
         occ_.assign(graph.wire_occ, graph.wire_occ + graph.n_wires);
@@ -305,7 +313,7 @@ class CpuBackend : public Backend
                         for (int ei = g_.out_off[u]; ei < g_.out_off[u + 1]; ei++) {
                             const int v = g_.out_dst[ei];
                             float c = g_.edge_cost[ei];
-                            if (c < 0.0f)
+                            if (c < 0.0f || (g_.edge_region[ei] && !task.allow_reserved))
                                 continue;
                             c += p.pip_adder;
                             const int vx = g_.wire_x[v], vy = g_.wire_y[v];
@@ -428,6 +436,7 @@ class CpuBackend : public Backend
   private:
     GraphData g_;
     int small_cap_ = 1 << 16, large_cap_ = 1 << 22;
+    std::vector<uint8_t> edge_region_none_; // owned stand-in when GraphData::edge_region is null
     std::vector<int32_t> occ_, reserved_;
     std::vector<float> hist_;
     BackendStats stats_;

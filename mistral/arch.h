@@ -365,6 +365,14 @@ struct Arch : BaseArch<ArchRanges>
     IdString fes_cell_slot_region(const CellInfo *cell) const;
     bool fes_net_touches_slot(const NetInfo *net) const;
     bool fes_pip_in_socket(PipId pip) const;
+    bool pipInReservedRegion(PipId pip) const override
+    {
+        return fes_fence_active && fes_pip_in_socket(pip);
+    }
+    bool netMayUseReservedRegion(const NetInfo *net) const override
+    {
+        return !fes_fence_active || !fes_has_reserved_rect || fes_net_touches_slot(net);
+    }
     void note_fes_cram_region(const std::string &spec);
     bool fes_pip_preserves_cram(PipId pip) const;
     void fes_trim_net_orphans(NetInfo *net);
