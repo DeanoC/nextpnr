@@ -41,7 +41,7 @@ const uint8_t wire_flags[] = {0, 0, 0, 0};
 const int32_t wire_occ[] = {0, 0, 0, 0};
 const float wire_hist[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-bool path_uses_wire(int32_t wire)
+bool path_uses_wire(int32_t wire, const uint8_t *region = edge_region)
 {
     std::string error;
     gpuroute::GraphData g;
@@ -50,7 +50,7 @@ bool path_uses_wire(int32_t wire)
     g.out_off = out_off;
     g.out_dst = out_dst;
     g.edge_cost = edge_cost;
-    g.edge_region = edge_region;
+    g.edge_region = region;
     g.wire_x = wire_x;
     g.wire_y = wire_y;
     g.wire_reserved = wire_reserved;
@@ -125,6 +125,13 @@ int main()
     g_allow_reserved = 1;
     if (!path_uses_wire(2)) {
         std::fprintf(stderr, "allow_reserved=1 did not take the cheaper reserved edge\n");
+        return 1;
+    }
+    // A null region is "no reserved edges": allow_reserved=0 must still take
+    // the cheaper edge, and must not crash on the load.
+    g_allow_reserved = 0;
+    if (!path_uses_wire(2, nullptr)) {
+        std::fprintf(stderr, "null edge_region was treated as reserved\n");
         return 1;
     }
     std::puts("GPU router reserved-region gate regression passed");

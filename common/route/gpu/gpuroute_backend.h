@@ -49,7 +49,11 @@ struct GraphData
     const int32_t *out_off = nullptr;   // n_wires + 1
     const int32_t *out_dst = nullptr;   // n_edges
     const float *edge_cost = nullptr;   // n_edges
-    const uint8_t *edge_region = nullptr; // n_edges, 1 if a non-member net must not use it
+    // n_edges. 1 if a non-member net must not use the pip. nullptr means no
+    // edge is reserved, the same as an all-zero array. Backends honour that
+    // default so a caller that does not care about reserved regions (including
+    // hand-built test graphs) never has to allocate a dummy buffer.
+    const uint8_t *edge_region = nullptr;
     const int16_t *wire_x = nullptr;    // n_wires, notional location
     const int16_t *wire_y = nullptr;    // n_wires
     const int32_t *wire_reserved = nullptr; // n_wires, -1 or the only net allowed to use the wire

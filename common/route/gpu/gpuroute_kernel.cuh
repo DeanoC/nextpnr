@@ -754,7 +754,14 @@ class DeviceBackend : public Backend
             out_off_.upload(graph.out_off, (size_t)graph.n_wires + 1);
             out_dst_.upload(graph.out_dst, (size_t)graph.n_edges);
             edge_cost_.upload(graph.edge_cost, (size_t)graph.n_edges);
-            edge_region_.upload(graph.edge_region, (size_t)graph.n_edges);
+            // nullptr is an all-zero region (no reserved pips). hipMemcpy from a
+            // null host pointer would fault, so allocate and clear instead.
+            if (graph.edge_region != nullptr || graph.n_edges == 0) {
+                edge_region_.upload(graph.edge_region, (size_t)graph.n_edges);
+            } else {
+                edge_region_.alloc((size_t)graph.n_edges);
+                GPU_CHECK(hipMemset(edge_region_.ptr, 0, (size_t)graph.n_edges * sizeof(uint8_t)));
+            }
             wx_.upload(graph.wire_x, graph.n_wires);
             wy_.upload(graph.wire_y, graph.n_wires);
             reserved_.upload(graph.wire_reserved, graph.n_wires);

@@ -26,7 +26,7 @@ struct Graph
     std::vector<int32_t> offsets, destinations, occupancy, reservations;
     std::vector<float> costs, history;
     std::vector<int16_t> x, y;
-    std::vector<uint8_t> flags;
+    std::vector<uint8_t> flags, region;
     explicit Graph(int n) : rows(n), occupancy(n, 0), reservations(n, -1), history(n, 1), x(n), y(n), flags(n, 0)
     {
         for (int i = 0; i < n; ++i) {
@@ -46,9 +46,11 @@ struct Graph
             }
         }
         offsets.push_back(int(destinations.size()));
+        region.assign(destinations.size(), 0); // this corpus has no reserved pips
         GraphData result;
         result.n_wires = int(rows.size()); result.n_edges = destinations.size();
         result.out_off = offsets.data(); result.out_dst = destinations.data(); result.edge_cost = costs.data();
+        result.edge_region = region.data();
         result.wire_x = x.data(); result.wire_y = y.data(); result.wire_flags = flags.data();
         result.wire_occ = occupancy.data(); result.wire_hist = history.data(); result.wire_reserved = reservations.data();
         return result;
