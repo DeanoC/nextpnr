@@ -98,6 +98,7 @@ struct GpuRouter
     std::vector<int32_t> out_off, out_dst;
     std::vector<float> edge_cost;
     std::vector<uint8_t> edge_region;
+    std::vector<uint8_t> edge_outside_halo;
     std::vector<int16_t> wx, wy;
     std::vector<int32_t> reserved;
     std::vector<uint8_t> wflags;
@@ -277,6 +278,7 @@ struct GpuRouter
         out_dst.resize(m);
         edge_cost.resize(m);
         edge_region.resize(m);
+        edge_outside_halo.resize(m);
         const delay_t eps = ctx->getDelayEpsilon();
         parallel_chunks(n, [&](size_t b, size_t e) {
             for (size_t i = b; i < e; i++) {
@@ -291,6 +293,7 @@ struct GpuRouter
                         c = 1e-6f;
                     edge_cost[k] = c;
                     edge_region[k] = ctx->pipInReservedRegion(pip) ? 1 : 0;
+                    edge_outside_halo[k] = ctx->pipOutsideNetHalo(pip) ? 1 : 0;
                     k++;
                 }
             }
@@ -943,6 +946,7 @@ struct GpuRouter
         std::vector<gpuroute::ArcDesc> ads;
         std::vector<int32_t> seeds;
         std::vector<float> seed_delay, seed_load;
+        std::vector<int32_t> shell_tiles;
         std::vector<std::vector<std::pair<int, int>>> arc_map(tasks.size());
         dict<int32_t, int> children;
         int path_cursor = 0;
@@ -1038,14 +1042,28 @@ struct GpuRouter
             td.bb_x1 = int16_t(std::min(nd.bb.x1, ctx->getGridDimX()));
             td.bb_y1 = int16_t(std::min(nd.bb.y1, ctx->getGridDimY()));
             td.allow_reserved = ctx->netMayUseReservedRegion(ni) ? 1 : 0;
+            td.stay_in_halo = 0;
+            td.shell_off = 0;
+            td.shell_cnt = 0;
+            if (ctx->netConstrainedToHalo(ni)) {
+                td.stay_in_halo = 1;
+                std::vector<std::pair<int, int>> tiles;
+                ctx->netHaloShellTiles(ni, tiles);
+                std::sort(tiles.begin(), tiles.end());
+                tiles.erase(std::unique(tiles.begin(), tiles.end()), tiles.end());
+                td.shell_off = int32_t(shell_tiles.size());
+                td.shell_cnt = int32_t(tiles.size());
+                for (auto tile : tiles)
+                    shell_tiles.push_back(gpuroute::pack_shell_tile(tile.first, tile.second));
+            }
             tds.push_back(td);
         }
         std::vector<gpuroute::ArcResult> results;
         std::vector<gpuroute::PathEntry> paths;
         cfg.check_stop();
         auto t0 = Clock::now();
-        backend_for(tasks.size())->route(make_params(use_bb), tds, ads, seeds, seed_delay, seed_load, large_lane,
-                                         results, paths);
+        backend_for(tasks.size())->route(make_params(use_bb), tds, ads, seeds, seed_delay, seed_load, shell_tiles,
+                                         large_lane, results, paths);
         cfg.check_stop();
         gpu_time += secs_since(t0);
         if (verify_backend && repair_mode && !repair_cong && !candidate_mode && use_bb) {
@@ -1075,7 +1093,7 @@ struct GpuRouter
                 std::vector<gpuroute::PathEntry> vpaths;
                 auto tv = Clock::now();
                 cfg.check_stop();
-                verify_backend->route(vp, vtds, ads, seeds, seed_delay, seed_load, true, vres, vpaths);
+                verify_backend->route(vp, vtds, ads, seeds, seed_delay, seed_load, shell_tiles, true, vres, vpaths);
                 cfg.check_stop();
                 verify_secs += secs_since(tv);
                 verify_launched += int64_t(vtds.size());
@@ -2778,6 +2796,7 @@ struct GpuRouter
         gd.out_dst = out_dst.data();
         gd.edge_cost = edge_cost.data();
         gd.edge_region = edge_region.data();
+        gd.edge_outside_halo = edge_outside_halo.data();
         gd.wire_x = wx.data();
         gd.wire_y = wy.data();
         gd.wire_reserved = reserved.data();

@@ -96,6 +96,13 @@ class CpuBackend : public Backend
         } else {
             edge_region_none_.clear();
         }
+        // Same stand-in for the halo fence: a null list is no outside-halo pips.
+        if (g_.edge_outside_halo == nullptr && g_.n_edges > 0) {
+            edge_outside_halo_none_.assign((size_t)g_.n_edges, 0);
+            g_.edge_outside_halo = edge_outside_halo_none_.data();
+        } else {
+            edge_outside_halo_none_.clear();
+        }
         small_cap_ = 1 << small_bits;
         large_cap_ = 1 << large_bits;
         occ_.assign(graph.wire_occ, graph.wire_occ + graph.n_wires);
@@ -123,9 +130,10 @@ class CpuBackend : public Backend
 
     void route(const RouteParams &p, const std::vector<TaskDesc> &tasks, const std::vector<ArcDesc> &arcs,
                const std::vector<int32_t> &seeds, const std::vector<float> &seed_delay,
-               const std::vector<float> &seed_load, bool large_lane, std::vector<ArcResult> &results,
-               std::vector<PathEntry> &paths) override
+               const std::vector<float> &seed_load, const std::vector<int32_t> &shell_tiles, bool large_lane,
+               std::vector<ArcResult> &results, std::vector<PathEntry> &paths) override
     {
+        const int32_t *shells = shell_tiles.data();
         auto t0 = std::chrono::steady_clock::now();
         // The device fails an arc once its hash table passes 60 % load and
         // the host re-routes it in the large lane after the rest of the
@@ -317,6 +325,9 @@ class CpuBackend : public Backend
                                 continue;
                             c += p.pip_adder;
                             const int vx = g_.wire_x[v], vy = g_.wire_y[v];
+                            if (task.stay_in_halo && g_.edge_outside_halo[ei] &&
+                                !shell_tile_hit(shells, task.shell_off, task.shell_cnt, vx, vy))
+                                continue;
                             if (p.use_bb && (vx < task.bb_x0 || vx > task.bb_x1 || vy < task.bb_y0 || vy > task.bb_y1))
                                 continue;
                             if (g_.wire_flags[v] & WIRE_UNAVAILABLE)
@@ -437,6 +448,7 @@ class CpuBackend : public Backend
     GraphData g_;
     int small_cap_ = 1 << 16, large_cap_ = 1 << 22;
     std::vector<uint8_t> edge_region_none_; // owned stand-in when GraphData::edge_region is null
+    std::vector<uint8_t> edge_outside_halo_none_; // stand-in when edge_outside_halo is null
     std::vector<int32_t> occ_, reserved_;
     std::vector<float> hist_;
     BackendStats stats_;

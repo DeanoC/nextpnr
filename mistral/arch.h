@@ -382,6 +382,7 @@ struct Arch : BaseArch<ArchRanges>
     void fes_constrain_slot_region();
     void fes_report_slot_capacity(IdString region_name, const std::vector<CellInfo *> &slot_cells) const;
     bool fes_pip_in_plug_halo(PipId pip) const;
+    bool fes_pip_hits_bound_shell_pin(PipId pip) const;
     bool fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const;
     void fes_rip_reserved_shell_pips();
     void lock_fes_scaffold();
@@ -482,6 +483,9 @@ struct Arch : BaseArch<ArchRanges>
             const bool slot_driven = fes_cell_is_slot(net->driver.cell);
             const bool slot_user = fes_net_touches_slot(net);
             const bool in_socket = fes_pip_in_socket(pip);
+            // Same pip bit as pipOutsideNetHalo. The shell-tile exception is
+            // fes_pip_reaches_net_shell_tile minus the bound-shell-pin case,
+            // which the search receives as netHaloShellTiles.
             if (slot_driven && !fes_pip_in_plug_halo(pip) && !fes_pip_reaches_net_shell_tile(pip, net))
                 return "fes_slot_route_outside_plug_halo_and_shell";
             if (!slot_user && in_socket && BaseArch::checkPipAvail(pip))
@@ -495,10 +499,26 @@ struct Arch : BaseArch<ArchRanges>
         return pip_rejection_reason(pip, net) == nullptr;
     }
 
+    // Search fence for fes_slot_route_outside_plug_halo_and_shell. The pip
+    // bit excludes the per-net shell tile; netHaloShellTiles carries that.
+    bool pipOutsideNetHalo(PipId pip) const override
+    {
+        if (!fes_fence_active || !fes_has_reserved_rect)
+            return false;
+        return !fes_pip_in_plug_halo(pip) && !fes_pip_hits_bound_shell_pin(pip);
+    }
+    bool netConstrainedToHalo(const NetInfo *net) const override
+    {
+        return fes_fence_active && fes_has_reserved_rect && net != nullptr &&
+               fes_cell_is_slot(net->driver.cell);
+    }
+
     bool checkPipAvailForNet(PipId pip, const NetInfo *net) const override
     {
         return pip_allowed_for_net(pip, net) && BaseArch::checkPipAvailForNet(pip, net);
     }
+
+    void netHaloShellTiles(const NetInfo *net, std::vector<std::pair<int, int>> &tiles) const override;
 
     // -------------------------------------------------
 

@@ -54,6 +54,10 @@ struct GraphData
     // default so a caller that does not care about reserved regions (including
     // hand-built test graphs) never has to allocate a dummy buffer.
     const uint8_t *edge_region = nullptr;
+    // n_edges. 1 if a halo-constrained net may use the pip only when the
+    // destination wire's tile is one of that task's shell tiles. nullptr
+    // means no such pips, the same as an all-zero array.
+    const uint8_t *edge_outside_halo = nullptr;
     const int16_t *wire_x = nullptr;    // n_wires, notional location
     const int16_t *wire_y = nullptr;    // n_wires
     const int32_t *wire_reserved = nullptr; // n_wires, -1 or the only net allowed to use the wire
@@ -72,6 +76,31 @@ enum WireFlags : uint8_t
 // arc and may be overridden by a repair search with ignore_soft set.
 constexpr int32_t RESERVED_SOFT = 0x40000000;
 inline int32_t reserved_owner(int32_t r) { return r == -1 ? -1 : (r & ~RESERVED_SOFT); }
+
+// Packed tile key. The low 16 bits are x, the high 16 bits are y, matching
+// the int16 wire coordinates the graph stores.
+#if defined(__CUDACC__) || defined(__HIPCC__)
+#define GPUROUTE_HD __host__ __device__
+#else
+#define GPUROUTE_HD
+#endif
+GPUROUTE_HD inline int32_t pack_shell_tile(int x, int y)
+{
+    return int32_t(uint16_t(int16_t(x))) | (int32_t(uint16_t(int16_t(y))) << 16);
+}
+// True when (x, y) is one of tiles[off, off + cnt). A null list or a
+// non-positive count matches nothing.
+GPUROUTE_HD inline bool shell_tile_hit(const int32_t *tiles, int off, int cnt, int x, int y)
+{
+    if (cnt <= 0 || tiles == nullptr)
+        return false;
+    const int32_t key = pack_shell_tile(x, y);
+    for (int i = 0; i < cnt; i++)
+        if (tiles[off + i] == key)
+            return true;
+    return false;
+}
+#undef GPUROUTE_HD
 
 // Parameters of the cost function; identical for every task in a batch.
 struct RouteParams
@@ -109,6 +138,10 @@ struct TaskDesc
     int32_t cx = 0, cy = 0, hpwl = 1, fanout = 1;
     int16_t bb_x0 = 0, bb_y0 = 0, bb_x1 = 0, bb_y1 = 0;
     int32_t allow_reserved = 1; // 0: do not expand edge_region edges
+    // 1: do not expand edge_outside_halo edges unless the destination tile is
+    // one of shell_tiles[shell_off, shell_off + shell_cnt).
+    int32_t stay_in_halo = 0;
+    int32_t shell_off = 0, shell_cnt = 0;
 };
 
 struct ArcDesc
@@ -188,10 +221,13 @@ class Backend
     // seed_load[i] the number of tree branches seeds[i] already drives. A
     // negative seed_delay marks a tree wire the arc may not attach to or
     // pass through (it keeps its driver but is excluded from this search).
+    // shell_tiles holds packed tiles (pack_shell_tile) indexed by each
+    // task's shell_off/shell_cnt.
     virtual void route(const RouteParams &params, const std::vector<TaskDesc> &tasks,
                        const std::vector<ArcDesc> &arcs, const std::vector<int32_t> &seeds,
-                       const std::vector<float> &seed_delay, const std::vector<float> &seed_load, bool large_lane,
-                       std::vector<ArcResult> &results, std::vector<PathEntry> &paths) = 0;
+                       const std::vector<float> &seed_delay, const std::vector<float> &seed_load,
+                       const std::vector<int32_t> &shell_tiles, bool large_lane, std::vector<ArcResult> &results,
+                       std::vector<PathEntry> &paths) = 0;
 
     virtual const char *name() const = 0;
     virtual const BackendStats &stats() const = 0;
