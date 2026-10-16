@@ -751,11 +751,8 @@ bool Arch::fes_pip_in_plug_halo(PipId pip) const
     return false;
 }
 
-bool Arch::fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const
+bool Arch::fes_pip_hits_bound_shell_pin(PipId pip) const
 {
-    if (net == nullptr)
-        return false;
-    Loc loc = getPipLocation(pip);
     auto hits_shell_pin = [&](WireId wire) {
         auto found = wires.find(wire);
         if (found == wires.end())
@@ -767,21 +764,58 @@ bool Arch::fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const
         }
         return false;
     };
-    if (hits_shell_pin(WireId(pip.src)) || hits_shell_pin(WireId(pip.dst)))
+    return hits_shell_pin(WireId(pip.src)) || hits_shell_pin(WireId(pip.dst));
+}
+
+namespace {
+
+// A placed non-slot cell on this net. Shared by the binding check and
+// netHaloShellTiles so the search exception is the same set of tiles.
+bool shell_cell_tile(const Arch *arch, const CellInfo *cell, int &x, int &y)
+{
+    if (cell == nullptr || arch->fes_cell_is_slot(cell) || cell->bel == BelId())
+        return false;
+    Loc bel = arch->getBelLocation(cell->bel);
+    x = bel.x;
+    y = bel.y;
+    return true;
+}
+
+} // namespace
+
+bool Arch::fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const
+{
+    if (net == nullptr)
+        return false;
+    if (fes_pip_hits_bound_shell_pin(pip))
         return true;
-    auto check_cell = [&](const CellInfo *cell) {
-        if (cell == nullptr || fes_cell_is_slot(cell) || cell->bel == BelId())
-            return false;
-        Loc bel = getBelLocation(cell->bel);
-        return bel.x == loc.x && bel.y == loc.y;
+    Loc loc = getPipLocation(pip);
+    auto on_tile = [&](const CellInfo *cell) {
+        int x, y;
+        return shell_cell_tile(this, cell, x, y) && x == loc.x && y == loc.y;
     };
-    if (check_cell(net->driver.cell))
+    if (on_tile(net->driver.cell))
         return true;
     for (auto &user : net->users) {
-        if (check_cell(user.cell))
+        if (on_tile(user.cell))
             return true;
     }
     return false;
+}
+
+void Arch::netHaloShellTiles(const NetInfo *net, std::vector<std::pair<int, int>> &tiles) const
+{
+    tiles.clear();
+    if (net == nullptr)
+        return;
+    auto add = [&](const CellInfo *cell) {
+        int x, y;
+        if (shell_cell_tile(this, cell, x, y))
+            tiles.emplace_back(x, y);
+    };
+    add(net->driver.cell);
+    for (auto &user : net->users)
+        add(user.cell);
 }
 
 void Arch::merge_fes_cart(const std::string &filename, const std::string &region)

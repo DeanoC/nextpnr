@@ -93,7 +93,7 @@ bool path_uses_wire(int32_t wire, const uint8_t *region = edge_region)
     std::vector<gpuroute::ArcResult> results;
     std::vector<gpuroute::PathEntry> paths;
 
-    backend->route(params, tasks, arcs, seeds, seed_delay, seed_load, false, results, paths);
+    backend->route(params, tasks, arcs, seeds, seed_delay, seed_load, {}, false, results, paths);
     assert(results.size() == 1);
     if (results[0].status != gpuroute::ARC_OK) {
         std::fprintf(stderr, "arc not routed: status=%d\n", results[0].status);

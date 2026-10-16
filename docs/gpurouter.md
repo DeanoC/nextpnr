@@ -114,6 +114,21 @@ architecture refuses. The route is otherwise unchanged: the fence only removes
 candidates, so a design whose accepted route already avoided the region produces
 identical placement and routing checksums.
 
+A halo fence covers the opposite case, where a net may leave a region only
+onto its own shell tiles. `pipOutsideNetHalo` marks pips such a net must not
+use, `netConstrainedToHalo` says which nets that is, and `netHaloShellTiles`
+lists the destination-wire tiles that are still legal. The host stores the
+pip bit on each CSR edge and the tiles with the task. The search skips a
+marked edge unless the wire it drives sits on one of those tiles. Mistral
+uses this for `fes_slot_route_outside_plug_halo_and_shell`: a slot-driven net
+stays inside the plug halo, or on a tile of its own non-slot driver or user.
+Pips that already touch a bound shell pin are not marked, matching the
+binding check. Without the fence the search proposes the pip, binding
+rejects it, and a retry from the same costs proposes it again. Nets that are
+not constrained search as before, and a design whose accepted route already
+stayed inside the halo keeps the same placement and routing checksums. A net
+with no legal route fails as unroutable instead of repeating one rejected pip.
+
 ### Host side (`common/route/gpurouter.cc`)
 
 1. **Graph flattening.** All wires are numbered tile-major (ties within a

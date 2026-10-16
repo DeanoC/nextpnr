@@ -79,6 +79,7 @@ struct DevGraph
     const int32_t *out_dst;
     const float *edge_cost;
     const uint8_t *edge_region;
+    const uint8_t *edge_outside_halo;
     const int16_t *wx;
     const int16_t *wy;
     int32_t *reserved;
@@ -211,8 +212,9 @@ __device__ __forceinline__ int edge_src(const DevGraph &g, int e)
 
 __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p, const TaskDesc *tasks, int ntasks,
                                                       const ArcDesc *arcs, const int32_t *seeds,
-                                                      const float *seed_delay, const float *seed_load, Scratch sc,
-                                                      ArcResult *results, PathEntry *paths)
+                                                      const float *seed_delay, const float *seed_load,
+                                                      const int32_t *shell_tiles, Scratch sc, ArcResult *results,
+                                                      PathEntry *paths)
 {
     __shared__ BlockState st;
     __shared__ int hist[NBINS];
@@ -467,6 +469,9 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                                 continue;
                             c += p.pip_adder;
                             const int vx = g.wx[v], vy = g.wy[v];
+                            if (task.stay_in_halo && g.edge_outside_halo[ei] &&
+                                !shell_tile_hit(shell_tiles, task.shell_off, task.shell_cnt, vx, vy))
+                                continue;
                             if (p.use_bb && (vx < task.bb_x0 || vx > task.bb_x1 || vy < task.bb_y0 || vy > task.bb_y1))
                                 continue;
                             if (g.flags[v] & WIRE_UNAVAILABLE)
@@ -762,6 +767,14 @@ class DeviceBackend : public Backend
                 edge_region_.alloc((size_t)graph.n_edges);
                 GPU_CHECK(hipMemset(edge_region_.ptr, 0, (size_t)graph.n_edges * sizeof(uint8_t)));
             }
+            // nullptr is an all-zero halo fence. hipMemcpy from a null host
+            // pointer would fault, so allocate and clear instead.
+            if (graph.edge_outside_halo != nullptr || graph.n_edges == 0) {
+                edge_outside_halo_.upload(graph.edge_outside_halo, (size_t)graph.n_edges);
+            } else {
+                edge_outside_halo_.alloc((size_t)graph.n_edges);
+                GPU_CHECK(hipMemset(edge_outside_halo_.ptr, 0, (size_t)graph.n_edges * sizeof(uint8_t)));
+            }
             wx_.upload(graph.wire_x, graph.n_wires);
             wy_.upload(graph.wire_y, graph.n_wires);
             reserved_.upload(graph.wire_reserved, graph.n_wires);
@@ -798,8 +811,8 @@ class DeviceBackend : public Backend
 
     void route(const RouteParams &params, const std::vector<TaskDesc> &tasks, const std::vector<ArcDesc> &arcs,
                const std::vector<int32_t> &seeds, const std::vector<float> &seed_delay,
-               const std::vector<float> &seed_load, bool large_lane, std::vector<ArcResult> &results,
-               std::vector<PathEntry> &paths) override
+               const std::vector<float> &seed_load, const std::vector<int32_t> &shell_tiles, bool large_lane,
+               std::vector<ArcResult> &results, std::vector<PathEntry> &paths) override
     {
         results.assign(arcs.size(), ArcResult());
         size_t total_paths = 0;
@@ -815,6 +828,7 @@ class DeviceBackend : public Backend
         seeds_.upload(seeds.data(), seeds.size());
         seed_delay_.upload(seed_delay.data(), seed_delay.size());
         seed_load_.upload(seed_load.data(), seed_load.size());
+        shell_tiles_.upload(shell_tiles.data(), shell_tiles.size());
         results_.ensure(arcs.size());
         paths_.ensure(total_paths);
         GPU_CHECK(hipMemset(results_.ptr, 0, arcs.size() * sizeof(ArcResult)));
@@ -829,14 +843,15 @@ class DeviceBackend : public Backend
         g.out_dst = out_dst_.ptr;
         g.edge_cost = edge_cost_.ptr;
         g.edge_region = edge_region_.ptr;
+        g.edge_outside_halo = edge_outside_halo_.ptr;
         g.wx = wx_.ptr;
         g.wy = wy_.ptr;
         g.reserved = reserved_.ptr;
         g.flags = flags_.ptr;
         g.occ = occ_.ptr;
         g.hist = hist_.ptr;
-        route_kernel<<<grid, BLOCK>>>(g, params, tasks_.ptr, (int)tasks.size(), arcs_.ptr, seeds_.ptr,
-                                      seed_delay_.ptr, seed_load_.ptr, lane.scratch(), results_.ptr, paths_.ptr);
+        route_kernel<<<grid, BLOCK>>>(g, params, tasks_.ptr, (int)tasks.size(), arcs_.ptr, seeds_.ptr, seed_delay_.ptr,
+                                      seed_load_.ptr, shell_tiles_.ptr, lane.scratch(), results_.ptr, paths_.ptr);
         GPU_CHECK(hipGetLastError());
         GPU_CHECK(hipDeviceSynchronize());
         auto t2 = std::chrono::steady_clock::now();
@@ -862,6 +877,7 @@ class DeviceBackend : public Backend
     DevBuf<int32_t> out_off_, out_dst_;
     DevBuf<float> edge_cost_;
     DevBuf<uint8_t> edge_region_;
+    DevBuf<uint8_t> edge_outside_halo_;
     DevBuf<int16_t> wx_, wy_;
     DevBuf<int32_t> reserved_;
     DevBuf<uint8_t> flags_;
@@ -872,6 +888,7 @@ class DeviceBackend : public Backend
     DevBuf<ArcDesc> arcs_;
     DevBuf<int32_t> seeds_;
     DevBuf<float> seed_delay_, seed_load_;
+    DevBuf<int32_t> shell_tiles_;
     DevBuf<ArcResult> results_;
     DevBuf<PathEntry> paths_;
     DevBuf<int32_t> upd_wires_, upd_occ_, upd_res_;

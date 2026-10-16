@@ -83,7 +83,7 @@ Result run(Graph &graph, RouteParams p, const std::vector<int32_t> &seeds, const
     t.bb_x0 = 0; t.bb_y0 = 0; t.bb_x1 = 3; t.bb_y1 = 3;
     p.use_bb = bounded;
     Result result;
-    backend->route(p, {t}, arcs, seeds, delays, loads, large, result.arcs, result.paths);
+    backend->route(p, {t}, arcs, seeds, delays, loads, {}, large, result.arcs, result.paths);
     return result;
 }
 uint32_t bits(float value)

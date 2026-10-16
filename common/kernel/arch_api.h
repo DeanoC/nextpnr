@@ -22,6 +22,8 @@
 #define ARCH_API_H
 
 #include <algorithm>
+#include <utility>
+#include <vector>
 
 #include "basectx.h"
 #include "idstring.h"
@@ -100,6 +102,18 @@ template <typename R> struct ArchAPI : BaseCtx
     virtual bool pipInReservedRegion(PipId) const { return false; }
     // Whether this net may use pips reported by pipInReservedRegion.
     virtual bool netMayUseReservedRegion(const NetInfo *) const { return true; }
+    // A pip a halo-constrained net may use only when the destination wire's
+    // tile is one of the tiles netHaloShellTiles reports. The tile is the
+    // center of getRouteBoundingBox(dst, dst), which is the wire coordinate
+    // the GPU router stores. Global exceptions (inside the halo, or a wire
+    // that already touches a bound shell pin) return false. Default: no
+    // such pips.
+    virtual bool pipOutsideNetHalo(PipId) const { return false; }
+    // Whether this net is subject to pipOutsideNetHalo.
+    virtual bool netConstrainedToHalo(const NetInfo *) const { return false; }
+    // Replace tiles with the (x, y) tiles where this net may use a
+    // pipOutsideNetHalo pip. Ignored unless netConstrainedToHalo is true.
+    virtual void netHaloShellTiles(const NetInfo *, std::vector<std::pair<int, int>> &tiles) const { tiles.clear(); }
     virtual NetInfo *getBoundPipNet(PipId pip) const = 0;
     virtual WireId getConflictingPipWire(PipId pip) const = 0;
     virtual NetInfo *getConflictingPipNet(PipId pip) const = 0;
