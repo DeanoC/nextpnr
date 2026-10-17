@@ -144,13 +144,14 @@ def ib_out(module, port):
     raise AssertionError(port)
 
 
-def output_driver(cells, bit):
+def driver_of(cells, bit):
+    # Routed JSON renumbers nets, so identity is the driving cell and port.
     found = None
-    for cell in cells.values():
+    for name, cell in cells.items():
         for port, bits in cell["connections"].items():
             if cell["port_directions"].get(port) == "output" and bit in bits:
-                assert found is None, (bit, found[0]["type"], cell["type"])
-                found = (cell, port)
+                assert found is None, (bit, found, (name, port))
+                found = (name, port)
     assert found, bit
     return found
 
@@ -166,8 +167,10 @@ def cell_on_pad(cells, kind, pad_bits):
 sclr_design = json.loads(pads.read_text())
 sclr_module = sclr_design["modules"]["top"]
 sclr_ff = ff_driving(sclr_module, "p4")
-sclr_data = list(sclr_ff["connections"]["DATAIN"])
+sclr_data = sclr_ff["connections"]["DATAIN"]
 sclr_clear = ib_out(sclr_module, "ce")
+data_src = driver_of(sclr_module["cells"], sclr_data[0])
+clear_src = driver_of(sclr_module["cells"], sclr_clear[0])
 sclr_ff["connections"].update(SCLR=sclr_clear)
 sclr_path = o / "sclr.json"
 sclr_path.write_text(json.dumps(sclr_design))
@@ -178,11 +181,13 @@ sclr_cells = sclr_top["cells"]
 p4 = cell_on_pad(sclr_cells, "MISTRAL_SDROUT", sclr_top["ports"]["p4"]["bits"])
 p4_data = p4["connections"]["I"]
 assert len(p4_data) == 1, p4_data
-mux, mux_port = output_driver(sclr_cells, p4_data[0])
-assert mux_port == "Q" and mux["connections"].get("Q") == p4_data, (mux_port, mux.get("connections"))
-assert mux["type"] == "MISTRAL_ALUT2" and param_int(mux, "LUT") == 2, (mux.get("type"), mux.get("parameters"))
-assert mux["connections"].get("A") == sclr_data, mux["connections"]
-assert mux["connections"].get("B") == sclr_clear, mux["connections"]
+mux, mux_port = driver_of(sclr_cells, p4_data[0])
+mux_cell = sclr_cells[mux]
+assert mux_port == "Q" and mux_cell["connections"].get("Q") == p4_data, (mux_port, mux_cell.get("connections"))
+assert mux_cell["type"] == "MISTRAL_ALUT2" and param_int(mux_cell, "LUT") == 2, (mux_cell.get("type"), mux_cell.get("parameters"))
+assert len(mux_cell["connections"].get("A", [])) == 1 and len(mux_cell["connections"].get("B", [])) == 1
+assert driver_of(sclr_cells, mux_cell["connections"]["A"][0]) == data_src, mux_cell["connections"]
+assert driver_of(sclr_cells, mux_cell["connections"]["B"][0]) == clear_src, mux_cell["connections"]
 print("PASS: SDR output synchronous clear drives p4 through a fabric data mux")
 reject_netlist(
     "sload",
