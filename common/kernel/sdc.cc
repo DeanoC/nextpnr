@@ -686,8 +686,16 @@ struct SDCParser
                     log_error("create_clock period must be positive and representable.\n");
             }
         }
-        if (targets.empty())
-            log_error("create_clock requires a physical target; virtual clocks are not supported.\n");
+        if (targets.empty()) {
+            // Quartus accepts a targetless create_clock as an I/O reference.
+            // Timing constraints still need a physical net, so the clock is not applied.
+            if (clock_name.empty())
+                log_warning("Ignoring virtual create_clock with no physical target (line %d).\n", lineno);
+            else
+                log_warning("Ignoring virtual create_clock '%s' with no physical target (line %d).\n",
+                            clock_name.c_str(), lineno);
+            return std::string{};
+        }
         if (!clock_name.empty() && targets.size() != 1)
             log_error("A named create_clock requires exactly one target.\n");
         for (const auto &target : targets) {

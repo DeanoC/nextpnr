@@ -2,6 +2,7 @@
 #include <sstream>
 #include "gtest/gtest.h"
 #include "io_delay.h"
+#include "log.h"
 #include "jsonwrite.h"
 #include "json_frontend.h"
 #include "timing.h"
@@ -360,9 +361,22 @@ TEST_F(IoDelayTest, WorstSetupSlackDoesNotScalePhaseRelatedIoMarginByFmax)
     EXPECT_EQ(timing.get_worst_setup_slack(), std::numeric_limits<delay_t>::max());
 }
 
-TEST_F(IoDelayTest, RegisteredIoAndVirtualClocksFailExplicitly)
+TEST_F(IoDelayTest, VirtualClockIsIgnoredAndRegisteredIoFails)
 {
-    EXPECT_THROW(sdc("create_clock -period 10 -name virtual\n"), log_execution_error_exception);
+    const bool saved_warn = log_warn_as_error;
+    log_warn_as_error = false;
+    std::stringstream warnings;
+    log_streams.emplace_back(&warnings, LogLevel::WARNING_MSG);
+    EXPECT_NO_THROW(sdc("create_clock -period 10 -name virtual\n"));
+    EXPECT_NO_THROW(sdc("create_clock -period 12\n"));
+    log_streams.pop_back();
+    log_warn_as_error = saved_warn;
+    EXPECT_NE(warnings.str().find("Ignoring virtual create_clock 'virtual'"), std::string::npos) << warnings.str();
+    EXPECT_NE(warnings.str().find("Ignoring virtual create_clock with no physical target"), std::string::npos)
+            << warnings.str();
+    EXPECT_EQ(ctx->sdc_clock_names.count("virtual"), 0u);
+    EXPECT_EQ(ctx->settings.count(ctx->id("sdc/clock/virtual")), 0u);
+    EXPECT_THROW(sdc("create_clock -period 0 -name virtual\n"), log_execution_error_exception);
     sdc("set_output_delay -clock memory 2 [get_ports dout]\n");
     output->type = id_MISTRAL_SDROUT;
     output->addInput(id_CLK); output->connectPort(id_CLK, clock);
