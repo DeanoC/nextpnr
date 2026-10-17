@@ -12,6 +12,7 @@ function get_dependencies {
 }
 
 function build_nextpnr {
+    export PATH=${GITHUB_WORKSPACE}/.yosys/bin:$PATH
     mkdir build
     pushd build
     cmake .. -DARCH=mistral -DMISTRAL_ROOT=${MISTRAL_PATH} -DBUILD_TESTS=ON
@@ -20,11 +21,16 @@ function build_nextpnr {
 }
 
 function run_tests {
+    export PATH=${GITHUB_WORKSPACE}/.yosys/bin:$PATH
     python3 common/route/tests/router2_profile.py
     ctest --test-dir build -R '^nextpnr-heap-control-set-test$' --output-on-failure
     python3 mistral/tests/router2_profile.py --nextpnr build/nextpnr-mistral --output build/router2-profile
     python3 mistral/tests/router2_undriven.py --nextpnr build/nextpnr-mistral --output build/router2-undriven
     python3 mistral/tests/pad_clock.py
+    python3 mistral/tests/pad_clock_route.py \
+        --yosys "$(command -v yosys)" \
+        --nextpnr build/nextpnr-mistral \
+        --output build/pad-clock-route
 }
 
 function run_archcheck {

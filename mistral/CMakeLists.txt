@@ -85,6 +85,12 @@ if (BUILD_TESTS)
                     --nextpnr $<TARGET_FILE:nextpnr-${family}>
                     --output ${CMAKE_CURRENT_BINARY_DIR}/tests/physical-lut-timing-isolated
                     --isolated-lut-placement)
+        # Real routes. pad-clock above only checks synthetic route strings.
+        add_test(NAME nextpnr-${family}-pad-clock-route
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/pad_clock_route.py
+                    --yosys ${MISTRAL_CHECKPOINT_YOSYS}
+                    --nextpnr $<TARGET_FILE:nextpnr-${family}>
+                    --output ${CMAKE_CURRENT_BINARY_DIR}/tests/pad-clock-route)
     endif()
     add_test(NAME nextpnr-${family}-capture-pipeline-locality-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/capture_pipeline_locality_cli.py
