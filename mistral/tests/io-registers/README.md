@@ -29,13 +29,18 @@ and OE registers must share a clock. The input register may use a different
 clock. One flip-flop cannot pack as both the input register and an output or
 output-enable register. A register whose Q drives several pads
 requesting the same register is copied into each pad, so one OE register can
-drive a whole SDRAM bus. Synchronous clear or load, a clock enable tied low, a
-clear held active, register parameters, inverted clocks, a Q that also drives
-logic, and a pad input feeding more than the register are rejected.
+drive a whole SDRAM bus. A driven synchronous clear on a unidirectional SDR
+output is lowered to a fabric `MISTRAL_ALUT2` (LUT mask 2: data on `A`, clear
+on `B`) whose `Q` feeds that pad; the register still packs, because the GPIO
+has no routed SCLR. Synchronous clear on input, output-enable and bidirectional
+registers, synchronous load, a clock enable tied low, a clear held active,
+register parameters, inverted clocks, a Q that also drives logic, and a pad
+input feeding more than the register are rejected.
 `FAST_OUTPUT_ENABLE_REGISTER` on a pad without an output enable is ignored
-with a warning. Quartus also has no I/O register sync clear: it folds the
-clear into logic and leaves the register in the fabric, which nextpnr does not
-do.
+with a warning. Quartus has no I/O register sync clear: it folds the clear
+into logic and leaves the register in the fabric. The unidirectional SDR
+output path folds the clear into logic and still packs the register into the
+pad.
 
 Decoded settings for the DQS16 lane of the pad:
 
@@ -76,10 +81,11 @@ delay-chain assignments still override the defaults.
   `MISTRAL_IO` for the tri-state pads. The settings nextpnr writes by default
   and Quartus chooses per design are listed there and not compared.
 
-`check.py` places and routes both designs, requires every pad's decoded
+`check.py` places and routes the designs, requires every pad's decoded
 settings and control inverters to equal Quartus's, checks the clock-enable and
-clear routes exist and that the bus registers are all absorbed, and checks
-five unsupported requests fail.
+clear routes exist and that the bus registers are all absorbed, checks that a
+driven SDR output synchronous clear packs as a fabric mux on that pad, and
+checks six unsupported requests fail.
 
 ```sh
 python3 mistral/tests/io-registers/check.py \
