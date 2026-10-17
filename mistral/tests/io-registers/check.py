@@ -144,16 +144,46 @@ def ib_out(module, port):
     raise AssertionError(port)
 
 
+def output_driver(cells, bit):
+    found = None
+    for cell in cells.values():
+        for port, bits in cell["connections"].items():
+            if cell["port_directions"].get(port) == "output" and bit in bits:
+                assert found is None, (bit, found[0]["type"], cell["type"])
+                found = (cell, port)
+    assert found, bit
+    return found
+
+
+def cell_on_pad(cells, kind, pad_bits):
+    matches = [cell for cell in cells.values() if cell["type"] == kind and cell["connections"].get("PAD") == pad_bits]
+    assert len(matches) == 1, (kind, pad_bits, len(matches))
+    return matches[0]
+
+
 # SDR output lowers a driven SCLR into a fabric data mux. The pad has no routed SCLR.
+# LUT mask 2 is A & ~B, so the clear net has to be B and Q has to feed this pad.
 sclr_design = json.loads(pads.read_text())
-ff_driving(sclr_design["modules"]["top"], "p4")["connections"].update(SCLR=ib_out(sclr_design["modules"]["top"], "ce"))
+sclr_module = sclr_design["modules"]["top"]
+sclr_ff = ff_driving(sclr_module, "p4")
+sclr_data = list(sclr_ff["connections"]["DATAIN"])
+sclr_clear = ib_out(sclr_module, "ce")
+sclr_ff["connections"].update(SCLR=sclr_clear)
 sclr_path = o / "sclr.json"
 sclr_path.write_text(json.dumps(sclr_design))
 sclr_log = route(sclr_path, f / "pads.qsf", "sclr")
 assert "Packed SDR output" in sclr_log, sclr_log[-2000:]
-sclr_cells = json.loads((o / "sclr.routed.json").read_text())["modules"]["top"]["cells"]
-sclr_mux = [c for c in sclr_cells.values() if c["type"] == "MISTRAL_ALUT2" and param_int(c, "LUT") == 2]
-assert sclr_mux, sorted({c["type"] for c in sclr_cells.values()})
+sclr_top = json.loads((o / "sclr.routed.json").read_text())["modules"]["top"]
+sclr_cells = sclr_top["cells"]
+p4 = cell_on_pad(sclr_cells, "MISTRAL_SDROUT", sclr_top["ports"]["p4"]["bits"])
+p4_data = p4["connections"]["I"]
+assert len(p4_data) == 1, p4_data
+mux, mux_port = output_driver(sclr_cells, p4_data[0])
+assert mux_port == "Q" and mux["connections"].get("Q") == p4_data, (mux_port, mux.get("connections"))
+assert mux["type"] == "MISTRAL_ALUT2" and param_int(mux, "LUT") == 2, (mux.get("type"), mux.get("parameters"))
+assert mux["connections"].get("A") == sclr_data, mux["connections"]
+assert mux["connections"].get("B") == sclr_clear, mux["connections"]
+print("PASS: SDR output synchronous clear drives p4 through a fabric data mux")
 reject_netlist(
     "sload",
     lambda m: ff_driving(m, "p1")["connections"].update(SLOAD=ib_out(m, "ce")),
@@ -205,7 +235,7 @@ reject_netlist(
     shared_ff,
     "cannot be both an input register and an output or output-enable register",
 )
-print("PASS: seven unsupported I/O register requests rejected")
+print("PASS: six unsupported I/O register requests rejected")
 
 
 def pack(netlist, qsf, name, success=True):
