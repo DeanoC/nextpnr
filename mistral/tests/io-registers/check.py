@@ -144,11 +144,16 @@ def ib_out(module, port):
     raise AssertionError(port)
 
 
-reject_netlist(
-    "sclr",
-    lambda m: ff_driving(m, "p4")["connections"].update(SCLR=ib_out(m, "ce")),
-    "synchronous clear and load have no I/O register equivalent",
-)
+# SDR output lowers a driven SCLR into a fabric data mux. The pad has no routed SCLR.
+sclr_design = json.loads(pads.read_text())
+ff_driving(sclr_design["modules"]["top"], "p4")["connections"].update(SCLR=ib_out(sclr_design["modules"]["top"], "ce"))
+sclr_path = o / "sclr.json"
+sclr_path.write_text(json.dumps(sclr_design))
+sclr_log = route(sclr_path, f / "pads.qsf", "sclr")
+assert "Packed SDR output" in sclr_log, sclr_log[-2000:]
+sclr_cells = json.loads((o / "sclr.routed.json").read_text())["modules"]["top"]["cells"]
+sclr_mux = [c for c in sclr_cells.values() if c["type"] == "MISTRAL_ALUT2" and param_int(c, "LUT") == 2]
+assert sclr_mux, sorted({c["type"] for c in sclr_cells.values()})
 reject_netlist(
     "sload",
     lambda m: ff_driving(m, "p1")["connections"].update(SLOAD=ib_out(m, "ce")),

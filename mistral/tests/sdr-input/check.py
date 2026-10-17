@@ -159,6 +159,6 @@ for command in ("set_input_delay", "set_output_delay"):
         o / (command + ".log"),
         success=False,
     )
-    assert "Unsupported SDC command '" + command + "'" in (o / (command + ".log")).read_text()
+    assert "IO delay requires -clock" in (o / (command + ".log")).read_text()
 
 print("PASS: SDR input opt-out and six unsupported input/clock/control requests")
