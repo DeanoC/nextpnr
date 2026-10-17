@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <memory>
 #include <sstream>
 #include "gtest/gtest.h"
@@ -199,6 +200,94 @@ TEST_F(IoDelayTest, ExternalClockAdjustmentsHaveLogicalTerminalsWithoutPhysicalC
     check(path);
     ASSERT_FALSE(timing.get_timing_result().min_delay_violations.empty());
     for (const auto &hold : timing.get_timing_result().min_delay_violations) check(hold);
+}
+
+TEST_F(IoDelayTest, DetailedReportPrintsIoClockTerminalsWithoutAsserting)
+{
+    sdc("set_output_delay -clock memory -min -2 [get_ports dout]\n"
+        "set_output_delay -clock memory -max 4 [get_ports dout]\n");
+    TimingAnalyser timing(ctx.get());
+    timing.with_clock_skew = true;
+    timing.setup(true, false, true);
+    timing.set_route_delay(CellPortKey(launch->name, id_CLK), DelayPair(500, 700));
+    timing.run(false, true, false, true);
+    auto path = find_path(timing.get_timing_result(), output);
+    ASSERT_FALSE(path.segments.empty());
+    bool saw_skew = false;
+    for (const auto &segment : path.segments) {
+        if (segment.type != CriticalPath::Segment::Type::CLK_SKEW &&
+            segment.type != CriticalPath::Segment::Type::CLK_TO_CLK)
+            continue;
+        saw_skew = true;
+        EXPECT_NE(segment.from.second, IdString());
+        EXPECT_NE(segment.to.second, IdString());
+        EXPECT_EQ(segment.from, std::make_pair(launch->name, id_CLK));
+        EXPECT_EQ(segment.to, std::make_pair(output->name, id_I));
+        EXPECT_EQ(segment.net, IdString());
+        if (segment.type == CriticalPath::Segment::Type::CLK_SKEW)
+            EXPECT_EQ(segment.delay, 700);
+    }
+    EXPECT_TRUE(saw_skew);
+
+    ctx->timing_result = timing.get_timing_result();
+    ctx->detailed_timing_report = true;
+    std::ostringstream report;
+    ASSERT_NO_THROW(ctx->writeJsonReport(report));
+    std::string error;
+    auto json = json11::Json::parse(report.str(), error);
+    ASSERT_TRUE(error.empty()) << error;
+    ASSERT_TRUE(json["detailed_net_timings"].is_array());
+    bool json_skew = false;
+    for (const auto &row : json["critical_paths"].array_items()) {
+        for (const auto &segment : row["path"].array_items()) {
+            const auto type = segment["type"].string_value();
+            const auto from_port = segment["from"]["port"].string_value();
+            const auto to_port = segment["to"]["port"].string_value();
+            if (type != "clk-skew" && type != "clk-to-clk")
+                continue;
+            EXPECT_FALSE(from_port.empty()) << segment.dump();
+            EXPECT_FALSE(to_port.empty()) << segment.dump();
+            if (segment["to"]["cell"].string_value() != output->name.str(ctx.get()))
+                continue;
+            json_skew = true;
+            EXPECT_EQ(segment["from"]["cell"].string_value(), launch->name.str(ctx.get()));
+            EXPECT_EQ(from_port, "CLK");
+            EXPECT_EQ(to_port, "I");
+            EXPECT_EQ(segment.object_items().count("net"), 0u);
+            if (type == "clk-skew")
+                EXPECT_NEAR(segment["delay"].number_value(), ctx->getDelayNS(700), 1e-4);
+        }
+    }
+    EXPECT_TRUE(json_skew);
+
+    // Unplaced data nets have no wires. Verbose mode walks every named net, so
+    // print the clock segments that used to assert and leave the data hops out.
+    auto clock_segments = [](CriticalPath report) {
+        report.segments.erase(std::remove_if(report.segments.begin(), report.segments.end(),
+                                              [](const CriticalPath::Segment &segment) {
+                                                  return segment.type == CriticalPath::Segment::Type::ROUTING;
+                                              }),
+                              report.segments.end());
+        return report;
+    };
+    TimingResult printed;
+    printed.clock_paths[path.clock_pair.start.clock] = clock_segments(path);
+    for (const auto &hold : timing.get_timing_result().min_delay_violations)
+        printed.min_delay_violations.push_back(clock_segments(hold));
+    ASSERT_FALSE(printed.min_delay_violations.empty());
+    ctx->verbose = true;
+    struct Diagnostics
+    {
+        std::ostringstream stream;
+        Diagnostics() { log_streams.emplace_back(&stream, LogLevel::INFO_MSG); }
+        ~Diagnostics() { log_streams.pop_back(); }
+    } diagnostics;
+    ASSERT_NO_THROW(ctx->log_timing_results(printed, false, false, true, false));
+    const auto &log = diagnostics.stream.str();
+    EXPECT_NE(log.find("clk-skew"), std::string::npos) << log;
+    EXPECT_NE(log.find("Sink output_pad.I\n"), std::string::npos) << log;
+    EXPECT_EQ(log.find("Sink output_pad.\n"), std::string::npos) << log;
+    EXPECT_EQ(log.find("prediction:"), std::string::npos) << log;
 }
 
 TEST_F(IoDelayTest, FallingReferenceUsesHalfCycleAndMatchesHoldSlack)
