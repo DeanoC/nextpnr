@@ -17,10 +17,15 @@ hardware L5/L6 mux mode. All ordinary LUTs smaller than six inputs, including
 buffers and inverters, use L5 mode. The mux-level assignments follow
 `get_phys_pin_val`: E selects the final mux in L6 mode, while F selects the final
 mux in L5 mode. C/D exchange the middle levels between the two L6 halves, so
-their existing early/late envelope is used. Unbound cells and hypothetical
-planning cells use the placement pin map with the same physical delay tables,
-so future-cell scoring agrees with real placement trials. The underlying tables
-retain their existing device, voltage and temperature limitations.
+their existing early/late envelope is used. Before input legalisation, the
+default uses the fastest-first placement scaffold. `--isolated-lut-placement`
+(or `--arrival-pin-assignment`) instead uses C, E, F, B, A for an isolated L5
+cell and A through F for LUT6. Hypothetical cells without nets use the same
+order as a fully connected cell; connected cells skip disconnected inputs.
+These estimates affect placement QoR and remain opt-in following #206.
+After legalisation, timing uses the actual physical maps under every policy.
+The underlying tables retain their existing device, voltage and temperature
+limitations.
 
 `physical_lut_timing.py` synthesizes L5/L6 functions and an input inversion that
 the packer folds into the L5 pin state. Five routed replays rotate every input's
@@ -36,4 +41,8 @@ python3 mistral/tests/physical_lut_timing.py \
 ```
 
 With `BUILD_TESTS` and Yosys available, CTest registers
-`nextpnr-mistral-physical-lut-timing`.
+`nextpnr-mistral-physical-lut-timing` and
+`nextpnr-mistral-physical-lut-timing-isolated`. The latter passes
+`--isolated-lut-placement` for the fresh route and omits it on all five
+checkpoint replays, checking that the physical maps preserve the bitstream and
+timing without re-enabling the placement heuristic.
