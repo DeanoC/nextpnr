@@ -114,9 +114,11 @@ for name, reason in [('reset', 'asynchronous clear is held active'),
             'hide_name': 0, 'type': 'MISTRAL_NOT', 'parameters': {}, 'attributes': {},
             'port_directions': {'A': 'input', 'Q': 'output'}, 'connections': {'A': [6], 'Q': [9]}}
     if name == 'q-fanout':
+        # Bit numbers move with synthesis. Fan out the register Q, not a fixed bit.
+        q = ff['connections']['Q']
         j['modules']['top']['cells']['q_fanout'] = {
             'hide_name': 0, 'type': 'MISTRAL_BUF', 'parameters': {}, 'attributes': {},
-            'port_directions': {'A': 'input', 'Q': 'output'}, 'connections': {'A': [7], 'Q': [9]}}
+            'port_directions': {'A': 'input', 'Q': 'output'}, 'connections': {'A': q, 'Q': [9]}}
     if name in ('inverted-aclr', 'inverter-fanout'):
         output = ff['connections']['Q']
         ff['connections']['Q'] = [9]
