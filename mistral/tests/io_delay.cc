@@ -377,10 +377,39 @@ TEST_F(IoDelayTest, VirtualClockIsIgnoredAndRegisteredIoFails)
     EXPECT_EQ(ctx->sdc_clock_names.count("virtual"), 0u);
     EXPECT_EQ(ctx->settings.count(ctx->id("sdc/clock/virtual")), 0u);
     EXPECT_THROW(sdc("create_clock -period 0 -name virtual\n"), log_execution_error_exception);
+    EXPECT_EQ(clock->clkconstr->period.minDelay(), ctx->getDelayFromNS(10));
     sdc("set_output_delay -clock memory 2 [get_ports dout]\n");
     output->type = id_MISTRAL_SDROUT;
     output->addInput(id_CLK); output->connectPort(id_CLK, clock);
     EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
+}
+
+TEST_F(IoDelayTest, EmptyClockTargetExpressionIsAnError)
+{
+    const auto period = clock->clkconstr->period.minDelay();
+    std::stringstream errors;
+    log_streams.emplace_back(&errors, LogLevel::ERROR_MSG);
+    EXPECT_THROW(sdc("create_clock -period 5 -name typo [get_ports clkk]\n"), log_execution_error_exception);
+    EXPECT_THROW(sdc("create_clock -period 5 [get_nets missing_clock]\n"), log_execution_error_exception);
+    EXPECT_THROW(sdc("create_clock -period 5 [get_pins capture/NO_SUCH]\n"), log_execution_error_exception);
+    EXPECT_THROW(sdc("create_clock -period 5 [get_cells missing_cell]\n"), log_execution_error_exception);
+    log_streams.pop_back();
+    int unmatched = 0;
+    for (size_t pos = 0; (pos = errors.str().find("create_clock target matched no objects", pos)) != std::string::npos;
+         pos += 1)
+        ++unmatched;
+    EXPECT_EQ(unmatched, 4) << errors.str();
+    EXPECT_EQ(errors.str().find("Ignoring virtual create_clock"), std::string::npos) << errors.str();
+    EXPECT_EQ(ctx->sdc_clock_names.count("typo"), 0u);
+    EXPECT_EQ(ctx->settings.count(ctx->id("sdc/clock/typo")), 0u);
+    ASSERT_EQ(ctx->sdc_clock_names.count("memory"), 1u);
+    EXPECT_EQ(ctx->sdc_clock_names.at("memory"), clock->name);
+    EXPECT_EQ(clock->clkconstr->period.minDelay(), period);
+
+    EXPECT_NO_THROW(sdc("create_clock -period 8 -name data [get_ports din]\n"));
+    EXPECT_EQ(ctx->sdc_clock_names.at("data"), input->getPort(id_PAD)->name);
+    EXPECT_EQ(input->getPort(id_PAD)->clkconstr->period.minDelay(), ctx->getDelayFromNS(8));
+    EXPECT_EQ(clock->clkconstr->period.minDelay(), period);
 }
 
 TEST_F(IoDelayTest, ClockFalsePathCutsExternalSetupAndHold)

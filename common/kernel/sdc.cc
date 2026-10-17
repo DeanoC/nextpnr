@@ -665,9 +665,14 @@ struct SDCParser
         double period = 10;
         std::string clock_name;
         std::vector<SdcEntity> targets;
+        // A bracketed [get_ports]/[get_nets]/... is an explicit target even when
+        // it resolves to nothing. Only a command with no target expression is a
+        // Quartus-style virtual clock.
+        bool have_target_expression = false;
         for (size_t i = 1; i < arguments.size(); ++i) {
             const auto &arg = arguments[i];
             if (!arg.is_string) {
+                have_target_expression = true;
                 targets.insert(targets.end(), arg.list.begin(), arg.list.end());
                 continue;
             }
@@ -687,6 +692,8 @@ struct SDCParser
             }
         }
         if (targets.empty()) {
+            if (have_target_expression)
+                log_error("create_clock target matched no objects (line %d).\n", lineno);
             // Quartus accepts a targetless create_clock as an I/O reference.
             // Timing constraints still need a physical net, so the clock is not applied.
             if (clock_name.empty())
