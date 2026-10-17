@@ -125,48 +125,142 @@ TEST(LutPlacementTiming, Lut6PhysicalFIsFasterThanE)
 
 TEST(LutPlacementTiming, IsolatedCellEstimatesMatchBothPhysicalHalves)
 {
-    const std::array<IdString, 6> types{id_MISTRAL_BUF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3,
-                                       id_MISTRAL_ALUT4, id_MISTRAL_ALUT5, id_MISTRAL_ALUT6};
+    const std::array<IdString, 6> types{id_MISTRAL_BUF,   id_MISTRAL_ALUT2, id_MISTRAL_ALUT3,
+                                        id_MISTRAL_ALUT4, id_MISTRAL_ALUT5, id_MISTRAL_ALUT6};
     const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
-    for (int half : {0, 1}) {
-        ArchArgs args;
-        args.device = "5CSEBA6U23I7";
-        Context ctx(args);
-        ctx.arrival_pin_assignment = true;
-        std::array<CellInfo *, 6> cells;
-        std::array<std::array<DelayQuad, 6>, 6> unplaced, placed;
-        for (int width = 1; width <= 6; ++width) {
-            auto *cell = ctx.createCell(ctx.idf("lut%d", width), types[width - 1]);
-            cells[width - 1] = cell;
-            for (int input = 0; input < width; ++input) {
-                cell->addInput(inputs[input]);
-                cell->connectPort(inputs[input], ctx.createNet(ctx.idf("input%d_%d", width, input)));
+    // Either explicit policy selects isolated estimates. The isolated-only
+    // option must agree with legalisation without arrival permutations.
+    for (bool arrival : {false, true}) {
+        for (int half : {0, 1}) {
+            ArchArgs args;
+            args.device = "5CSEBA6U23I7";
+            Context ctx(args);
+            ctx.arrival_pin_assignment = arrival;
+            ctx.isolated_lut_placement = !arrival;
+            std::array<CellInfo *, 6> cells;
+            std::array<std::array<DelayQuad, 6>, 6> hypothetical, unplaced, placed;
+            for (int width = 1; width <= 6; ++width) {
+                auto *cell = ctx.createCell(ctx.idf("lut%d", width), types[width - 1]);
+                cells[width - 1] = cell;
+                for (int input = 0; input < width; ++input)
+                    cell->addInput(inputs[input]);
+                cell->addOutput(id_Q);
+                // Remap planning also scores future LUTs before nets exist.
+                for (int input = 0; input < width; ++input)
+                    ASSERT_TRUE(ctx.getCellDelay(cell, inputs[input], id_Q, hypothetical[width - 1][input]));
+                for (int input = 0; input < width; ++input)
+                    cell->connectPort(inputs[input], ctx.createNet(ctx.idf("input%d_%d", width, input)));
+                cell->connectPort(id_Q, ctx.createNet(ctx.idf("output%d", width)));
             }
-            cell->addOutput(id_Q);
-            cell->connectPort(id_Q, ctx.createNet(ctx.idf("output%d", width)));
-        }
-        ctx.assignArchInfo();
-        for (int width = 1; width <= 6; ++width) {
-            auto *cell = cells[width - 1];
-            for (int input = 0; input < width; ++input)
-                ASSERT_TRUE(ctx.getCellDelay(cell, inputs[input], id_Q, unplaced[width - 1][input]));
-            ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 6 * (width - 1) + half)), cell, STRENGTH_STRONG);
-            for (int input = 0; input < width; ++input)
-                ASSERT_TRUE(ctx.getCellDelay(cell, inputs[input], id_Q, placed[width - 1][input]));
-        }
-        ctx.lab_pre_route();
-        for (int width = 1; width <= 6; ++width) {
-            for (int input = 0; input < width; ++input) {
-                SCOPED_TRACE(std::to_string(half) + "/" + std::to_string(width) + "/" + std::to_string(input));
-                DelayQuad actual;
-                ASSERT_TRUE(ctx.getCellDelay(cells[width - 1], inputs[input], id_Q, actual));
-                for (const auto &estimate : {unplaced[width - 1][input], placed[width - 1][input]}) {
-                    EXPECT_EQ(estimate.minRiseDelay(), actual.minRiseDelay());
-                    EXPECT_EQ(estimate.maxRiseDelay(), actual.maxRiseDelay());
-                    EXPECT_EQ(estimate.minFallDelay(), actual.minFallDelay());
-                    EXPECT_EQ(estimate.maxFallDelay(), actual.maxFallDelay());
+            ctx.assignArchInfo();
+            for (int width = 1; width <= 6; ++width) {
+                auto *cell = cells[width - 1];
+                for (int input = 0; input < width; ++input)
+                    ASSERT_TRUE(ctx.getCellDelay(cell, inputs[input], id_Q, unplaced[width - 1][input]));
+                ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 6 * (width - 1) + half)), cell, STRENGTH_STRONG);
+                for (int input = 0; input < width; ++input)
+                    ASSERT_TRUE(ctx.getCellDelay(cell, inputs[input], id_Q, placed[width - 1][input]));
+            }
+            ctx.lab_pre_route();
+            for (int width = 1; width <= 6; ++width) {
+                for (int input = 0; input < width; ++input) {
+                    SCOPED_TRACE(std::to_string(arrival) + "/" + std::to_string(half) + "/" + std::to_string(width) +
+                                 "/" + std::to_string(input));
+                    DelayQuad actual;
+                    ASSERT_TRUE(ctx.getCellDelay(cells[width - 1], inputs[input], id_Q, actual));
+                    for (const auto &estimate : {hypothetical[width - 1][input], unplaced[width - 1][input],
+                                                 placed[width - 1][input]}) {
+                        EXPECT_EQ(estimate.minRiseDelay(), actual.minRiseDelay());
+                        EXPECT_EQ(estimate.maxRiseDelay(), actual.maxRiseDelay());
+                        EXPECT_EQ(estimate.minFallDelay(), actual.minFallDelay());
+                        EXPECT_EQ(estimate.maxFallDelay(), actual.maxFallDelay());
+                    }
                 }
             }
+        }
+    }
+}
+
+TEST(LutPlacementTiming, DefaultRetainsPlacementPolicyUntilPinsAreLegalised)
+{
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    Context ctx(args);
+    const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
+    const std::array<IdString, 6> expected{id_F0, id_E0, id_D, id_C, id_B, id_A};
+    for (int width : {5, 6}) {
+        for (int half : {0, 1}) {
+            auto *cell = ctx.createCell(ctx.idf("lut%d_%d", width, half),
+                                        width == 6 ? id_MISTRAL_ALUT6 : id_MISTRAL_ALUT5);
+            for (int i = 0; i < width; ++i) {
+                cell->addInput(inputs[i]);
+                cell->connectPort(inputs[i], ctx.createNet(ctx.idf("%s_%d_%d", ctx.nameOf(inputs[i]), width, half)));
+            }
+            cell->addOutput(id_Q);
+            cell->connectPort(id_Q, ctx.createNet(ctx.idf("output_%d_%d", width, half)));
+            ctx.assignArchInfo();
+            ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 6 * (2 * (width - 5) + half) + half)),
+                        cell, STRENGTH_STRONG);
+            for (int i = 0; i < width; ++i) {
+                EXPECT_EQ(cell->pin_data.at(inputs[i]).bel_pins, std::vector<IdString>{expected[i]});
+                DelayQuad estimate, reference;
+                ASSERT_TRUE(ctx.getCellDelay(cell, inputs[i], id_Q, estimate));
+                ASSERT_TRUE(ctx.get_lut_pin_delay(expected[i], width == 6, reference));
+                EXPECT_EQ(estimate.maxDelay(), reference.maxDelay());
+            }
+        }
+    }
+    ctx.lab_pre_route();
+    // Retaining placement policy must not change physical timing reporting.
+    for (int width : {5, 6}) {
+        for (int half : {0, 1}) {
+            auto *cell = ctx.cells.at(ctx.idf("lut%d_%d", width, half)).get();
+            const auto fast_port = width == 6 ? id_F : id_C;
+            EXPECT_EQ(cell->pin_data.at(id_A).bel_pins, std::vector<IdString>{width == 6 ? id_A : half ? id_D : id_C});
+            EXPECT_EQ(cell->pin_data.at(fast_port).bel_pins, std::vector<IdString>{half ? id_F1 : id_F0});
+            DelayQuad slow, fast;
+            ASSERT_TRUE(ctx.getCellDelay(cell, id_A, id_Q, slow));
+            ASSERT_TRUE(ctx.getCellDelay(cell, fast_port, id_Q, fast));
+            EXPECT_LT(fast.maxDelay(), slow.minDelay());
+        }
+    }
+}
+
+TEST(LutPlacementTiming, IsolatedSparseInputsMatchLegalisation)
+{
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    Context ctx(args);
+    ctx.isolated_lut_placement = true;
+    for (int width : {5, 6}) {
+        auto *cell = ctx.createCell(ctx.idf("sparse%d", width), width == 5 ? id_MISTRAL_ALUT5 : id_MISTRAL_ALUT6);
+        for (IdString input : {id_A, id_B, id_C, id_D, id_E})
+            cell->addInput(input);
+        if (width == 6)
+            cell->addInput(id_F);
+        // B/D are deliberately disconnected before the connected E input.
+        for (IdString input : {id_A, id_C, id_E})
+            cell->connectPort(input, ctx.createNet(ctx.idf("%s_%d", ctx.nameOf(input), width)));
+        cell->addOutput(id_Q);
+        cell->connectPort(id_Q, ctx.createNet(ctx.idf("output%d", width)));
+    }
+    ctx.assignArchInfo();
+    std::array<std::array<DelayQuad, 3>, 2> estimates;
+    const std::array<IdString, 3> connected{id_A, id_C, id_E};
+    for (int width : {5, 6}) {
+        auto *cell = ctx.cells.at(ctx.idf("sparse%d", width)).get();
+        for (int i = 0; i < 3; ++i)
+            ASSERT_TRUE(ctx.getCellDelay(cell, connected[i], id_Q, estimates[width - 5][i]));
+        ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 6 * (width - 5))), cell, STRENGTH_STRONG);
+    }
+    ctx.lab_pre_route();
+    for (int width : {5, 6}) {
+        auto *cell = ctx.cells.at(ctx.idf("sparse%d", width)).get();
+        for (int i = 0; i < 3; ++i) {
+            DelayQuad actual;
+            ASSERT_TRUE(ctx.getCellDelay(cell, connected[i], id_Q, actual));
+            EXPECT_EQ(estimates[width - 5][i].maxDelay(), actual.maxDelay());
+            EXPECT_EQ(estimates[width - 5][i].minDelay(), actual.minDelay());
         }
     }
 }

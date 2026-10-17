@@ -39,6 +39,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('yosys', 'nextpnr', 'output'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--isolated-lut-placement', action='store_true',
+                        help='use isolated estimates for the fresh route; replay without the option')
     args = parser.parse_args()
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -75,7 +77,8 @@ endmodule
          f'synth_intel_alm -nobram -nolutram -nodsp -top top; write_json {out / "synth.json"}'], 'synth')
     base = [args.nextpnr.resolve(), '--device', '5CSEBA6U23I7', '--freq', '50',
             '--timing-allow-fail', '--compress-rbf', '--detailed-timing-report']
-    run(base + ['--json', out / 'synth.json', '--qsf', qsf, '--write', out / 'routed.json',
+    placement_options = ['--isolated-lut-placement'] if args.isolated_lut_placement else []
+    run(base + placement_options + ['--json', out / 'synth.json', '--qsf', qsf, '--write', out / 'routed.json',
                 '--rbf', out / 'original.rbf', '--report', out / 'original-timing.json'], 'route')
     original = json.loads((out / 'routed.json').read_text())
     cells = original['modules']['top']['cells']
