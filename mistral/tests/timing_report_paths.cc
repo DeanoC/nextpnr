@@ -667,3 +667,31 @@ TEST_F(TimingReportPathsTest, UnknownClocksAsyncLaunchesAndIncompleteAnalysisFai
     }
     ctx->check();
 }
+
+// Issue 139: a clock-level set_false_path clears hold_related on the endpoint row.
+TEST_F(TimingReportPathsTest, SdcFalsePathClearsEndpointHoldRelation)
+{
+    auto *endpoint = rising.front();
+    const auto key = CellPortKey(endpoint->name, id_DATAIN);
+    std::vector<EndpointClockPairTiming> rows;
+    {
+        TimingAnalyser timing(ctx.get());
+        timing.setup(false, false, true);
+        ASSERT_TRUE(timing.get_endpoint_clock_pair_timings(key, rows));
+        ASSERT_EQ(rows.size(), 1u);
+        EXPECT_TRUE(rows.front().setup_timed);
+        EXPECT_TRUE(rows.front().hold_related);
+        EXPECT_TRUE(rows.front().hold_margin.has_value());
+    }
+    std::istringstream sdc("set_false_path -from [get_clocks {report_clock}] -to [get_clocks {report_clock}]\n");
+    ctx->read_sdc(sdc);
+    {
+        TimingAnalyser timing(ctx.get());
+        timing.setup(false, false, true);
+        ASSERT_TRUE(timing.get_endpoint_clock_pair_timings(key, rows));
+        ASSERT_EQ(rows.size(), 1u);
+        EXPECT_FALSE(rows.front().setup_timed);
+        EXPECT_FALSE(rows.front().hold_related);
+        EXPECT_FALSE(rows.front().hold_margin.has_value());
+    }
+}

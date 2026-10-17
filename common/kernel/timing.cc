@@ -1343,10 +1343,13 @@ bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
             const auto &launch = domains.at(arrival.first).key;
             const auto &capture = domains.at(required.first).key;
             EndpointClockPairTiming row(launch, capture);
+            // set_clock_groups and a clock-level set_false_path cut both setup and hold.
+            // timed_clocks() already clears setup_timed; hold_related must follow the same cut.
+            const bool sdc_cut = ctx->sdc_clock_false(launch.clock, capture.clock);
             row.setup_timed = timed_clocks(ctx, launch.clock, capture.clock);
-            row.hold_related = row.launch.clock == row.capture.clock ||
+            row.hold_related = !sdc_cut && (row.launch.clock == row.capture.clock ||
                                clock_delays.count(std::make_pair(launch.clock, capture.clock)) ||
-                               phase_related_clocks(ctx, launch.clock, capture.clock);
+                               phase_related_clocks(ctx, launch.clock, capture.clock));
             if (row.setup_timed) {
                 auto window = domain_pairs.at(pair->second).period.minDelay();
                 if (!finite(window) || window <= 0)

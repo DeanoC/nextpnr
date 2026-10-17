@@ -594,19 +594,27 @@ struct MistralPacker
     {
         const IdString req_in = ctx->id("FAST_INPUT_REGISTER"), req_out = ctx->id("FAST_OUTPUT_REGISTER"),
                        req_oe = ctx->id("FAST_OUTPUT_ENABLE_REGISTER");
+        // A pad with no OE cannot absorb an output-enable register. Ignoring the
+        // request here also keeps an OE-only MISTRAL_IO out of bidirectional packing.
+        pool<IdString> ignore_oe;
+        auto oe_on = [&](CellInfo *pad) {
+            return !ignore_oe.count(pad->name) && io_register_requested(pad, req_oe);
+        };
         std::vector<CellInfo *> pads;
         for (auto &entry : ctx->cells) {
             CellInfo *io = entry.second.get();
-            if (io->type.in(id_MISTRAL_IB, id_MISTRAL_OB) && io_register_requested(io, req_oe))
+            if (io_register_requested(io, req_oe) &&
+                (io->type.in(id_MISTRAL_IB, id_MISTRAL_OB) || io->getPort(id_OE) == nullptr)) {
                 log_warning("FAST_OUTPUT_ENABLE_REGISTER on '%s' is ignored: the pad has no output enable.\n",
                             ctx->nameOf(io));
+                ignore_oe.insert(io->name);
+            }
             const bool ddr_in = io->type == id_MISTRAL_SDRIO && int_or_default(io->params, ctx->id("IOREG_IN_DDR"), 0);
             if (ddr_in && io_register_requested(io, req_in))
                 log_error("Registered I/O '%s': FAST_INPUT_REGISTER conflicts with its DDR input register.\n",
                           ctx->nameOf(io));
             if ((io->type == id_MISTRAL_IO || ddr_in) &&
-                (io_register_requested(io, req_in) || io_register_requested(io, req_out) ||
-                 io_register_requested(io, req_oe)))
+                (io_register_requested(io, req_in) || io_register_requested(io, req_out) || oe_on(io)))
                 pads.push_back(io);
         }
         pool<IdString> absorbed;
@@ -634,7 +642,7 @@ struct MistralPacker
                 if (io_register_requested(pad, req_out))
                     if (CellInfo *ff = output_ff(pad, id_I))
                         role[ff->name] |= 2;
-                if (io_register_requested(pad, req_oe))
+                if (oe_on(pad))
                     if (CellInfo *ff = output_ff(pad, id_OE))
                         role[ff->name] |= 2;
                 if (io_register_requested(pad, req_in))
@@ -650,7 +658,7 @@ struct MistralPacker
         for (CellInfo *io : pads) {
             auto fail = [&](const char *reason) { log_error("Registered I/O '%s': %s.\n", ctx->nameOf(io), reason); };
             const bool in = io_register_requested(io, req_in), out = io_register_requested(io, req_out),
-                       oe = io_register_requested(io, req_oe);
+                       oe = oe_on(io);
             auto loc = ctx->getBelLocation(io->bel);
             int bi = ctx->bel_data(io->bel).block_index;
             auto dqs = ctx->cyclonev->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, loc.x, loc.y, CycloneV::PNONE, bi, -1});
@@ -665,7 +673,7 @@ struct MistralPacker
                     fail(what);
                 for (const auto &user : net->users)
                     if (user.cell->type.in(id_MISTRAL_IO, id_MISTRAL_SDRIO) && user.port == port &&
-                        io_register_requested(user.cell, request))
+                        (request == req_oe ? oe_on(user.cell) : io_register_requested(user.cell, request)))
                         continue;
                     else
                         fail("a packed register's Q may only drive pads requesting the same I/O register");

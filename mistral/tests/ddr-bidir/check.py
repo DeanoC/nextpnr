@@ -6,16 +6,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 
-def clock_route_ok(route, text, routed_path):
-    """A pad clock reached through its DCMUX's default TCLK input has no
-    decoder route line; accept the routed clock reaching that DCMUX."""
-    m = re.match(r"GPIO\.(\d+)\.(\d+)\.\d+:CLK(?:IN|OUT)\.0", route)
-    if not m:
-        return route in text
-    nets = json.loads(Path(routed_path).read_text())["modules"]["top"]["netnames"]
-    routing = " ".join(n.get("attributes", {}).get("ROUTING", "") for n in nets.values())
-    return f"DCMUX.{int(m.group(1))}.{int(m.group(2))}." in routing
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from pad_clock import clock_route_ok
 
 
 parser = argparse.ArgumentParser(description=__doc__)

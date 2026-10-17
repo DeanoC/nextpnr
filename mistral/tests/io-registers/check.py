@@ -85,9 +85,34 @@ ddr = synth("ddr")
 log = route(ddr, f / "ddr.qsf", "ddr")
 assert log.count("Packed DDR input") == 2 and log.count("Packed output output-enable I/O registers") == 2, log
 cells = json.loads((o / "ddr.routed.json").read_text())["modules"]["top"]["cells"]
-assert sum(c["type"] == "MISTRAL_SDRIO" for c in cells.values()) == 2
+sdr = [c for c in cells.values() if c["type"] == "MISTRAL_SDRIO"]
+assert len(sdr) == 2
+for cell in sdr:
+    for port in ("Q_H", "Q_L", "CLKIN"):
+        assert cell.get("connections", {}).get(port), port
 count, _ = compare("ddr")
 print(f"PASS: DDR capture with output and OE registers on bidirectional pads; {count} pads match Quartus")
+
+def param_int(cell, name):
+    value = cell.get("parameters", {}).get(name, 0)
+    if isinstance(value, str):
+        return int(value, 2)
+    return int(value)
+
+plain_qsf = o / "ddr-plain.qsf"
+plain_qsf.write_text("".join(line for line in (f / "ddr.qsf").read_text().splitlines(True) if "FAST_" not in line))
+plain_log = route(ddr, plain_qsf, "ddr-plain")
+assert "Packed DDR input" in plain_log and "Packed output" not in plain_log, plain_log[-2000:]
+plain_cells = json.loads((o / "ddr-plain.routed.json").read_text())["modules"]["top"]["cells"]
+plain_sdr = [c for c in plain_cells.values() if c["type"] == "MISTRAL_SDRIO"]
+assert len(plain_sdr) == 2
+for cell in plain_sdr:
+    for port in ("Q_H", "Q_L", "CLKIN"):
+        assert cell.get("connections", {}).get(port), port
+    assert param_int(cell, "IOREG_OUT") == 0
+    assert param_int(cell, "IOREG_OE") == 0
+assert any(c["type"] == "MISTRAL_FF" for c in plain_cells.values())
+print("PASS: DDR capture without FAST output assignments keeps fabric output and OE registers")
 
 base = (f / "pads.qsf").read_text()
 
