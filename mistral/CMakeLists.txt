@@ -57,6 +57,8 @@ add_nextpnr_architecture(${family}
 )
 
 if (BUILD_TESTS)
+    add_test(NAME nextpnr-${family}-pad-clock
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/pad_clock.py)
     add_test(NAME nextpnr-${family}-critical-cohort-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/critical_cohort_cli.py
                 $<TARGET_FILE:nextpnr-${family}> -v)

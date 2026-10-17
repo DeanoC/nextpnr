@@ -24,6 +24,7 @@ function run_tests {
     ctest --test-dir build -R '^nextpnr-heap-control-set-test$' --output-on-failure
     python3 mistral/tests/router2_profile.py --nextpnr build/nextpnr-mistral --output build/router2-profile
     python3 mistral/tests/router2_undriven.py --nextpnr build/nextpnr-mistral --output build/router2-undriven
+    python3 mistral/tests/pad_clock.py
 }
 
 function run_archcheck {
