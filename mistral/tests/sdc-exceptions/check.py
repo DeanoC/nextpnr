@@ -156,12 +156,14 @@ for name, extra, expected in [
     ("mc-zero", "set_multicycle_path -setup 0 -from [get_clocks {clocks[0]}]\n", "at least 1"),
     ("groups-kind", "set_clock_groups -group [get_clocks {clocks[0]}]\n", "needs -asynchronous"),
     ("groups-empty", "set_clock_groups -asynchronous\n", "at least one -group"),
+    ("groups-empty-group", "set_clock_groups -asynchronous -group {}\n", "group is empty"),
+    ("mc-junk", "set_multicycle_path -setup 2junk -from [get_clocks {clocks[0]}]\n", "invalid path multiplier"),
     ("get-clocks-option", "set_clock_groups -asynchronous -group [get_clocks -of_objects x]\n",
      "unsupported argument '-of_objects'"),
 ]:
     log, _ = route(name, extra, success=False)
     assert expected in log, (name, log[-2000:])
-print("PASS: five unsupported clock exception forms rejected")
+print("PASS: seven unsupported clock exception forms rejected")
 
 # A fabric clock with no create_clock has a null clkconstr. -setup 2 must use
 # the target period instead of crashing, and must double the reported fmax.

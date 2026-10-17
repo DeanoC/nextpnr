@@ -52,10 +52,13 @@ set(SOURCES
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
     TEST_SOURCES tests/analogue_jobs.cc tests/critical_cohort.cc tests/analogue_budget.cc tests/bel_id.cc tests/completed_observations.cc tests/lab_pinmap.cc tests/lab_ff4.cc tests/fes_cram.cc tests/fes_boundary.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/io_delay.cc
+    tests/parked_reviews.cc
     MAIN_SOURCE  main.cc
 )
 
 if (BUILD_TESTS)
+    add_test(NAME nextpnr-${family}-pad-clock
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/pad_clock.py)
     add_test(NAME nextpnr-${family}-critical-cohort-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/critical_cohort_cli.py
                 $<TARGET_FILE:nextpnr-${family}> -v)
@@ -82,6 +85,12 @@ if (BUILD_TESTS)
                     --nextpnr $<TARGET_FILE:nextpnr-${family}>
                     --output ${CMAKE_CURRENT_BINARY_DIR}/tests/physical-lut-timing-isolated
                     --isolated-lut-placement)
+        # Real routes. pad-clock above only checks synthetic route strings.
+        add_test(NAME nextpnr-${family}-pad-clock-route
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/pad_clock_route.py
+                    --yosys ${MISTRAL_CHECKPOINT_YOSYS}
+                    --nextpnr $<TARGET_FILE:nextpnr-${family}>
+                    --output ${CMAKE_CURRENT_BINARY_DIR}/tests/pad-clock-route)
     endif()
     add_test(NAME nextpnr-${family}-capture-pipeline-locality-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/capture_pipeline_locality_cli.py

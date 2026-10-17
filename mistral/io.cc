@@ -215,10 +215,17 @@ void Arch::check_io_electrical() const
         if (!is_io_cell(ci->type))
             continue;
         IoElectrical io = get_io_electrical(ci);
+        // A bidirectional FAST_OUTPUT_REGISTER is MISTRAL_SDRIO. write_io_cell writes D5 for any
+        // IO cell, but drive strength and slew only when OE is connected.
+        const bool sdr_out = ci->type == id_MISTRAL_SDRIO && int_or_default(ci->params, id("IOREG_OUT"), 0) != 0;
+        const bool sdr_in = ci->type == id_MISTRAL_SDRIO && int_or_default(ci->params, id("IOREG_IN"), 0) != 0;
+        const bool oe = ci->getPort(id_OE) != nullptr;
         bool output = ci->type.in(id_MISTRAL_OB, id_MISTRAL_SDROUT, id_MISTRAL_DDROUT, id_MISTRAL_DDRBIDIR) ||
-                      (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr);
-        bool comb_input = ci->type == id_MISTRAL_IB || (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr);
-        bool comb_output = ci->type == id_MISTRAL_OB || (ci->type == id_MISTRAL_IO && ci->getPort(id_OE) != nullptr);
+                      (ci->type == id_MISTRAL_IO && oe) || (ci->type == id_MISTRAL_SDRIO && oe);
+        bool comb_input = ci->type == id_MISTRAL_IB || (ci->type == id_MISTRAL_IO && ci->getPort(id_O) != nullptr) ||
+                          (ci->type == id_MISTRAL_SDRIO && ci->getPort(id_O) != nullptr && !sdr_in);
+        bool comb_output = ci->type == id_MISTRAL_OB || (ci->type == id_MISTRAL_IO && oe) ||
+                           (ci->type == id_MISTRAL_SDRIO && oe && !sdr_out);
         // Quartus ignores drive settings on input-only pins and the D1 chain
         // without an input register (warning 176437); only reject requests
         // whose decoded encoding has not been checked.
@@ -235,7 +242,7 @@ void Arch::check_io_electrical() const
         }
         if (io.d3_delay >= 0 && !comb_input)
             log_error("IO '%s': D3_DELAY is only supported on a combinational input path.\n", nameOf(ci));
-        if (io.d5_delay >= 0 && !(comb_output || ci->type == id_MISTRAL_SDROUT))
+        if (io.d5_delay >= 0 && !(comb_output || ci->type == id_MISTRAL_SDROUT || sdr_out))
             log_error("IO '%s': D5_DELAY is only supported on a combinational or FAST_OUTPUT_REGISTER output.\n",
                       nameOf(ci));
         if (io.d5_oe_delay >= 0 && !comb_output)

@@ -5,6 +5,10 @@ import copy
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from pad_clock import clock_route_ok
 
 p = argparse.ArgumentParser(description=__doc__)
 for key in ('yosys', 'nextpnr', 'mistral-cv', 'output'):
@@ -86,9 +90,8 @@ for name in ('direct', 'zero', 'one', 'delayed', 'disabled', 'inverted', 'sclr',
     assert (case / 'top.rbf').read_bytes() == (case / 'replayed.rbf').read_bytes()
     # The pad clock DCMUX keeps its default TCLK input, which the decoder
     # does not print as a route; check the routed clock reaches it.
-    nets = json.loads((case / 'routed.json').read_text())['modules']['top']['netnames']
-    clock_routing = ' '.join(n.get('attributes', {}).get('ROUTING', '') for n in nets.values())
-    assert 'DCMUX.89.8.' in clock_routing and ':DATAOUT.0 ; W15' in bt
+    assert clock_route_ok('GPIO.89.8.1:CLKOUT.0', bt, case / 'routed.json')
+    assert ':DATAOUT.0 ; W15' in bt
     print('PASS', name, 'packed GPIO, clock/data routes and oracle settings')
 
 for name, reason in [('reset', 'asynchronous clear is held active'),

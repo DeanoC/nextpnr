@@ -5,6 +5,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from pad_clock import clock_route_ok
 
 parser = argparse.ArgumentParser(description=__doc__)
 for key in ("yosys", "nextpnr", "mistral-cv", "output"):
@@ -68,14 +72,8 @@ oracle = json.loads((f / "oracle/mapping.json").read_text())
 assert oracle["device"] == "5CSEBA6U23I7"
 # The decoder prints no route line when the pad's clock DCMUX keeps its
 # default TCLK input, so check the routed clock reaches that DCMUX instead.
-netnames = json.loads((o / "routed.json").read_text())["modules"]["top"]["netnames"]
-clock_routing = " ".join(n.get("attributes", {}).get("ROUTING", "") for n in netnames.values())
 for route in oracle["routes"]:
-    m = re.match(r"GPIO\.(\d+)\.(\d+)\.\d+:CLKIN\.0$", route)
-    if m:
-        assert f"DCMUX.{int(m.group(1))}.{int(m.group(2))}." in clock_routing, route
-    else:
-        assert route in bt, route
+    assert clock_route_ok(route, bt, o / "routed.json"), route
 dqs_settings = dict(re.findall(r"^s DQS16\.060\.000:(\S+\.0) (\S+)", bt, re.MULTILINE))
 assert dqs_settings == oracle["settings"], dqs_settings
 print("PASS: one SDR input register, GPIO DATAIN.3/CLKIN.0 and DQS FIFO clock settings")

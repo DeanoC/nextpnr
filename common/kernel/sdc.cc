@@ -542,8 +542,13 @@ struct SDCParser
             } else if (s == "-group" || s == "-name") {
                 if (++i >= int(arguments.size()))
                     log_error("missing value for %s (line %d)\n", s.c_str(), lineno);
-                if (s == "-group")
-                    groups.push_back(clock_patterns(arguments.at(i), "set_clock_groups -group"));
+                if (s == "-group") {
+                    auto patterns = clock_patterns(arguments.at(i), "set_clock_groups -group");
+                    // `{}` and `[get_clocks {}]` tokenize to an empty pattern list.
+                    if (patterns.empty())
+                        log_error("set_clock_groups -group is empty (line %d)\n", lineno);
+                    groups.push_back(std::move(patterns));
+                }
             } else {
                 log_error("unsupported argument '%s' to set_clock_groups (line %d)\n", s.c_str(), lineno);
             }
@@ -572,11 +577,16 @@ struct SDCParser
             const auto &next = arguments.at(index + 1);
             if (!next.is_string || next.str.empty() || next.str.at(0) == '-')
                 return false;
+            // std::stoi("2junk") returns 2. A multiplier token must be consumed whole,
+            // or the leftover falls through and is accepted as a positional multiplier.
+            size_t consumed = 0;
             try {
-                out = std::stoi(next.str);
+                out = std::stoi(next.str, &consumed);
             } catch (std::exception &) {
                 return false;
             }
+            if (consumed != next.str.size())
+                log_error("invalid path multiplier '%s' to set_multicycle_path (line %d)\n", next.str.c_str(), lineno);
             ++index;
             return true;
         };
@@ -611,11 +621,14 @@ struct SDCParser
                     log_error("set_multicycle_path supports only clock -from/-to targets (line %d)\n", lineno);
                 (s == "-from" ? exception.from : exception.to) = clock_patterns(val, "set_multicycle_path");
             } else if (!s.empty() && s.at(0) != '-' && !have_value) {
+                size_t consumed = 0;
                 try {
-                    value = std::stoi(s);
+                    value = std::stoi(s, &consumed);
                 } catch (std::exception &) {
                     log_error("invalid path multiplier '%s' to set_multicycle_path (line %d)\n", s.c_str(), lineno);
                 }
+                if (consumed != s.size())
+                    log_error("invalid path multiplier '%s' to set_multicycle_path (line %d)\n", s.c_str(), lineno);
                 have_value = true;
             } else {
                 log_error("unsupported argument '%s' to set_multicycle_path (line %d)\n", s.c_str(), lineno);

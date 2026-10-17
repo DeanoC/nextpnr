@@ -1289,15 +1289,17 @@ void Arch::fes_report_slot_capacity(IdString region_name, const std::vector<Cell
     }
     const int ena_with_sclr = clock_global ? 2 : 1;
     const int ena_without_sclr = clock_global ? 3 : 2;
+    // FF BELs 1 and 3 of each ALM are rejected by is_alm_legal unless --mistral-ff4, so 20 (or 40) per LAB.
+    // The SCLR-group LAB estimate has to use the same width: a legal group of 21–40 FFs fits one LAB with ff4.
+    const int ffs_per_lab = lab_ff4 ? 40 : 20;
     int ctrl_labs = 0;
     for (const auto &group : sclr_groups) {
         const int slots = group.first != nullptr ? ena_with_sclr : ena_without_sclr;
-        const int by_count = (group.second.ffs + 19) / 20;
+        const int by_count = (group.second.ffs + ffs_per_lab - 1) / ffs_per_lab;
         const int by_ena = (int(group.second.enas.size()) + slots - 1) / slots;
         ctrl_labs += group.first != nullptr ? std::max(by_count, by_ena) : 0;
     }
-    // FF BELs 1 and 3 of each ALM are rejected by is_alm_legal unless --mistral-ff4, so 20 (or 40) per LAB.
-    const int comb_bels = 20 * usable_labs, ff_bels = (lab_ff4 ? 40 : 20) * usable_labs;
+    const int comb_bels = 20 * usable_labs, ff_bels = ffs_per_lab * usable_labs;
     // check_lab_input_count admits 42 unique ALM inputs per LAB. Two LUTs in
     // one ALM may share at most two inputs, so the best case shares two per
     // pair of non-arithmetic LUTs; unpaired FF data and SDATA add one each.
