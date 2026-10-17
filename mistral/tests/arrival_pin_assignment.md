@@ -1,13 +1,21 @@
 # Arrival-based private LUT input assignment
 
-`--arrival-pin-assignment` enables two related heuristics for a fresh Mistral
-placement and route. Boolean LUT placement estimates use the physical input
-allocation of an isolated cell. After legal ALM input allocation, a single
-arrival snapshot assigns later arriving private inputs to faster physical pins.
-The option is off by default. A saved JSON setting records provenance and does
-not enable the heuristic on a new run without the command-line option.
-The option is initialized when the context is created, including Python
-`--run` invocations that create their design without `--json`.
+`--arrival-pin-assignment` enables isolated Boolean LUT placement estimates
+and a single arrival snapshot that assigns later arriving private inputs to
+faster physical pins after legal ALM allocation. `--isolated-lut-placement`
+selects only the placement estimate, without the arrival permutation. That
+estimate follows the allocation of an isolated cell with no shared partner.
+Both options are off by default and are initialized when the context is created,
+including Python `--run` invocations without `--json`. Saved JSON settings record
+provenance and do not enable either policy on a new run without its CLI option.
+
+The default retains the fastest-first placement scaffold. Changing placement
+arc estimates changes criticality weights and the resulting placement; a closer
+match to isolated pins need not improve routed timing when LUTs share ALMs.
+Making isolated estimates unconditional in #205 regressed the ST shell pixel
+clock and Coleco shell seed 4 in #206. Use the explicit option to evaluate that
+policy on a qualified design/profile. Physical pin allocation and final routed
+timing use the legalised maps under either placement policy.
 
 Only ordinary two- through five-input Boolean LUTs are permuted. The physical
 input set stays fixed; inputs reserved by the other ALM half remain fixed.

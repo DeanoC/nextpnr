@@ -89,8 +89,10 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("qsf", po::value<std::string>(), "path to QSF constraints file");
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
     specific.add_options()("compress-rbf", "generate compressed bitstream");
+    specific.add_options()("isolated-lut-placement",
+                           "score isolated legal LUT input pins during placement (opt-in)");
     specific.add_options()("arrival-pin-assignment",
-                           "estimate physical LUT placement inputs and assign private inputs by arrival time (opt-in)");
+                           "use isolated LUT estimates and permute private inputs by arrival (opt-in)");
     specific.add_options()("fes-scaffold", "lock loaded shell BEL+routing to STRENGTH_USER");
     specific.add_options()("fes-cart", po::value<std::string>(), "merge unbound cart JSON into the reserved socket");
     specific.add_options()("fes-cart-region", po::value<std::string>(),
@@ -182,6 +184,9 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
     auto ctx = std::unique_ptr<Context>(new Context(chipArgs));
     if (vm.count("compress-rbf"))
         ctx->settings[id_compress_rbf] = Property::State::S1;
+    ctx->isolated_lut_placement = vm.count("isolated-lut-placement") != 0;
+    if (ctx->isolated_lut_placement)
+        ctx->settings[ctx->id("mistral/isolated_lut_placement")] = Property::State::S1;
     ctx->arrival_pin_assignment = vm.count("arrival-pin-assignment") != 0;
     if (ctx->arrival_pin_assignment)
         ctx->settings[ctx->id("mistral/arrival_pin_assignment")] = Property::State::S1;
@@ -194,16 +199,20 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     ctx->restore_fes_reservations();
     // Saved provenance does not enable fresh placement heuristics. A routed
     // checkpoint already records the physical pins and needs no option to replay.
-    IdString arrival_setting;
-    for (const auto &setting : ctx->settings)
-        if (setting.first.str(ctx) == "mistral/arrival_pin_assignment") {
-            arrival_setting = setting.first;
-            break;
-        }
-    if (arrival_setting != IdString())
-        ctx->settings.erase(arrival_setting);
-    if (ctx->arrival_pin_assignment)
-        ctx->settings[ctx->id("mistral/arrival_pin_assignment")] = Property::State::S1;
+    auto pin_policy = [&](const char *name, bool enabled) {
+        IdString recorded;
+        for (const auto &setting : ctx->settings)
+            if (setting.first.str(ctx) == name) {
+                recorded = setting.first;
+                break;
+            }
+        if (recorded != IdString())
+            ctx->settings.erase(recorded);
+        if (enabled)
+            ctx->settings[ctx->id(name)] = Property::State::S1;
+    };
+    pin_policy("mistral/isolated_lut_placement", ctx->isolated_lut_placement);
+    pin_policy("mistral/arrival_pin_assignment", ctx->arrival_pin_assignment);
     // LAB packing models are enabled only from the command line. A JSON written with one records it, and is refused
     // without the same option: its placement (and, for CLKB, its routing) relies on that model.
     auto lab_model = [&](const char *setting, const char *option) {
