@@ -1280,7 +1280,7 @@ static bool half_has_direct_ff(const Arch *arch, const ALMInfo &alm_data, int ha
             return true;
         // Synchronous load uses the same selector as direct DATAIN: this
         // half's E, or the other half's F. Legality treats a LUT with at
-        // most two inputs as leaving that F free; fastest-first does not.
+        // most two inputs as leaving that F free; the private pool does not.
         if (ff->getPort(id_SDATA))
             return true;
     }
@@ -1288,7 +1288,7 @@ static bool half_has_direct_ff(const Arch *arch, const ALMInfo &alm_data, int ha
 }
 
 // A direct-data or synchronous-load flip-flop enters through this half's E
-// or the other half's F. Fastest-first puts the other LUT on F. Keep E for
+// or the other half's F. The private pool puts the other LUT on F. Keep E for
 // the flip-flop when the LUT can spare it. A LUT that needs every pin,
 // including E, makes the other half leave F free instead.
 struct AlmPrivatePinPlan
@@ -1309,9 +1309,9 @@ static AlmPrivatePinPlan plan_private_ff_pins(const Arch *arch, uint32_t lab, ui
     for (int i = 0; i < 2; i++) {
         direct[i] = half_has_direct_ff(arch, alm_data, i, luts[i]);
         private_count[i] = private_lut_inputs(luts[i], shared_nets);
-        // With the established C/D, E, F order, a LUT uses F only after its
-        // first two private inputs. Shared A/B reservations follow F.
-        takes_f[i] = private_count[i] > 2;
+        // F heads the private pool, so a route-through or any private input
+        // takes it.
+        takes_f[i] = arch->get_alm_route_through_ff(lab, alm, i) != nullptr || private_count[i] > 0;
     }
     // F and C/D, plus a shared pin that is still free.
     const int spare = 2 + int(a_avail) + int(b_avail);
@@ -1369,28 +1369,28 @@ void Arch::assign_alm_lut_inputs(uint32_t lab, uint8_t alm)
         for (int i = 0; i < 2; i++) {
             if (!luts[i])
                 continue;
-            // Work out which physical ports are available
+            // Work out which physical ports are available, fastest first:
+            // F, then E, then C/D, then B, A. In arithmetic mode, Ei can only
+            // be used for D0 and Fi can only be used for D1. A direct-data or
+            // synchronous-load flip-flop keeps E, or takes the other half's F
+            // when this LUT cannot spare E.
+            const bool carry = luts[i]->combInfo.is_carry;
             std::vector<IdString> avail_phys_ports;
-            // Keep the established C/D, E, F, B, A allocation order. All
-            // private pins remain unique, while the router avoids a broad
-            // remap of every L5 input onto faster pins that changed FES QoR.
-            // In arithmetic mode, Ei can only be used for D0 and Fi can only
-            // be used for D1. A direct-data or synchronous-load flip-flop
-            // keeps E, or takes the other half's F when this LUT cannot spare E.
-            avail_phys_ports.push_back((i == 1) ? id_D : id_C);
-            if (!luts[i]->combInfo.is_carry) {
-                if (!ff_pins.keep_e[i])
-                    avail_phys_ports.push_back((i == 1) ? id_E1 : id_E0);
+            if (!carry) {
                 if (!ff_pins.release_f[i])
                     avail_phys_ports.push_back((i == 1) ? id_F1 : id_F0);
+                if (!ff_pins.keep_e[i])
+                    avail_phys_ports.push_back((i == 1) ? id_E1 : id_E0);
             }
+            // C/D always available and dedicated to the half, in L5 mode
+            avail_phys_ports.push_back((i == 1) ? id_D : id_C);
             // A and B might be used for shared signals, or already used by the other half
             if (b_avail)
                 avail_phys_ports.push_back(id_B);
             if (a_avail)
                 avail_phys_ports.push_back(id_A);
-            int phys_idx = 0;
 
+            std::vector<IdString> private_logs;
             for (int j = 0; j < std::max(0, std::min(luts[i]->combInfo.lut_input_count, 6)); j++) {
                 IdString log = get_lut_pin(luts[i], j);
                 auto &bel_pins = luts[i]->pin_data[log].bel_pins;
@@ -1409,17 +1409,25 @@ void Arch::assign_alm_lut_inputs(uint32_t lab, uint8_t alm)
                 } else if (log == id_D1) {
                     bel_pins.push_back((i == 1) ? id_F1 : id_F0); // reserved
                 } else {
-                    // Allocate from the general pool of available physical pins
-                    if (phys_idx >= int(avail_phys_ports.size()))
-                        continue;
-                    IdString phys = avail_phys_ports.at(phys_idx++);
-                    bel_pins.push_back(phys);
-                    // Mark A/B unavailable for the other LUT, if needed
-                    if (phys == id_A)
-                        a_avail = false;
-                    else if (phys == id_B)
-                        b_avail = false;
+                    private_logs.push_back(log);
                 }
+            }
+            // Yosys times the last ALUT input fastest, and abc9 maps the
+            // critical signal there. Give the last private input F, the one
+            // before it E, and so on. The arithmetic delay table is by logical
+            // port, so carry mode keeps the forward order from C/D.
+            const int n_private = int(private_logs.size());
+            for (int k = 0; k < n_private; k++) {
+                const int slot = carry ? k : n_private - 1 - k;
+                if (slot >= int(avail_phys_ports.size()))
+                    continue;
+                IdString phys = avail_phys_ports.at(slot);
+                luts[i]->pin_data[private_logs[k]].bel_pins.push_back(phys);
+                // Mark A/B unavailable for the other LUT, if needed
+                if (phys == id_A)
+                    a_avail = false;
+                else if (phys == id_B)
+                    b_avail = false;
             }
         }
     }
@@ -1450,11 +1458,16 @@ CellInfo *Arch::get_alm_route_through_ff(uint32_t lab, uint8_t alm, uint8_t half
 
 IdString Arch::alm_route_through_pin(uint32_t lab, uint8_t alm, uint8_t half) const
 {
-    (void)lab;
-    (void)alm;
-    // A route-through is inserted only in an empty LUT half, so its dedicated
-    // C/D input is free. Keep the pre-#213 assignment to avoid rerouting FES.
-    return half ? id_D : id_C;
+    const auto &alm_data = labs.at(lab).alms.at(alm);
+    std::array<CellInfo *, 2> luts{getBoundBelCell(alm_data.lut_bels[0]), getBoundBelCell(alm_data.lut_bels[1])};
+    dict<IdString, int> shared_nets = shared_lut_nets(luts);
+    bool a_avail = shared_nets.size() == 0, b_avail = shared_nets.size() <= 1;
+    AlmPrivatePinPlan ff_pins = plan_private_ff_pins(this, lab, alm, luts, shared_nets, a_avail, b_avail);
+    // F is the fastest half-specific input. Move to E when the other half's
+    // flip-flop has no other fabric pin.
+    if (ff_pins.release_f[half])
+        return half ? id_E1 : id_E0;
+    return half ? id_F1 : id_F0;
 }
 
 void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
@@ -1512,20 +1525,19 @@ const dict<IdString, IdString> Arch::comb_pinmap = {
 
 IdString Arch::lut_placement_pin(const CellInfo *cell, IdString port) const
 {
-    // Isolated pins change placement criticalities, not just timing reports.
-    // Keep the existing default until the alternative has routed QoR coverage
-    // across designs and seeds (see #206). Arrival assignment only permutes
-    // private pins after legalisation; it does not select this estimate.
-    if (!isolated_lut_placement)
-        return comb_pinmap.at(port);
+    // Before legalisation, time a boolean LUT with the pins an isolated cell
+    // gets from assign_lut6_inputs / assign_alm_lut_inputs: the last
+    // connected L5 input on F, the one before it on E, then C/D, B, A, and
+    // LUT6 inputs in order. Yosys times the last input fastest, so this is
+    // also the input abc9 gave the critical signal. Pairing can still move
+    // shared signals to A/B, and a direct-data flip-flop can still keep E.
+    // --isolated-lut-placement selects the same estimate.
     if (!cell->type.in(id_MISTRAL_NOT, id_MISTRAL_BUF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
                        id_MISTRAL_ALUT5, id_MISTRAL_ALUT6) ||
         port == id_Q)
         return comb_pinmap.at(port);
     const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
-    // Isolated allocation follows the legal L5 pin pool: C/D, then E, F,
-    // B, A. Pairing can reserve A/B for shared signals later.
-    const std::array<IdString, 5> l5_pins{id_C, id_E0, id_F0, id_B, id_A};
+    const std::array<IdString, 5> l5_fast_to_slow{id_F0, id_E0, id_C, id_B, id_A};
     const std::array<IdString, 6> l6_pins{id_A, id_B, id_C, id_D, id_E0, id_F0};
     const bool l6 = cell->type == id_MISTRAL_ALUT6;
     const int width = l6                               ? 6
@@ -1538,16 +1550,21 @@ IdString Arch::lut_placement_pin(const CellInfo *cell, IdString port) const
     for (int i = 0; i < width; ++i)
         if (cell->getPort(inputs[i]) != nullptr)
             any_connected = true;
-    int allocated = 0;
+    // Legalisation skips a disconnected input. A cell with no nets is a
+    // hypothetical full LUT, so every logical input still counts.
+    int allocated = 0, index = -1;
     for (int i = 0; i < width; ++i) {
+        if (any_connected && cell->getPort(inputs[i]) == nullptr)
+            continue;
         if (inputs[i] == port)
-            return l6 ? l6_pins.at(allocated) : l5_pins.at(allocated);
-        // Legalisation skips a disconnected input. A cell with no nets is
-        // a hypothetical full LUT, so every logical input still counts.
-        if (!any_connected || cell->getPort(inputs[i]) != nullptr)
-            ++allocated;
+            index = allocated;
+        ++allocated;
     }
-    return comb_pinmap.at(port);
+    if (index < 0)
+        return comb_pinmap.at(port);
+    if (l6)
+        return l6_pins.at(index);
+    return l5_fast_to_slow.at(allocated - 1 - index);
 }
 
 namespace {

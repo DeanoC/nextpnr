@@ -91,7 +91,7 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
     specific.add_options()("compress-rbf", "generate compressed bitstream");
     specific.add_options()("isolated-lut-placement",
-                           "score isolated legal LUT input pins during placement (opt-in)");
+                           "accepted for compatibility; placement already scores isolated legal LUT input pins");
     specific.add_options()("arrival-pin-assignment",
                            "permute private LUT inputs by arrival after legalisation (opt-in)");
     specific.add_options()("fes-scaffold", "lock loaded shell BEL+routing to STRENGTH_USER");

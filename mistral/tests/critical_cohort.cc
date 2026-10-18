@@ -251,8 +251,9 @@ TEST_F(CriticalCohort, PinPreviewMatchesRoutingWithoutInsertingRouteThroughs)
     critical_cohort_pin_preview(ctx.get(), [&]() {
         mapped_a = logic->pin_data.at(id_A).bel_pins;
         mapped_b = logic->pin_data.at(id_B).bel_pins;
-        EXPECT_EQ(mapped_a, std::vector<IdString>{id_F0});
-        EXPECT_EQ(mapped_b, std::vector<IdString>{id_E0});
+        // The last input of the 2-input LUT takes F0.
+        EXPECT_EQ(mapped_a, std::vector<IdString>{id_E0});
+        EXPECT_EQ(mapped_b, std::vector<IdString>{id_F0});
         EXPECT_EQ(ctx->cells.size(), cells);
         EXPECT_EQ(ctx->nets.size(), nets);
         EXPECT_EQ(reg->getPort(id_DATAIN), reg->getPort(id_Q));
