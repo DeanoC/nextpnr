@@ -2918,10 +2918,16 @@ struct GpuRouter
         // Under `gpu-run --phase-lease` the broker picks the GPU, and it is
         // held only while this router has a device backend. The guard is
         // taken before any device is opened; it does nothing without
-        // GPU_LEASE_FD.
+        // GPU_LEASE_FD. A build without a device backend can never open a
+        // GPU, so it does not wait for one.
+#ifdef NPNR_GPU_ROUTER_DEVICE
+        const bool take_lease = !cfg.cpu_backend;
+#else
+        const bool take_lease = false;
+#endif
         int device = cfg.device;
         bool lease_refused = false;
-        if (!cfg.cpu_backend) {
+        if (take_lease) {
             lease = std::make_unique<gpuroute::GpuLeaseGuard>(
                     [](const std::string &e) { log_warning("GPU lease: %s\n", e.c_str()); });
             lease_wait = lease->waited_seconds();

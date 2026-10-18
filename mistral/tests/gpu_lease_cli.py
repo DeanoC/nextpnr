@@ -3,9 +3,11 @@
 
 nextpnr-mistral routes an empty design with --router gpu while a fake broker
 serves the other end of an AF_UNIX socketpair, as `gpu-run --phase-lease`
-does (docs/gpurouter.md). Granted ids name a GPU no machine has, so no
-device is ever opened: the router falls back to the CPU reference backend,
-or fails with --gpu-required, with and without a device backend.
+does (docs/gpurouter.md). A build with a device backend speaks the protocol;
+its grants name a GPU no machine has, so no device is ever opened and the
+router falls back to the CPU reference backend, or fails with
+--gpu-required. A build without one can never open a GPU and must not ask
+for or wait on a lease at all.
 """
 import json
 import os
@@ -72,19 +74,18 @@ def check(name, ok, output, requests):
     print('PASS', name, requests, flush=True)
 
 
-with tempfile.TemporaryDirectory(prefix='nextpnr-gpu-lease-') as temporary:
-    design = Path(temporary) / 'empty.json'
-    design.write_text(json.dumps({'modules': {'top': {
-        'attributes': {'top': '1'}, 'ports': {}, 'cells': {}, 'netnames': {}}}}), encoding='utf-8')
+def without_device_backend(design):
+    # Nothing to lease: today's CPU fallback, or today's hard error with
+    # --gpu-required, without a word to the broker
+    code, out, requests = route(design, [f'GRANT {ABSENT_GPU}'])
+    check('no device backend', code == 0 and requests == [] and 'GPU lease' not in out and FALLBACK in out,
+          out, requests)
+    code, out, requests = route(design, [f'GRANT {ABSENT_GPU}'], '--gpu-required')
+    check('no device backend, --gpu-required', code != 0 and requests == [] and 'GPU lease' not in out and
+          'GPU use is required, but the GPU router could not open a device' in out, out, requests)
 
-    # No GPU_LEASE_FD: no protocol and no new logs, even with the socket inherited
-    code, out, requests = route(design, [], '--gpu-device', str(ABSENT_GPU), advertise=False)
-    check('no GPU_LEASE_FD', code == 0 and requests == [] and 'GPU lease' not in out, out, requests)
 
-    # --gpu-cpu opens no device, so it takes no lease
-    code, out, requests = route(design, [], '--gpu-cpu')
-    check('--gpu-cpu', code == 0 and requests == [] and 'GPU lease' not in out, out, requests)
-
+def with_device_backend(design):
     # A grant is used as the device as it is, in place of --gpu-device. This
     # one cannot be opened, so the router falls back to the CPU and gives the
     # GPU straight back
@@ -113,3 +114,23 @@ with tempfile.TemporaryDirectory(prefix='nextpnr-gpu-lease-') as temporary:
         code, out, requests = route(design, replies, '--gpu-required')
         check(name + ', --gpu-required', code != 0 and LEASE_REQUIRED in out and reason in out and
               FALLBACK not in out and requests == ['ACQUIRE 1'], out, requests)
+
+
+with tempfile.TemporaryDirectory(prefix='nextpnr-gpu-lease-') as temporary:
+    design = Path(temporary) / 'empty.json'
+    design.write_text(json.dumps({'modules': {'top': {
+        'attributes': {'top': '1'}, 'ports': {}, 'cells': {}, 'netnames': {}}}}), encoding='utf-8')
+
+    # No GPU_LEASE_FD: no protocol and no new logs, even with the socket inherited
+    code, out, requests = route(design, [], '--gpu-device', str(ABSENT_GPU), advertise=False)
+    check('no GPU_LEASE_FD', code == 0 and requests == [] and 'GPU lease' not in out, out, requests)
+    device_backend = 'built without a GPU device backend' not in out
+
+    # --gpu-cpu opens no device, so it takes no lease
+    code, out, requests = route(design, [], '--gpu-cpu')
+    check('--gpu-cpu', code == 0 and requests == [] and 'GPU lease' not in out, out, requests)
+
+    if device_backend:
+        with_device_backend(design)
+    else:
+        without_device_backend(design)

@@ -121,7 +121,9 @@ the main route, the analogue candidate router and each analogue re-route.
 The guard is refcounted per process: routers that overlap share one grant,
 and the last one to be destroyed sends `RELEASE` after its device backend
 has been freed. A router whose backend ends up on the CPU gives the grant
-back at once. `--gpu-cpu` opens no device and takes no lease.
+back at once. `--gpu-cpu` opens no device and takes no lease, and neither
+does a build without a device backend (`-DGPU_ROUTER=OFF`): it could never
+open a GPU, so it never waits for one.
 
 - The grant is a physical GPU id, used as the device index as it is. It
   replaces `--gpu-device`. nextpnr does not set or change
@@ -159,7 +161,8 @@ The wire protocol is shared verbatim with the broker in DeanoC/fes:
 
 `common/route/tests/gpu_lease.cc` tests the client against a socketpair
 broker, and `mistral/tests/gpu_lease_cli.py` drives nextpnr-mistral with a
-scripted Python broker.
+scripted Python broker (in a build without a device backend it checks that
+no lease is taken).
 
 ## Algorithm
 
