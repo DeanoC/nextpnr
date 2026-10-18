@@ -37,6 +37,7 @@
 #include <set>
 
 #include "command.h"
+#include "command_settings.h"
 #include "design_utils.h"
 #include "json_frontend.h"
 #include "jsonwrite.h"
@@ -66,6 +67,71 @@
 #endif
 
 NEXTPNR_NAMESPACE_BEGIN
+
+namespace {
+
+std::set<std::string> dedicated_command_setting_keys(const po::variables_map &vm)
+{
+    std::set<std::string> keys;
+    auto add = [&](const char *option, const char *setting) {
+        if (vm.count(option))
+            keys.insert(setting);
+    };
+
+    add("threads", "threads");
+    add("seed", "seed");
+    add("randomize-seed", "seed");
+    add("ignore-loops", "timing/ignoreLoops");
+    add("ignore-rel-clk", "timing/ignoreRelClk");
+    add("timing-allow-fail", "timing/allowFail");
+    add("placer", "placer");
+    add("router", "router");
+    add("cstrweight", "placer1/constraintWeight");
+    add("starttemp", "placer1/startTemp");
+    add("freq", "target_freq");
+    add("no-tmdriv", "timing_driven");
+    add("placer-heap-alpha", "placerHeap/alpha");
+    add("placer-heap-beta", "placerHeap/beta");
+    add("placer-heap-critexp", "placerHeap/criticalityExponent");
+    add("placer-heap-timingweight", "placerHeap/timingWeight");
+    add("placer-heap-cell-placement-timeout", "placerHeap/cellPlacementTimeout");
+    add("placer-heap-no-ctrl-set", "placerHeap/noCtrlSet");
+    add("parallel-refine", "placerHeap/parallelRefine");
+    add("router2-heatmap", "router2/heatmap");
+    add("router2-profile", "router2/profilePath");
+    add("tmg-ripup", "router/tmg_ripup");
+    add("router2-tmg-ripup", "router/tmg_ripup");
+    add("router2-alt-weights", "router2/alt-weights");
+    add("gpu-device", "gpurouter/device");
+    add("gpu-cpu", "gpurouter/cpu");
+    add("gpu-perf", "gpurouter/perfProfile");
+    add("gpu-batches", "gpurouter/maxBatches");
+    add("static-dump-density", "static/dump_density");
+    add("top", "frontend/top");
+    add("gpu-telemetry", "gpurouter/telemetryPath");
+    if (vm.count("gpu-telemetry") && (vm.count("seed") || vm.count("randomize-seed")))
+        keys.insert("gpurouter/telemetrySeed");
+
+    if (vm.count("gpu-opt")) {
+        for (const auto &option : vm["gpu-opt"].as<std::vector<std::string>>()) {
+            const size_t equals = option.find('=');
+            if (equals != std::string::npos && equals != 0)
+                keys.insert("gpurouter/" + option.substr(0, equals));
+        }
+    }
+
+    return keys;
+}
+
+void apply_command_setting_overrides(Context *ctx, const po::variables_map &vm)
+{
+    if (!vm.count("set"))
+        return;
+    const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
+    apply_command_setting_overrides(ctx->settings, [ctx](const std::string &key) { return ctx->id(key); }, overrides);
+}
+
+} // namespace
 
 static std::string npnr_share_dirname;
 
@@ -267,6 +333,13 @@ bool CommandHandler::parseOptions()
                         .run();
         po::store(parsed, vm);
         po::notify(vm);
+        if (vm.count("set")) {
+            const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
+            auto dedicated_keys = dedicated_command_setting_keys(vm);
+            const auto arch_keys = getArchSettingKeys();
+            dedicated_keys.insert(arch_keys.begin(), arch_keys.end());
+            validate_command_setting_override_conflicts(overrides, dedicated_keys);
+        }
         return true;
     } catch (std::exception &e) {
         std::cout << e.what() << "\n";
@@ -348,6 +421,8 @@ po::options_description CommandHandler::getGeneralOptions()
     general.add_options()("json", po::value<std::string>(), "JSON design file to ingest");
     general.add_options()("write", po::value<std::string>(), "JSON design file to write");
     general.add_options()("top", po::value<std::string>(), "name of top module");
+    general.add_options()("set", po::value<std::vector<std::string>>()->composing(),
+                          "set a context setting as key=value (repeatable; conflicts with a dedicated option for the same key)");
     general.add_options()("seed", po::value<uint64_t>(), "seed value for random number generator");
     general.add_options()("randomize-seed,r", "randomize seed value for random number generator");
 
@@ -685,6 +760,7 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
         }
 
         restoreTelemetrySettings(w.getContext());
+        apply_command_setting_overrides(w.getContext(), vm);
 
         w.show();
 
@@ -707,6 +783,7 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
         customAfterLoad(ctx.get());
     }
     restoreTelemetrySettings(ctx.get());
+    apply_command_setting_overrides(ctx.get(), vm);
 
 #ifndef NO_PYTHON
     init_python(argv[0]);
@@ -851,6 +928,7 @@ void CommandHandler::load_json(Context *ctx, std::string filename)
             log_error("Loading design failed.\n");
     }
     restoreTelemetrySettings(ctx);
+    apply_command_setting_overrides(ctx, vm);
 }
 
 void CommandHandler::clear() { vm.clear(); }

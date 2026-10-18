@@ -78,6 +78,7 @@ class MistralCommandHandler : public CommandHandler
 
   protected:
     po::options_description getArchOptions() override;
+    std::set<std::string> getArchSettingKeys() const override;
 };
 
 MistralCommandHandler::MistralCommandHandler(int argc, char **argv) : CommandHandler(argc, argv) {}
@@ -135,6 +136,24 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("balance-reduction-root", po::value<std::vector<std::string>>()->composing(),
                            "pre-placement 3-LUT/11-input, 4-LUT/16-input or 7-LUT/24-input conjunction root cell (repeatable, opt-in)");
     return specific;
+}
+
+std::set<std::string> MistralCommandHandler::getArchSettingKeys() const
+{
+    std::set<std::string> keys;
+    if (vm.count("compress-rbf"))
+        keys.insert("compress_rbf");
+    if (vm.count("isolated-lut-placement"))
+        keys.insert("mistral/isolated_lut_placement");
+    if (vm.count("arrival-pin-assignment"))
+        keys.insert("mistral/arrival_pin_assignment");
+    if (vm.count("mistral-ff4"))
+        keys.insert("mistral/ff4");
+    if (vm.count("mistral-clkb"))
+        keys.insert("mistral/clkb");
+    if (vm.count("fes-slot-clock"))
+        keys.insert("fes/slot_clock");
+    return keys;
 }
 
 void MistralCommandHandler::customBitstream(Context *ctx)

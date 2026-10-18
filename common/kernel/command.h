@@ -23,6 +23,7 @@
 
 #include <boost/program_options.hpp>
 #include <fstream>
+#include <set>
 #include "log.h"
 #include "nextpnr.h"
 
@@ -45,6 +46,7 @@ class CommandHandler
     virtual void setupArchContext(Context *ctx) = 0;
     virtual std::unique_ptr<Context> createContext(dict<std::string, Property> &values) = 0;
     virtual po::options_description getArchOptions() = 0;
+    virtual std::set<std::string> getArchSettingKeys() const { return {}; }
     virtual void validate() {}
     virtual void customAfterLoad(Context * /*ctx*/) {}
     virtual void customBitstream(Context * /*ctx*/) {}
