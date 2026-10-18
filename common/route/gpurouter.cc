@@ -45,6 +45,7 @@
 #include "gpu/congestion_plateau.h"
 #include "gpu/gpuroute_backend.h"
 #include "gpu/gpuroute_telemetry.h"
+#include "gpu/reserved_route_slack.h"
 #include "log.h"
 #include "nextpnr.h"
 #include "nextpnr_assertions.h"
@@ -2308,32 +2309,53 @@ struct GpuRouter
     // The pure-delay route kept above may have dodged a frozen peer. Search
     // again with those reservations ignored, and keep the route when the
     // worst setup slack of these arcs does not fall and every peer it touches
-    // has slack to spare. A lower delay sum is not enough. Returns the
-    // picoseconds saved, or 0 when the previous route stays.
-    int take_faster_reserved_route(int net, const std::vector<std::pair<int, int>> &arcs)
+    // has slack to spare. A lower delay sum is not enough. `original_delay`
+    // is each repaired arc's delay before this round's pure-delay search;
+    // setup slack still describes that route. Returns the picoseconds saved,
+    // or 0 when the previous route stays.
+    int take_faster_reserved_route(int net, const std::vector<std::pair<int, int>> &arcs,
+                                   const dict<std::pair<int, int>, delay_t> &original_delay)
     {
         if (arcs.empty() || !cfg.repair_displace)
             return 0;
         auto &nd = nets.at(net);
         NetInfo *ni = nets_by_udata.at(net);
-        struct PreviousArc
-        {
-            std::pair<int, int> arc;
-            delay_t delay;
-            float slack;
-        };
-        std::vector<PreviousArc> previous;
-        delay_t before = 0;
-        float old_worst = std::numeric_limits<float>::infinity();
+        pool<std::pair<int, int>> searched;
+        std::vector<int> users;
         for (auto &a : arcs) {
             auto &ad = nd.arcs.at(a.first).at(a.second);
             if (!ad.routed)
                 return 0;
-            delay_t delay = get_route_delay(nd, ad);
-            float slack = tmg.get_setup_slack(CellPortKey(ni->users.at(store_index<PortRef>(a.first))));
-            before += delay;
-            old_worst = std::min(old_worst, slack);
-            previous.push_back(PreviousArc{a, delay, slack});
+            searched.insert(a);
+            if (std::find(users.begin(), users.end(), a.first) == users.end())
+                users.push_back(a.first);
+        }
+        struct Sample
+        {
+            int port;
+            int phys;
+            delay_t original;
+            delay_t incumbent;
+            float slack;
+            bool searched;
+        };
+        std::vector<Sample> samples;
+        for (int user : users) {
+            float slack = tmg.get_setup_slack(CellPortKey(ni->users.at(store_index<PortRef>(user))));
+            auto &parcs = nd.arcs.at(user);
+            for (size_t phys = 0; phys < parcs.size(); phys++) {
+                auto &ad = parcs.at(phys);
+                if (!ad.routed)
+                    continue;
+                std::pair<int, int> key{user, int(phys)};
+                bool in_search = searched.count(key) != 0;
+                delay_t incumbent = get_route_delay(nd, ad);
+                // A pin absent from the map was not repaired this round.
+                delay_t original = original_delay.at(key, incumbent);
+                if (in_search)
+                    NPNR_ASSERT(original_delay.count(key));
+                samples.push_back(Sample{user, int(phys), original, incumbent, slack, in_search});
+            }
         }
         NetData checkpoint = nd;
         for (auto &a : arcs)
@@ -2351,29 +2373,26 @@ struct GpuRouter
         for (auto &r : retry)
             for (auto &a : r.arcs)
                 failed.insert(a);
-        delay_t after = 0;
-        float new_worst = std::numeric_limits<float>::infinity();
         bool better = failed.empty();
+        std::vector<gpuroute::ReservedRouteArc<delay_t>> judged;
         if (better) {
-            for (auto &prev : previous) {
-                auto &ad = nd.arcs.at(prev.arc.first).at(prev.arc.second);
-                if (!ad.routed) {
-                    better = false;
-                    break;
+            judged.reserve(samples.size());
+            for (auto &s : samples) {
+                delay_t alternate = s.incumbent;
+                if (s.searched) {
+                    auto &ad = nd.arcs.at(s.port).at(s.phys);
+                    if (!ad.routed) {
+                        better = false;
+                        break;
+                    }
+                    alternate = get_route_delay(nd, ad);
                 }
-                delay_t delay = get_route_delay(nd, ad);
-                after += delay;
-                // Timing is not refreshed until the round ends. Estimate each
-                // arc's new slack from its own delay change: a smaller sum can
-                // still slow the critical sink.
-                new_worst = std::min(new_worst, prev.slack - float(delay - prev.delay));
+                judged.push_back(gpuroute::ReservedRouteArc<delay_t>{
+                        s.port, s.original, s.incumbent, alternate, s.slack, s.searched});
             }
         }
-        // Accept only when the worst setup slack of these arcs does not fall.
-        // A tie keeps the previous route unless the delay sum is actually lower.
-        const bool slack_worse = new_worst < old_worst - 1.0f;
-        const bool slack_better = new_worst > old_worst + 1.0f;
-        if (!better || slack_worse || (!slack_better && after >= before)) {
+        auto verdict = better ? gpuroute::judge_reserved_route(judged) : gpuroute::ReservedRouteVerdict<delay_t>{};
+        if (!better || !verdict.accept) {
             restore_net(net, checkpoint);
             return 0;
         }
@@ -2385,7 +2404,7 @@ struct GpuRouter
         }
         for (auto &a : arcs)
             displace_for(net, a);
-        return after < before ? int(before - after) : 0;
+        return verdict.alternate_sum < verdict.incumbent_sum ? int(verdict.incumbent_sum - verdict.alternate_sum) : 0;
     }
 
     // Rip and re-route the given arcs of one net. Returns the still-unrouted ones.
@@ -2747,6 +2766,12 @@ struct GpuRouter
             repair_mode = true;
             for (auto &t : tasks) {
                 auto &nd = nets.at(t.net);
+                // Slack from the round boundary still describes this tree.
+                dict<std::pair<int, int>, delay_t> original_delay;
+                if (repair_widen && cfg.repair_displace) {
+                    for (auto &a : t.arcs)
+                        original_delay[a] = get_route_delay(nd, nd.arcs.at(a.first).at(a.second));
+                }
                 NetData saved = nd;
                 for (auto &a : t.arcs)
                     ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
@@ -2815,7 +2840,7 @@ struct GpuRouter
                             if (slack < cfg.repair_slack)
                                 negative.push_back(a);
                         }
-                        reserved_saved_ps += take_faster_reserved_route(t.net, negative);
+                        reserved_saved_ps += take_faster_reserved_route(t.net, negative, original_delay);
                     }
                     for (auto &a : t.arcs) {
                         freeze_arc(t.net, nd.arcs.at(a.first).at(a.second));
