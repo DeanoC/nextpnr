@@ -90,7 +90,11 @@ decompiled with `mistral-cv` and recorded in
 * Unsigned operands set no sign bit. The unsigned M9X9, M18X18P36 and M27X27
   configurations are identical to Quartus, DATA_INV masks included.
 * A signed X (`A`) operand sets `AX_SIGNED` and `BX_SIGNED`; a signed Y (`B`)
-  operand sets `AY_SIGNED` and `BY_SIGNED` in M9X9 and M27X27.
+  operand sets `AY_SIGNED` and `BY_SIGNED` in M9X9 and M27X27. A
+  signed-by-unsigned product matches Quartus bit for bit with the signed
+  operand on either side. Quartus synthesis puts the signed operand on X and
+  emits signed Y only from a `cyclonev_mac` atom; signed Y is the order of
+  Yosys's mixed `mul2dsp` partial products.
 * Quartus also sign-extends a signed 9x9 operand into the upper AX/AY slice
   (DATAIN groups 1 and 3). `extend_dsp_signed_operands` adds `A[17:9]` and
   `B[17:9]` ports driven by the sign net, lane 0 of `MISTRAL_MUL9X9` exposes
@@ -107,7 +111,9 @@ decompiled with `mistral-cv` and recorded in
   signed X operand sets `AX_SIGNED` and `BX_SIGNED`. Quartus normalises a
   signed-by-unsigned product so the signed operand sits on Y, so only the
   both-signed and both-unsigned configurations are compared bit for bit; the
-  signed-X-only configuration is this backend's interpolation.
+  signed-X-only configuration is this backend's interpolation. The
+  signed-Y-only one differs from Quartus's mixed references only by
+  `AX_SIGNED`, which Quartus sets on their zero-extended 17-bit X operand.
 * The 18x19 views keep their earlier `A/B -> AX/AY`, `C/D -> BX/BY` mapping.
   Quartus's own single 18x19 product uses the default mode with `BX_SIGNED`/
   `BY_SIGNED` and group 5 bit 8 for the nineteenth Y bit, so that mapping is

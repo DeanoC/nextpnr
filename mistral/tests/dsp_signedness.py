@@ -4,8 +4,10 @@
 Synthesises the probe designs in fixtures/dsp-signedness/rtl with a Yosys whose
 intel_alm dsp_map.v forwards A_SIGNED/B_SIGNED, routes them, decompiles the
 bitstream and compares every DSP block's settings, operand groups and
-sign-replicated groups with the recorded Quartus decompiles. Host-only
-configuration evidence; it does not program a board or verify arithmetic.
+sign-replicated groups with the recorded Quartus decompiles. probe_mixed.v
+instantiates signed-by-unsigned cells directly, with the signed operand on
+either input. Host-only configuration evidence; it does not program a board or
+verify arithmetic.
 """
 import argparse
 import collections
@@ -16,20 +18,39 @@ from pathlib import Path
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "dsp-signedness"
 IGNORE = {"CLK0_SEL", "CLK1_SEL", "CLK2_SEL", "ACLR0_SEL", "ACLR1_SEL"}
-# name, rtl, chparam, Quartus reference, DATA_INV groups the probe cannot drive
-# (the Quartus add-C references carry a C operand on groups 6..9), expected
-# number of DSP sites.
+# name, rtl, chparam, Quartus references, DATA_INV groups the probe cannot
+# drive (the Quartus add-C references carry a C operand on groups 6..9), and
+# expected number of DSP sites.
 CASES = (
-    ("u9", "probe.v", "-set W 9 -set SIGNED 0 -set LANES 1", "mul_u9_q", (), 1),
-    ("s9", "probe.v", "-set W 9 -set SIGNED 1 -set LANES 1", "mul_s9_q", (), 1),
-    ("u27", "probe.v", "-set W 27 -set SIGNED 0 -set LANES 1", "mul_u27_q", (), 1),
-    ("s27", "probe.v", "-set W 27 -set SIGNED 1 -set LANES 1", "mul_s27_q", (), 1),
-    ("u18", "probe.v", "-set W 18 -set SIGNED 0 -set LANES 1", "mac_u18_q", (6, 7, 8, 9), 1),
-    ("s18", "probe.v", "-set W 18 -set SIGNED 1 -set LANES 1", "mac_s18_q", (6, 7, 8, 9), 1),
+    ("u9", "probe.v", "-set W 9 -set SIGNED 0 -set LANES 1", ("mul_u9_q",), (), 1),
+    ("s9", "probe.v", "-set W 9 -set SIGNED 1 -set LANES 1", ("mul_s9_q", "atom_ss9_q"), (), 1),
+    ("u27", "probe.v", "-set W 27 -set SIGNED 0 -set LANES 1", ("mul_u27_q",), (), 1),
+    ("s27", "probe.v", "-set W 27 -set SIGNED 1 -set LANES 1", ("mul_s27_q",), (), 1),
+    ("u18", "probe.v", "-set W 18 -set SIGNED 0 -set LANES 1", ("mac_u18_q",), (6, 7, 8, 9), 1),
+    ("s18", "probe.v", "-set W 18 -set SIGNED 1 -set LANES 1", ("mac_s18_q",), (6, 7, 8, 9), 1),
+    # One signed and one unsigned operand (probe_mixed.v). Quartus moves the
+    # signed operand of an inferred mixed product onto X, so the signed-Y
+    # references are cyclonev_mac atoms (quartus/muls6.v); the atom controls
+    # listed next to inferred references must match them too.
+    ("mixed9", "probe_mixed.v", "-set W 9 -set U 8 -set SIGNED_A 1", ("mul_my9_q",), (), 1),
+    ("mixed9full", "probe_mixed.v", "-set W 9 -set U 9 -set SIGNED_A 1", ("mul_m9_q", "atom_xs9_q"), (), 1),
+    ("mixed9y", "probe_mixed.v", "-set W 9 -set U 9 -set SIGNED_A 0", ("atom_ys9_q",), (), 1),
+    ("mixed27", "probe_mixed.v", "-set W 27 -set U 26 -set SIGNED_A 1",
+     ("mul_mx27_q", "mul_my27_q", "atom_xs27_q"), (), 1),
+    ("mixed27y", "probe_mixed.v", "-set W 27 -set U 27 -set SIGNED_A 0", ("atom_ys27_q",), (), 1),
     # Three unsigned products share one block; three signed products each own
     # one block configured like the single signed product.
-    ("u9x3", "probe.v", "-set W 9 -set SIGNED 0 -set LANES 3", None, (), 1),
-    ("s9x3", "probe.v", "-set W 9 -set SIGNED 1 -set LANES 3", "mul_s9_q", (), 3),
+    ("u9x3", "probe.v", "-set W 9 -set SIGNED 0 -set LANES 3", (), (), 1),
+    ("s9x3", "probe.v", "-set W 9 -set SIGNED 1 -set LANES 3", ("mul_s9_q",), (), 3),
+)
+
+# Mixed references no MISTRAL_MUL18X18 configuration reproduces bit for bit.
+SKIPPED_REFERENCES = (
+    ("mul_m18_q", "a plain 18x18 product, which Quartus maps to its default M18X19 mode; MISTRAL_MUL18X18 "
+     "uses M18X18P36, which is why u18 and s18 compare with the mac references."),
+    ("mac_sx18_q, mac_sy18_q", "Quartus sets AX_SIGNED but not BX_SIGNED for the zero-extended 17-bit X "
+     "operand. This backend sets both from A_SIGNED, so the nearest configurations differ by AX_SIGNED "
+     "or BX_SIGNED alone, on an operand whose MSB input is constant zero."),
 )
 
 
@@ -95,7 +116,10 @@ def main():
     for name in ("yosys", "nextpnr", "mistral-cv", "qsf", "sdc", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
     args = parser.parse_args()
-    for name, rtl, chparam, ref_name, drop, site_count in CASES:
+    for ref_name, reason in SKIPPED_REFERENCES:
+        print(ref_name, "SKIP", reason, flush=True)
+
+    for name, rtl, chparam, ref_names, drop, site_count in CASES:
         out = args.output.resolve() / name
         out.mkdir(parents=True, exist_ok=True)
         run([str(args.yosys.resolve()), "-q", "-p",
@@ -121,17 +145,20 @@ def main():
              str(out / "top.rbf"), str(out / "top.bt")], out / "decomp.log")
         actual = describe((out / "top.bt").read_text(), drop)
         assert len(actual) == site_count, (name, len(actual))
-        if ref_name is not None:
-            expected = reference(ref_name, drop)
-            assert len(expected) == 1, ref_name
-            for site in actual:
-                assert site == expected[0], (name, json.dumps(site, indent=1), json.dumps(expected[0], indent=1))
+        if ref_names:
+            for ref_name in ref_names:
+                expected = reference(ref_name, drop)
+                assert len(expected) == 1, ref_name
+                for site in actual:
+                    assert site == expected[0], (name, ref_name, json.dumps(site, indent=1),
+                                                 json.dumps(expected[0], indent=1))
         else:
             site = actual[0]
             assert site["settings"]["MODE"] == "M9X9" and not any(
                 k.endswith("_SIGNED") for k in site["settings"]), (name, site)
             assert site["groups_used"] == [0, 2, 6, 7, 8, 9], (name, site)
-        print(name, "PASS", f"{len(actual)} site(s)", f"vs {ref_name or 'three-lane rule'}", flush=True)
+        print(name, "PASS", f"{len(actual)} site(s)",
+              f"vs {', '.join(ref_names) if ref_names else 'three-lane rule'}", flush=True)
 
     # A netlist without the parameters still routes with the signed default
     # and says so.
