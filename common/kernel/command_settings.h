@@ -58,6 +58,12 @@ inline std::vector<CommandSettingOverride> parse_command_setting_overrides(const
 
 inline uint64_t parse_command_setting_seed(const std::string &value)
 {
+    if (value.empty())
+        throw std::invalid_argument("--set seed expects an unsigned integer, got '" + value + "'");
+    for (char digit : value) {
+        if (digit < '0' || digit > '9')
+            throw std::invalid_argument("--set seed expects an unsigned integer, got '" + value + "'");
+    }
     try {
         return boost::lexical_cast<uint64_t>(value);
     } catch (const boost::bad_lexical_cast &) {

@@ -55,6 +55,7 @@ TEST(CommandSettingOverrides, ParsesSeedAsUnsignedInteger)
 {
     EXPECT_EQ(parse_command_setting_seed("123"), 123u);
     EXPECT_THROW(parse_command_setting_seed("not-a-number"), std::invalid_argument);
+    EXPECT_THROW(parse_command_setting_seed("-1"), std::invalid_argument);
 }
 
 TEST(CommandSettingOverrides, AppliesValuesToSettings)

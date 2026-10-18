@@ -20,10 +20,11 @@ for argument, expected in (("missing-equals", "--set expects key=value"), ("=emp
     if malformed.returncode == 0 or expected not in output:
         raise SystemExit(f"malformed --set {argument!r} was not clearly rejected:\n{output}")
 
-bad_seed = run("--set", "seed=not-a-number")
-output = bad_seed.stdout + bad_seed.stderr
-if bad_seed.returncode == 0 or "--set seed expects an unsigned integer" not in output:
-    raise SystemExit(f"malformed --set seed was not clearly rejected:\n{output}")
+for value in ("not-a-number", "-1"):
+    bad_seed = run("--set", f"seed={value}")
+    output = bad_seed.stdout + bad_seed.stderr
+    if bad_seed.returncode == 0 or "--set seed expects an unsigned integer" not in output:
+        raise SystemExit(f"malformed --set seed={value!r} was not clearly rejected:\n{output}")
 
 conflict = run("--gpu-device", "0", "--set", "gpurouter/device=1")
 output = conflict.stdout + conflict.stderr
