@@ -10,7 +10,6 @@
 
 #include "gpuroute_lease.h"
 
-#include <atomic>
 #include <cerrno>
 #include <chrono>
 #include <cstdint>
@@ -30,6 +29,13 @@ namespace gpuroute {
 
 namespace {
 
+// Lease wait of the calling thread. Kept per thread so that a budget only
+// leaves out the waits that held up its own work, not those of a router
+// running elsewhere.
+thread_local int64_t thread_waited_ns = 0;
+
+#ifdef GPUROUTE_LEASE_SOCKETS
+
 // Process-wide lease state. The mutex is held across the blocking ACQUIRE,
 // so a guard created meanwhile on another thread waits for the reply and
 // then shares the grant.
@@ -39,7 +45,6 @@ struct LeaseState
     int holders = 0; // guards sharing the current grant
     int fd = -1;     // socket the grant was made on
     int physical_id = -1;
-    std::atomic<int64_t> waited_ns{0};
 };
 
 LeaseState &lease_state()
@@ -47,8 +52,6 @@ LeaseState &lease_state()
     static LeaseState state;
     return state;
 }
-
-#ifdef GPUROUTE_LEASE_SOCKETS
 
 // Replies are short ASCII lines; anything longer is malformed
 constexpr size_t max_reply = 256;
@@ -209,6 +212,20 @@ GpuLeaseGuard::GpuLeaseGuard(std::function<void(const std::string &)> warn) : wa
 #ifndef GPUROUTE_LEASE_SOCKETS
     error_ = "GPU_LEASE_FD is not supported on this platform";
 #else
+    // All the time this thread spends here is lease wait: blocked behind
+    // another guard's ACQUIRE as much as on the broker's reply to its own
+    struct WaitTimer
+    {
+        double &waited;
+        const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+        ~WaitTimer()
+        {
+            const auto ns =
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - start);
+            waited = double(ns.count()) * 1e-9;
+            thread_waited_ns += int64_t(ns.count());
+        }
+    } timer{waited_};
     auto &state = lease_state();
     std::lock_guard<std::mutex> lock(state.mutex);
     if (state.holders > 0) {
@@ -221,13 +238,8 @@ GpuLeaseGuard::GpuLeaseGuard(std::function<void(const std::string &)> warn) : wa
     int fd = -1;
     if (!lease_socket(fd_text, fd, error_))
         return;
-    const auto start = std::chrono::steady_clock::now();
     std::string reply;
     const bool replied = send_request(fd, "ACQUIRE 1", error_) && read_reply(fd, reply, error_);
-    const int64_t waited_ns =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - start).count();
-    waited_ = double(waited_ns) * 1e-9;
-    state.waited_ns += waited_ns;
     std::string message;
     if (!replied) {
         abandon(fd);
@@ -273,6 +285,6 @@ GpuLeaseGuard::~GpuLeaseGuard()
 #endif
 }
 
-double lease_wait_seconds() { return double(lease_state().waited_ns.load()) * 1e-9; }
+double lease_wait_seconds() { return double(thread_waited_ns) * 1e-9; }
 
 } // namespace gpuroute

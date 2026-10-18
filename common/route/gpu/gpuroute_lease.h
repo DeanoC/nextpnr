@@ -61,7 +61,8 @@ class GpuLeaseGuard
     int physical_id() const { return physical_id_; }
     // True if the grant was already held by another guard (no ACQUIRE sent)
     bool shared() const { return shared_; }
-    // Seconds this guard waited for the broker's reply to its ACQUIRE
+    // Seconds this guard was blocked: on the broker's reply to its ACQUIRE,
+    // or behind another guard's ACQUIRE whose grant it then shares
     double waited_seconds() const { return waited_; }
     const std::string &error() const { return error_; }
 
@@ -74,9 +75,10 @@ class GpuLeaseGuard
     std::string error_;
 };
 
-// Seconds this process has spent waiting for ACQUIRE replies in total, so
-// that wall-clock route budgets can leave the wait out. Always 0 without
-// GPU_LEASE_FD.
+// Seconds the calling thread has spent blocked in GpuLeaseGuard
+// constructors in total, so that a wall-clock budget kept on that thread can
+// leave out exactly the lease waits that held up its own work. Always 0
+// without GPU_LEASE_FD.
 double lease_wait_seconds();
 
 // What GpuRouter::setup_all() does with a guard before it opens a device. A

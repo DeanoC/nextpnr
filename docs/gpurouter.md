@@ -133,8 +133,10 @@ open a GPU, so it never waits for one.
   `nvidia-smi` does with `CUDA_DEVICE_ORDER=PCI_BUS_ID`.
 - The wait is logged as `GPU lease: waited X.XXs, granted physical id N` and
   left out of the `GPU router time`, the `analogueTimeBudget` and the
-  analogue candidate-selection time. Routing results do not depend on the
-  device or the wait.
+  analogue candidate-selection time. Waits are counted per thread, so a
+  budget leaves out exactly the time its own routers were blocked, whether
+  on the broker or behind another router's `ACQUIRE`. Routing results do not
+  depend on the device or the wait.
 - An `ERR` reply, a closed socket, a malformed reply, or a `GPU_LEASE_FD`
   that is not an open stream socket is handled like a device that cannot be
   opened: a warning and the CPU reference backend, or a hard error with

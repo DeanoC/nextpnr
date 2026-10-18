@@ -10,6 +10,7 @@
 #ifndef _WIN32
 #include <chrono>
 #include <cstdlib>
+#include <future>
 #include <memory>
 #include <string>
 #include <thread>
@@ -176,7 +177,7 @@ TEST(GpuLease, OverlappingGuardsShareOneGrant)
         EXPECT_EQ(guard->status(), Status::granted);
         EXPECT_EQ(guard->physical_id(), 0);
         EXPECT_TRUE(guard->shared());
-        EXPECT_EQ(guard->waited_seconds(), 0.0);
+        EXPECT_LT(guard->waited_seconds(), 0.1); // nothing to wait for
     }
     EXPECT_FALSE(first->shared());
     EXPECT_EQ(broker.received(), "ACQUIRE 1\n"); // one ACQUIRE for three holders
@@ -366,8 +367,50 @@ TEST(GpuLease, WaitForTheGrantIsTimedAndAccumulated)
         EXPECT_GE(waited, 0.29);
         EXPECT_NEAR(gpuroute::lease_wait_seconds() - total, waited, 1e-6);
     }
-    // Sharing and releasing a grant is not waiting
+    // Releasing a grant is not waiting
     EXPECT_NEAR(gpuroute::lease_wait_seconds() - total, waited, 1e-6);
+}
+
+TEST(GpuLease, WaitsCountForTheThreadThatWaited)
+{
+    FakeBroker broker;
+    std::promise<void> asked;
+    std::thread server([&] {
+        EXPECT_EQ(broker.read_request(), "ACQUIRE 1");
+        asked.set_value();
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        broker.reply("GRANT 1");
+        broker.reply("OK");
+    });
+    // A router on another thread asks the broker and waits for the grant
+    double first_waited = 0, first_thread_total = 0;
+    std::unique_ptr<GpuLeaseGuard> first;
+    std::thread other([&] {
+        const double before = gpuroute::lease_wait_seconds();
+        first = std::make_unique<GpuLeaseGuard>();
+        first_waited = first->waited_seconds();
+        first_thread_total = gpuroute::lease_wait_seconds() - before;
+    });
+    // This thread's guard arrives while that ACQUIRE is outstanding and is
+    // held up until it can share the grant
+    asked.get_future().wait();
+    const double before = gpuroute::lease_wait_seconds();
+    auto second = std::make_unique<GpuLeaseGuard>();
+    const double this_thread_total = gpuroute::lease_wait_seconds() - before;
+    other.join();
+    server.join();
+    ASSERT_EQ(first->status(), Status::granted);
+    ASSERT_EQ(second->status(), Status::granted);
+    EXPECT_FALSE(first->shared());
+    EXPECT_TRUE(second->shared());
+    EXPECT_GE(first_waited, 0.29);
+    EXPECT_GE(second->waited_seconds(), 0.2); // blocked behind the first ACQUIRE
+    // Each thread's total holds its own wait and nothing of the other's
+    EXPECT_NEAR(first_thread_total, first_waited, 1e-6);
+    EXPECT_NEAR(this_thread_total, second->waited_seconds(), 1e-6);
+    first.reset();
+    second.reset();
+    EXPECT_EQ(broker.received(), "RELEASE\n");
 }
 
 TEST(GpuLease, NonBlockingLeaseFdStillWaitsForReplies)
@@ -413,7 +456,7 @@ TEST(GpuLease, UnusableLeaseFdIsNotAGrant)
         GpuLeaseGuard guard;
         EXPECT_EQ(guard.status(), Status::failed);
         EXPECT_NE(guard.error().find("GPU_LEASE_FD"), std::string::npos);
-        EXPECT_EQ(guard.waited_seconds(), 0.0);
+        EXPECT_LT(guard.waited_seconds(), 0.1); // fails without asking
         EXPECT_EQ(gpuroute::lease_device(guard.status(), true), LeaseDevice::required_failure);
         EXPECT_EQ(gpuroute::lease_device(guard.status(), false), LeaseDevice::cpu_fallback);
     }
