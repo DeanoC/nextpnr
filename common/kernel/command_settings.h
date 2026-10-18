@@ -60,12 +60,16 @@ inline uint64_t parse_command_setting_seed(const std::string &value)
 {
     if (value.empty())
         throw std::invalid_argument("--set seed expects an unsigned integer, got '" + value + "'");
-    for (char digit : value) {
+    const size_t first_digit = value[0] == '+' ? 1 : 0;
+    if (first_digit == value.size())
+        throw std::invalid_argument("--set seed expects an unsigned integer, got '" + value + "'");
+    for (size_t i = first_digit; i < value.size(); i++) {
+        char digit = value[i];
         if (digit < '0' || digit > '9')
             throw std::invalid_argument("--set seed expects an unsigned integer, got '" + value + "'");
     }
     try {
-        return boost::lexical_cast<uint64_t>(value);
+        return boost::lexical_cast<uint64_t>(value.substr(first_digit));
     } catch (const boost::bad_lexical_cast &) {
         throw std::invalid_argument("--set seed expects an unsigned integer, got '" + value + "'");
     }
@@ -87,6 +91,16 @@ inline void apply_command_setting_overrides(Settings &settings, IdFunction id,
 {
     for (const auto &override : overrides)
         settings[id(override.key)] = override.value;
+}
+
+template <typename Settings, typename IdFunction>
+inline void apply_command_setting_frontend_overrides(Settings &settings, IdFunction id,
+                                                     const std::vector<CommandSettingOverride> &overrides)
+{
+    for (const auto &override : overrides) {
+        if (override.key == "frontend/top")
+            settings[id(override.key)] = override.value;
+    }
 }
 
 NEXTPNR_NAMESPACE_END

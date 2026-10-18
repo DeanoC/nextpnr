@@ -10,7 +10,7 @@ def run(*args):
     return subprocess.run([nextpnr, *args], capture_output=True, text=True)
 
 
-valid = run("--set", "custom/first=1", "--set", "custom/second=a=b", "--help")
+valid = run("--set", "custom/first=1", "--set", "custom/second=a=b", "--set", "seed=+1", "--help")
 if valid.returncode != 0:
     raise SystemExit(f"repeatable --set was rejected:\n{valid.stdout}{valid.stderr}")
 

@@ -54,6 +54,7 @@ TEST(CommandSettingOverrides, RejectsMalformedArguments)
 TEST(CommandSettingOverrides, ParsesSeedAsUnsignedInteger)
 {
     EXPECT_EQ(parse_command_setting_seed("123"), 123u);
+    EXPECT_EQ(parse_command_setting_seed("+123"), 123u);
     EXPECT_THROW(parse_command_setting_seed("not-a-number"), std::invalid_argument);
     EXPECT_THROW(parse_command_setting_seed("-1"), std::invalid_argument);
 }
@@ -66,6 +67,17 @@ TEST(CommandSettingOverrides, AppliesValuesToSettings)
     apply_command_setting_overrides(settings, [](const std::string &key) { return key; }, overrides);
     EXPECT_EQ(settings.at("gpurouter/maxBatches"), "4");
     EXPECT_EQ(settings.at("custom/value"), "last");
+}
+
+TEST(CommandSettingOverrides, OnlyAppliesFrontendSelectionBeforeImport)
+{
+    std::map<std::string, std::string> settings;
+    const auto overrides = parse_command_setting_overrides(
+            {"frontend/top=child", "synth=0", "gpurouter/perfProfile=1"});
+    apply_command_setting_frontend_overrides(settings, [](const std::string &key) { return key; }, overrides);
+    EXPECT_EQ(settings.at("frontend/top"), "child");
+    EXPECT_EQ(settings.count("synth"), 0u);
+    EXPECT_EQ(settings.count("gpurouter/perfProfile"), 0u);
 }
 
 TEST(CommandSettingOverrides, RejectsDedicatedOptionConflicts)
