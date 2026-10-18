@@ -36,6 +36,7 @@ class GenericCommandHandler : public CommandHandler
 
   protected:
     po::options_description getArchOptions() override;
+    std::set<std::string> getArchSettingKeys() const override;
 };
 
 GenericCommandHandler::GenericCommandHandler(int argc, char **argv) : CommandHandler(argc, argv) {}
@@ -50,6 +51,13 @@ po::options_description GenericCommandHandler::getArchOptions()
     specific.add_options()("vopt,o", po::value<std::vector<std::string>>(), "options to pass to the viaduct uarch");
 
     return specific;
+}
+
+std::set<std::string> GenericCommandHandler::getArchSettingKeys() const
+{
+    if (vm.count("no-iobs"))
+        return {"disable_iobs"};
+    return {};
 }
 
 void GenericCommandHandler::customBitstream(Context *ctx) {}

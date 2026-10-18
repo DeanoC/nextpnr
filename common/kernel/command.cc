@@ -37,6 +37,7 @@
 #include <set>
 
 #include "command.h"
+#include "command_settings.h"
 #include "design_utils.h"
 #include "json_frontend.h"
 #include "jsonwrite.h"
@@ -66,6 +67,63 @@
 #endif
 
 NEXTPNR_NAMESPACE_BEGIN
+
+namespace {
+
+std::set<std::string> dedicated_command_setting_keys(const po::variables_map &vm)
+{
+    std::set<std::string> keys;
+    auto add = [&](const char *option, const char *setting) {
+        if (vm.count(option))
+            keys.insert(setting);
+    };
+
+    add("threads", "threads");
+    add("seed", "seed");
+    add("randomize-seed", "seed");
+    add("ignore-loops", "timing/ignoreLoops");
+    add("ignore-rel-clk", "timing/ignoreRelClk");
+    add("timing-allow-fail", "timing/allowFail");
+    add("placer", "placer");
+    add("router", "router");
+    add("cstrweight", "placer1/constraintWeight");
+    add("starttemp", "placer1/startTemp");
+    add("freq", "target_freq");
+    add("no-tmdriv", "timing_driven");
+    add("placer-heap-alpha", "placerHeap/alpha");
+    add("placer-heap-beta", "placerHeap/beta");
+    add("placer-heap-critexp", "placerHeap/criticalityExponent");
+    add("placer-heap-timingweight", "placerHeap/timingWeight");
+    add("placer-heap-cell-placement-timeout", "placerHeap/cellPlacementTimeout");
+    add("placer-heap-no-ctrl-set", "placerHeap/noCtrlSet");
+    add("parallel-refine", "placerHeap/parallelRefine");
+    add("router2-heatmap", "router2/heatmap");
+    add("router2-profile", "router2/profilePath");
+    add("tmg-ripup", "router/tmg_ripup");
+    add("router2-tmg-ripup", "router/tmg_ripup");
+    add("router2-alt-weights", "router2/alt-weights");
+    add("gpu-device", "gpurouter/device");
+    add("gpu-cpu", "gpurouter/cpu");
+    add("gpu-perf", "gpurouter/perfProfile");
+    add("gpu-batches", "gpurouter/maxBatches");
+    add("static-dump-density", "static/dump_density");
+    add("top", "frontend/top");
+    add("gpu-telemetry", "gpurouter/telemetryPath");
+    if (vm.count("gpu-telemetry") && (vm.count("seed") || vm.count("randomize-seed")))
+        keys.insert("gpurouter/telemetrySeed");
+
+    if (vm.count("gpu-opt")) {
+        for (const auto &option : vm["gpu-opt"].as<std::vector<std::string>>()) {
+            const size_t equals = option.find('=');
+            if (equals != std::string::npos && equals != 0)
+                keys.insert("gpurouter/" + option.substr(0, equals));
+        }
+    }
+
+    return keys;
+}
+
+} // namespace
 
 static std::string npnr_share_dirname;
 
@@ -267,6 +325,16 @@ bool CommandHandler::parseOptions()
                         .run();
         po::store(parsed, vm);
         po::notify(vm);
+        if (vm.count("set")) {
+            const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
+            for (const auto &override : overrides)
+                if (override.key == "seed")
+                    parse_command_setting_seed(override.value);
+            auto dedicated_keys = dedicated_command_setting_keys(vm);
+            const auto arch_keys = getArchSettingKeys();
+            dedicated_keys.insert(arch_keys.begin(), arch_keys.end());
+            validate_command_setting_override_conflicts(overrides, dedicated_keys);
+        }
         return true;
     } catch (std::exception &e) {
         std::cout << e.what() << "\n";
@@ -348,6 +416,8 @@ po::options_description CommandHandler::getGeneralOptions()
     general.add_options()("json", po::value<std::string>(), "JSON design file to ingest");
     general.add_options()("write", po::value<std::string>(), "JSON design file to write");
     general.add_options()("top", po::value<std::string>(), "name of top module");
+    general.add_options()("set", po::value<std::vector<std::string>>()->composing(),
+                          "set a context setting as key=value (repeatable; conflicts with a dedicated option for the same key)");
     general.add_options()("seed", po::value<uint64_t>(), "seed value for random number generator");
     general.add_options()("randomize-seed,r", "randomize seed value for random number generator");
 
@@ -625,6 +695,53 @@ void CommandHandler::setupContext(Context *ctx)
     }
 }
 
+void CommandHandler::applyEarlySettingOverrides(Context *ctx)
+{
+    if (!vm.count("set"))
+        return;
+
+    const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
+    apply_command_setting_frontend_overrides(ctx->settings, [ctx](const std::string &key) { return ctx->id(key); },
+                                             overrides);
+    for (const auto &override : overrides) {
+        if (override.key == "seed") {
+            const auto seed = parse_command_setting_seed(override.value);
+            ctx->rngseed(seed);
+            telemetry_seed = std::to_string(seed);
+            ctx->settings[ctx->id("seed")] = Property(ctx->rngstate, 64);
+        }
+    }
+}
+
+void CommandHandler::applySdcClockOverrides(Context *ctx)
+{
+    if (!vm.count("set"))
+        return;
+
+    const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
+    apply_command_setting_sdc_clock_overrides(ctx->settings, [ctx](const std::string &key) { return ctx->id(key); },
+                                              overrides);
+}
+
+void CommandHandler::applySettingOverrides(Context *ctx)
+{
+    if (!vm.count("set"))
+        return;
+
+    const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
+    for (const auto &override : overrides) {
+        if (override.key == "seed") {
+            const auto seed = parse_command_setting_seed(override.value);
+            telemetry_seed = std::to_string(seed);
+            // The live RNG was seeded before import. Keep its advanced state
+            // in the checkpoint, even if the imported JSON had another seed.
+            ctx->settings[ctx->id("seed")] = Property(ctx->rngstate, 64);
+        } else {
+            ctx->settings[ctx->id(override.key)] = override.value;
+        }
+    }
+}
+
 void CommandHandler::restoreTelemetrySettings(Context *ctx)
 {
     // Observer destinations belong to this invocation, never to a checkpoint.
@@ -660,6 +777,9 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
     if (vm.count("top")) {
         ctx->settings[ctx->id("frontend/top")] = vm["top"].as<std::string>();
     }
+    // The frontend needs its selected top before import. Other settings are
+    // applied after import so they cannot change how a fresh design is read.
+    applyEarlySettingOverrides(ctx.get());
 
 #ifndef NO_GUI
     if (vm.count("gui")) {
@@ -672,11 +792,13 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
                 if (!parse_json(f, filename, w.getContext()))
                     log_error("Loading design failed.\n");
 
+                applySdcClockOverrides(w.getContext());
                 if (vm.count("sdc")) {
                     std::string sdc_filename = vm["sdc"].as<std::string>();
                     auto sdc_stream = open_ifstream_and_log_error(sdc_filename, "SDC file");
                     w.getContext()->read_sdc(sdc_stream);
                 }
+                applySettingOverrides(w.getContext());
 
                 customAfterLoad(w.getContext());
                 w.notifyChangeContext();
@@ -688,6 +810,7 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
         }
 
         restoreTelemetrySettings(w.getContext());
+        applySettingOverrides(w.getContext());
 
         w.show();
 
@@ -701,15 +824,20 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
         if (!parse_json(f, filename, ctx.get()))
             log_error("Loading design failed.\n");
 
+        applySdcClockOverrides(ctx.get());
         if (vm.count("sdc")) {
             std::string sdc_filename = vm["sdc"].as<std::string>();
             auto sdc_stream = open_ifstream_and_log_error(sdc_filename, "SDC file");
             ctx->read_sdc(sdc_stream);
         }
 
+        // Architecture hooks can consume settings while loading constraints or
+        // merging auxiliary designs, so apply overrides before those hooks.
+        applySettingOverrides(ctx.get());
         customAfterLoad(ctx.get());
     }
     restoreTelemetrySettings(ctx.get());
+    applySettingOverrides(ctx.get());
 
 #ifndef NO_PYTHON
     init_python(argv[0]);
@@ -848,12 +976,15 @@ void CommandHandler::load_json(Context *ctx, std::string filename)
 {
     setupContext(ctx);
     setupArchContext(ctx);
+    applyEarlySettingOverrides(ctx);
     {
         auto f = open_ifstream_and_log_error(filename, "JSON file");
         if (!parse_json(f, filename, ctx))
             log_error("Loading design failed.\n");
     }
+    applySettingOverrides(ctx);
     restoreTelemetrySettings(ctx);
+    applySettingOverrides(ctx);
 }
 
 void CommandHandler::clear() { vm.clear(); }
