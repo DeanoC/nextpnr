@@ -31,6 +31,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace gpuroute {
@@ -230,6 +231,10 @@ class Backend
                        std::vector<PathEntry> &paths) = 0;
 
     virtual const char *name() const = 0;
+    // Device backends report the selected runtime index and the hardware name
+    // after init(). CPU backends keep the default index of -1.
+    virtual int device_index() const { return -1; }
+    virtual const char *device_name() const { return name(); }
     virtual const BackendStats &stats() const = 0;
 };
 
@@ -244,6 +249,33 @@ std::unique_ptr<Backend> create_device_backend(int device, std::string &error);
 
 // Sequential host reference implementation of the same algorithm.
 std::unique_ptr<Backend> create_cpu_backend();
+
+struct RoutingBackendSelection
+{
+    std::unique_ptr<Backend> backend;
+    bool cpu_fallback = false;
+};
+
+// Select the GPU backend, honoring required mode. The CPU backend remains the
+// default fallback unless the caller explicitly requires a device.
+inline RoutingBackendSelection select_routing_backend(int device, bool cpu_requested, bool gpu_required,
+                                                       std::string &error)
+{
+    if (cpu_requested) {
+        if (gpu_required) {
+            error = "the CPU reference backend was requested while GPU use is required";
+            return {};
+        }
+        return {create_cpu_backend(), false};
+    }
+
+    auto backend = create_device_backend(device, error);
+    if (backend)
+        return {std::move(backend), false};
+    if (gpu_required)
+        return {};
+    return {create_cpu_backend(), true};
+}
 
 } // namespace gpuroute
 

@@ -414,6 +414,7 @@ po::options_description CommandHandler::getGeneralOptions()
     general.add_options()("router2-alt-weights", "use alternate router2 weights");
     general.add_options()("gpu-device", po::value<int>(), "GPU device index for --router gpu (default: most compute units)");
     general.add_options()("gpu-cpu", "run --router gpu on the sequential CPU reference backend");
+    general.add_options()("gpu-required", "fail if --router gpu cannot use a GPU device");
     general.add_options()("gpu-perf", "print GPU router timing and backend statistics");
     general.add_options()("gpu-telemetry", po::value<std::string>(),
                           "write opt-in GPU router telemetry as versioned JSONL (refuses existing files)");
@@ -567,6 +568,8 @@ void CommandHandler::setupContext(Context *ctx)
         ctx->settings[ctx->id("gpurouter/device")] = vm["gpu-device"].as<int>();
     if (vm.count("gpu-cpu"))
         ctx->settings[ctx->id("gpurouter/cpu")] = true;
+    if (vm.count("gpu-required"))
+        ctx->settings[ctx->id("gpurouter/required")] = true;
     if (vm.count("gpu-perf"))
         ctx->settings[ctx->id("gpurouter/perfProfile")] = true;
     if (vm.count("gpu-batches"))

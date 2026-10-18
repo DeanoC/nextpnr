@@ -155,6 +155,8 @@ struct GpuRouterCfg
     int device;
     // Use the sequential host reference backend instead of the GPU
     bool cpu_backend;
+    // Fail instead of falling back to the sequential host backend.
+    bool gpu_required;
     // Print per-iteration timing and backend statistics
     bool perf_profile;
     // Empty disables telemetry. The writer creates this path exclusively.
