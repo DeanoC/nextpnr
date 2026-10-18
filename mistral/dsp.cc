@@ -42,6 +42,15 @@ void Arch::create_dsp(int x, int y)
         for (int bit = 0; bit < 18; ++bit)
             add_bel_pin(bel, idf("Y[%d]", bit), PORT_OUT,
                         get_port(CycloneV::DSP, x, y, -1, CycloneV::RESULT, lane.result_offset + bit));
+        if (lane_idx == 0) {
+            // Sign-extension slices for a signed lane-0 product (see dsp.h).
+            for (int bit = 0; bit < 9; ++bit) {
+                add_bel_pin(bel, idf("A[%d]", 9 + bit), PORT_IN,
+                            get_port(CycloneV::DSP, x, y, mistral_dsp_m9_a_ext_group, CycloneV::DATAIN, bit));
+                add_bel_pin(bel, idf("B[%d]", 9 + bit), PORT_IN,
+                            get_port(CycloneV::DSP, x, y, mistral_dsp_m9_b_ext_group, CycloneV::DATAIN, bit));
+            }
+        }
         add_control_pins(bel);
     }
 
@@ -54,6 +63,10 @@ void Arch::create_dsp(int x, int y)
                     get_port(CycloneV::DSP, x, y, mistral_dsp_18x18_b_groups.at(bit / 9), CycloneV::DATAIN,
                              bit % 9));
     }
+    // Nineteenth bit of a signed Y operand (see dsp.h).
+    add_bel_pin(mul18, id("B[18]"), PORT_IN,
+                get_port(CycloneV::DSP, x, y, mistral_dsp_18x18_b_ext_group, CycloneV::DATAIN,
+                         mistral_dsp_18x18_b_ext_bit));
     for (int bit = 0; bit < 36; ++bit)
         add_bel_pin(mul18, idf("C[%d]", bit), PORT_IN,
                     get_port(CycloneV::DSP, x, y, mistral_dsp_18x18_c_groups.at(bit / 9), CycloneV::DATAIN,
