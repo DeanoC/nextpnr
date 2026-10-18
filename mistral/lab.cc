@@ -1369,18 +1369,19 @@ void Arch::assign_alm_lut_inputs(uint32_t lab, uint8_t alm)
                 continue;
             // Work out which physical ports are available
             std::vector<IdString> avail_phys_ports;
-            // F, then E, then C/D, then B, A. lut_placement_pin uses this isolated order.
-            // In arithmetic mode, Ei can only be used for D0 and Fi can only be used for D1.
-            // A direct-data or synchronous-load flip-flop keeps E, or takes the other half's F
-            // when this LUT cannot spare E.
+            // Keep the established C/D, E, F, B, A allocation order. All
+            // private pins remain unique, while the router avoids a broad
+            // remap of every L5 input onto faster pins that changed FES QoR.
+            // In arithmetic mode, Ei can only be used for D0 and Fi can only
+            // be used for D1. A direct-data or synchronous-load flip-flop
+            // keeps E, or takes the other half's F when this LUT cannot spare E.
+            avail_phys_ports.push_back((i == 1) ? id_D : id_C);
             if (!luts[i]->combInfo.is_carry) {
-                if (!ff_pins.release_f[i])
-                    avail_phys_ports.push_back((i == 1) ? id_F1 : id_F0);
                 if (!ff_pins.keep_e[i])
                     avail_phys_ports.push_back((i == 1) ? id_E1 : id_E0);
+                if (!ff_pins.release_f[i])
+                    avail_phys_ports.push_back((i == 1) ? id_F1 : id_F0);
             }
-            // C/D always available and dedicated to the half, in L5 mode
-            avail_phys_ports.push_back((i == 1) ? id_D : id_C);
             // A and B might be used for shared signals, or already used by the other half
             if (b_avail)
                 avail_phys_ports.push_back(id_B);
@@ -1525,10 +1526,9 @@ IdString Arch::lut_placement_pin(const CellInfo *cell, IdString port) const
         port == id_Q)
         return comb_pinmap.at(port);
     const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
-    // Isolated allocation from assign_lut6_inputs / assign_alm_lut_inputs:
-    // F, then E, then C/D. C/D and the two E/F halves have equal cell delays;
-    // pairing can still reserve A/B for shared signals later.
-    const std::array<IdString, 5> l5_pins{id_F0, id_E0, id_C, id_B, id_A};
+    // Isolated allocation follows the legal L5 pin pool: C/D, then E, F,
+    // B, A. Pairing can reserve A/B for shared signals later.
+    const std::array<IdString, 5> l5_pins{id_C, id_E0, id_F0, id_B, id_A};
     const std::array<IdString, 6> l6_pins{id_A, id_B, id_C, id_D, id_E0, id_F0};
     const bool l6 = cell->type == id_MISTRAL_ALUT6;
     const int width = l6                               ? 6

@@ -1,4 +1,5 @@
 #include <array>
+#include <map>
 #include <memory>
 
 #include "gtest/gtest.h"
@@ -214,10 +215,11 @@ TEST(LutPlacementTiming, DefaultRetainsPlacementPolicyUntilPinsAreLegalised)
         for (int half : {0, 1}) {
             auto *cell = ctx.cells.at(ctx.idf("lut%d_%d", width, half)).get();
             // Width 6 stays in logical order, so F is the fast tail. Width 5
-            // gives private pins out fastest-first, so A lands on F and E on A.
-            const auto fast_port = width == 6 ? id_F : id_A;
+            // retains the legal C/D, E, F, B, A pool, so the third input lands on F.
+            const auto fast_port = width == 6 ? id_F : id_C;
             const auto slow_port = width == 6 ? id_A : id_E;
-            EXPECT_EQ(cell->pin_data.at(id_A).bel_pins, std::vector<IdString>{width == 6 ? id_A : half ? id_F1 : id_F0});
+            EXPECT_EQ(cell->pin_data.at(id_A).bel_pins,
+                      std::vector<IdString>{width == 6 ? id_A : half ? id_D : id_C});
             EXPECT_EQ(cell->pin_data.at(fast_port).bel_pins, std::vector<IdString>{half ? id_F1 : id_F0});
             if (width == 5) {
                 EXPECT_EQ(cell->pin_data.at(id_E).bel_pins, std::vector<IdString>{id_A});
@@ -269,6 +271,53 @@ TEST(LutPlacementTiming, IsolatedSparseInputsMatchLegalisation)
     }
 }
 
+TEST(LutPlacementTiming, SharedAndPrivateL5PinsRemainLegal)
+{
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    Context ctx(args);
+    const std::array<IdString, 5> ports{id_A, id_B, id_C, id_D, id_E};
+    auto *shared_a = ctx.createNet(ctx.id("shared_a"));
+    auto *shared_b = ctx.createNet(ctx.id("shared_b"));
+    std::array<CellInfo *, 2> luts{};
+    for (int half = 0; half < 2; ++half) {
+        auto *cell = ctx.createCell(ctx.idf("lut%d", half), id_MISTRAL_ALUT5);
+        luts[half] = cell;
+        for (IdString port : ports) {
+            cell->addInput(port);
+            NetInfo *net = port == id_A ? shared_a : port == id_B ? shared_b
+                                                                  : ctx.createNet(ctx.idf("private%d_%s", half, ctx.nameOf(port)));
+            cell->connectPort(port, net);
+        }
+        cell->addOutput(id_Q);
+        cell->connectPort(id_Q, ctx.createNet(ctx.idf("output%d", half)));
+    }
+    ctx.assignArchInfo();
+    for (int half = 0; half < 2; ++half)
+        ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, half)), luts[half], STRENGTH_STRONG);
+    ctx.lab_pre_route();
+
+    std::map<IdString, NetInfo *> pin_nets;
+    std::map<NetInfo *, IdString> net_pins;
+    for (CellInfo *cell : luts) {
+        for (IdString port : ports) {
+            auto *net = cell->getPort(port);
+            const auto &mapped = cell->pin_data.at(port).bel_pins;
+            ASSERT_EQ(mapped.size(), 1);
+            const IdString physical = mapped.front();
+            EXPECT_TRUE(physical.in(id_A, id_B, id_C, id_D, id_E0, id_E1, id_F0, id_F1));
+            auto pin = pin_nets.emplace(physical, net);
+            EXPECT_TRUE(pin.second || pin.first->second == net);
+            auto connection = net_pins.emplace(net, physical);
+            EXPECT_TRUE(connection.second || connection.first->second == physical);
+        }
+    }
+    EXPECT_EQ(luts[0]->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_A});
+    EXPECT_EQ(luts[1]->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_A});
+    EXPECT_EQ(luts[0]->pin_data.at(id_B).bel_pins, std::vector<IdString>{id_B});
+    EXPECT_EQ(luts[1]->pin_data.at(id_B).bel_pins, std::vector<IdString>{id_B});
+}
+
 TEST(LutPlacementTiming, ArrivalLeavesThePlacementEstimateOnTheDefaultScaffold)
 {
     // Arrival permutes private pins after legalisation. Placement scoring stays
@@ -302,11 +351,11 @@ TEST(LutPlacementTiming, ArrivalLeavesThePlacementEstimateOnTheDefaultScaffold)
         EXPECT_EQ(base_delay.minDelay(), arrival_delay.minDelay());
     }
     EXPECT_EQ(base->pin_data.at(id_C).bel_pins, std::vector<IdString>{id_D});
-    EXPECT_EQ(alone->pin_data.at(id_C).bel_pins, std::vector<IdString>{id_C});
+    EXPECT_EQ(alone->pin_data.at(id_C).bel_pins, std::vector<IdString>{id_F0});
     EXPECT_EQ(alone->pin_data.at(id_E).bel_pins, std::vector<IdString>{id_A});
     EXPECT_EQ(base->pin_data.at(id_E).bel_pins, std::vector<IdString>{id_B});
-    // C and D share a delay envelope. A and B do not, so the E pin is the
-    // estimate that actually moves.
+    // The isolated legal map moves the third input to F and the last input
+    // from B to A. Placement's default scaffold remains unchanged.
     DelayQuad base_e, isolated_e;
     ASSERT_TRUE(plain.getCellDelay(base, id_E, id_Q, base_e));
     ASSERT_TRUE(isolated.getCellDelay(alone, id_E, id_Q, isolated_e));
@@ -390,8 +439,8 @@ TEST(LutInputArrival, PrivateLateInputGetsFastPinAndSharedInputsStayFixed)
 TEST(LutPlacementTiming, DirectDataFlipFlopDoesNotShareItsFabricPin)
 {
     // sel_ef of a half is fed by that half's E and the other half's F.
-    // Fastest-first takes F, so a direct-data flip-flop keeps E when the LUT
-    // can spare it. A 5-input LUT cannot, and the other half leaves F free.
+    // Direct-data flip-flops reserve E or the other half's F. L5 private pins
+    // retain the legal pool order while leaving those selector pins free.
     ArchArgs args;
     args.device = "5CSEBA6U23I7";
     Context ctx(args);
@@ -448,25 +497,25 @@ TEST(LutPlacementTiming, DirectDataFlipFlopDoesNotShareItsFabricPin)
     ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 16)), thru, STRENGTH_STRONG);
     ctx.lab_pre_route();
     auto pin = [](CellInfo *cell, IdString port) { return cell->pin_data.at(port).bel_pins.at(0); };
-    // Four inputs fit on F, C, B and A, leaving E0 for the flip-flop.
-    EXPECT_EQ(pin(wide, id_A), id_F0);
-    EXPECT_EQ(pin(wide, id_B), id_C);
+    // Four inputs fit on C, F, B and A, leaving E0 for the flip-flop.
+    EXPECT_EQ(pin(wide, id_A), id_C);
+    EXPECT_EQ(pin(wide, id_B), id_F0);
     EXPECT_EQ(pin(wide, id_C), id_B);
     EXPECT_EQ(pin(wide, id_D), id_A);
-    EXPECT_EQ(pin(mate, id_A), id_F1);
+    EXPECT_EQ(pin(mate, id_A), id_D);
     EXPECT_EQ(pin(mate, id_B), id_E1);
-    // Five inputs need E. The other LUT leaves F0 for the flip-flop.
-    EXPECT_EQ(pin(small, id_A), id_E0);
-    EXPECT_EQ(pin(small, id_B), id_C);
-    EXPECT_EQ(pin(full, id_A), id_F1);
+    // Five inputs need E and F. The other LUT leaves F0 for the flip-flop.
+    EXPECT_EQ(pin(small, id_A), id_C);
+    EXPECT_EQ(pin(small, id_B), id_E0);
+    EXPECT_EQ(pin(full, id_A), id_D);
     EXPECT_EQ(pin(full, id_B), id_E1);
-    EXPECT_EQ(pin(full, id_C), id_D);
+    EXPECT_EQ(pin(full, id_C), id_F1);
     EXPECT_EQ(pin(full, id_D), id_B);
     EXPECT_EQ(pin(full, id_E), id_A);
-    // A route-through on the other half would take F, so it uses E instead.
-    EXPECT_EQ(pin(chain, id_A), id_F0);
+    // A route-through on the other half uses E1, leaving the full private pool.
+    EXPECT_EQ(pin(chain, id_A), id_C);
     EXPECT_EQ(pin(chain, id_B), id_E0);
-    EXPECT_EQ(pin(chain, id_C), id_C);
+    EXPECT_EQ(pin(chain, id_C), id_F0);
     EXPECT_EQ(pin(chain, id_D), id_B);
     EXPECT_EQ(pin(chain, id_E), id_A);
     auto *buffer = ctx.cells.at(ctx.id("thru$ROUTETHRU")).get();
@@ -479,8 +528,8 @@ TEST(LutPlacementTiming, SynchronousLoadKeepsASelectorInput)
 {
     // sel_ef of a half is fed by that half's E and the other half's F.
     // Legality accepts SDATA when the other LUT has at most two inputs,
-    // which used to leave that F free. Fastest-first takes F first, so the
-    // load has to keep E, or the other LUT has to leave F free.
+    // which used to leave that F free. The load keeps E when possible; a full
+    // L5 can instead leave the other half's F free.
     ArchArgs args;
     args.device = "5CSEBA6U23I7";
     Context ctx(args);
@@ -542,15 +591,15 @@ TEST(LutPlacementTiming, SynchronousLoadKeepsASelectorInput)
     EXPECT_TRUE(ctx.is_alm_legal(full_lab.lab, full_lab.alm));
     ctx.lab_pre_route();
     auto pin = [](CellInfo *cell, IdString port) { return cell->pin_data.at(port).bel_pins.at(0); };
-    // Two inputs fit on F and C, leaving E0 for SDATA. The other LUT still uses F1.
-    EXPECT_EQ(pin(top, id_A), id_F0);
-    EXPECT_EQ(pin(top, id_B), id_C);
+    // Two inputs fit on C and F, leaving E0 for SDATA. The other LUT still has E1.
+    EXPECT_EQ(pin(top, id_A), id_C);
+    EXPECT_EQ(pin(top, id_B), id_F0);
     EXPECT_FALSE(uses(top, id_E0));
-    EXPECT_EQ(pin(bottom, id_A), id_F1);
+    EXPECT_EQ(pin(bottom, id_A), id_D);
     EXPECT_EQ(pin(bottom, id_B), id_E1);
     // Five inputs need E0, so the other LUT leaves F1 for SDATA.
     EXPECT_TRUE(uses(full, id_E0));
     EXPECT_FALSE(uses(mate, id_F1));
-    EXPECT_EQ(pin(mate, id_A), id_E1);
-    EXPECT_EQ(pin(mate, id_B), id_D);
+    EXPECT_EQ(pin(mate, id_A), id_D);
+    EXPECT_EQ(pin(mate, id_B), id_E1);
 }
