@@ -710,6 +710,16 @@ void CommandHandler::applyEarlySettingOverrides(Context *ctx)
     }
 }
 
+void CommandHandler::applySdcClockOverrides(Context *ctx)
+{
+    if (!vm.count("set"))
+        return;
+
+    const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
+    apply_command_setting_sdc_clock_overrides(ctx->settings, [ctx](const std::string &key) { return ctx->id(key); },
+                                              overrides);
+}
+
 void CommandHandler::applySettingOverrides(Context *ctx)
 {
     if (!vm.count("set"))
@@ -779,6 +789,7 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
                 if (!parse_json(f, filename, w.getContext()))
                     log_error("Loading design failed.\n");
 
+                applySdcClockOverrides(w.getContext());
                 if (vm.count("sdc")) {
                     std::string sdc_filename = vm["sdc"].as<std::string>();
                     auto sdc_stream = open_ifstream_and_log_error(sdc_filename, "SDC file");
@@ -810,6 +821,7 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
         if (!parse_json(f, filename, ctx.get()))
             log_error("Loading design failed.\n");
 
+        applySdcClockOverrides(ctx.get());
         if (vm.count("sdc")) {
             std::string sdc_filename = vm["sdc"].as<std::string>();
             auto sdc_stream = open_ifstream_and_log_error(sdc_filename, "SDC file");

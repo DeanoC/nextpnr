@@ -57,6 +57,7 @@ class CommandHandler
     bool executeBeforeContext();
     void setupContext(Context *ctx);
     void applyEarlySettingOverrides(Context *ctx);
+    void applySdcClockOverrides(Context *ctx);
     void applySettingOverrides(Context *ctx);
     void restoreTelemetrySettings(Context *ctx);
     int executeMain(std::unique_ptr<Context> ctx);

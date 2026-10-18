@@ -103,6 +103,16 @@ inline void apply_command_setting_frontend_overrides(Settings &settings, IdFunct
     }
 }
 
+template <typename Settings, typename IdFunction>
+inline void apply_command_setting_sdc_clock_overrides(Settings &settings, IdFunction id,
+                                                      const std::vector<CommandSettingOverride> &overrides)
+{
+    for (const auto &override : overrides) {
+        if (override.key.compare(0, 10, "sdc/clock/") == 0)
+            settings[id(override.key)] = override.value;
+    }
+}
+
 NEXTPNR_NAMESPACE_END
 
 #endif // COMMAND_SETTINGS_H

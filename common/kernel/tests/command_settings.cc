@@ -80,6 +80,17 @@ TEST(CommandSettingOverrides, OnlyAppliesFrontendSelectionBeforeImport)
     EXPECT_EQ(settings.count("gpurouter/perfProfile"), 0u);
 }
 
+TEST(CommandSettingOverrides, OnlyAppliesSdcClockAliasesBeforeSdcRead)
+{
+    std::map<std::string, std::string> settings;
+    const auto overrides = parse_command_setting_overrides(
+            {"sdc/clock/memory=clk_net", "sdc/period/clk_net=10", "gpurouter/perfProfile=1"});
+    apply_command_setting_sdc_clock_overrides(settings, [](const std::string &key) { return key; }, overrides);
+    EXPECT_EQ(settings.at("sdc/clock/memory"), "clk_net");
+    EXPECT_EQ(settings.count("sdc/period/clk_net"), 0u);
+    EXPECT_EQ(settings.count("gpurouter/perfProfile"), 0u);
+}
+
 TEST(CommandSettingOverrides, RejectsDedicatedOptionConflicts)
 {
     const auto overrides = parse_command_setting_overrides({"gpurouter/device=0", "custom/value=1"});

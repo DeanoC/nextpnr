@@ -60,11 +60,11 @@ from the value, so values may contain additional `=` characters. The key must
 not be empty. `--set seed=N` is special: `N` must be an unsigned integer and
 sets the actual nextpnr RNG seed. Most overrides are applied after JSON import
 and before architecture hooks and the place-and-route flow. `frontend/top` is
-applied before top-module selection, and `seed` is initialized before import;
-the saved `seed` setting records the live RNG state. If `--set` and a dedicated
-command-line option target the same setting, nextpnr reports a conflict; remove
-one of them. Repeating `--set` for the same key is allowed, and the last `--set`
-value is used.
+applied before top-module selection, `sdc/clock/` aliases before reading SDC,
+and `seed` is initialized before import; the saved `seed` setting records the
+live RNG state. If `--set` and a dedicated command-line option target the same
+setting, nextpnr reports a conflict; remove one of them. Repeating `--set` for
+the same key is allowed, and the last `--set` value is used.
 
 Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 
