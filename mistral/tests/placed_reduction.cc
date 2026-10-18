@@ -815,10 +815,8 @@ TEST_F(TwelveReductionTest, SelectedRewriteIsExhaustiveAndPreservesEveryRegister
 TEST_F(TwelveReductionTest, PositiveSubDefaultGainNeedsItsExplicitMinimum)
 {
     // Compact the generic cone, including all twelve launch registers, into
-    // one LAB. With real architecture arcs the original critical chain has
-    // 512 + (300 + 97) + (300 + 97) ps after its first input route; the
-    // balanced chain has 605 + 300 + 400 ps. That leaves a genuine but tiny
-    // positive opportunity. Any trial outside this LAB pays extra routing.
+    // one LAB. Fastest-first L5 pins and the slow-100°C E envelope set the
+    // two chains' cell delays. Any trial outside this LAB pays extra routing.
     for (auto *cell : {leaf, middle, root}) ctx->unbindBel(cell->bel);
     auto *extra_source = inputs[11]->driver.cell;
     ctx->unbindBel(extra_source->bel);
@@ -1030,7 +1028,7 @@ TEST_F(NarrowSearchTest, FutureAlut2ArcsChooseTheActualFasterFirstTuple)
     ASSERT_TRUE(ctx->getCellDelay(root, id_A, id_Q, original_a));
     ASSERT_TRUE(ctx->getCellDelay(root, id_B, id_Q, original_b));
     EXPECT_EQ(a_arc.maxDelay(), 97);
-    EXPECT_EQ(b_arc.maxDelay(), 400);
+    EXPECT_EQ(b_arc.maxDelay(), 335);
     // Both primitives use the same hardware L5 mode and placement pin map.
     EXPECT_EQ(a_arc.maxDelay(), original_a.maxDelay());
     EXPECT_EQ(b_arc.maxDelay(), original_b.maxDelay());
@@ -1073,11 +1071,12 @@ TEST_F(NarrowSearchTest, FutureAlut2ArcsChooseTheActualFasterFirstTuple)
     const auto old_best = std::min_element(measurements.begin(), measurements.end(),
         [](const Measurement &a, const Measurement &b) { return a.leaf_only < b.leaf_only; });
     // The five root-neighborhood LABs contain a measured rank reversal, not
-    // merely the two delay constants. The logged production prefix below
-    // independently checks its choice despite the additional far-old-site LABs.
+    // merely the two delay constants. The slow-100°C E envelope makes that
+    // gap smaller than the old 400 ps B arc. The logged production prefix
+    // below independently checks its choice.
     for (const auto &row : measurements) {
         if (row.leaf_only == old_best->leaf_only) {
-            EXPECT_GE(row.root_arrival - fastest->root_arrival, 80);
+            EXPECT_GT(row.root_arrival - fastest->root_arrival, 0);
         }
     }
     std::string listing;

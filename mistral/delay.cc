@@ -678,10 +678,12 @@ bool Arch::get_lut_pin_delay(IdString physical, bool l6, DelayQuad &delay) const
 {
     switch (physical.index) {
     case ID_A:
-        delay = l6 ? DelayQuad{592, 605, 567, 573} : DelayQuad{580, 583, 560, 574};
+        // L5 and L6 share this slow input. Quartus slow 1100 mV 100°C
+        // combout on 5CSEBA6U23I7 is about 598 ps.
+        delay = DelayQuad{592, 605, 567, 573};
         return true;
     case ID_B:
-        delay = l6 ? DelayQuad{580, 583, 560, 574} : DelayQuad{429, 496, 440, 510};
+        delay = DelayQuad{580, 583, 560, 574};
         return true;
     case ID_C:
     case ID_D:
@@ -691,10 +693,11 @@ bool Arch::get_lut_pin_delay(IdString physical, bool l6, DelayQuad &delay) const
         return true;
     case ID_E0:
     case ID_E1:
-        // Decoded Quartus L5/L6 fixtures place the slower select
-        // on physical E and the fast select on physical F in both
-        // modes. Truth-table variable order is not delay order.
-        delay = DelayQuad{263, 354, 362, 400};
+        // Slow 1100 mV 100°C envelope of the two ALMs retained in
+        // mistral/tests/lut6-select. Rise is a rising input (rr/rf)
+        // and fall is a falling input (fr/ff). The previous 400 ps
+        // fall bound sat above every measured E transition.
+        delay = DelayQuad{204, 297, 217, 335};
         return true;
     case ID_F0:
     case ID_F1:

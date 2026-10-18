@@ -2,9 +2,10 @@
 
 PR172 exchanged the physical E/F delay bounds for LUT6 cells. Independent
 Quartus 17.0.2 fits on 5CSEBA6U23I7 show that F is the faster input in both
-L5 and L6 modes. These fixtures validate the physical naming before selecting
-existing delay bounds; they do not recalibrate absolute silicon delays or
-establish timing acceptance for Pong/C64 or an SDRAM board.
+L5 and L6 modes. These fixtures validate the physical naming. The E delay quad is the slow
+1100 mV 100°C envelope of the two retained ALMs. F and the other pins keep
+their previous constants. The fixtures do not establish timing acceptance
+for Pong/C64 or an SDRAM board.
 
 The two asymmetric fixtures use `cyclonev_lcell_comb` with mask
 `d2c4b6e1987a35f0`, registered inputs and outputs, and a 10 ns clock. The
@@ -29,8 +30,8 @@ At Slow 1100mV 100C, the worst transition of the observed CELL arcs is:
 Four-corner transition reports, decoded bitstreams, inputs and audit results
 are retained here. The reports are calibration fixtures, not complete timing
 reports for an OSS-routed design. Load, slew, speed grade, device and PVT
-limits remain; the change restores the existing E/F bound selection rather
-than fitting new constants from these samples.
+limits remain. F stays the fast select. The E quad fitted from these
+samples is rising input 204–297 ps and falling input 217–335 ps.
 
 Check the retained evidence without Quartus:
 

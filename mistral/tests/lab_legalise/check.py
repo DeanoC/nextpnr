@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Legalise a LAB that already holds a BEL-locked flip-flop.
 
-Seal right-PCM bits 6, 7, and 8 left a bottom LUT on comb_pinmap inside a
-socket LAB. Seed 6's constant 512 left locked plug_rdata_ff_10, with no
-route-through, on fabric F1. This fixture places both shapes and drives
-lab_pre_route from placement.
+Seal right-PCM bits 6, 7, and 8 are a bottom 2-input LUT beside a locked
+flip-flop. Fastest-first legalisation puts that LUT on F1 and E1. Seed 6's
+constant 512 is locked plug_rdata_ff_10, and its constant enters through a
+route-through on F1. This fixture places both shapes and drives lab_pre_route
+from placement.
 """
 
 import argparse
@@ -184,17 +185,17 @@ def main():
     assert buffer["connections"]["A"] == const["connections"]["Q"]
     assert const["attributes"]["NEXTPNR_BEL"] == "MISTRAL_COMB.7.11.13"
     assert const_lut == 0, const["parameters"]["LUT"]
-    # Bottom AND on D (bit 2) and E1 (bit 3). Comb pinmap E0/F0 stores 0xffffff00.
-    assert lut_mask == 0xFFF0FFF0, hex(lut_mask)
-    assert buffer_mask == 0xF0F0F0F0, hex(buffer_mask)
-    for pin in ("LAB.007.011.0:D", "LAB.007.011.0:E1", "LAB.007.011.1:D"):
+    # Bottom AND on F1 (bit 4) and E1 (bit 3). Same address bits as comb pinmap F/E.
+    assert lut_mask == 0xFFFFFF00, hex(lut_mask)
+    assert buffer_mask == 0xFFFF0000, hex(buffer_mask)
+    for pin in ("LAB.007.011.0:F1", "LAB.007.011.0:E1", "LAB.007.011.1:F1"):
         assert pin in points, pin
-    for pin in ("LAB.007.011.0:E0", "LAB.007.011.0:F0", "LAB.007.011.1:F1"):
+    for pin in ("LAB.007.011.0:D", "LAB.007.011.0:E0", "LAB.007.011.0:F0", "LAB.007.011.1:D"):
         assert pin not in points, pin
     assert "s LAB.007.011:BPKREG1.1 1" not in (out / "core.bt").read_text()
     assert OLD_PIN not in header, header
     assert not revision.startswith(OLD_PIN), revision
-    print("PASS: bottom LUT reads D and E1; locked FF data is the route-through of constant 0")
+    print("PASS: bottom LUT reads F1 and E1; locked FF data is the route-through of constant 0")
 
     # Cart overlay routes the shell again. --fes-scaffold locks the restored
     # cells, and this invocation does not pass --no-route, so route() still
@@ -250,7 +251,7 @@ def main():
     # A frozen pin map that fresh reassignment would not choose must survive
     # the same route. Rewriting it is the cart failure mode.
     held_map = pinmap_of(fresh["seal_pcm_bits_678"])
-    assert held_map["pins"]["A"][1] == "D" and held_map["pins"]["B"][1] == "E1"
+    assert held_map["pins"]["A"][1] == "F1" and held_map["pins"]["B"][1] == "E1"
     held_map["pins"]["A"][1] = "F0"
     held_map["pins"]["B"][1] = "E0"
     raw = (out / "routed.json").read_text()

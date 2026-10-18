@@ -24,6 +24,14 @@ if (BUILD_TESTS)
     target_link_libraries(nextpnr-gpuroute-telemetry-test PRIVATE gtest_main json11)
     set_property(TARGET nextpnr-gpuroute-telemetry-test PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
     add_test(NAME nextpnr-gpuroute-telemetry-test COMMAND nextpnr-gpuroute-telemetry-test)
+
+    add_executable(nextpnr-reserved-route-slack-test
+        tests/reserved_route_slack.cc
+    )
+    target_include_directories(nextpnr-reserved-route-slack-test PRIVATE gpu)
+    target_link_libraries(nextpnr-reserved-route-slack-test PRIVATE gtest_main)
+    set_property(TARGET nextpnr-reserved-route-slack-test PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+    add_test(NAME nextpnr-reserved-route-slack-test COMMAND nextpnr-reserved-route-slack-test)
 endif()
 
 # GPU device backend for the GPU router. The device code is compiled by the

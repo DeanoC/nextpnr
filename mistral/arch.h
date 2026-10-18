@@ -702,7 +702,7 @@ struct Arch : BaseArch<ArchRanges>
     // of each ALM. Off by default; set from the command line only.
     bool lab_ff4 = false;
     bool isolated_lut_placement = false; // Opt-in: score the isolated legal LUT input allocation.
-    bool arrival_pin_assignment = false; // Opt-in: isolated estimates and private LUT pin permutation.
+    bool arrival_pin_assignment = false; // Opt-in: permute private LUT pins by arrival after legalisation.
 
     bool is_comb_cell(IdString cell_type) const;        // lab.cc
     bool is_alm_legal(uint32_t lab, uint8_t alm) const; // lab.cc
@@ -722,6 +722,8 @@ struct Arch : BaseArch<ArchRanges>
     void reassign_alm_inputs(uint32_t lab, uint8_t alm);    // lab.cc
     int optimise_private_lut_pins(uint32_t lab, uint8_t alm, int half, const dict<IdString, delay_t> &arrival);
     CellInfo *get_alm_route_through_ff(uint32_t lab, uint8_t alm, uint8_t half) const; // lab.cc
+    // F, or E when the other half's direct-data flip-flop needs this F.
+    IdString alm_route_through_pin(uint32_t lab, uint8_t alm, uint8_t half) const; // lab.cc
     void assign_alm_lut_inputs(uint32_t lab, uint8_t alm); // LUT pins only; no netlist mutation.
     void update_alm_input_count(uint32_t lab, uint8_t alm); // lab.cc
 
