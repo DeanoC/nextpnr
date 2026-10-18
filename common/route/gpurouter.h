@@ -27,6 +27,7 @@
 #include <string>
 #include <vector>
 
+#include "log.h"
 #include "nextpnr.h"
 
 NEXTPNR_NAMESPACE_BEGIN
@@ -34,6 +35,13 @@ NEXTPNR_NAMESPACE_BEGIN
 // Internal cooperative cancellation. Candidate callers must restore their
 // saved bindings; gpurouter returns false after unwinding its router state.
 struct GpuRouterCancelled {};
+
+// A required-GPU device selection or initialisation failure. Most router
+// errors remain recoverable during analogue repair, but this one must escape
+// so required mode cannot report success after restoring an earlier route.
+struct GpuRequiredFailure : log_execution_error_exception
+{
+};
 
 struct GpuRouterCfg
 {

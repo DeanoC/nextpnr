@@ -238,6 +238,30 @@ class Backend
     virtual const BackendStats &stats() const = 0;
 };
 
+// The CPU lane is a performance shortcut for tiny batches. It must not be
+// created when required-GPU mode is active, even when the user configured a
+// positive threshold.
+inline bool should_create_cpu_lane(int cpu_lane_nets, bool gpu_required, bool primary_is_cpu)
+{
+    return cpu_lane_nets > 0 && !gpu_required && !primary_is_cpu;
+}
+
+enum class BackendInitStatus
+{
+    ready,
+    optional_failure,
+    required_failure,
+};
+
+inline BackendInitStatus initialize_backend(Backend &backend, const GraphData &graph, int small_slots,
+                                            int small_bits, int large_slots, int large_bits, bool gpu_required,
+                                            std::string &error)
+{
+    if (backend.init(graph, small_slots, small_bits, large_slots, large_bits, error))
+        return BackendInitStatus::ready;
+    return gpu_required ? BackendInitStatus::required_failure : BackendInitStatus::optional_failure;
+}
+
 // True if this build contains a GPU device backend.
 bool device_backend_available();
 // Human readable description of the GPU devices (empty if none).

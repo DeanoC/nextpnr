@@ -1,5 +1,6 @@
 #include <memory>
 #include "gtest/gtest.h"
+#include "analogue_repair.h"
 #include "gpurouter.h"
 #include "log.h"
 
@@ -41,4 +42,11 @@ TEST(AnalogueRepairBudget, RejectsInvalidBudgetEvenWithoutRouting)
     ctx->settings[ctx->id("gpurouter/analogueTimeBudget")] = std::string("0");
     ctx->settings[ctx->id("gpurouter/analogueRounds")] = std::string("0");
     EXPECT_TRUE(ctx->analogue_repair());
+}
+
+TEST(AnalogueRepair, RequiredGpuFailureEscapesRecoverableRouteHandling)
+{
+    EXPECT_TRUE(try_analogue_repair_reroute(1, [] { return true; }));
+    EXPECT_FALSE(try_analogue_repair_reroute(1, []() -> bool { throw log_execution_error_exception{}; }));
+    EXPECT_THROW(try_analogue_repair_reroute(1, []() -> bool { throw GpuRequiredFailure{}; }), GpuRequiredFailure);
 }

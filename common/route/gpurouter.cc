@@ -62,6 +62,15 @@ namespace {
 using Clock = std::chrono::steady_clock;
 inline double secs_since(Clock::time_point t) { return std::chrono::duration<double>(Clock::now() - t).count(); }
 
+[[noreturn]] void log_gpu_required_failure(const char *message, const std::string &error)
+{
+    try {
+        log_error("%s: %s\n", message, error.c_str());
+    } catch (const log_execution_error_exception &) {
+        throw GpuRequiredFailure{};
+    }
+}
+
 struct GpuRouter
 {
     Context *ctx;
@@ -2903,13 +2912,14 @@ struct GpuRouter
         std::string err;
         auto selected_backend = gpuroute::select_routing_backend(cfg.device, cfg.cpu_backend, cfg.gpu_required, err);
         if (!selected_backend.backend)
-            log_error("GPU use is required, but the GPU router could not open a device: %s\n", err.c_str());
+            log_gpu_required_failure("GPU use is required, but the GPU router could not open a device", err);
         if (selected_backend.cpu_fallback)
             log_warning("GPU router: %s; falling back to the CPU reference backend.\n", err.c_str());
         backend = std::move(selected_backend.backend);
         if (!cfg.cpu_backend && gpuroute::device_backend_available() && ctx->verbose)
             log_info("    GPU devices: %s\n", gpuroute::describe_devices().c_str());
-        if (cfg.cpu_lane_nets > 0 && std::string(backend->name()) != "cpu-reference")
+        if (gpuroute::should_create_cpu_lane(cfg.cpu_lane_nets, cfg.gpu_required,
+                                             std::string(backend->name()) == "cpu-reference"))
             cpu_backend = gpuroute::create_cpu_backend();
         if (cfg.repair_verify)
             verify_backend = gpuroute::create_cpu_backend();
@@ -2939,9 +2949,11 @@ struct GpuRouter
         gd.wire_occ = occ.data();
         gd.wire_hist = hist.data();
         auto tup = Clock::now();
-        if (!backend->init(gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, err)) {
-            if (cfg.gpu_required)
-                log_error("GPU use is required, but GPU backend initialisation failed: %s\n", err.c_str());
+        auto backend_init = gpuroute::initialize_backend(*backend, gd, cfg.small_slots, cfg.small_bits, cfg.large_slots,
+                                                         cfg.large_bits, cfg.gpu_required, err);
+        if (backend_init != gpuroute::BackendInitStatus::ready) {
+            if (backend_init == gpuroute::BackendInitStatus::required_failure)
+                log_gpu_required_failure("GPU use is required, but GPU backend initialisation failed", err);
             log_error("GPU router backend initialisation failed: %s\n", err.c_str());
         }
         if (backend->device_index() >= 0)
