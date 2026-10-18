@@ -50,7 +50,8 @@ def route(design, replies, *args, advertise=True):
     broker_end, client_end = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
     broker = Broker(broker_end, replies)
     broker.start()
-    env = {key: value for key, value in os.environ.items() if key != 'GPU_LEASE_FD'}
+    # gpu-run exports NEXTPNR_REQUIRE_GPU=1; each case chooses --gpu-required itself
+    env = {key: value for key, value in os.environ.items() if key not in ('GPU_LEASE_FD', 'NEXTPNR_REQUIRE_GPU')}
     if advertise:
         env['GPU_LEASE_FD'] = str(client_end.fileno())
     try:
