@@ -74,6 +74,45 @@ Quartus routing confirms that the two 18-bit halves must be exchanged relative
 to numerical group order. This implements the P36 addend without enabling
 cascade-chain mode.
 
+Signedness comes from the Yosys `A_SIGNED`/`B_SIGNED` cell parameters. The
+Cyclone V block has no width headroom, so a full-width unsigned operand (9, 18
+or 27 bits) and every `mul2dsp` partial product of a wider multiply need the
+unsigned configuration. A cell that omits either parameter keeps the historical
+signed default and `mistral/pack.cc` warns about it, because such a netlist
+cannot be configured correctly in general; DeanoC/yosys with the `dsp_map.v`
+signedness fix emits both parameters for every `MISTRAL_MUL*` cell, including
+mixed-signedness partial-product slices.
+
+The configuration mirrors Quartus 17.0.2 bitstreams for `5CSEBA6U23I7`,
+decompiled with `mistral-cv` and recorded in
+`mistral/tests/fixtures/dsp-signedness/`:
+
+* Unsigned operands set no sign bit. The unsigned M9X9, M18X18P36 and M27X27
+  configurations are identical to Quartus, DATA_INV masks included.
+* A signed X (`A`) operand sets `AX_SIGNED` and `BX_SIGNED`; a signed Y (`B`)
+  operand sets `AY_SIGNED` and `BY_SIGNED` in M9X9 and M27X27.
+* Quartus also sign-extends a signed 9x9 operand into the upper AX/AY slice
+  (DATAIN groups 1 and 3). `extend_dsp_signed_operands` adds `A[17:9]` and
+  `B[17:9]` ports driven by the sign net, lane 0 of `MISTRAL_MUL9X9` exposes
+  those pins, and a sign-extended cell owns its block at lane 0
+  (`Arch::isBelLocationValid`). The result therefore does not depend on how
+  the block interprets the sign bits alone. Lanes 1 and 2 have no spare slice,
+  so three-per-block packing of signed cells is opt-in through
+  `--mistral-dsp-signed-lanes`, which drops the extension and relies on the
+  sign bits; that mode is hardware-unverified. The preadder mode keeps its
+  previous configuration (sign bits only) and is likewise unverified for
+  signed operands.
+* In M18X18P36 a signed Y operand sets `BY_SIGNED` and drives its nineteenth
+  bit, `B[18]`, on DATAIN group 5 bit 8 (Quartus leaves `AY_SIGNED` clear); a
+  signed X operand sets `AX_SIGNED` and `BX_SIGNED`. Quartus normalises a
+  signed-by-unsigned product so the signed operand sits on Y, so only the
+  both-signed and both-unsigned configurations are compared bit for bit; the
+  signed-X-only configuration is this backend's interpolation.
+* The 18x19 views keep their earlier `A/B -> AX/AY`, `C/D -> BX/BY` mapping.
+  Quartus's own single 18x19 product uses the default mode with `BX_SIGNED`/
+  `BY_SIGNED` and group 5 bit 8 for the nineteenth Y bit, so that mapping is
+  not Quartus-confirmed.
+
 The existing packer's constant/inverter folding is enabled through
 `mistral/pins.cc`. DSP data inputs float high and have per-bit inversion controls.
 `mistral/bitstream.cc` selects the mode, writes `AX_SIGNED`/`AY_SIGNED` from

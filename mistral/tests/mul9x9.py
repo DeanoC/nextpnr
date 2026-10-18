@@ -81,11 +81,21 @@ def main():
         assert len(sites) == 1, sites
         site = sites[0]
         settings = dict(re.findall(r"^s " + re.escape(site) + r":(\S+) (\S+)$", bt, re.M))
-        for key, expected in zip(("AX_SIGNED", "AY_SIGNED"), signs):
+        # Quartus sets both multipliers' sign bits for a signed operand.
+        for key, expected in zip(("AX_SIGNED", "BX_SIGNED", "AY_SIGNED", "BY_SIGNED"),
+                                 (signs[0], signs[0], signs[1], signs[1])):
             assert int(settings.get(key, "0")) == expected, (variant, key, settings)
+        # A signed lane-0 operand is sign-extended into the upper slice
+        # (groups 1 and 3). The fixture's sign bits are constants: a 0 leaves
+        # the slice unused (inverted), a 1 drives it high (not inverted).
+        sign_values = (int(mul["connections"]["A"][8]), int(mul["connections"]["B"][8]))
+        ext_masks = {}
+        for group, is_signed, sign in zip((1, 3), signs, sign_values):
+            if is_signed and sign:
+                ext_masks[group] = 0
         for group in range(12):
-            expected = masks[0] if group == 0 else masks[1] if group == 2 else 0x1ff
-            assert int(settings.get(f"DATA_INV.{group}", "0"), 16) == expected
+            expected = masks[0] if group == 0 else masks[1] if group == 2 else ext_masks.get(group, 0x1ff)
+            assert int(settings.get(f"DATA_INV.{group}", "0"), 16) == expected, (variant, group, settings)
         # Register bypass is the Mistral default; decomp emits nondefaults only.
         for key in ("INREG_CTRL_AX", "INREG_CTRL_AY", "OREG_CTRL"):
             assert settings.get(key, "BYPASS") == "BYPASS"

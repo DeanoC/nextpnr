@@ -106,6 +106,9 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "allow two clocks, or both edges of one clock, in a LAB using its CLKB source and per-pair "
                            "clock inversion (opt-in, see mistral/tests/lab_ff4)");
 
+    specific.add_options()("mistral-dsp-signed-lanes",
+                           "pack signed 9x9 multipliers three per DSP block using the block sign bits only "
+                           "(hardware-unverified; default mirrors Quartus and gives each signed 9x9 its own block)");
     specific.add_options()("replicate-enables", po::value<int>(),
                            "replicate timing-critical LUT enables after placement (budget 0..8, default 0)");
     specific.add_options()("critical-cohort-budget", po::value<int>(),
@@ -181,6 +184,7 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
     chipArgs.device = vm["device"].as<std::string>();
     // The second LAB clock adds pips to the routing graph, so it is fixed before the graph is built.
     chipArgs.lab_clkb = vm.count("mistral-clkb") != 0;
+    chipArgs.dsp_signed_lanes = vm.count("mistral-dsp-signed-lanes") != 0;
     auto ctx = std::unique_ptr<Context>(new Context(chipArgs));
     if (vm.count("compress-rbf"))
         ctx->settings[id_compress_rbf] = Property::State::S1;

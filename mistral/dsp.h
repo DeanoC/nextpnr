@@ -67,6 +67,19 @@ constexpr int mistral_dsp_27x27_result_port(int bit)
     return bit < 36 ? bit : bit + 1;
 }
 
+// Quartus implements a signed 9x9 product on lane 0 by sign-extending each
+// operand into the upper AX/AY slice (DATAIN groups 1 and 3) and setting all
+// four signedness bits. The upper slices are free in every lane assignment of
+// the three-lane mode, but lanes 1 and 2 have no spare slice, so a signed cell
+// owns its block unless --mistral-dsp-signed-lanes is given.
+constexpr int mistral_dsp_m9_a_ext_group = 1;
+constexpr int mistral_dsp_m9_b_ext_group = 3;
+
+// In M18X18P36 mode Quartus feeds a signed Y operand's nineteenth
+// (sign-extension) bit to DATAIN group 5 bit 8 and sets BY_SIGNED.
+constexpr int mistral_dsp_18x18_b_ext_group = 5;
+constexpr int mistral_dsp_18x18_b_ext_bit = 8;
+
 // Cyclone V three-multiplier mode packs three 9x9 products into the 27-bit
 // A/B inputs and the low 54 logical result bits. The physical RESULT port has
 // a one-bit hole at 36, so the third product starts at port 37. The order

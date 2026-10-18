@@ -610,7 +610,18 @@ bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
         data.bound) {
         // The mode-specific BELs are alternate views of one physical DSP
         // tile. Three M9 lanes may share a tile, while a wide multiplier owns
-        // the tile and cannot coexist with another mode.
+        // the tile and cannot coexist with another mode. A sign-extended M9
+        // cell uses the lane-0 upper slices, so it needs lane 0 and owns the
+        // tile.
+        auto m9_extended = [&](const CellInfo *cell) {
+            return cell->ports.count(id("A[9]")) || cell->ports.count(id("B[9]"));
+        };
+        const bool extended = data.type == id_MISTRAL_MUL9X9 && m9_extended(data.bound);
+        if (extended && bel.z != 0) {
+            if (explain_invalid)
+                log_info("Sign-extended MISTRAL_MUL9X9 %s needs DSP lane 0.\n", nameOf(data.bound));
+            return false;
+        }
         for (BelId other : getBelsByTile(bel.pos.x(), bel.pos.y())) {
             if (other == bel)
                 continue;
@@ -623,6 +634,11 @@ bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
                 if (explain_invalid)
                     log_info("DSP tile already contains multiplier mode %s; cannot place %s here.\n",
                              nameOf(other_data.type), nameOf(data.type));
+                return false;
+            }
+            if (data.type == id_MISTRAL_MUL9X9 && (extended || m9_extended(other_data.bound))) {
+                if (explain_invalid)
+                    log_info("DSP tile already contains a sign-extended M9 lane; it cannot share the tile.\n");
                 return false;
             }
             if (data.type == id_MISTRAL_MUL9X9 && !dsp_shared_config_equal(data.bound, other_data.bound)) {

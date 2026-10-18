@@ -1,0 +1,31 @@
+{
+ "source": "mul_u9_q.bt",
+ "quartus": "17.0.2 Build 602 Lite",
+ "device": "5CSEBA6U23I7",
+ "sites": [
+  {
+   "settings": {
+    "ACC_INV": "1",
+    "DATA_INV.1": "1ff",
+    "DATA_INV.10": "1ff",
+    "DATA_INV.11": "1ff",
+    "DATA_INV.3": "1ff",
+    "DATA_INV.4": "1ff",
+    "DATA_INV.5": "1ff",
+    "DATA_INV.6": "1ff",
+    "DATA_INV.7": "1ff",
+    "DATA_INV.8": "1ff",
+    "DATA_INV.9": "1ff",
+    "DEC_INV": "1",
+    "MODE": "M9X9",
+    "PRELOAD_INV": "1",
+    "SUB_INV": "1"
+   },
+   "groups_used": [
+    0,
+    2
+   ],
+   "groups_sign_replicated": []
+  }
+ ]
+}
