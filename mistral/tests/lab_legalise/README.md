@@ -7,7 +7,7 @@ One LAB holds two shapes that used to skip legalisation together.
 on D and E1.
 
 `plug_rdata_ff_10` is seed 6's constant 512: a BEL-locked flip-flop whose
-ALM has no LUT. Its constant 0 enters through a data route-through on F1.
+ALM has no LUT. Its constant 0 enters through a data route-through on D1.
 
 The flip-flop stays on the requested BEL at user strength. Enable is
 tied high. Async clear, sync clear, and sync load stay unconnected.

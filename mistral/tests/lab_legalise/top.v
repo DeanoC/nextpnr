@@ -43,7 +43,7 @@ endmodule
 // holds a BEL-locked socket flip-flop. Legalisation reads D and E1.
 //
 // Seed 6 constant 512: locked plug_rdata_ff_10 with no LUT in its ALM.
-// Its constant enters through a data route-through on F1.
+// Its constant enters through a data route-through on D1.
 module top (
     input wire clk,
     input wire pcm_a,

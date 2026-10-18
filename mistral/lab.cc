@@ -1309,7 +1309,9 @@ static AlmPrivatePinPlan plan_private_ff_pins(const Arch *arch, uint32_t lab, ui
     for (int i = 0; i < 2; i++) {
         direct[i] = half_has_direct_ff(arch, alm_data, i, luts[i]);
         private_count[i] = private_lut_inputs(luts[i], shared_nets);
-        takes_f[i] = arch->get_alm_route_through_ff(lab, alm, i) != nullptr || private_count[i] > 0;
+        // With the established C/D, E, F order, a LUT uses F only after its
+        // first two private inputs. Shared A/B reservations follow F.
+        takes_f[i] = private_count[i] > 2;
     }
     // F and C/D, plus a shared pin that is still free.
     const int spare = 2 + int(a_avail) + int(b_avail);
@@ -1448,16 +1450,11 @@ CellInfo *Arch::get_alm_route_through_ff(uint32_t lab, uint8_t alm, uint8_t half
 
 IdString Arch::alm_route_through_pin(uint32_t lab, uint8_t alm, uint8_t half) const
 {
-    const auto &alm_data = labs.at(lab).alms.at(alm);
-    std::array<CellInfo *, 2> luts{getBoundBelCell(alm_data.lut_bels[0]), getBoundBelCell(alm_data.lut_bels[1])};
-    dict<IdString, int> shared_nets = shared_lut_nets(luts);
-    bool a_avail = shared_nets.size() == 0, b_avail = shared_nets.size() <= 1;
-    AlmPrivatePinPlan ff_pins = plan_private_ff_pins(this, lab, alm, luts, shared_nets, a_avail, b_avail);
-    // F is the fastest half-specific input. Move to E when the other half's
-    // flip-flop has no other fabric pin.
-    if (ff_pins.release_f[half])
-        return half ? id_E1 : id_E0;
-    return half ? id_F1 : id_F0;
+    (void)lab;
+    (void)alm;
+    // A route-through is inserted only in an empty LUT half, so its dedicated
+    // C/D input is free. Keep the pre-#213 assignment to avoid rerouting FES.
+    return half ? id_D : id_C;
 }
 
 void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)

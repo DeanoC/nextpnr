@@ -75,8 +75,8 @@ TEST_F(LabPinmapTest, UserLockedSocketStillLegalisesOtherArithmeticInputs)
     EXPECT_EQ(buffer->type, id_MISTRAL_BUF);
     EXPECT_EQ(buffer->getPort(id_Q), socket->getPort(id_DATAIN));
     EXPECT_EQ(buffer->getPort(id_A), ctx->nets.at(ctx->id("socket_input")).get());
-    // Loc(24, 1, 2) is ALM 0 FF0, the top half. The route-through uses F0.
-    EXPECT_EQ(buffer->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_F0});
+    // Loc(24, 1, 2) is ALM 0 FF0, the top half. The route-through uses C.
+    EXPECT_EQ(buffer->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_C});
 }
 
 TEST_F(LabPinmapTest, RestoredScaffoldPreservesPinmapsAndDataInput)
@@ -497,11 +497,12 @@ TEST(LutPlacementTiming, DirectDataFlipFlopDoesNotShareItsFabricPin)
     ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 16)), thru, STRENGTH_STRONG);
     ctx.lab_pre_route();
     auto pin = [](CellInfo *cell, IdString port) { return cell->pin_data.at(port).bel_pins.at(0); };
-    // Four inputs fit on C, F, B and A, leaving E0 for the flip-flop.
+    // The other LUT uses D/E1 only, so the flip-flop can use F1 and the top
+    // LUT keeps the established C/E0/F0/B allocation.
     EXPECT_EQ(pin(wide, id_A), id_C);
-    EXPECT_EQ(pin(wide, id_B), id_F0);
-    EXPECT_EQ(pin(wide, id_C), id_B);
-    EXPECT_EQ(pin(wide, id_D), id_A);
+    EXPECT_EQ(pin(wide, id_B), id_E0);
+    EXPECT_EQ(pin(wide, id_C), id_F0);
+    EXPECT_EQ(pin(wide, id_D), id_B);
     EXPECT_EQ(pin(mate, id_A), id_D);
     EXPECT_EQ(pin(mate, id_B), id_E1);
     // Five inputs need E and F. The other LUT leaves F0 for the flip-flop.
@@ -512,7 +513,7 @@ TEST(LutPlacementTiming, DirectDataFlipFlopDoesNotShareItsFabricPin)
     EXPECT_EQ(pin(full, id_C), id_F1);
     EXPECT_EQ(pin(full, id_D), id_B);
     EXPECT_EQ(pin(full, id_E), id_A);
-    // A route-through on the other half uses E1, leaving the full private pool.
+    // A route-through on the other half uses D, leaving the full private pool.
     EXPECT_EQ(pin(chain, id_A), id_C);
     EXPECT_EQ(pin(chain, id_B), id_E0);
     EXPECT_EQ(pin(chain, id_C), id_F0);
@@ -520,7 +521,7 @@ TEST(LutPlacementTiming, DirectDataFlipFlopDoesNotShareItsFabricPin)
     EXPECT_EQ(pin(chain, id_E), id_A);
     auto *buffer = ctx.cells.at(ctx.id("thru$ROUTETHRU")).get();
     EXPECT_EQ(buffer->type, id_MISTRAL_BUF);
-    EXPECT_EQ(buffer->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_E1});
+    EXPECT_EQ(buffer->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_D});
     EXPECT_EQ(buffer->getPort(id_Q), thru->getPort(id_DATAIN));
 }
 
@@ -591,12 +592,14 @@ TEST(LutPlacementTiming, SynchronousLoadKeepsASelectorInput)
     EXPECT_TRUE(ctx.is_alm_legal(full_lab.lab, full_lab.alm));
     ctx.lab_pre_route();
     auto pin = [](CellInfo *cell, IdString port) { return cell->pin_data.at(port).bel_pins.at(0); };
-    // Two inputs fit on C and F, leaving E0 for SDATA. The other LUT still has E1.
+    // Both LUTs use their established C/D and E pins. The top load can select
+    // the unused F1 from the other half for SDATA.
     EXPECT_EQ(pin(top, id_A), id_C);
-    EXPECT_EQ(pin(top, id_B), id_F0);
-    EXPECT_FALSE(uses(top, id_E0));
+    EXPECT_EQ(pin(top, id_B), id_E0);
+    EXPECT_TRUE(uses(top, id_E0));
     EXPECT_EQ(pin(bottom, id_A), id_D);
     EXPECT_EQ(pin(bottom, id_B), id_E1);
+    EXPECT_FALSE(uses(bottom, id_F1));
     // Five inputs need E0, so the other LUT leaves F1 for SDATA.
     EXPECT_TRUE(uses(full, id_E0));
     EXPECT_FALSE(uses(mate, id_F1));
