@@ -51,6 +51,12 @@ TEST(CommandSettingOverrides, RejectsMalformedArguments)
     }
 }
 
+TEST(CommandSettingOverrides, ParsesSeedAsUnsignedInteger)
+{
+    EXPECT_EQ(parse_command_setting_seed("123"), 123u);
+    EXPECT_THROW(parse_command_setting_seed("not-a-number"), std::invalid_argument);
+}
+
 TEST(CommandSettingOverrides, AppliesValuesToSettings)
 {
     std::map<std::string, std::string> settings;

@@ -38,6 +38,7 @@ class NexusCommandHandler : public CommandHandler
 
   protected:
     po::options_description getArchOptions() override;
+    std::set<std::string> getArchSettingKeys() const override;
 };
 
 NexusCommandHandler::NexusCommandHandler(int argc, char **argv) : CommandHandler(argc, argv) {}
@@ -56,6 +57,22 @@ po::options_description NexusCommandHandler::getArchOptions()
     specific.add_options()("estimate-delay-mult", po::value<int>(), "multiplier for the estimate delay");
 
     return specific;
+}
+
+std::set<std::string> NexusCommandHandler::getArchSettingKeys() const
+{
+    std::set<std::string> keys;
+    if (vm.count("device"))
+        keys.insert("arch.type");
+    if (vm.count("no-post-place-opt"))
+        keys.insert("no_post_place_opt");
+    if (vm.count("no-pack-lutff"))
+        keys.insert("no_pack_lutff");
+    if (vm.count("carry-lutff-ratio"))
+        keys.insert("carry_lutff_ratio");
+    if (vm.count("estimate-delay-mult"))
+        keys.insert("estimate-delay-mult");
+    return keys;
 }
 
 void NexusCommandHandler::customBitstream(Context *ctx)

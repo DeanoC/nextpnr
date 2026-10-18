@@ -19,6 +19,9 @@
 #ifndef COMMAND_SETTINGS_H
 #define COMMAND_SETTINGS_H
 
+#include <boost/lexical_cast.hpp>
+
+#include <cstdint>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -51,6 +54,15 @@ inline std::vector<CommandSettingOverride> parse_command_setting_overrides(const
     for (const auto &argument : arguments)
         overrides.push_back(parse_command_setting_override(argument));
     return overrides;
+}
+
+inline uint64_t parse_command_setting_seed(const std::string &value)
+{
+    try {
+        return boost::lexical_cast<uint64_t>(value);
+    } catch (const boost::bad_lexical_cast &) {
+        throw std::invalid_argument("--set seed expects an unsigned integer, got '" + value + "'");
+    }
 }
 
 inline void validate_command_setting_override_conflicts(const std::vector<CommandSettingOverride> &overrides,

@@ -39,6 +39,7 @@ class MachXO2CommandHandler : public CommandHandler
 
   protected:
     po::options_description getArchOptions() override;
+    std::set<std::string> getArchSettingKeys() const override;
 };
 
 MachXO2CommandHandler::MachXO2CommandHandler(int argc, char **argv) : CommandHandler(argc, argv) {}
@@ -56,6 +57,16 @@ po::options_description MachXO2CommandHandler::getArchOptions()
     specific.add_options()("disable-router-lutperm", "don't allow the router to permute LUT inputs");
 
     return specific;
+}
+
+std::set<std::string> MachXO2CommandHandler::getArchSettingKeys() const
+{
+    std::set<std::string> keys;
+    if (vm.count("device"))
+        keys.insert("arch.type");
+    if (vm.count("disable-router-lutperm"))
+        keys.insert("arch.disable_router_lutperm");
+    return keys;
 }
 
 void MachXO2CommandHandler::customBitstream(Context *ctx)

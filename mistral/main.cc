@@ -141,6 +141,8 @@ po::options_description MistralCommandHandler::getArchOptions()
 std::set<std::string> MistralCommandHandler::getArchSettingKeys() const
 {
     std::set<std::string> keys;
+    if (vm.count("device"))
+        keys.insert("arch.type");
     if (vm.count("compress-rbf"))
         keys.insert("compress_rbf");
     if (vm.count("isolated-lut-placement"))

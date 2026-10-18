@@ -57,9 +57,11 @@ architecture's `Arch::route()` plus an entry in `availableRouters`.
 
 `--set` stores the value as a string setting. The first `=` separates the key
 from the value, so values may contain additional `=` characters. The key must
-not be empty. If `--set` and a dedicated command-line option target the same
-setting, nextpnr reports a conflict; remove one of them. Repeating `--set` for
-the same key is allowed, and the last `--set` value is used.
+not be empty. `--set seed=N` is special: `N` must be an unsigned integer and
+sets the actual nextpnr RNG seed. If `--set` and a dedicated command-line
+option target the same setting, nextpnr reports a conflict; remove one of them.
+Repeating `--set` for the same key is allowed, and the last `--set` value is
+used.
 
 Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 

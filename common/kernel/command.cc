@@ -123,14 +123,6 @@ std::set<std::string> dedicated_command_setting_keys(const po::variables_map &vm
     return keys;
 }
 
-void apply_command_setting_overrides(Context *ctx, const po::variables_map &vm)
-{
-    if (!vm.count("set"))
-        return;
-    const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
-    apply_command_setting_overrides(ctx->settings, [ctx](const std::string &key) { return ctx->id(key); }, overrides);
-}
-
 } // namespace
 
 static std::string npnr_share_dirname;
@@ -335,6 +327,9 @@ bool CommandHandler::parseOptions()
         po::notify(vm);
         if (vm.count("set")) {
             const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
+            for (const auto &override : overrides)
+                if (override.key == "seed")
+                    parse_command_setting_seed(override.value);
             auto dedicated_keys = dedicated_command_setting_keys(vm);
             const auto arch_keys = getArchSettingKeys();
             dedicated_keys.insert(arch_keys.begin(), arch_keys.end());
@@ -697,6 +692,25 @@ void CommandHandler::setupContext(Context *ctx)
     }
 }
 
+void CommandHandler::applySettingOverrides(Context *ctx, bool seed_rng)
+{
+    if (!vm.count("set"))
+        return;
+
+    const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
+    for (const auto &override : overrides) {
+        if (override.key == "seed") {
+            const auto seed = parse_command_setting_seed(override.value);
+            if (seed_rng)
+                ctx->rngseed(seed);
+            telemetry_seed = std::to_string(seed);
+            ctx->settings[ctx->id("seed")] = Property(seed, 64);
+        } else {
+            ctx->settings[ctx->id(override.key)] = override.value;
+        }
+    }
+}
+
 void CommandHandler::restoreTelemetrySettings(Context *ctx)
 {
     // Observer destinations belong to this invocation, never to a checkpoint.
@@ -732,6 +746,9 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
     if (vm.count("top")) {
         ctx->settings[ctx->id("frontend/top")] = vm["top"].as<std::string>();
     }
+    // Frontends may consult settings while importing JSON (for example, to
+    // select a top module), so install generic overrides before loading too.
+    applySettingOverrides(ctx.get(), true);
 
 #ifndef NO_GUI
     if (vm.count("gui")) {
@@ -749,6 +766,7 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
                     auto sdc_stream = open_ifstream_and_log_error(sdc_filename, "SDC file");
                     w.getContext()->read_sdc(sdc_stream);
                 }
+                applySettingOverrides(w.getContext(), true);
 
                 customAfterLoad(w.getContext());
                 w.notifyChangeContext();
@@ -760,7 +778,7 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
         }
 
         restoreTelemetrySettings(w.getContext());
-        apply_command_setting_overrides(w.getContext(), vm);
+        applySettingOverrides(w.getContext(), false);
 
         w.show();
 
@@ -780,10 +798,13 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
             ctx->read_sdc(sdc_stream);
         }
 
+        // Architecture hooks can consume settings while loading constraints or
+        // merging auxiliary designs, so apply overrides before those hooks.
+        applySettingOverrides(ctx.get(), true);
         customAfterLoad(ctx.get());
     }
     restoreTelemetrySettings(ctx.get());
-    apply_command_setting_overrides(ctx.get(), vm);
+    applySettingOverrides(ctx.get(), false);
 
 #ifndef NO_PYTHON
     init_python(argv[0]);
@@ -922,13 +943,15 @@ void CommandHandler::load_json(Context *ctx, std::string filename)
 {
     setupContext(ctx);
     setupArchContext(ctx);
+    applySettingOverrides(ctx, true);
     {
         auto f = open_ifstream_and_log_error(filename, "JSON file");
         if (!parse_json(f, filename, ctx))
             log_error("Loading design failed.\n");
     }
+    applySettingOverrides(ctx, true);
     restoreTelemetrySettings(ctx);
-    apply_command_setting_overrides(ctx, vm);
+    applySettingOverrides(ctx, false);
 }
 
 void CommandHandler::clear() { vm.clear(); }

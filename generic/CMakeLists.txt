@@ -38,3 +38,9 @@ add_nextpnr_architecture(${family}
 )
 
 target_sources(nextpnr-${family}-chipdb PUBLIC chipdb.cc)
+
+if (BUILD_TESTS)
+    add_test(NAME nextpnr-${family}-command-settings-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/command_settings_cli.py
+                $<TARGET_FILE:nextpnr-${family}>)
+endif()

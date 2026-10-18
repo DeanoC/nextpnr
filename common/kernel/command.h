@@ -56,6 +56,7 @@ class CommandHandler
     bool parseOptions();
     bool executeBeforeContext();
     void setupContext(Context *ctx);
+    void applySettingOverrides(Context *ctx, bool seed_rng);
     void restoreTelemetrySettings(Context *ctx);
     int executeMain(std::unique_ptr<Context> ctx);
     po::options_description getGeneralOptions();
