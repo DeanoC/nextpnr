@@ -1,0 +1,6 @@
+---
+description: Follow repository routing equivalence guidance for HIP, CUDA, and CPU routes.
+alwaysApply: true
+---
+
+Follow the repository-level routing guidance in [AGENTS.md](../../AGENTS.md), including the HIP/CUDA/CPU routing equivalence rule.
