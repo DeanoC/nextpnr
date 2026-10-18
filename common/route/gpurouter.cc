@@ -1041,8 +1041,14 @@ struct GpuRouter
             td.fanout = std::max<int>(1, int(ni->users.entries()));
             // A route found inside the negotiation box is kept, so a failing
             // arc never gets the unbounded retry. Grow that box while setup
-            // slack is still negative.
-            int grow = (repair_mode && repair_widen && !candidate_mode) ? std::max(cfg.repair_bb_expand, 0) : 0;
+            // slack is still negative. The stored box is int16 and is clamped
+            // to the device, so cap the growth there too: a huge setting would
+            // overflow the int sum before that clamp and wrap the box.
+            int grow = 0;
+            if (repair_mode && repair_widen && !candidate_mode && cfg.repair_bb_expand > 0) {
+                const int device = std::max(ctx->getGridDimX(), ctx->getGridDimY());
+                grow = std::min(cfg.repair_bb_expand, std::max(device, 0));
+            }
             td.bb_x0 = int16_t(std::max(nd.bb.x0 - grow, 0));
             td.bb_y0 = int16_t(std::max(nd.bb.y0 - grow, 0));
             td.bb_x1 = int16_t(std::min(nd.bb.x1 + grow, ctx->getGridDimX()));
@@ -2300,20 +2306,34 @@ struct GpuRouter
     int displaced_total = 0;
 
     // The pure-delay route kept above may have dodged a frozen peer. Search
-    // again with those reservations ignored, and keep the route when it is
-    // faster and every peer it touches has slack to spare. Returns the
+    // again with those reservations ignored, and keep the route when the
+    // worst setup slack of these arcs does not fall and every peer it touches
+    // has slack to spare. A lower delay sum is not enough. Returns the
     // picoseconds saved, or 0 when the previous route stays.
     int take_faster_reserved_route(int net, const std::vector<std::pair<int, int>> &arcs)
     {
         if (arcs.empty() || !cfg.repair_displace)
             return 0;
         auto &nd = nets.at(net);
+        NetInfo *ni = nets_by_udata.at(net);
+        struct PreviousArc
+        {
+            std::pair<int, int> arc;
+            delay_t delay;
+            float slack;
+        };
+        std::vector<PreviousArc> previous;
         delay_t before = 0;
+        float old_worst = std::numeric_limits<float>::infinity();
         for (auto &a : arcs) {
             auto &ad = nd.arcs.at(a.first).at(a.second);
             if (!ad.routed)
                 return 0;
-            before += get_route_delay(nd, ad);
+            delay_t delay = get_route_delay(nd, ad);
+            float slack = tmg.get_setup_slack(CellPortKey(ni->users.at(store_index<PortRef>(a.first))));
+            before += delay;
+            old_worst = std::min(old_worst, slack);
+            previous.push_back(PreviousArc{a, delay, slack});
         }
         NetData checkpoint = nd;
         for (auto &a : arcs)
@@ -2332,18 +2352,28 @@ struct GpuRouter
             for (auto &a : r.arcs)
                 failed.insert(a);
         delay_t after = 0;
+        float new_worst = std::numeric_limits<float>::infinity();
         bool better = failed.empty();
         if (better) {
-            for (auto &a : arcs) {
-                auto &ad = nd.arcs.at(a.first).at(a.second);
+            for (auto &prev : previous) {
+                auto &ad = nd.arcs.at(prev.arc.first).at(prev.arc.second);
                 if (!ad.routed) {
                     better = false;
                     break;
                 }
-                after += get_route_delay(nd, ad);
+                delay_t delay = get_route_delay(nd, ad);
+                after += delay;
+                // Timing is not refreshed until the round ends. Estimate each
+                // arc's new slack from its own delay change: a smaller sum can
+                // still slow the critical sink.
+                new_worst = std::min(new_worst, prev.slack - float(delay - prev.delay));
             }
         }
-        if (!better || after >= before) {
+        // Accept only when the worst setup slack of these arcs does not fall.
+        // A tie keeps the previous route unless the delay sum is actually lower.
+        const bool slack_worse = new_worst < old_worst - 1.0f;
+        const bool slack_better = new_worst > old_worst + 1.0f;
+        if (!better || slack_worse || (!slack_better && after >= before)) {
             restore_net(net, checkpoint);
             return 0;
         }
@@ -2355,7 +2385,7 @@ struct GpuRouter
         }
         for (auto &a : arcs)
             displace_for(net, a);
-        return int(before - after);
+        return after < before ? int(before - after) : 0;
     }
 
     // Rip and re-route the given arcs of one net. Returns the still-unrouted ones.

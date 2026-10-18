@@ -474,3 +474,83 @@ TEST(LutPlacementTiming, DirectDataFlipFlopDoesNotShareItsFabricPin)
     EXPECT_EQ(buffer->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_E1});
     EXPECT_EQ(buffer->getPort(id_Q), thru->getPort(id_DATAIN));
 }
+
+TEST(LutPlacementTiming, SynchronousLoadKeepsASelectorInput)
+{
+    // sel_ef of a half is fed by that half's E and the other half's F.
+    // Legality accepts SDATA when the other LUT has at most two inputs,
+    // which used to leave that F free. Fastest-first takes F first, so the
+    // load has to keep E, or the other LUT has to leave F free.
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    Context ctx(args);
+    ctx.createNet(ctx.id("$PACKER_GND_NET"));
+    ctx.createNet(ctx.id("$PACKER_VCC_NET"));
+    auto *clock = ctx.createNet(ctx.id("clock"));
+    clock->is_global = true;
+    const std::array<IdString, 5> pins{id_A, id_B, id_C, id_D, id_E};
+    const std::array<IdString, 5> types{id_MISTRAL_BUF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
+                                        id_MISTRAL_ALUT5};
+    auto make_lut = [&](const char *name, int width) {
+        auto *cell = ctx.createCell(ctx.id(name), types.at(width - 1));
+        for (int i = 0; i < width; ++i) {
+            cell->addInput(pins.at(i));
+            cell->connectPort(pins.at(i), ctx.createNet(ctx.idf("%s_%s", name, ctx.nameOf(pins.at(i)))));
+        }
+        cell->addOutput(id_Q);
+        cell->connectPort(id_Q, ctx.createNet(ctx.idf("%s_q", name)));
+        return cell;
+    };
+    auto make_load = [&](const char *name, NetInfo *datain) {
+        auto *cell = ctx.createCell(ctx.id(name), id_MISTRAL_FF);
+        for (IdString pin : {id_CLK, id_ENA, id_ACLR, id_SCLR, id_SLOAD, id_SDATA, id_DATAIN})
+            cell->addInput(pin);
+        cell->addOutput(id_Q);
+        cell->connectPort(id_CLK, clock);
+        cell->connectPort(id_DATAIN, datain);
+        cell->connectPort(id_SLOAD, ctx.createNet(ctx.idf("%s_sload", name)));
+        cell->connectPort(id_SDATA, ctx.createNet(ctx.idf("%s_sdata", name)));
+        cell->connectPort(id_Q, ctx.createNet(ctx.idf("%s_q", name)));
+        cell->pin_data[id_ENA].state = PIN_1;
+        cell->pin_data[id_ACLR].state = PIN_1;
+        cell->pin_data[id_SCLR].state = PIN_0;
+        return cell;
+    };
+    auto uses = [](CellInfo *cell, IdString pin) {
+        for (const auto &port : cell->pin_data)
+            for (IdString physical : port.second.bel_pins)
+                if (physical == pin)
+                    return true;
+        return false;
+    };
+    auto *top = make_lut("top", 2);
+    auto *bottom = make_lut("bottom", 2);
+    auto *load = make_load("load", top->getPort(id_Q));
+    auto *full = make_lut("full", 5);
+    auto *mate = make_lut("mate", 2);
+    auto *full_load = make_load("full_load", full->getPort(id_Q));
+    ctx.assignArchInfo();
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 0)), top, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 1)), bottom, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 2)), load, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 6)), full, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 7)), mate, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 8)), full_load, STRENGTH_STRONG);
+    const auto top_lab = ctx.bel_data(top->bel).lab_data;
+    const auto full_lab = ctx.bel_data(full->bel).lab_data;
+    EXPECT_TRUE(ctx.is_alm_legal(top_lab.lab, top_lab.alm));
+    EXPECT_TRUE(ctx.is_alm_legal(full_lab.lab, full_lab.alm));
+    ctx.lab_pre_route();
+    auto pin = [](CellInfo *cell, IdString port) { return cell->pin_data.at(port).bel_pins.at(0); };
+    // Two inputs fit on F and C, leaving E0 for SDATA. The other LUT still uses F1.
+    EXPECT_EQ(pin(top, id_A), id_F0);
+    EXPECT_EQ(pin(top, id_B), id_C);
+    EXPECT_FALSE(uses(top, id_E0));
+    EXPECT_EQ(pin(bottom, id_A), id_F1);
+    EXPECT_EQ(pin(bottom, id_B), id_E1);
+    // Five inputs need E0, so the other LUT leaves F1 for SDATA.
+    EXPECT_TRUE(uses(full, id_E0));
+    EXPECT_FALSE(uses(mate, id_F1));
+    EXPECT_EQ(pin(mate, id_A), id_E1);
+    EXPECT_EQ(pin(mate, id_B), id_D);
+}

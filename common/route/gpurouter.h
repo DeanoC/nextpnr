@@ -116,7 +116,8 @@ struct GpuRouterCfg
     // Tiles added to the net box for a pure-delay search while setup slack is
     // still negative. The first search is the one that is kept when it finds
     // a route, so a failing arc has to see past the negotiation box. 0 keeps
-    // that box.
+    // that box. Growth is capped at the device size: the box is int16 and
+    // already clamped to the grid, and a larger addend can overflow first.
     int repair_bb_expand;
     // When a later same-band repair is blocked by an already-frozen peer,
     // those nets are ripped together and re-routed at pure delay plus this

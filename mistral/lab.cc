@@ -1278,14 +1278,19 @@ static bool half_has_direct_ff(const Arch *arch, const ALMInfo &alm_data, int ha
         NetInfo *din = ff->getPort(id_DATAIN);
         if (din && din != lut_q)
             return true;
+        // Synchronous load uses the same selector as direct DATAIN: this
+        // half's E, or the other half's F. Legality treats a LUT with at
+        // most two inputs as leaving that F free; fastest-first does not.
+        if (ff->getPort(id_SDATA))
+            return true;
     }
     return false;
 }
 
-// A direct-data flip-flop enters through this half's E or the other half's F.
-// Fastest-first puts the other LUT on F. Keep E for the flip-flop when the LUT
-// can spare it. A LUT that needs every pin, including E, makes the other half
-// leave F free instead.
+// A direct-data or synchronous-load flip-flop enters through this half's E
+// or the other half's F. Fastest-first puts the other LUT on F. Keep E for
+// the flip-flop when the LUT can spare it. A LUT that needs every pin,
+// including E, makes the other half leave F free instead.
 struct AlmPrivatePinPlan
 {
     std::array<bool, 2> keep_e{false, false};
@@ -1366,7 +1371,8 @@ void Arch::assign_alm_lut_inputs(uint32_t lab, uint8_t alm)
             std::vector<IdString> avail_phys_ports;
             // F, then E, then C/D, then B, A. lut_placement_pin uses this isolated order.
             // In arithmetic mode, Ei can only be used for D0 and Fi can only be used for D1.
-            // A direct-data flip-flop keeps E, or takes the other half's F when this LUT cannot spare E.
+            // A direct-data or synchronous-load flip-flop keeps E, or takes the other half's F
+            // when this LUT cannot spare E.
             if (!luts[i]->combInfo.is_carry) {
                 if (!ff_pins.release_f[i])
                     avail_phys_ports.push_back((i == 1) ? id_F1 : id_F0);
