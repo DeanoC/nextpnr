@@ -14,6 +14,7 @@ target_sources(nextpnr_kernel PUBLIC
     chain_utils.h
     command.cc
     command.h
+    command_settings.h
     context.cc
     context.h
     design_utils.cc
@@ -59,6 +60,17 @@ target_sources(nextpnr_kernel PUBLIC
     timing_log.cc
     util.h
 )
+
+if (BUILD_TESTS)
+    add_executable(nextpnr-command-settings-test tests/command_settings.cc)
+    target_include_directories(nextpnr-command-settings-test PRIVATE
+        ${CMAKE_SOURCE_DIR}/3rdparty/googletest/googletest/include
+        .
+    )
+    target_link_libraries(nextpnr-command-settings-test PRIVATE gtest_main)
+    set_property(TARGET nextpnr-command-settings-test PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+    add_test(NAME nextpnr-command-settings-test COMMAND nextpnr-command-settings-test)
+endif()
 
 target_link_libraries(nextpnr_kernel INTERFACE
     nextpnr_version
