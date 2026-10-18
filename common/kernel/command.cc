@@ -104,6 +104,7 @@ std::set<std::string> dedicated_command_setting_keys(const po::variables_map &vm
     add("router2-alt-weights", "router2/alt-weights");
     add("gpu-device", "gpurouter/device");
     add("gpu-cpu", "gpurouter/cpu");
+    add("gpu-required", "gpurouter/required");
     add("gpu-perf", "gpurouter/perfProfile");
     add("gpu-batches", "gpurouter/maxBatches");
     add("static-dump-density", "static/dump_density");
