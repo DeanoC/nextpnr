@@ -104,6 +104,7 @@ std::set<std::string> dedicated_command_setting_keys(const po::variables_map &vm
     add("router2-alt-weights", "router2/alt-weights");
     add("gpu-device", "gpurouter/device");
     add("gpu-cpu", "gpurouter/cpu");
+    add("gpu-required", "gpurouter/required");
     add("gpu-perf", "gpurouter/perfProfile");
     add("gpu-batches", "gpurouter/maxBatches");
     add("static-dump-density", "static/dump_density");
@@ -484,6 +485,7 @@ po::options_description CommandHandler::getGeneralOptions()
     general.add_options()("router2-alt-weights", "use alternate router2 weights");
     general.add_options()("gpu-device", po::value<int>(), "GPU device index for --router gpu (default: most compute units)");
     general.add_options()("gpu-cpu", "run --router gpu on the sequential CPU reference backend");
+    general.add_options()("gpu-required", "fail if --router gpu cannot use a GPU device");
     general.add_options()("gpu-perf", "print GPU router timing and backend statistics");
     general.add_options()("gpu-telemetry", po::value<std::string>(),
                           "write opt-in GPU router telemetry as versioned JSONL (refuses existing files)");
@@ -637,6 +639,8 @@ void CommandHandler::setupContext(Context *ctx)
         ctx->settings[ctx->id("gpurouter/device")] = vm["gpu-device"].as<int>();
     if (vm.count("gpu-cpu"))
         ctx->settings[ctx->id("gpurouter/cpu")] = true;
+    if (vm.count("gpu-required"))
+        ctx->settings[ctx->id("gpurouter/required")] = true;
     if (vm.count("gpu-perf"))
         ctx->settings[ctx->id("gpurouter/perfProfile")] = true;
     if (vm.count("gpu-batches"))
@@ -648,6 +652,19 @@ void CommandHandler::setupContext(Context *ctx)
                 log_error("--gpu-opt expects name=value, got '%s'\n", opt.c_str());
             ctx->settings[ctx->id("gpurouter/" + opt.substr(0, eq))] = opt.substr(eq + 1);
         }
+    }
+    if (vm.count("gpu-required")) {
+        if (vm.count("gpu-opt")) {
+            for (const auto &opt : vm["gpu-opt"].as<std::vector<std::string>>()) {
+                size_t eq = opt.find('=');
+                if (eq != std::string::npos && opt.substr(0, eq) == "required" &&
+                    (opt.substr(eq + 1) == "false" || opt.substr(eq + 1) == "0"))
+                    log_error("--gpu-required conflicts with --gpu-opt required=false (or required=0)\n");
+            }
+        }
+        if (!ctx->setting<bool>("gpurouter/required", true))
+            log_error("--gpu-required conflicts with --gpu-opt required=false (or required=0)\n");
+        ctx->settings[ctx->id("gpurouter/required")] = true;
     }
 
     if (vm.count("static-dump-density"))
@@ -722,21 +739,25 @@ void CommandHandler::applySdcClockOverrides(Context *ctx)
 
 void CommandHandler::applySettingOverrides(Context *ctx)
 {
-    if (!vm.count("set"))
-        return;
-
-    const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
-    for (const auto &override : overrides) {
-        if (override.key == "seed") {
-            const auto seed = parse_command_setting_seed(override.value);
-            telemetry_seed = std::to_string(seed);
-            // The live RNG was seeded before import. Keep its advanced state
-            // in the checkpoint, even if the imported JSON had another seed.
-            ctx->settings[ctx->id("seed")] = Property(ctx->rngstate, 64);
-        } else {
-            ctx->settings[ctx->id(override.key)] = override.value;
+    if (vm.count("set")) {
+        const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
+        for (const auto &override : overrides) {
+            if (override.key == "seed") {
+                const auto seed = parse_command_setting_seed(override.value);
+                telemetry_seed = std::to_string(seed);
+                // The live RNG was seeded before import. Keep its advanced state
+                // in the checkpoint, even if the imported JSON had another seed.
+                ctx->settings[ctx->id("seed")] = Property(ctx->rngstate, 64);
+            } else {
+                ctx->settings[ctx->id(override.key)] = override.value;
+            }
         }
     }
+
+    // Imported checkpoints and later setting overrides must not weaken the
+    // explicit command-line guarantee.
+    if (vm.count("gpu-required"))
+        ctx->settings[ctx->id("gpurouter/required")] = true;
 }
 
 void CommandHandler::restoreTelemetrySettings(Context *ctx)

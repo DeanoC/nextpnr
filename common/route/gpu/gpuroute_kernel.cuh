@@ -740,6 +740,7 @@ class DeviceBackend : public Backend
             GPU_CHECK(hipSetDevice(device_));
             hipDeviceProp_t prop;
             GPU_CHECK(hipGetDeviceProperties(&prop, device_));
+            device_name_ = prop.name;
             char pci_bus_id[64] = {};
             GPU_CHECK(hipDeviceGetPCIBusId(pci_bus_id, sizeof(pci_bus_id), device_));
 #if defined(GPUROUTE_HAS_DEVICE_UUID)
@@ -868,11 +869,14 @@ class DeviceBackend : public Backend
     }
 
     const char *name() const override { return name_.c_str(); }
+    int device_index() const override { return device_; }
+    const char *device_name() const override { return device_name_.c_str(); }
     const BackendStats &stats() const override { return stats_; }
 
   private:
     int device_;
     std::string name_;
+    std::string device_name_;
     int32_t n_wires_ = 0;
     DevBuf<int32_t> out_off_, out_dst_;
     DevBuf<float> edge_cost_;

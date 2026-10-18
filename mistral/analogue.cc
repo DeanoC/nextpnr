@@ -44,6 +44,7 @@
 #include <thread>
 
 #include "analogue_jobs.h"
+#include "analogue_repair.h"
 #include "gpurouter.h"
 #include "log.h"
 #include "nextpnr.h"
@@ -653,17 +654,19 @@ bool Arch::analogue_repair()
             settings[repair_slack_key] = std::to_string(rip_slack);
         current_timed = false;
         try {
-            GpuRouterCfg cfg(ctx);
-            cfg.stop_requested = expired;
-            cfg.legality_timing_gate = !signoff_after_route;
-            // The top-level router has already closed its complete stream;
-            // analogue repair helpers must not reopen the exclusive path.
-            cfg.telemetry_path.clear();
-            result = gpurouter(ctx, cfg, false);
+            result = try_analogue_repair_reroute(round + 1, [&]() {
+                GpuRouterCfg cfg(ctx);
+                cfg.stop_requested = expired;
+                cfg.legality_timing_gate = !signoff_after_route;
+                // The top-level router has already closed its complete stream;
+                // analogue repair helpers must not reopen the exclusive path.
+                cfg.telemetry_path.clear();
+                return gpurouter(ctx, cfg, false);
+            });
         } catch (log_execution_error_exception &) {
-            // Keep the best legal routing rather than failing the design.
-            log_warning("analogue repair round %d could not route; keeping the best earlier round\n", round + 1);
-            result = false;
+            if (!user_repair_slack)
+                settings.erase(repair_slack_key);
+            throw;
         }
         if (!user_repair_slack)
             settings.erase(repair_slack_key);

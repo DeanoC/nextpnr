@@ -35,6 +35,8 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
 #include <functional>
 #include <limits>
 #include <mutex>
@@ -59,6 +61,15 @@ namespace {
 
 using Clock = std::chrono::steady_clock;
 inline double secs_since(Clock::time_point t) { return std::chrono::duration<double>(Clock::now() - t).count(); }
+
+[[noreturn]] void log_gpu_required_failure(const char *message, const std::string &error)
+{
+    try {
+        log_error("%s: %s\n", message, error.c_str());
+    } catch (const log_execution_error_exception &) {
+        throw GpuRequiredFailure{};
+    }
+}
 
 struct GpuRouter
 {
@@ -2899,18 +2910,17 @@ struct GpuRouter
     void setup_all()
     {
         std::string err;
-        if (cfg.cpu_backend) {
-            backend = gpuroute::create_cpu_backend();
-        } else {
-            backend = gpuroute::create_device_backend(cfg.device, err);
-            if (!backend) {
-                log_warning("GPU router: %s; falling back to the CPU reference backend.\n", err.c_str());
-                backend = gpuroute::create_cpu_backend();
-            }
-        }
+        auto selected_backend = gpuroute::select_routing_backend(cfg.device, cfg.cpu_backend, cfg.gpu_required, err);
+        if (!selected_backend.backend)
+            log_gpu_required_failure("GPU use is required, but the GPU router could not open a device", err);
+        if (selected_backend.cpu_fallback)
+            log_warning("GPU router: %s; falling back to the CPU reference backend.\n", err.c_str());
+        const bool gpu_backend_selected = !cfg.cpu_backend && !selected_backend.cpu_fallback;
+        backend = std::move(selected_backend.backend);
         if (!cfg.cpu_backend && gpuroute::device_backend_available() && ctx->verbose)
             log_info("    GPU devices: %s\n", gpuroute::describe_devices().c_str());
-        if (cfg.cpu_lane_nets > 0 && std::string(backend->name()) != "cpu-reference")
+        if (gpuroute::should_create_cpu_lane(cfg.cpu_lane_nets, cfg.gpu_required,
+                                             std::string(backend->name()) == "cpu-reference"))
             cpu_backend = gpuroute::create_cpu_backend();
         if (cfg.repair_verify)
             verify_backend = gpuroute::create_cpu_backend();
@@ -2940,8 +2950,21 @@ struct GpuRouter
         gd.wire_occ = occ.data();
         gd.wire_hist = hist.data();
         auto tup = Clock::now();
-        if (!backend->init(gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, err))
+        auto backend_init = gpuroute::initialize_backend_with_cpu_fallback(
+                backend, gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, cfg.gpu_required,
+                gpu_backend_selected, [] { return gpuroute::create_cpu_backend(); }, err);
+        if (backend_init.status != gpuroute::BackendInitStatus::ready) {
+            if (backend_init.status == gpuroute::BackendInitStatus::required_failure)
+                log_gpu_required_failure("GPU use is required, but GPU backend initialisation failed", err);
             log_error("GPU router backend initialisation failed: %s\n", err.c_str());
+        }
+        if (backend_init.cpu_fallback) {
+            log_warning("GPU router backend initialisation failed: %s; falling back to the CPU reference backend.\n",
+                        err.c_str());
+            cpu_backend.reset();
+        }
+        if (backend->device_index() >= 0)
+            log_info("    GPU router using device %d: %s\n", backend->device_index(), backend->device_name());
         if (cpu_backend &&
             !cpu_backend->init(gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, err))
             log_error("GPU router CPU lane initialisation failed: %s\n", err.c_str());
@@ -3550,6 +3573,9 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     large_bits = ctx->setting<int>("gpurouter/largeBits", 22);
     device = ctx->setting<int>("gpurouter/device", -1);
     cpu_backend = ctx->setting<bool>("gpurouter/cpu", false);
+    gpu_required = ctx->setting<bool>("gpurouter/required", false);
+    const char *gpu_required_env = std::getenv("NEXTPNR_REQUIRE_GPU");
+    gpu_required = gpu_required || (gpu_required_env != nullptr && std::strcmp(gpu_required_env, "1") == 0);
     perf_profile = ctx->setting<bool>("gpurouter/perfProfile", false);
     auto telemetry_setting = ctx->settings.find(ctx->id("gpurouter/telemetryPath"));
     telemetry_path = telemetry_setting == ctx->settings.end() ? std::string() : telemetry_setting->second.as_string();
