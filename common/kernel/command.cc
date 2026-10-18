@@ -653,6 +653,19 @@ void CommandHandler::setupContext(Context *ctx)
             ctx->settings[ctx->id("gpurouter/" + opt.substr(0, eq))] = opt.substr(eq + 1);
         }
     }
+    if (vm.count("gpu-required")) {
+        if (vm.count("gpu-opt")) {
+            for (const auto &opt : vm["gpu-opt"].as<std::vector<std::string>>()) {
+                size_t eq = opt.find('=');
+                if (eq != std::string::npos && opt.substr(0, eq) == "required" &&
+                    (opt.substr(eq + 1) == "false" || opt.substr(eq + 1) == "0"))
+                    log_error("--gpu-required conflicts with --gpu-opt required=false (or required=0)\n");
+            }
+        }
+        if (!ctx->setting<bool>("gpurouter/required", true))
+            log_error("--gpu-required conflicts with --gpu-opt required=false (or required=0)\n");
+        ctx->settings[ctx->id("gpurouter/required")] = true;
+    }
 
     if (vm.count("static-dump-density"))
         ctx->settings[ctx->id("static/dump_density")] = true;
@@ -726,21 +739,25 @@ void CommandHandler::applySdcClockOverrides(Context *ctx)
 
 void CommandHandler::applySettingOverrides(Context *ctx)
 {
-    if (!vm.count("set"))
-        return;
-
-    const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
-    for (const auto &override : overrides) {
-        if (override.key == "seed") {
-            const auto seed = parse_command_setting_seed(override.value);
-            telemetry_seed = std::to_string(seed);
-            // The live RNG was seeded before import. Keep its advanced state
-            // in the checkpoint, even if the imported JSON had another seed.
-            ctx->settings[ctx->id("seed")] = Property(ctx->rngstate, 64);
-        } else {
-            ctx->settings[ctx->id(override.key)] = override.value;
+    if (vm.count("set")) {
+        const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
+        for (const auto &override : overrides) {
+            if (override.key == "seed") {
+                const auto seed = parse_command_setting_seed(override.value);
+                telemetry_seed = std::to_string(seed);
+                // The live RNG was seeded before import. Keep its advanced state
+                // in the checkpoint, even if the imported JSON had another seed.
+                ctx->settings[ctx->id("seed")] = Property(ctx->rngstate, 64);
+            } else {
+                ctx->settings[ctx->id(override.key)] = override.value;
+            }
         }
     }
+
+    // Imported checkpoints and later setting overrides must not weaken the
+    // explicit command-line guarantee.
+    if (vm.count("gpu-required"))
+        ctx->settings[ctx->id("gpurouter/required")] = true;
 }
 
 void CommandHandler::restoreTelemetrySettings(Context *ctx)

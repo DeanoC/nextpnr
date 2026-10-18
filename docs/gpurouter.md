@@ -5,7 +5,8 @@ shortest-path searches run on a GPU, followed by a timing-repair phase that
 re-routes the worst-slack connections at pure delay. It is built on ROCm/HIP
 or CUDA and falls back to a sequential host implementation of the same
 algorithm when nextpnr is built without a device backend or no GPU is
-present. The host backend is a scalar transcription of the kernel (same
+present, or the selected GPU fails to initialize. The host backend is a scalar
+transcription of the kernel (same
 K-best steps, cost expressions, tie-breaking and per-lane capacity limits),
 so a machine without a GPU produces the same routing as one with a GPU.
 Set `NEXTPNR_REQUIRE_GPU=1` or pass `--gpu-required` to fail instead of using

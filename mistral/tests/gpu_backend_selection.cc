@@ -30,6 +30,17 @@ class InitFailingBackend : public Backend
     BackendStats stats_;
 };
 
+class InitSucceedingBackend : public InitFailingBackend
+{
+  public:
+    bool init(const GraphData &, int, int, int, int, std::string &error) override
+    {
+        error.clear();
+        return true;
+    }
+    const char *name() const override { return "cpu-reference-test"; }
+};
+
 } // namespace
 
 TEST(GpuBackendSelection, RequiredDeviceFailureDoesNotFallBackToCpu)
@@ -73,4 +84,43 @@ TEST(GpuBackendSelection, RequiredDeviceInitializationFailureIsDistinct)
     EXPECT_EQ(initialize_backend(backend, GraphData{}, 1, 1, 1, 1, true, error),
               BackendInitStatus::required_failure);
     EXPECT_EQ(error, "deliberate initialisation failure");
+}
+
+TEST(GpuBackendSelection, OptionalDeviceInitializationFailureFallsBackToCpu)
+{
+    std::unique_ptr<Backend> backend = std::make_unique<InitFailingBackend>();
+    std::string error;
+    bool cpu_factory_called = false;
+    auto result = initialize_backend_with_cpu_fallback(
+            backend, GraphData{}, 1, 1, 1, 1, false, true,
+            [&]() -> std::unique_ptr<Backend> {
+                cpu_factory_called = true;
+                return std::make_unique<InitSucceedingBackend>();
+            },
+            error);
+    EXPECT_EQ(result.status, BackendInitStatus::ready);
+    EXPECT_TRUE(result.cpu_fallback);
+    EXPECT_TRUE(cpu_factory_called);
+    ASSERT_TRUE(backend);
+    EXPECT_STREQ(backend->name(), "cpu-reference-test");
+    EXPECT_EQ(error, "deliberate initialisation failure");
+}
+
+TEST(GpuBackendSelection, RequiredDeviceInitializationFailureDoesNotFallBackToCpu)
+{
+    std::unique_ptr<Backend> backend = std::make_unique<InitFailingBackend>();
+    std::string error;
+    bool cpu_factory_called = false;
+    auto result = initialize_backend_with_cpu_fallback(
+            backend, GraphData{}, 1, 1, 1, 1, true, true,
+            [&]() -> std::unique_ptr<Backend> {
+                cpu_factory_called = true;
+                return std::make_unique<InitSucceedingBackend>();
+            },
+            error);
+    EXPECT_EQ(result.status, BackendInitStatus::required_failure);
+    EXPECT_FALSE(result.cpu_fallback);
+    EXPECT_FALSE(cpu_factory_called);
+    ASSERT_TRUE(backend);
+    EXPECT_STREQ(backend->name(), "init-failing-test-backend");
 }

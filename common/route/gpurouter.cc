@@ -2915,6 +2915,7 @@ struct GpuRouter
             log_gpu_required_failure("GPU use is required, but the GPU router could not open a device", err);
         if (selected_backend.cpu_fallback)
             log_warning("GPU router: %s; falling back to the CPU reference backend.\n", err.c_str());
+        const bool gpu_backend_selected = !cfg.cpu_backend && !selected_backend.cpu_fallback;
         backend = std::move(selected_backend.backend);
         if (!cfg.cpu_backend && gpuroute::device_backend_available() && ctx->verbose)
             log_info("    GPU devices: %s\n", gpuroute::describe_devices().c_str());
@@ -2949,12 +2950,18 @@ struct GpuRouter
         gd.wire_occ = occ.data();
         gd.wire_hist = hist.data();
         auto tup = Clock::now();
-        auto backend_init = gpuroute::initialize_backend(*backend, gd, cfg.small_slots, cfg.small_bits, cfg.large_slots,
-                                                         cfg.large_bits, cfg.gpu_required, err);
-        if (backend_init != gpuroute::BackendInitStatus::ready) {
-            if (backend_init == gpuroute::BackendInitStatus::required_failure)
+        auto backend_init = gpuroute::initialize_backend_with_cpu_fallback(
+                backend, gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, cfg.gpu_required,
+                gpu_backend_selected, [] { return gpuroute::create_cpu_backend(); }, err);
+        if (backend_init.status != gpuroute::BackendInitStatus::ready) {
+            if (backend_init.status == gpuroute::BackendInitStatus::required_failure)
                 log_gpu_required_failure("GPU use is required, but GPU backend initialisation failed", err);
             log_error("GPU router backend initialisation failed: %s\n", err.c_str());
+        }
+        if (backend_init.cpu_fallback) {
+            log_warning("GPU router backend initialisation failed: %s; falling back to the CPU reference backend.\n",
+                        err.c_str());
+            cpu_backend.reset();
         }
         if (backend->device_index() >= 0)
             log_info("    GPU router using device %d: %s\n", backend->device_index(), backend->device_name());

@@ -253,6 +253,12 @@ enum class BackendInitStatus
     required_failure,
 };
 
+struct BackendInitResult
+{
+    BackendInitStatus status;
+    bool cpu_fallback = false;
+};
+
 inline BackendInitStatus initialize_backend(Backend &backend, const GraphData &graph, int small_slots,
                                             int small_bits, int large_slots, int large_bits, bool gpu_required,
                                             std::string &error)
@@ -260,6 +266,35 @@ inline BackendInitStatus initialize_backend(Backend &backend, const GraphData &g
     if (backend.init(graph, small_slots, small_bits, large_slots, large_bits, error))
         return BackendInitStatus::ready;
     return gpu_required ? BackendInitStatus::required_failure : BackendInitStatus::optional_failure;
+}
+
+template <typename CpuBackendFactory>
+inline BackendInitResult initialize_backend_with_cpu_fallback(
+        std::unique_ptr<Backend> &backend, const GraphData &graph, int small_slots, int small_bits, int large_slots,
+        int large_bits, bool gpu_required, bool gpu_backend_selected, CpuBackendFactory create_cpu_backend,
+        std::string &error)
+{
+    auto status = initialize_backend(*backend, graph, small_slots, small_bits, large_slots, large_bits, gpu_required,
+                                     error);
+    if (status != BackendInitStatus::optional_failure || !gpu_backend_selected)
+        return {status, false};
+
+    const std::string gpu_error = error;
+    std::unique_ptr<Backend> cpu_backend = create_cpu_backend();
+    std::string cpu_error;
+    if (!cpu_backend) {
+        error = "GPU backend initialisation failed: " + gpu_error + "; CPU reference backend is unavailable";
+        return {BackendInitStatus::optional_failure, false};
+    }
+    if (!cpu_backend->init(graph, small_slots, small_bits, large_slots, large_bits, cpu_error)) {
+        error = "GPU backend initialisation failed: " + gpu_error + "; CPU reference backend initialisation failed: " +
+                cpu_error;
+        return {BackendInitStatus::optional_failure, false};
+    }
+
+    backend = std::move(cpu_backend);
+    error = gpu_error;
+    return {BackendInitStatus::ready, true};
 }
 
 // True if this build contains a GPU device backend.
