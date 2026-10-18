@@ -162,9 +162,16 @@ struct MistralBitgen
             if (mode_type == id_MISTRAL_MUL9X9) {
                 NPNR_ASSERT(bel.z >= 0 && bel.z < int(mistral_dsp_lanes.size()));
                 const auto &lane = mistral_dsp_lanes.at(bel.z);
+                std::vector<int> a_groups{lane.a_group};
+                std::vector<int> b_groups{preadder ? mistral_dsp_preadder_y_groups.at(bel.z) : lane.b_group};
+                if (bel.z == 0 && !preadder) {
+                    // Lane 0 may carry sign-extension slices (A[17:9], B[17:9]).
+                    a_groups.push_back(mistral_dsp_m9_a_ext_group);
+                    b_groups.push_back(mistral_dsp_m9_b_ext_group);
+                }
                 bindings.push_back({cell,
-                                    {lane.a_group},
-                                    {preadder ? mistral_dsp_preadder_y_groups.at(bel.z) : lane.b_group},
+                                    a_groups,
+                                    b_groups,
                                     preadder ? std::vector<int>{mistral_dsp_preadder_z_groups.at(bel.z)}
                                               : std::vector<int>{},
                                     {},
@@ -209,10 +216,28 @@ struct MistralBitgen
         else
             NPNR_ASSERT_FALSE("unreachable DSP mode");
         NPNR_ASSERT(cv->bmux_m_set(CycloneV::DSP, pos, CycloneV::MODE, 0, mode));
-        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AX_SIGNED, 0,
-                                  dsp_bool_param(bindings.front().cell->params, id_A_SIGNED, true)));
-        NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AY_SIGNED, 0,
-                                  dsp_bool_param(bindings.front().cell->params, id_B_SIGNED, true)));
+        // Signedness follows Quartus 17.0.2 bitstreams for 5CSEBA6U23I7
+        // (mistral/tests/fixtures/dsp-signedness/README.md). In M9X9 and
+        // M27X27 a signed X operand sets AX_SIGNED and BX_SIGNED and a signed
+        // Y operand sets AY_SIGNED and BY_SIGNED. In M18X18P36 a signed X sets
+        // AX_SIGNED and BX_SIGNED, while a signed Y sets BY_SIGNED only and
+        // drives its nineteenth bit (B[18], DATAIN group 5 bit 8).
+        const bool x_signed = dsp_bool_param(bindings.front().cell->params, id_A_SIGNED, true);
+        const bool y_signed = dsp_bool_param(bindings.front().cell->params, id_B_SIGNED, true);
+        if (mode_type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL27X27)) {
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AX_SIGNED, 0, x_signed));
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::BX_SIGNED, 0, x_signed));
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AY_SIGNED, 0, y_signed));
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::BY_SIGNED, 0, y_signed));
+        } else if (mode_type == id_MISTRAL_MUL18X18) {
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AX_SIGNED, 0, x_signed));
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::BX_SIGNED, 0, x_signed));
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AY_SIGNED, 0, false));
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::BY_SIGNED, 0, y_signed));
+        } else {
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AX_SIGNED, 0, x_signed));
+            NPNR_ASSERT(cv->bmux_b_set(CycloneV::DSP, pos, CycloneV::AY_SIGNED, 0, y_signed));
+        }
         if (mode_type.in(id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED)) {
             NPNR_ASSERT(cv->bmux_b_set(
                     CycloneV::DSP, pos, CycloneV::BX_SIGNED, 0,
@@ -337,6 +362,14 @@ struct MistralBitgen
                 apply(binding.z_groups, 'Z');
                 apply(binding.c_groups, 'C');
                 apply(binding.d_groups, 'D');
+                if (mode_type == id_MISTRAL_MUL18X18 && group == mistral_dsp_18x18_b_ext_group) {
+                    IdString port = ctx->id("B[18]");
+                    auto state = binding.cell->get_pin_state(port);
+                    bool invert = state == PIN_0 || state == PIN_INV ||
+                                  (state == PIN_SIG && binding.cell->getPort(port) == nullptr);
+                    if (!invert)
+                        inv &= ~(1u << mistral_dsp_18x18_b_ext_bit);
+                }
             }
             NPNR_ASSERT(cv->bmux_r_set(CycloneV::DSP, pos, CycloneV::DATA_INV, group, inv));
         }

@@ -275,6 +275,45 @@ struct MistralPacker
         }
     }
 
+    // Quartus configures a signed multiplier by sign-extending the operand
+    // into the block's spare input slice as well as setting the sign bits:
+    // a signed 9x9 lane-0 operand fills the upper AX/AY slice and a signed
+    // M18X18P36 Y operand drives its nineteenth bit. Mirror that so the
+    // result does not depend on how the block interprets the sign bits alone.
+    // The extension bits take the sign net; a constant or absent sign bit
+    // folds like any other DSP data input.
+    void extend_dsp_signed_operands()
+    {
+        for (auto &entry : ctx->cells) {
+            CellInfo *ci = entry.second.get();
+            if (!is_dsp_multiplier(ci->type))
+                continue;
+            auto extend = [&](const char *bus, int sign_bit, int first, int count) {
+                NetInfo *sign = ci->getPort(ctx->idf("%s[%d]", bus, sign_bit));
+                if (sign == nullptr)
+                    return;
+                for (int i = 0; i < count; ++i) {
+                    IdString port = ctx->idf("%s[%d]", bus, first + i);
+                    if (ci->ports.count(port))
+                        log_error("DSP cell '%s' already drives %s; the sign-extension slice must be free.\n",
+                                  ctx->nameOf(ci), ctx->nameOf(port));
+                    ci->addInput(port);
+                    ci->connectPort(port, sign);
+                }
+            };
+            if (ci->type == id_MISTRAL_MUL9X9 && !dsp_bool_param(ci->params, id_PREADDER_EN) &&
+                !ctx->args.dsp_signed_lanes) {
+                if (dsp_bool_param(ci->params, id_A_SIGNED, true))
+                    extend("A", 8, 9, 9);
+                if (dsp_bool_param(ci->params, id_B_SIGNED, true))
+                    extend("B", 8, 9, 9);
+            } else if (ci->type == id_MISTRAL_MUL18X18) {
+                if (dsp_bool_param(ci->params, id_B_SIGNED, true))
+                    extend("B", 17, 18, 1);
+            }
+        }
+    }
+
     void ensure_m10k_control_ports(bool unbound_only = false)
     {
         // Yosys only emits the clear ports when the source primitive uses
@@ -2505,6 +2544,19 @@ struct MistralPacker
                         log_error("DSP cell '%s' has unsupported parameter '%s'.\n", ctx->nameOf(ci),
                                   ctx->nameOf(param.first));
                 }
+                // The Cyclone V DSP block has no width headroom: a full-width
+                // unsigned operand needs the block's unsigned mode, and Yosys
+                // mul2dsp slices wide products into full-width unsigned
+                // partials. A netlist that omits the signedness parameters
+                // therefore cannot be configured correctly in general. Keep
+                // the historical signed default for older netlists, but say so.
+                for (IdString key : {id_A_SIGNED, id_B_SIGNED}) {
+                    if (!ci->params.count(key))
+                        log_warning("DSP cell '%s' (%s) omits %s; assuming a signed operand. Full-width "
+                                    "unsigned operands and mul2dsp partial products need the parameter; "
+                                    "synthesise with a Yosys whose intel_alm dsp_map.v forwards it.\n",
+                                    ctx->nameOf(ci), ctx->nameOf(ci->type), ctx->nameOf(key));
+                }
                 if (dsp_reg_param(ci->params, id_INREG_CTRL_AX) || dsp_reg_param(ci->params, id_INREG_CTRL_AY) ||
                     dsp_reg_param(ci->params, id_INREG_CTRL_AZ) || dsp_reg_param(ci->params, id_INREG_CTRL_BX) ||
                     dsp_reg_param(ci->params, id_INREG_CTRL_BY) || dsp_reg_param(ci->params, id_INREG_CTRL_BZ) ||
@@ -2595,8 +2647,12 @@ struct MistralPacker
 
             bool a_signed = dsp_bool_param(root->params, id_A_SIGNED, true);
             bool b_signed = dsp_bool_param(root->params, id_B_SIGNED, true);
+            // A sign-extended lane-0 cell owns its block (see
+            // extend_dsp_signed_operands and Arch::isBelLocationValid).
+            const bool exclusive = (a_signed || b_signed) && !dsp_bool_param(root->params, id_PREADDER_EN) &&
+                                   !ctx->args.dsp_signed_lanes;
             size_t end = i + 1;
-            while (end < multipliers.size() && end - i < mistral_dsp_lanes.size() &&
+            while (!exclusive && end < multipliers.size() && end - i < mistral_dsp_lanes.size() &&
                    multipliers.at(end)->type == id_MISTRAL_MUL9X9 &&
                    dsp_bool_param(multipliers.at(end)->params, id_A_SIGNED, true) == a_signed &&
                    dsp_bool_param(multipliers.at(end)->params, id_B_SIGNED, true) == b_signed &&
@@ -3178,6 +3234,7 @@ struct MistralPacker
         fold_inverted_pll_clock_buffers();
         propagate_io_clocks();
         ensure_dsp_control_ports();
+        extend_dsp_signed_operands();
         ensure_m10k_control_ports();
         pack_constants();
         select_dsp_control_pinmaps();

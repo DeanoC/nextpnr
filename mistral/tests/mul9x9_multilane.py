@@ -25,6 +25,9 @@ def duplicate_fixture(path, count):
     assert len(names) == 1, names
     original_name = names[0]
     original = module["cells"][original_name]
+    # Packed lanes are unsigned: a signed cell is sign-extended on lane 0 and
+    # owns its block (see docs/mistral-dsp.md).
+    original["parameters"].update(A_SIGNED="0", B_SIGNED="0")
     assert count in (2, 3)
 
     integer_bits = [
@@ -129,7 +132,8 @@ def main():
                 key, value = line[len(prefix) :].split(" ", 1)
                 settings[key] = value
         assert settings["MODE"] == "M9X9", settings
-        assert settings["AX_SIGNED"] == "1" and settings["AY_SIGNED"] == "1", settings
+        for key in ("AX_SIGNED", "AY_SIGNED", "BX_SIGNED", "BY_SIGNED"):
+            assert settings.get(key, "0") == "0", (key, settings)
         expected_masks = {0: "100", 2: "100", 6: "101", 8: "101"}
         if count == 3:
             expected_masks.update({7: "102", 9: "102"})

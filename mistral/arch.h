@@ -43,6 +43,10 @@ struct ArchArgs
     // polarity. This adds CLKIN[1]/DATAIN[1] pips into the LAB clock wires, so
     // it must be known when the routing graph is built.
     bool lab_clkb = false;
+    // --mistral-dsp-signed-lanes: pack signed MISTRAL_MUL9X9 cells three per
+    // DSP block and rely on the block's sign bits alone, instead of the
+    // Quartus-equivalent lane-0 sign extension. Hardware-unverified.
+    bool dsp_signed_lanes = false;
 };
 
 // These structures are used for fast ALM validity checking
