@@ -702,7 +702,7 @@ struct Arch : BaseArch<ArchRanges>
     // of each ALM. Off by default; set from the command line only.
     bool lab_ff4 = false;
     bool isolated_lut_placement = false; // Opt-in: score the isolated legal LUT input allocation.
-    bool arrival_pin_assignment = false; // Opt-in: isolated estimates and private LUT pin permutation.
+    bool arrival_pin_assignment = false; // Opt-in: permute private LUT pins by arrival after legalisation.
 
     bool is_comb_cell(IdString cell_type) const;        // lab.cc
     bool is_alm_legal(uint32_t lab, uint8_t alm) const; // lab.cc

@@ -1,10 +1,11 @@
 # Arrival-based private LUT input assignment
 
-`--arrival-pin-assignment` enables isolated Boolean LUT placement estimates
-and a single arrival snapshot that assigns later arriving private inputs to
-faster physical pins after legal ALM allocation. `--isolated-lut-placement`
-selects only the placement estimate, without the arrival permutation. That
-estimate follows the allocation of an isolated cell with no shared partner.
+`--arrival-pin-assignment` takes one arrival snapshot and assigns later
+arriving private inputs to faster physical pins after legal ALM allocation.
+It leaves the placement delay estimate alone. `--isolated-lut-placement`
+selects only that estimate, without the arrival permutation. The estimate
+follows the allocation of an isolated cell with no shared partner. The two
+options combine when both are passed.
 Both options are off by default and are initialized when the context is created,
 including Python `--run` invocations without `--json`. Saved JSON settings record
 provenance and do not enable either policy on a new run without its CLI option.

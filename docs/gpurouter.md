@@ -72,6 +72,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `loadPenalty`, `pipAdder` | 0, 0 | optional analogue-model approximations (ns per existing branch, ns per pip) |
 | `repairRounds`, `repairSlack`, `repairBand`, `repairImproveRounds` | 10, 0 ps, 300 ps, 4 | timing repair (below) |
 | `repairDisplace`, `repairDisplaceMargin` | true, 0 ps | a stuck repair may displace frozen arcs with at least this much more slack |
+| `repairBbExpand` | 8 | tiles added to the net box for pure-delay repair while setup slack is still negative. The in-box route is the one that is kept, so this is what lets a failing arc leave the negotiation box. 0 keeps that box |
 | `repairCongWeight` | 1.0 | present-congestion weight used when re-routing a same-band peer group (0 disables). History cost is ignored in that pass, so an occupied wire costs `(1 + occ * weight)` times delay. |
 | `analogueRounds`, `analogueSlack`, `analogueRipSlack`, `analoguePrior` | 3, 0 ps, 300 ps, 1.25 | Mistral analogue signoff repair (below); `analogueRounds=0` disables it |
 | `analogueTimeBudget` | 300 seconds | Mistral repair time budget, including candidate selection and nested rerouting; finite and nonnegative, `0` disables the limit. Initial routing and final signoff are outside the budget |

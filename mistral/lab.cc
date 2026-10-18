@@ -1510,9 +1510,9 @@ IdString Arch::lut_placement_pin(const CellInfo *cell, IdString port) const
 {
     // Isolated pins change placement criticalities, not just timing reports.
     // Keep the existing default until the alternative has routed QoR coverage
-    // across designs and seeds (see #206). Arrival assignment retains its
-    // existing isolated estimate; the separate option does not permute pins.
-    if (!isolated_lut_placement && !arrival_pin_assignment)
+    // across designs and seeds (see #206). Arrival assignment only permutes
+    // private pins after legalisation; it does not select this estimate.
+    if (!isolated_lut_placement)
         return comb_pinmap.at(port);
     if (!cell->type.in(id_MISTRAL_NOT, id_MISTRAL_BUF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
                        id_MISTRAL_ALUT5, id_MISTRAL_ALUT6) ||
