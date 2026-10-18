@@ -269,6 +269,7 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target, const GpuR
     // route it has already seen
     const float search_prior = ctx->setting<float>("gpurouter/analogueCandidatePrior", 1.0f);
     auto t0 = std::chrono::steady_clock::now();
+    const double lease_wait0 = gpurouter_lease_wait_seconds();
 
     struct Item
     {
@@ -461,7 +462,9 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target, const GpuR
              "re-routed (%d candidates refused by the Arch), worst-sink slack gained %.3f ns in total, %.2fs "
              "(%.2fs searching, %.2fs simulating)\n",
              tried, failing, generated, improved, rejected, total_gain / 1000.0f,
-             std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count(), search_secs, eval_secs);
+             std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count() -
+                     (gpurouter_lease_wait_seconds() - lease_wait0),
+             search_secs, eval_secs);
     return improved > 0;
 }
 
@@ -472,8 +475,13 @@ bool Arch::analogue_repair()
     if (!std::isfinite(budget) || budget < 0)
         log_error("analogueTimeBudget must be finite and nonnegative (seconds; 0 disables).\n");
     const auto started = std::chrono::steady_clock::now();
-    auto expired = [budget, started]() {
-        return budget > 0 && std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count() >= budget;
+    // Time spent waiting for a gpu-run phase lease is not repair work
+    const double lease_wait_started = gpurouter_lease_wait_seconds();
+    auto expired = [budget, started, lease_wait_started]() {
+        if (budget <= 0)
+            return false;
+        const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+        return elapsed - (gpurouter_lease_wait_seconds() - lease_wait_started) >= budget;
     };
     const int rounds = ctx->setting<int>("gpurouter/analogueRounds", 3);
     // Candidate-selection passes before each full re-route (0 disables)
