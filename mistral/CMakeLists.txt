@@ -62,6 +62,9 @@ if (BUILD_TESTS)
     add_test(NAME nextpnr-${family}-critical-cohort-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/critical_cohort_cli.py
                 $<TARGET_FILE:nextpnr-${family}> -v)
+    add_test(NAME nextpnr-${family}-command-settings-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/command_settings_cli.py
+                $<TARGET_FILE:nextpnr-${family}>)
     foreach(LUT6_SELECT_FIXTURE asymmetric asymmetric-bottom)
         add_test(NAME nextpnr-${family}-lut6-select-${LUT6_SELECT_FIXTURE}
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut6-select/check.py

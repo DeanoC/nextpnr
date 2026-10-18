@@ -40,6 +40,7 @@ class ECP5CommandHandler : public CommandHandler
 
   protected:
     po::options_description getArchOptions() override;
+    std::set<std::string> getArchSettingKeys() const override;
 };
 
 ECP5CommandHandler::ECP5CommandHandler(int argc, char **argv) : CommandHandler(argc, argv) {}
@@ -90,6 +91,29 @@ po::options_description ECP5CommandHandler::getArchOptions()
 
     return specific;
 }
+
+std::set<std::string> ECP5CommandHandler::getArchSettingKeys() const
+{
+    std::set<std::string> keys;
+    if (vm.count("package"))
+        keys.insert("arch.package");
+    if (vm.count("speed"))
+        keys.insert("arch.speed");
+    if (vm.count("12k") || vm.count("25k") || vm.count("45k") || vm.count("85k") || vm.count("um-25k") ||
+        vm.count("um-45k") || vm.count("um-85k") || vm.count("um5g-25k") || vm.count("um5g-45k") ||
+        vm.count("um5g-85k"))
+        keys.insert("arch.type");
+    if (vm.count("no-promote-globals"))
+        keys.insert("arch.no-promote-globals");
+    if (vm.count("out-of-context"))
+        keys.insert("arch.ooc");
+    if (vm.count("disable-router-lutperm"))
+        keys.insert("arch.disable_router_lutperm");
+    if (vm.count("allow-fabric-eclk"))
+        keys.insert("arch.fabric_eclk");
+    return keys;
+}
+
 void ECP5CommandHandler::validate()
 {
     if ((vm.count("25k") + vm.count("45k") + vm.count("85k")) > 1)
