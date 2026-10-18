@@ -41,6 +41,7 @@ class Ice40CommandHandler : public CommandHandler
 
   protected:
     po::options_description getArchOptions() override;
+    std::set<std::string> getArchSettingKeys() const override;
 };
 
 Ice40CommandHandler::Ice40CommandHandler(int argc, char **argv) : CommandHandler(argc, argv) {}
@@ -85,6 +86,29 @@ po::options_description Ice40CommandHandler::getArchOptions()
 
     return specific;
 }
+
+std::set<std::string> Ice40CommandHandler::getArchSettingKeys() const
+{
+    std::set<std::string> keys;
+    if (vm.count("package"))
+        keys.insert("arch.package");
+    if (vm.count("lp384") || vm.count("lp1k") || vm.count("lp4k") || vm.count("lp8k") || vm.count("hx1k") ||
+        vm.count("hx4k") || vm.count("hx8k") || vm.count("up3k") || vm.count("up5k") || vm.count("u1k") ||
+        vm.count("u2k") || vm.count("u4k"))
+        keys.insert("arch.type");
+    if (vm.count("promote-logic"))
+        keys.insert("promote_logic");
+    if (vm.count("no-promote-globals"))
+        keys.insert("no_promote_globals");
+    if (vm.count("no-promote-ce"))
+        keys.insert("no_promote_ce");
+    if (vm.count("opt-timing"))
+        keys.insert("opt_timing");
+    if (vm.count("pcf-allow-unconstrained"))
+        keys.insert("pcf_allow_unconstrained");
+    return keys;
+}
+
 void Ice40CommandHandler::validate()
 {
     conflicting_options(vm, "read", "json");

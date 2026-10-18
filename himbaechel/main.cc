@@ -36,6 +36,7 @@ class HimbaechelCommandHandler : public CommandHandler
 
   protected:
     po::options_description getArchOptions() override;
+    std::set<std::string> getArchSettingKeys() const override;
 };
 
 HimbaechelCommandHandler::HimbaechelCommandHandler(int argc, char **argv) : CommandHandler(argc, argv)
@@ -55,6 +56,13 @@ po::options_description HimbaechelCommandHandler::getArchOptions()
                            "options to pass to the himbächel uarch (use help as argument to get more info)");
 
     return specific;
+}
+
+std::set<std::string> HimbaechelCommandHandler::getArchSettingKeys() const
+{
+    if (vm.count("device"))
+        return {"arch.type"};
+    return {};
 }
 
 void HimbaechelCommandHandler::setupArchContext(Context *ctx) { ctx->uarch->setupArchContext(); }

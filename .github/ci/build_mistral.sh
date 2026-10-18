@@ -16,14 +16,15 @@ function build_nextpnr {
     mkdir build
     pushd build
     cmake .. -DARCH=mistral -DMISTRAL_ROOT=${MISTRAL_PATH} -DBUILD_TESTS=ON
-    make nextpnr-mistral nextpnr-heap-control-set-test nextpnr-reserved-route-slack-test -j`nproc`
+    make nextpnr-mistral nextpnr-command-settings-test nextpnr-heap-control-set-test nextpnr-reserved-route-slack-test -j`nproc`
     popd
 }
 
 function run_tests {
     export PATH=${GITHUB_WORKSPACE}/.yosys/bin:$PATH
     python3 common/route/tests/router2_profile.py
-    ctest --test-dir build -R '^nextpnr-(heap-control-set|reserved-route-slack)-test$' --output-on-failure
+    ctest --test-dir build -R '^nextpnr-(command-settings|heap-control-set|reserved-route-slack)-test$' --output-on-failure
+    ctest --test-dir build -R '^nextpnr-mistral-command-settings-cli$' --output-on-failure
     python3 mistral/tests/router2_profile.py --nextpnr build/nextpnr-mistral --output build/router2-profile
     python3 mistral/tests/router2_undriven.py --nextpnr build/nextpnr-mistral --output build/router2-undriven
     python3 mistral/tests/pad_clock.py
