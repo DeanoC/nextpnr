@@ -30,3 +30,8 @@ conflict = run("--gpu-device", "0", "--set", "gpurouter/device=1")
 output = conflict.stdout + conflict.stderr
 if conflict.returncode == 0 or "gpurouter/device" not in output or "dedicated command-line option" not in output:
     raise SystemExit(f"dedicated-option conflict was not clearly rejected:\n{output}")
+
+required_conflict = run("--gpu-required", "--set", "gpurouter/required=false")
+output = required_conflict.stdout + required_conflict.stderr
+if required_conflict.returncode == 0 or "gpurouter/required" not in output or "dedicated command-line option" not in output:
+    raise SystemExit(f"--gpu-required setting conflict was not clearly rejected:\n{output}")
