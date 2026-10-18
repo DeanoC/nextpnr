@@ -5,9 +5,13 @@ shortest-path searches run on a GPU, followed by a timing-repair phase that
 re-routes the worst-slack connections at pure delay. It is built on ROCm/HIP
 or CUDA and falls back to a sequential host implementation of the same
 algorithm when nextpnr is built without a device backend or no GPU is
-present. The host backend is a scalar transcription of the kernel (same
+present, or the selected GPU fails to initialize. The host backend is a scalar
+transcription of the kernel (same
 K-best steps, cost expressions, tie-breaking and per-lane capacity limits),
 so a machine without a GPU produces the same routing as one with a GPU.
+Set `NEXTPNR_REQUIRE_GPU=1` or pass `--gpu-required` to fail instead of using
+that CPU fallback. A successful device initialization logs its selected index
+and device name.
 
 Design goals: at least router1-class timing with router2-class run time,
 and results that do not depend on GPU scheduling (two runs with the same
@@ -49,6 +53,7 @@ architecture's `Arch::route()` plus an entry in `availableRouters`.
 | `--router gpu` | select the router |
 | `--gpu-device N` | GPU index (default: the device with the most compute units) |
 | `--gpu-cpu` | run the same algorithm on the sequential host backend |
+| `NEXTPNR_REQUIRE_GPU=1` or `--gpu-required` | fail if GPU initialization would fall back to the CPU backend |
 | `--gpu-perf` | per-iteration timing, slack and backend statistics |
 | `--gpu-batches N` | bounding-box-disjoint batches per iteration (default 12) |
 | `--gpu-opt name=value` | set any `gpurouter/<name>` tuning setting (repeatable) |

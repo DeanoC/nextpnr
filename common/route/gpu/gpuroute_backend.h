@@ -31,6 +31,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace gpuroute {
@@ -230,8 +231,71 @@ class Backend
                        std::vector<PathEntry> &paths) = 0;
 
     virtual const char *name() const = 0;
+    // Device backends report the selected runtime index and the hardware name
+    // after init(). CPU backends keep the default index of -1.
+    virtual int device_index() const { return -1; }
+    virtual const char *device_name() const { return name(); }
     virtual const BackendStats &stats() const = 0;
 };
+
+// The CPU lane is a performance shortcut for tiny batches. It must not be
+// created when required-GPU mode is active, even when the user configured a
+// positive threshold.
+inline bool should_create_cpu_lane(int cpu_lane_nets, bool gpu_required, bool primary_is_cpu)
+{
+    return cpu_lane_nets > 0 && !gpu_required && !primary_is_cpu;
+}
+
+enum class BackendInitStatus
+{
+    ready,
+    optional_failure,
+    required_failure,
+};
+
+struct BackendInitResult
+{
+    BackendInitStatus status;
+    bool cpu_fallback = false;
+};
+
+inline BackendInitStatus initialize_backend(Backend &backend, const GraphData &graph, int small_slots,
+                                            int small_bits, int large_slots, int large_bits, bool gpu_required,
+                                            std::string &error)
+{
+    if (backend.init(graph, small_slots, small_bits, large_slots, large_bits, error))
+        return BackendInitStatus::ready;
+    return gpu_required ? BackendInitStatus::required_failure : BackendInitStatus::optional_failure;
+}
+
+template <typename CpuBackendFactory>
+inline BackendInitResult initialize_backend_with_cpu_fallback(
+        std::unique_ptr<Backend> &backend, const GraphData &graph, int small_slots, int small_bits, int large_slots,
+        int large_bits, bool gpu_required, bool gpu_backend_selected, CpuBackendFactory create_cpu_backend,
+        std::string &error)
+{
+    auto status = initialize_backend(*backend, graph, small_slots, small_bits, large_slots, large_bits, gpu_required,
+                                     error);
+    if (status != BackendInitStatus::optional_failure || !gpu_backend_selected)
+        return {status, false};
+
+    const std::string gpu_error = error;
+    std::unique_ptr<Backend> cpu_backend = create_cpu_backend();
+    std::string cpu_error;
+    if (!cpu_backend) {
+        error = "GPU backend initialisation failed: " + gpu_error + "; CPU reference backend is unavailable";
+        return {BackendInitStatus::optional_failure, false};
+    }
+    if (!cpu_backend->init(graph, small_slots, small_bits, large_slots, large_bits, cpu_error)) {
+        error = "GPU backend initialisation failed: " + gpu_error + "; CPU reference backend initialisation failed: " +
+                cpu_error;
+        return {BackendInitStatus::optional_failure, false};
+    }
+
+    backend = std::move(cpu_backend);
+    error = gpu_error;
+    return {BackendInitStatus::ready, true};
+}
 
 // True if this build contains a GPU device backend.
 bool device_backend_available();
@@ -244,6 +308,33 @@ std::unique_ptr<Backend> create_device_backend(int device, std::string &error);
 
 // Sequential host reference implementation of the same algorithm.
 std::unique_ptr<Backend> create_cpu_backend();
+
+struct RoutingBackendSelection
+{
+    std::unique_ptr<Backend> backend;
+    bool cpu_fallback = false;
+};
+
+// Select the GPU backend, honoring required mode. The CPU backend remains the
+// default fallback unless the caller explicitly requires a device.
+inline RoutingBackendSelection select_routing_backend(int device, bool cpu_requested, bool gpu_required,
+                                                       std::string &error)
+{
+    if (cpu_requested) {
+        if (gpu_required) {
+            error = "the CPU reference backend was requested while GPU use is required";
+            return {};
+        }
+        return {create_cpu_backend(), false};
+    }
+
+    auto backend = create_device_backend(device, error);
+    if (backend)
+        return {std::move(backend), false};
+    if (gpu_required)
+        return {};
+    return {create_cpu_backend(), true};
+}
 
 } // namespace gpuroute
 
