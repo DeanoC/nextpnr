@@ -85,10 +85,12 @@ with tempfile.TemporaryDirectory(prefix='nextpnr-gpu-lease-') as temporary:
     code, out, requests = route(design, [], '--gpu-cpu')
     check('--gpu-cpu', code == 0 and requests == [] and 'GPU lease' not in out, out, requests)
 
-    # A grant is used as the device as it is. This one cannot be opened, so
-    # the router falls back to the CPU and gives the GPU straight back
-    code, out, requests = route(design, [f'GRANT {ABSENT_GPU}'] * 8)
+    # A grant is used as the device as it is, in place of --gpu-device. This
+    # one cannot be opened, so the router falls back to the CPU and gives the
+    # GPU straight back
+    code, out, requests = route(design, [f'GRANT {ABSENT_GPU}'] * 8, '--gpu-device', str(ABSENT_GPU - 1))
     check('grant', code == 0 and 'GPU lease: waited ' in out and f'granted physical id {ABSENT_GPU}' in out and
+          f'using physical id {ABSENT_GPU} instead of the configured device {ABSENT_GPU - 1}' in out and
           FALLBACK in out and requests and requests == ['ACQUIRE 1', 'RELEASE'] * (len(requests) // 2),
           out, requests)
 

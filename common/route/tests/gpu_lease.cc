@@ -15,6 +15,7 @@
 #include <thread>
 #include <vector>
 
+#include <fcntl.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -97,6 +98,9 @@ class FakeBroker
     }
     // EOF for the client after anything already queued; it can still send
     void stop_replying() { shutdown(fds_[1], SHUT_WR); }
+    // EOF for the broker: unblocks a read_request() that will get no request
+    void stop_requests() { shutdown(fds_[0], SHUT_WR); }
+    void make_client_nonblocking() { fcntl(fds_[0], F_SETFL, fcntl(fds_[0], F_GETFL) | O_NONBLOCK); }
     void close_broker()
     {
         if (fds_[1] >= 0)
@@ -364,6 +368,29 @@ TEST(GpuLease, WaitForTheGrantIsTimedAndAccumulated)
     }
     // Sharing and releasing a grant is not waiting
     EXPECT_NEAR(gpuroute::lease_wait_seconds() - total, waited, 1e-6);
+}
+
+TEST(GpuLease, NonBlockingLeaseFdStillWaitsForReplies)
+{
+    FakeBroker broker;
+    broker.make_client_nonblocking();
+    std::thread server([&] {
+        EXPECT_EQ(broker.read_request(), "ACQUIRE 1");
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        broker.reply("GRANT 3");
+        EXPECT_EQ(broker.read_request(), "RELEASE");
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        broker.reply("OK");
+    });
+    {
+        GpuLeaseGuard guard;
+        EXPECT_EQ(guard.status(), Status::granted);
+        EXPECT_EQ(guard.physical_id(), 3);
+        EXPECT_GE(guard.waited_seconds(), 0.19);
+    }
+    broker.stop_requests();
+    server.join();
+    EXPECT_FALSE(broker.reply_unread()); // RELEASE waited for its OK as well
 }
 
 TEST(GpuLease, UnusableLeaseFdIsNotAGrant)

@@ -20,6 +20,7 @@
 
 #if !defined(_WIN32) && !defined(__wasi__)
 #define GPUROUTE_LEASE_SOCKETS 1
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -89,6 +90,21 @@ bool lease_socket(const char *text, int &fd, std::string &error)
     return true;
 }
 
+// The broker may hand over a non-blocking descriptor (Python sockets with a
+// timeout are); wait for it rather than treating EAGAIN as a failure
+bool retry_after(int fd, short events)
+{
+    if (errno == EINTR)
+        return true;
+    if (errno != EAGAIN && errno != EWOULDBLOCK)
+        return false;
+    pollfd ready{fd, events, 0};
+    int n;
+    while ((n = poll(&ready, 1, -1)) < 0 && errno == EINTR) {
+    }
+    return n > 0;
+}
+
 bool send_request(int fd, const std::string &request, std::string &error)
 {
     // A broker that has gone away is an error here, not a SIGPIPE
@@ -105,7 +121,7 @@ bool send_request(int fd, const std::string &request, std::string &error)
     size_t sent = 0;
     while (sent < line.size()) {
         ssize_t n = send(fd, line.data() + sent, line.size() - sent, flags);
-        if (n < 0 && errno == EINTR)
+        if (n < 0 && retry_after(fd, POLLOUT))
             continue;
         if (n <= 0) {
             error = "cannot send " + request + " to the lease broker: " + std::strerror(errno);
@@ -123,7 +139,7 @@ bool read_reply(int fd, std::string &reply, std::string &error)
     while (true) {
         char c;
         ssize_t n = recv(fd, &c, 1, 0);
-        if (n < 0 && errno == EINTR)
+        if (n < 0 && retry_after(fd, POLLIN))
             continue;
         if (n < 0) {
             error = std::string("cannot read the lease broker's reply: ") + std::strerror(errno);
