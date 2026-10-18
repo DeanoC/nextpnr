@@ -44,7 +44,8 @@ def main():
             assert '$ROUTETHRU' in name, name
             assert any(c['type'] == 'MISTRAL_FF' and c['connections'].get('DATAIN') == cell['connections']['Q'] for c in cells.values()), name
             kind, actual = half(cell)
-            expected = 0xf0f0f0f0
+            # Route-through BUF on F (address bit 4). Init 2, default inversion.
+            expected = 0xFFFF0000
             if kind == 'MLAB':
                 expected = sum(((expected >> i) & 1) << p for i, p in enumerate(permutation))
             assert actual == expected, (name, kind, hex(actual), hex(expected))
@@ -52,15 +53,15 @@ def main():
             buffer_halves.add(int(cell["attributes"]["NEXTPNR_BEL"].split(".")[-1]) % 6)
         elif cell['type'] == 'MISTRAL_NOT':
             kind, actual = half(cell)
-            # The half-specific C/D input is truth-table address bit2.
-            expected = 0x0f0f0f0f
+            # The half-specific F input is truth-table address bit 4.
+            expected = 0x0000FFFF
             if kind == 'MLAB':
                 expected = sum(((expected >> i) & 1) << p for i, p in enumerate(permutation))
             assert actual == expected, (name, hex(actual), hex(expected))
             inversions += 1
         elif name.startswith('parity_') and cell['type'] == 'MISTRAL_ALUT2':
-            # Fixture XOR uses C/D and E0/E1 (address bits2/3). CRAM is active-low.
-            assert half(cell) == ('LAB', 0xf00ff00f), (name, half(cell))
+            # Fixture XOR uses F and E (address bits 4 and 3). CRAM is active-low.
+            assert half(cell) == ('LAB', 0xFF0000FF), (name, half(cell))
             parity += 1
         elif cell['type'] == 'MISTRAL_MLAB':
             kind, actual = half(cell)

@@ -158,8 +158,9 @@ Prediction predict(Context *ctx, NetInfo *net, PortRef sink)
         return p;
     auto lut = ctx->labs.at(data.lab).alms.at(data.alm).lut_bels.at(half);
     DelayQuad d;
-    NPNR_ASSERT(ctx->get_lut_pin_delay(half ? id_D : id_C, false, d));
-    p.wire = ctx->predictDelay(net->driver.cell->bel, pins.front(), lut, half ? id_D : id_C);
+    const IdString rt_pin = ctx->alm_route_through_pin(data.lab, data.alm, half);
+    NPNR_ASSERT(ctx->get_lut_pin_delay(rt_pin, false, d));
+    p.wire = ctx->predictDelay(net->driver.cell->bel, pins.front(), lut, rt_pin);
     p.local = ctx->predictDelay(lut, id_COMBOUT, sink.cell->bel, id_DATAIN);
     p.logic = d.delayPair();
     p.rt = true;

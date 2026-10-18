@@ -539,8 +539,9 @@ void critical_cohort_setup_timing(Context *ctx, TimingAnalyser &timing)
                     continue;
                 BelId lut = ctx->labs.at(lab).alms.at(alm).lut_bels.at(half);
                 DelayQuad logic;
-                NPNR_ASSERT(ctx->get_lut_pin_delay(half ? id_D : id_C, false, logic));
-                delay_t incoming = ctx->predictDelay(net->driver.cell->bel, pins.front(), lut, half ? id_D : id_C);
+                const IdString rt_pin = ctx->alm_route_through_pin(lab, alm, half);
+                NPNR_ASSERT(ctx->get_lut_pin_delay(rt_pin, false, logic));
+                delay_t incoming = ctx->predictDelay(net->driver.cell->bel, pins.front(), lut, rt_pin);
                 delay_t local = ctx->predictDelay(lut, id_COMBOUT, ff->bel, id_DATAIN);
                 // Fold the buffer's two route arcs and logic into DATAIN.
                 // This preserves native early/late analysis without adding

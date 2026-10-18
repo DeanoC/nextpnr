@@ -139,7 +139,7 @@ class CriticalCohort : public ::testing::Test
                                    {"delay", 3},
                                    {"from", pin(logic->name.str(ctx.get()), "Q")},
                                    {"to", pin(rt, "A")}},
-                         J::object{{"type", "logic"}, {"delay", 0.512}, {"from", pin(rt, "A")}, {"to", pin(rt, "Q")}},
+                         J::object{{"type", "logic"}, {"delay", 0.097}, {"from", pin(rt, "A")}, {"to", pin(rt, "Q")}},
                          J::object{{"type", "routing"}, {"delay", 0}, {"from", pin(rt, "Q")}, {"to", endpoint}},
                          J::object{{"type", "setup"}, {"to", endpoint}}};
         document["critical_paths"] = J::array{path};
@@ -251,7 +251,7 @@ TEST_F(CriticalCohort, PinPreviewMatchesRoutingWithoutInsertingRouteThroughs)
     critical_cohort_pin_preview(ctx.get(), [&]() {
         mapped_a = logic->pin_data.at(id_A).bel_pins;
         mapped_b = logic->pin_data.at(id_B).bel_pins;
-        EXPECT_EQ(mapped_a, std::vector<IdString>{id_C});
+        EXPECT_EQ(mapped_a, std::vector<IdString>{id_F0});
         EXPECT_EQ(mapped_b, std::vector<IdString>{id_E0});
         EXPECT_EQ(ctx->cells.size(), cells);
         EXPECT_EQ(ctx->nets.size(), nets);
@@ -914,12 +914,16 @@ TEST_F(CriticalCohort, MeasuredModelMatchesInsertedGraphAndRejectsMismatches)
             EXPECT_EQ(got[i].hold_margin, expected[i].hold_margin);
         }
         auto *capture = ctx->cells.at(capture_name).get();
-        EXPECT_EQ(model.route_delay(ctx.get(), {capture, id_DATAIN}), 762);
+        // Measured wire max is 250 ps. The route-through adds the F-pin
+        // logic delay, whose max is 97 ps.
+        EXPECT_EQ(model.route_delay(ctx.get(), {capture, id_DATAIN}), 250 + 97);
         const auto original_input = capture->getPort(id_DATAIN);
         const auto original_count = ctx->cells.size();
         CriticalCohortStats stats;
         // The matching driver half removes the virtual buffer. The calibrated
         // wire clamps at zero rather than becoming a negative arrival delay.
+        // F-pin logic is 97 ps, so this 17-tile move does not reproduce the
+        // old half-nanosecond setup improvement from a C-pin buffer.
         EXPECT_FALSE(critical_cohort_trial(
                 ctx.get(), {capture}, -6, -17, 10000,
                 [&]() {
@@ -929,8 +933,9 @@ TEST_F(CriticalCohort, MeasuredModelMatchesInsertedGraphAndRejectsMismatches)
                         critical_cohort_setup_timing(ctx.get(), after);
                         model.apply(ctx.get(), after);
                         EXPECT_EQ(model.route_delay(ctx.get(), {capture, id_DATAIN}), 0);
-                        EXPECT_GT(after.get_setup_slack({capture_name, id_DATAIN}),
-                                  calibrated.get_setup_slack({capture_name, id_DATAIN}) + 500);
+                        EXPECT_LT(after.get_setup_slack({capture_name, id_DATAIN}) -
+                                          calibrated.get_setup_slack({capture_name, id_DATAIN}),
+                                  500);
                         EXPECT_EQ(ctx->cells.size(), original_count);
                         EXPECT_EQ(capture->getPort(id_DATAIN), original_input);
                     });

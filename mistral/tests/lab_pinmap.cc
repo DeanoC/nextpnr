@@ -74,6 +74,8 @@ TEST_F(LabPinmapTest, UserLockedSocketStillLegalisesOtherArithmeticInputs)
     EXPECT_EQ(buffer->type, id_MISTRAL_BUF);
     EXPECT_EQ(buffer->getPort(id_Q), socket->getPort(id_DATAIN));
     EXPECT_EQ(buffer->getPort(id_A), ctx->nets.at(ctx->id("socket_input")).get());
+    // Loc(24, 1, 2) is ALM 0 FF0, the top half. The route-through uses F0.
+    EXPECT_EQ(buffer->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_F0});
 }
 
 TEST_F(LabPinmapTest, RestoredScaffoldPreservesPinmapsAndDataInput)
@@ -215,11 +217,17 @@ TEST(LutPlacementTiming, DefaultRetainsPlacementPolicyUntilPinsAreLegalised)
     for (int width : {5, 6}) {
         for (int half : {0, 1}) {
             auto *cell = ctx.cells.at(ctx.idf("lut%d_%d", width, half)).get();
-            const auto fast_port = width == 6 ? id_F : id_C;
-            EXPECT_EQ(cell->pin_data.at(id_A).bel_pins, std::vector<IdString>{width == 6 ? id_A : half ? id_D : id_C});
+            // Width 6 stays in logical order, so F is the fast tail. Width 5
+            // gives private pins out fastest-first, so A lands on F and E on A.
+            const auto fast_port = width == 6 ? id_F : id_A;
+            const auto slow_port = width == 6 ? id_A : id_E;
+            EXPECT_EQ(cell->pin_data.at(id_A).bel_pins, std::vector<IdString>{width == 6 ? id_A : half ? id_F1 : id_F0});
             EXPECT_EQ(cell->pin_data.at(fast_port).bel_pins, std::vector<IdString>{half ? id_F1 : id_F0});
+            if (width == 5) {
+                EXPECT_EQ(cell->pin_data.at(id_E).bel_pins, std::vector<IdString>{id_A});
+            }
             DelayQuad slow, fast;
-            ASSERT_TRUE(ctx.getCellDelay(cell, id_A, id_Q, slow));
+            ASSERT_TRUE(ctx.getCellDelay(cell, slow_port, id_Q, slow));
             ASSERT_TRUE(ctx.getCellDelay(cell, fast_port, id_Q, fast));
             EXPECT_LT(fast.maxDelay(), slow.minDelay());
         }
@@ -337,4 +345,92 @@ TEST(LutInputArrival, PrivateLateInputGetsFastPinAndSharedInputsStayFixed)
     ctx.unbindBel(cells[0]->bel);
     ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 0)), cells[0], STRENGTH_LOCKED);
     EXPECT_EQ(ctx.optimise_private_lut_pins(lab, 0, 0, arrival), 0);
+}
+
+TEST(LutPlacementTiming, DirectDataFlipFlopDoesNotShareItsFabricPin)
+{
+    // sel_ef of a half is fed by that half's E and the other half's F.
+    // Fastest-first takes F, so a direct-data flip-flop keeps E when the LUT
+    // can spare it. A 5-input LUT cannot, and the other half leaves F free.
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    Context ctx(args);
+    ctx.createNet(ctx.id("$PACKER_GND_NET"));
+    ctx.createNet(ctx.id("$PACKER_VCC_NET"));
+    auto *clock = ctx.createNet(ctx.id("clock"));
+    clock->is_global = true;
+    const std::array<IdString, 5> pins{id_A, id_B, id_C, id_D, id_E};
+    const std::array<IdString, 5> types{id_MISTRAL_BUF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
+                                        id_MISTRAL_ALUT5};
+    auto make_lut = [&](const char *name, int width) {
+        auto *cell = ctx.createCell(ctx.id(name), types.at(width - 1));
+        for (int i = 0; i < width; ++i) {
+            cell->addInput(pins.at(i));
+            cell->connectPort(pins.at(i), ctx.createNet(ctx.idf("%s_%s", name, ctx.nameOf(pins.at(i)))));
+        }
+        cell->addOutput(id_Q);
+        cell->connectPort(id_Q, ctx.createNet(ctx.idf("%s_q", name)));
+        return cell;
+    };
+    auto make_ff = [&](const char *name) {
+        auto *cell = ctx.createCell(ctx.id(name), id_MISTRAL_FF);
+        for (IdString pin : {id_CLK, id_ENA, id_ACLR, id_SCLR, id_SLOAD, id_SDATA, id_DATAIN})
+            cell->addInput(pin);
+        cell->addOutput(id_Q);
+        cell->connectPort(id_CLK, clock);
+        cell->connectPort(id_DATAIN, ctx.createNet(ctx.idf("%s_d", name)));
+        cell->connectPort(id_Q, ctx.createNet(ctx.idf("%s_q", name)));
+        cell->pin_data[id_ENA].state = PIN_1;
+        cell->pin_data[id_ACLR].state = PIN_1;
+        cell->pin_data[id_SCLR].state = PIN_0;
+        cell->pin_data[id_SLOAD].state = PIN_0;
+        return cell;
+    };
+    auto *wide = make_lut("wide", 4);
+    auto *mate = make_lut("mate", 2);
+    auto *direct = make_ff("direct");
+    auto *small = make_lut("small", 2);
+    auto *full = make_lut("full", 5);
+    auto *full_ff = make_ff("full_ff");
+    auto *chain = make_lut("chain", 5);
+    auto *chain_ff = make_ff("chain_ff");
+    auto *thru = make_ff("thru");
+    ctx.assignArchInfo();
+    // ALM n starts at z = n*6: two COMBs, then FF0, FF1, FF2, FF3.
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 0)), wide, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 1)), mate, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 2)), direct, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 6)), small, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 7)), full, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 10)), full_ff, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 12)), chain, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 14)), chain_ff, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 16)), thru, STRENGTH_STRONG);
+    ctx.lab_pre_route();
+    auto pin = [](CellInfo *cell, IdString port) { return cell->pin_data.at(port).bel_pins.at(0); };
+    // Four inputs fit on F, C, B and A, leaving E0 for the flip-flop.
+    EXPECT_EQ(pin(wide, id_A), id_F0);
+    EXPECT_EQ(pin(wide, id_B), id_C);
+    EXPECT_EQ(pin(wide, id_C), id_B);
+    EXPECT_EQ(pin(wide, id_D), id_A);
+    EXPECT_EQ(pin(mate, id_A), id_F1);
+    EXPECT_EQ(pin(mate, id_B), id_E1);
+    // Five inputs need E. The other LUT leaves F0 for the flip-flop.
+    EXPECT_EQ(pin(small, id_A), id_E0);
+    EXPECT_EQ(pin(small, id_B), id_C);
+    EXPECT_EQ(pin(full, id_A), id_F1);
+    EXPECT_EQ(pin(full, id_B), id_E1);
+    EXPECT_EQ(pin(full, id_C), id_D);
+    EXPECT_EQ(pin(full, id_D), id_B);
+    EXPECT_EQ(pin(full, id_E), id_A);
+    // A route-through on the other half would take F, so it uses E instead.
+    EXPECT_EQ(pin(chain, id_A), id_F0);
+    EXPECT_EQ(pin(chain, id_B), id_E0);
+    EXPECT_EQ(pin(chain, id_C), id_C);
+    EXPECT_EQ(pin(chain, id_D), id_B);
+    EXPECT_EQ(pin(chain, id_E), id_A);
+    auto *buffer = ctx.cells.at(ctx.id("thru$ROUTETHRU")).get();
+    EXPECT_EQ(buffer->type, id_MISTRAL_BUF);
+    EXPECT_EQ(buffer->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_E1});
+    EXPECT_EQ(buffer->getPort(id_Q), thru->getPort(id_DATAIN));
 }

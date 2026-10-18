@@ -1226,6 +1226,99 @@ static void assign_mlab_inputs(Context *ctx, CellInfo *cell, int lut)
     }
 }
 
+static dict<IdString, int> shared_lut_nets(const std::array<CellInfo *, 2> &luts)
+{
+    dict<IdString, int> shared_nets;
+    if (!luts[0] || !luts[1])
+        return shared_nets;
+    const int n0 = std::max(0, std::min(luts[0]->combInfo.lut_input_count, 6));
+    const int n1 = std::max(0, std::min(luts[1]->combInfo.lut_input_count, 6));
+    for (int i = 0; i < n0; i++) {
+        for (int j = 0; j < n1; j++) {
+            if (luts[0]->combInfo.lut_in[i] == nullptr)
+                continue;
+            if (luts[0]->combInfo.lut_in[i] != luts[1]->combInfo.lut_in[j])
+                continue;
+            IdString net = luts[0]->combInfo.lut_in[i]->name;
+            if (shared_nets.count(net))
+                continue;
+            shared_nets[net] = int(shared_nets.size());
+            if (shared_nets.size() >= 2)
+                return shared_nets;
+        }
+    }
+    return shared_nets;
+}
+
+static int private_lut_inputs(CellInfo *lut, const dict<IdString, int> &shared_nets)
+{
+    if (!lut || lut->combInfo.is_carry)
+        return 0;
+    int count = 0;
+    const int n = std::max(0, std::min(lut->combInfo.lut_input_count, 6));
+    for (int k = 0; k < n; ++k) {
+        IdString log = get_lut_pin(lut, k);
+        NetInfo *net = lut->getPort(log);
+        if (!net || shared_nets.count(net->name) || log.in(id_D0, id_D1))
+            continue;
+        ++count;
+    }
+    return count;
+}
+
+static bool half_has_direct_ff(const Arch *arch, const ALMInfo &alm_data, int half, CellInfo *lut)
+{
+    if (!lut || lut->combInfo.is_carry)
+        return false;
+    NetInfo *lut_q = lut->getPort(id_Q);
+    for (int j = 0; j < 2; ++j) {
+        CellInfo *ff = arch->getBoundBelCell(alm_data.ff_bels.at(half * 2 + j));
+        if (!ff)
+            continue;
+        NetInfo *din = ff->getPort(id_DATAIN);
+        if (din && din != lut_q)
+            return true;
+    }
+    return false;
+}
+
+// A direct-data flip-flop enters through this half's E or the other half's F.
+// Fastest-first puts the other LUT on F. Keep E for the flip-flop when the LUT
+// can spare it. A LUT that needs every pin, including E, makes the other half
+// leave F free instead.
+struct AlmPrivatePinPlan
+{
+    std::array<bool, 2> keep_e{false, false};
+    std::array<bool, 2> release_f{false, false};
+};
+
+static AlmPrivatePinPlan plan_private_ff_pins(const Arch *arch, uint32_t lab, uint8_t alm,
+                                             const std::array<CellInfo *, 2> &luts,
+                                             const dict<IdString, int> &shared_nets, bool a_avail, bool b_avail)
+{
+    AlmPrivatePinPlan plan;
+    const auto &alm_data = arch->labs.at(lab).alms.at(alm);
+    std::array<bool, 2> takes_f{false, false};
+    std::array<int, 2> private_count{0, 0};
+    std::array<bool, 2> direct{false, false};
+    for (int i = 0; i < 2; i++) {
+        direct[i] = half_has_direct_ff(arch, alm_data, i, luts[i]);
+        private_count[i] = private_lut_inputs(luts[i], shared_nets);
+        takes_f[i] = arch->get_alm_route_through_ff(lab, alm, i) != nullptr || private_count[i] > 0;
+    }
+    // F and C/D, plus a shared pin that is still free.
+    const int spare = 2 + int(a_avail) + int(b_avail);
+    for (int i = 0; i < 2; i++) {
+        if (!direct[i] || !takes_f[1 - i])
+            continue;
+        if (private_count[i] <= spare)
+            plan.keep_e[i] = true;
+        else
+            plan.release_f[1 - i] = true;
+    }
+    return plan;
+}
+
 } // namespace
 
 void Arch::assign_alm_lut_inputs(uint32_t lab, uint8_t alm)
@@ -1261,44 +1354,27 @@ void Arch::assign_alm_lut_inputs(uint32_t lab, uint8_t alm)
         //  - C, E0, and F0 are exclusive to the top LUT5 secion
         //  - D, E1, and F1 are exclusive to the bottom LUT5 section
         // First find up to two shared inputs
-        dict<IdString, int> shared_nets;
-        if (luts[0] && luts[1]) {
-            const int n0 = std::max(0, std::min(luts[0]->combInfo.lut_input_count, 6));
-            const int n1 = std::max(0, std::min(luts[1]->combInfo.lut_input_count, 6));
-            for (int i = 0; i < n0; i++) {
-                for (int j = 0; j < n1; j++) {
-                    if (luts[0]->combInfo.lut_in[i] == nullptr)
-                        continue;
-                    if (luts[0]->combInfo.lut_in[i] != luts[1]->combInfo.lut_in[j])
-                        continue;
-                    IdString net = luts[0]->combInfo.lut_in[i]->name;
-                    if (shared_nets.count(net))
-                        continue;
-                    int idx = int(shared_nets.size());
-                    shared_nets[net] = idx;
-                    if (shared_nets.size() >= 2)
-                        goto shared_search_done;
-                }
-            }
-        shared_search_done:;
-        }
+        dict<IdString, int> shared_nets = shared_lut_nets(luts);
         // A and B can be used for half-specific nets if not assigned to shared nets
         bool a_avail = shared_nets.size() == 0, b_avail = shared_nets.size() <= 1;
+        AlmPrivatePinPlan ff_pins = plan_private_ff_pins(this, lab, alm, luts, shared_nets, a_avail, b_avail);
         // Do the actual port assignment
         for (int i = 0; i < 2; i++) {
             if (!luts[i])
                 continue;
             // Work out which physical ports are available
             std::vector<IdString> avail_phys_ports;
-            // D/C, then E, F, B, A. lut_placement_pin uses this isolated order.
-            // D/C always available and dedicated to the half, in L5 mode
-            avail_phys_ports.push_back((i == 1) ? id_D : id_C);
-            // In arithmetic mode, Ei can only be used for D0 and Fi can only be used for D1
-            // otherwise, these are general and dedicated to one half
+            // F, then E, then C/D, then B, A. lut_placement_pin uses this isolated order.
+            // In arithmetic mode, Ei can only be used for D0 and Fi can only be used for D1.
+            // A direct-data flip-flop keeps E, or takes the other half's F when this LUT cannot spare E.
             if (!luts[i]->combInfo.is_carry) {
-                avail_phys_ports.push_back((i == 1) ? id_E1 : id_E0);
-                avail_phys_ports.push_back((i == 1) ? id_F1 : id_F0);
+                if (!ff_pins.release_f[i])
+                    avail_phys_ports.push_back((i == 1) ? id_F1 : id_F0);
+                if (!ff_pins.keep_e[i])
+                    avail_phys_ports.push_back((i == 1) ? id_E1 : id_E0);
             }
+            // C/D always available and dedicated to the half, in L5 mode
+            avail_phys_ports.push_back((i == 1) ? id_D : id_C);
             // A and B might be used for shared signals, or already used by the other half
             if (b_avail)
                 avail_phys_ports.push_back(id_B);
@@ -1363,10 +1439,27 @@ CellInfo *Arch::get_alm_route_through_ff(uint32_t lab, uint8_t alm, uint8_t half
     return nullptr;
 }
 
+IdString Arch::alm_route_through_pin(uint32_t lab, uint8_t alm, uint8_t half) const
+{
+    const auto &alm_data = labs.at(lab).alms.at(alm);
+    std::array<CellInfo *, 2> luts{getBoundBelCell(alm_data.lut_bels[0]), getBoundBelCell(alm_data.lut_bels[1])};
+    dict<IdString, int> shared_nets = shared_lut_nets(luts);
+    bool a_avail = shared_nets.size() == 0, b_avail = shared_nets.size() <= 1;
+    AlmPrivatePinPlan ff_pins = plan_private_ff_pins(this, lab, alm, luts, shared_nets, a_avail, b_avail);
+    // F is the fastest half-specific input. Move to E when the other half's
+    // flip-flop has no other fabric pin.
+    if (ff_pins.release_f[half])
+        return half ? id_E1 : id_E0;
+    return half ? id_F1 : id_F0;
+}
+
 void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
 {
     assign_alm_lut_inputs(lab, alm);
     auto &alm_data = labs.at(lab).alms.at(alm);
+    // Choose pins before insertion. Binding the first route-through would hide
+    // that half from the flip-flop plan and the second pin would disagree.
+    std::array<IdString, 2> rt_pin{alm_route_through_pin(lab, alm, 0), alm_route_through_pin(lab, alm, 1)};
     // FF route-through insertion; selection is also used by placement STA.
     for (uint8_t i = 0; i < 2; ++i) {
         auto *ff = get_alm_route_through_ff(lab, alm, i);
@@ -1390,8 +1483,9 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
         ff->disconnectPort(id_DATAIN);
         rt_lut->connectPort(id_A, datain);
         rt_lut->connectPorts(id_Q, ff, id_DATAIN);
-        // Assign route-thru LUT physical ports, input goes to the first half-specific input
-        rt_lut->pin_data[id_A].bel_pins.push_back(i ? id_D : id_C);
+        // F is the fastest half-specific input. E is the fallback when the
+        // other half's direct-data flip-flop needs this F.
+        rt_lut->pin_data[id_A].bel_pins.push_back(rt_pin[i]);
         rt_lut->pin_data[id_Q].bel_pins.push_back(id_COMBOUT);
         assign_comb_info(rt_lut);
         // Place the route-thru LUT at the relevant combinational bel
@@ -1425,10 +1519,10 @@ IdString Arch::lut_placement_pin(const CellInfo *cell, IdString port) const
         port == id_Q)
         return comb_pinmap.at(port);
     const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
-    // Isolated allocation from assign_lut6_inputs / assign_alm_lut_inputs.
-    // C/D and the two E/F halves have equal cell delays; pairing can still
-    // reserve A/B for shared signals later.
-    const std::array<IdString, 5> l5_pins{id_C, id_E0, id_F0, id_B, id_A};
+    // Isolated allocation from assign_lut6_inputs / assign_alm_lut_inputs:
+    // F, then E, then C/D. C/D and the two E/F halves have equal cell delays;
+    // pairing can still reserve A/B for shared signals later.
+    const std::array<IdString, 5> l5_pins{id_F0, id_E0, id_C, id_B, id_A};
     const std::array<IdString, 6> l6_pins{id_A, id_B, id_C, id_D, id_E0, id_F0};
     const bool l6 = cell->type == id_MISTRAL_ALUT6;
     const int width = l6                               ? 6

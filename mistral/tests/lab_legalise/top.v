@@ -40,11 +40,11 @@ module MISTRAL_OB (
 endmodule
 
 // Seal right-PCM bits 6, 7, and 8: a bottom 2-input LUT in a LAB that also
-// holds a BEL-locked socket flip-flop. Placement leaves that LUT on
-// comb_pinmap (E0/F0). The bottom half reads D/E1/F1.
+// holds a BEL-locked socket flip-flop. Fastest-first legalisation reads
+// F1 and E1.
 //
 // Seed 6 constant 512: locked plug_rdata_ff_10 with no LUT in its ALM.
-// Skipping route-through leaves the constant on fabric F1.
+// Its constant enters through a data route-through on F1.
 module top (
     input wire clk,
     input wire pcm_a,

@@ -722,6 +722,8 @@ struct Arch : BaseArch<ArchRanges>
     void reassign_alm_inputs(uint32_t lab, uint8_t alm);    // lab.cc
     int optimise_private_lut_pins(uint32_t lab, uint8_t alm, int half, const dict<IdString, delay_t> &arrival);
     CellInfo *get_alm_route_through_ff(uint32_t lab, uint8_t alm, uint8_t half) const; // lab.cc
+    // F, or E when the other half's direct-data flip-flop needs this F.
+    IdString alm_route_through_pin(uint32_t lab, uint8_t alm, uint8_t half) const; // lab.cc
     void assign_alm_lut_inputs(uint32_t lab, uint8_t alm); // LUT pins only; no netlist mutation.
     void update_alm_input_count(uint32_t lab, uint8_t alm); // lab.cc
 

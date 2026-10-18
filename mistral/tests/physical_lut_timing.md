@@ -19,7 +19,7 @@ buffers and inverters, use L5 mode. The mux-level assignments follow
 mux in L5 mode. C/D exchange the middle levels between the two L6 halves, so
 their existing early/late envelope is used. Before input legalisation, the
 default uses the fastest-first placement scaffold. `--isolated-lut-placement`
-(or `--arrival-pin-assignment`) instead uses C, E, F, B, A for an isolated L5
+(or `--arrival-pin-assignment`) instead uses F, E, C, B, A for an isolated L5
 cell and A through F for LUT6. Hypothetical cells without nets use the same
 order as a fully connected cell; connected cells skip disconnected inputs.
 These estimates affect placement QoR and remain opt-in following #206.
