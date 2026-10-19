@@ -39,6 +39,10 @@ class CommandHandler
 
     int exec();
     void load_json(Context *ctx, std::string filename);
+    // Copy explicit CLI settings onto a context that did not run createContext.
+    // GUI open_json does this before load_json snapshots. IdString indexes are
+    // per-context, so the previous snapshot cannot be replayed onto it.
+    void copyDedicatedCommandSettings(const Context *from, Context *to) const;
     void clear();
     void run_script_hook(const std::string &name);
 
@@ -58,6 +62,7 @@ class CommandHandler
     void setupContext(Context *ctx);
     void applyEarlySettingOverrides(Context *ctx);
     void applySdcClockOverrides(Context *ctx);
+    void snapshotDedicatedCommandSettings(Context *ctx);
     void applySettingOverrides(Context *ctx);
     void restoreTelemetrySettings(Context *ctx);
     int executeMain(std::unique_ptr<Context> ctx);
@@ -74,6 +79,10 @@ class CommandHandler
     char **argv;
     std::ofstream logfile;
     std::string telemetry_seed;
+    // Explicit command-line settings captured before a JSON import. The file
+    // overwrites matching ctx->settings; applySettingOverrides copies these
+    // back so the invocation wins. Keys that were not requested stay as saved.
+    dict<IdString, Property> dedicated_setting_snapshot;
 };
 
 // Relative directory functions from Yosys
