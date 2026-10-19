@@ -105,7 +105,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `archRetryLimit` | 8 | maximum re-routing attempts after architecture binding rejects a route, independent of `maxIter`; 0 fails immediately. Normal logs name up to eight rejected wires/pips and their nets per binding pass; the final error lists the rejected nets |
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
-| `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 0, 22 | device scratch: concurrent nets and log2 table size per lane. A search that outgrows the small table is retried in the large lane; `largeSlots=0` gives that lane as many slots (4 to 32) as three quarters of the free device memory holds, at 235 MB per slot with `largeBits=22` |
+| `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 0, 22 | device scratch: concurrent nets and log2 table size per lane. A search that outgrows the small table is retried in the large lane; `largeSlots=0` gives that lane as many slots (4 to 32) as three quarters of the free device memory holds, at 235 MB per slot with `largeBits=22`. If later route-buffer allocation still fails, the automatic lane releases its scratch, retries those allocations, and reduces to the largest lane from four slots down to one that fits |
 | `maxBatches`, `maxIter` | 12, 2000 | batches per iteration, iteration limit |
 
 ## GPU phase lease (`GPU_LEASE_FD`)

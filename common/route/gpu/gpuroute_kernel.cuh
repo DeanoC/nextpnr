@@ -656,6 +656,11 @@ __global__ void update_state_kernel(int32_t *occ, float *hist, int32_t *reserved
             throw std::runtime_error(std::string("GPU error: ") + hipGetErrorString(err__) + " at " #call);            \
     } while (0)
 
+struct DeviceAllocationFailure : std::runtime_error
+{
+    using std::runtime_error::runtime_error;
+};
+
 template <typename T> struct DevBuf
 {
     T *ptr = nullptr;
@@ -673,7 +678,11 @@ template <typename T> struct DevBuf
         release();
         if (n == 0)
             return;
-        GPU_CHECK(hipMalloc((void **)&ptr, n * sizeof(T)));
+        T *new_ptr = nullptr;
+        hipError_t err = hipMalloc((void **)&new_ptr, n * sizeof(T));
+        if (err != hipSuccess)
+            throw DeviceAllocationFailure(std::string("GPU allocation failed: ") + hipGetErrorString(err));
+        ptr = new_ptr;
         count = n;
     }
     void ensure(size_t n)
@@ -717,6 +726,17 @@ struct Lane
         sload.alloc((size_t)slots * cap);
         piles.alloc((size_t)slots * NPILES * (size_t)cap);
         cand_par.alloc((size_t)slots * cap);
+    }
+    void release()
+    {
+        keys.release();
+        vals.release();
+        sdelay.release();
+        sload.release();
+        piles.release();
+        cand_par.release();
+        slots = 0;
+        cap = 0;
     }
     Scratch scratch() const
     {
@@ -787,6 +807,7 @@ class DeviceBackend : public Backend
             occ_.upload(graph.wire_occ, graph.n_wires);
             hist_.upload(graph.wire_hist, graph.n_wires);
             small_.alloc(small_slots, small_bits);
+            auto_large_slots_ = large_slots <= 0;
             if (large_slots <= 0) {
                 // Searches that outgrow the small table run here; with only
                 // a few slots a congested iteration routes them almost one
@@ -797,6 +818,8 @@ class DeviceBackend : public Backend
                 size_t per_slot = Lane::bytes_per_slot(large_bits);
                 large_slots = int(std::min<size_t>(32, std::max<size_t>(4, free_bytes / 4 * 3 / per_slot)));
             }
+            large_slots_ = large_slots;
+            large_bits_ = large_bits;
             large_.alloc(large_slots, large_bits);
             GPU_CHECK(hipDeviceSynchronize());
         } catch (const std::exception &e) {
@@ -838,15 +861,42 @@ class DeviceBackend : public Backend
             return;
 
         auto t0 = std::chrono::steady_clock::now();
-        tasks_.upload(tasks.data(), tasks.size());
-        arcs_.upload(arcs.data(), arcs.size());
-        seeds_.upload(seeds.data(), seeds.size());
-        seed_delay_.upload(seed_delay.data(), seed_delay.size());
-        seed_load_.upload(seed_load.data(), seed_load.size());
-        shell_tiles_.upload(shell_tiles.data(), shell_tiles.size());
-        results_.ensure(arcs.size());
-        paths_.ensure(total_paths);
-        GPU_CHECK(hipMemset(results_.ptr, 0, arcs.size() * sizeof(ArcResult)));
+        auto prepare_route_buffers = [&]() {
+            tasks_.upload(tasks.data(), tasks.size());
+            arcs_.upload(arcs.data(), arcs.size());
+            seeds_.upload(seeds.data(), seeds.size());
+            seed_delay_.upload(seed_delay.data(), seed_delay.size());
+            seed_load_.upload(seed_load.data(), seed_load.size());
+            shell_tiles_.upload(shell_tiles.data(), shell_tiles.size());
+            results_.ensure(arcs.size());
+            paths_.ensure(total_paths);
+            GPU_CHECK(hipMemset(results_.ptr, 0, arcs.size() * sizeof(ArcResult)));
+        };
+        try {
+            prepare_route_buffers();
+        } catch (const DeviceAllocationFailure &) {
+            if (!auto_large_slots_ || large_slots_ <= 1)
+                throw;
+            // Route-time output buffers are sized from the current batch and
+            // can exceed the reserve left by automatic lane sizing. Free the
+            // lane before retrying those allocations, then restore the
+            // largest lane of up to four slots that fits. No routing
+            // kernel has run, so the host inputs remain authoritative and can
+            // be uploaded again unchanged.
+            large_.release();
+            prepare_route_buffers();
+            for (int slots = std::min(4, large_slots_); slots > 0; --slots) {
+                try {
+                    large_.alloc(slots, large_bits_);
+                    large_slots_ = slots;
+                    break;
+                } catch (const DeviceAllocationFailure &) {
+                    large_.release();
+                    if (slots == 1)
+                        throw;
+                }
+            }
+        }
         auto t1 = std::chrono::steady_clock::now();
         stats_.transfer_seconds += std::chrono::duration<double>(t1 - t0).count();
 
@@ -912,6 +962,9 @@ class DeviceBackend : public Backend
     DevBuf<int32_t> upd_wires_, upd_occ_, upd_res_;
     DevBuf<float> upd_hist_;
     BackendStats stats_;
+    int large_slots_ = 0;
+    int large_bits_ = 22;
+    bool auto_large_slots_ = false;
 };
 
 } // namespace
