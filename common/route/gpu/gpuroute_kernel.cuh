@@ -880,12 +880,12 @@ class DeviceBackend : public Backend
             // Route-time output buffers are sized from the current batch and
             // can exceed the reserve left by automatic lane sizing. Free the
             // lane before retrying those allocations, then restore the
-            // largest lane of up to four slots that fits. No routing
+            // largest lane that fits. No routing
             // kernel has run, so the host inputs remain authoritative and can
             // be uploaded again unchanged.
             large_.release();
             prepare_route_buffers();
-            for (int slots = std::min(4, large_slots_); slots > 0; --slots) {
+            for (int slots = large_slots_; slots > 0; --slots) {
                 try {
                     large_.alloc(slots, large_bits_);
                     large_slots_ = slots;
