@@ -33,7 +33,7 @@ and fit below.
 
 An unregistered read keeps the old 1004 ps minimum rather than TimeQuest's
 slow-corner hold value. nextpnr checks hold at this corner only, and at
-TimeQuest's fast corners the same reads hold for just 0.72–1.17 ns, so no hold
+TimeQuest's fast corners the same reads hold for just 0.72–1.13 ns, so no hold
 check becomes looser than before. `classes.json` has all four corners.
 
 TimeQuest times an unregistered read from the port's read register
