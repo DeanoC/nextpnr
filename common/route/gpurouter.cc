@@ -1291,9 +1291,16 @@ struct GpuRouter
                 batches[K - 1].push_back(std::move(t));
         }
         std::vector<std::vector<HostTask>> out;
-        for (auto &b : batches)
-            if (!b.empty())
-                out.push_back(std::move(b));
+        for (int b = 0; b < K - 1; b++)
+            if (!batches[b].empty())
+                out.push_back(std::move(batches[b]));
+        auto &overflow = batches[K - 1];
+        const size_t chunk = cfg.overflow_chunk > 0 ? size_t(cfg.overflow_chunk) : overflow.size();
+        for (size_t i = 0; i < overflow.size(); i += chunk) {
+            out.emplace_back();
+            for (size_t j = i; j < std::min(overflow.size(), i + chunk); j++)
+                out.back().push_back(std::move(overflow[j]));
+        }
         return out;
     }
 
@@ -3618,6 +3625,7 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     candidate_expand_k = ctx->setting<int>("gpurouter/candidateExpandK", expand_k);
     expand_div = ctx->setting<int>("gpurouter/expandDiv", 0);
     max_batches = ctx->setting<int>("gpurouter/maxBatches", 12);
+    overflow_chunk = ctx->setting<int>("gpurouter/overflowChunk", 128);
     small_slots = ctx->setting<int>("gpurouter/smallSlots", 384);
     large_slots = ctx->setting<int>("gpurouter/largeSlots", 4);
     small_bits = ctx->setting<int>("gpurouter/smallBits", 16);

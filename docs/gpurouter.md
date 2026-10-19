@@ -106,7 +106,8 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
 | `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 4, 22 | device scratch: concurrent nets and log2 table size per lane |
-| `maxBatches`, `maxIter` | 12, 2000 | batches per iteration, iteration limit |
+| `maxBatches`, `maxIter` | 12, 2000 | bounding-box-disjoint batches per iteration, iteration limit |
+| `overflowChunk` | 128 | nets whose boxes overlap every disjoint batch are routed after them in batches of at most this many, each seeing the routes of the batches before it; 0 routes them all in one batch |
 
 ## GPU phase lease (`GPU_LEASE_FD`)
 
