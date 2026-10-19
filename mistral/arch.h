@@ -590,9 +590,12 @@ struct Arch : BaseArch<ArchRanges>
     bool analogue_cache_valid = false;
     void compute_analogue_arcs(bool observe);
     bool analogue_repair();
-    // Analogue-scored route selection: several GPU candidate routes per
-    // failing sink, evaluated with the analogue model, best one kept.
-    bool analogue_candidate_pass(TimingAnalyser &tmg, float target, const GpuRouterCfg &repair_cfg);
+    // Analogue-scored route selection: several GPU candidate routes per sink
+    // with less than `limit` slack, evaluated with the analogue model, best
+    // one kept. To repair, a net scores by its worst sink slack; to improve
+    // a passing design, by its worst sink margin over that sink's clock
+    // pairs (TimingAnalyser::get_setup_slack_margin).
+    bool analogue_candidate_pass(TimingAnalyser &tmg, float limit, bool improve, const GpuRouterCfg &repair_cfg);
     // Keep the analogue simulator's routing-mux state in step with a net
     // whose routing changed: removed pips are parked on an unused input,
     // added pips linked.
