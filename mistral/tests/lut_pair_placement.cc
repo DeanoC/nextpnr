@@ -302,7 +302,12 @@ class LutPairPlacementTest : public ::testing::Test {
         for (auto *cell : inputs) place(cell, 30, 19, STRENGTH_LOCKED);
         place(inner, 24, 20); place(outer, 24, 21);
         place(carry, 30, 20, STRENGTH_LOCKED, 0); place(sink, 30, 20, STRENGTH_LOCKED, 8);
-        std::swap(inner->pin_data[id_A].bel_pins, inner->pin_data[id_B].bel_pins);
+        // Fastest-last already puts inner A on E and B on F, which is what
+        // swapping the old fastest-first map produced. Freeze outer on that
+        // comb map so the pair's timing and truth stay on the same pins.
+        outer->pin_data[id_A].bel_pins = {id_F0};
+        outer->pin_data[id_B].bel_pins = {id_E0};
+        outer->pin_data[id_C].bel_pins = {id_D};
         for (auto *cell : inputs) hole(cell->getPort(id_Q), cell->name.str(ctx.get()) + "$hole");
         hole(inner->getPort(id_Q), "inner$hole"); hole(outer->getPort(id_Q), "outer$hole"); ctx->check();
     }
@@ -478,10 +483,12 @@ TEST_F(LutPairPlacementTest, NativeRelatedClockHoldRejectsARealShorterSetupPath)
     ctx->settings[ctx->id("target_freq")] = 125e6;
     ASSERT_NE(clock_source(clock, "hold_primary_clock", true), nullptr);
     auto *capture_clock = clock;
-    // Six real identity LUT arcs on physical B create a late common-root
-    // capture clock. The default F input is too fast to cross the hold
-    // boundary; choose the physical mux level explicitly, without injection.
-    for (int index = 0; index < 6; ++index) {
+    // Identity LUT arcs on physical B create a late common-root capture clock.
+    // The default F input is too fast to cross the hold boundary; choose the
+    // physical mux level explicitly, without injection. Non-L6 B maxes at
+    // 583 ps, so six arcs miss the original path's hold by 264 ps. Five stay
+    // non-negative while a shorter copy of the pair still goes negative.
+    for (int index = 0; index < 5; ++index) {
         auto name = "hold_clock_stage_" + std::to_string(index);
         auto *cell = ctx->createCell(ctx->id(name), id_MISTRAL_ALUT2);
         cell->params[id_LUT] = Property(0xa, 4); cell->addInput(id_A); cell->addInput(id_B); cell->addOutput(id_Q);
@@ -1093,7 +1100,8 @@ TEST_F(LutPairCopyTest, RealNegativeHoldRejectsSafely)
     ASSERT_NE(clock_source(clock, "copy_primary_clock", true), nullptr); auto *capture = clock;
     // Real slow physical B arcs place the hold boundary between the original
     // cone and the shorter copy, matching the native placement guard fixture.
-    for (int i = 0; i < 6; ++i) {
+    // Five arcs: six overshoots that boundary by 264 ps at the current B max.
+    for (int i = 0; i < 5; ++i) {
         auto *cell = ctx->createCell(ctx->idf("copy_clock_stage_%d", i), id_MISTRAL_ALUT2);
         cell->params[id_LUT] = Property(0xa, 4); cell->addInput(id_A); cell->addInput(id_B); cell->addOutput(id_Q);
         cell->connectPort(id_A, capture); cell->pin_data[id_B].state = PIN_0;

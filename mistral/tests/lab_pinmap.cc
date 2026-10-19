@@ -1,4 +1,5 @@
 #include <array>
+#include <map>
 #include <memory>
 
 #include "gtest/gtest.h"
@@ -130,13 +131,18 @@ TEST(LutPlacementTiming, IsolatedCellEstimatesMatchBothPhysicalHalves)
     const std::array<IdString, 6> types{id_MISTRAL_BUF,   id_MISTRAL_ALUT2, id_MISTRAL_ALUT3,
                                         id_MISTRAL_ALUT4, id_MISTRAL_ALUT5, id_MISTRAL_ALUT6};
     const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
-    // The isolated estimate must agree with legalisation. Arrival permutation
-    // is a separate option and does not select this estimate.
-    for (int half : {0, 1}) {
+    // The isolated estimate must agree with legalisation. The default agrees
+    // on every pin legalisation fixes: all LUT6 inputs and the last L5 input.
+    // The other L5 inputs keep the fastest-first scaffold order. Arrival
+    // permutation is a separate option and does not select either estimate.
+    const std::array<IdString, 5> scaffold_rest{id_E0, id_D, id_C, id_B, id_A};
+    for (int run = 0; run < 4; ++run) {
+        const int half = run & 1;
+        const bool isolated = run >= 2;
         ArchArgs args;
         args.device = "5CSEBA6U23I7";
         Context ctx(args);
-        ctx.isolated_lut_placement = true;
+        ctx.isolated_lut_placement = isolated;
         std::array<CellInfo *, 6> cells;
         std::array<std::array<DelayQuad, 6>, 6> hypothetical, unplaced, placed;
         for (int width = 1; width <= 6; ++width) {
@@ -167,6 +173,8 @@ TEST(LutPlacementTiming, IsolatedCellEstimatesMatchBothPhysicalHalves)
                 SCOPED_TRACE(std::to_string(half) + "/" + std::to_string(width) + "/" + std::to_string(input));
                 DelayQuad actual;
                 ASSERT_TRUE(ctx.getCellDelay(cells[width - 1], inputs[input], id_Q, actual));
+                if (!isolated && width < 6 && input != width - 1)
+                    ASSERT_TRUE(ctx.get_lut_pin_delay(scaffold_rest[input], false, actual));
                 for (const auto &estimate : {hypothetical[width - 1][input], unplaced[width - 1][input],
                                              placed[width - 1][input]}) {
                     EXPECT_EQ(estimate.minRiseDelay(), actual.minRiseDelay());
@@ -179,13 +187,18 @@ TEST(LutPlacementTiming, IsolatedCellEstimatesMatchBothPhysicalHalves)
     }
 }
 
-TEST(LutPlacementTiming, DefaultRetainsPlacementPolicyUntilPinsAreLegalised)
+TEST(LutPlacementTiming, DefaultEstimateGivesTheLastInputF)
 {
+    // Yosys times the last ALUT input fastest, so abc9 gives it the critical
+    // signal, and legalisation gives it F. Before legalisation, placement
+    // times it on F too, and a LUT6 on its only legal order. The other L5
+    // inputs keep the #206 fastest-first scaffold order on E, C/D, B.
     ArchArgs args;
     args.device = "5CSEBA6U23I7";
     Context ctx(args);
     const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
-    const std::array<IdString, 6> expected{id_F0, id_E0, id_D, id_C, id_B, id_A};
+    const std::array<IdString, 5> l5{id_E0, id_D, id_C, id_B, id_F0};
+    const std::array<IdString, 6> l6{id_A, id_B, id_C, id_D, id_E0, id_F0};
     for (int width : {5, 6}) {
         for (int half : {0, 1}) {
             auto *cell = ctx.createCell(ctx.idf("lut%d_%d", width, half),
@@ -200,31 +213,25 @@ TEST(LutPlacementTiming, DefaultRetainsPlacementPolicyUntilPinsAreLegalised)
             ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 6 * (2 * (width - 5) + half) + half)),
                         cell, STRENGTH_STRONG);
             for (int i = 0; i < width; ++i) {
-                EXPECT_EQ(cell->pin_data.at(inputs[i]).bel_pins, std::vector<IdString>{expected[i]});
+                const IdString expected = width == 6 ? l6[i] : l5[i];
+                EXPECT_EQ(cell->pin_data.at(inputs[i]).bel_pins, std::vector<IdString>{expected});
                 DelayQuad estimate, reference;
                 ASSERT_TRUE(ctx.getCellDelay(cell, inputs[i], id_Q, estimate));
-                ASSERT_TRUE(ctx.get_lut_pin_delay(expected[i], width == 6, reference));
+                ASSERT_TRUE(ctx.get_lut_pin_delay(expected, width == 6, reference));
                 EXPECT_EQ(estimate.maxDelay(), reference.maxDelay());
             }
         }
     }
     ctx.lab_pre_route();
-    // Retaining placement policy must not change physical timing reporting.
     for (int width : {5, 6}) {
         for (int half : {0, 1}) {
             auto *cell = ctx.cells.at(ctx.idf("lut%d_%d", width, half)).get();
-            // Width 6 stays in logical order, so F is the fast tail. Width 5
-            // gives private pins out fastest-first, so A lands on F and E on A.
-            const auto fast_port = width == 6 ? id_F : id_A;
-            const auto slow_port = width == 6 ? id_A : id_E;
-            EXPECT_EQ(cell->pin_data.at(id_A).bel_pins, std::vector<IdString>{width == 6 ? id_A : half ? id_F1 : id_F0});
-            EXPECT_EQ(cell->pin_data.at(fast_port).bel_pins, std::vector<IdString>{half ? id_F1 : id_F0});
-            if (width == 5) {
-                EXPECT_EQ(cell->pin_data.at(id_E).bel_pins, std::vector<IdString>{id_A});
-            }
+            const auto last = width == 6 ? id_F : id_E;
+            EXPECT_EQ(cell->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_A});
+            EXPECT_EQ(cell->pin_data.at(last).bel_pins, std::vector<IdString>{half ? id_F1 : id_F0});
             DelayQuad slow, fast;
-            ASSERT_TRUE(ctx.getCellDelay(cell, slow_port, id_Q, slow));
-            ASSERT_TRUE(ctx.getCellDelay(cell, fast_port, id_Q, fast));
+            ASSERT_TRUE(ctx.getCellDelay(cell, id_A, id_Q, slow));
+            ASSERT_TRUE(ctx.getCellDelay(cell, last, id_Q, fast));
             EXPECT_LT(fast.maxDelay(), slow.minDelay());
         }
     }
@@ -232,47 +239,101 @@ TEST(LutPlacementTiming, DefaultRetainsPlacementPolicyUntilPinsAreLegalised)
 
 TEST(LutPlacementTiming, IsolatedSparseInputsMatchLegalisation)
 {
-    ArchArgs args;
-    args.device = "5CSEBA6U23I7";
-    Context ctx(args);
-    ctx.isolated_lut_placement = true;
-    for (int width : {5, 6}) {
-        auto *cell = ctx.createCell(ctx.idf("sparse%d", width), width == 5 ? id_MISTRAL_ALUT5 : id_MISTRAL_ALUT6);
-        for (IdString input : {id_A, id_B, id_C, id_D, id_E})
-            cell->addInput(input);
-        if (width == 6)
-            cell->addInput(id_F);
-        // B/D are deliberately disconnected before the connected E input.
-        for (IdString input : {id_A, id_C, id_E})
-            cell->connectPort(input, ctx.createNet(ctx.idf("%s_%d", ctx.nameOf(input), width)));
-        cell->addOutput(id_Q);
-        cell->connectPort(id_Q, ctx.createNet(ctx.idf("output%d", width)));
-    }
-    ctx.assignArchInfo();
-    std::array<std::array<DelayQuad, 3>, 2> estimates;
-    const std::array<IdString, 3> connected{id_A, id_C, id_E};
-    for (int width : {5, 6}) {
-        auto *cell = ctx.cells.at(ctx.idf("sparse%d", width)).get();
-        for (int i = 0; i < 3; ++i)
-            ASSERT_TRUE(ctx.getCellDelay(cell, connected[i], id_Q, estimates[width - 5][i]));
-        ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 6 * (width - 5))), cell, STRENGTH_STRONG);
-    }
-    ctx.lab_pre_route();
-    for (int width : {5, 6}) {
-        auto *cell = ctx.cells.at(ctx.idf("sparse%d", width)).get();
-        for (int i = 0; i < 3; ++i) {
-            DelayQuad actual;
-            ASSERT_TRUE(ctx.getCellDelay(cell, connected[i], id_Q, actual));
-            EXPECT_EQ(estimates[width - 5][i].maxDelay(), actual.maxDelay());
-            EXPECT_EQ(estimates[width - 5][i].minDelay(), actual.minDelay());
+    for (bool isolated : {false, true}) {
+        ArchArgs args;
+        args.device = "5CSEBA6U23I7";
+        Context ctx(args);
+        ctx.isolated_lut_placement = isolated;
+        for (int width : {5, 6}) {
+            auto *cell = ctx.createCell(ctx.idf("sparse%d", width), width == 5 ? id_MISTRAL_ALUT5 : id_MISTRAL_ALUT6);
+            for (IdString input : {id_A, id_B, id_C, id_D, id_E})
+                cell->addInput(input);
+            if (width == 6)
+                cell->addInput(id_F);
+            // B/D are deliberately disconnected before the connected E input.
+            for (IdString input : {id_A, id_C, id_E})
+                cell->connectPort(input, ctx.createNet(ctx.idf("%s_%d", ctx.nameOf(input), width)));
+            cell->addOutput(id_Q);
+            cell->connectPort(id_Q, ctx.createNet(ctx.idf("output%d", width)));
+        }
+        ctx.assignArchInfo();
+        std::array<std::array<DelayQuad, 3>, 2> estimates;
+        const std::array<IdString, 3> connected{id_A, id_C, id_E};
+        for (int width : {5, 6}) {
+            auto *cell = ctx.cells.at(ctx.idf("sparse%d", width)).get();
+            for (int i = 0; i < 3; ++i)
+                ASSERT_TRUE(ctx.getCellDelay(cell, connected[i], id_Q, estimates[width - 5][i]));
+            ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 6 * (width - 5))), cell, STRENGTH_STRONG);
+        }
+        ctx.lab_pre_route();
+        for (int width : {5, 6}) {
+            auto *cell = ctx.cells.at(ctx.idf("sparse%d", width)).get();
+            for (int i = 0; i < 3; ++i) {
+                DelayQuad actual;
+                ASSERT_TRUE(ctx.getCellDelay(cell, connected[i], id_Q, actual));
+                // By default the L5 inputs before the last connected one keep
+                // the scaffold order, counted over connected inputs only.
+                if (!isolated && width == 5 && i < 2)
+                    ASSERT_TRUE(ctx.get_lut_pin_delay(i == 0 ? id_E0 : id_D, false, actual));
+                EXPECT_EQ(estimates[width - 5][i].maxDelay(), actual.maxDelay());
+                EXPECT_EQ(estimates[width - 5][i].minDelay(), actual.minDelay());
+            }
         }
     }
 }
 
-TEST(LutPlacementTiming, ArrivalLeavesThePlacementEstimateOnTheDefaultScaffold)
+TEST(LutPlacementTiming, SharedAndPrivateL5PinsRemainLegal)
 {
-    // Arrival permutes private pins after legalisation. Placement scoring stays
-    // on the fastest-first scaffold unless --isolated-lut-placement is also set.
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    Context ctx(args);
+    const std::array<IdString, 5> ports{id_A, id_B, id_C, id_D, id_E};
+    auto *shared_a = ctx.createNet(ctx.id("shared_a"));
+    auto *shared_b = ctx.createNet(ctx.id("shared_b"));
+    std::array<CellInfo *, 2> luts{};
+    for (int half = 0; half < 2; ++half) {
+        auto *cell = ctx.createCell(ctx.idf("lut%d", half), id_MISTRAL_ALUT5);
+        luts[half] = cell;
+        for (IdString port : ports) {
+            cell->addInput(port);
+            NetInfo *net = port == id_A ? shared_a : port == id_B ? shared_b
+                                                                  : ctx.createNet(ctx.idf("private%d_%s", half, ctx.nameOf(port)));
+            cell->connectPort(port, net);
+        }
+        cell->addOutput(id_Q);
+        cell->connectPort(id_Q, ctx.createNet(ctx.idf("output%d", half)));
+    }
+    ctx.assignArchInfo();
+    for (int half = 0; half < 2; ++half)
+        ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, half)), luts[half], STRENGTH_STRONG);
+    ctx.lab_pre_route();
+
+    std::map<IdString, NetInfo *> pin_nets;
+    std::map<NetInfo *, IdString> net_pins;
+    for (CellInfo *cell : luts) {
+        for (IdString port : ports) {
+            auto *net = cell->getPort(port);
+            const auto &mapped = cell->pin_data.at(port).bel_pins;
+            ASSERT_EQ(mapped.size(), 1);
+            const IdString physical = mapped.front();
+            EXPECT_TRUE(physical.in(id_A, id_B, id_C, id_D, id_E0, id_E1, id_F0, id_F1));
+            auto pin = pin_nets.emplace(physical, net);
+            EXPECT_TRUE(pin.second || pin.first->second == net);
+            auto connection = net_pins.emplace(net, physical);
+            EXPECT_TRUE(connection.second || connection.first->second == physical);
+        }
+    }
+    EXPECT_EQ(luts[0]->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_A});
+    EXPECT_EQ(luts[1]->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_A});
+    EXPECT_EQ(luts[0]->pin_data.at(id_B).bel_pins, std::vector<IdString>{id_B});
+    EXPECT_EQ(luts[1]->pin_data.at(id_B).bel_pins, std::vector<IdString>{id_B});
+}
+
+TEST(LutPlacementTiming, PinOptionsLeaveThePlacementEstimate)
+{
+    // Arrival permutes private pins after legalisation and leaves placement
+    // scoring alone. --isolated-lut-placement only changes the L5 inputs
+    // before the last one: both estimates time the last input on F.
     ArchArgs args;
     args.device = "5CSEBA6U23I7";
     Context plain(args), arrival_only(args), isolated(args);
@@ -301,16 +362,104 @@ TEST(LutPlacementTiming, ArrivalLeavesThePlacementEstimateOnTheDefaultScaffold)
         EXPECT_EQ(base_delay.maxDelay(), arrival_delay.maxDelay());
         EXPECT_EQ(base_delay.minDelay(), arrival_delay.minDelay());
     }
-    EXPECT_EQ(base->pin_data.at(id_C).bel_pins, std::vector<IdString>{id_D});
+    EXPECT_EQ(base->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_E0});
+    EXPECT_EQ(base->pin_data.at(id_B).bel_pins, std::vector<IdString>{id_D});
+    EXPECT_EQ(base->pin_data.at(id_C).bel_pins, std::vector<IdString>{id_C});
+    EXPECT_EQ(base->pin_data.at(id_D).bel_pins, std::vector<IdString>{id_B});
+    EXPECT_EQ(base->pin_data.at(id_E).bel_pins, std::vector<IdString>{id_F0});
+    EXPECT_EQ(alone->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_A});
+    EXPECT_EQ(alone->pin_data.at(id_B).bel_pins, std::vector<IdString>{id_B});
     EXPECT_EQ(alone->pin_data.at(id_C).bel_pins, std::vector<IdString>{id_C});
-    EXPECT_EQ(alone->pin_data.at(id_E).bel_pins, std::vector<IdString>{id_A});
-    EXPECT_EQ(base->pin_data.at(id_E).bel_pins, std::vector<IdString>{id_B});
-    // C and D share a delay envelope. A and B do not, so the E pin is the
-    // estimate that actually moves.
-    DelayQuad base_e, isolated_e;
+    EXPECT_EQ(alone->pin_data.at(id_D).bel_pins, std::vector<IdString>{id_E0});
+    EXPECT_EQ(alone->pin_data.at(id_E).bel_pins, std::vector<IdString>{id_F0});
+    // The last input is timed on F either way; the first input is not.
+    DelayQuad base_e, isolated_e, base_a, isolated_a;
     ASSERT_TRUE(plain.getCellDelay(base, id_E, id_Q, base_e));
     ASSERT_TRUE(isolated.getCellDelay(alone, id_E, id_Q, isolated_e));
-    EXPECT_NE(base_e.maxDelay(), isolated_e.maxDelay());
+    ASSERT_TRUE(plain.getCellDelay(base, id_A, id_Q, base_a));
+    ASSERT_TRUE(isolated.getCellDelay(alone, id_A, id_Q, isolated_a));
+    EXPECT_EQ(base_e.maxDelay(), isolated_e.maxDelay());
+    EXPECT_LT(base_a.maxDelay(), isolated_a.maxDelay());
+}
+
+TEST(LutPlacementTiming, SharedLastInputKeepsAFreePrivateFastPin)
+{
+    // abc9 gives a LUT's last input the critical signal. When that net is
+    // also an input of the other half, the pair shares it on A/B. The half
+    // whose last input it is keeps it on its own F when it has a free
+    // private pin, and the other half still reads it on A. A half with no
+    // free private pin keeps the shared pin.
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    Context ctx(args);
+    const std::array<IdString, 5> inputs{id_A, id_B, id_C, id_D, id_E};
+    auto make = [&](const char *name, IdString type, const std::vector<NetInfo *> &nets, uint32_t lut) {
+        auto *cell = ctx.createCell(ctx.id(name), type);
+        for (size_t k = 0; k < nets.size(); ++k) {
+            cell->addInput(inputs[k]);
+            cell->connectPort(inputs[k], nets[k]);
+        }
+        cell->addOutput(id_Q);
+        cell->connectPort(id_Q, ctx.createNet(ctx.idf("%s_q", name)));
+        cell->params[id_LUT] = Property(lut, 1 << nets.size());
+        return cell;
+    };
+    auto net = [&](const char *name) { return ctx.createNet(ctx.id(name)); };
+    auto *shared = net("shared");
+    auto *roomy = make("roomy", id_MISTRAL_ALUT3, {net("p0"), net("p1"), shared}, 0x96);
+    auto *reader = make("reader", id_MISTRAL_ALUT3, {shared, net("q0"), net("q1")}, 0xe8);
+    auto *shared_full = net("shared_full");
+    auto *full = make("full", id_MISTRAL_ALUT5, {net("r0"), net("r1"), net("r2"), net("r3"), shared_full}, 0x6996c33cU);
+    auto *full_reader = make("full_reader", id_MISTRAL_ALUT3, {shared_full, net("s0"), net("s1")}, 0xe8);
+    ctx.assignArchInfo();
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 0)), roomy, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 1)), reader, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 6)), full, STRENGTH_STRONG);
+    ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 7)), full_reader, STRENGTH_STRONG);
+    ctx.lab_pre_route();
+    auto pin = [](CellInfo *cell, IdString port) { return cell->pin_data.at(port).bel_pins.at(0); };
+    EXPECT_EQ(pin(roomy, id_C), id_F0);
+    EXPECT_EQ(pin(roomy, id_B), id_E0);
+    EXPECT_EQ(pin(roomy, id_A), id_C);
+    EXPECT_EQ(pin(reader, id_A), id_A);
+    EXPECT_EQ(pin(reader, id_B), id_E1);
+    EXPECT_EQ(pin(reader, id_C), id_F1);
+    // Four private inputs fill F, E and C, so the shared last input stays on A.
+    EXPECT_EQ(pin(full, id_E), id_A);
+    EXPECT_EQ(pin(full_reader, id_A), id_A);
+    DelayQuad fast, slow;
+    ASSERT_TRUE(ctx.getCellDelay(roomy, id_C, id_Q, fast));
+    ASSERT_TRUE(ctx.getCellDelay(full, id_E, id_Q, slow));
+    EXPECT_LT(fast.maxDelay(), slow.minDelay());
+    // Each half's mask implements its own function, and the half that left
+    // A to the other one does not depend on it.
+    const uint32_t lab = ctx.bel_data(roomy->bel).lab_data.lab;
+    const std::array<std::array<CellInfo *, 2>, 2> alms{{{roomy, reader}, {full, full_reader}}};
+    for (int alm = 0; alm < 2; ++alm) {
+        const uint64_t mask = ctx.compute_lut_mask(lab, alm);
+        for (int half = 0; half < 2; ++half) {
+            CellInfo *cell = alms[alm][half];
+            const int width = int(cell->ports.size()) - 1;
+            bool uses_a = false;
+            for (int k = 0; k < width; ++k)
+                uses_a |= pin(cell, inputs[k]) == id_A;
+            for (int bits = 0; bits < (1 << width); ++bits) {
+                int physical_bits = 0;
+                for (int k = 0; k < width; ++k) {
+                    const auto &mapping = cell->pin_data.at(inputs[k]);
+                    IdString phys = mapping.bel_pins.at(0);
+                    int position = phys == id_A ? 0 : phys == id_B ? 1 : phys.in(id_C, id_D) ? 2 : phys.in(id_E0, id_E1) ? 3 : 4;
+                    bool value = bool((bits >> k) & 1) ^ (mapping.state != PIN_INV);
+                    physical_bits |= int(value) << position;
+                }
+                const bool expected = (cell->params.at(id_LUT).as_int64() >> bits) & 1;
+                SCOPED_TRACE(std::string(ctx.nameOf(cell)) + "/" + std::to_string(bits));
+                EXPECT_EQ(bool((mask >> (physical_bits + 32 * half)) & 1), !expected);
+                if (!uses_a)
+                    EXPECT_EQ(bool((mask >> ((physical_bits ^ 1) + 32 * half)) & 1), !expected);
+            }
+        }
+    }
 }
 
 TEST(LutInputArrival, PrivateLateInputGetsFastPinAndSharedInputsStayFixed)
@@ -390,8 +539,9 @@ TEST(LutInputArrival, PrivateLateInputGetsFastPinAndSharedInputsStayFixed)
 TEST(LutPlacementTiming, DirectDataFlipFlopDoesNotShareItsFabricPin)
 {
     // sel_ef of a half is fed by that half's E and the other half's F.
-    // Fastest-first takes F, so a direct-data flip-flop keeps E when the LUT
-    // can spare it. A 5-input LUT cannot, and the other half leaves F free.
+    // The private pool starts at F, so a direct-data flip-flop keeps E when
+    // the LUT can spare it. A 5-input LUT cannot, and the other half leaves F
+    // free. The last private input takes the fastest pin left in the pool.
     ArchArgs args;
     args.device = "5CSEBA6U23I7";
     Context ctx(args);
@@ -448,27 +598,28 @@ TEST(LutPlacementTiming, DirectDataFlipFlopDoesNotShareItsFabricPin)
     ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 16)), thru, STRENGTH_STRONG);
     ctx.lab_pre_route();
     auto pin = [](CellInfo *cell, IdString port) { return cell->pin_data.at(port).bel_pins.at(0); };
-    // Four inputs fit on F, C, B and A, leaving E0 for the flip-flop.
-    EXPECT_EQ(pin(wide, id_A), id_F0);
-    EXPECT_EQ(pin(wide, id_B), id_C);
-    EXPECT_EQ(pin(wide, id_C), id_B);
-    EXPECT_EQ(pin(wide, id_D), id_A);
-    EXPECT_EQ(pin(mate, id_A), id_F1);
-    EXPECT_EQ(pin(mate, id_B), id_E1);
+    // Four inputs fit on F, C, B and A, leaving E0 for the flip-flop. The
+    // last input gets F.
+    EXPECT_EQ(pin(wide, id_A), id_A);
+    EXPECT_EQ(pin(wide, id_B), id_B);
+    EXPECT_EQ(pin(wide, id_C), id_C);
+    EXPECT_EQ(pin(wide, id_D), id_F0);
+    EXPECT_EQ(pin(mate, id_A), id_E1);
+    EXPECT_EQ(pin(mate, id_B), id_F1);
     // Five inputs need E. The other LUT leaves F0 for the flip-flop.
-    EXPECT_EQ(pin(small, id_A), id_E0);
-    EXPECT_EQ(pin(small, id_B), id_C);
-    EXPECT_EQ(pin(full, id_A), id_F1);
-    EXPECT_EQ(pin(full, id_B), id_E1);
+    EXPECT_EQ(pin(small, id_A), id_C);
+    EXPECT_EQ(pin(small, id_B), id_E0);
+    EXPECT_EQ(pin(full, id_A), id_A);
+    EXPECT_EQ(pin(full, id_B), id_B);
     EXPECT_EQ(pin(full, id_C), id_D);
-    EXPECT_EQ(pin(full, id_D), id_B);
-    EXPECT_EQ(pin(full, id_E), id_A);
+    EXPECT_EQ(pin(full, id_D), id_E1);
+    EXPECT_EQ(pin(full, id_E), id_F1);
     // A route-through on the other half would take F, so it uses E instead.
-    EXPECT_EQ(pin(chain, id_A), id_F0);
-    EXPECT_EQ(pin(chain, id_B), id_E0);
+    EXPECT_EQ(pin(chain, id_A), id_A);
+    EXPECT_EQ(pin(chain, id_B), id_B);
     EXPECT_EQ(pin(chain, id_C), id_C);
-    EXPECT_EQ(pin(chain, id_D), id_B);
-    EXPECT_EQ(pin(chain, id_E), id_A);
+    EXPECT_EQ(pin(chain, id_D), id_E0);
+    EXPECT_EQ(pin(chain, id_E), id_F0);
     auto *buffer = ctx.cells.at(ctx.id("thru$ROUTETHRU")).get();
     EXPECT_EQ(buffer->type, id_MISTRAL_BUF);
     EXPECT_EQ(buffer->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_E1});
@@ -479,7 +630,7 @@ TEST(LutPlacementTiming, SynchronousLoadKeepsASelectorInput)
 {
     // sel_ef of a half is fed by that half's E and the other half's F.
     // Legality accepts SDATA when the other LUT has at most two inputs,
-    // which used to leave that F free. Fastest-first takes F first, so the
+    // which used to leave that F free. The private pool takes F first, so the
     // load has to keep E, or the other LUT has to leave F free.
     ArchArgs args;
     args.device = "5CSEBA6U23I7";
@@ -542,15 +693,16 @@ TEST(LutPlacementTiming, SynchronousLoadKeepsASelectorInput)
     EXPECT_TRUE(ctx.is_alm_legal(full_lab.lab, full_lab.alm));
     ctx.lab_pre_route();
     auto pin = [](CellInfo *cell, IdString port) { return cell->pin_data.at(port).bel_pins.at(0); };
-    // Two inputs fit on F and C, leaving E0 for SDATA. The other LUT still uses F1.
-    EXPECT_EQ(pin(top, id_A), id_F0);
-    EXPECT_EQ(pin(top, id_B), id_C);
+    // Two inputs fit on F and C, leaving E0 for SDATA. The other LUT still
+    // uses F1, and each LUT gives F to its last input.
+    EXPECT_EQ(pin(top, id_A), id_C);
+    EXPECT_EQ(pin(top, id_B), id_F0);
     EXPECT_FALSE(uses(top, id_E0));
-    EXPECT_EQ(pin(bottom, id_A), id_F1);
-    EXPECT_EQ(pin(bottom, id_B), id_E1);
+    EXPECT_EQ(pin(bottom, id_A), id_E1);
+    EXPECT_EQ(pin(bottom, id_B), id_F1);
     // Five inputs need E0, so the other LUT leaves F1 for SDATA.
     EXPECT_TRUE(uses(full, id_E0));
     EXPECT_FALSE(uses(mate, id_F1));
-    EXPECT_EQ(pin(mate, id_A), id_E1);
-    EXPECT_EQ(pin(mate, id_B), id_D);
+    EXPECT_EQ(pin(mate, id_A), id_D);
+    EXPECT_EQ(pin(mate, id_B), id_E1);
 }
