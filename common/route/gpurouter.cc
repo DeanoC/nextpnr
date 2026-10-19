@@ -1623,12 +1623,16 @@ struct GpuRouter
                         if (telemetry)
                             telemetry->emit("phase_end", "negotiation", attempt,
                                             {gpuroute::Telemetry::Field::string("status", "plateau")});
+                        if (!cfg.overuse_report.empty())
+                            write_overuse_report();
                         return result;
                     }
                     if (!escape_soft_plateau()) {
                         if (telemetry)
                             telemetry->emit("phase_end", "negotiation", attempt,
                                             {gpuroute::Telemetry::Field::string("status", "plateau")});
+                        if (!cfg.overuse_report.empty())
+                            write_overuse_report();
                         return false;
                     }
                 }
@@ -1645,6 +1649,8 @@ struct GpuRouter
                     if (telemetry)
                         telemetry->emit("phase_end", "negotiation", attempt,
                                         {gpuroute::Telemetry::Field::string("status", "plateau")});
+                    if (!cfg.overuse_report.empty())
+                        write_overuse_report();
                     return false;
                 }
                 congestion_plateau.clear_tiny();
@@ -1884,6 +1890,7 @@ struct GpuRouter
                     rpt << " " << ctx->nameOf(nets_by_udata.at(n)) << "/" << nets.at(n).wires.at(int32_t(w)).count;
             rpt << "\n";
         }
+        rpt.close();
         if (!rpt)
             log_warning("could not write GPU router overuse report '%s'\n", cfg.overuse_report.c_str());
     }
