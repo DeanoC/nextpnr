@@ -500,9 +500,9 @@ bool Arch::is_alm_legal(uint32_t lab, uint8_t alm) const
                 bool helper_allowed = route_thru_lut_avail;
                 if (helper_allowed && !fes_bel_region.empty()) {
                     CellInfo candidate(const_cast<Context *>(getCtx()), ff->name, id_MISTRAL_BUF);
-                    auto slot = ff->attrs.find(id("FES_SLOT"));
+                    auto slot = ff->attrs.find(id_FES_SLOT);
                     if (slot != ff->attrs.end())
-                        candidate.attrs[id("FES_SLOT")] = slot->second;
+                        candidate.attrs[id_FES_SLOT] = slot->second;
                     helper_allowed = fes_placement_allowed(alm_data.lut_bels[i], &candidate);
                 }
                 if (helper_allowed)
@@ -1468,9 +1468,9 @@ CellInfo *Arch::get_alm_route_through_ff(uint32_t lab, uint8_t alm, uint8_t half
         // Selection is shared with placement STA; a virtual helper must obey
         // the same FES reservation rules as the helper inserted for routing.
         CellInfo candidate(const_cast<Context *>(getCtx()), idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
-        auto slot = ff->attrs.find(id("FES_SLOT"));
+        auto slot = ff->attrs.find(id_FES_SLOT);
         if (slot != ff->attrs.end())
-            candidate.attrs[id("FES_SLOT")] = slot->second;
+            candidate.attrs[id_FES_SLOT] = slot->second;
         if (fes_placement_allowed(data.lut_bels.at(half), &candidate))
             return ff;
     }
@@ -1504,9 +1504,9 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
         if (!ff)
             continue;
         CellInfo candidate(getCtx(), idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
-        auto slot = ff->attrs.find(id("FES_SLOT"));
+        auto slot = ff->attrs.find(id_FES_SLOT);
         if (slot != ff->attrs.end())
-            candidate.attrs[id("FES_SLOT")] = slot->second;
+            candidate.attrs[id_FES_SLOT] = slot->second;
         if (!fes_placement_allowed(alm_data.lut_bels[i], &candidate))
             continue;
         CellInfo *rt_lut = createCell(candidate.name, candidate.type);

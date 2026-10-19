@@ -18,12 +18,14 @@
  */
 
 #include <algorithm>
+#include <atomic>
 #include <fstream>
 #include <iterator>
 #include <limits>
 #include <map>
 #include <set>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -285,7 +287,18 @@ NetInfo *rdata_sink_net(Context *ctx, int index)
 
 } // namespace
 
-bool Arch::fes_cell_is_slot(const CellInfo *cell) const { return fes_cell_slot_region(cell) != IdString(); }
+bool Arch::fes_cell_is_slot(const CellInfo *cell) const
+{
+    // Same test as fes_cell_slot_region without interning the region name:
+    // the routing rules ask this for every pip they check.
+    if (cell == nullptr)
+        return false;
+    auto found = cell->attrs.find(id_FES_SLOT);
+    if (found == cell->attrs.end())
+        return false;
+    const Property &prop = found->second;
+    return prop.is_string ? !prop.as_string().empty() : prop.as_bool();
+}
 
 void Arch::fes_rip_reserved_shell_pips()
 {
@@ -803,6 +816,245 @@ bool Arch::fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const
     return false;
 }
 
+// Whether `wire` has fewer than two ways out for `net`. The search follows
+// pips the architecture allows that net (CRAM fence, plug halo) and skips
+// wires that frozen scaffold routing holds; movable routing is ignored. A
+// pin another net holds above placer strength is narrow before the search:
+// the cart net cannot bind that wire, however large the component beyond
+// it is. The net's own binding is not a block. A wire escapes once its
+// component outgrows a few tiles or, searching backward from a sink,
+// reaches the net's own frozen route. It is narrow when it never escapes,
+// or when one wire on its way out is a cut: every route of the net through
+// `wire` then needs that one wire.
+bool Arch::fes_search_pin_narrow(WireId wire, const NetInfo *net, bool forward) const
+{
+    const size_t limit = 2048;
+    const NetInfo *start_owner = getBoundWireNet(wire);
+    if (start_owner != nullptr && start_owner != net && start_owner->wires.at(wire).strength > STRENGTH_PLACER)
+        return true;
+    // Breadth-first search that skips `cut`; on escape, `exit_path` holds
+    // the wires from `wire` (exclusive) to the escape point.
+    auto escapes = [&](WireId cut, std::vector<WireId> *exit_path) {
+        dict<WireId, WireId> parent;
+        parent[wire] = WireId();
+        std::vector<WireId> queue{wire};
+        WireId escape;
+        for (size_t head = 0; head < queue.size() && escape == WireId(); ++head) {
+            auto visit = [&](PipId pip, WireId next) {
+                if (escape != WireId() || next == cut || pip_rejection_reason(pip, net) != nullptr)
+                    return;
+                const NetInfo *owner = getBoundWireNet(next);
+                if (owner != nullptr && owner != net && owner->wires.at(next).strength > STRENGTH_PLACER)
+                    return;
+                if (!parent.emplace(next, queue[head]).second)
+                    return;
+                queue.push_back(next);
+                if (queue.size() > limit || (!forward && owner == net))
+                    escape = next;
+            };
+            if (forward) {
+                for (PipId pip : getPipsDownhill(queue[head]))
+                    visit(pip, getPipDstWire(pip));
+            } else {
+                for (PipId pip : getPipsUphill(queue[head]))
+                    visit(pip, getPipSrcWire(pip));
+            }
+        }
+        if (escape == WireId())
+            return false;
+        if (exit_path)
+            for (WireId w = escape; w != wire; w = parent.at(w))
+                exit_path->insert(exit_path->begin(), w);
+        return true;
+    };
+    // Only a routing wire that other tiles can drive (or, searching
+    // backward, load) can be wanted by another net. A block's own output and
+    // input wires are fed from one tile and are this pin's anyway.
+    auto shared = [&](WireId w) {
+        bool have = false;
+        uint32_t x = 0, y = 0;
+        auto other_tile = [&](WireId end) {
+            if (!have) {
+                have = true;
+                x = end.node.x();
+                y = end.node.y();
+                return false;
+            }
+            return end.node.x() != x || end.node.y() != y;
+        };
+        if (forward) {
+            for (PipId pip : getPipsUphill(w))
+                if (other_tile(getPipSrcWire(pip)))
+                    return true;
+        } else {
+            for (PipId pip : getPipsDownhill(w))
+                if (other_tile(getPipDstWire(pip)))
+                    return true;
+        }
+        return false;
+    };
+    std::vector<WireId> exit_path;
+    bool narrow = !escapes(WireId(), &exit_path);
+    // A cut close to the pin is what competes with the shell's exits.
+    const size_t cut_depth = 4;
+    for (size_t i = 0; !narrow && i < std::min(cut_depth, exit_path.size()); ++i)
+        narrow = shared(exit_path[i]) && !escapes(exit_path[i], nullptr);
+    return narrow;
+}
+
+namespace {
+
+// The architecture rules see a net through whether a slot cell drives it,
+// its shell cells (halo exceptions) and its own frozen route. Unrouted nets
+// with the same answer to the first and no shell cell to the second search
+// alike, so they share one cache entry per wire.
+enum NarrowClass
+{
+    NARROW_OWN = 0,     // keyed by net name
+    NARROW_CART = 1,    // slot driver, slot users only, unrouted
+    NARROW_FROM_SHELL = 2 // shell driver, unrouted (halo rules do not apply)
+};
+
+NarrowClass narrow_class(const Arch *arch, const NetInfo *net)
+{
+    if (!net->wires.empty() || net->is_global)
+        return NARROW_OWN;
+    if (!arch->fes_cell_is_slot(net->driver.cell))
+        return NARROW_FROM_SHELL;
+    for (const auto &user : net->users)
+        if (!arch->fes_cell_is_slot(user.cell))
+            return NARROW_OWN;
+    return NARROW_CART;
+}
+
+} // namespace
+
+// fes_search_pin_narrow, cached. The caller holds fes_narrow_mutex.
+bool Arch::fes_slot_pin_narrow(WireId wire, const NetInfo *net, bool forward) const
+{
+    const NarrowClass cls = narrow_class(this, net);
+    auto key = std::make_pair(std::make_pair(wire, cls == NARROW_OWN ? net->name : IdString()),
+                              int(forward) | (int(cls) << 1));
+    auto cached = fes_narrow_cache.find(key);
+    if (cached != fes_narrow_cache.end())
+        return cached->second;
+    bool narrow = fes_search_pin_narrow(wire, net, forward);
+    fes_narrow_cache[key] = narrow;
+    return narrow;
+}
+
+// Placement asks about the same slot pins over and over while moving cart
+// cells. Answer the connections that share cache entries (see NarrowClass)
+// of every slot cell, at every slot BEL of a type that cell fits, up front
+// and on all cores. Nets with their own entry are searched on demand.
+void Arch::fes_precompute_narrow_pins()
+{
+    if (!fes_fence_active || !fes_has_cram_region)
+        return;
+    struct Job
+    {
+        WireId wire;
+        const NetInfo *net;
+        bool forward;
+        std::pair<std::pair<WireId, IdString>, int> key;
+    };
+    std::vector<Job> jobs;
+    pool<std::pair<std::pair<WireId, IdString>, int>> seen;
+    dict<IdString, std::vector<BelId>> bels_by_type;
+    for (const auto &item : getCtx()->cells) {
+        const CellInfo *cell = item.second.get();
+        if (!fes_cell_is_slot(cell))
+            continue;
+        auto &bels = bels_by_type[cell->type];
+        if (bels.empty())
+            for (const auto &entry : fes_bel_region)
+                if (isValidBelForCellType(cell->type, entry.first))
+                    bels.push_back(entry.first);
+        for (const auto &port : cell->ports) {
+            const NetInfo *net = port.second.net;
+            if (net == nullptr || net->is_global || net->driver.cell == nullptr || net->users.entries() == 0 ||
+                port.second.type == PORT_INOUT)
+                continue;
+            auto pin_data = cell->pin_data.find(port.first);
+            if (pin_data == cell->pin_data.end())
+                continue;
+            const bool forward = port.second.type == PORT_OUT;
+            const NarrowClass cls = narrow_class(this, net);
+            if (cls == NARROW_OWN)
+                continue;
+            for (BelId bel : bels) {
+                if (!forward && bel_data(bel).type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB, id_MISTRAL_FF))
+                    continue;
+                for (IdString pin : pin_data->second.bel_pins) {
+                    WireId wire = getBelPinWire(bel, pin);
+                    if (wire == WireId())
+                        continue;
+                    auto key = std::make_pair(std::make_pair(wire, IdString()), int(forward) | (int(cls) << 1));
+                    if (seen.insert(key).second)
+                        jobs.push_back(Job{wire, net, forward, key});
+                }
+            }
+        }
+    }
+    std::vector<uint8_t> narrow(jobs.size(), 0);
+    std::atomic<size_t> next{0};
+    auto work = [&]() {
+        for (size_t i = next++; i < jobs.size(); i = next++)
+            narrow[i] = fes_search_pin_narrow(jobs[i].wire, jobs[i].net, jobs[i].forward);
+    };
+    const int nthreads = std::max(1, std::min(int(std::thread::hardware_concurrency()), 32));
+    std::vector<std::thread> threads;
+    for (int t = 1; t < nthreads; ++t)
+        threads.emplace_back(work);
+    work();
+    for (auto &thread : threads)
+        thread.join();
+    std::lock_guard<std::mutex> guard(fes_narrow_mutex);
+    int count = 0;
+    for (size_t i = 0; i < jobs.size(); ++i) {
+        fes_narrow_cache[jobs[i].key] = narrow[i];
+        count += narrow[i];
+    }
+    log_info("FES slot pins: %d of %zu candidate connections have no second way past frozen routing and the slot "
+             "fences.\n",
+             count, jobs.size());
+}
+
+// A narrow slot pin (see fes_slot_pin_narrow) reaches only a few tiles, or
+// all of its routes share one wire. That wire may be one the shell's
+// boundary nets have no slack to give up: a cart M10K output at the plug
+// corner can need the one exit that the last plug address net also needs,
+// and no router can then legalise the design. Keep slot cells off BELs where
+// a connected pin is narrow. LAB inputs are assigned after placement, so
+// only LAB outputs are checked.
+bool Arch::fes_slot_pins_escape(BelId bel, const CellInfo *cell, bool explain_invalid) const
+{
+    if (!fes_fence_active || !fes_has_cram_region)
+        return true;
+    const bool lab = bel_data(bel).type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB, id_MISTRAL_FF);
+    std::lock_guard<std::mutex> guard(fes_narrow_mutex);
+    for (const auto &port : cell->ports) {
+        const NetInfo *net = port.second.net;
+        if (net == nullptr || net->is_global || net->driver.cell == nullptr || net->users.entries() == 0 ||
+            port.second.type == PORT_INOUT || (lab && port.second.type == PORT_IN))
+            continue;
+        auto pin_data = cell->pin_data.find(port.first);
+        if (pin_data == cell->pin_data.end())
+            continue;
+        for (IdString pin : pin_data->second.bel_pins) {
+            WireId wire = getBelPinWire(bel, pin);
+            if (wire == WireId() || !fes_slot_pin_narrow(wire, net, port.second.type == PORT_OUT))
+                continue;
+            if (explain_invalid)
+                log_info("FES slot cell %s pin %s at %s has no second way past frozen routing and the slot "
+                         "fences.\n",
+                         nameOf(cell), port.first.c_str(getCtx()), getBelName(bel).str(getCtx()).c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
 void Arch::netHaloShellTiles(const NetInfo *net, std::vector<std::pair<int, int>> &tiles) const
 {
     tiles.clear();
@@ -984,7 +1236,7 @@ void Arch::merge_fes_cart(const std::string &filename, const std::string &region
                     dst->attrs[ctx->id(attr.first)] = fes_parse_property(attr.second);
                 }
             }
-            dst->attrs[id("FES_SLOT")] = Property(region);
+            dst->attrs[id_FES_SLOT] = Property(region);
 
             const Json &dirs = src["port_directions"];
             const Json &conns = src["connections"];
@@ -1160,6 +1412,7 @@ void Arch::fes_constrain_slot_region()
         fes_any_slot_region_active = true;
         fes_report_slot_capacity(region_name, slot_cells);
     }
+    fes_precompute_narrow_pins();
 }
 
 // Static capacity check of the cart against the usable part of the reserved

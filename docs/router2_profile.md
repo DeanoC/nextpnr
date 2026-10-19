@@ -43,7 +43,8 @@ Regression coverage:
   final write, and does not heartbeat.
 - `common/route/tests/router2_profile_repair.py`: Windows overwrite via an
   injected Win32 shim (not Windows-native), unique-temporary neighbor and
-  symlink preservation, concurrency, and extracted `CommandHandler::load_json`.
+  symlink preservation, concurrency, extracted `CommandHandler::load_json`, and
+  the GUI replacement-context copy of explicit command settings.
 - `mistral/tests/router2_profile.py`: native route equivalence and inherited
   observer-path clearing/replacement.
 
