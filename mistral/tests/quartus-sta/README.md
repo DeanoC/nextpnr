@@ -77,8 +77,12 @@ decoded routes and their TimeQuest dumps. `results/` keeps the outputs.
 ## Limits
 
 The replicas cover each path from launch Q to the last LUT output, without
-the original nets' side branches. `fullpath.py` keeps nextpnr's skew,
-clock-to-Q, final hop and setup, and adds Quartus' missing side-branch load
-as Mistral's own difference. TimeQuest's derived clock uncertainty
-(170–200 ps here) is left out. All Quartus numbers are its timing models,
-not silicon measurements.
+the original nets' side branches. At each corner, `fullpath.py` adds the
+dropped branches back as Mistral's own difference and takes the final hop
+from Mistral, including the block-input stage. It keeps nextpnr's skew,
+clock-to-Q and setup, which have no −40 °C model. TimeQuest's derived clock
+uncertainty (170–200 ps here) is left out. All Quartus numbers are its
+timing models, not silicon measurements.
+
+`.gitignore` excludes `*.json`, so each `replicas/*/replica.json` manifest is
+force-added.

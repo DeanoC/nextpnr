@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 using mistral::AnalogSim;
@@ -145,9 +146,17 @@ int main(int argc, char **argv)
     for (auto &dst : source) {
         if (fanout.count(dst.first))
             continue;
+        // Walk back to the driver. A loop in the decoded muxes has no driver;
+        // report it untimed instead of as a measured route.
         std::vector<CycloneV::rnode_index> chain{dst.first};
+        std::unordered_set<CycloneV::rnode_index> seen{dst.first};
+        bool loop = false;
         auto it = source.find(dst.first);
-        while (it != source.end() && chain.size() < 64) {
+        while (it != source.end()) {
+            if (!seen.insert(it->second).second) {
+                loop = true;
+                break;
+            }
             chain.push_back(it->second);
             it = source.find(it->second);
         }
@@ -160,17 +169,18 @@ int main(int argc, char **argv)
         for (auto ri : chain)
             names += (names.empty() ? "" : ",") + cv->ri2rc(ri).to_string();
         double r100 = -1, f100 = -1, m100 = -1, rn40 = -1, fn40 = -1, mn40 = -1;
-        bool ok = chain_delay(cv.get(), chain, CycloneV::T_100, r100, f100, m100) &&
+        bool ok = !loop && chain_delay(cv.get(), chain, CycloneV::T_100, r100, f100, m100) &&
                   chain_delay(cv.get(), chain, CycloneV::T_N40, rn40, fn40, mn40);
         if (!ok)
             r100 = f100 = m100 = rn40 = fn40 = mn40 = -1;
         double pr100 = -1, pf100 = -1, prn40 = -1, pfn40 = -1, unused;
-        if (!(chain_delay(cv.get(), chain, CycloneV::T_100, pr100, pf100, unused, true) &&
-              chain_delay(cv.get(), chain, CycloneV::T_N40, prn40, pfn40, unused, true)))
+        if (loop || !(chain_delay(cv.get(), chain, CycloneV::T_100, pr100, pf100, unused, true) &&
+                      chain_delay(cv.get(), chain, CycloneV::T_N40, prn40, pfn40, unused, true)))
             pr100 = pf100 = prn40 = pfn40 = -1;
+        const std::string src = loop ? "loop" : name(chain.front());
         fprintf(out, "%s\t%s\t%zu\t%s\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\n",
-                name(chain.back()).c_str(), name(chain.front()).c_str(), chain.size() - 1, names.c_str(), r100, f100,
-                m100, rn40, fn40, mn40, pr100, pf100, prn40, pfn40);
+                name(chain.back()).c_str(), src.c_str(), chain.size() - 1, names.c_str(), r100, f100, m100, rn40, fn40,
+                mn40, pr100, pf100, prn40, pfn40);
         rows++;
     }
     fclose(out);
