@@ -92,6 +92,9 @@ bool parse_json(std::istream &, const std::string &filename, Context *ctx)
     ctx->settings["router2/profilePath"] = Property(std::string("stale-checkpoint.json"));
     ctx->settings["gpurouter/telemetryPath"] = Property(std::string("stale-gpu.json"));
     ctx->settings["gpurouter/telemetrySeed"] = Property(std::string("stale-seed"));
+    // Conflicting architecture option, plus a key this invocation did not request.
+    ctx->settings["disable_iobs"] = Property(std::string("0"));
+    ctx->settings["gpurouter/histCongWeight"] = Property(std::string("9"));
     return true;
 }
 
@@ -103,12 +106,46 @@ class CommandHandler
     variables_map vm;
     std::string telemetry_seed;
     void setupArchContext(Context *) {}
+    std::map<std::string, Property> dedicated_setting_snapshot;
     void setupContext(Context *ctx)
     {
         if (vm.count("router2-profile"))
             ctx->settings[ctx->id("router2/profilePath")] = vm["router2-profile"].as<std::string>();
         if (vm.count("gpu-telemetry"))
             ctx->settings[ctx->id("gpurouter/telemetryPath")] = vm["gpu-telemetry"].as<std::string>();
+        // generic --no-iobs is an architecture setting, written before import.
+        if (vm.count("no-iobs"))
+            ctx->settings[ctx->id("disable_iobs")] = Property(std::string("1"));
+    }
+    // Same key rule as CommandHandler::snapshotDedicatedCommandSettings:
+    // dedicated options plus architecture keys that were actually requested.
+    std::vector<std::string> explicit_setting_keys() const
+    {
+        std::vector<std::string> keys;
+        if (vm.count("router2-profile"))
+            keys.push_back("router2/profilePath");
+        if (vm.count("gpu-telemetry"))
+            keys.push_back("gpurouter/telemetryPath");
+        if (vm.count("gpu-telemetry") && vm.count("seed"))
+            keys.push_back("gpurouter/telemetrySeed");
+        if (vm.count("no-iobs"))
+            keys.push_back("disable_iobs");
+        return keys;
+    }
+    void snapshotDedicatedCommandSettings(Context *ctx)
+    {
+        dedicated_setting_snapshot.clear();
+        for (const auto &key : explicit_setting_keys()) {
+            auto found = ctx->settings.find(ctx->id(key));
+            if (found != ctx->settings.end())
+                dedicated_setting_snapshot[found->first] = found->second;
+        }
+    }
+    void applyEarlySettingOverrides(Context *) {}
+    void applySettingOverrides(Context *ctx)
+    {
+        for (const auto &saved : dedicated_setting_snapshot)
+            ctx->settings[saved.first] = saved.second;
     }
     void restoreTelemetrySettings(Context *ctx)
     {
@@ -169,6 +206,25 @@ int run_case(const char *name, bool cli_profile, bool cli_gpu)
         assert(!has(&ctx, "gpurouter/telemetryPath"));
         assert(!has(&ctx, "gpurouter/telemetrySeed"));
     }
+    // No --no-iobs on this case: the checkpoint's architecture setting remains,
+    // and a key with no command-line option is left untouched.
+    assert(get(&ctx, "disable_iobs") == "0");
+    assert(get(&ctx, "gpurouter/histCongWeight") == "9");
+    std::cout << "load_json " << name << " ok" << std::endl;
+    return 0;
+}
+
+int run_arch_case(const char *name)
+{
+    CommandHandler handler;
+    handler.vm.data["no-iobs"].value = "1";
+    Context ctx;
+    handler.load_json(&ctx, "imported.json");
+    assert(get(&ctx, "disable_iobs") == "1");
+    assert(get(&ctx, "gpurouter/histCongWeight") == "9");
+    assert(!has(&ctx, "router2/profilePath"));
+    assert(!has(&ctx, "gpurouter/telemetryPath"));
+    assert(!has(&ctx, "gpurouter/telemetrySeed"));
     std::cout << "load_json " << name << " ok" << std::endl;
     return 0;
 }
@@ -180,6 +236,7 @@ int main()
     nextpnr::run_case("cli-profile", true, false);
     nextpnr::run_case("no-option", false, false);
     nextpnr::run_case("cli-profile-gpu", true, true);
+    nextpnr::run_arch_case("arch-no-iobs");
     return 0;
 }
 '''
