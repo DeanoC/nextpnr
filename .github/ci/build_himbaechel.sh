@@ -10,8 +10,10 @@ function get_dependencies {
     git clone https://github.com/openXC7/prjxray-db ${XRAY_DB_PATH}
     # Fetch apycula
     pip install --break-system-packages apycula
-    # Fetch prjpeppercorn
+    # Fetch prjpeppercorn, then check out the pin from arch_ci.yml.
+    # v1.14 broke the gatemate chipdb build; moving to it is a separate change.
     git clone https://github.com/YosysHQ/prjpeppercorn ${PEPPERCORN_PATH}
+    git -C ${PEPPERCORN_PATH} checkout ${PEPPERCORN_REVISION}
 }
 
 function build_nextpnr {
