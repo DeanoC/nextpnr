@@ -1,0 +1,7 @@
+pin	nextpnr_main_ps	nextpnr_d869795b_ps	quartus_slow100_top_ps	quartus_slow100_bottom_ps	delta_vs_slow100_ps	delta_vs_slow100_pct	quartus_slown40_top_ps	quartus_slown40_bottom_ps	delta_vs_slown40_ps	delta_vs_slown40_pct	quartus_fast100_ps	quartus_fastn40_ps
+A	605	605 (L6) / 583 (L5)	598	598	7	1.2	701	701	-96	-13.7	224	223
+B	583	583 (L6) / 510 (L5)	579	579	4	0.7	679	679	-96	-14.1	221	220
+C	512	512	503	502	9	1.8	597	595	-85	-14.2	207	203
+D	512	512	504	502	8	1.6	599	597	-87	-14.5	209	206
+E	335	97 (L6) / 400 (L5)	297	335	0	0.0	343	353	-18	-5.1	130	122
+F	97	400 (L6) / 97 (L5)	89	90	7	7.8	103	103	-6	-5.8	41	43

@@ -1,0 +1,27 @@
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEBA6U23I7
+set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name VERILOG_FILE top.v
+set_global_assignment -name SDC_FILE top.sdc
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name GENERATE_RBF_FILE ON
+set_instance_assignment -name VIRTUAL_PIN ON -to din
+set_instance_assignment -name VIRTUAL_PIN ON -to dout
+set_location_assignment PIN_V11 -to clk
+set_location_assignment FF_X16_Y20_N49 -to q0
+set_location_assignment LABCELL_X13_Y24_N27 -to n1
+set_location_assignment LABCELL_X19_Y24_N30 -to n2
+set_location_assignment MLABCELL_X21_Y21_N42 -to n3
+set_location_assignment MLABCELL_X21_Y21_N3 -to n4
+set_location_assignment MLABCELL_X21_Y21_N0 -to n5
+set_location_assignment LABCELL_X18_Y28_N3 -to n6
+set_location_assignment LABCELL_X17_Y28_N3 -to n7
+set_location_assignment LABCELL_X17_Y28_N45 -to n8
+set_location_assignment LABCELL_X19_Y25_N27 -to n9
+set_location_assignment MLABCELL_X21_Y25_N18 -to n10
+set_location_assignment MLABCELL_X21_Y23_N24 -to n11
+set_location_assignment MLABCELL_X15_Y23_N21 -to n12
+set_location_assignment FF_X15_Y23_N22 -to qc
+set_global_assignment -name ROUTING_BACK_ANNOTATION_FILE top.rcf
+
+set_global_assignment -name LAST_QUARTUS_VERSION "17.0.2 Lite Edition"
