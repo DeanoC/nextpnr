@@ -352,7 +352,7 @@ void Arch::note_reserved_bel(const std::string &name)
         log_error("FES_RESERVED_BEL '%s' is not a device BEL.\n", name.c_str());
     // FES_RESERVED_BEL has no region syntax of its own; it joins the default
     // "cart" region, matching the legacy boolean FES_SLOT=1 cart tag.
-    IdString region_id = id("cart");
+    IdString region_id = id_cart;
     auto absorbed = fes_region_absorbed_by.find(region_id);
     if (absorbed != fes_region_absorbed_by.end())
         log_error("FES_RESERVED_BEL '%s' targets region 'cart', already absorbed into group '%s'.\n", name.c_str(),
@@ -508,15 +508,18 @@ void Arch::note_reserved_rect_group(const std::string &spec)
 
 IdString Arch::fes_cell_slot_region(const CellInfo *cell) const
 {
-    if (cell == nullptr || !cell->attrs.count(id("FES_SLOT")))
+    if (cell == nullptr)
         return IdString();
-    const Property &prop = cell->attrs.at(id("FES_SLOT"));
+    auto found = cell->attrs.find(id_FES_SLOT);
+    if (found == cell->attrs.end())
+        return IdString();
+    const Property &prop = found->second;
     // Legacy carts tag cells with the bare boolean FES_SLOT=1; treat that as
     // the default "cart" region so existing single-socket QSF/cart recipes
     // keep working unchanged.
     if (prop.is_string)
         return prop.as_string().empty() ? IdString() : id(prop.as_string());
-    return prop.as_bool() ? id("cart") : IdString();
+    return prop.as_bool() ? id_cart : IdString();
 }
 
 bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_invalid) const
@@ -569,6 +572,8 @@ bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_i
                      cell_region.c_str(getCtx()), getBelName(bel).str(getCtx()).c_str());
         return false;
     }
+    if (slot_cell && !fes_slot_pins_escape(bel, cell, explain_invalid))
+        return false;
     return true;
 }
 
