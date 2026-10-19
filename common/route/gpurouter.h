@@ -183,6 +183,11 @@ struct GpuRouterCfg
 // result has been checked by router1).
 bool gpurouter(Context *ctx, const GpuRouterCfg &cfg, bool consume_telemetry = true);
 
+// Seconds the calling thread has waited for gpu-run phase lease grants
+// (GPU_LEASE_FD, see docs/gpurouter.md). Wall-clock route budgets and timers
+// kept on that thread leave this out; it is always 0 without a lease.
+double gpurouter_lease_wait_seconds();
+
 // An alternative routing tree for one net produced by GpuCandidateRouter:
 // every wire the net uses with the pip that drives it (PipId() for the
 // source and for wires bound without a pip).

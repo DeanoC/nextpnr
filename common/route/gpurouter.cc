@@ -46,6 +46,7 @@
 
 #include "gpu/congestion_plateau.h"
 #include "gpu/gpuroute_backend.h"
+#include "gpu/gpuroute_lease.h"
 #include "gpu/gpuroute_telemetry.h"
 #include "gpu/reserved_route_slack.h"
 #include "log.h"
@@ -76,6 +77,10 @@ struct GpuRouter
     Context *ctx;
     GpuRouterCfg cfg;
     TimingAnalyser tmg;
+    // gpu-run phase lease (GPU_LEASE_FD), held while a device backend is in
+    // use. Declared before the backends so it is released after them.
+    std::unique_ptr<gpuroute::GpuLeaseGuard> lease;
+    double lease_wait = 0.0; // seconds spent waiting for it, not routing
     std::unique_ptr<gpuroute::Backend> backend;     // device (or CPU fallback)
     std::unique_ptr<gpuroute::Backend> cpu_backend; // CPU lane for tiny batches, if distinct
     std::unique_ptr<gpuroute::Backend> verify_backend; // exact reference for repair searches (diagnostic)
@@ -2910,14 +2915,54 @@ struct GpuRouter
     void setup_all()
     {
         std::string err;
-        auto selected_backend = gpuroute::select_routing_backend(cfg.device, cfg.cpu_backend, cfg.gpu_required, err);
+        // Under `gpu-run --phase-lease` the broker picks the GPU, and it is
+        // held only while this router has a device backend. The guard is
+        // taken before any device is opened; it does nothing without
+        // GPU_LEASE_FD. A build without a device backend can never open a
+        // GPU, so it does not wait for one.
+#ifdef NPNR_GPU_ROUTER_DEVICE
+        const bool take_lease = !cfg.cpu_backend;
+#else
+        const bool take_lease = false;
+#endif
+        int device = cfg.device;
+        bool lease_refused = false;
+        if (take_lease) {
+            lease = std::make_unique<gpuroute::GpuLeaseGuard>(
+                    [](const std::string &e) { log_warning("GPU lease: %s\n", e.c_str()); });
+            lease_wait = lease->waited_seconds();
+            switch (gpuroute::lease_device(lease->status(), cfg.gpu_required)) {
+            case gpuroute::LeaseDevice::configured:
+                lease.reset();
+                break;
+            case gpuroute::LeaseDevice::leased:
+                if (!lease->shared())
+                    log_info("GPU lease: waited %.2fs, granted physical id %d\n", lease_wait, lease->physical_id());
+                if (device >= 0 && device != lease->physical_id())
+                    log_info("    GPU lease: using physical id %d instead of the configured device %d\n",
+                             lease->physical_id(), device);
+                device = lease->physical_id();
+                break;
+            case gpuroute::LeaseDevice::cpu_fallback:
+                log_warning("GPU lease not granted after %.2fs: %s; falling back to the CPU reference backend.\n",
+                            lease_wait, lease->error().c_str());
+                lease.reset();
+                lease_refused = true;
+                break;
+            case gpuroute::LeaseDevice::required_failure:
+                log_gpu_required_failure("GPU use is required, but the GPU lease was not granted", lease->error());
+            }
+        }
+        auto selected_backend =
+                lease_refused ? gpuroute::RoutingBackendSelection{gpuroute::create_cpu_backend(), false}
+                              : gpuroute::select_routing_backend(device, cfg.cpu_backend, cfg.gpu_required, err);
         if (!selected_backend.backend)
             log_gpu_required_failure("GPU use is required, but the GPU router could not open a device", err);
         if (selected_backend.cpu_fallback)
             log_warning("GPU router: %s; falling back to the CPU reference backend.\n", err.c_str());
-        const bool gpu_backend_selected = !cfg.cpu_backend && !selected_backend.cpu_fallback;
+        const bool gpu_backend_selected = !cfg.cpu_backend && !lease_refused && !selected_backend.cpu_fallback;
         backend = std::move(selected_backend.backend);
-        if (!cfg.cpu_backend && gpuroute::device_backend_available() && ctx->verbose)
+        if (!cfg.cpu_backend && !lease_refused && gpuroute::device_backend_available() && ctx->verbose)
             log_info("    GPU devices: %s\n", gpuroute::describe_devices().c_str());
         if (gpuroute::should_create_cpu_lane(cfg.cpu_lane_nets, cfg.gpu_required,
                                              std::string(backend->name()) == "cpu-reference"))
@@ -2963,6 +3008,10 @@ struct GpuRouter
                         err.c_str());
             cpu_backend.reset();
         }
+        // A granted GPU that could not be used goes back to the broker now
+        // rather than being held through a CPU route
+        if (lease && backend->device_index() < 0)
+            lease.reset();
         if (backend->device_index() >= 0)
             log_info("    GPU router using device %d: %s\n", backend->device_index(), backend->device_name());
         if (cpu_backend &&
@@ -3437,7 +3486,7 @@ struct GpuRouter
         const auto &st = backend->stats();
         log_info("GPU router time %.02fs (backend %s: %lld launches, %lld arcs, %lld wires expanded, %.2fs routing, "
                  "%.2fs transfers)\n",
-                 secs_since(rstart), backend->name(), (long long)st.launches, (long long)st.arcs_routed,
+                 secs_since(rstart) - lease_wait, backend->name(), (long long)st.launches, (long long)st.arcs_routed,
                  (long long)st.wires_expanded, st.route_seconds, st.transfer_seconds);
         if (cpu_backend) {
             const auto &cs = cpu_backend->stats();
@@ -3500,6 +3549,8 @@ bool gpurouter(Context *ctx, const GpuRouterCfg &cfg, bool consume_telemetry)
         return false;
     }
 }
+
+double gpurouter_lease_wait_seconds() { return gpuroute::lease_wait_seconds(); }
 
 struct GpuCandidateRouter::Impl
 {
