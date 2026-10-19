@@ -710,7 +710,7 @@ struct Arch : BaseArch<ArchRanges>
     // --mistral-ff4: also place flip-flops on the secondary registers (FF1/FF3)
     // of each ALM. Off by default; set from the command line only.
     bool lab_ff4 = false;
-    bool isolated_lut_placement = false; // Opt-in: score the isolated legal LUT input allocation.
+    bool isolated_lut_placement = false; // Opt-in: score earlier L5 inputs on the isolated legal LUT pins.
     bool arrival_pin_assignment = false; // Opt-in: permute private LUT pins by arrival after legalisation.
 
     bool is_comb_cell(IdString cell_type) const;        // lab.cc

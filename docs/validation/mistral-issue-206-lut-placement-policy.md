@@ -14,6 +14,10 @@ of routing at the parent and 10.525 ns at `1fe73196`; logic delay falls from
 reported for identical hardware.
 
 The default therefore retains the parent's fastest-first placement policy.
+(#214 later legalised the last L5 input onto F. The default estimate now times
+that input and every LUT6 input on the pin legalisation gives it, and keeps
+this scaffold for the other L5 inputs; this record describes the #205/#206
+policy only.)
 `--isolated-lut-placement` explicitly selects the isolated estimate without
 permuting private LUT pins. `--arrival-pin-assignment` retains its existing
 combination of isolated estimates and arrival-based private pin assignment.
