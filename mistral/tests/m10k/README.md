@@ -86,3 +86,6 @@ For a design-scale audit of every packed M10K clock selector, see
 
 For equal-width 1-, 2- and 5-bit true-dual-port geometries, see
 [narrow true-dual-port M10K](README-narrow.md).
+
+For the TimeQuest clock-to-output of every read mode, see
+[M10K read clock-to-output](clock-to-out/README.md).

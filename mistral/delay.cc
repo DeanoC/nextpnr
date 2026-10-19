@@ -233,6 +233,39 @@ bool f2sdram_clocked(const CellInfo *cell, IdString clock)
            !net->driver.cell->type.in(id_GND, id_VCC, id_MISTRAL_CONST);
 }
 
+// M10K read clock-to-output (ps) from the RAM's clock pin: Quartus 17.0.2
+// TimeQuest, 5CSEBA6U23I7, Slow 1100mV 100C, the envelope over every width,
+// bit, edge and fit of each class in mistral/tests/m10k/clock-to-out.
+// TimeQuest times an unregistered read from the port's read register through
+// the array: about 1.6 ns of internal clock and 1.0 ns of read (2.5 + 0.2 ns
+// when either SDP port is 40 bits wide). A registered read starts at the
+// output register. The maximum is TimeQuest's setup analysis and the minimum
+// its hold analysis, except that an unregistered read keeps the 1004 ps
+// minimum every read used to have: this timer checks hold at the slow corner
+// only, where TimeQuest holds such a read for at least 1.40 ns, but at the
+// fast corners for only 0.72 ns.
+DelayQuad m10k_clock_to_out(const Context *ctx, const CellInfo *cell, const std::string &port)
+{
+    bool tdp = bool_or_default(cell->params, id_CFG_TDP, false);
+    int dbits = int_or_default(cell->params, id_CFG_DBITS, 10);
+    int rdbits = bool_or_default(cell->params, id_CFG_MIXED_WIDTH, false) ?
+            int_or_default(cell->params, id_CFG_RD_DBITS, dbits) : dbits;
+    bool wide = !tdp && (dbits == 40 || rdbits == 40);
+    // TDP A1Q reads the A output half and B1Q the B half. A 40-bit SDP read
+    // takes B1DATA[19:0] from the A half and B1DATA[39:20] from the B half.
+    size_t open = port.find('[');
+    int bit = open == std::string::npos ? 0 : std::atoi(port.c_str() + open + 1);
+    bool a_half = tdp ? port.find("A1Q") == 0 : rdbits == 40 && bit < 20;
+    if (ctx->m10k_output_registered(cell, a_half)) {
+        if (tdp)
+            return a_half ? DelayQuad{592, 744} : DelayQuad{569, 709};
+        return wide ? DelayQuad{574, 749} : DelayQuad{566, 709};
+    }
+    if (tdp)
+        return DelayQuad{1004, a_half ? 2610 : 2581};
+    return DelayQuad{1004, wide ? 2704 : 2620};
+}
+
 } // namespace
 
 TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, int &clockInfoCount) const
@@ -623,7 +656,7 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
                 timing.clock_port = id_CLK2;
             timing.edge = clock_edge(timing.clock_port);
             if ((name.find("A1Q") == 0 || name.find("B1Q") == 0) && !async_read) {
-                timing.clockToQ = DelayQuad{1004};
+                timing.clockToQ = m10k_clock_to_out(getCtx(), cell, name);
             } else {
                 timing.hold = DelayPair{42, 42};
                 if (name.find("ADDR") != std::string::npos)
@@ -667,7 +700,7 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
         } else if (port == id_B1DATA || name.find("B1DATA[") == 0) {
             timing.setup = DelayPair{};
             timing.hold = DelayPair{};
-            timing.clockToQ = DelayQuad{1004};
+            timing.clockToQ = m10k_clock_to_out(getCtx(), cell, name);
         }
         return timing;
     }
