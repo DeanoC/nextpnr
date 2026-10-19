@@ -811,9 +811,12 @@ bool Arch::analogue_repair()
             AnalogueClockTiming timing(tmg->get_timing_result());
             if (timing.worse_than(kept_timing)) {
                 log_info("    a clock lost setup slack, Fmax or hold slack; restoring the routing before this round\n");
+                // `current` is still the slack of `kept`, which meets the
+                // target, so the final check below keeps it
                 restore_routing(ctx, kept);
                 break;
             }
+            // Only a kept pass updates the slack of the bound routing
             const bool progress = timing.better_than(kept_timing);
             current = slack;
             kept_timing = std::move(timing);

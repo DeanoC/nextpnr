@@ -2,7 +2,6 @@
 #ifndef MISTRAL_ANALOGUE_REPAIR_H
 #define MISTRAL_ANALOGUE_REPAIR_H
 
-#include <algorithm>
 #include <utility>
 
 #include "gpurouter.h"
@@ -38,8 +37,10 @@ struct AnalogueClockTiming
     }
 
     // Whether this timing gives a clock of `before` less setup slack or a
-    // lower Fmax, or takes its hold slack below zero (lower still, if it was
-    // already negative). A clock that is no longer timed counts as worse.
+    // lower Fmax, or less hold slack where that is now zero or below: the
+    // hold check fails at zero, so a positive hold slack may shrink but must
+    // stay positive, and one that was not may not shrink at all. A clock that
+    // is no longer timed counts as worse.
     bool worse_than(const AnalogueClockTiming &before) const
     {
         for (const auto &clock : before.setup) {
@@ -54,7 +55,7 @@ struct AnalogueClockTiming
         }
         for (const auto &clock : before.hold) {
             auto now = hold.find(clock.first);
-            if (now == hold.end() || now->second < std::min<delay_t>(clock.second, 0))
+            if (now == hold.end() || (now->second < clock.second && now->second <= 0))
                 return true;
         }
         return false;

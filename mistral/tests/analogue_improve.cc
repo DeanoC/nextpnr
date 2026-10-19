@@ -161,12 +161,16 @@ TEST(AnalogueClockTiming, AnyClockLosingSetupSlackFmaxOrHoldSlackIsWorse)
     // A gain on one clock does not pay for a loss on another.
     EXPECT_TRUE(clocks(&ctx, {{"sys", 900, 100, 54.0f}, {"pixel", 3999, -50, 110.0f}}).worse_than(before));
     EXPECT_TRUE(clocks(&ctx, {{"sys", 900, 100, 54.0f}, {"pixel", 4000, -50, 109.9f}}).worse_than(before));
-    // Positive hold slack may shrink but not go negative; negative hold
-    // slack may not get any worse.
-    EXPECT_FALSE(clocks(&ctx, {{"sys", 300, 0, 52.5f}, {"pixel", 4000, -50, 110.0f}}).worse_than(before));
+    // The hold check fails at zero: positive hold slack may shrink but must
+    // stay positive, and hold slack at or below zero may not get any worse.
+    EXPECT_FALSE(clocks(&ctx, {{"sys", 300, 1, 52.5f}, {"pixel", 4000, -50, 110.0f}}).worse_than(before));
+    EXPECT_TRUE(clocks(&ctx, {{"sys", 300, 0, 52.5f}, {"pixel", 4000, -50, 110.0f}}).worse_than(before));
     EXPECT_TRUE(clocks(&ctx, {{"sys", 300, -1, 52.5f}, {"pixel", 4000, -50, 110.0f}}).worse_than(before));
     EXPECT_TRUE(clocks(&ctx, {{"sys", 300, 100, 52.5f}, {"pixel", 4000, -51, 110.0f}}).worse_than(before));
     EXPECT_FALSE(clocks(&ctx, {{"sys", 300, 100, 52.5f}, {"pixel", 4000, -40, 110.0f}}).worse_than(before));
+    auto at_zero = clocks(&ctx, {{"sys", 300, 0, 52.5f}});
+    EXPECT_FALSE(at_zero.worse_than(at_zero));
+    EXPECT_TRUE(clocks(&ctx, {{"sys", 300, -1, 52.5f}}).worse_than(at_zero));
     // A clock that is no longer timed is worse; a new one is ignored.
     EXPECT_TRUE(clocks(&ctx, {{"sys", 900, 100, 54.0f}}).worse_than(before));
     auto extra = clocks(&ctx, {{"sys", 300, 100, 52.5f}, {"pixel", 4000, -50, 110.0f}, {"audio", -10, -10, 1.0f}});

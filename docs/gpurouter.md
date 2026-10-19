@@ -354,9 +354,9 @@ with no legal route fails as unroutable instead of repeating one rejected pip.
    (`TimingAnalyser::get_setup_slack_margin`) rather than by their slack, so
    a change that helps one clock cannot slow another clock's critical path.
    Each pass is timed again and kept only if no clock lost setup slack,
-   Fmax or hold slack (a hold slack that was positive may shrink but not go
-   negative); the stage stops at the first pass that changes nothing or
-   gains nothing. The candidate searches use the calibrated table,
+   Fmax or hold slack (the hold check fails at zero, so a hold slack that
+   was positive may shrink but must stay positive); the stage stops at the
+   first pass that changes nothing or gains nothing. The candidate searches use the calibrated table,
    recalibrated from each pass's routing, but the passes are timed, and
    signoff runs, with the table exactly as the repair left it (the plain
    table if there was nothing to repair): that table times the arcs the
