@@ -703,6 +703,10 @@ struct Lane
     DevBuf<uint32_t> cand_par;
     int slots = 0;
     int cap = 0;
+    static size_t bytes_per_slot(int bits)
+    {
+        return (size_t(1) << bits) * (sizeof(uint32_t) * 4 + sizeof(unsigned long long) * (1 + NPILES));
+    }
     void alloc(int nslots, int bits)
     {
         slots = nslots;
@@ -783,6 +787,16 @@ class DeviceBackend : public Backend
             occ_.upload(graph.wire_occ, graph.n_wires);
             hist_.upload(graph.wire_hist, graph.n_wires);
             small_.alloc(small_slots, small_bits);
+            if (large_slots <= 0) {
+                // Searches that outgrow the small table run here; with only
+                // a few slots a congested iteration routes them almost one
+                // at a time. Take as many as three quarters of the free
+                // memory holds, leaving the rest for path and task buffers.
+                size_t free_bytes = 0, total_bytes = 0;
+                GPU_CHECK(hipMemGetInfo(&free_bytes, &total_bytes));
+                size_t per_slot = Lane::bytes_per_slot(large_bits);
+                large_slots = int(std::min<size_t>(32, std::max<size_t>(4, free_bytes / 4 * 3 / per_slot)));
+            }
             large_.alloc(large_slots, large_bits);
             GPU_CHECK(hipDeviceSynchronize());
         } catch (const std::exception &e) {
