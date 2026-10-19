@@ -52,6 +52,12 @@ struct PlacerHeapCfg
     // for a very long time before the global attempt limit reports anything.
     int cellRipupLimit;
 
+    // Scale down spreading capacity where the RUDY routing-demand estimate
+    // exceeds congestionTarget, by at most congestionMinScale.
+    bool congestionDriven;
+    float congestionTarget;
+    float congestionMinScale;
+
     int hpwl_scale_x, hpwl_scale_y;
     int spread_scale_x, spread_scale_y;
 

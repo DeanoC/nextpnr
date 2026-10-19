@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Check Mistral HeAP defaults and overrides with real deterministic placements.
 
-No routing or GPU is required. Exponent and beta overrides must change the
-placement of this timing-sensitive fixture. Defaults must match explicit
-Mistral defaults, and serialized settings must describe the selected values.
+No routing or GPU is required. Exponent, beta and congestion-target overrides
+must change the placement of this timing-sensitive fixture. Defaults must match
+explicit Mistral defaults, and serialized settings must describe the selected
+values.
 """
 
 import argparse
@@ -50,10 +51,15 @@ def main():
 
     results = {}
     variants = {"default": [],
-                "explicit-default": ["--placer-heap-critexp", "7", "--placer-heap-beta", "0.5"],
+                "explicit-default": ["--placer-heap-critexp", "7", "--placer-heap-beta", "0.5",
+                                     "--set", "placerHeap/congestion=1", "--set", "placerHeap/congestionTarget=100",
+                                     "--set", "placerHeap/congestionMinScale=0.5"],
                 "exponent": ["--placer-heap-critexp", "2"],
                 "beta": ["--placer-heap-beta", "0.8"],
-                "weight": ["--placer-heap-timingweight", "30"]}
+                "weight": ["--placer-heap-timingweight", "30"],
+                # Every location of this small fixture is far below the
+                # default target; a target of 1 makes the spreader avoid them
+                "congestion": ["--set", "placerHeap/congestionTarget=1"]}
     for name, options in variants.items():
         output = out / f"{name}.json"
         run([args.nextpnr.resolve(), "--device", "5CSEBA6U23I7", "--qsf", out / "pins.qsf",
@@ -67,8 +73,8 @@ def main():
     failures = []
     baseline = results["default"][0]
     if baseline != results["explicit-default"][0]:
-        failures.append("Mistral defaults differ from explicit exponent7/beta0.5")
-    for name in ("exponent", "beta", "weight"):
+        failures.append("Mistral defaults differ from explicit exponent7/beta0.5/congestion100")
+    for name in ("exponent", "beta", "weight", "congestion"):
         changed = sum(baseline[cell] != bel for cell, bel in results[name][0].items())
         print(f"{name}: {changed} cells moved from default")
         if not changed:
@@ -76,7 +82,10 @@ def main():
     for name, (_, settings) in results.items():
         expected = {"criticalityExponent": 2 if name == "exponent" else 7,
                     "beta": 0.8 if name == "beta" else 0.5,
-                    "timingWeight": 30 if name == "weight" else 10}
+                    "timingWeight": 30 if name == "weight" else 10,
+                    "congestion": 1,
+                    "congestionTarget": 1 if name == "congestion" else 100,
+                    "congestionMinScale": 0.5}
         for key, value in expected.items():
             actual = float(settings["placerHeap/" + key])
             if abs(actual - value) > 1e-6:
