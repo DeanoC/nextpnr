@@ -3,9 +3,11 @@
 #include "gpu/gpuroute_backend.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <stdexcept>
@@ -197,7 +199,39 @@ std::vector<std::string> corpus()
     return result;
 }
 
+// Issue #228: a one-ULP frontier range gives a positive bin width, but
+// minf + binw rounds back to minf. A strict threshold alone expands nothing.
+// Keep this in the standalone runner too, so it can be run under a timeout.
+void rounded_threshold_regression()
+{
+    for (float base : {16.0f, 65536.0f, 1.0e12f}) {
+        for (bool reachable : {false, true}) {
+            Graph graph(3);
+            const float upper = std::nextafter(base, std::numeric_limits<float>::infinity());
+            const float cost = upper - base;
+            if (reachable) {
+                graph.edge(0, 2, cost);
+                graph.edge(1, 2, cost);
+            }
+            auto p = parameters();
+            p.exact = 0;
+            const auto result = run(graph, p, {0, 1}, {base, upper}, {0, 0}, {{2, 1, 1}});
+            const auto &arc = result.arcs.at(0);
+            if (arc.status != (reachable ? ARC_OK : ARC_NO_PATH) ||
+                arc.steps != (reachable ? 1 : 2) || arc.expanded != (reachable ? 1 : 2))
+                throw std::runtime_error("rounded histogram threshold failed to make progress");
+            if (reachable && (arc.cost != upper || arc.path_len != 1 || result.paths[0].parent != 0))
+                throw std::runtime_error("rounded histogram threshold returned the wrong route");
+        }
+    }
+}
+
 #ifndef GPUROUTE_EXACT_STANDALONE
+TEST(GpuApproximateSearch, RoundedHistogramThresholdMakesProgress)
+{
+    rounded_threshold_regression();
+}
+
 TEST(GpuExactSearch, EqualCostFrontierChoosesLowerWireThenSinkEdge)
 {
     Graph graph(4);
@@ -290,6 +324,7 @@ TEST(GpuExactSearch, DeterministicCorpusCoversExactAndApproximateSearches)
 #ifdef GPUROUTE_EXACT_STANDALONE
 int main()
 {
+    rounded_threshold_regression();
     const auto rows = corpus();
     for (size_t i = 0; i < rows.size(); ++i)
         std::cout << i << ':' << rows[i] << '\n';

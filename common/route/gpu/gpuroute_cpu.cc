@@ -298,7 +298,10 @@ class CpuBackend : public Backend
                         far.clear();
                         for (const Pile &e : far2) {
                             const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
-                            if (f < thr)
+                            // The bin boundary can round back to minf when the range
+                            // is small relative to the costs. Always expand the minima
+                            // so a nonempty frontier cannot repeat without progress.
+                            if (f < thr || f == minf)
                                 near.push_back(e);
                             else
                                 far.push_back(e);
