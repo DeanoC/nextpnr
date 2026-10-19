@@ -50,7 +50,7 @@ CHECKSUM = re.compile(r"Info: Checksum: (0x[0-9a-f]+)")
 RETRY = "retrying with router1"
 FMAX_LINE = re.compile(r"Max frequency for clock +'([^']+)': ([0-9.]+) MHz")
 TABLE_FMAX = re.compile(r"Routed Fmax \(pip delay table\) for clock '([^']+)': ([0-9.]+) MHz")
-ANALOGUE_LINE = re.compile(r"Analogue signoff (check|repair round \d+): worst clock slack (-?[0-9.]+) ns")
+ANALOGUE_LINE = re.compile(r"Analogue signoff (check|(?:repair|improvement) round \d+): worst clock slack (-?[0-9.]+) ns")
 CANDIDATE_LINE = re.compile(r"analogue candidate selection: .* (\d+) nets re-routed")
 
 
