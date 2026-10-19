@@ -54,6 +54,7 @@ architecture's `Arch::route()` plus an entry in `availableRouters`.
 | `--gpu-device N` | GPU index (default: the device with the most compute units) |
 | `--gpu-cpu` | run the same algorithm on the sequential host backend |
 | `NEXTPNR_REQUIRE_GPU=1` or `--gpu-required` | fail if GPU initialization would fall back to the CPU backend |
+| `GPU_LEASE_FD=N` | set by `gpu-run --phase-lease`: take the GPU from its broker while a router needs one ([below](#gpu-phase-lease-gpu_lease_fd)) |
 | `--gpu-perf` | per-iteration timing, slack and backend statistics |
 | `--gpu-batches N` | bounding-box-disjoint batches per iteration (default 12) |
 | `--gpu-opt name=value` | set any `gpurouter/<name>` tuning setting (repeatable) |
@@ -105,6 +106,65 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
 | `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 4, 22 | device scratch: concurrent nets and log2 table size per lane |
 | `maxBatches`, `maxIter` | 12, 2000 | batches per iteration, iteration limit |
+
+## GPU phase lease (`GPU_LEASE_FD`)
+
+`gpu-run --phase-lease` (DeanoC/fes#874) holds a GPU only while a GPU
+router needs one, not for the whole nextpnr run. It passes one end of an
+`AF_UNIX` `SOCK_STREAM` `socketpair()` to nextpnr as `GPU_LEASE_FD=<n>` and
+keeps the other end. Without `GPU_LEASE_FD` nothing changes: no protocol,
+the same device selection, the same logs and results.
+
+With it, `GpuRouter::setup_all()` takes a `GpuLeaseGuard`
+(`common/route/gpu/gpuroute_lease.h`) before it opens a device. That covers
+the main route, the analogue candidate router and each analogue re-route.
+The guard is refcounted per process: routers that overlap share one grant,
+and the last one to be destroyed sends `RELEASE` after its device backend
+has been freed. A router whose backend ends up on the CPU gives the grant
+back at once. `--gpu-cpu` opens no device and takes no lease, and neither
+does a build without a device backend (`-DGPU_ROUTER=OFF`): it could never
+open a GPU, so it never waits for one.
+
+- The grant is a physical GPU id, used as the device index as it is. It
+  replaces `--gpu-device`. nextpnr does not set or change
+  `HIP_VISIBLE_DEVICES`, `ROCR_VISIBLE_DEVICES` or `CUDA_VISIBLE_DEVICES`,
+  so the broker must not pass a visibility mask. Like `--gpu-device`, the
+  id is in the runtime's own numbering; CUDA only numbers devices the way
+  `nvidia-smi` does with `CUDA_DEVICE_ORDER=PCI_BUS_ID`.
+- The wait is logged as `GPU lease: waited X.XXs, granted physical id N` and
+  left out of the `GPU router time`, the `analogueTimeBudget` and the
+  analogue candidate-selection time. Waits are counted per thread, so a
+  budget leaves out exactly the time its own routers were blocked, whether
+  on the broker or behind another router's `ACQUIRE`. Routing results do not
+  depend on the device or the wait.
+- An `ERR` reply, a closed socket, a malformed reply, or a `GPU_LEASE_FD`
+  that is not an open stream socket is handled like a device that cannot be
+  opened: a warning and the CPU reference backend, or a hard error with
+  `--gpu-required` / `NEXTPNR_REQUIRE_GPU=1`. After a closed socket or a
+  malformed reply nextpnr shuts its end down (an implicit `RELEASE` for the
+  broker), and later routers in the run fail the same way.
+- The device is not reset on release. The idle runtime context (about
+  150 MB) stays until nextpnr exits.
+
+The wire protocol is shared verbatim with the broker in DeanoC/fes:
+
+- ASCII lines terminated by `\n`, one request in flight at a time: the
+  client waits for each reply.
+- `ACQUIRE 1\n` (a GPU count; only 1 is supported) is answered with
+  `GRANT <physical_id>\n` (one decimal id, e.g. `GRANT 1`) or `ERR <msg>\n`.
+- `RELEASE\n` is answered with `OK\n`, or `ERR <msg>\n` (for example a
+  release without a grant).
+- `ACQUIRE` while a grant is held is answered with `ERR already-held`. The
+  refcounted guard never sends it.
+- Socket close or EOF from the client (exit or crash) is an implicit
+  `RELEASE` of any held grant.
+- An unknown line is answered with `ERR unknown-command`, and the broker
+  keeps serving.
+
+`common/route/tests/gpu_lease.cc` tests the client against a socketpair
+broker, and `mistral/tests/gpu_lease_cli.py` drives nextpnr-mistral with a
+scripted Python broker (in a build without a device backend it checks that
+no lease is taken).
 
 ## Algorithm
 

@@ -11,6 +11,8 @@ target_sources(nextpnr_route PUBLIC
     gpurouter.h
     gpu/gpuroute_backend.h
     gpu/gpuroute_cpu.cc
+    gpu/gpuroute_lease.cc
+    gpu/gpuroute_lease.h
     gpu/gpuroute_telemetry.cc
     gpu/gpuroute_telemetry.h
 )
@@ -32,6 +34,18 @@ if (BUILD_TESTS)
     target_link_libraries(nextpnr-reserved-route-slack-test PRIVATE gtest_main)
     set_property(TARGET nextpnr-reserved-route-slack-test PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
     add_test(NAME nextpnr-reserved-route-slack-test COMMAND nextpnr-reserved-route-slack-test)
+
+    add_executable(nextpnr-gpu-lease-test
+        tests/gpu_lease.cc
+        gpu/gpuroute_lease.cc
+    )
+    target_include_directories(nextpnr-gpu-lease-test PRIVATE gpu)
+    target_link_libraries(nextpnr-gpu-lease-test PRIVATE gtest_main)
+    if (Threads_FOUND)
+        target_link_libraries(nextpnr-gpu-lease-test PRIVATE Threads::Threads)
+    endif()
+    set_property(TARGET nextpnr-gpu-lease-test PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+    add_test(NAME nextpnr-gpu-lease-test COMMAND nextpnr-gpu-lease-test)
 endif()
 
 # GPU device backend for the GPU router. The device code is compiled by the
