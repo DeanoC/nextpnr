@@ -34,13 +34,17 @@
 // scalar search still generates the routes, the model that signoff uses
 // picks between them); and if the design still misses, rip up the nets with
 // near-critical arcs and run the GPU router again, with the kept nets timed
-// by their analogue delays. The routing of the best round is kept.
+// by their analogue delays. The routing of the best round is kept. Once
+// every clock passes, a few more candidate passes take the arcs near the
+// worst analogue slack, which the table may rate as far from critical; a
+// pass is kept only if no clock loses setup slack, Fmax or hold slack.
 
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <thread>
 
 #include "analogue_jobs.h"
@@ -252,7 +256,7 @@ void Arch::analogue_relink(const std::vector<PipId> &removed, const std::vector<
     }
 }
 
-bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target, const GpuRouterCfg &repair_cfg)
+bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float limit, bool improve, const GpuRouterCfg &repair_cfg)
 {
     Context *ctx = getCtx();
     NPNR_ASSERT(bitstream_configured && analogue_cache_valid);
@@ -293,7 +297,7 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target, const GpuR
             float sl = tmg.get_setup_slack(CellPortKey(usr.value));
             if (sl == std::numeric_limits<float>::lowest() || sl == std::numeric_limits<float>::max())
                 continue;
-            if (sl < target)
+            if (sl < limit)
                 items.push_back(Item{sl, ni, usr.index});
         }
     }
@@ -306,7 +310,7 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target, const GpuR
             return a.ni->name.str(ctx) < b.ni->name.str(ctx);
         return a.user.idx() < b.user.idx();
     });
-    const size_t failing = items.size();
+    const size_t selected = items.size();
     if (items.size() > size_t(max_arcs))
         items.resize(max_arcs);
 
@@ -355,6 +359,11 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target, const GpuR
             auto fnd = analogue_arc_cache.find(&usr);
             bool ok = fnd != analogue_arc_cache.end() && fnd->second.ok &&
                       sl != std::numeric_limits<float>::lowest() && sl != std::numeric_limits<float>::max();
+            // An improvement must not slow another clock's critical path, so
+            // there a sink scores by its margin over the worst path of its
+            // own clock pairs instead of by its slack
+            if (ok && improve)
+                sl = float(tmg.get_setup_slack_margin(CellPortKey(usr)));
             users.push_back(&usr);
             slack_old.push_back(sl);
             d_old.push_back(ok ? fnd->second.delay.maxDelay() : 0);
@@ -455,13 +464,15 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float target, const GpuR
         improved++;
         total_gain += best_score - score_old;
         if (ctx->verbose)
-            log_info("      %s: candidate %d (variant %d) raises the net's worst sink slack %.3f -> %.3f ns\n",
-                     ctx->nameOf(ni), best, cands[best].variant, score_old / 1000.0f, best_score / 1000.0f);
+            log_info("      %s: candidate %d (variant %d) raises the net's worst sink %s %.3f -> %.3f ns\n",
+                     ctx->nameOf(ni), best, cands[best].variant, improve ? "margin" : "slack", score_old / 1000.0f,
+                     best_score / 1000.0f);
     }
-    log_info("    analogue candidate selection: %d of %zu failing sinks tried with %d candidates, %d nets "
-             "re-routed (%d candidates refused by the Arch), worst-sink slack gained %.3f ns in total, %.2fs "
+    log_info("    analogue candidate selection: %d of %zu %s sinks tried with %d candidates, %d nets "
+             "re-routed (%d candidates refused by the Arch), worst-sink %s gained %.3f ns in total, %.2fs "
              "(%.2fs searching, %.2fs simulating)\n",
-             tried, failing, generated, improved, rejected, total_gain / 1000.0f,
+             tried, selected, improve ? "near-critical" : "failing", generated, improved, rejected,
+             improve ? "margin" : "slack", total_gain / 1000.0f,
              std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count() -
                      (gpurouter_lease_wait_seconds() - lease_wait0),
              search_secs, eval_secs);
@@ -507,6 +518,11 @@ bool Arch::analogue_repair()
     const float target = ctx->setting<float>("gpurouter/analogueSlack", 0.0f);
     // Re-route every net with an arc whose analogue slack is below this (ps).
     const float rip_slack = ctx->setting<float>("gpurouter/analogueRipSlack", 300.0f);
+    // Once every clock meets the target, up to this many candidate passes
+    // more take the arcs within analogueImproveBand (ps) of the worst slack
+    // (0 disables)
+    const int improve_rounds = ctx->setting<int>("gpurouter/analogueImproveRounds", 4);
+    const float improve_band = ctx->setting<float>("gpurouter/analogueImproveBand", 300.0f);
     pip_delay_prior = ctx->setting<float>("gpurouter/analoguePrior", 1.25f);
     if (rounds <= 0)
         return true;
@@ -529,16 +545,21 @@ bool Arch::analogue_repair()
     // Every round is a timing, a candidate pass or a re-route; this bounds
     // the loop even if a round neither improves nor re-routes
     const int max_rounds = (rounds + 1) * (cand_rounds + 3);
-    for (int round = 0;; round++) {
-        auto t0 = std::chrono::steady_clock::now();
+    // Analysis of the latest timing
+    std::unique_ptr<TimingAnalyser> tmg;
+    auto time_routing = [&](std::string &summary) {
         configure_bitstream();
         // Same analysis as the post-bitstream signoff report
-        TimingAnalyser tmg(ctx);
-        tmg.setup_only = false;
-        tmg.with_clock_skew = true;
-        tmg.setup(false, false, true);
+        tmg = std::make_unique<TimingAnalyser>(ctx);
+        tmg->setup_only = false;
+        tmg->with_clock_skew = true;
+        tmg->setup(false, false, true);
+        return worst_clock_slack(ctx, *tmg, summary);
+    };
+    for (int round = 0;; round++) {
+        auto t0 = std::chrono::steady_clock::now();
         std::string summary;
-        current = worst_clock_slack(ctx, tmg, summary);
+        current = time_routing(summary);
         current_timed = true;
         log_info("Analogue signoff %s: worst clock slack %.3f ns (%s) in %.2fs\n",
                  round == 0 ? "check" : stringf("repair round %d", round).c_str(), current / 1000.0f,
@@ -584,7 +605,7 @@ bool Arch::analogue_repair()
             current_timed = false;
             bool changed;
             try {
-                changed = analogue_candidate_pass(tmg, target, cfg);
+                changed = analogue_candidate_pass(*tmg, target, false, cfg);
             } catch (const GpuRouterCancelled &) {
                 log_info("Analogue repair time budget exhausted during candidate selection; restoring the best routing.\n");
                 result = false;
@@ -603,7 +624,7 @@ bool Arch::analogue_repair()
                 continue;
             float net_slack = std::numeric_limits<float>::max();
             for (auto &usr : ni->users) {
-                delay_t sl = tmg.get_setup_slack(CellPortKey(usr));
+                delay_t sl = tmg->get_setup_slack(CellPortKey(usr));
                 if (sl != std::numeric_limits<delay_t>::max() && sl != std::numeric_limits<delay_t>::lowest())
                     net_slack = std::min(net_slack, float(sl));
             }
@@ -639,7 +660,7 @@ bool Arch::analogue_repair()
             Ripped r;
             r.entries = snapshot_net(ni);
             for (auto &usr : ni->users) {
-                float sl = tmg.get_setup_slack(CellPortKey(usr));
+                float sl = tmg->get_setup_slack(CellPortKey(usr));
                 auto fnd = analogue_arc_cache.find(&usr);
                 bool ok = fnd != analogue_arc_cache.end() && fnd->second.ok &&
                           sl != std::numeric_limits<float>::lowest() && sl != std::numeric_limits<float>::max();
@@ -732,6 +753,67 @@ bool Arch::analogue_repair()
                      "(%.3f ns of sink slack), %d could not have it (wires taken), %.2fs\n",
                      order.size(), ripped.size(), reverted, regained / 1000.0f, taken, secs_since(t2));
         }
+    }
+    if (current_timed && current >= target && candidates && improve_rounds > 0) {
+        // Meeting the target is not the end of it: Fmax is set by the worst
+        // arcs, and the router ranks those by the delay table. One the table
+        // rates as harmless can be the slowest under the analogue model (on
+        // the FES menu a chain of 13 V4 wires into an HPS port set Fmax with
+        // 2.04 ns of analogue slack where the table gave the design 3.83 ns),
+        // and the repair above never looks at a passing clock. So candidate
+        // passes go on working on the arcs near the worst analogue slack,
+        // scored by their margin over their own clock pairs' worst paths so
+        // that no clock's critical path is slowed, and a pass is kept only
+        // if no clock lost setup slack, Fmax or hold slack.
+        AnalogueClockTiming kept_timing(tmg->get_timing_result());
+        SavedRouting kept = save_routing(ctx);
+        // The searches use the calibrated table, but signoff times the arcs
+        // the analogue model cannot simulate with the table the repair left
+        // (the plain one if it had nothing to repair), so the passes are
+        // timed with that one and it is put back afterwards
+        const bool calibrated = pip_delay_calibrated;
+        // (A design without a timed clock has nothing to improve.)
+        for (int pass = 1; pass <= improve_rounds && !kept_timing.setup.empty(); pass++) {
+            if (expired()) {
+                log_info("Analogue repair time budget exhausted (%.3f seconds); keeping the best measured routing.\n",
+                         budget);
+                break;
+            }
+            auto t1 = std::chrono::steady_clock::now();
+            compute_analogue_arcs(true);
+            GpuRouterCfg cfg(ctx);
+            cfg.stop_requested = expired;
+            bool changed;
+            try {
+                changed = analogue_candidate_pass(*tmg, current + improve_band, true, cfg);
+            } catch (const GpuRouterCancelled &) {
+                log_info("Analogue repair time budget exhausted during candidate selection; restoring the best "
+                         "routing.\n");
+                restore_routing(ctx, kept);
+                break;
+            }
+            bitstream_configured = false;
+            pip_delay_calibrated = calibrated;
+            if (!changed)
+                break;
+            std::string summary;
+            const float slack = time_routing(summary);
+            log_info("Analogue signoff improvement round %d: worst clock slack %.3f ns (%s) in %.2fs\n", pass,
+                     slack / 1000.0f, summary.c_str(), secs_since(t1));
+            AnalogueClockTiming timing(tmg->get_timing_result());
+            if (timing.worse_than(kept_timing)) {
+                log_info("    a clock lost setup slack, Fmax or hold slack; restoring the routing before this round\n");
+                restore_routing(ctx, kept);
+                break;
+            }
+            const bool progress = timing.better_than(kept_timing);
+            current = slack;
+            kept_timing = std::move(timing);
+            if (!progress)
+                break;
+            kept = save_routing(ctx);
+        }
+        pip_delay_calibrated = calibrated;
     }
     bitstream_configured = false;
     analogue_cache_valid = false;
