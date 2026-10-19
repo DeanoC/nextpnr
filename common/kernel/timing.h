@@ -123,6 +123,22 @@ struct TimingAnalyser
             slack = std::min(slack, domain_pairs.at(dp.first).worst_setup_slack);
         return slack;
     }
+    // How much more setup slack this port has than the worst path of each
+    // timed domain pair it is on, the least over those pairs: 0 on a pair's
+    // critical path, max() on no timed pair. Unlike the slack itself this
+    // ranks the critical paths of clocks with different periods alike, and
+    // slowing the port's arc by less than its margin leaves the worst slack
+    // of every timed pair, and so every clock's Fmax, as it was.
+    delay_t get_setup_slack_margin(CellPortKey port) const
+    {
+        delay_t margin = std::numeric_limits<delay_t>::max();
+        for (const auto &dp : ports.at(port).domain_pairs) {
+            const auto &pair = domain_pairs.at(dp.first);
+            if (pair.timed)
+                margin = std::min(margin, dp.second.setup_slack - pair.worst_setup_slack);
+        }
+        return margin;
+    }
 
     dict<std::pair<IdString, IdString>, delay_t> get_clock_delays() const { return clock_delays; }
 
