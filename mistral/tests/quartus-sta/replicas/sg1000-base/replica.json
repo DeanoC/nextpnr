@@ -1,0 +1,241 @@
+{
+ "launch": "machine.cpu.cpu.state_MISTRAL_FF_Q_20",
+ "luts": [
+  {
+   "name": "machine.cpu.cpu.state_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT6_Q_D_MISTRAL_ALUT2_Q",
+   "kind": "MISTRAL_COMB",
+   "x": 13,
+   "y": 24,
+   "alm": 4,
+   "half": 1,
+   "phys": "D",
+   "chain": [
+    "GIN.016.020.0032",
+    "V2.016.021.0004",
+    "V2.016.023.0004",
+    "H6.011.024.0024",
+    "TD.013.024.0008",
+    "GOUT.013.024.0037"
+   ],
+   "route_ps": 1146.0000276565552,
+   "cell_ps": 512.0000243186951,
+   "signal": "q0",
+   "atom": "n1"
+  },
+  {
+   "name": "machine.cpu.cpu.state_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT6_Q_D_MISTRAL_ALUT5_E",
+   "kind": "MISTRAL_COMB",
+   "x": 19,
+   "y": 24,
+   "alm": 5,
+   "half": 0,
+   "phys": "A",
+   "chain": [
+    "GIN.013.024.0018",
+    "H6.014.024.0003",
+    "TD.019.024.0025",
+    "GOUT.019.024.0042"
+   ],
+   "route_ps": 755.9999823570251,
+   "cell_ps": 605.0000190734863,
+   "signal": "n1",
+   "atom": "n2"
+  },
+  {
+   "name": "machine.cpu_ram_block.wren_a_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT3_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 21,
+   "y": 21,
+   "alm": 7,
+   "half": 0,
+   "phys": "F0",
+   "chain": [
+    "GIN.019.024.0020",
+    "V2.019.022.0013",
+    "V2.019.021.0019",
+    "H6.020.021.0011",
+    "TD.021.021.0035",
+    "GOUT.021.021.0057"
+   ],
+   "route_ps": 1001.9999742507935,
+   "cell_ps": 97.00000286102295,
+   "signal": "n2",
+   "atom": "n3"
+  },
+  {
+   "name": "machine.cpu_ram_block.wren_a_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT2_Q_A_MISTRAL_ALUT4_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 21,
+   "y": 21,
+   "alm": 0,
+   "half": 1,
+   "phys": "B",
+   "chain": [
+    "LD.021.021.0014",
+    "GOUT.021.021.0003"
+   ],
+   "route_ps": 126.00000202655792,
+   "cell_ps": 583.0000042915344,
+   "signal": "n3",
+   "atom": "n4"
+  },
+  {
+   "name": "machine.cpu_ram_block.wren_a_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT2_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 21,
+   "y": 21,
+   "alm": 0,
+   "half": 0,
+   "phys": "C",
+   "chain": [
+    "LD.021.021.0001",
+    "GOUT.021.021.0004"
+   ],
+   "route_ps": 104.00000214576721,
+   "cell_ps": 512.0000243186951,
+   "signal": "n4",
+   "atom": "n5"
+  },
+  {
+   "name": "machine.cpu.a_MISTRAL_ALUT3_Q_4_C_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT3_Q_1",
+   "kind": "MISTRAL_COMB",
+   "x": 18,
+   "y": 28,
+   "alm": 0,
+   "half": 1,
+   "phys": "E1",
+   "chain": [
+    "GIN.021.021.0001",
+    "V2.020.022.0002",
+    "H6.015.022.0032",
+    "WM.016.022.0001",
+    "V12.016.023.0000",
+    "H6.017.028.0009",
+    "TD.018.028.0031",
+    "GOUT.018.028.0006"
+   ],
+   "route_ps": 1649.0000486373901,
+   "cell_ps": 335.00000834465027,
+   "signal": "n5",
+   "atom": "n6"
+  },
+  {
+   "name": "machine.cpu.a_MISTRAL_ALUT4_Q_2_D_MISTRAL_ALUT4_Q",
+   "kind": "MISTRAL_COMB",
+   "x": 17,
+   "y": 28,
+   "alm": 0,
+   "half": 1,
+   "phys": "B",
+   "chain": [
+    "GIN.018.028.0002",
+    "H6.013.028.0021",
+    "TD.017.028.0023",
+    "GOUT.017.028.0003"
+   ],
+   "route_ps": 578.000009059906,
+   "cell_ps": 583.0000042915344,
+   "signal": "n6",
+   "atom": "n7"
+  },
+  {
+   "name": "machine.cpu.a_MISTRAL_ALUT4_Q_2",
+   "kind": "MISTRAL_COMB",
+   "x": 17,
+   "y": 28,
+   "alm": 7,
+   "half": 1,
+   "phys": "B",
+   "chain": [
+    "GIN.017.028.0003",
+    "H6.017.028.0013",
+    "H3.017.028.0002",
+    "TD.017.028.0020",
+    "GOUT.017.028.0059"
+   ],
+   "route_ps": 630.9999823570251,
+   "cell_ps": 583.0000042915344,
+   "signal": "n7",
+   "atom": "n8"
+  },
+  {
+   "name": "machine.vdp.status_collision_MISTRAL_ALUT4_A_Q_MISTRAL_ALUT4_Q_A_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT6_F",
+   "kind": "MISTRAL_COMB",
+   "x": 19,
+   "y": 25,
+   "alm": 4,
+   "half": 1,
+   "phys": "B",
+   "chain": [
+    "GIN.017.028.0031",
+    "V2.016.026.0017",
+    "V2.016.024.0017",
+    "H3.017.025.0000",
+    "TD.019.025.0033",
+    "GOUT.019.025.0035"
+   ],
+   "route_ps": 859.000027179718,
+   "cell_ps": 583.0000042915344,
+   "signal": "n8",
+   "atom": "n9"
+  },
+  {
+   "name": "machine.vdp.vram_name_block.ram.0.1_A1Q_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT2_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 21,
+   "y": 25,
+   "alm": 3,
+   "half": 0,
+   "phys": "E0",
+   "chain": [
+    "GIN.019.025.0019",
+    "H3.019.025.0002",
+    "TD.021.025.0005",
+    "GOUT.021.025.0024"
+   ],
+   "route_ps": 546.999990940094,
+   "cell_ps": 335.00000834465027,
+   "signal": "n9",
+   "atom": "n10"
+  },
+  {
+   "name": "machine.vdp_write_seen_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT3_B",
+   "kind": "MISTRAL_MCOMB",
+   "x": 21,
+   "y": 23,
+   "alm": 4,
+   "half": 0,
+   "phys": "F0",
+   "chain": [
+    "GIN.021.025.0012",
+    "V2.021.023.0012",
+    "H3.019.023.0018",
+    "TD.021.023.0038",
+    "GOUT.021.023.0033"
+   ],
+   "route_ps": 607.9999804496765,
+   "cell_ps": 97.00000286102295,
+   "signal": "n10",
+   "atom": "n11"
+  },
+  {
+   "name": "machine.vdp.cpu_vram_addr_MISTRAL_ALUT3_Q_4",
+   "kind": "MISTRAL_MCOMB",
+   "x": 15,
+   "y": 23,
+   "alm": 3,
+   "half": 1,
+   "phys": "A",
+   "chain": [
+    "GIN.021.023.0016",
+    "H6.016.023.0038",
+    "TD.015.023.0015",
+    "GOUT.015.023.0026"
+   ],
+   "route_ps": 813.0000233650208,
+   "cell_ps": 605.0000190734863,
+   "signal": "n11",
+   "atom": "n12"
+  }
+ ]
+}
