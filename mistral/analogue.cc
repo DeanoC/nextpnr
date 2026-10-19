@@ -767,11 +767,19 @@ bool Arch::analogue_repair()
         // if no clock lost setup slack, Fmax or hold slack.
         AnalogueClockTiming kept_timing(tmg->get_timing_result());
         SavedRouting kept = save_routing(ctx);
-        // The searches use the calibrated table, but signoff times the arcs
-        // the analogue model cannot simulate with the table the repair left
-        // (the plain one if it had nothing to repair), so the passes are
-        // timed with that one and it is put back afterwards
+        // The searches use the calibrated table, recalibrated from each
+        // pass's routing, but signoff times the arcs the analogue model
+        // cannot simulate with the table the repair left (the plain one if
+        // it had nothing to repair). So every pass is timed with that table,
+        // as it was when the stage started, and it is put back afterwards.
         const bool calibrated = pip_delay_calibrated;
+        const auto observed = pip_delay_observed;
+        const auto type_calibration = pip_type_calibration;
+        auto signoff_table = [&]() {
+            pip_delay_calibrated = calibrated;
+            pip_delay_observed = observed;
+            pip_type_calibration = type_calibration;
+        };
         // (A design without a timed clock has nothing to improve.)
         for (int pass = 1; pass <= improve_rounds && !kept_timing.setup.empty(); pass++) {
             if (expired()) {
@@ -793,7 +801,7 @@ bool Arch::analogue_repair()
                 break;
             }
             bitstream_configured = false;
-            pip_delay_calibrated = calibrated;
+            signoff_table();
             if (!changed)
                 break;
             std::string summary;
@@ -813,7 +821,7 @@ bool Arch::analogue_repair()
                 break;
             kept = save_routing(ctx);
         }
-        pip_delay_calibrated = calibrated;
+        signoff_table();
     }
     bitstream_configured = false;
     analogue_cache_valid = false;

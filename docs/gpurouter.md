@@ -356,10 +356,12 @@ with no legal route fails as unroutable instead of repeating one rejected pip.
    Each pass is timed again and kept only if no clock lost setup slack,
    Fmax or hold slack (a hold slack that was positive may shrink but not go
    negative); the stage stops at the first pass that changes nothing or
-   gains nothing. The candidate searches use the calibrated table, but the
-   passes are timed, and signoff runs, with the table the repair left (the
-   plain table if there was nothing to repair), which is what times the arcs
-   the analogue model cannot simulate, such as those from HPS outputs.
+   gains nothing. The candidate searches use the calibrated table,
+   recalibrated from each pass's routing, but the passes are timed, and
+   signoff runs, with the table exactly as the repair left it (the plain
+   table if there was nothing to repair): that table times the arcs the
+   analogue model cannot simulate, such as those from HPS outputs, so a
+   recalibration alone must not move signoff.
    `mistral/tests/analogue_improve.py` checks the stage end to end on the
    retained menu DDR fixture (see its docstring for the commands).
 
