@@ -1,0 +1,16 @@
+hop  pin  nextpnr_route  replica_route(+stage)  Q_ic[7_slow_1100mv_-40c]  Q_ic[7_slow_1100mv_100c]  Q_ic[MIN_fast_1100mv_-40c]  Q_ic[MIN_fast_1100mv_100c]  nextpnr_lut  Q_lut[7_slow_1100mv_-40c]  Q_lut[7_slow_1100mv_100c]  Q_lut[MIN_fast_1100mv_-40c]  Q_lut[MIN_fast_1100mv_100c]
+n1   E0      1667     1659 (1787)     1525     1705      692      890      335      346      301      120      126
+n2   E1      3199     3162 (3284)     3095     3356     1814     2314      335      357      338      124      132
+n3   F1      1460     1461 (1588)     1354     1532      590      760       97      106       92       44       39
+n4   F1      2717     2701 (2836)     2651     2830     1406     1728       97      106       94       44       43
+n5   F0       204      194 (322)      274      322      125      154       97      110       96       47       41
+n6   E1      1745     1652 (1773)     1648     1752      839     1005      335      395      435      133      156
+n7   E0        93       93 (240)      205      238       90      112      335      407      349      141      147
+n8   F1        99       99 (246)      179      219       94      118       97      105       93       44       42
+n9   E1      1184     1162 (1279)      945     1046      483      584      335      302      267      109      116
+n10  A        575      534 (628)      567      622      285      355      605      665      569      214      216
+n11  F0       722      710 (844)      689      759      364      438       97      106       92       44       38
+n12  A        668      616 (710)      618      704      348      445      605      662      565      213      213
+sum routing: nextpnr 14333, replica mistral 14042 (+stage 15537); Quartus 7_slow_1100mv_-40c 13750, Quartus 7_slow_1100mv_100c 15085, Quartus MIN_fast_1100mv_-40c 7130, Quartus MIN_fast_1100mv_100c 8903
+sum LUT: nextpnr 3370; Quartus 7_slow_1100mv_-40c 3667, Quartus 7_slow_1100mv_100c 3291, Quartus MIN_fast_1100mv_-40c 1277, Quartus MIN_fast_1100mv_100c 1309
+sum data (Q -> last LUT out): nextpnr 17703; Quartus 7_slow_1100mv_-40c 17417, Quartus 7_slow_1100mv_100c 18376, Quartus MIN_fast_1100mv_-40c 8407, Quartus MIN_fast_1100mv_100c 10212
