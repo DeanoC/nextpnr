@@ -37,6 +37,10 @@ with tempfile.TemporaryDirectory() as tmp:
         if process.poll() is None:process.kill();process.wait()
     failure=subprocess.run([str(binary),str(directory/'missing/profile.json')],capture_output=True,text=True)
     assert failure.returncode==1 and 'Cannot write router2 profile' in failure.stderr
+    retry_dir=directory/'retry'
+    retry_dir.mkdir()
+    subprocess.run([str(binary),str(retry_dir/'profile.json'),'retry'],check=True)
+    assert json.loads((retry_dir/'profile.json').read_text())['completed']
     threadless=directory/'threadless'
     subprocess.run(['g++','-std=c++17','-pthread','-DNPNR_DISABLE_THREADS','-I'+str(root/'common/route'),
         '-I'+str(root/'3rdparty/json11'),str(Path(__file__).with_suffix('.cpp')),
@@ -56,4 +60,8 @@ with tempfile.TemporaryDirectory() as tmp:
         assert not held_snapshot['completed']
     finally:
         if held.poll() is None:held.kill();held.wait()
-print('Router2 observer completion, concurrency, bounds, UTF-8, killed-run and threadless tests passed')
+    retry_dir_threadless=directory/'retry-threadless'
+    retry_dir_threadless.mkdir()
+    subprocess.run([str(threadless),str(retry_dir_threadless/'profile.json'),'retry'],check=True)
+    assert json.loads((retry_dir_threadless/'profile.json').read_text())['completed']
+print('Router2 observer completion, concurrency, bounds, UTF-8, killed-run, retry and threadless tests passed')

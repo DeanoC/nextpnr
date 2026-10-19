@@ -255,23 +255,27 @@ class Profile
     Profile &operator=(const Profile &) = delete;
     void finish(bool completed)
     {
-        // Idempotent: router2 calls finish(true) and ~Profile calls finish(false).
+        // Sticky only after the final snapshot is written. router2 calls
+        // finish(true) and ~Profile calls finish(false); that later call must
+        // not replace a snapshot that landed. A failed write stays retryable.
         if (finished)
             return;
 #if !defined(NPNR_DISABLE_THREADS)
-        if (!writer.joinable())
-            return;
-        {
-            std::lock_guard<std::mutex> guard(mutex);
-            stopping = true;
+        // Join the heartbeat once. A retry after a failed final write finds
+        // the thread already joined and must still attempt the snapshot.
+        if (writer.joinable()) {
+            {
+                std::lock_guard<std::mutex> guard(mutex);
+                stopping = true;
+            }
+            wake.notify_one();
+            writer.join();
+            if (failure)
+                std::rethrow_exception(failure);
         }
-        wake.notify_one();
-        writer.join();
-        if (failure)
-            std::rethrow_exception(failure);
 #endif
-        finished = true;
         write(completed);
+        finished = true;
     }
     ~Profile()
     {
