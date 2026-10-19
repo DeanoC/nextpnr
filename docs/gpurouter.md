@@ -107,6 +107,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
 | `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 4, 22 | device scratch: concurrent nets and log2 table size per lane |
 | `maxBatches`, `maxIter` | 12, 2000 | batches per iteration, iteration limit |
+| `overuseReport` | empty | diagnostic: path of a text file rewritten after every negotiation iteration. The first line is `iter N`; then one line per overused wire, `name occupancy`, followed for wires shared by at least 20 nets by up to eight `net/arcs` entries |
 
 ## GPU phase lease (`GPU_LEASE_FD`)
 
