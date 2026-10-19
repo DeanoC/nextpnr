@@ -21,6 +21,7 @@
 #define MISTRAL_ARCH_H
 
 #include <array>
+#include <mutex>
 #include <set>
 #include <unordered_map>
 #include <sstream>
@@ -388,6 +389,10 @@ struct Arch : BaseArch<ArchRanges>
     bool fes_pip_in_plug_halo(PipId pip) const;
     bool fes_pip_hits_bound_shell_pin(PipId pip) const;
     bool fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const;
+    bool fes_search_pin_narrow(WireId wire, const NetInfo *net, bool forward) const;
+    bool fes_slot_pin_narrow(WireId wire, const NetInfo *net, bool forward) const;
+    void fes_precompute_narrow_pins();
+    bool fes_slot_pins_escape(BelId bel, const CellInfo *cell, bool explain_invalid) const;
     void fes_rip_reserved_shell_pips();
     void lock_fes_scaffold();
     void save_fes_pin_maps(bool save_lab_state = true);
@@ -871,6 +876,11 @@ struct Arch : BaseArch<ArchRanges>
     // same region as the cart that needs them.
     std::string fes_active_cart_region = "cart";
     std::unordered_map<const CellInfo *, BelId> fes_frozen_cells;
+    // fes_slot_pin_narrow by ((wire, net or net class), forward | class << 1).
+    // Frozen scaffold routing and the fences do not change once the scaffold
+    // is locked.
+    mutable std::mutex fes_narrow_mutex;
+    mutable dict<std::pair<std::pair<WireId, IdString>, int>, bool> fes_narrow_cache;
     bool fes_has_reserved_rect = false;
     bool fes_any_slot_region_active = false;
     bool fes_fence_active = false;
