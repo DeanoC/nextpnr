@@ -118,3 +118,26 @@ TEST_F(FesNarrowPinTest, PinOwnWireIsNotACut)
     ctx->add_pip(own, wide);
     EXPECT_FALSE(narrow());
 }
+
+TEST_F(FesNarrowPinTest, FrozenShellOwnsStartingPin)
+{
+    // The wide component would count as an escape. The pin wire is already
+    // a frozen shell route, so the cart net cannot bind it.
+    ctx->add_pip(pin, wide);
+    ctx->bindWire(pin, frozen, STRENGTH_LOCKED);
+    EXPECT_TRUE(narrow());
+}
+
+TEST_F(FesNarrowPinTest, CandidateNetOwnsStartingPin)
+{
+    ctx->add_pip(pin, wide);
+    ctx->bindWire(pin, net, STRENGTH_LOCKED);
+    EXPECT_FALSE(narrow());
+}
+
+TEST_F(FesNarrowPinTest, PlacerStrengthOnStartingPinIsIgnored)
+{
+    ctx->add_pip(pin, wide);
+    ctx->bindWire(pin, frozen, STRENGTH_PLACER);
+    EXPECT_FALSE(narrow());
+}

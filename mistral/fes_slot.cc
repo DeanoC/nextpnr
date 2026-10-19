@@ -819,13 +819,19 @@ bool Arch::fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const
 // Whether `wire` has fewer than two ways out for `net`. The search follows
 // pips the architecture allows that net (CRAM fence, plug halo) and skips
 // wires that frozen scaffold routing holds; movable routing is ignored. A
-// wire escapes once its component outgrows a few tiles or, searching
-// backward from a sink, reaches the net's own frozen route. It is narrow
-// when it never escapes, or when one wire on its way out is a cut: every
-// route of the net through `wire` then needs that one wire.
+// pin another net holds above placer strength is narrow before the search:
+// the cart net cannot bind that wire, however large the component beyond
+// it is. The net's own binding is not a block. A wire escapes once its
+// component outgrows a few tiles or, searching backward from a sink,
+// reaches the net's own frozen route. It is narrow when it never escapes,
+// or when one wire on its way out is a cut: every route of the net through
+// `wire` then needs that one wire.
 bool Arch::fes_search_pin_narrow(WireId wire, const NetInfo *net, bool forward) const
 {
     const size_t limit = 2048;
+    const NetInfo *start_owner = getBoundWireNet(wire);
+    if (start_owner != nullptr && start_owner != net && start_owner->wires.at(wire).strength > STRENGTH_PLACER)
+        return true;
     // Breadth-first search that skips `cut`; on escape, `exit_path` holds
     // the wires from `wire` (exclusive) to the escape point.
     auto escapes = [&](WireId cut, std::vector<WireId> *exit_path) {
