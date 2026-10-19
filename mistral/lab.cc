@@ -1390,6 +1390,25 @@ void Arch::assign_alm_lut_inputs(uint32_t lab, uint8_t alm)
             if (a_avail)
                 avail_phys_ports.push_back(id_A);
 
+            // The last connected input carries abc9's critical signal. If it
+            // is shared with the other half, keep it on a private pin of this
+            // half when one is free: the other half still reads the net on
+            // A/B, and only this half's own pins move, so neither the other
+            // half nor the flip-flop selector plan changes. A half with no
+            // other private input leaves its F to that plan.
+            IdString shared_last;
+            if (!carry) {
+                IdString last;
+                for (int j = 0; j < std::max(0, std::min(luts[i]->combInfo.lut_input_count, 6)); j++)
+                    if (luts[i]->getPort(get_lut_pin(luts[i], j)) != nullptr)
+                        last = get_lut_pin(luts[i], j);
+                const int n_private = private_lut_inputs(luts[i], shared_nets);
+                const int private_pins = int(std::count_if(avail_phys_ports.begin(), avail_phys_ports.end(),
+                                                           [](IdString pin) { return !pin.in(id_A, id_B); }));
+                if (last != IdString() && shared_nets.count(luts[i]->getPort(last)->name) && n_private > 0 &&
+                    n_private < private_pins)
+                    shared_last = last;
+            }
             std::vector<IdString> private_logs;
             for (int j = 0; j < std::max(0, std::min(luts[i]->combInfo.lut_input_count, 6)); j++) {
                 IdString log = get_lut_pin(luts[i], j);
@@ -1400,6 +1419,8 @@ void Arch::assign_alm_lut_inputs(uint32_t lab, uint8_t alm)
                 if (net == nullptr) {
                     // Disconnected inputs don't need to be allocated a pin, because the router won't be routing these
                     continue;
+                } else if (log == shared_last) {
+                    private_logs.push_back(log);
                 } else if (shared_nets.count(net->name)) {
                     // This pin is to be allocated one of the shared nets
                     bel_pins.push_back(shared_nets.at(net->name) ? id_B : id_A);
@@ -1525,19 +1546,25 @@ const dict<IdString, IdString> Arch::comb_pinmap = {
 
 IdString Arch::lut_placement_pin(const CellInfo *cell, IdString port) const
 {
-    // Before legalisation, time a boolean LUT with the pins an isolated cell
-    // gets from assign_lut6_inputs / assign_alm_lut_inputs: the last
-    // connected L5 input on F, the one before it on E, then C/D, B, A, and
-    // LUT6 inputs in order. Yosys times the last input fastest, so this is
-    // also the input abc9 gave the critical signal. Pairing can still move
-    // shared signals to A/B, and a direct-data flip-flop can still keep E.
-    // --isolated-lut-placement selects the same estimate.
+    // Before legalisation, time the pins legalisation settles and keep the
+    // #206 fastest-first scaffold for the rest. A LUT6 has one legal order
+    // (assign_lut6_inputs), so its inputs are timed in order, the last on F.
+    // assign_alm_lut_inputs gives the last connected L5 input F: Yosys times
+    // the last ALUT input fastest, so abc9 gives it the critical signal.
+    // Timing it on the scaffold's C/D or B instead over-weights abc9's
+    // critical paths, and the extra pull congests large designs (#214). The
+    // other L5 inputs keep the scaffold order on E, C/D, B, A.
+    // --isolated-lut-placement times them the way an isolated cell is
+    // legalised instead: the one before the last on E, then C/D, B, A.
+    // Pairing can still move shared signals to A/B, and a direct-data
+    // flip-flop can still keep E.
     if (!cell->type.in(id_MISTRAL_NOT, id_MISTRAL_BUF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
                        id_MISTRAL_ALUT5, id_MISTRAL_ALUT6) ||
         port == id_Q)
         return comb_pinmap.at(port);
     const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
     const std::array<IdString, 5> l5_fast_to_slow{id_F0, id_E0, id_C, id_B, id_A};
+    const std::array<IdString, 5> l5_scaffold_rest{id_E0, id_D, id_C, id_B, id_A};
     const std::array<IdString, 6> l6_pins{id_A, id_B, id_C, id_D, id_E0, id_F0};
     const bool l6 = cell->type == id_MISTRAL_ALUT6;
     const int width = l6                               ? 6
@@ -1564,7 +1591,9 @@ IdString Arch::lut_placement_pin(const CellInfo *cell, IdString port) const
         return comb_pinmap.at(port);
     if (l6)
         return l6_pins.at(index);
-    return l5_fast_to_slow.at(allocated - 1 - index);
+    if (isolated_lut_placement || index == allocated - 1)
+        return l5_fast_to_slow.at(allocated - 1 - index);
+    return l5_scaffold_rest.at(index);
 }
 
 namespace {

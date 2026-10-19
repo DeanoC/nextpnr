@@ -20,10 +20,14 @@ mux in L5 mode. C/D exchange the middle levels between the two L6 halves, so
 their existing early/late envelope is used. Legalisation gives an L5 cell's
 last private input F, then E, C/D, B and A, and keeps LUT6 inputs in order.
 Yosys times the last ALUT input fastest, so that is where abc9 puts the
-critical signal (#214). Before input legalisation, placement uses the same
-isolated map, so `--isolated-lut-placement` no longer changes the estimate.
-`--arrival-pin-assignment` does not change this estimate; it permutes private
-pins after legalisation. Hypothetical cells without nets use the same
+critical signal (#214). A last input shared with the other half of the ALM
+keeps its own F as well when that half has a free private pin; the other
+half reads the net on A/B. Before input legalisation, placement times every
+pin legalisation fixes: LUT6 inputs in order and the last L5 input on F. The
+other L5 inputs keep the #206 fastest-first scaffold order on E, C/D, B and
+A. `--isolated-lut-placement` times them on the isolated legal map instead.
+`--arrival-pin-assignment` does not change either estimate; it permutes
+private pins after legalisation. Hypothetical cells without nets use the same
 order as a fully connected cell; connected cells skip disconnected inputs.
 After legalisation, timing uses the actual physical maps under every policy.
 The underlying tables retain their existing device, voltage and temperature
