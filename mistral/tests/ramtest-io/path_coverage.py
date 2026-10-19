@@ -23,6 +23,9 @@ def channels(cell, input_direction):
     if input_direction:
         if kind == 'MISTRAL_DDRIN':
             return {'high': 'posedge', 'low': 'negedge'}
+        # One rising-edge channel, matching Arch::getRegisteredIoTiming.
+        if kind == 'MISTRAL_SDRIN':
+            return {'rise': 'posedge'}
         if kind == 'MISTRAL_SDRIO' and enabled(cell, 'IOREG_IN'):
             return ({'high': 'posedge', 'low': 'negedge'} if enabled(cell, 'IOREG_IN_DDR')
                     else {'rise': 'posedge'})
@@ -116,12 +119,89 @@ def audit(module, report):
     return result
 
 
+def synthetic_sdrin(event='posedge ram_clock', sink_cell='dq_in', source_cell='dq_in'):
+    """JSON checkpoint module and timing report for one registered MISTRAL_SDRIN."""
+    clock = [2]
+    pad = [3]
+    module = {
+        'settings': {'timing/io_delays': json.dumps([{
+            'port': 'SDRAM_DQ', 'clock': 'ram_clock', 'fall': False, 'input': True,
+            'min': 0.0, 'max': 2.0,
+        }])},
+        'ports': {'SDRAM_DQ': {'direction': 'input', 'bits': pad}},
+        'netnames': {'ram_clock': {'bits': clock}},
+        'cells': {'dq_in': {
+            'type': 'MISTRAL_SDRIN',
+            'parameters': {},
+            'attributes': {'NEXTPNR_GPIO_TIMING_PROFILE': 'QUARTUS_17_0_2_RAMTEST'},
+            'port_directions': {'PAD': 'input', 'CLK': 'input', 'Q': 'output'},
+            'connections': {'PAD': pad, 'CLK': list(clock), 'Q': [4]},
+        }},
+    }
+    report = {
+        'timing_summary': {'final_analogue_model': True, 'clocks': {}},
+        'detailed_net_timings': [{'net': 'dq_q', 'endpoints': [{
+            'cell': sink_cell,
+            'port': 'PAD$timing$read$rise$register',
+            'event': event,
+            'delay': [0.2, 1.1],
+            'setup_checked': True,
+            'hold_checked': True,
+            'setup_slack_ns': 0.5,
+            'hold_slack_ns': 0.1,
+            'source': {
+                'cell': source_cell,
+                'port': 'PAD$timing$read$rise$external',
+                'event': 'posedge ram_clock',
+            },
+        }]}],
+    }
+    checkpoint = json.loads(json.dumps({'modules': {'top': module}}))
+    return checkpoint['modules']['top'], json.loads(json.dumps(report))
+
+
+def self_check():
+    # MISTRAL_SDRIN is a registered input. The output direction stays empty,
+    # and the existing DDR input pair is unchanged.
+    assert channels({'type': 'MISTRAL_SDRIN'}, True) == {'rise': 'posedge'}
+    assert channels({'type': 'MISTRAL_SDRIN'}, False) == {}
+    assert channels({'type': 'MISTRAL_DDRIN'}, True) == {'high': 'posedge', 'low': 'negedge'}
+    sdr_io = {'type': 'MISTRAL_SDRIO', 'parameters': {'IOREG_IN': '1', 'IOREG_IN_DDR': '0'}}
+    assert channels(sdr_io, True) == {'rise': 'posedge'}
+
+    def audited(expect_covered, errors, **changes):
+        result = audit(*synthetic_sdrin(**changes))
+        row = result['channels'][0]
+        assert row['port'] == 'SDRAM_DQ' and row['direction'] == 'input' and row['channel'] == 'rise', row
+        assert result['all_channels_checked'] is expect_covered, row
+        assert row['errors'] == errors, row
+        return result
+
+    matched = audited(True, [])
+    assert matched['expected_channels'] == 1 and matched['checked_channels'] == 1, matched
+    assert matched['all_channel_slacks_nonnegative']
+    endpoint = matched['channels'][0]['endpoint']
+    assert endpoint['port'] == 'PAD$timing$read$rise$register' and endpoint['event'] == 'posedge ram_clock'
+    audited(False, ['incorrect register clock or edge'], event='posedge other_clock')
+    audited(False, ['incorrect channel source'], source_cell='wrong_pad')
+    audited(False, ['missing or ambiguous channel endpoint'], sink_cell='other_pad')
+    print('PASS: MISTRAL_SDRIN rise channel')
+    print('PASS: synthetic SDRIN audit matched rise; mismatched clock and endpoint reported')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--checkpoint', type=Path, required=True)
-    parser.add_argument('--report', type=Path, required=True)
-    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--self-check', action='store_true',
+                        help='check the SDRIN channel map and a synthetic audit, then exit')
+    parser.add_argument('--checkpoint', type=Path)
+    parser.add_argument('--report', type=Path)
+    parser.add_argument('--output', type=Path)
     args = parser.parse_args()
+    if args.self_check:
+        self_check()
+        return
+    if not args.checkpoint or not args.report or not args.output:
+        parser.error('--checkpoint, --report and --output are required')
     result = audit(json.loads(args.checkpoint.read_text())['modules']['top'], json.loads(args.report.read_text()))
     result['source_sha256'] = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
                                for p in (args.checkpoint, args.report, Path(__file__))}
