@@ -19,6 +19,10 @@ jobs:
       PRJOXIDE_REVISION: be5891272a783f6c7d890da7f8dbf663dcaf61f4
       MISTRAL_REVISION: 7ed06e21c18b047ec5c6d6a7e85e5ea2c8827039
       APYCULA_REVISION: 0.8.2a1
+      # Pinned: prjpeppercorn HEAD moved to v1.14 (783fe9db, 7bd77370) on
+      # 2026-10-19 and the gatemate chipdb step exits 255. This is the last
+      # known-good commit. Moving to v1.14 is a separate change.
+      PEPPERCORN_REVISION: b1eb52f45cac54a86e63401d02b1eb48c7d7b923
     steps:
     - uses: actions/checkout@v4
       with:
