@@ -742,8 +742,9 @@ void CommandHandler::snapshotDedicatedCommandSettings(Context *ctx)
     dedicated_setting_snapshot.clear();
     // Architecture options (--no-iobs, --compress-rbf, and the other
     // getArchSettingKeys entries) are dedicated settings too. They are written
-    // by createContext/setupContext before this snapshot, and a checkpoint
-    // must not replace an option this invocation actually passed.
+    // by createContext/setupContext before this snapshot. A GUI replacement
+    // context does not run createContext; open_json copies these values across
+    // first. A checkpoint must not replace an option this invocation passed.
     auto keys = dedicated_command_setting_keys(vm);
     const auto arch_keys = getArchSettingKeys();
     keys.insert(arch_keys.begin(), arch_keys.end());
@@ -752,6 +753,21 @@ void CommandHandler::snapshotDedicatedCommandSettings(Context *ctx)
         auto found = ctx->settings.find(id);
         if (found != ctx->settings.end())
             dedicated_setting_snapshot[id] = found->second;
+    }
+}
+
+void CommandHandler::copyDedicatedCommandSettings(const Context *from, Context *to) const
+{
+    // Same keys as the snapshot. Copy by name: IdString indexes belong to one
+    // context, and createContext is what wrote the architecture values.
+    auto keys = dedicated_command_setting_keys(vm);
+    const auto arch_keys = getArchSettingKeys();
+    keys.insert(arch_keys.begin(), arch_keys.end());
+    for (const auto &key : keys) {
+        auto found = from->settings.find(from->id(key));
+        if (found == from->settings.end())
+            continue;
+        to->settings[to->id(key)] = found->second;
     }
 }
 

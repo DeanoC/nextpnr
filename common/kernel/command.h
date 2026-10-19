@@ -39,6 +39,10 @@ class CommandHandler
 
     int exec();
     void load_json(Context *ctx, std::string filename);
+    // Copy explicit CLI settings onto a context that did not run createContext.
+    // GUI open_json does this before load_json snapshots. IdString indexes are
+    // per-context, so the previous snapshot cannot be replayed onto it.
+    void copyDedicatedCommandSettings(const Context *from, Context *to) const;
     void clear();
     void run_script_hook(const std::string &name);
 
