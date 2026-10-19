@@ -26,12 +26,18 @@ The observer cannot access routing costs, routing resources or the RNG. It adds
 synchronization and I/O overhead when enabled, so performance comparisons must
 record whether profiling was enabled. A long-running active net does not by
 itself prove a deadlock or that the net is unroutable. Default routing has no
-writer thread or snapshots.
+writer thread or snapshots. Builds with `NPNR_DISABLE_THREADS` (WASI, where
+`pthread_create()` always fails) keep the option. The calling thread writes
+the initial snapshot and the final snapshot from `finish()`, and no one-second
+heartbeat thread is started. `finish()` is idempotent, so a later call,
+including the destructor, does not replace that final snapshot.
 
 Regression coverage:
 
 - `common/route/tests/router2_profile.py`: concurrent visits, bounded results,
-  UTF-8 truncation, unwritable output and a real killed-process snapshot.
+  UTF-8 truncation, unwritable output, a real killed-process snapshot, and a
+  `NPNR_DISABLE_THREADS` build that writes the final snapshot and does not
+  heartbeat.
 - `common/route/tests/router2_profile_repair.py`: Windows overwrite via an
   injected Win32 shim (not Windows-native), unique-temporary neighbor and
   symlink preservation, concurrency, and extracted `CommandHandler::load_json`.

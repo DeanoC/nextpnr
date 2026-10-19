@@ -37,4 +37,23 @@ with tempfile.TemporaryDirectory() as tmp:
         if process.poll() is None:process.kill();process.wait()
     failure=subprocess.run([str(binary),str(directory/'missing/profile.json')],capture_output=True,text=True)
     assert failure.returncode==1 and 'Cannot write router2 profile' in failure.stderr
-print('Router2 observer completion, concurrency, bounds, UTF-8 and killed-run tests passed')
+    threadless=directory/'threadless'
+    subprocess.run(['g++','-std=c++17','-pthread','-DNPNR_DISABLE_THREADS','-I'+str(root/'common/route'),
+        '-I'+str(root/'3rdparty/json11'),str(Path(__file__).with_suffix('.cpp')),
+        str(root/'3rdparty/json11/json11.cpp'),'-o',str(threadless)],check=True)
+    threadless_profile=directory/'threadless.json'
+    subprocess.run([str(threadless),str(threadless_profile)],check=True)
+    threadless_value=json.loads(threadless_profile.read_text())
+    assert threadless_value['completed'] and not threadless_value['active']
+    assert threadless_value['calls_started']==threadless_value['calls_finished']==31
+    # No heartbeat thread: an active visit stays out of the snapshot past the one-second period.
+    held=subprocess.Popen([str(threadless),str(threadless_profile),'hold'],stdout=subprocess.PIPE,text=True)
+    try:
+        assert held.stdout.readline().strip()=='active'
+        time.sleep(2.5)
+        held_snapshot=json.loads(threadless_profile.read_text())
+        assert held_snapshot['sequence']==1 and held_snapshot['active_net_count']==0
+        assert not held_snapshot['completed']
+    finally:
+        if held.poll() is None:held.kill();held.wait()
+print('Router2 observer completion, concurrency, bounds, UTF-8, killed-run and threadless tests passed')

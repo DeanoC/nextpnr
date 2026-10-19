@@ -70,6 +70,7 @@ class Profile
     std::mutex mutex;
     std::condition_variable wake;
     bool stopping = false;
+    bool finished = false;
     uint64_t sequence = 0;
     std::exception_ptr failure;
     std::thread writer;
@@ -232,6 +233,7 @@ class Profile
             states.push_back(std::move(s));
         }
         write(false); // Reject an unwritable destination before routing starts.
+#if !defined(NPNR_DISABLE_THREADS)
         writer = std::thread([this]() {
             try {
                 std::unique_lock<std::mutex> lock(mutex);
@@ -244,11 +246,19 @@ class Profile
                 failure = std::current_exception();
             }
         });
+#else
+        // WASI pthread_create() always fails. The calling thread writes the
+        // initial snapshot above and the final snapshot in finish().
+#endif
     }
     Profile(const Profile &) = delete;
     Profile &operator=(const Profile &) = delete;
     void finish(bool completed)
     {
+        // Idempotent: router2 calls finish(true) and ~Profile calls finish(false).
+        if (finished)
+            return;
+#if !defined(NPNR_DISABLE_THREADS)
         if (!writer.joinable())
             return;
         {
@@ -259,6 +269,8 @@ class Profile
         writer.join();
         if (failure)
             std::rethrow_exception(failure);
+#endif
+        finished = true;
         write(completed);
     }
     ~Profile()
