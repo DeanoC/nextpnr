@@ -32,6 +32,7 @@
  */
 
 #include "placer_heap.h"
+#include "heap_congestion.h"
 #include <Eigen/Core>
 #include <Eigen/IterativeLinearSolvers>
 #include <boost/optional.hpp>
@@ -1793,9 +1794,14 @@ class HeAPPlacer
             }
 
             // Congestion may only shrink capacity while every cell still
-            // fits; region expansion fails outright otherwise.
+            // fits. Region-constrained cells can only spread within their own
+            // BEL sets, which this global capacity check cannot account for.
             if (!p->cong_scale.empty()) {
                 std::vector<int> cells(buckets.size(), 0), scaled(buckets.size(), 0);
+                bool has_region_constrained_cells = false;
+                for (CellInfo *cell : p->solve_cells)
+                    if (cell->region != nullptr && cell->region->constr_bels)
+                        has_region_constrained_cells = true;
                 for (int x = 0; x <= p->max_x; x++)
                     for (int y = 0; y <= p->max_y; y++)
                         for (size_t t = 0; t < buckets.size(); t++)
@@ -1806,7 +1812,8 @@ class HeAPPlacer
                         for (size_t t = 0; t < buckets.size(); t++)
                             scaled.at(t) += bels_at(x, y, t);
                 for (size_t t = 0; t < buckets.size(); t++)
-                    if (scaled.at(t) < cells.at(t) + cells.at(t) / 20)
+                    if (!heap_congestion_detail::scale_is_usable(has_region_constrained_cells, cells.at(t),
+                                                                  scaled.at(t), p->cfg.beta))
                         use_congestion = false;
             }
         }

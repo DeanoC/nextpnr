@@ -25,9 +25,12 @@ legalisation and makes the spreader treat congested locations as smaller:
    cells are spread over more of the device. Strict legalisation still uses
    the real BELs.
 
-A spreader run ignores the scale when the scaled capacity of any cell type
-would hold fewer than 105% of its cells, because region expansion fails
-outright when cells cannot fit.
+A spreader run ignores the scale when any cell type's effective capacity
+would hold fewer than 105% of its cells. The check applies the same beta
+threshold as overuse detection, including its small-capacity exception. It
+also ignores congestion scaling when a movable cell has a BEL-constrained
+region: device-wide capacity cannot show that the cell's own region has enough
+scaled BELs.
 
 | Setting | Default | Meaning |
 |---|---|---|

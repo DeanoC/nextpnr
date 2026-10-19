@@ -1018,6 +1018,9 @@ bool Arch::place()
             cfg.cellRipupLimit = std::max(cfg.cellRipupLimit, 500);
             // Its rectangle has no spare capacity to spread into.
             cfg.congestionDriven = false;
+            // Saved settings must record the effective mode used for this
+            // placement so the checkpoint remains a faithful replay record.
+            settings[id("placerHeap/congestion")] = std::to_string(int(cfg.congestionDriven));
         }
         {
             // Prefer nearby FFs with matching controls. A LAB can legally

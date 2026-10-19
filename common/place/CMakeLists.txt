@@ -7,6 +7,7 @@ target_sources(nextpnr_place PUBLIC
     detail_place_core.cc
     detail_place_core.h
     fast_bels.h
+    heap_congestion.h
     heap_control_set.h
     parallel_refine.cc
     parallel_refine.h
@@ -33,4 +34,10 @@ if (BUILD_TESTS)
     target_link_libraries(nextpnr-heap-control-set-test PRIVATE gtest_main)
     set_property(TARGET nextpnr-heap-control-set-test PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
     add_test(NAME nextpnr-heap-control-set-test COMMAND nextpnr-heap-control-set-test)
+
+    add_executable(nextpnr-heap-congestion-test tests/heap_congestion.cc)
+    target_include_directories(nextpnr-heap-congestion-test PRIVATE . ../kernel)
+    target_link_libraries(nextpnr-heap-congestion-test PRIVATE gtest_main)
+    set_property(TARGET nextpnr-heap-congestion-test PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+    add_test(NAME nextpnr-heap-congestion-test COMMAND nextpnr-heap-congestion-test)
 endif()
