@@ -32,7 +32,8 @@ must include final analogue timing and per-endpoint `setup_checked`,
 `null`; an arrival can remain visible after a clock cut. The audit requires
 every expected registered subchannel, the declared reference clock/edge and
 the packed register clock/edge. DQ data and OE are separate channels; DDR
-capture and forwarded clocks require both edges. Unsupported unregistered
+capture and forwarded clocks require both edges. A registered MISTRAL_SDRIN
+pad expects one rising `rise` channel. Unsupported unregistered
 pad directions fail this audit rather than receiving an implied pad model.
 
 Coverage succeeds even when checked slacks are negative. Its separate

@@ -58,6 +58,7 @@ class CommandHandler
     void setupContext(Context *ctx);
     void applyEarlySettingOverrides(Context *ctx);
     void applySdcClockOverrides(Context *ctx);
+    void snapshotDedicatedCommandSettings(Context *ctx);
     void applySettingOverrides(Context *ctx);
     void restoreTelemetrySettings(Context *ctx);
     int executeMain(std::unique_ptr<Context> ctx);
@@ -74,6 +75,9 @@ class CommandHandler
     char **argv;
     std::ofstream logfile;
     std::string telemetry_seed;
+    // Dedicated command-line settings captured before a JSON import. The file
+    // overwrites ctx->settings; applySettingOverrides copies this back.
+    dict<IdString, Property> dedicated_setting_snapshot;
 };
 
 // Relative directory functions from Yosys

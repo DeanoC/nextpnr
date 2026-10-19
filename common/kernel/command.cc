@@ -737,6 +737,17 @@ void CommandHandler::applySdcClockOverrides(Context *ctx)
                                               overrides);
 }
 
+void CommandHandler::snapshotDedicatedCommandSettings(Context *ctx)
+{
+    dedicated_setting_snapshot.clear();
+    for (const auto &key : dedicated_command_setting_keys(vm)) {
+        IdString id = ctx->id(key);
+        auto found = ctx->settings.find(id);
+        if (found != ctx->settings.end())
+            dedicated_setting_snapshot[id] = found->second;
+    }
+}
+
 void CommandHandler::applySettingOverrides(Context *ctx)
 {
     if (vm.count("set")) {
@@ -753,6 +764,11 @@ void CommandHandler::applySettingOverrides(Context *ctx)
             }
         }
     }
+
+    // A reloaded design JSON overwrites settings after the command line has
+    // been applied. Replay the explicit options captured before that import.
+    for (const auto &saved : dedicated_setting_snapshot)
+        ctx->settings[saved.first] = saved.second;
 
     // Imported checkpoints and later setting overrides must not weaken the
     // explicit command-line guarantee.
@@ -798,6 +814,9 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
     // The frontend needs its selected top before import. Other settings are
     // applied after import so they cannot change how a fresh design is read.
     applyEarlySettingOverrides(ctx.get());
+    // parse_json replaces ctx->settings with the file. Keep the options this
+    // invocation already applied, including --gpu-cpu and --gpu-opt.
+    snapshotDedicatedCommandSettings(ctx.get());
 
 #ifndef NO_GUI
     if (vm.count("gui")) {
@@ -995,6 +1014,7 @@ void CommandHandler::load_json(Context *ctx, std::string filename)
     setupContext(ctx);
     setupArchContext(ctx);
     applyEarlySettingOverrides(ctx);
+    snapshotDedicatedCommandSettings(ctx);
     {
         auto f = open_ifstream_and_log_error(filename, "JSON file");
         if (!parse_json(f, filename, ctx))

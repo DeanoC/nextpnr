@@ -10,8 +10,10 @@ function get_dependencies {
     git clone https://github.com/openXC7/prjxray-db ${XRAY_DB_PATH}
     # Fetch apycula
     pip install --break-system-packages apycula
-    # Fetch prjpeppercorn
+    # Fetch prjpeppercorn. v1.14 (783fe9db, 2026-10-19) breaks the gatemate
+    # chipdb; stay on the parent commit until that bump is adopted on purpose.
     git clone https://github.com/YosysHQ/prjpeppercorn ${PEPPERCORN_PATH}
+    git -C ${PEPPERCORN_PATH} checkout --detach b1eb52f45cac54a86e63401d02b1eb48c7d7b923
 }
 
 function build_nextpnr {

@@ -39,7 +39,7 @@ for swap_ef in [False,True]:
    vals['E1'],vals['F1']=vals['E0'],vals['F0']
    index=sum((1-vals[mapping[q]])<<q for q in range(6))
    mask|=(1-((init>>index)&1))<<bit
-  results.append({'swap_ef':swap_ef,'swap_cd':swap_cd,'predicted_mask':f'{mask:016x}','mismatching_bits':(mask^actual).bit_count()})
+  results.append({'swap_ef':swap_ef,'swap_cd':swap_cd,'predicted_mask':f'{mask:016x}','mismatching_bits':bin(mask^actual).count('1')})
 corner_delays={}
 for report in sorted(p.glob('arcs-*.tsv')):
  delays={}

@@ -23,6 +23,9 @@ def channels(cell, input_direction):
     if input_direction:
         if kind == 'MISTRAL_DDRIN':
             return {'high': 'posedge', 'low': 'negedge'}
+        # One rising-edge channel, matching Arch::getRegisteredIoTiming.
+        if kind == 'MISTRAL_SDRIN':
+            return {'rise': 'posedge'}
         if kind == 'MISTRAL_SDRIO' and enabled(cell, 'IOREG_IN'):
             return ({'high': 'posedge', 'low': 'negedge'} if enabled(cell, 'IOREG_IN_DDR')
                     else {'rise': 'posedge'})
@@ -116,12 +119,25 @@ def audit(module, report):
     return result
 
 
+def self_check():
+    assert channels({'type': 'MISTRAL_SDRIN'}, True) == {'rise': 'posedge'}
+    assert channels({'type': 'MISTRAL_SDRIN'}, False) == {}
+    assert channels({'type': 'MISTRAL_DDRIN'}, True) == {'high': 'posedge', 'low': 'negedge'}
+    print('PASS: MISTRAL_SDRIN rise channel')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--checkpoint', type=Path, required=True)
-    parser.add_argument('--report', type=Path, required=True)
-    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--self-check', action='store_true')
+    parser.add_argument('--checkpoint', type=Path)
+    parser.add_argument('--report', type=Path)
+    parser.add_argument('--output', type=Path)
     args = parser.parse_args()
+    if args.self_check:
+        self_check()
+        return
+    if not args.checkpoint or not args.report or not args.output:
+        parser.error('--checkpoint, --report and --output are required')
     result = audit(json.loads(args.checkpoint.read_text())['modules']['top'], json.loads(args.report.read_text()))
     result['source_sha256'] = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
                                for p in (args.checkpoint, args.report, Path(__file__))}
