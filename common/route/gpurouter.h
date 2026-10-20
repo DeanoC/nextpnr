@@ -160,7 +160,8 @@ struct GpuRouterCfg
     // is ripped up before the first batch, so nets sharing a batch all see
     // the wire they fought over as free and take it together again.
     int overflow_chunk;
-    // Maximum number of nets routed concurrently on the device
+    // Maximum number of nets routed concurrently on the device; large_slots
+    // 0 sizes the large lane from free device memory
     int small_slots, large_slots;
     // log2 of the per-net hash table size for the two lanes
     int small_bits, large_bits;

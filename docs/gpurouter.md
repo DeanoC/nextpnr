@@ -105,7 +105,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `archRetryLimit` | 8 | maximum re-routing attempts after architecture binding rejects a route, independent of `maxIter`; 0 fails immediately. Normal logs name up to eight rejected wires/pips and their nets per binding pass; the final error lists the rejected nets |
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
-| `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 4, 22 | device scratch: concurrent nets and log2 table size per lane |
+| `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 0, 22 | device scratch: concurrent nets and log2 table size per lane. A search that outgrows the small table is retried in the large lane; `largeSlots=0` gives that lane as many slots (4 to 32) as three quarters of the free device memory holds, at 235 MB per slot with `largeBits=22`. If later route-buffer allocation fails, the automatic lane releases its scratch, retries those allocations, then tries the original slot count down to one and keeps the largest lane that fits |
 | `maxBatches` | 12 | batch slots per iteration; the first `maxBatches - 1` are bounding-box-disjoint and the last is the overlap-tolerant overflow bucket |
 | `maxIter` | 2000 | negotiation iteration limit |
 | `overflowChunk` | 128 | nets whose boxes overlap every disjoint batch are routed in chunks of at most this many, each seeing the routes of earlier batches and chunks; 0 routes them all in one batch |

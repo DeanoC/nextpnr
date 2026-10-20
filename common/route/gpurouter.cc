@@ -1195,13 +1195,13 @@ struct GpuRouter
         flush_state();
         if (retry.empty())
             return;
-        if (ctx->verbose)
+        if (ctx->verbose || cfg.perf_profile)
             log_info("    %zu nets retried in the large lane\n", retry.size());
         retry = route_tasks(retry, true, true);
         flush_state();
         if (retry.empty())
             return;
-        if (ctx->verbose)
+        if (ctx->verbose || cfg.perf_profile)
             log_info("    %zu nets retried without bounding box\n", retry.size());
         std::vector<HostTask> failed = route_tasks(retry, false, true);
         flush_state();
@@ -3662,7 +3662,7 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     max_batches = ctx->setting<int>("gpurouter/maxBatches", 12);
     overflow_chunk = ctx->setting<int>("gpurouter/overflowChunk", 128);
     small_slots = ctx->setting<int>("gpurouter/smallSlots", 384);
-    large_slots = ctx->setting<int>("gpurouter/largeSlots", 4);
+    large_slots = ctx->setting<int>("gpurouter/largeSlots", 0);
     small_bits = ctx->setting<int>("gpurouter/smallBits", 16);
     large_bits = ctx->setting<int>("gpurouter/largeBits", 22);
     device = ctx->setting<int>("gpurouter/device", -1);
