@@ -1,0 +1,55 @@
+{
+  "cells": 10462,
+  "differences": [
+    {
+      "path": [
+        "modules",
+        "top",
+        "cells",
+        "system.machine.cpu.cpu.u_eu_core.carry_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT6_Q",
+        "attributes",
+        "NEXTPNR_BEL"
+      ],
+      "before": "MISTRAL_MCOMB.39.5.24",
+      "after": "MISTRAL_COMB.46.6.0"
+    },
+    {
+      "path": [
+        "modules",
+        "top",
+        "cells",
+        "system.machine.cpu.cpu.u_eu_core.eu_add_overflow8_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT5_Q",
+        "attributes",
+        "NEXTPNR_BEL"
+      ],
+      "before": "MISTRAL_COMB.40.4.37",
+      "after": "MISTRAL_COMB.45.6.42"
+    },
+    {
+      "path": [
+        "modules",
+        "top",
+        "cells",
+        "system.machine.cpu.cpu.u_eu_core.eu_alu_out_MISTRAL_ALUT5_Q_11",
+        "attributes",
+        "NEXTPNR_BEL"
+      ],
+      "before": "MISTRAL_COMB.45.6.42",
+      "after": "MISTRAL_COMB.40.4.37"
+    },
+    {
+      "path": [
+        "modules",
+        "top",
+        "cells",
+        "system.machine.cpu.cpu.u_eu_core.eu_alu_out_MISTRAL_ALUT5_Q_12",
+        "attributes",
+        "NEXTPNR_BEL"
+      ],
+      "before": "MISTRAL_COMB.46.6.0",
+      "after": "MISTRAL_MCOMB.39.5.24"
+    }
+  ],
+  "parent_reserialized_sha256": "ad912c2bf9e1843597a4cf908760fd935fac6b2db01a7ccc81190ad25c028b8e",
+  "candidate_reserialized_sha256": "c1293fd73aa62fdd9f3969a6bb8ae3c0f7d9167d6cf9e619a0e0892ab26bbd4e"
+}

@@ -1,5 +1,9 @@
 # Experimental critical-cohort placement repair
 
+For explicit occupied-LUT swaps on an unrouted placed checkpoint, see
+[experimental critical swaps](mistral-critical-swaps.md). That opt-in stage
+reuses the cohort timing guards without translating carry chains or registers.
+
 `--critical-cohort-budget N` enables a post-place Mistral HeAP experiment for
 long hops on failing setup paths. `N` limits complete placement timing trials
 to 0..64; the default is **0**. It requires fresh, ordinary full-design HeAP

@@ -1,0 +1,66 @@
+........F........
+======================================================================
+FAIL: test_effective_loaded_sa_placer_cannot_be_overridden_into_this_pass (__main__.LutPairPlacementCliTest.test_effective_loaded_sa_placer_cannot_be_overridden_into_this_pass)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/lut_pair_placement_cli.py", line 119, in test_effective_loaded_sa_placer_cannot_be_overridden_into_this_pass
+    log = self.reject("LUT pair placement requires ordinary HeAP placement", placer="sa",
+                      options=("--placer", "heap"))
+  File "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/lut_pair_placement_cli.py", line 76, in reject
+    self.assertNotEqual(code, 0, log)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+AssertionError: 0 == 0 : Info: Initialising bels...
+Info: Initialising routing graph...
+Info:     imported 2740019 wires and 25465239 pips
+
+Info: Device utilisation:
+Info: 	        MISTRAL_COMB:       2/  83820     0%
+Info: 	          MISTRAL_FF:       0/ 167640     0%
+Info: 	      MISTRAL_MUL9X9:       0/    336     0%
+Info: 	    MISTRAL_MUL18X18:       0/    112     0%
+Info: 	    MISTRAL_MUL27X27:       0/    112     0%
+Info: 	    MISTRAL_MUL18X19:       0/    112     0%
+Info: 	MISTRAL_MUL18X19_COMBINED:       0/    112     0%
+Info: 	          MISTRAL_IO:       0/    472     0%
+Info: 	          altera_pll:       0/      6     0%
+Info: 	      MISTRAL_CLKENA:       0/      8     0%
+Info: 	  MISTRAL_CLKENA_PLL:       0/      8     0%
+Info: 	 cyclonev_oscillator:       0/      1     0%
+Info: 	cyclonev_hps_interface_mpu_general_purpose:       0/      1     0%
+Info: 	cyclonev_hps_interface_peripheral_i2c:       0/      4     0%
+Info: 	cyclonev_hps_interface_fpga2sdram:       0/      1     0%
+Info: 	        MISTRAL_M10K:       0/    553     0%
+Info: 	cyclonev_chipidblock:       0/      1     0%
+Info: 	   cyclonev_crcblock:       0/      1     0%
+Info: 	 cyclonev_opregblock:       0/      1     0%
+Info: 	       cyclonev_jtag:       0/      1     0%
+
+Info: Placed 0 cells based on constraints.
+Info: Creating initial analytic placement for 0 cells, random placement wirelen = 0.
+Info:     at initial placer iter 0, wirelen = 0
+Info:     at initial placer iter 1, wirelen = 0
+Info:     at initial placer iter 2, wirelen = 0
+Info:     at initial placer iter 3, wirelen = 0
+Info: Running main analytical placer, max placement attempts per cell = 10000.
+Info: HeAP Placer Time: 0.23s
+Info:   of which solving equations: 0.01s
+Info:   of which spreading cells: 0.00s
+Info:   of which strict legalisation: 0.00s
+
+Info: Running simulated annealing placer for refinement.
+Info:   at iteration #1: temp = 0.000000, timing cost = 0, wirelen = 0
+Info:   at iteration #2: temp = 0.000000, timing cost = 0, wirelen = 0
+Info: SA placement time 0.00s
+
+Info: No Fmax available; no interior timing paths found in design.
+Info: Checksum: 0x911fb648
+Info: LUT pair placement discovery: 0 bounded pairs.
+Info: LUT pair placement: 0 qualified candidates; no candidate applied.
+
+Info: Program finished normally.
+
+
+----------------------------------------------------------------------
+Ran 17 tests in 317.982s
+
+FAILED (failures=1)

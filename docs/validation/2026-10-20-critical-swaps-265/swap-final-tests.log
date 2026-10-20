@@ -1,0 +1,22 @@
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = CriticalCohort.Swap*
+[==========] Running 6 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 6 tests from CriticalCohort
+[ RUN      ] CriticalCohort.SwapChangesOnlyBindingsOfTwoOriginalLuts
+[       OK ] CriticalCohort.SwapChangesOnlyBindingsOfTwoOriginalLuts (3855 ms)
+[ RUN      ] CriticalCohort.SwapRejectionAndExceptionRestoreBothBindings
+[       OK ] CriticalCohort.SwapRejectionAndExceptionRestoreBothBindings (3729 ms)
+[ RUN      ] CriticalCohort.SwapRejectsProtectedClusteredAndIllegalDestinations
+[       OK ] CriticalCohort.SwapRejectsProtectedClusteredAndIllegalDestinations (3873 ms)
+[ RUN      ] CriticalCohort.SwapPreservesRegionsAndAbsoluteConstraints
+[       OK ] CriticalCohort.SwapPreservesRegionsAndAbsoluteConstraints (4038 ms)
+[ RUN      ] CriticalCohort.SwapSearchRepairsThroughOccupiedSitesWithoutChangingFunctions
+[       OK ] CriticalCohort.SwapSearchRepairsThroughOccupiedSitesWithoutChangingFunctions (4265 ms)
+[ RUN      ] CriticalCohort.SwapSearchImprovesNativeReportedCone
+[       OK ] CriticalCohort.SwapSearchImprovesNativeReportedCone (4303 ms)
+[----------] 6 tests from CriticalCohort (24066 ms total)
+
+[----------] Global test environment tear-down
+[==========] 6 tests from 1 test suite ran. (24066 ms total)
+[  PASSED  ] 6 tests.

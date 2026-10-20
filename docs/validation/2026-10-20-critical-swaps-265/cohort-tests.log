@@ -1,0 +1,100 @@
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = CriticalCohort.*
+[==========] Running 45 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 45 tests from CriticalCohort
+[ RUN      ] CriticalCohort.SwapChangesOnlyBindingsOfTwoOriginalLuts
+[       OK ] CriticalCohort.SwapChangesOnlyBindingsOfTwoOriginalLuts (5569 ms)
+[ RUN      ] CriticalCohort.SwapRejectionAndExceptionRestoreBothBindings
+[       OK ] CriticalCohort.SwapRejectionAndExceptionRestoreBothBindings (4784 ms)
+[ RUN      ] CriticalCohort.SwapRejectsProtectedClusteredAndIllegalDestinations
+[       OK ] CriticalCohort.SwapRejectsProtectedClusteredAndIllegalDestinations (4678 ms)
+[ RUN      ] CriticalCohort.SwapSearchImprovesNativeReportedCone
+[       OK ] CriticalCohort.SwapSearchImprovesNativeReportedCone (4022 ms)
+[ RUN      ] CriticalCohort.EmptyDestinationMovesWholeCohort
+[       OK ] CriticalCohort.EmptyDestinationMovesWholeCohort (4065 ms)
+[ RUN      ] CriticalCohort.SingleRegisterCanPackWithItsDriverAtAnotherAlmSlot
+[       OK ] CriticalCohort.SingleRegisterCanPackWithItsDriverAtAnotherAlmSlot (4143 ms)
+[ RUN      ] CriticalCohort.RejectedRegisterSlotChangeRestoresEveryParticipant
+[       OK ] CriticalCohort.RejectedRegisterSlotChangeRestoresEveryParticipant (5127 ms)
+[ RUN      ] CriticalCohort.MultiCellCohortsCannotChangeTheirAlmSlots
+[       OK ] CriticalCohort.MultiCellCohortsCannotChangeTheirAlmSlots (4823 ms)
+[ RUN      ] CriticalCohort.PinPreviewMatchesRoutingWithoutInsertingRouteThroughs
+[       OK ] CriticalCohort.PinPreviewMatchesRoutingWithoutInsertingRouteThroughs (5086 ms)
+[ RUN      ] CriticalCohort.PinPreviewTimesSharedInputsOnTheirPhysicalPins
+[       OK ] CriticalCohort.PinPreviewTimesSharedInputsOnTheirPhysicalPins (5409 ms)
+[ RUN      ] CriticalCohort.PinPreviewExceptionRestoresPinsAndLabModes
+[       OK ] CriticalCohort.PinPreviewExceptionRestoresPinsAndLabModes (4305 ms)
+[ RUN      ] CriticalCohort.RouteThroughPreviewMatchesInsertedGraphEarlyAndLateTiming
+[       OK ] CriticalCohort.RouteThroughPreviewMatchesInsertedGraphEarlyAndLateTiming (4181 ms)
+[ RUN      ] CriticalCohort.ReservedLutPreservesDataInputInPreviewAndRouting
+[       OK ] CriticalCohort.ReservedLutPreservesDataInputInPreviewAndRouting (4226 ms)
+[ RUN      ] CriticalCohort.RouteThroughSelectionMatchesFourRegisterRoutingPriority
+[       OK ] CriticalCohort.RouteThroughSelectionMatchesFourRegisterRoutingPriority (6304 ms)
+[ RUN      ] CriticalCohort.RouteThroughPreviewLeavesFrozenLabTimingUntouched
+[       OK ] CriticalCohort.RouteThroughPreviewLeavesFrozenLabTimingUntouched (4611 ms)
+[ RUN      ] CriticalCohort.RouteThroughSelectionExcludesOccupiedLutCarryAndLut6Modes
+[       OK ] CriticalCohort.RouteThroughSelectionExcludesOccupiedLutCarryAndLut6Modes (4176 ms)
+[ RUN      ] CriticalCohort.NeighborhoodIncludesDirectDataNeighborsOnly
+[       OK ] CriticalCohort.NeighborhoodIncludesDirectDataNeighborsOnly (4100 ms)
+[ RUN      ] CriticalCohort.NeighborhoodClosesNeighborCarryCluster
+[       OK ] CriticalCohort.NeighborhoodClosesNeighborCarryCluster (4043 ms)
+[ RUN      ] CriticalCohort.UnrelatedDestinationGuestsStayAtHome
+[       OK ] CriticalCohort.UnrelatedDestinationGuestsStayAtHome (4022 ms)
+[ RUN      ] CriticalCohort.ClearsAnOccupiedLabAndPreservesGuests
+[       OK ] CriticalCohort.ClearsAnOccupiedLabAndPreservesGuests (4084 ms)
+[ RUN      ] CriticalCohort.IncludesCarryMembersOutsideTheSelectedLab
+[       OK ] CriticalCohort.IncludesCarryMembersOutsideTheSelectedLab (4117 ms)
+[ RUN      ] CriticalCohort.DisplacesWholeDestinationCarryCluster
+[       OK ] CriticalCohort.DisplacesWholeDestinationCarryCluster (4128 ms)
+[ RUN      ] CriticalCohort.RejectedTimingRestoresBindingsStrengthsAndInputCounts
+[       OK ] CriticalCohort.RejectedTimingRestoresBindingsStrengthsAndInputCounts (4171 ms)
+[ RUN      ] CriticalCohort.ExceptionDuringAcceptanceRestoresThePlacement
+[       OK ] CriticalCohort.ExceptionDuringAcceptanceRestoresThePlacement (4179 ms)
+[ RUN      ] CriticalCohort.SearchExhaustionRestoresPartiallyMovedParticipants
+[       OK ] CriticalCohort.SearchExhaustionRestoresPartiallyMovedParticipants (4125 ms)
+[ RUN      ] CriticalCohort.UnrelatedProtectedDestinationIsUntouched
+[       OK ] CriticalCohort.UnrelatedProtectedDestinationIsUntouched (4085 ms)
+[ RUN      ] CriticalCohort.CollidingProtectedDestinationIsUntouched
+[       OK ] CriticalCohort.CollidingProtectedDestinationIsUntouched (4339 ms)
+[ RUN      ] CriticalCohort.ProtectedMemberOutsideTheLabBlocksClusterMovement
+[       OK ] CriticalCohort.ProtectedMemberOutsideTheLabBlocksClusterMovement (7755 ms)
+[ RUN      ] CriticalCohort.MalformedClusterIsRejectedBeforeAnyMove
+[       OK ] CriticalCohort.MalformedClusterIsRejectedBeforeAnyMove (15417 ms)
+[ RUN      ] CriticalCohort.NativeTimingAcceptsCompleteSetupImprovement
+[       OK ] CriticalCohort.NativeTimingAcceptsCompleteSetupImprovement (3992 ms)
+[ RUN      ] CriticalCohort.NativeTimingRejectsRegressingAPassingClock
+[       OK ] CriticalCohort.NativeTimingRejectsRegressingAPassingClock (4081 ms)
+[ RUN      ] CriticalCohort.ImprovingWorstSetupCannotWorsenAnotherFailingEndpoint
+[       OK ] CriticalCohort.ImprovingWorstSetupCannotWorsenAnotherFailingEndpoint (4393 ms)
+[ RUN      ] CriticalCohort.ImprovedClockPairCannotMakeAPassingEndpointFail
+[       OK ] CriticalCohort.ImprovedClockPairCannotMakeAPassingEndpointFail (4362 ms)
+[ RUN      ] CriticalCohort.RoutedFocusCanImproveWithoutChangingThePredictedWorstEndpoint
+[       OK ] CriticalCohort.RoutedFocusCanImproveWithoutChangingThePredictedWorstEndpoint (4592 ms)
+[ RUN      ] CriticalCohort.NativeTimingRejectsRelatedClockHoldFailure
+[       OK ] CriticalCohort.NativeTimingRejectsRelatedClockHoldFailure (4584 ms)
+[ RUN      ] CriticalCohort.PassingDesignRemainsUnmoved
+[       OK ] CriticalCohort.PassingDesignRemainsUnmoved (4419 ms)
+[ RUN      ] CriticalCohort.RoutedGuidanceRepairsAMatchingNativeTimingCone
+[       OK ] CriticalCohort.RoutedGuidanceRepairsAMatchingNativeTimingCone (4281 ms)
+[ RUN      ] CriticalCohort.RoutedGuidanceResolvesInsertedRegisterRouteThrough
+[       OK ] CriticalCohort.RoutedGuidanceResolvesInsertedRegisterRouteThrough (4248 ms)
+[ RUN      ] CriticalCohort.RouteThroughGuidanceRejectsADifferentOriginalDriver
+[       OK ] CriticalCohort.RouteThroughGuidanceRejectsADifferentOriginalDriver (4196 ms)
+[ RUN      ] CriticalCohort.MismatchedGuidanceFailsBeforeMovingAnyCell
+[       OK ] CriticalCohort.MismatchedGuidanceFailsBeforeMovingAnyCell (4217 ms)
+[ RUN      ] CriticalCohort.NativeTimingRejectsChangedClockConstraints
+[       OK ] CriticalCohort.NativeTimingRejectsChangedClockConstraints (4198 ms)
+[ RUN      ] CriticalCohort.MeasuredModelMatchesInsertedGraphAndRejectsMismatches
+[       OK ] CriticalCohort.MeasuredModelMatchesInsertedGraphAndRejectsMismatches (8962 ms)
+[ RUN      ] CriticalCohort.CalibratedRepairPacksACriticalRegisterWithItsDriver
+[       OK ] CriticalCohort.CalibratedRepairPacksACriticalRegisterWithItsDriver (8919 ms)
+[ RUN      ] CriticalCohort.CalibratedRepairImprovesOneOfTwoTiedEnableEndpoints
+[       OK ] CriticalCohort.CalibratedRepairImprovesOneOfTwoTiedEnableEndpoints (9443 ms)
+[ RUN      ] CriticalCohort.CalibratedRepairImprovesOneOfTwoTiedMemoryAddressInputs
+[       OK ] CriticalCohort.CalibratedRepairImprovesOneOfTwoTiedMemoryAddressInputs (9369 ms)
+[----------] 45 tests from CriticalCohort (232351 ms total)
+
+[----------] Global test environment tear-down
+[==========] 45 tests from 1 test suite ran. (232351 ms total)
+[  PASSED  ] 45 tests.
