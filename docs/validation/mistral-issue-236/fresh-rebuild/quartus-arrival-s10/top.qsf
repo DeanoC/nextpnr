@@ -1,0 +1,23 @@
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEBA6U23I7
+set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name VERILOG_FILE top.v
+set_global_assignment -name SDC_FILE top.sdc
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name GENERATE_RBF_FILE ON
+set_instance_assignment -name VIRTUAL_PIN ON -to din
+set_instance_assignment -name VIRTUAL_PIN ON -to dout
+set_location_assignment PIN_V11 -to clk
+set_location_assignment FF_X22_Y16_N22 -to q0
+set_location_assignment LABCELL_X22_Y8_N57 -to n1
+set_location_assignment LABCELL_X22_Y8_N0 -to n2
+set_location_assignment LABCELL_X22_Y8_N9 -to n3
+set_location_assignment LABCELL_X22_Y8_N42 -to n4
+set_location_assignment LABCELL_X12_Y8_N30 -to n5
+set_location_assignment LABCELL_X12_Y8_N18 -to n6
+set_location_assignment MLABCELL_X21_Y8_N39 -to n7
+set_location_assignment LABCELL_X22_Y9_N30 -to n8
+set_location_assignment LABCELL_X22_Y9_N48 -to n9
+set_location_assignment LABCELL_X22_Y9_N33 -to n10
+set_location_assignment FF_X22_Y9_N34 -to qc
+set_global_assignment -name ROUTING_BACK_ANNOTATION_FILE top.rcf

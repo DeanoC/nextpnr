@@ -1,0 +1,26 @@
+clk-skew       -66     -66     -66
+clk-to-q       731     731     731
+routing       1304    1438    1310  V2+V2+V2+V2+H3+TD
+lut:F          239      90     103  B
+routing        111     219     202  direct
+lut:B          696     579     679  B
+routing        425     547     498  H3+TD
+lut:F          237      90     103  E
+routing        108     242     212  direct
+lut:F          231      90     103  E
+routing       1025    1138    1026  H3+H6+TD
+lut:F          225      90     103  A
+routing        131     244     228  direct
+lut:B          708     579     679  B
+routing       1088    1220    1112  H6+H6+TD
+lut:F          239      90     103  D
+routing        452     564     520  V4+TD
+lut:F          226      90     103  B
+routing        101     237     208  direct
+lut:F          232      90     103  E
+routing        462     590     568  H6+TD
+lut:C/D        647     504     599  B
+routing        840     841     771  H6+TD (stage incl.)
+setup         -196    -196    -196
+total ps: nextpnr 10196 (report 10196); Quartus-arc re-cost 100C 10041, -40C 9801; unmatched routing segments 0
+MHz (half-cycle path): nextpnr 49.04, re-cost 100C 49.79, -40C 51.02

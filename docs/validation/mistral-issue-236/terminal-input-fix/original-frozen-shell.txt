@@ -1,0 +1,58 @@
+{
+  "command": [
+    "/tmp/issue236-build/nextpnr-mistral",
+    "--device",
+    "5CSEBA6U23I7",
+    "--qsf",
+    "/home/deano/tmp/k845-cuda/in/socket.qsf",
+    "--sdc",
+    "/home/deano/tmp/k845-cuda/in/clocks.sdc",
+    "--freq",
+    "52.224",
+    "--fes-scaffold",
+    "--no-pack",
+    "--no-place",
+    "--no-route",
+    "--json",
+    "/tmp/issue236/scaffold-strict.json",
+    "--report",
+    "/tmp/issue236-fix/frozen-scaffold.json",
+    "--rbf",
+    "/tmp/issue236-fix/frozen-scaffold.rbf",
+    "--compress-rbf"
+  ],
+  "exit_code": 1,
+  "rbf_unchanged": true,
+  "rbf_sha256": "aa357c2cc40d70759c457889d9606a8fdc2f96bce958a63cacc66fb9da821224",
+  "fmax": {
+    "audio_clk": {
+      "achieved": 154.36862182617188,
+      "constraint": 12.288031578063965
+    },
+    "clk_sys": {
+      "achieved": 41.978004455566406,
+      "constraint": 52.22477340698242
+    },
+    "display.control.clk": {
+      "achieved": 81.16223907470703,
+      "constraint": 74.25006866455078
+    }
+  },
+  "timing_summary": {
+    "clocks": {
+      "audio_clk": {
+        "hold_wns_ns": 1.0219999551773071,
+        "setup_wns_ns": 74.9020004272461
+      },
+      "clk_sys": {
+        "hold_wns_ns": 0.8119999766349792,
+        "setup_wns_ns": -3.309999942779541
+      },
+      "display.control.clk": {
+        "hold_wns_ns": 0.7829999923706055,
+        "setup_wns_ns": 1.1469999551773071
+      }
+    },
+    "final_analogue_model": true
+  }
+}

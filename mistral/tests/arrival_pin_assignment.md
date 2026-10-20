@@ -1,7 +1,12 @@
 # Arrival-based private LUT input assignment
 
-`--arrival-pin-assignment` takes one arrival snapshot and assigns later
-arriving private inputs to faster physical pins after legal ALM allocation.
+`--arrival-pin-assignment` takes one timing snapshot and assigns more urgent
+private inputs to faster physical pins after legal ALM allocation. It ranks each
+input by `-setup_slack - current_cell_delay`. Changing the pin changes setup
+slack by `old_cell_delay - new_cell_delay`, so subtracting the current cell
+charge removes the incumbent pin speed from the ranking. Setup slack includes
+the launch/capture clock relationship: an urgent half-cycle input can outrank
+a later full-cycle input. Inputs without a timed setup path stay fixed.
 It leaves the placement delay estimate alone. By default that estimate times
 the pins legalisation fixes (LUT6 inputs in order, the last L5 input on F) and
 keeps the #206 fastest-first scaffold for the other L5 inputs.
@@ -27,7 +32,7 @@ Carry mode, LUT6, locked LUTs, and ALMs with direct register input paths are
 excluded. Inversion states stay on their logical ports, and bitstream generation
 uses the resulting physical maps. Restored scaffold maps are not reassigned.
 
-This is a setup-oriented placement/routing heuristic. Its arrival snapshot is
+This is a setup-oriented placement/routing heuristic. Its timing snapshot is
 not recomputed after each permutation. It does not replace final routed timing
 or guarantee a setup or hold improvement. Choose it per design/profile and
 qualify the final setup and hold results. No timing bounds, clock constraints,
@@ -39,10 +44,15 @@ physical input mappings are sufficient to reproduce the bitstream and timing.
 
 The architecture tests in `lab_pinmap.cc` check isolated placement estimates on
 both halves, and verify that shared inputs, inversion, register paths and BEL
-locks survive private-input optimization. `physical_lut_timing.py` additionally
+locks survive private-input optimization. A mixed-edge case checks that a
+half-cycle input takes priority over a later full-cycle input. `physical_lut_timing.py` additionally
 checks bitstream and endpoint timing invariance under logical port permutations.
 
 ## Controlled prototype evidence
+
+The historical studies below used the earlier absolute-arrival ranking.
+Issue #236's setup-relative ranking and corrected terminal input timing are
+validated separately in `docs/validation/mistral-issue-236/`.
 
 The study used main `434b8664`, including the physical LUT6 E/F correction.
 The prototype compiler hash was

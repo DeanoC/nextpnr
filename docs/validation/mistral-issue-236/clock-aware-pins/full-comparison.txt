@@ -1,0 +1,25 @@
+EXACT_ROUTE_CHAINS 11
+{
+  "exact_routed_hops": 11,
+  "dedicated_carry_hops": 3,
+  "report_ps": 18564,
+  "report_mhz": 53.867700885274324,
+  "data_nextpnr_ps": 17279,
+  "final_sink": "LAB.011.008:DATAIN.2",
+  "100c": {
+    "data_quartus_ps": 16145,
+    "side_branch_ps": 413,
+    "final_hop_nextpnr_ps": 708,
+    "final_hop_ps": 709,
+    "full_ps": 17844,
+    "mhz": 56.04030415298345
+  },
+  "-40c": {
+    "data_quartus_ps": 15852,
+    "side_branch_ps": 351,
+    "final_hop_nextpnr_ps": 708,
+    "final_hop_ps": 630,
+    "full_ps": 17410,
+    "mhz": 57.43891367976861
+  }
+}
