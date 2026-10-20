@@ -1,0 +1,101 @@
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = CriticalCohort.RoutedInventoryUsesNativeSetupHoldAndFailsClosed
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from CriticalCohort
+[ RUN      ] CriticalCohort.RoutedInventoryUsesNativeSetupHoldAndFailsClosed
+[       OK ] CriticalCohort.RoutedInventoryUsesNativeSetupHoldAndFailsClosed (36338 ms)
+[----------] 1 test from CriticalCohort (36338 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (36338 ms total)
+[  PASSED  ] 1 test.
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = CriticalCohort.StaticEndpointCoverageRequiresConstantProof
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from CriticalCohort
+[ RUN      ] CriticalCohort.StaticEndpointCoverageRequiresConstantProof
+[       OK ] CriticalCohort.StaticEndpointCoverageRequiresConstantProof (9623 ms)
+[----------] 1 test from CriticalCohort (9623 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (9623 ms total)
+[  PASSED  ] 1 test.
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = IoDelayTest.ExternalEndpointInventory
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from IoDelayTest
+[ RUN      ] IoDelayTest.ExternalEndpointInventory
+[       OK ] IoDelayTest.ExternalEndpointInventory (22870 ms)
+[----------] 1 test from IoDelayTest (22870 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (22871 ms total)
+[  PASSED  ] 1 test.
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = IoDelayTest.ExternalOutputEndpointInventory
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from IoDelayTest
+[ RUN      ] IoDelayTest.ExternalOutputEndpointInventory
+[       OK ] IoDelayTest.ExternalOutputEndpointInventory (11927 ms)
+[----------] 1 test from IoDelayTest (11927 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (11927 ms total)
+[  PASSED  ] 1 test.
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = IoDelayTest.RegisteredEndpointInventory
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from IoDelayTest
+[ RUN      ] IoDelayTest.RegisteredEndpointInventory
+[       OK ] IoDelayTest.RegisteredEndpointInventory (9187 ms)
+[----------] 1 test from IoDelayTest (9187 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (9187 ms total)
+[  PASSED  ] 1 test.
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = IoDelayTest.ConstantOpenDrainInventory
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from IoDelayTest
+[ RUN      ] IoDelayTest.ConstantOpenDrainInventory
+[       OK ] IoDelayTest.ConstantOpenDrainInventory (5125 ms)
+[----------] 1 test from IoDelayTest (5125 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (5126 ms total)
+[  PASSED  ] 1 test.
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = IoDelayTest.ResetContractWholeChainAndPhysicalObligations
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from IoDelayTest
+[ RUN      ] IoDelayTest.ResetContractWholeChainAndPhysicalObligations
+[       OK ] IoDelayTest.ResetContractWholeChainAndPhysicalObligations (4945 ms)
+[----------] 1 test from IoDelayTest (4945 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (4945 ms total)
+[  PASSED  ] 1 test.
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = IoDelayTest.ForwardedClockContractKeepsPhysicalRouteAndBothEdges
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from IoDelayTest
+[ RUN      ] IoDelayTest.ForwardedClockContractKeepsPhysicalRouteAndBothEdges
+[       OK ] IoDelayTest.ForwardedClockContractKeepsPhysicalRouteAndBothEdges (8403 ms)
+[----------] 1 test from IoDelayTest (8403 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (8403 ms total)
+[  PASSED  ] 1 test.
+........................
+----------------------------------------------------------------------
+Ran 24 tests in 108.984s
+
+OK

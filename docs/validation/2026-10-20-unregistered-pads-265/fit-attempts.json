@@ -1,0 +1,42 @@
+{
+  "fit_limit": 8,
+  "fit_timeout_seconds": 600,
+  "attempts": [
+    {
+      "project": "dq0",
+      "result": "rejected-invalid-braced-QSF-node-names"
+    },
+    {
+      "project": "dq30",
+      "result": "rejected-invalid-braced-QSF-node-names"
+    },
+    {
+      "project": "dq-native0",
+      "result": "complete-reference-only"
+    },
+    {
+      "project": "dq-native30",
+      "result": "complete-reference-only"
+    },
+    {
+      "project": "hps",
+      "result": "complete-reference-only"
+    },
+    {
+      "project": "dq-targeted0",
+      "result": "complete-reference-only"
+    },
+    {
+      "project": "dq-targeted30",
+      "result": "complete-reference-only"
+    }
+  ],
+  "query_failure": {
+    "project": "dq-targeted30",
+    "timeout_seconds": 120,
+    "reason": "query overlapped fit automatic TimeQuest; partial reports retained outside final evidence",
+    "retry": "same immutable fit after automatic STA finished, timeout600s, complete"
+  },
+  "new_pcxt_route_invocations": 0,
+  "remaining_route_seconds": 1627.843715112
+}

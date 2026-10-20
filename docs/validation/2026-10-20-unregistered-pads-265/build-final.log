@@ -1,0 +1,183 @@
+[  0%] Built target nextpnr_kernel
+[  0%] Built target oourafft
+[  1%] Built target json11
+[  1%] Built target bbasm
+[  1%] Built target nextpnr_place
+[  1%] Built target gtest
+[  1%] Built target nextpnr_route
+[  3%] Built target tools
+[  4%] Built target gtest_main
+[ 11%] Built target generator
+[ 14%] Built target nextpnr-heap-congestion-test
+[ 14%] Built target nextpnr-heap-control-set-test
+[ 14%] Built target nextpnr-command-settings-test
+[ 15%] Built target nextpnr-gpuroute-telemetry-test
+[ 17%] Built target nextpnr-reserved-route-slack-test
+[ 17%] Built target nextpnr-gpu-lease-test
+[ 36%] Built target mistral
+[ 37%] Building CXX object mistral/CMakeFiles/nextpnr-mistral.dir/__/json/jsonwrite.cc.o
+[ 37%] Building CXX object mistral/CMakeFiles/nextpnr-mistral.dir/__/common/kernel/command.cc.o
+[ 38%] Building CXX object mistral/CMakeFiles/nextpnr-mistral.dir/bitstream.cc.o
+[ 38%] Building CXX object mistral/CMakeFiles/nextpnr-mistral-test.dir/__/common/kernel/command.cc.o
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc: In member function ‘nextpnr_mistral::{anonymous}::MistralBitgen::rnode_coords nextpnr_mistral::{anonymous}::MistralBitgen::find_rnode(block_type_t, xycoords, port_type_t, int, int) const’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:75:58: warning: narrowing conversion of ‘bi’ from ‘int’ to ‘int8_t’ {aka ‘signed char’} [-Wnarrowing]
+   75 |         auto pn1 = CycloneV::pnode_coords{bt, pos, port, bi, pi};
+      |                                                          ^~
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:75:62: warning: narrowing conversion of ‘pi’ from ‘int’ to ‘int16_t’ {aka ‘short int’} [-Wnarrowing]
+   75 |         auto pn1 = CycloneV::pnode_coords{bt, pos, port, bi, pi};
+      |                                                              ^~
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc: In member function ‘void nextpnr_mistral::{anonymous}::MistralBitgen::write_dsp_block(int, int)’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:124:39: warning: narrowing conversion of ‘x’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  124 |         auto pos = CycloneV::xycoords{x, y};
+      |                                       ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:124:42: warning: narrowing conversion of ‘y’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  124 |         auto pos = CycloneV::xycoords{x, y};
+      |                                          ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc: In member function ‘void nextpnr_mistral::{anonymous}::MistralBitgen::write_io_cell(nextpnr_mistral::CellInfo*, int, int, int)’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:390:39: warning: narrowing conversion of ‘x’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  390 |         auto pos = CycloneV::xycoords{x, y};
+      |                                       ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:390:42: warning: narrowing conversion of ‘y’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  390 |         auto pos = CycloneV::xycoords{x, y};
+      |                                          ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:402:99: warning: narrowing conversion of ‘bi’ from ‘int’ to ‘int8_t’ {aka ‘signed char’} [-Wnarrowing]
+  402 |         auto delay_lane = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
+      |                                                                                                   ^~
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:431:96: warning: narrowing conversion of ‘bi’ from ‘int’ to ‘int8_t’ {aka ‘signed char’} [-Wnarrowing]
+  431 |             auto dqs = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
+      |                                                                                                ^~
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:490:96: warning: narrowing conversion of ‘bi’ from ‘int’ to ‘int8_t’ {aka ‘signed char’} [-Wnarrowing]
+  490 |             auto dqs = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
+      |                                                                                                ^~
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:499:97: warning: narrowing conversion of ‘bi’ from ‘int’ to ‘int8_t’ {aka ‘signed char’} [-Wnarrowing]
+  499 |             auto lane = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
+      |                                                                                                 ^~
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc: In member function ‘void nextpnr_mistral::{anonymous}::MistralBitgen::write_clkbuf_cell(nextpnr_mistral::CellInfo*, int, int, int)’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:536:39: warning: narrowing conversion of ‘x’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  536 |         auto pos = CycloneV::xycoords{x, y};
+      |                                       ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:536:42: warning: narrowing conversion of ‘y’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  536 |         auto pos = CycloneV::xycoords{x, y};
+      |                                          ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc: In member function ‘void nextpnr_mistral::{anonymous}::MistralBitgen::write_pll_cell(nextpnr_mistral::CellInfo*, int, int)’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:563:39: warning: narrowing conversion of ‘x’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  563 |         auto pos = CycloneV::xycoords{x, y};
+      |                                       ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:563:42: warning: narrowing conversion of ‘y’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  563 |         auto pos = CycloneV::xycoords{x, y};
+      |                                          ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc: In member function ‘void nextpnr_mistral::{anonymous}::MistralBitgen::write_m10k_cell(nextpnr_mistral::CellInfo*, int, int, int)’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:659:39: warning: narrowing conversion of ‘x’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  659 |         auto pos = CycloneV::xycoords{x, y};
+      |                                       ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:659:42: warning: narrowing conversion of ‘y’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  659 |         auto pos = CycloneV::xycoords{x, y};
+      |                                          ^
+[ 38%] Building CXX object mistral/CMakeFiles/nextpnr-mistral.dir/critical_cohort.cc.o
+[ 38%] Building CXX object mistral/CMakeFiles/nextpnr-mistral-test.dir/__/json/jsonwrite.cc.o
+[ 38%] Building CXX object mistral/CMakeFiles/nextpnr-mistral-test.dir/bitstream.cc.o
+[ 39%] Building CXX object mistral/CMakeFiles/nextpnr-mistral-test.dir/critical_cohort.cc.o
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc: In member function ‘nextpnr_mistral::{anonymous}::MistralBitgen::rnode_coords nextpnr_mistral::{anonymous}::MistralBitgen::find_rnode(block_type_t, xycoords, port_type_t, int, int) const’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:75:58: warning: narrowing conversion of ‘bi’ from ‘int’ to ‘int8_t’ {aka ‘signed char’} [-Wnarrowing]
+   75 |         auto pn1 = CycloneV::pnode_coords{bt, pos, port, bi, pi};
+      |                                                          ^~
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:75:62: warning: narrowing conversion of ‘pi’ from ‘int’ to ‘int16_t’ {aka ‘short int’} [-Wnarrowing]
+   75 |         auto pn1 = CycloneV::pnode_coords{bt, pos, port, bi, pi};
+      |                                                              ^~
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc: In member function ‘void nextpnr_mistral::{anonymous}::MistralBitgen::write_dsp_block(int, int)’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:124:39: warning: narrowing conversion of ‘x’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  124 |         auto pos = CycloneV::xycoords{x, y};
+      |                                       ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:124:42: warning: narrowing conversion of ‘y’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  124 |         auto pos = CycloneV::xycoords{x, y};
+      |                                          ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc: In member function ‘void nextpnr_mistral::{anonymous}::MistralBitgen::write_io_cell(nextpnr_mistral::CellInfo*, int, int, int)’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:390:39: warning: narrowing conversion of ‘x’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  390 |         auto pos = CycloneV::xycoords{x, y};
+      |                                       ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:390:42: warning: narrowing conversion of ‘y’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  390 |         auto pos = CycloneV::xycoords{x, y};
+      |                                          ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:402:99: warning: narrowing conversion of ‘bi’ from ‘int’ to ‘int8_t’ {aka ‘signed char’} [-Wnarrowing]
+  402 |         auto delay_lane = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
+      |                                                                                                   ^~
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:431:96: warning: narrowing conversion of ‘bi’ from ‘int’ to ‘int8_t’ {aka ‘signed char’} [-Wnarrowing]
+  431 |             auto dqs = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
+      |                                                                                                ^~
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:490:96: warning: narrowing conversion of ‘bi’ from ‘int’ to ‘int8_t’ {aka ‘signed char’} [-Wnarrowing]
+  490 |             auto dqs = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
+      |                                                                                                ^~
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:499:97: warning: narrowing conversion of ‘bi’ from ‘int’ to ‘int8_t’ {aka ‘signed char’} [-Wnarrowing]
+  499 |             auto lane = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
+      |                                                                                                 ^~
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc: In member function ‘void nextpnr_mistral::{anonymous}::MistralBitgen::write_clkbuf_cell(nextpnr_mistral::CellInfo*, int, int, int)’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:536:39: warning: narrowing conversion of ‘x’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  536 |         auto pos = CycloneV::xycoords{x, y};
+      |                                       ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:536:42: warning: narrowing conversion of ‘y’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  536 |         auto pos = CycloneV::xycoords{x, y};
+      |                                          ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc: In member function ‘void nextpnr_mistral::{anonymous}::MistralBitgen::write_pll_cell(nextpnr_mistral::CellInfo*, int, int)’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:563:39: warning: narrowing conversion of ‘x’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  563 |         auto pos = CycloneV::xycoords{x, y};
+      |                                       ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:563:42: warning: narrowing conversion of ‘y’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  563 |         auto pos = CycloneV::xycoords{x, y};
+      |                                          ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc: In member function ‘void nextpnr_mistral::{anonymous}::MistralBitgen::write_m10k_cell(nextpnr_mistral::CellInfo*, int, int, int)’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:659:39: warning: narrowing conversion of ‘x’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  659 |         auto pos = CycloneV::xycoords{x, y};
+      |                                       ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/bitstream.cc:659:42: warning: narrowing conversion of ‘y’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+  659 |         auto pos = CycloneV::xycoords{x, y};
+      |                                          ^
+[ 40%] Building CXX object mistral/CMakeFiles/nextpnr-mistral-test.dir/tests/io_delay.cc.o
+[ 40%] Linking CXX executable ../nextpnr-mistral
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/io_delay.cc: In member function ‘virtual void IoDelayTest_DetailedReportPrintsIoClockTerminalsWithoutAsserting_Test::TestBody()’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/io_delay.cc:235:12: warning: suggest explicit braces to avoid ambiguous ‘else’ [-Wdangling-else]
+  235 |         if (segment.type == CriticalPath::Segment::Type::CLK_SKEW)
+      |            ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/io_delay.cc:265:16: warning: suggest explicit braces to avoid ambiguous ‘else’ [-Wdangling-else]
+  265 |             if (type == "clk-skew")
+      |                ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/io_delay.cc: In member function ‘virtual void UnregisteredDq_EmittedConfigurationAndBoundaries_Test::TestBody()’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/io_delay.cc:1811:82: warning: narrowing conversion of ‘pos.nextpnr_mistral::Loc::x’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+ 1811 |         auto lane=ctx.cyclonev->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO,pos.x,pos.y,CycloneV::PNONE,pos.z,-1});
+      |                                                                              ~~~~^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/io_delay.cc:1811:88: warning: narrowing conversion of ‘pos.nextpnr_mistral::Loc::y’ from ‘int’ to ‘uint32_t’ {aka ‘unsigned int’} [-Wnarrowing]
+ 1811 |         auto lane=ctx.cyclonev->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO,pos.x,pos.y,CycloneV::PNONE,pos.z,-1});
+      |                                                                                    ~~~~^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/io_delay.cc:1811:110: warning: narrowing conversion of ‘pos.nextpnr_mistral::Loc::z’ from ‘int’ to ‘int8_t’ {aka ‘signed char’} [-Wnarrowing]
+ 1811 |         auto lane=ctx.cyclonev->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO,pos.x,pos.y,CycloneV::PNONE,pos.z,-1});
+      |                                                                                                          ~~~~^
+[ 40%] Linking CXX executable ../nextpnr-mistral-test
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc: In member function ‘rnode_timing_build_input_wave.constprop’:
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1355:30: warning: ‘s.s’ may be used uninitialized [-Wmaybe-uninitialized]
+ 1355 |     lab_output_type labt = s.s == REG ? LAB_OUTPUTT_FF : LAB_OUTPUTT_COMB;
+      |                              ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1353:20: note: ‘s’ declared here
+ 1353 |     bmux_setting_t s;
+      |                    ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1355:30: warning: ‘s.s’ may be used uninitialized [-Wmaybe-uninitialized]
+ 1355 |     lab_output_type labt = s.s == REG ? LAB_OUTPUTT_FF : LAB_OUTPUTT_COMB;
+      |                              ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1353:20: note: ‘s’ declared here
+ 1353 |     bmux_setting_t s;
+      |                    ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1355:30: warning: ‘s.s’ may be used uninitialized [-Wmaybe-uninitialized]
+ 1355 |     lab_output_type labt = s.s == REG ? LAB_OUTPUTT_FF : LAB_OUTPUTT_COMB;
+      |                              ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1353:20: note: ‘s’ declared here
+ 1353 |     bmux_setting_t s;
+      |                    ^
+In member function ‘__ct ’,
+    inlined from ‘TestBody’ at /home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/timing_report_paths.cc:619:1:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/nextpnr_types.h:436:8: warning: ‘MEM[(const struct CriticalPath &)&cross_clock_hold].max_delay’ may be used uninitialized [-Wmaybe-uninitialized]
+  436 | struct CriticalPath
+      |        ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/timing_report_paths.cc: In member function ‘TestBody’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/timing_report_paths.cc:606:18: note: ‘MEM[(const struct CriticalPath &)&cross_clock_hold].max_delay’ was declared here
+  606 |     CriticalPath cross_clock_hold;
+      |                  ^
+[ 65%] Built target nextpnr-mistral
+[100%] Built target nextpnr-mistral-test

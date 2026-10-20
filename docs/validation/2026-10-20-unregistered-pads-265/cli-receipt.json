@@ -1,0 +1,18 @@
+{
+  "status": "rejected-hold",
+  "route_exit_code": 1,
+  "replay_exit_code": 1,
+  "scope": "small synthetic100ns fixture; original0..1ns input arrival unchanged",
+  "replay_bit_exact": true,
+  "replay_critical_paths_exact": true,
+  "physical_signoff": false,
+  "sha256": {
+    "top.rbf": "47486f233c08ca0fc3d3e2e19517b4ca29d637ec15a490d14b71be65200a7c6b",
+    "reloaded.rbf": "47486f233c08ca0fc3d3e2e19517b4ca29d637ec15a490d14b71be65200a7c6b",
+    "routed.json": "79750c0678c3dde07318667fd64a701e339675eaaaf429029e0fd4e0fe266e89",
+    "report.json": "0a9c2d16f4e981075a3a08df860de4fcd5c9c4f4dacf4b7808a931826c67ebd7",
+    "reloaded-report.json": "0a9c2d16f4e981075a3a08df860de4fcd5c9c4f4dacf4b7808a931826c67ebd7",
+    "pins.qsf": "0e04181647613329fa6bbfb285c84e48644c4a1d04afcbdd56b1f5e28b8f6359",
+    "clocks.sdc": "c475d0297611b775863c512ab7fe230f46b1c3d65c5f5ac06a0dd7514469895c"
+  }
+}

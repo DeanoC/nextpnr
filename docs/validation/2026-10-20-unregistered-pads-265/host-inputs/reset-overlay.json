@@ -1,0 +1,31 @@
+{
+  "audit_sha256": "ff43d43dc5c5508fec37054404db0df527d031491eb1d529d4ea7ac0352eedf9",
+  "attrs": {
+    "locked_MISTRAL_FF_ACLR_DATAIN_MISTRAL_FF_Q": {
+      "async_reg": "true"
+    },
+    "locked_MISTRAL_FF_ACLR": {
+      "async_reg": "true"
+    },
+    "locked_MISTRAL_FF_ACLR_1": {
+      "async_reg": "true"
+    },
+    "locked_MISTRAL_FF_ACLR_1_Q_MISTRAL_FF_DATAIN": {
+      "async_reg": "true"
+    }
+  },
+  "declarations": [
+    {
+      "stages": [
+        "locked_MISTRAL_FF_ACLR_DATAIN_MISTRAL_FF_Q",
+        "locked_MISTRAL_FF_ACLR"
+      ]
+    },
+    {
+      "stages": [
+        "locked_MISTRAL_FF_ACLR_1",
+        "locked_MISTRAL_FF_ACLR_1_Q_MISTRAL_FF_DATAIN"
+      ]
+    }
+  ]
+}

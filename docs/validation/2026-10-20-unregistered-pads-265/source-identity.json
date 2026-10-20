@@ -1,0 +1,37 @@
+{
+  "native_source_commit": "03cf9cdce89e2d4fa667e1f760575fc4b09afc71",
+  "native_source_tree": "0c328a4c3a7b219af48291d3c958436424ad72d9",
+  "embedded_version": "\"nextpnr-mistral\" -- Next Generation Place and Route (Version 03cf9cdc)",
+  "binary_sha256": {
+    "nextpnr-mistral": "3f693fbd5560d7a42fc50c1498caa0cda83f23387b2edc1b075275ea8d4e6dc0",
+    "nextpnr-mistral-test": "77d3bcbb720fc150ecc158b1f148f214aa1e0503c98012e148de761f4a1113df"
+  },
+  "build_cache_sha256": "99112ea1e94a42103959ae40c904848795a5964e3c4581b46f55f268cc260e91",
+  "implementation_sha256": {
+    "common/kernel/arch_api.h": "2b225a196d96438d1408fc4895ea9a7556e6262f42067b24686e2aab60b56ddf",
+    "common/kernel/nextpnr_types.h": "62f91ed979251e53b60820272ba49af7da82eb142fdd5eda166f0ac662ac9ff2",
+    "common/kernel/timing.cc": "fd90d9750571775e26921beeb879ac3dc7e8fc70a8315eb10ba6b42b328e7035",
+    "common/kernel/timing.h": "11b733a16f7cea052e92a0f5ffc53ec322c8b9e22dfa300bdc48327cc7846f6e",
+    "docs/mistral-io-delay.md": "ed57ab7dda197db57b6e15abcca765905ce4383bae23446db9621deb224a2d90",
+    "mistral/arch.h": "c714e8f7a08675cc909fcde97d4d8f4ace61abc6a410255762bd9068892d3ee6",
+    "mistral/bitstream.cc": "cc4051aa1c214ca6a635bc78a687b088a6ca4688a46077f42f7566b58ed7c403",
+    "mistral/critical_cohort.cc": "16d57c176b178a15d1e244c3ebdd06ba6f34682e9376785011d0629194211df3",
+    "mistral/delay.cc": "387af8af36c0179f69cc241f6552d33469005e854392aa2c5f921ed48429357c",
+    "mistral/routed_swap.py": "d9d4db019da4b32d9ae4fda4a0a433bd9303ceb587078c2d89162cfe8066d553",
+    "mistral/tests/critical_cohort.cc": "51652114f445f2367d8a0f8c1ccb4e6a095f9058d98a575ed97e0374e31954c9",
+    "mistral/tests/critical_cohort_cli.py": "05db8ea81ff0d07546f61575eddd00dabf3e5352f6cf5309b76a705e3a8a3989",
+    "mistral/tests/io_delay.cc": "8a684ae54aa957025a481d5a7243033a929ac70599509c66e520d9458492d644",
+    "mistral/tests/routed_swap.py": "093da8c179fe77ddbf160eb01ae95c44cbb6366bea0e5cf1af98ea8dbcb8da31",
+    "mistral/tests/unregistered-pad/README.md": "a802a591aca08d145cc97516bb4f5d73d4579c02d4c205c1caf2ac099cdfa4a1",
+    "mistral/tests/unregistered-pad/boundary.cc": "f1680dfe820028b12011d9e89e5c1c6cc59d4b14c75c5650d7143b7d12850e7c",
+    "mistral/tests/unregistered-pad/decode.cc": "c58ddf700945ddc5260ed0eda2a97aaf3100dc3f2aa7e46b9176e213667a6725",
+    "mistral/tests/unregistered-pad/hps_check.py": "c52ee49e8da2ad24ac83028bd85449062df175ef23854cf1c65cfc336d29f743",
+    "mistral/tests/unregistered-pad/paths.tcl": "8d65ff46fab37f2dba77167a23ac1df7f4991b21b4834feff7279b299c775a6e",
+    "mistral/tests/unregistered-pad/prepare-targeted.py": "ed48b9c73cc2969dcf8569275261d2bfd401533f1b2be9af3eccbaf122b6b0a5",
+    "mistral/tests/unregistered-pad/prepare.py": "a540d411b6b1d0fb2234940276114edc4acd29287a68aa776ef21d0a3b33639d",
+    "mistral/tests/unregistered-pad/reference_check.py": "928a0788203b015f2a7707112a63d44e36ecd73d73eb4ced2bd86aae13c470ba",
+    "mistral/tests/unregistered-pad/reference_negative.py": "19048e71a392b9ba0319be54055dab4f7269029bfb6dc2b7f8d0a40a784ebf92"
+  },
+  "native_mistral_commit": "8fcc4cb41c51f8918f1d3ad70def2febcbf20d8f",
+  "native_mistral_status": ""
+}

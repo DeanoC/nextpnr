@@ -1,0 +1,24 @@
+{
+  "quartus_version": "Quartus Prime Shell\nVersion 17.0.2 Build 602 07/19/2017 SJ Lite Edition\nCopyright (C) 2017  Intel Corporation. All rights reserved.\n",
+  "decoder_source_snapshot": "unversioned retained np246-build/prefix-common snapshot; binary/library/header/source files bound by SHA256",
+  "files": {
+    "/home/deano/tmp/np246-build/prefix-common/install/bin/mistral-cv": "693369d3def9a46ad80c4ad7635db25c71e04449620cb84e331b833843df2cde",
+    "/home/deano/tmp/np246-build/prefix-common/install/lib/libmistral.a": "f41302f8528003ffe277d9c48561562eac132f63bdfd3f78cdf7e5da09bc5b5d",
+    "/home/deano/tmp/np246-build/prefix-common/src/mistral/libmistral/cyclonev.h": "185c24e2b75385d8e62a7144f12488eb68f7d8159af0a8a603cc4a3de1749ee9",
+    "/home/deano/tmp/np246-build/prefix-common/src/mistral/libmistral/cv-inv.cc": "1a0ae69803789b62500059db37990a3819c41ab10089ecd8370709e2819bfb5c",
+    "/home/deano/tmp/np246-build/prefix-common/src/mistral/mistral-cv/main.cc": "6bdffcb00b4976b795995808dbf818e8255601b3e453ed60e91d8872457d5e15",
+    "/home/deano/intelFPGA_lite/17.0/quartus/linux64/quartus_sh": "bdfda93ce02a5e802194d1f001446ac333ac1c039898f1a12843fca32afaf917",
+    "/home/deano/intelFPGA_lite/17.0/quartus/linux64/quartus_sta": "3e5b6469769824667c28dcad237a4ad5f46aad67c3ccd76ec3c0824e7094fe78",
+    "/home/deano/intelFPGA_lite/17.0/quartus/linux64/quartus_fit": "a6d5b3172ddaa1cd1846fbcfd8ae87b7cce154df247575a717863b521744f714",
+    "/home/deano/intelFPGA_lite/17.0/quartus/linux64/quartus_map": "ab8b5946501cbc7c260a44088454204449c5afed35f18a1e4d1dde5c680cf89b",
+    "/home/deano/intelFPGA_lite/17.0/quartus/linux64/quartus_asm": "2b200a85d22520557b4a725171de513a02a405517e959aa8b2141b03e441ca2a",
+    "/home/deano/harnesses/pcxt-interface-contracts/hdmi_decode.cc": "40b360bc16ff51ab297f81a40b07ab2936a918b1e7140bde31af3cf0ccf8d9ab",
+    "/home/deano/harnesses/pcxt-interface-contracts/hdmi_decode": "6727ff7aeebaabaf7e44a054f8a22e6efbf26539e00143d014a21f23095bf7bb",
+    "/home/deano/harnesses/pcxt-interface-contracts/boundary_decode.cc": "9cac69c001b41f1f2c90d4a847aa6532be101566ead5286114e9926ec225685f",
+    "/home/deano/harnesses/pcxt-interface-contracts/boundary_decode": "cad992f2ca415ba49a4588dceedcfe2cfcd3deb68e0da9dfa0e81b6fe7935e17",
+    "/home/deano/harnesses/pcxt-pad-models/boundary": "6e857f5186fb7aeff6fbf091939dba56795ed92ae65bf2bcb44a029f075f5cb3",
+    "/home/deano/harnesses/pcxt-pad-models/boundary.cc": "f1680dfe820028b12011d9e89e5c1c6cc59d4b14c75c5650d7143b7d12850e7c",
+    "/home/deano/harnesses/pcxt-pad-models/decode": "07588aa09306ef9456bd55dc84e8cae1ea7ae265206e697a34534180ce3d9f6d",
+    "/home/deano/harnesses/pcxt-pad-models/decode.cc": "c58ddf700945ddc5260ed0eda2a97aaf3100dc3f2aa7e46b9176e213667a6725"
+  }
+}

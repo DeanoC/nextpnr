@@ -1,0 +1,46 @@
+{
+  "only_selector": "INPUT_REG4_SEL",
+  "changed_lanes": 16,
+  "removed_nondefault_settings": [
+    "s DQS16.004.000:INPUT_REG4_SEL.2 SEL_LOCKED_DPA ; AD5",
+    "s DQS16.004.000:INPUT_REG4_SEL.3 SEL_LOCKED_DPA ; AE6",
+    "s DQS16.028.000:INPUT_REG4_SEL.15 SEL_LOCKED_DPA ; AF4",
+    "s DQS16.028.081:INPUT_REG4_SEL.1 SEL_LOCKED_DPA ; D11",
+    "s DQS16.036.000:INPUT_REG4_SEL.0 SEL_LOCKED_DPA ; V12",
+    "s DQS16.036.000:INPUT_REG4_SEL.1 SEL_LOCKED_DPA ; W12",
+    "s DQS16.036.000:INPUT_REG4_SEL.10 SEL_LOCKED_DPA ; AH3",
+    "s DQS16.036.000:INPUT_REG4_SEL.14 SEL_LOCKED_DPA ; AF7",
+    "s DQS16.036.081:INPUT_REG4_SEL.6 SEL_LOCKED_DPA ; E8",
+    "s DQS16.036.081:INPUT_REG4_SEL.7 SEL_LOCKED_DPA ; D8",
+    "s DQS16.060.000:INPUT_REG4_SEL.10 SEL_LOCKED_DPA ; AG14",
+    "s DQS16.060.000:INPUT_REG4_SEL.11 SEL_LOCKED_DPA ; AH13",
+    "s DQS16.060.000:INPUT_REG4_SEL.7 SEL_LOCKED_DPA ; AH14",
+    "s DQS16.076.000:INPUT_REG4_SEL.8 SEL_LOCKED_DPA ; AD23",
+    "s DQS16.084.000:INPUT_REG4_SEL.12 SEL_LOCKED_DPA ; AE24",
+    "s DQS16.084.000:INPUT_REG4_SEL.13 SEL_LOCKED_DPA ; AE23"
+  ],
+  "added_nondefault_settings": [],
+  "raw_pram_bit_changes": [
+    "pram 00.02584: 1 -> 0",
+    "pram 00.02648: 1 -> 0",
+    "pram 01.02596: 1 -> 0",
+    "pram 01.05078: 1 -> 0",
+    "pram 01.05525: 1 -> 0",
+    "pram 01.06483: 1 -> 0",
+    "pram 01.06547: 1 -> 0",
+    "pram 02.03133: 1 -> 0",
+    "pram 02.03197: 1 -> 0",
+    "pram 02.03580: 1 -> 0",
+    "pram 03.03285: 1 -> 0",
+    "pram 03.05142: 1 -> 0",
+    "pram 03.05206: 1 -> 0",
+    "pram 09.01535: 1 -> 0",
+    "pram 09.01599: 1 -> 0",
+    "pram 09.03054: 1 -> 0"
+  ],
+  "artifact_sha256": {
+    "baseline": "476ea24ea38fba2e85bec5fd842b349d905ae5b1ee33167141660fa1da1cfd32",
+    "profile-only": "476ea24ea38fba2e85bec5fd842b349d905ae5b1ee33167141660fa1da1cfd32",
+    "bypass": "60cd011953e78fdaa1e51dd8282cb6d9e5bed56b6ecd49c14849d4574fae9990"
+  }
+}

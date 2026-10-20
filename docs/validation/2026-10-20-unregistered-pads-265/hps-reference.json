@@ -1,0 +1,379 @@
+{
+  "status": "unsupported-peripheral-launch",
+  "clock_relation": null,
+  "numerical_cells_are_not_clock_to_output_bounds": true,
+  "source_trace": {
+    "7_slow_1100mv_-40c": {
+      "i2c~FF_4397": [
+        "i2c~FF_4397",
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111",
+        "0.000",
+        "0.000",
+        "0.000",
+        "",
+        "i2c~FF_4865 i2c~FF_4868 i2c~FF_3475 i2c~FF_3472 i2c~FF_3478 i2c~FF_3476 i2c~FF_3477 i2c~FF_3467 i2c~FF_3470 i2c~FF_3471 i2c~FF_3468 i2c~FF_3469 i2c~FF_3758 i2c~FF_3759 i2c~FF_3394 i2c~FF_3395 i2c~FF_3392 i2c~FF_3393 i2c~FF_3396 i2c~FF_3390 i2c~FF_3391 i2c~FF_3389 i2c~FF_4818 i2c~FF_4820 i2c~FF_4826 i2c~FF_4830 i2c~FF_4828 i2c~FF_4802 i2c~FF_4806 i2c~FF_4807 i2c~FF_4804 i2c~FF_4811 i2c~FF_4809 i2c~FF_4813 i2c~FF_4834 i2c~FF_4832 i2c~FF_4838 i2c~FF_4836 i2c~FF_4837 i2c~FF_4755 i2c~FF_4752 i2c~FF_4738 i2c~FF_4737 i2c~FF_4787 i2c~FF_4790 i2c~FF_4791 i2c~FF_4788 i2c~FF_4789 i2c~FF_4792 i2c~FF_4798 i2c~FF_4799 i2c~FF_4797 i2c~FF_4702 i2c~FF_4703 i2c~FF_3906 i2c~FF_3904 i2c~FF_3905 i2c~FF_4722 i2c~FF_4723 i2c~FF_4720 i2c~FF_4727 i2c~FF_4724 i2c~FF_4728 i2c~FF_4707 i2c~FF_4705 i2c~FF_4709 i2c~FF_4714 i2c~FF_4712 i2c~FF_4716 i2c~FF_4717 i2c~FF_3891 i2c~FF_3894 i2c~FF_3895 i2c~FF_4413 i2c~FF_3892 i2c~FF_3893 i2c~FF_3896"
+      ],
+      "i2c~FF_4792": [
+        "i2c~FF_4792",
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111",
+        "0.000",
+        "0.000",
+        "0.000",
+        "i2c~FF_4397",
+        "i2c|out_clk"
+      ],
+      "i2c~FF_4791": [
+        "i2c~FF_4791",
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111",
+        "0.000",
+        "0.000",
+        "0.000",
+        "i2c~FF_4397",
+        "i2c|out_data"
+      ]
+    },
+    "7_slow_1100mv_100c": {
+      "i2c~FF_4397": [
+        "i2c~FF_4397",
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111",
+        "0.000",
+        "0.000",
+        "0.000",
+        "",
+        "i2c~FF_4865 i2c~FF_4868 i2c~FF_3475 i2c~FF_3472 i2c~FF_3478 i2c~FF_3476 i2c~FF_3477 i2c~FF_3467 i2c~FF_3470 i2c~FF_3471 i2c~FF_3468 i2c~FF_3469 i2c~FF_3758 i2c~FF_3759 i2c~FF_3394 i2c~FF_3395 i2c~FF_3392 i2c~FF_3393 i2c~FF_3396 i2c~FF_3390 i2c~FF_3391 i2c~FF_3389 i2c~FF_4818 i2c~FF_4820 i2c~FF_4826 i2c~FF_4830 i2c~FF_4828 i2c~FF_4802 i2c~FF_4806 i2c~FF_4807 i2c~FF_4804 i2c~FF_4811 i2c~FF_4809 i2c~FF_4813 i2c~FF_4834 i2c~FF_4832 i2c~FF_4838 i2c~FF_4836 i2c~FF_4837 i2c~FF_4755 i2c~FF_4752 i2c~FF_4738 i2c~FF_4737 i2c~FF_4787 i2c~FF_4790 i2c~FF_4791 i2c~FF_4788 i2c~FF_4789 i2c~FF_4792 i2c~FF_4798 i2c~FF_4799 i2c~FF_4797 i2c~FF_4702 i2c~FF_4703 i2c~FF_3906 i2c~FF_3904 i2c~FF_3905 i2c~FF_4722 i2c~FF_4723 i2c~FF_4720 i2c~FF_4727 i2c~FF_4724 i2c~FF_4728 i2c~FF_4707 i2c~FF_4705 i2c~FF_4709 i2c~FF_4714 i2c~FF_4712 i2c~FF_4716 i2c~FF_4717 i2c~FF_3891 i2c~FF_3894 i2c~FF_3895 i2c~FF_4413 i2c~FF_3892 i2c~FF_3893 i2c~FF_3896"
+      ],
+      "i2c~FF_4792": [
+        "i2c~FF_4792",
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111",
+        "0.000",
+        "0.000",
+        "0.000",
+        "i2c~FF_4397",
+        "i2c|out_clk"
+      ],
+      "i2c~FF_4791": [
+        "i2c~FF_4791",
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111",
+        "0.000",
+        "0.000",
+        "0.000",
+        "i2c~FF_4397",
+        "i2c|out_data"
+      ]
+    },
+    "MIN_fast_1100mv_-40c": {
+      "i2c~FF_4397": [
+        "i2c~FF_4397",
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111",
+        "0.000",
+        "0.000",
+        "0.000",
+        "",
+        "i2c~FF_4865 i2c~FF_4868 i2c~FF_3475 i2c~FF_3472 i2c~FF_3478 i2c~FF_3476 i2c~FF_3477 i2c~FF_3467 i2c~FF_3470 i2c~FF_3471 i2c~FF_3468 i2c~FF_3469 i2c~FF_3758 i2c~FF_3759 i2c~FF_3394 i2c~FF_3395 i2c~FF_3392 i2c~FF_3393 i2c~FF_3396 i2c~FF_3390 i2c~FF_3391 i2c~FF_3389 i2c~FF_4818 i2c~FF_4820 i2c~FF_4826 i2c~FF_4830 i2c~FF_4828 i2c~FF_4802 i2c~FF_4806 i2c~FF_4807 i2c~FF_4804 i2c~FF_4811 i2c~FF_4809 i2c~FF_4813 i2c~FF_4834 i2c~FF_4832 i2c~FF_4838 i2c~FF_4836 i2c~FF_4837 i2c~FF_4755 i2c~FF_4752 i2c~FF_4738 i2c~FF_4737 i2c~FF_4787 i2c~FF_4790 i2c~FF_4791 i2c~FF_4788 i2c~FF_4789 i2c~FF_4792 i2c~FF_4798 i2c~FF_4799 i2c~FF_4797 i2c~FF_4702 i2c~FF_4703 i2c~FF_3906 i2c~FF_3904 i2c~FF_3905 i2c~FF_4722 i2c~FF_4723 i2c~FF_4720 i2c~FF_4727 i2c~FF_4724 i2c~FF_4728 i2c~FF_4707 i2c~FF_4705 i2c~FF_4709 i2c~FF_4714 i2c~FF_4712 i2c~FF_4716 i2c~FF_4717 i2c~FF_3891 i2c~FF_3894 i2c~FF_3895 i2c~FF_4413 i2c~FF_3892 i2c~FF_3893 i2c~FF_3896"
+      ],
+      "i2c~FF_4792": [
+        "i2c~FF_4792",
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111",
+        "0.000",
+        "0.000",
+        "0.000",
+        "i2c~FF_4397",
+        "i2c|out_clk"
+      ],
+      "i2c~FF_4791": [
+        "i2c~FF_4791",
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111",
+        "0.000",
+        "0.000",
+        "0.000",
+        "i2c~FF_4397",
+        "i2c|out_data"
+      ]
+    },
+    "MIN_fast_1100mv_100c": {
+      "i2c~FF_4397": [
+        "i2c~FF_4397",
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111",
+        "0.000",
+        "0.000",
+        "0.000",
+        "",
+        "i2c~FF_4865 i2c~FF_4868 i2c~FF_3475 i2c~FF_3472 i2c~FF_3478 i2c~FF_3476 i2c~FF_3477 i2c~FF_3467 i2c~FF_3470 i2c~FF_3471 i2c~FF_3468 i2c~FF_3469 i2c~FF_3758 i2c~FF_3759 i2c~FF_3394 i2c~FF_3395 i2c~FF_3392 i2c~FF_3393 i2c~FF_3396 i2c~FF_3390 i2c~FF_3391 i2c~FF_3389 i2c~FF_4818 i2c~FF_4820 i2c~FF_4826 i2c~FF_4830 i2c~FF_4828 i2c~FF_4802 i2c~FF_4806 i2c~FF_4807 i2c~FF_4804 i2c~FF_4811 i2c~FF_4809 i2c~FF_4813 i2c~FF_4834 i2c~FF_4832 i2c~FF_4838 i2c~FF_4836 i2c~FF_4837 i2c~FF_4755 i2c~FF_4752 i2c~FF_4738 i2c~FF_4737 i2c~FF_4787 i2c~FF_4790 i2c~FF_4791 i2c~FF_4788 i2c~FF_4789 i2c~FF_4792 i2c~FF_4798 i2c~FF_4799 i2c~FF_4797 i2c~FF_4702 i2c~FF_4703 i2c~FF_3906 i2c~FF_3904 i2c~FF_3905 i2c~FF_4722 i2c~FF_4723 i2c~FF_4720 i2c~FF_4727 i2c~FF_4724 i2c~FF_4728 i2c~FF_4707 i2c~FF_4705 i2c~FF_4709 i2c~FF_4714 i2c~FF_4712 i2c~FF_4716 i2c~FF_4717 i2c~FF_3891 i2c~FF_3894 i2c~FF_3895 i2c~FF_4413 i2c~FF_3892 i2c~FF_3893 i2c~FF_3896"
+      ],
+      "i2c~FF_4792": [
+        "i2c~FF_4792",
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111",
+        "0.000",
+        "0.000",
+        "0.000",
+        "i2c~FF_4397",
+        "i2c|out_clk"
+      ],
+      "i2c~FF_4791": [
+        "i2c~FF_4791",
+        "HPSINTERFACEPERIPHERALI2C_X52_Y60_N111",
+        "0.000",
+        "0.000",
+        "0.000",
+        "i2c~FF_4397",
+        "i2c|out_data"
+      ]
+    }
+  },
+  "output_cell_observations": [
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "edge": "rise",
+      "mode": "early",
+      "port": "i2c|out_data",
+      "delay_ps": 0
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "edge": "rise",
+      "mode": "early",
+      "port": "i2c|out_clk",
+      "delay_ps": 0
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "edge": "rise",
+      "mode": "late",
+      "port": "i2c|out_clk",
+      "delay_ps": 844
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "edge": "rise",
+      "mode": "late",
+      "port": "i2c|out_data",
+      "delay_ps": 696
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "edge": "fall",
+      "mode": "early",
+      "port": "i2c|out_data",
+      "delay_ps": 0
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "edge": "fall",
+      "mode": "early",
+      "port": "i2c|out_clk",
+      "delay_ps": 0
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "edge": "fall",
+      "mode": "late",
+      "port": "i2c|out_clk",
+      "delay_ps": 800
+    },
+    {
+      "corner": "7_slow_1100mv_-40c",
+      "edge": "fall",
+      "mode": "late",
+      "port": "i2c|out_data",
+      "delay_ps": 642
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "edge": "rise",
+      "mode": "early",
+      "port": "i2c|out_data",
+      "delay_ps": 0
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "edge": "rise",
+      "mode": "early",
+      "port": "i2c|out_clk",
+      "delay_ps": 0
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "edge": "rise",
+      "mode": "late",
+      "port": "i2c|out_clk",
+      "delay_ps": 770
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "edge": "rise",
+      "mode": "late",
+      "port": "i2c|out_data",
+      "delay_ps": 634
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "edge": "fall",
+      "mode": "early",
+      "port": "i2c|out_data",
+      "delay_ps": 0
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "edge": "fall",
+      "mode": "early",
+      "port": "i2c|out_clk",
+      "delay_ps": 0
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "edge": "fall",
+      "mode": "late",
+      "port": "i2c|out_clk",
+      "delay_ps": 730
+    },
+    {
+      "corner": "7_slow_1100mv_100c",
+      "edge": "fall",
+      "mode": "late",
+      "port": "i2c|out_data",
+      "delay_ps": 585
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "edge": "rise",
+      "mode": "early",
+      "port": "i2c|out_data",
+      "delay_ps": 0
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "edge": "rise",
+      "mode": "early",
+      "port": "i2c|out_clk",
+      "delay_ps": 0
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "edge": "rise",
+      "mode": "late",
+      "port": "i2c|out_clk",
+      "delay_ps": 369
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "edge": "rise",
+      "mode": "late",
+      "port": "i2c|out_data",
+      "delay_ps": 304
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "edge": "fall",
+      "mode": "early",
+      "port": "i2c|out_data",
+      "delay_ps": 0
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "edge": "fall",
+      "mode": "early",
+      "port": "i2c|out_clk",
+      "delay_ps": 0
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "edge": "fall",
+      "mode": "late",
+      "port": "i2c|out_clk",
+      "delay_ps": 350
+    },
+    {
+      "corner": "MIN_fast_1100mv_-40c",
+      "edge": "fall",
+      "mode": "late",
+      "port": "i2c|out_data",
+      "delay_ps": 281
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "edge": "rise",
+      "mode": "early",
+      "port": "i2c|out_data",
+      "delay_ps": 0
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "edge": "rise",
+      "mode": "early",
+      "port": "i2c|out_clk",
+      "delay_ps": 0
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "edge": "rise",
+      "mode": "late",
+      "port": "i2c|out_clk",
+      "delay_ps": 376
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "edge": "rise",
+      "mode": "late",
+      "port": "i2c|out_data",
+      "delay_ps": 310
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "edge": "fall",
+      "mode": "early",
+      "port": "i2c|out_data",
+      "delay_ps": 0
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "edge": "fall",
+      "mode": "early",
+      "port": "i2c|out_clk",
+      "delay_ps": 0
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "edge": "fall",
+      "mode": "late",
+      "port": "i2c|out_clk",
+      "delay_ps": 356
+    },
+    {
+      "corner": "MIN_fast_1100mv_100c",
+      "edge": "fall",
+      "mode": "late",
+      "port": "i2c|out_data",
+      "delay_ps": 286
+    }
+  ],
+  "sha256": {
+    "hps/7_slow_1100mv_-40c/launch.tsv": "5505aa280c0a5b417735e62a4b44ef97085b3ed8c5745de3b80fc6e5a25ab25c",
+    "hps/7_slow_1100mv_-40c/unconstrained.rpt": "9d1a6c66396677dd209f7502fcbd5b96e8121b35759054511cf612fe7b136364",
+    "hps/7_slow_1100mv_-40c/rise-late.rpt": "f75dd5d1648e854134ee9fe63fd70427265467f7f5f44b5d9c9415d928f0ce08",
+    "hps/7_slow_1100mv_-40c/rise-early.rpt": "ad52eaa6bd1a65ede00281f03bd15aa92706b347adb827c4553a7eff502eea61",
+    "hps/7_slow_1100mv_-40c/fall-late.rpt": "ec062d2fbdef1f91c2d1fbe82ffc74b9295140d85311b45419f9ece508a98f89",
+    "hps/7_slow_1100mv_-40c/clocks.rpt": "3f466c656fcee291ed9b594aa7b414691af0d74da26ba3c52d494c7f4e7d0275",
+    "hps/7_slow_1100mv_-40c/fall-early.rpt": "9e151e076a1455f2a3a08b68cd808c6df0f923365f83b90039139d4ddd1a1c09",
+    "hps/7_slow_1100mv_100c/launch.tsv": "5505aa280c0a5b417735e62a4b44ef97085b3ed8c5745de3b80fc6e5a25ab25c",
+    "hps/7_slow_1100mv_100c/unconstrained.rpt": "9d1a6c66396677dd209f7502fcbd5b96e8121b35759054511cf612fe7b136364",
+    "hps/7_slow_1100mv_100c/rise-late.rpt": "fa0135281361db760377ffeeb7bb31336b7a9bc1e5b126ad7ebb3c4696911b25",
+    "hps/7_slow_1100mv_100c/rise-early.rpt": "7bbac30c22340c406bd9f7df6e1a4807c8d613e8bc2f55cf831a81c21d6aba0f",
+    "hps/7_slow_1100mv_100c/fall-late.rpt": "ed0e55fb3b238fcfa185e01f02cf7a57e5b30b5e766e6f682ca156aa957cfe07",
+    "hps/7_slow_1100mv_100c/clocks.rpt": "3f466c656fcee291ed9b594aa7b414691af0d74da26ba3c52d494c7f4e7d0275",
+    "hps/7_slow_1100mv_100c/fall-early.rpt": "4553a1bd3ddc09e0bf6ef6f5cc556287dafa533b1c63edd755f2fa3a0259a7b6",
+    "hps/MIN_fast_1100mv_-40c/launch.tsv": "5505aa280c0a5b417735e62a4b44ef97085b3ed8c5745de3b80fc6e5a25ab25c",
+    "hps/MIN_fast_1100mv_-40c/unconstrained.rpt": "9d1a6c66396677dd209f7502fcbd5b96e8121b35759054511cf612fe7b136364",
+    "hps/MIN_fast_1100mv_-40c/rise-late.rpt": "30d4b2ea86e3e818a4a9da7e61dc23f4367bf8fefd0d1559fc03264fbfabed81",
+    "hps/MIN_fast_1100mv_-40c/rise-early.rpt": "c561417ddd914bee1c356f6e8e7d5fcd5183ebf91450c5bdeb5b750a9adb60c6",
+    "hps/MIN_fast_1100mv_-40c/fall-late.rpt": "a62f8ee26f045c4b73f96da16c5b264a7add75754a3a7cec2e651dccbf90fd67",
+    "hps/MIN_fast_1100mv_-40c/clocks.rpt": "3f466c656fcee291ed9b594aa7b414691af0d74da26ba3c52d494c7f4e7d0275",
+    "hps/MIN_fast_1100mv_-40c/fall-early.rpt": "190db220b4847ed144718fd2635359ce0e621a20065db78744e9ccbac10d2fc0",
+    "hps/MIN_fast_1100mv_100c/launch.tsv": "5505aa280c0a5b417735e62a4b44ef97085b3ed8c5745de3b80fc6e5a25ab25c",
+    "hps/MIN_fast_1100mv_100c/unconstrained.rpt": "9d1a6c66396677dd209f7502fcbd5b96e8121b35759054511cf612fe7b136364",
+    "hps/MIN_fast_1100mv_100c/rise-late.rpt": "9536012b6f52ec9e1ac7d916b07115f60d3194df14a62f178a6f3b39190f0679",
+    "hps/MIN_fast_1100mv_100c/rise-early.rpt": "e0d9e27bfcf091f09be0c6bfa52fe2c6c1f163ea8ce696626ee9fdfd1fd3c76d",
+    "hps/MIN_fast_1100mv_100c/fall-late.rpt": "3c02d5c1b2df81c7205151315f9e3fb86d17d7353b2ed7049b1ac0116e4f8c28",
+    "hps/MIN_fast_1100mv_100c/clocks.rpt": "3f466c656fcee291ed9b594aa7b414691af0d74da26ba3c52d494c7f4e7d0275",
+    "hps/MIN_fast_1100mv_100c/fall-early.rpt": "75a6b387a979f989409c81cc4f04996bf1c8fced97098d90ffafdb8c983d5b68"
+  }
+}

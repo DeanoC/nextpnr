@@ -1,0 +1,9 @@
+-- Building with IPO
+-- C++ compiler does NOT support #embed
+-- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.83.0/BoostConfig.cmake (found version "1.83.0") found components: program_options iostreams thread
+-- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.83.0/BoostConfig.cmake (found version "1.83.0") found components: program_options
+-- GPU router: no device backend (CPU reference only); set -DGPU_ROUTER=HIP or CUDA
+-- Configuring architecture: mistral
+-- Configuring done (7.0s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/deano/harnesses/pcxt-output-coverage/build

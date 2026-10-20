@@ -1,0 +1,3 @@
+# HOST-ONLY CONDITIONAL MODEL TEST; arbitrary budgets, unmeasured load, not physical qualification.
+set_output_delay -clock {clocks[0]} -min -1 [get_ports {SDRAM_nWE SDRAM_nRAS SDRAM_nCS SDRAM_nCAS SDRAM_CLK SDRAM_CKE SDRAM_BA[0] SDRAM_BA[1] SDRAM_A[11] SDRAM_A[12] SDRAM_A[8] SDRAM_A[7] SDRAM_A[1] SDRAM_A[3] SDRAM_A[5] SDRAM_A[0] SDRAM_A[9] SDRAM_A[6] SDRAM_A[10] SDRAM_A[2] SDRAM_A[4]}]
+set_output_delay -clock {clocks[0]} -max 2 [get_ports {SDRAM_nWE SDRAM_nRAS SDRAM_nCS SDRAM_nCAS SDRAM_CLK SDRAM_CKE SDRAM_BA[0] SDRAM_BA[1] SDRAM_A[11] SDRAM_A[12] SDRAM_A[8] SDRAM_A[7] SDRAM_A[1] SDRAM_A[3] SDRAM_A[5] SDRAM_A[0] SDRAM_A[9] SDRAM_A[6] SDRAM_A[10] SDRAM_A[2] SDRAM_A[4]}]

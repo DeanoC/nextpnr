@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/deano/harnesses/pcxt-pad-models/run-pad-cli.py", line 14, in <module>
+    run([a.nextpnr,'--device','5CSEBA6U23I7','--json',out/'synth.json','--qsf',out/'pins.qsf','--sdc',out/'clocks.sdc','--router','router2','--seed','1','--write',out/'routed.json','--report',out/'report.json','--detailed-timing-report','--rbf',out/'top.rbf'],'route')
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/deano/harnesses/pcxt-pad-models/run-pad-cli.py", line 12, in run
+    assert r.returncode==0,(name,r.returncode)
+           ^^^^^^^^^^^^^^^
+AssertionError: ('route', 1)

@@ -1,0 +1,8 @@
+critical-swaps 0
+routed-swap-guard 0
+endpoint-coverage 0
+io-reset 0
+output-coverage 0
+registered-pad-coverage 0
+dynamic-ce-coverage 0
+interface-contracts 0

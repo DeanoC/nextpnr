@@ -1,0 +1,487 @@
+Info: Initialising bels...
+Info: Initialising routing graph...
+Info:     imported 2740019 wires and 25465239 pips
+Info: constraining clock net 'clk' to 10.00 MHz
+Info: Constraining IO 'seed_MISTRAL_IB_PAD' to pin PIN_W15 (bel MISTRAL_IO.89.8.1)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_9' to pin PIN_AD23 (bel MISTRAL_IO.76.0.0)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_8' to pin PIN_AE24 (bel MISTRAL_IO.82.0.0)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_7' to pin PIN_AF7 (bel MISTRAL_IO.34.0.2)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_6' to pin PIN_AH14 (bel MISTRAL_IO.62.0.3)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_5' to pin PIN_D8 (bel MISTRAL_IO.38.81.3)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_4' to pin PIN_AH13 (bel MISTRAL_IO.60.0.3)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_3' to pin PIN_W12 (bel MISTRAL_IO.40.0.1)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_2' to pin PIN_D11 (bel MISTRAL_IO.32.81.1)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_15' to pin PIN_AH3 (bel MISTRAL_IO.36.0.2)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_14' to pin PIN_AF4 (bel MISTRAL_IO.26.0.3)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_13' to pin PIN_AD5 (bel MISTRAL_IO.8.0.2)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_12' to pin PIN_AG14 (bel MISTRAL_IO.60.0.2)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_11' to pin PIN_AE23 (bel MISTRAL_IO.82.0.1)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_10' to pin PIN_AE6 (bel MISTRAL_IO.8.0.3)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD_1' to pin PIN_E8 (bel MISTRAL_IO.38.81.2)
+Info: Constraining IO 'dq_MISTRAL_IO_PAD' to pin PIN_V12 (bel MISTRAL_IO.40.0.0)
+Info: Constraining IO 'clk_MISTRAL_IB_PAD' to pin PIN_V11 (bel MISTRAL_IO.32.0.0)
+Info: Constraining IO 'alive_MISTRAL_OB_PAD' to pin PIN_Y11 (bel MISTRAL_IO.8.0.0)
+
+Info: Device utilisation:
+Info: 	        MISTRAL_COMB:       6/  83820     0%
+Info: 	          MISTRAL_FF:      49/ 167640     0%
+Info: 	      MISTRAL_MUL9X9:       0/    336     0%
+Info: 	    MISTRAL_MUL18X18:       0/    112     0%
+Info: 	    MISTRAL_MUL27X27:       0/    112     0%
+Info: 	    MISTRAL_MUL18X19:       0/    112     0%
+Info: 	MISTRAL_MUL18X19_COMBINED:       0/    112     0%
+Info: 	          MISTRAL_IO:      19/    472     4%
+Info: 	          altera_pll:       0/      6     0%
+Info: 	      MISTRAL_CLKENA:       1/      8    12%
+Info: 	  MISTRAL_CLKENA_PLL:       0/      8     0%
+Info: 	 cyclonev_oscillator:       0/      1     0%
+Info: 	cyclonev_hps_interface_mpu_general_purpose:       0/      1     0%
+Info: 	cyclonev_hps_interface_peripheral_i2c:       0/      4     0%
+Info: 	cyclonev_hps_interface_fpga2sdram:       0/      1     0%
+Info: 	        MISTRAL_M10K:       0/    553     0%
+Info: 	cyclonev_chipidblock:       0/      1     0%
+Info: 	   cyclonev_crcblock:       0/      1     0%
+Info: 	 cyclonev_opregblock:       0/      1     0%
+Info: 	       cyclonev_jtag:       0/      1     0%
+
+Info: Placed 0 cells based on constraints.
+Info: Creating initial analytic placement for 54 cells, random placement wirelen = 8107.
+Info:     at initial placer iter 0, wirelen = 2442
+Info:     at initial placer iter 1, wirelen = 2422
+Info:     at initial placer iter 2, wirelen = 2406
+Info:     at initial placer iter 3, wirelen = 2400
+Info: Running main analytical placer, max placement attempts per cell = 10000.
+Info:     at iteration #1, type ALL: wirelen solved = 2397, spread = 2474, legal = 2818; time = 0.01s
+Info:         congestion: 0 locations over target 100.0, peak demand 27.0
+Info: HeAP Placer Time: 0.16s
+Info:   of which solving equations: 0.01s
+Info:   of which spreading cells: 0.00s
+Info:   of which strict legalisation: 0.00s
+
+Info: Running simulated annealing placer for refinement.
+Info:   at iteration #1: temp = 0.000000, timing cost = 69, wirelen = 2818
+Info:   at iteration #3: temp = 0.000000, timing cost = 62, wirelen = 2768 
+Info: SA placement time 0.00s
+
+Info: Max frequency for clock                                     'clk': 142.37 MHz (PASS at 10.00 MHz)
+Info: Max frequency for clock 'clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q': 47.28 MHz (PASS at 10.00 MHz)
+
+Info: Slack histogram:
+Info:  legend: * represents 1 endpoint(s)
+Info:          + represents [1,1) endpoint(s)
+Info: [ 78849,  79993) |**** 
+Info: [ 79993,  81137) |* 
+Info: [ 81137,  82281) |*** 
+Info: [ 82281,  83425) |********* 
+Info: [ 83425,  84569) |******* 
+Info: [ 84569,  85713) |***** 
+Info: [ 85713,  86857) |*** 
+Info: [ 86857,  88001) | 
+Info: [ 88001,  89145) | 
+Info: [ 89145,  90289) | 
+Info: [ 90289,  91433) |* 
+Info: [ 91433,  92577) | 
+Info: [ 92577,  93721) |*** 
+Info: [ 93721,  94865) |* 
+Info: [ 94865,  96009) |*** 
+Info: [ 96009,  97153) |** 
+Info: [ 97153,  98297) |*** 
+Info: [ 98297,  99441) |************************* 
+Info: [ 99441, 100585) |****** 
+Info: [100585, 101729) |****** 
+Info: Checksum: 0x3b94edc4
+Info: Preparing LABs for routing...
+Info: Routing globals...
+Info:     routed net 'clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q' using global resources
+Info: Running router2...
+Info: Setting up routing resources...
+Info: Running main router loop...
+Info:     iter=1 wires=1300 overused=10 overuse=11 archfail=NA
+Info:     iter=2 wires=1300 overused=0 overuse=0 archfail=0
+Info: Checksum: 0x3133298d
+Info: Router2 time 5.56s
+
+Info: Critical path report for clock 'clk' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-skew -1.06 -1.06 Net  (38,81) -> (37,16)
+Info:                          Sink capture_MISTRAL_FF_Q_12.CLK
+Info:     source  1.00 -0.06 Source dq_MISTRAL_IO_PAD_1.O
+Info:      logic  2.82  2.76 Source dq_MISTRAL_IO_PAD_1.O
+Info:    routing  5.70  8.45 Net dq_MISTRAL_IO_PAD_1_O (38,81) -> (37,16)
+Info:                          Sink capture_MISTRAL_FF_Q_12$ROUTETHRU.A
+Info:      logic  0.10  8.55 Source capture_MISTRAL_FF_Q_12$ROUTETHRU.Q
+Info:    routing  0.02  8.57 Net capture_MISTRAL_FF_Q_12$ROUTETHRU$conn$Q (37,16) -> (37,16)
+Info:                          Sink capture_MISTRAL_FF_Q_12.DATAIN
+Info:      setup -0.20  8.37 Source capture_MISTRAL_FF_Q_12.DATAIN
+Info: 3.72 ns logic, 4.65 ns routing
+
+Info: Critical path report for clock 'clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-skew  1.32  1.32 Net  (33,8) -> (32,81)
+Info:                          Sink dq_MISTRAL_IO_PAD_2.OE
+Info:   clk-to-q  0.73  2.05 Source oe_MISTRAL_FF_Q_6.Q
+Info:    routing  9.10  11.15 Net oe[2] (33,8) -> (32,81)
+Info:                          Sink dq_MISTRAL_IO_PAD_2.OE
+Info:                          Defined in:
+Info:                               /home/deano/harnesses/pcxt-pad-models/dq-native30/top.v:2.18-2.20
+Info:      logic  6.43  17.58 Source dq_MISTRAL_IO_PAD_2.OE
+Info:      setup  1.00  18.58 Source dq_MISTRAL_IO_PAD_2.OE
+Info: 8.16 ns logic, 10.42 ns routing
+
+Info: 9 Hold/min time violations (showing 10 worst paths):
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (40,0) -> (39,2)
+Info:                          Sink capture_MISTRAL_FF_Q_13.CLK
+Info:   clk-skew -1.32 -1.32 Net  (40,0) -> (39,2)
+Info:                          Sink capture_MISTRAL_FF_Q_13.CLK
+Info:     source  0.00 -1.32 Source dq_MISTRAL_IO_PAD.O
+Info:      logic  0.00 -1.32 Source dq_MISTRAL_IO_PAD.O
+Info:    routing  0.52 -0.80 Net dq_MISTRAL_IO_PAD_O (40,0) -> (39,2)
+Info:                          Sink capture_MISTRAL_FF_Q_13$ROUTETHRU.A
+Info:      logic  0.08 -0.71 Source capture_MISTRAL_FF_Q_13$ROUTETHRU.Q
+Info:    routing  0.02 -0.69 Net capture_MISTRAL_FF_Q_13$ROUTETHRU$conn$Q (39,2) -> (39,2)
+Info:                          Sink capture_MISTRAL_FF_Q_13.DATAIN
+Info:       hold -0.27 -0.96 Source capture_MISTRAL_FF_Q_13.DATAIN
+Info: -0.19 ns logic, -0.77 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (82,0) -> (77,1)
+Info:                          Sink capture_MISTRAL_FF_Q_4.CLK
+Info:   clk-skew -1.32 -1.32 Net  (82,0) -> (77,1)
+Info:                          Sink capture_MISTRAL_FF_Q_4.CLK
+Info:     source  0.00 -1.32 Source dq_MISTRAL_IO_PAD_8.O
+Info:      logic  0.00 -1.32 Source dq_MISTRAL_IO_PAD_8.O
+Info:    routing  0.64 -0.68 Net dq_MISTRAL_IO_PAD_8_O (82,0) -> (77,1)
+Info:                          Sink capture_MISTRAL_FF_Q_4$ROUTETHRU.A
+Info:      logic  0.08 -0.59 Source capture_MISTRAL_FF_Q_4$ROUTETHRU.Q
+Info:    routing  0.02 -0.57 Net capture_MISTRAL_FF_Q_4$ROUTETHRU$conn$Q (77,1) -> (77,1)
+Info:                          Sink capture_MISTRAL_FF_Q_4.DATAIN
+Info:       hold -0.27 -0.84 Source capture_MISTRAL_FF_Q_4.DATAIN
+Info: -0.19 ns logic, -0.66 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (34,0) -> (35,2)
+Info:                          Sink capture_MISTRAL_FF_Q_3.CLK
+Info:   clk-skew -1.32 -1.32 Net  (34,0) -> (35,2)
+Info:                          Sink capture_MISTRAL_FF_Q_3.CLK
+Info:     source  0.00 -1.32 Source dq_MISTRAL_IO_PAD_7.O
+Info:      logic  0.00 -1.32 Source dq_MISTRAL_IO_PAD_7.O
+Info:    routing  0.64 -0.68 Net dq_MISTRAL_IO_PAD_7_O (34,0) -> (35,2)
+Info:                          Sink capture_MISTRAL_FF_Q_3$ROUTETHRU.A
+Info:      logic  0.08 -0.59 Source capture_MISTRAL_FF_Q_3$ROUTETHRU.Q
+Info:    routing  0.02 -0.57 Net capture_MISTRAL_FF_Q_3$ROUTETHRU$conn$Q (35,2) -> (35,2)
+Info:                          Sink capture_MISTRAL_FF_Q_3.DATAIN
+Info:       hold -0.27 -0.84 Source capture_MISTRAL_FF_Q_3.DATAIN
+Info: -0.19 ns logic, -0.66 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (60,0) -> (53,2)
+Info:                          Sink capture_MISTRAL_FF_Q_15.CLK
+Info:   clk-skew -1.32 -1.32 Net  (60,0) -> (53,2)
+Info:                          Sink capture_MISTRAL_FF_Q_15.CLK
+Info:     source  0.00 -1.32 Source dq_MISTRAL_IO_PAD_4.O
+Info:      logic  0.00 -1.32 Source dq_MISTRAL_IO_PAD_4.O
+Info:    routing  0.64 -0.68 Net dq_MISTRAL_IO_PAD_4_O (60,0) -> (53,2)
+Info:                          Sink capture_MISTRAL_FF_Q_15$ROUTETHRU.A
+Info:      logic  0.08 -0.59 Source capture_MISTRAL_FF_Q_15$ROUTETHRU.Q
+Info:    routing  0.02 -0.57 Net capture_MISTRAL_FF_Q_15$ROUTETHRU$conn$Q (53,2) -> (53,2)
+Info:                          Sink capture_MISTRAL_FF_Q_15.DATAIN
+Info:       hold -0.27 -0.84 Source capture_MISTRAL_FF_Q_15.DATAIN
+Info: -0.19 ns logic, -0.66 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (36,0) -> (39,1)
+Info:                          Sink capture_MISTRAL_FF_Q_11.CLK
+Info:   clk-skew -1.32 -1.32 Net  (36,0) -> (39,1)
+Info:                          Sink capture_MISTRAL_FF_Q_11.CLK
+Info:     source  0.00 -1.32 Source dq_MISTRAL_IO_PAD_15.O
+Info:      logic  0.00 -1.32 Source dq_MISTRAL_IO_PAD_15.O
+Info:    routing  0.64 -0.68 Net dq_MISTRAL_IO_PAD_15_O (36,0) -> (39,1)
+Info:                          Sink capture_MISTRAL_FF_Q_11$ROUTETHRU.A
+Info:      logic  0.08 -0.59 Source capture_MISTRAL_FF_Q_11$ROUTETHRU.Q
+Info:    routing  0.02 -0.57 Net capture_MISTRAL_FF_Q_11$ROUTETHRU$conn$Q (39,1) -> (39,1)
+Info:                          Sink capture_MISTRAL_FF_Q_11.DATAIN
+Info:       hold -0.27 -0.84 Source capture_MISTRAL_FF_Q_11.DATAIN
+Info: -0.19 ns logic, -0.66 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (40,0) -> (36,1)
+Info:                          Sink capture_MISTRAL_FF_Q_14.CLK
+Info:   clk-skew -1.32 -1.32 Net  (40,0) -> (36,1)
+Info:                          Sink capture_MISTRAL_FF_Q_14.CLK
+Info:     source  0.00 -1.32 Source dq_MISTRAL_IO_PAD_3.O
+Info:      logic  0.00 -1.32 Source dq_MISTRAL_IO_PAD_3.O
+Info:    routing  0.88 -0.44 Net dq_MISTRAL_IO_PAD_3_O (40,0) -> (36,1)
+Info:                          Sink capture_MISTRAL_FF_Q_14.DATAIN
+Info:       hold -0.27 -0.71 Source capture_MISTRAL_FF_Q_14.DATAIN
+Info: -0.27 ns logic, -0.44 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (82,0) -> (75,1)
+Info:                          Sink capture_MISTRAL_FF_Q_7.CLK
+Info:   clk-skew -1.32 -1.32 Net  (82,0) -> (75,1)
+Info:                          Sink capture_MISTRAL_FF_Q_7.CLK
+Info:     source  0.00 -1.32 Source dq_MISTRAL_IO_PAD_11.O
+Info:      logic  0.00 -1.32 Source dq_MISTRAL_IO_PAD_11.O
+Info:    routing  0.80 -0.51 Net dq_MISTRAL_IO_PAD_11_O (82,0) -> (75,1)
+Info:                          Sink capture_MISTRAL_FF_Q_7$ROUTETHRU.A
+Info:      logic  0.08 -0.43 Source capture_MISTRAL_FF_Q_7$ROUTETHRU.Q
+Info:    routing  0.02 -0.41 Net capture_MISTRAL_FF_Q_7$ROUTETHRU$conn$Q (75,1) -> (75,1)
+Info:                          Sink capture_MISTRAL_FF_Q_7.DATAIN
+Info:       hold -0.27 -0.68 Source capture_MISTRAL_FF_Q_7.DATAIN
+Info: -0.19 ns logic, -0.49 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (26,0) -> (40,1)
+Info:                          Sink capture_MISTRAL_FF_Q_10.CLK
+Info:   clk-skew -1.32 -1.32 Net  (26,0) -> (40,1)
+Info:                          Sink capture_MISTRAL_FF_Q_10.CLK
+Info:     source  0.00 -1.32 Source dq_MISTRAL_IO_PAD_14.O
+Info:      logic  0.00 -1.32 Source dq_MISTRAL_IO_PAD_14.O
+Info:    routing  1.00 -0.31 Net dq_MISTRAL_IO_PAD_14_O (26,0) -> (40,1)
+Info:                          Sink capture_MISTRAL_FF_Q_10$ROUTETHRU.A
+Info:      logic  0.08 -0.23 Source capture_MISTRAL_FF_Q_10$ROUTETHRU.Q
+Info:    routing  0.02 -0.21 Net capture_MISTRAL_FF_Q_10$ROUTETHRU$conn$Q (40,1) -> (40,1)
+Info:                          Sink capture_MISTRAL_FF_Q_10.DATAIN
+Info:       hold -0.27 -0.48 Source capture_MISTRAL_FF_Q_10.DATAIN
+Info: -0.19 ns logic, -0.29 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (8,0) -> (33,1)
+Info:                          Sink capture_MISTRAL_FF_Q_6.CLK
+Info:   clk-skew -1.32 -1.32 Net  (8,0) -> (33,1)
+Info:                          Sink capture_MISTRAL_FF_Q_6.CLK
+Info:     source  0.00 -1.32 Source dq_MISTRAL_IO_PAD_10.O
+Info:      logic  0.00 -1.32 Source dq_MISTRAL_IO_PAD_10.O
+Info:    routing  1.43  0.12 Net dq_MISTRAL_IO_PAD_10_O (8,0) -> (33,1)
+Info:                          Sink capture_MISTRAL_FF_Q_6$ROUTETHRU.A
+Info:      logic  0.08  0.20 Source capture_MISTRAL_FF_Q_6$ROUTETHRU.Q
+Info:    routing  0.02  0.22 Net capture_MISTRAL_FF_Q_6$ROUTETHRU$conn$Q (33,1) -> (33,1)
+Info:                          Sink capture_MISTRAL_FF_Q_6.DATAIN
+Info:       hold -0.27 -0.05 Source capture_MISTRAL_FF_Q_6.DATAIN
+Info: -0.19 ns logic, 0.14 ns routing
+
+Info: Max frequency for clock                                     'clk': 119.43 MHz (PASS at 10.00 MHz)
+Info: Max frequency for clock 'clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q': 53.83 MHz (PASS at 10.00 MHz)
+
+Info: Slack histogram:
+Info:  legend: * represents 1 endpoint(s)
+Info:          + represents [1,1) endpoint(s)
+Info: [ 81423,  82291) |** 
+Info: [ 82291,  83159) |* 
+Info: [ 83159,  84027) | 
+Info: [ 84027,  84895) |** 
+Info: [ 84895,  85763) |* 
+Info: [ 85763,  86631) |* 
+Info: [ 86631,  87499) |* 
+Info: [ 87499,  88367) |****** 
+Info: [ 88367,  89235) |******* 
+Info: [ 89235,  90103) |******** 
+Info: [ 90103,  90971) |*** 
+Info: [ 90971,  91839) |** 
+Info: [ 91839,  92707) |* 
+Info: [ 92707,  93575) | 
+Info: [ 93575,  94443) |***** 
+Info: [ 94443,  95311) |**** 
+Info: [ 95311,  96179) |*** 
+Info: [ 96179,  97047) |********* 
+Info: [ 97047,  97915) |************* 
+Info: [ 97915,  98783) |************* 
+Info: Routed Fmax (pip delay table) for clock 'clk': 105.98 MHz
+Info: Routed Fmax (pip delay table) for clock 'clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q': 57.93 MHz
+Info: Running signoff timing analysis...
+
+Info: Critical path report for clock 'clk' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-skew -1.04 -1.04 Net  (38,81) -> (40,15)
+Info:                          Sink capture_MISTRAL_FF_Q.CLK
+Info:     source  1.00 -0.04 Source dq_MISTRAL_IO_PAD_5.O
+Info:      logic  2.80  2.76 Source dq_MISTRAL_IO_PAD_5.O
+Info:    routing  7.57  10.34 Net dq_MISTRAL_IO_PAD_5_O (38,81) -> (40,15)
+Info:                          Sink capture_MISTRAL_FF_Q$ROUTETHRU.A
+Info:      logic  0.10  10.43 Source capture_MISTRAL_FF_Q$ROUTETHRU.Q
+Info:    routing  0.00  10.43 Net capture_MISTRAL_FF_Q$ROUTETHRU$conn$Q (40,15) -> (40,15)
+Info:                          Sink capture_MISTRAL_FF_Q.DATAIN
+Info:      setup -0.20  10.24 Source capture_MISTRAL_FF_Q.DATAIN
+Info: 3.70 ns logic, 6.54 ns routing
+
+Info: Critical path report for clock 'clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-skew  1.26  1.26 Net  (33,8) -> (32,81)
+Info:                          Sink dq_MISTRAL_IO_PAD_2.OE
+Info:   clk-to-q  0.73  1.99 Source oe_MISTRAL_FF_Q_6.Q
+Info:    routing  11.05  13.05 Net oe[2] (33,8) -> (32,81)
+Info:                          Sink dq_MISTRAL_IO_PAD_2.OE
+Info:                          Defined in:
+Info:                               /home/deano/harnesses/pcxt-pad-models/dq-native30/top.v:2.18-2.20
+Info:      logic  6.43  19.48 Source dq_MISTRAL_IO_PAD_2.OE
+Info:      setup  1.00  20.48 Source dq_MISTRAL_IO_PAD_2.OE
+Info: 8.16 ns logic, 12.32 ns routing
+
+Info: 8 Hold/min time violations (showing 10 worst paths):
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (40,0) -> (39,2)
+Info:                          Sink capture_MISTRAL_FF_Q_13.CLK
+Info:   clk-skew -1.28 -1.28 Net  (40,0) -> (39,2)
+Info:                          Sink capture_MISTRAL_FF_Q_13.CLK
+Info:     source  0.00 -1.28 Source dq_MISTRAL_IO_PAD.O
+Info:      logic  0.00 -1.28 Source dq_MISTRAL_IO_PAD.O
+Info:    routing  0.37 -0.91 Net dq_MISTRAL_IO_PAD_O (40,0) -> (39,2)
+Info:                          Sink capture_MISTRAL_FF_Q_13$ROUTETHRU.A
+Info:      logic  0.08 -0.83 Source capture_MISTRAL_FF_Q_13$ROUTETHRU.Q
+Info:    routing  0.00 -0.83 Net capture_MISTRAL_FF_Q_13$ROUTETHRU$conn$Q (39,2) -> (39,2)
+Info:                          Sink capture_MISTRAL_FF_Q_13.DATAIN
+Info:       hold -0.27 -1.10 Source capture_MISTRAL_FF_Q_13.DATAIN
+Info: -0.19 ns logic, -0.91 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (40,0) -> (36,1)
+Info:                          Sink capture_MISTRAL_FF_Q_14.CLK
+Info:   clk-skew -1.30 -1.30 Net  (40,0) -> (36,1)
+Info:                          Sink capture_MISTRAL_FF_Q_14.CLK
+Info:     source  0.00 -1.30 Source dq_MISTRAL_IO_PAD_3.O
+Info:      logic  0.00 -1.30 Source dq_MISTRAL_IO_PAD_3.O
+Info:    routing  0.65 -0.65 Net dq_MISTRAL_IO_PAD_3_O (40,0) -> (36,1)
+Info:                          Sink capture_MISTRAL_FF_Q_14.DATAIN
+Info:       hold -0.27 -0.92 Source capture_MISTRAL_FF_Q_14.DATAIN
+Info: -0.27 ns logic, -0.65 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (34,0) -> (35,2)
+Info:                          Sink capture_MISTRAL_FF_Q_3.CLK
+Info:   clk-skew -1.28 -1.28 Net  (34,0) -> (35,2)
+Info:                          Sink capture_MISTRAL_FF_Q_3.CLK
+Info:     source  0.00 -1.28 Source dq_MISTRAL_IO_PAD_7.O
+Info:      logic  0.00 -1.28 Source dq_MISTRAL_IO_PAD_7.O
+Info:    routing  0.58 -0.69 Net dq_MISTRAL_IO_PAD_7_O (34,0) -> (35,2)
+Info:                          Sink capture_MISTRAL_FF_Q_3$ROUTETHRU.A
+Info:      logic  0.08 -0.61 Source capture_MISTRAL_FF_Q_3$ROUTETHRU.Q
+Info:    routing  0.00 -0.61 Net capture_MISTRAL_FF_Q_3$ROUTETHRU$conn$Q (35,2) -> (35,2)
+Info:                          Sink capture_MISTRAL_FF_Q_3.DATAIN
+Info:       hold -0.27 -0.88 Source capture_MISTRAL_FF_Q_3.DATAIN
+Info: -0.19 ns logic, -0.69 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (36,0) -> (39,1)
+Info:                          Sink capture_MISTRAL_FF_Q_11.CLK
+Info:   clk-skew -1.30 -1.30 Net  (36,0) -> (39,1)
+Info:                          Sink capture_MISTRAL_FF_Q_11.CLK
+Info:     source  0.00 -1.30 Source dq_MISTRAL_IO_PAD_15.O
+Info:      logic  0.00 -1.30 Source dq_MISTRAL_IO_PAD_15.O
+Info:    routing  0.62 -0.69 Net dq_MISTRAL_IO_PAD_15_O (36,0) -> (39,1)
+Info:                          Sink capture_MISTRAL_FF_Q_11$ROUTETHRU.A
+Info:      logic  0.08 -0.60 Source capture_MISTRAL_FF_Q_11$ROUTETHRU.Q
+Info:    routing  0.00 -0.60 Net capture_MISTRAL_FF_Q_11$ROUTETHRU$conn$Q (39,1) -> (39,1)
+Info:                          Sink capture_MISTRAL_FF_Q_11.DATAIN
+Info:       hold -0.27 -0.87 Source capture_MISTRAL_FF_Q_11.DATAIN
+Info: -0.19 ns logic, -0.69 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (60,0) -> (53,2)
+Info:                          Sink capture_MISTRAL_FF_Q_15.CLK
+Info:   clk-skew -1.30 -1.30 Net  (60,0) -> (53,2)
+Info:                          Sink capture_MISTRAL_FF_Q_15.CLK
+Info:     source  0.00 -1.30 Source dq_MISTRAL_IO_PAD_4.O
+Info:      logic  0.00 -1.30 Source dq_MISTRAL_IO_PAD_4.O
+Info:    routing  0.64 -0.66 Net dq_MISTRAL_IO_PAD_4_O (60,0) -> (53,2)
+Info:                          Sink capture_MISTRAL_FF_Q_15$ROUTETHRU.A
+Info:      logic  0.08 -0.58 Source capture_MISTRAL_FF_Q_15$ROUTETHRU.Q
+Info:    routing  0.00 -0.58 Net capture_MISTRAL_FF_Q_15$ROUTETHRU$conn$Q (53,2) -> (53,2)
+Info:                          Sink capture_MISTRAL_FF_Q_15.DATAIN
+Info:       hold -0.27 -0.85 Source capture_MISTRAL_FF_Q_15.DATAIN
+Info: -0.19 ns logic, -0.66 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (82,0) -> (77,1)
+Info:                          Sink capture_MISTRAL_FF_Q_4.CLK
+Info:   clk-skew -1.28 -1.28 Net  (82,0) -> (77,1)
+Info:                          Sink capture_MISTRAL_FF_Q_4.CLK
+Info:     source  0.00 -1.28 Source dq_MISTRAL_IO_PAD_8.O
+Info:      logic  0.00 -1.28 Source dq_MISTRAL_IO_PAD_8.O
+Info:    routing  0.64 -0.65 Net dq_MISTRAL_IO_PAD_8_O (82,0) -> (77,1)
+Info:                          Sink capture_MISTRAL_FF_Q_4$ROUTETHRU.A
+Info:      logic  0.08 -0.56 Source capture_MISTRAL_FF_Q_4$ROUTETHRU.Q
+Info:    routing  0.00 -0.56 Net capture_MISTRAL_FF_Q_4$ROUTETHRU$conn$Q (77,1) -> (77,1)
+Info:                          Sink capture_MISTRAL_FF_Q_4.DATAIN
+Info:       hold -0.27 -0.83 Source capture_MISTRAL_FF_Q_4.DATAIN
+Info: -0.19 ns logic, -0.65 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (82,0) -> (75,1)
+Info:                          Sink capture_MISTRAL_FF_Q_7.CLK
+Info:   clk-skew -1.29 -1.29 Net  (82,0) -> (75,1)
+Info:                          Sink capture_MISTRAL_FF_Q_7.CLK
+Info:     source  0.00 -1.29 Source dq_MISTRAL_IO_PAD_11.O
+Info:      logic  0.00 -1.29 Source dq_MISTRAL_IO_PAD_11.O
+Info:    routing  0.80 -0.49 Net dq_MISTRAL_IO_PAD_11_O (82,0) -> (75,1)
+Info:                          Sink capture_MISTRAL_FF_Q_7$ROUTETHRU.A
+Info:      logic  0.08 -0.41 Source capture_MISTRAL_FF_Q_7$ROUTETHRU.Q
+Info:    routing  0.00 -0.41 Net capture_MISTRAL_FF_Q_7$ROUTETHRU$conn$Q (75,1) -> (75,1)
+Info:                          Sink capture_MISTRAL_FF_Q_7.DATAIN
+Info:       hold -0.27 -0.68 Source capture_MISTRAL_FF_Q_7.DATAIN
+Info: -0.19 ns logic, -0.49 ns routing
+
+ERROR: Hold/min time violation for path 'posedge clk' -> 'posedge clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q':
+Info:       type curr  total name
+Info: clk-to-clk  0.00  0.00 Net  (26,0) -> (40,1)
+Info:                          Sink capture_MISTRAL_FF_Q_10.CLK
+Info:   clk-skew -1.30 -1.30 Net  (26,0) -> (40,1)
+Info:                          Sink capture_MISTRAL_FF_Q_10.CLK
+Info:     source  0.00 -1.30 Source dq_MISTRAL_IO_PAD_14.O
+Info:      logic  0.00 -1.30 Source dq_MISTRAL_IO_PAD_14.O
+Info:    routing  1.12 -0.18 Net dq_MISTRAL_IO_PAD_14_O (26,0) -> (40,1)
+Info:                          Sink capture_MISTRAL_FF_Q_10$ROUTETHRU.A
+Info:      logic  0.08 -0.10 Source capture_MISTRAL_FF_Q_10$ROUTETHRU.Q
+Info:    routing  0.00 -0.10 Net capture_MISTRAL_FF_Q_10$ROUTETHRU$conn$Q (40,1) -> (40,1)
+Info:                          Sink capture_MISTRAL_FF_Q_10.DATAIN
+Info:       hold -0.27 -0.37 Source capture_MISTRAL_FF_Q_10.DATAIN
+Info: -0.19 ns logic, -0.18 ns routing
+
+Info: Max frequency for clock                                     'clk': 97.68 MHz (PASS at 10.00 MHz)
+Info: Max frequency for clock 'clk_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q': 48.83 MHz (PASS at 10.00 MHz)
+
+Info: Slack histogram:
+Info:  legend: * represents 1 endpoint(s)
+Info:          + represents [1,1) endpoint(s)
+Info: [ 79522,  80489) |* 
+Info: [ 80489,  81456) | 
+Info: [ 81456,  82423) |* 
+Info: [ 82423,  83390) |* 
+Info: [ 83390,  84357) |** 
+Info: [ 84357,  85324) |** 
+Info: [ 85324,  86291) |* 
+Info: [ 86291,  87258) | 
+Info: [ 87258,  88225) |***** 
+Info: [ 88225,  89192) |***** 
+Info: [ 89192,  90159) |************ 
+Info: [ 90159,  91126) |**** 
+Info: [ 91126,  92093) |* 
+Info: [ 92093,  93060) | 
+Info: [ 93060,  94027) |*** 
+Info: [ 94027,  94994) |******* 
+Info: [ 94994,  95961) |*** 
+Info: [ 95961,  96928) |******** 
+Info: [ 96928,  97895) |************* 
+Info: [ 97895,  98862) |************* 
+
+0 warnings, 17 errors
+
+Info: Program finished normally.

@@ -1,0 +1,6 @@
+rejected missing-buffer
+rejected missing-boundary
+rejected missing-path
+rejected bad-total
+rejected targeted-input-boundary
+rejected selector-mismatch

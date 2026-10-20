@@ -1,0 +1,1 @@
+PASS: 17246 rows,1888 proofs;48 endpoints changed only by positive max-path/setup deltas; holds, clocks, constraints and prior contracts unchanged; remains incomplete.
