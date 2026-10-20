@@ -703,6 +703,157 @@ bool critical_cohort_trial(Context *ctx, const std::vector<CellInfo *> &seed, in
     return kept;
 }
 
+namespace {
+bool swap_movable(Context *ctx, CellInfo *cell)
+{
+    return allowed(ctx, cell) && cell->cluster == ClusterId() && cell->constr_children.empty() &&
+           cell->constr_x == 0 && cell->constr_y == 0 && cell->constr_z == 0 && !cell->constr_abs_z &&
+           cell->type.in(id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4, id_MISTRAL_ALUT5,
+                         id_MISTRAL_ALUT6);
+}
+}
+
+bool critical_cohort_swap_trial(Context *ctx, CellInfo *cell, BelId target, const std::function<bool()> &accept)
+{
+    if (!swap_movable(ctx, cell) || target == BelId() || cell->bel == target)
+        return false;
+    auto *guest = ctx->getBoundBelCell(target);
+    if (guest && !swap_movable(ctx, guest))
+        return false;
+    BelId home = cell->bel;
+    auto compatible = [&](CellInfo *c, BelId b) {
+        if (!ctx->isValidBelForCellType(c->type, b) || !c->testRegion(b) || !ctx->fes_placement_allowed(b, c))
+            return false;
+        for (const auto &pin : c->pin_data)
+            for (IdString physical : pin.second.bel_pins)
+                if (ctx->getBelPinWire(b, physical) == WireId())
+                    return false;
+        return true;
+    };
+    if (!compatible(cell, target) || (guest && !compatible(guest, home)))
+        return false;
+    std::set<CellInfo *> participants{cell};
+    if (guest) participants.insert(guest);
+    Transaction transaction(ctx, participants);
+    auto strength = cell->belStrength;
+    auto guest_strength = guest ? guest->belStrength : STRENGTH_WEAK;
+    transaction.unbind();
+    ctx->bindBel(target, cell, strength);
+    if (guest) ctx->bindBel(home, guest, guest_strength);
+    if (!legal_labs(ctx, {ctx->bel_data(home).lab_data.lab, ctx->bel_data(target).lab_data.lab}) || !accept())
+        return false;
+    ctx->check();
+    transaction.commit();
+    return true;
+}
+
+void repair_critical_swaps(Context *ctx, int timing_budget)
+{
+    if (!timing_budget) return;
+    if (timing_budget < 0 || timing_budget > 64 || ctx->fes_any_slot_region_active)
+        log_error("Critical swaps require an ordinary placed design and a budget of 1..64.\n");
+    for (const auto &entry : ctx->nets)
+        if (!entry.second->wires.empty()) log_error("Critical swaps require an unrouted design.\n");
+    int timed = 0, attempted = 0, kept = 0;
+    const int max_attempts = timing_budget * 32;
+    while (timed < timing_budget && attempted < max_attempts) {
+        TimingAnalyser before(ctx);
+        before.with_clock_skew = false;
+        EndpointRows rows;
+        Guidance guidance;
+        critical_cohort_pin_preview(ctx, [&]() {
+            critical_cohort_setup_timing(ctx, before);
+            rows = endpoint_rows(ctx, before);
+            guidance = routed_guidance(ctx, before);
+        });
+        if (before.have_loops || worst_slack(before) >= 0 || rows.empty()) break;
+        if (guidance.hops.empty()) log_error("Critical swaps require routed report guidance.\n");
+        struct Candidate { CellInfo *cell; BelId target; int64_t delta; };
+        std::vector<std::vector<Candidate>> proposals;
+        std::set<IdString> seen;
+        // The report orders paths by criticality. Consider both ends of every
+        // hop, including an ordinary result mux driven by a fixed carry chain.
+        for (const auto &hop : guidance.hops) {
+            for (auto *cell : {hop.sink, hop.driver}) {
+                if (!swap_movable(ctx, cell) || !seen.insert(cell->name).second) continue;
+                auto *anchor = cell == hop.sink ? hop.driver : hop.sink;
+                Loc center = ctx->getBelLocation(anchor->bel);
+                std::vector<Candidate> candidates;
+                for (int x = center.x - 3; x <= center.x + 3; ++x)
+                    for (int y = center.y - 3; y <= center.y + 3; ++y) {
+                        if (std::abs(x - center.x) + std::abs(y - center.y) > 3) continue;
+                        for (BelId target : ctx->getBelsByTile(x, y)) {
+                            if (target == cell->bel || !ctx->isValidBelForCellType(cell->type, target)) continue;
+                            auto *guest = ctx->getBoundBelCell(target);
+                            if (guest && !swap_movable(ctx, guest)) continue;
+                            std::set<CellInfo *> members{cell};
+                            Placement future{{cell, target}}, original{{cell, cell->bel}};
+                            if (guest) {
+                                members.insert(guest);
+                                future.emplace_back(guest, cell->bel);
+                                original.emplace_back(guest, target);
+                            }
+                            // Rank every incoming and outgoing connection of
+                            // both exchanged cells, rather than the chosen hop.
+                            auto delta = score(ctx, before, members, future, worst_slack(before) + 150) -
+                                         score(ctx, before, members, original, worst_slack(before) + 150);
+                            candidates.push_back({cell, target, delta});
+                        }
+                    }
+                std::sort(candidates.begin(), candidates.end(), [&](const Candidate &a, const Candidate &b) {
+                    Loc x = ctx->getBelLocation(a.target), y = ctx->getBelLocation(b.target);
+                    return std::tie(a.delta, x.x, x.y, x.z) < std::tie(b.delta, y.x, y.y, y.z);
+                });
+                if (candidates.size() > 32) candidates.resize(32);
+                proposals.push_back(std::move(candidates));
+                if (proposals.size() == 8) break;
+            }
+            if (proposals.size() == 8) break;
+        }
+        bool improved = false;
+        for (int rank = 0; rank < 32 && !improved && timed < timing_budget && attempted < max_attempts; ++rank)
+            for (const auto &proposal : proposals) {
+                if (timed >= timing_budget || attempted >= max_attempts) break;
+                if (size_t(rank) >= proposal.size()) continue;
+                const auto &candidate = proposal[rank];
+                auto home = candidate.cell->bel;
+                ++attempted;
+                bool accepted = critical_cohort_swap_trial(ctx, candidate.cell, candidate.target, [&]() {
+                    ++timed;
+                    TimingAnalyser after(ctx);
+                    after.with_clock_skew = false;
+                    bool safe = false;
+                    critical_cohort_pin_preview(ctx, [&]() {
+                        critical_cohort_setup_timing(ctx, after);
+                        // Permit progress on tied failing endpoints, retaining
+                        // the cohort's full-design endpoint/clock/hold guards.
+                        for (const auto &endpoint : guidance.endpoints) {
+                            if (before.get_setup_slack(endpoint) >= 0) continue;
+                            if (after.get_setup_slack(endpoint) < before.get_setup_slack(endpoint) + 20) continue;
+                            auto checks = timing_guard(ctx, before, after, {endpoint}, &rows);
+                            log_info("Critical swap guards: gain=%d clocks=%d holds=%d endpoints=%d.\n",
+                                     int(checks.gain), int(checks.clocks), int(checks.holds), int(checks.endpoints));
+                            safe = checks.accepts();
+                            break;
+                        }
+                        log_info("Critical swap trial %d: cell=%s target=%s worst=%ld->%ldps accepted=%d.\n",
+                                 timed, ctx->nameOf(candidate.cell), ctx->nameOfBel(candidate.target),
+                                 long(worst_slack(before)), long(worst_slack(after)), int(safe));
+                    });
+                    return safe;
+                });
+                if (accepted) {
+                    log_info("Critical swap kept: cell=%s from=%s to=%s.\n", ctx->nameOf(candidate.cell),
+                             ctx->nameOfBel(home), ctx->nameOfBel(candidate.target));
+                    ++kept; improved = true; break;
+                }
+            }
+        if (!improved) break;
+    }
+    log_info("Critical swaps: attempted=%d/%d timed=%d/%d kept=%d; predicted only, full routing required.\n",
+             attempted, max_attempts, timed, timing_budget, kept);
+}
+
 void repair_critical_cohorts(Context *ctx, int timing_budget)
 {
     if (timing_budget <= 0 || !ctx->setting<bool>("timing_driven"))

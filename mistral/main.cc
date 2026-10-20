@@ -35,6 +35,7 @@
 #include "lut_driver_copy.h"
 #include "lut_pair_placement.h"
 #include "critical_cohort_model.h"
+#include "critical_cohort.h"
 
 USING_NEXTPNR_NAMESPACE
 
@@ -112,6 +113,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "(hardware-unverified; default mirrors Quartus and gives each signed 9x9 its own block)");
     specific.add_options()("replicate-enables", po::value<int>(),
                            "replicate timing-critical LUT enables after placement (budget 0..8, default 0)");
+    specific.add_options()("critical-swap-budget", po::value<int>(),
+                           "report-guided LUT swaps on an unrouted placed checkpoint (STA trials 0..64)");
     specific.add_options()("critical-cohort-budget", po::value<int>(),
                            "repair failing setup paths by relocating data neighborhoods (STA trials 0..64, default 0)");
     specific.add_options()("critical-cohort-model-out", po::value<std::string>(),
@@ -289,7 +292,7 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     if (vm.count("critical-cohort-model-out") && ctx->critical_cohort_budget)
         log_error("Critical cohort route model export requires --critical-cohort-budget 0 (unrepaired baseline).\n");
     if (vm.count("critical-cohort-report")) {
-        if (!ctx->critical_cohort_budget)
+        if (!ctx->critical_cohort_budget && !vm.count("critical-swap-budget"))
             log_error("--critical-cohort-report requires a positive --critical-cohort-budget.\n");
         auto in = open_ifstream_and_log_error(vm["critical-cohort-report"].as<std::string>(), "critical cohort report");
         ctx->critical_cohort_report.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
@@ -584,6 +587,20 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     // After the scaffold is locked, frozen LABs are known; constrain cart
     // cells to the reserved rectangle and report its capacity.
     ctx->fes_constrain_slot_region();
+    if (vm.count("critical-swap-budget")) {
+        int budget = vm["critical-swap-budget"].as<int>();
+        if (budget < 0 || budget > 64) log_error("--critical-swap-budget must be between 0 and 64.\n");
+        if (budget) {
+            if (!vm.count("no-pack") || !vm.count("no-place") || vm.count("pack-only") ||
+                vm.count("fes-cart") || vm.count("fes-scaffold") || ctx->critical_cohort_budget ||
+                !ctx->attrs.count(id_step) || ctx->attrs.at(id_step).as_string() != "place" ||
+                ctx->critical_cohort_report.empty())
+                log_error("Critical swaps require --no-pack --no-place, a placed checkpoint and --critical-cohort-report.\n");
+            repair_critical_swaps(ctx, budget);
+            ctx->save_fes_pin_maps(false);
+            ctx->archInfoToAttributes();
+        }
+    }
 }
 
 int main(int argc, char *argv[])

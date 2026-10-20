@@ -29,6 +29,26 @@ class CriticalCohortCli(unittest.TestCase):
                                    *([] if route else ["--no-route"]), *options], stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, text=True, timeout=60)
 
+    def test_swap_budget_and_checkpoint_contract(self):
+        for budget in (-1, 65):
+            result = self.run_design(["--critical-swap-budget", str(budget)])
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--critical-swap-budget must be between 0 and 64", result.stdout)
+        for step in (None, "pack", "route"):
+            result = self.run_design(["--critical-swap-budget", "1", "--no-pack", "--no-place"], step=step)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Critical swaps require", result.stdout)
+        result = self.run_design(["--critical-swap-budget", "1", "--no-pack", "--no-place"], step="place")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--critical-cohort-report", result.stdout)
+
+    def test_swaps_are_explicit_only(self):
+        for options, settings in ((["--critical-swap-budget", "0"], None),
+                                  ([], {"critical-swap-budget": "64"})):
+            result = self.run_design(options, settings=settings)
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertNotIn("Critical swaps:", result.stdout)
+
     def test_model_export_requires_full_bitstream_route(self):
         result = self.run_design(["--critical-cohort-model-out", "/tmp/unused-cohort-model.json"])
         self.assertNotEqual(result.returncode, 0)

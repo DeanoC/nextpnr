@@ -180,6 +180,64 @@ class CriticalCohort : public ::testing::Test
     };
 };
 
+TEST_F(CriticalCohort, SwapChangesOnlyBindingsOfTwoOriginalLuts)
+{
+    auto *a = lut(30, 20, 0), *b = lut(24, 20, 19);
+    a->params[id_LUT] = Property(6, 4); b->params[id_LUT] = Property(9, 4);
+    auto *net = a->getPort(id_Q);
+    auto pins = a->pin_data;
+    ASSERT_TRUE(critical_cohort_swap_trial(ctx.get(), a, b->bel, [] { return true; }));
+    EXPECT_EQ(a->bel, bel(24, 20, 19)); EXPECT_EQ(b->bel, bel(30, 20, 0));
+    EXPECT_EQ(a->params.at(id_LUT), Property(6, 4)); EXPECT_EQ(b->params.at(id_LUT), Property(9, 4));
+    EXPECT_EQ(a->getPort(id_Q), net); EXPECT_EQ(net->driver.cell, a);
+    for (const auto &pin : pins) {
+        EXPECT_EQ(a->pin_data.at(pin.first).state, pin.second.state);
+        EXPECT_EQ(a->pin_data.at(pin.first).bel_pins, pin.second.bel_pins);
+    }
+    ctx->check();
+}
+
+TEST_F(CriticalCohort, SwapRejectionAndExceptionRestoreBothBindings)
+{
+    auto *a = lut(30, 20, 0), *b = lut(24, 20, 19);
+    Snapshot saved(ctx.get());
+    bool visited = false;
+    EXPECT_FALSE(critical_cohort_swap_trial(ctx.get(), a, b->bel, [&] { visited = true; return false; }));
+    EXPECT_TRUE(visited); saved.check(ctx.get());
+    EXPECT_THROW(critical_cohort_swap_trial(ctx.get(), a, b->bel, []() -> bool {
+        throw std::runtime_error("swap timing failure");
+    }), std::runtime_error);
+    saved.check(ctx.get());
+}
+
+TEST_F(CriticalCohort, SwapRejectsProtectedClusteredAndIllegalDestinations)
+{
+    auto *a = lut(30, 20, 0), *b = lut(24, 20, 19);
+    b->attrs[ctx->id("keep")] = 1;
+    Snapshot saved(ctx.get());
+    auto unexpected = []() { ADD_FAILURE() << "ineligible swap was timed"; return true; };
+    EXPECT_FALSE(critical_cohort_swap_trial(ctx.get(), a, b->bel, unexpected));
+    b->attrs.clear(); b->cluster = b->name;
+    EXPECT_FALSE(critical_cohort_swap_trial(ctx.get(), a, b->bel, unexpected));
+    b->cluster = ClusterId(); b->belStrength = STRENGTH_USER;
+    EXPECT_FALSE(critical_cohort_swap_trial(ctx.get(), a, b->bel, unexpected));
+    b->belStrength = STRENGTH_WEAK;
+    auto chain = carry(24, 19, 1);
+    EXPECT_FALSE(critical_cohort_swap_trial(ctx.get(), a, bel(24, 19, 1), unexpected));
+    EXPECT_EQ(a->bel, bel(30, 20, 0)); EXPECT_EQ(b->bel, bel(24, 20, 19));
+    EXPECT_EQ(chain.front()->bel, bel(24, 19, 0));
+}
+
+TEST_F(CriticalCohort, SwapSearchImprovesNativeReportedCone)
+{
+    auto *logic = timing_cone(clock("clk", 3000));
+    ctx->critical_cohort_report = guidance(logic).dump();
+    auto original = logic->bel;
+    repair_critical_swaps(ctx.get(), 16);
+    EXPECT_NE(logic->bel, original);
+    ctx->check();
+}
+
 TEST_F(CriticalCohort, EmptyDestinationMovesWholeCohort)
 {
     auto *a = lut(30, 20, 0), *b = lut(30, 20, 6);
