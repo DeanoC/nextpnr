@@ -1327,3 +1327,56 @@ TEST_F(CriticalCohort, RoutedInventoryUsesNativeSetupHoldAndFailsClosed)
         ASSERT_TRUE(bool(out));
     }
 }
+
+// Static coverage proves topology, not a fabricated zero-delay timing path.
+TEST_F(CriticalCohort, StaticEndpointCoverageRequiresConstantProof)
+{
+    auto *clk = clock("clk", 3000);
+    auto *source = ctx->createCell(ctx->id("constant"), id_MISTRAL_CONST);
+    source->params[id_LUT] = 1;
+    source->addOutput(id_Q);
+    auto *net = ctx->createNet(ctx->id("constant_net"));
+    source->connectPort(id_Q, net);
+    auto *direct = ff(clk, 30, 20, 8, net);
+    auto *buffer = ctx->createCell(ctx->id("buffer"), id_MISTRAL_BUF);
+    buffer->addInput(id_A);
+    buffer->addOutput(id_Q);
+    buffer->connectPort(id_A, net);
+    auto *buffered = ctx->createNet(ctx->id("buffered"));
+    buffer->connectPort(id_Q, buffered);
+    ff(clk, 30, 20, 9, buffered);
+    TimingAnalyser timed(ctx.get()), unskewed(ctx.get());
+    auto snapshot = [&]() { return critical_swap_endpoint_snapshot(ctx.get(), timed, unskewed); };
+    auto result = snapshot();
+    EXPECT_EQ(result["static_endpoints"].object_items().size(), 2);
+    EXPECT_TRUE(result["endpoints"].object_items().empty());
+    EXPECT_TRUE(result["unsupported"].array_items().empty());
+    EXPECT_FALSE(result["complete"].bool_value()); // No analysed dynamic rows.
+    if (const char *file = std::getenv("NEXTPNR_TEST_STATIC_ENDPOINTS")) {
+        std::ofstream out(file);
+        out << result["static_endpoints"].dump() << "\n";
+        ASSERT_TRUE(bool(out));
+    }
+    source->params[id_LUT] = Property(Sx);
+    EXPECT_EQ(snapshot()["unsupported"].array_items().size(), 2);
+    source->params[id_LUT] = 2;
+    EXPECT_EQ(snapshot()["unsupported"].array_items().size(), 2);
+    source->params[id_LUT] = 0;
+    EXPECT_EQ(snapshot()["static_endpoints"].object_items().size(), 2);
+    EXPECT_NE(snapshot()["static_endpoints"].dump(), result["static_endpoints"].dump());
+    buffer->pin_data[id_A].state = PIN_INV;
+    EXPECT_EQ(snapshot()["static_endpoints"].object_items().size(), 1);
+    buffer->pin_data[id_A].state = PIN_SIG;
+    buffer->disconnectPort(id_A);
+    buffer->connectPort(id_A, buffered); // A cycle cannot prove a constant.
+    EXPECT_EQ(snapshot()["unsupported"].array_items().size(), 1);
+    direct->disconnectPort(id_DATAIN); // Undriven is not static.
+    auto *undriven = ctx->createNet(ctx->id("undriven"));
+    direct->connectPort(id_DATAIN, undriven);
+    EXPECT_EQ(snapshot()["unsupported"].array_items().size(), 2);
+    direct->disconnectPort(id_DATAIN);
+    direct->connectPort(id_DATAIN, net);
+    clk->clkconstr.reset();
+    EXPECT_TRUE(snapshot()["static_endpoints"].object_items().empty());
+    EXPECT_EQ(snapshot()["unsupported"].array_items().size(), 2);
+}

@@ -1129,12 +1129,69 @@ bool critical_cohort_timing_safe(Context *ctx, TimingAnalyser &before, TimingAna
 {
     return timing_guard(ctx, before, after, focus).accepts();
 }
+// A static source has no launch transition and therefore no setup/hold pair.
+// Prove only direct constants and identity route-throughs; do not infer constants
+// from LUT truth tables, absent tags, disabled clocks or matching net names.
+static json11::Json static_endpoint_proof(Context *ctx, CellInfo *sink, IdString port)
+{
+    using J = json11::Json;
+    auto describe = [&](CellInfo *cell) {
+        J::object params, pins;
+        for (const auto &p : cell->params) params[p.first.str(ctx)] = p.second.to_string();
+        for (const auto &p : cell->pin_data) pins[p.first.str(ctx)] = int(p.second.state);
+        return J::object{{"cell", cell->name.str(ctx)}, {"type", cell->type.str(ctx)},
+                         {"params", params}, {"pins", pins}};
+    };
+    J::array chain, captures;
+    int count = 0;
+    if (ctx->getPortTimingClass(sink, port, count) != TMG_REGISTER_INPUT || count <= 0)
+        return J(); // Do not exempt uncharacterized IO/control endpoints.
+    for (int i = 0; i < count; ++i) {
+        auto info = ctx->getPortClockingInfo(sink, port, i);
+        auto *clock = sink->getPort(info.clock_port);
+        if (!clock || !clock->clkconstr || clock->clkconstr->period.minDelay() <= 0 ||
+            (info.edge != RISING_EDGE && info.edge != FALLING_EDGE))
+            return J();
+        captures.push_back(J::array{info.clock_port.str(ctx), clock->name.str(ctx), int(info.edge)});
+    }
+    auto *net = sink->getPort(port);
+    pool<IdString> seen;
+    while (net && net->driver.cell && seen.insert(net->name).second) {
+        auto *cell = net->driver.cell;
+        if (net->driver.port != id_Q || cell->getPort(id_Q) != net)
+            return J();
+        auto node = describe(cell);
+        node["net"] = net->name.str(ctx);
+        chain.push_back(node);
+        if (cell->type == id_MISTRAL_CONST) {
+            auto value = cell->params.find(id_LUT);
+            if (cell->ports.size() != 1 || cell->ports.at(id_Q).type != PORT_OUT ||
+                cell->params.size() != 1 || value == cell->params.end() || value->second.is_string ||
+                value->second.str.find_first_not_of("01") != std::string::npos ||
+                value->second.str.size() > 64 ||
+                (value->second.as_int64() != 0 && value->second.as_int64() != 1))
+                return J();
+            return J::object{{"reason", "constant-no-launch-transition"}, {"value", int(value->second.as_int64())},
+                             {"sink", describe(sink)}, {"capture", captures}, {"chain", chain}};
+        }
+        if (cell->type != id_MISTRAL_BUF || cell->ports.size() != 2 || !cell->params.empty() ||
+            !cell->ports.count(id_A) || cell->ports.at(id_A).type != PORT_IN ||
+            cell->ports.at(id_Q).type != PORT_OUT)
+            return J();
+        auto pin = cell->pin_data.find(id_A);
+        if (pin != cell->pin_data.end() && pin->second.state != PIN_SIG)
+            return J();
+        net = cell->getPort(id_A);
+    }
+    return J(); // Undriven nets and cycles are not constants.
+}
+
 // Unlike placement guidance, a routed retention decision must account for every
 // connected endpoint. Unsupported IO/constant/unknown-clock paths fail closed.
 json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timing, TimingAnalyser &unskewed)
 {
     using J = json11::Json;
-    J::object endpoints, clocks;
+    J::object endpoints, clocks, static_endpoints;
     J::array unsupported;
     auto clock_key = [&](const ClockDomainKey &key) {
         return J::array{key.clock.str(ctx), int(key.edge)};
@@ -1159,7 +1216,9 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
             if (!timing.get_endpoint_clock_pair_timings(endpoint, rows) || rows.empty() ||
                 !unskewed.get_endpoint_clock_pair_timings(endpoint, reference) ||
                 !guard::rows_match(rows, reference)) {
-                unsupported.push_back(key);
+                auto proof = static_endpoint_proof(ctx, cell.second.get(), port.first);
+                if (!proof.is_null()) static_endpoints[key.dump()] = proof;
+                else unsupported.push_back(key);
                 continue;
             }
             J::array values;
@@ -1177,7 +1236,7 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
         }
     }
     std::sort(unsupported.begin(), unsupported.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
-    return J::object{{"schema", 1}, {"complete", unsupported.empty() && !endpoints.empty()},
-        {"unsupported", unsupported}, {"clocks", clocks}, {"endpoints", endpoints}};
+    return J::object{{"schema", 2}, {"complete", unsupported.empty() && !endpoints.empty()},
+        {"unsupported", unsupported}, {"static_endpoints", static_endpoints}, {"clocks", clocks}, {"endpoints", endpoints}};
 }
 NEXTPNR_NAMESPACE_END

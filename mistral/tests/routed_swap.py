@@ -24,6 +24,9 @@ class RoutedSwap(unittest.TestCase):
             subprocess.run([BINARY, '--gtest_filter=CriticalCohort.RoutedInventoryUsesNativeSetupHoldAndFailsClosed'],
                            env=dict(os.environ, NEXTPNR_TEST_SWAP_SNAPSHOTS=str(path)), check=True)
             cls.cases = json.loads(path.read_text())
+            subprocess.run([BINARY, '--gtest_filter=CriticalCohort.StaticEndpointCoverageRequiresConstantProof'],
+                           env=dict(os.environ, NEXTPNR_TEST_STATIC_ENDPOINTS=str(path)), check=True)
+            cls.static = json.loads(path.read_text())
 
     def test_safe_native_route_delay_improvement(self):
         self.assertTrue(guard.compare(self.cases['baseline'], self.cases['safe'])[0])
@@ -76,6 +79,33 @@ class RoutedSwap(unittest.TestCase):
             else:
                 rows[0]['setup'] = float('nan')
             self.assertFalse(guard.compare(self.cases['baseline'], candidate)[0])
+
+    def test_static_endpoint_semantics_are_invariant(self):
+        old = copy.deepcopy(self.cases['baseline'])
+        new = copy.deepcopy(self.cases['safe'])
+        key, proof = next(iter(self.static.items()))
+        old['static_endpoints'][key] = copy.deepcopy(proof)
+        new['static_endpoints'][key] = copy.deepcopy(proof)
+        self.assertTrue(guard.compare(old, new)[0])
+        for field, value in [('value', 0), ('capture', [['CLK', 'other', 0]]),
+                             ('chain', [{'cell': 'different'}]), ('sink', {'cell': 'changed'})]:
+            changed = copy.deepcopy(new)
+            changed['static_endpoints'][key][field] = value
+            self.assertIn('static endpoint semantics', guard.compare(old, changed)[1])
+        new['static_endpoints'].clear()
+        self.assertFalse(guard.compare(old, new)[0])
+
+    def test_static_proof_cannot_replace_missing_timing(self):
+        for change in ('old_schema', 'missing_proofs', 'invalid_proof', 'overlap'):
+            new = copy.deepcopy(self.cases['safe'])
+            if change == 'old_schema':
+                new['schema'] = 1
+            elif change == 'missing_proofs':
+                del new['static_endpoints']
+            else:
+                key = next(iter(new['endpoints'])) if change == 'overlap' else 'missing'
+                new['static_endpoints'][key] = {'reason': 'same-unsupported-on-both-sides'}
+            self.assertFalse(guard.compare(self.cases['baseline'], new)[0])
 
     def bundle(self, directory, case):
         directory.mkdir()

@@ -82,3 +82,21 @@ invocations and budget zero remain unchanged. Placement-only experiments still
 work, but their outputs are not routed acceptance evidence. The guard is an
 opt-in compiler driver, not an in-process Context rollback or a general
 transaction over arbitrary user scripts and output paths.
+
+### Static endpoint coverage
+
+Schema 2 inventories distinguish dynamic timing rows from proven static inputs.
+A direct `MISTRAL_CONST` (fully defined zero/one LUT parameter), optionally through
+identity `MISTRAL_BUF` route-throughs, has no launch transition and hence no
+setup/hold pair. The exporter records its source chain, value, sink parameters
+and pin states, and capture clock/edge. It requires a characterized registered
+sink and a constrained capture clock. The driver requires these proofs and their
+coverage to be identical across the pair. Static endpoints never contribute a
+zero delay, a timing gain, or a fabricated margin. Unknown constants, arbitrary
+LUT cones, cycles, undriven inputs and unsupported IO/control endpoints do not
+qualify for this structural classification.
+
+PLL `locked` is an asynchronous startpoint. A path from it to FF `ACLR` still
+has no supported registered-launch timing pair or recovery/removal model. Such
+paths remain unsupported even if the netlist and route are unchanged. Completing
+static coverage does not authorize retention when these paths are present.

@@ -34,15 +34,23 @@ def finite(value):
 
 
 def rows(snapshot):
-    if snapshot.get('schema') != 1 or snapshot.get('final_analogue') is not True:
-        raise ValueError('not a native final analogue snapshot')
     if snapshot.get('complete') is not True or snapshot.get('unsupported') != []:
         raise ValueError('incomplete native endpoint coverage')
+    if snapshot.get('schema') != 2 or snapshot.get('final_analogue') is not True:
+        raise ValueError('not a native final analogue snapshot')
     if not snapshot.get('clocks') or not snapshot.get('endpoints'):
         raise ValueError('empty clock or endpoint coverage')
     for clock in snapshot['clocks'].values():
         if len(clock) != 8 or not all(finite(v) for v in clock[:7]) or not isinstance(clock[7], str):
             raise ValueError('invalid clock constraint')
+    static = snapshot.get('static_endpoints')
+    if not isinstance(static, dict):
+        raise ValueError('missing static endpoint proofs')
+    for endpoint, proof in static.items():
+        if (not isinstance(proof, dict) or endpoint in snapshot['endpoints'] or proof.get('reason') != 'constant-no-launch-transition' or
+                type(proof.get('value')) is not int or proof['value'] not in (0, 1) or
+                not proof.get('chain') or not proof.get('capture') or not proof.get('sink')):
+            raise ValueError('invalid static endpoint proof')
     result = {}
     for endpoint, values in snapshot['endpoints'].items():
         if not values:
@@ -69,6 +77,8 @@ def compare(before, after):
         old, new = rows(before), rows(after)
         if before['clocks'] != after['clocks']:
             return False, 'clock constraints changed'
+        if before['static_endpoints'] != after['static_endpoints']:
+            return False, 'static endpoint semantics/coverage changed'
         if old.keys() != new.keys():
             return False, 'endpoint clock-pair coverage changed'
         improved = False
