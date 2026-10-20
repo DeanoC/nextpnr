@@ -106,7 +106,9 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
 | `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 4, 22 | device scratch: concurrent nets and log2 table size per lane |
-| `maxBatches`, `maxIter` | 12, 2000 | batches per iteration, iteration limit |
+| `maxBatches` | 12 | batch slots per iteration; the first `maxBatches - 1` are bounding-box-disjoint and the last is the overlap-tolerant overflow bucket |
+| `maxIter` | 2000 | negotiation iteration limit |
+| `overflowChunk` | 128 | nets whose boxes overlap every disjoint batch are routed in chunks of at most this many, each seeing the routes of earlier batches and chunks; 0 routes them all in one batch |
 | `overuseReport` | empty | diagnostic: path of a text file rewritten after every negotiation iteration. The first line is `iter N`; then one line per overused wire, `name occupancy`, followed for wires shared by at least 20 nets by up to eight `net/arcs` entries |
 
 ## GPU phase lease (`GPU_LEASE_FD`)

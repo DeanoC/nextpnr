@@ -155,6 +155,11 @@ struct GpuRouterCfg
     // Bounding-box-disjoint batches per iteration before nets are allowed
     // to be routed concurrently with overlapping boxes
     int max_batches;
+    // Nets whose boxes overlap every one of those batches are routed in
+    // chunks of at most this many (0: all in one batch). Every failing net
+    // is ripped up before the first batch, so nets sharing a batch all see
+    // the wire they fought over as free and take it together again.
+    int overflow_chunk;
     // Maximum number of nets routed concurrently on the device
     int small_slots, large_slots;
     // log2 of the per-net hash table size for the two lanes
