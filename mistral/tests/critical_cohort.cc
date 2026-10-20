@@ -1440,6 +1440,22 @@ TEST(ExternalEndpointDiagnostic, PlacedCheckpointSyntheticInputConstraints)
         std::ifstream extra(extra_sdc); ASSERT_TRUE(extra.good()); ctx.read_sdc(extra);
         cases["registered"] = snapshot();
     }
+    if (const char *overlay = std::getenv("NEXTPNR_TEST_FORWARD_OVERLAY")) {
+        std::ifstream source(overlay);
+        std::string text((std::istreambuf_iterator<char>(source)), std::istreambuf_iterator<char>()), error;
+        auto contract = json11::Json::parse(text, error);
+        ASSERT_TRUE(error.empty()); ASSERT_TRUE(contract.is_object());
+        for (const auto &entry : contract["attrs"].object_items()) {
+            auto *cell = ctx.cells.at(ctx.id(entry.first)).get();
+            for (const auto &attr : entry.second.object_items()) {
+                ASSERT_TRUE(attr.first == "NEXTPNR_GPIO_TIMING_PROFILE" || attr.first == "BOARD_MODEL_FAR_C");
+                ASSERT_TRUE(attr.second.is_string());
+                cell->attrs[ctx.id(attr.first)] = attr.second.string_value();
+            }
+        }
+        ctx.settings[ctx.id("timing/forwarded_clocks")] = contract["declarations"].dump();
+        cases["forwarded"] = snapshot();
+    }
     if (const char *overlay = std::getenv("NEXTPNR_TEST_RESET_OVERLAY")) {
         std::ifstream source(overlay);
         std::string text((std::istreambuf_iterator<char>(source)), std::istreambuf_iterator<char>()), error;

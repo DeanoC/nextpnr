@@ -1506,7 +1506,7 @@ TEST_F(IoDelayTest, ConstantOpenDrainInventory)
     EXPECT_FALSE(snapshot()["complete"].bool_value());
     buffer->pin_data[id_A].state = PIN_SIG;
     buffer->disconnectPort(id_A); buffer->connectPort(id_A, buffer->getPort(id_Q));
-    EXPECT_FALSE(snapshot()["complete"].bool_value());
+    EXPECT_THROW(snapshot(), log_execution_error_exception);
     buffer->disconnectPort(id_A); buffer->connectPort(id_A, zero->getPort(id_Q));
     auto *hps = ctx->createCell(ctx->id("hps"), ctx->id("cyclonev_hps_interface_peripheral_i2c"));
     hps->addOutput(ctx->id("out_clk")); hps->connectPort(ctx->id("out_clk"), net("hps_oe"));
@@ -1586,7 +1586,71 @@ TEST_F(IoDelayTest, ResetContractWholeChainAndPhysicalObligations)
     EXPECT_FALSE(snapshot()["complete"].bool_value());
     for (auto *f : {first, last, capture}) f->pin_data[id_CLK].state = PIN_INV;
     EXPECT_EQ(snapshot()["reset_contracts"]["first"]["edge"].int_value(), int(FALLING_EDGE));
+    sdc("set_false_path -from [get_clocks memory] -to [get_clocks memory]\n");
+    EXPECT_THROW(snapshot(), log_execution_error_exception);
     if (const char *file = std::getenv("NEXTPNR_TEST_RESET_CONTRACTS")) {
+        std::ofstream out(file); out << J(cases).dump() << "\n"; ASSERT_TRUE(bool(out));
+    }
+}
+
+TEST_F(IoDelayTest, ForwardedClockContractKeepsPhysicalRouteAndBothEdges)
+{
+    using J = json11::Json;
+    capture->disconnectPort(id_DATAIN); bidir->disconnectPort(id_I); bidir->disconnectPort(id_OE);
+    auto *buffer = ctx->createCell(ctx->id("clock_buffer"), id_MISTRAL_CLKBUF);
+    buffer->addInput(id_A); buffer->addOutput(id_Q);
+    buffer->connectPort(id_A, net("clock_input")); buffer->connectPort(id_Q, clock);
+    output->disconnectPort(id_I); output->connectPort(id_I, clock);
+    ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name("AG5")), output, STRENGTH_LOCKED);
+    output->attrs[id_LOC] = std::string("PIN_AG5");
+    output->attrs[ctx->id("IO_STANDARD")] = std::string("3.3-V LVTTL");
+    output->attrs[ctx->id("NEXTPNR_GPIO_TIMING_PROFILE")] = std::string("QUARTUS_17_0_2_AG5_CLOCK");
+    output->attrs[ctx->id("BOARD_MODEL_FAR_C")] = std::string("30P");
+    sdc("create_clock -period 20 -name memory [get_ports clk]\n");
+    auto snapshot = [&](int early = 100, int late = 300) {
+        ctx->assignArchInfo();
+        TimingAnalyser timing(ctx.get()), unskewed(ctx.get());
+        timing.with_clock_skew = true; unskewed.with_clock_skew = false;
+        timing.setup(false, false, true); unskewed.setup(false, false, true);
+        timing.set_route_delay({output->name, id_I}, DelayPair(early, late));
+        unskewed.set_route_delay({output->name, id_I}, DelayPair(early, late));
+        return critical_swap_endpoint_snapshot(ctx.get(), timing, unskewed);
+    };
+    J::object cases;
+    cases["undeclared"] = snapshot();
+    const J declaration = J::array{J::object{{"port", "dout"}, {"clock", "clock"}}};
+    ctx->settings[ctx->id("timing/forwarded_clocks")] = declaration.dump();
+    cases["reference"] = snapshot();
+    const auto contract = cases["reference"]["forwarded_clocks"]["dout"];
+    EXPECT_EQ(contract["rise"], J(J::array{100, 7260}));
+    EXPECT_EQ(contract["fall"], J(J::array{10100, 16790}));
+    EXPECT_EQ(contract["minimum_high"].int_value(), 2840);
+    EXPECT_EQ(contract["minimum_low"].int_value(), 3310);
+    EXPECT_EQ(cases["reference"]["endpoints"], cases["undeclared"]["endpoints"]);
+    EXPECT_TRUE(cases["reference"]["unsupported"].array_items().empty());
+    EXPECT_FALSE(cases["reference"]["complete"].bool_value());
+    auto moved = snapshot(200, 600)["forwarded_clocks"]["dout"];
+    EXPECT_EQ(moved["rise"][0].int_value() - contract["rise"][0].int_value(), 100);
+    EXPECT_EQ(moved["rise"][1].int_value() - contract["rise"][1].int_value(), 300);
+    EXPECT_EQ(moved["minimum_high"].int_value(), 2640);
+    EXPECT_EQ(moved["minimum_low"].int_value(), 3110);
+    for (const auto &mutation : std::vector<std::pair<std::string,std::string>>{
+            {"LOC","PIN_AD20"}, {"NEXTPNR_GPIO_TIMING_PROFILE","QUARTUS_17_0_2_RAMTEST"},
+            {"BOARD_MODEL_FAR_C","31P"}, {"BOARD_MODEL_FAR_C","nan"}, {"IO_STANDARD","3.3-V LVCMOS"},
+            {"CURRENT_STRENGTH_NEW","8MA"}, {"SLEW_RATE","0"}, {"D5_DELAY","1"}}) {
+        auto key = ctx->id(mutation.first);
+        bool had = output->attrs.count(key); auto saved = had ? output->attrs.at(key) : Property();
+        output->attrs[key] = mutation.second;
+        EXPECT_THROW(snapshot(), log_execution_error_exception) << mutation.first;
+        if (had) output->attrs[key] = saved; else output->attrs.erase(key);
+    }
+    output->pin_data[id_I].state = PIN_INV; EXPECT_THROW(snapshot(), log_execution_error_exception); output->pin_data[id_I].state = PIN_SIG;
+    buffer->pin_data[id_A].state = PIN_INV; EXPECT_THROW(snapshot(), log_execution_error_exception); buffer->pin_data[id_A].state = PIN_SIG;
+    ctx->settings[ctx->id("timing/forwarded_clocks")] = J(J::array{J::object{{"port", "dout"}, {"clock", "other"}}}).dump();
+    EXPECT_THROW(snapshot(), log_execution_error_exception);
+    ctx->settings[ctx->id("timing/forwarded_clocks")] = declaration.dump();
+    clock->clkconstr->high = DelayPair(0); EXPECT_THROW(snapshot(), log_execution_error_exception);
+    if (const char *file = std::getenv("NEXTPNR_TEST_FORWARDED_CONTRACTS")) {
         std::ofstream out(file); out << J(cases).dump() << "\n"; ASSERT_TRUE(bool(out));
     }
 }

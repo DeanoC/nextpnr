@@ -1375,6 +1375,57 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
                 double(c.high.minDelay()), double(c.high.maxDelay()), double(c.low.minDelay()),
                 double(c.low.maxDelay()), double(c.phase_shift), c.phase_group.str(ctx)};
     }
+    J::object forwarded_clocks;
+    pool<IdString> forwarded_pads;
+    auto forward_setting = ctx->settings.find(ctx->id("timing/forwarded_clocks"));
+    if (forward_setting != ctx->settings.end()) {
+        std::string error;
+        auto declarations = J::parse(forward_setting->second.as_string(), error);
+        if (!error.empty() || !declarations.is_array()) log_error("Invalid forwarded clock declarations.\n");
+        for (const auto &declaration : declarations.array_items()) {
+            if (!declaration.is_object() || declaration.object_items().size() != 2 ||
+                !declaration["port"].is_string() || !declaration["clock"].is_string())
+                log_error("Forwarded clock requires exact top-level port and source clock.\n");
+            auto root = ctx->ports.find(ctx->id(declaration["port"].string_value()));
+            if (root == ctx->ports.end() || root->second.type != PORT_OUT || !root->second.net || !root->second.net->driver.cell)
+                log_error("Forwarded clock requires an output pad.\n");
+            auto *cell = root->second.net->driver.cell;
+            auto model = ctx->getForwardedClockPadTiming(cell);
+            if (!model || cell->getPort(id_PAD) != root->second.net || root->second.net->driver.port != id_PAD ||
+                !forwarded_pads.insert(cell->name).second) log_error("Unqualified or repeated forwarded clock pad.\n");
+            auto *clock = cell->getPort(id_I);
+            auto *source = clock->driver.cell;
+            if (!source || source->type != id_MISTRAL_CLKBUF || clock->driver.port != id_Q ||
+                source->get_pin_state(id_A) != PIN_SIG || source->get_pin_state(id_Q) != PIN_SIG ||
+                !source->params.empty() || source->ports.size() != 2 || !source->getPort(id_A) ||
+                declaration["clock"].string_value() != clock->name.str(ctx) || !clock->clkconstr)
+                log_error("Forwarded clock must directly follow the declared uninverted native clock buffer.\n");
+            const auto &wave = *clock->clkconstr;
+            if (wave.period.minDelay() <= 0 || wave.period.minDelay() != wave.period.maxDelay() ||
+                wave.high.minDelay() <= 0 || wave.high.minDelay() != wave.high.maxDelay() ||
+                wave.low.minDelay() <= 0 || wave.low.minDelay() != wave.low.maxDelay() ||
+                wave.high.minDelay() + wave.low.minDelay() != wave.period.minDelay())
+                log_error("Forwarded clock requires a complete physical source waveform.\n");
+            auto route = timing.get_route_delay({cell->name, id_I});
+            if (route.minDelay() < 0 || route.minDelay() > route.maxDelay()) log_error("Invalid forwarded clock route.\n");
+            auto pair = [](DelayPair d) { return J::array{double(d.minDelay()), double(d.maxDelay())}; };
+            double rise_early = route.minDelay() + model->rise.minDelay();
+            double rise_late = route.maxDelay() + model->rise.maxDelay();
+            double fall_early = wave.high.minDelay() + route.minDelay() + model->fall.minDelay();
+            double fall_late = wave.high.maxDelay() + route.maxDelay() + model->fall.maxDelay();
+            forwarded_clocks[declaration["port"].string_value()] = J::object{
+                {"declaration", declaration}, {"cell", interface_cell(ctx, cell)}, {"source", interface_cell(ctx, source)},
+                {"endpoint", J::array{cell->name.str(ctx), "I"}}, {"source_cell", source->name.str(ctx)},
+                {"bel", ctx->getBelName(cell->bel).str(ctx)}, {"clock", clock->name.str(ctx)},
+                {"route", pair(route)}, {"pad_rise", pair(model->rise)}, {"pad_fall", pair(model->fall)},
+                {"rise", J::array{rise_early, rise_late}}, {"fall", J::array{fall_early, fall_late}},
+                {"minimum_high", fall_early - rise_late},
+                {"minimum_low", wave.period.minDelay() + rise_early - fall_late},
+                {"status", "reference-envelope; receiver and board unqualified"}, {"physically_qualified", false}};
+            physical_obligations.push_back("forwarded clock " + declaration["port"].string_value() +
+                ": receiver pulse/data relationship; actual load/flight; native route fast-corner lower bound");
+        }
+    }
     auto export_endpoint = [&](CellPortKey endpoint, bool external, bool registered_io) {
         std::vector<EndpointClockPairTiming> rows, reference;
         if (!timing.get_endpoint_clock_pair_timings(endpoint, rows, external, external, registered_io) || rows.empty() ||
@@ -1470,6 +1521,7 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
                 }
                 continue;
             }
+            if (port.first == id_I && forwarded_pads.count(cell.first)) continue;
             if (port.first == id_ACLR && reset_stages.count(cell.first)) continue;
             if (unregistered_output) {
                 auto proof = constant_open_drain(ctx, cell.second.get(), port.first);
@@ -1484,10 +1536,20 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
             }
         }
     }
-    for (const auto &contract : reset_contracts.object_items())
-        for (const auto &sink : contract.second["synchronous_sinks"].array_items())
-            if (!endpoints.count(sink.dump()))
-                log_error("Reset contract final consumer lacks native setup/hold endpoint: %s.\n", sink.dump().c_str());
+    for (const auto &contract : reset_contracts.object_items()) {
+        auto required = contract.second["synchronous_sinks"].array_items();
+        const auto &stages = contract.second["declaration"]["stages"].array_items();
+        for (size_t i = 1; i < stages.size(); ++i) required.push_back(J::array{stages[i], "DATAIN"});
+        for (const auto &sink : required) {
+            auto found = endpoints.find(sink.dump());
+            if (found == endpoints.end() || found->second.array_items().empty())
+                log_error("Reset contract consumer/interstage lacks native timing endpoint: %s.\n", sink.dump().c_str());
+            for (const auto &row : found->second.array_items())
+                if (!row["setup_timed"].bool_value() || !row["hold_related"].bool_value() ||
+                    row["setup"].is_null() || row["hold"].is_null())
+                    log_error("Reset contract requires uncut native setup/hold: %s.\n", sink.dump().c_str());
+        }
+    }
     // Preserve the complete explicit boundary contract, including min/max and
     // launch clock/edge. A changed budget must never masquerade as route gain.
     auto io_constraints = read_io_delays(ctx);
@@ -1518,10 +1580,31 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
         output_contracts[constraint["port"].string_value()] = J::object{
             {"net", net->name.str(ctx)}, {"direction", int(root->second.type)}, {"cells", bindings}};
     }
+    J::object unsupported_details;
+    for (const auto &entry : unsupported) {
+        auto *cell = ctx->cells.at(ctx->id(entry[0].string_value())).get();
+        auto *net = cell->getPort(ctx->id(entry[1].string_value()));
+        std::string reason = "no complete native endpoint model";
+        if (cell->type == id_MISTRAL_FF && entry[1].string_value() == "ACLR")
+            reason = "no validated reset declaration; synchronous ACLR approximation is not recovery/removal";
+        if (net && net->driver.cell) {
+            if (net->driver.cell->type == id_MISTRAL_CLKBUF)
+                reason = "clock forwarding requires explicit source relationship and qualified pad profile";
+            if (net->driver.cell->type == id_cyclonev_hps_interface_peripheral_i2c) {
+                reason = "HPS I2C hard-IP OE has no native peripheral-clock launch bounds";
+                physical_obligations.push_back("HPS I2C " + cell->name.str(ctx) +
+                    ": peripheral-clock OE launch; asynchronous input feedback/loop; pullup/load and receiver timing");
+            }
+        }
+        unsupported_details[entry.dump()] = J::object{{"reason", reason}, {"cell", interface_cell(ctx, cell)},
+            {"driver", net && net->driver.cell ? interface_cell(ctx, net->driver.cell) : J()},
+            {"driver_port", net && net->driver.cell ? net->driver.port.str(ctx) : ""}};
+    }
+    std::sort(physical_obligations.begin(), physical_obligations.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
     std::sort(io_constraints.begin(), io_constraints.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
     std::sort(unsupported.begin(), unsupported.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
     unsupported.erase(std::unique(unsupported.begin(), unsupported.end()), unsupported.end());
-    return J::object{{"schema", 6}, {"constant_outputs", constant_outputs}, {"reset_contracts", reset_contracts}, {"physical_obligations", physical_obligations}, {"registered_contracts", registered_contracts}, {"primitive_clocks", primitive_clocks}, {"complete", unsupported.empty() && physical_obligations.empty() && !endpoints.empty()},
+    return J::object{{"schema", 6}, {"unsupported_details", unsupported_details}, {"forwarded_clocks", forwarded_clocks}, {"constant_outputs", constant_outputs}, {"reset_contracts", reset_contracts}, {"physical_obligations", physical_obligations}, {"registered_contracts", registered_contracts}, {"primitive_clocks", primitive_clocks}, {"complete", unsupported.empty() && physical_obligations.empty() && !endpoints.empty()},
         {"io_constraints", io_constraints}, {"output_contracts", output_contracts}, {"unsupported", unsupported}, {"static_endpoints", static_endpoints},
         {"clocks", clocks}, {"endpoints", endpoints}};
 }

@@ -38,12 +38,16 @@ def rows(snapshot):
         raise ValueError('incomplete native endpoint coverage')
     if snapshot.get('schema') != 6 or snapshot.get('final_analogue') is not True:
         raise ValueError('not a native final analogue snapshot')
+    if snapshot.get('unsupported_details') != {}:
+        raise ValueError('unresolved or missing native interface gap details')
     if not isinstance(snapshot.get('physical_obligations'), list) or snapshot['physical_obligations']:
         raise ValueError('unresolved or missing physical interface obligations')
     if not isinstance(snapshot.get('reset_contracts'), dict) or snapshot['reset_contracts']:
         # Structure alone is never physical reset qualification. No qualified
         # reset model is implemented, so no declaration can bypass this gate.
         raise ValueError('unqualified or missing reset contracts')
+    if not isinstance(snapshot.get('forwarded_clocks'), dict) or snapshot['forwarded_clocks']:
+        raise ValueError('unqualified or missing forwarded clock contracts')
     if not isinstance(snapshot.get('constant_outputs'), dict):
         raise ValueError('missing constant output channel contracts')
     if not snapshot.get('clocks') or not snapshot.get('endpoints'):

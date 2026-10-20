@@ -59,7 +59,7 @@ for x in physical:
 f = compressed(here/'registered-fixtures.json.gz')
 # Isolated native host fixtures only; historical physical inventories stay schema 5.
 for fixture in f.values():
-    fixture.update(schema=6,constant_outputs={},reset_contracts={},physical_obligations=[])
+    fixture.update(schema=6,unsupported_details={},forwarded_clocks={},constant_outputs={},reset_contracts={},physical_obligations=[])
 assert guard.compare(f['baseline'],f['safe'])[0]
 assert len(f['baseline']['registered_contracts']) == 2
 assert {tuple(sorted(x['channels'])) for x in f['baseline']['registered_contracts'].values()} == {('high','low'),('data','oe')}

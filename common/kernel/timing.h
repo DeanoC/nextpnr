@@ -191,6 +191,9 @@ struct TimingAnalyser
     };
     const std::vector<PrimitiveClockTiming> &get_primitive_clock_timings() const { return primitive_clock_timings; }
 
+    // Read the native route interval without adding register or external timing arcs.
+    DelayPair get_route_delay(CellPortKey port) const;
+
     // Enable analysis of clock skew between FFs.
     bool with_clock_skew = false;
 

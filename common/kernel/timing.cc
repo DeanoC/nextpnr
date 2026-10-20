@@ -400,6 +400,8 @@ void TimingAnalyser::get_route_delays()
     }
 }
 
+DelayPair TimingAnalyser::get_route_delay(CellPortKey port) const { return ports.at(port).route_delay; }
+
 void TimingAnalyser::set_route_delay(CellPortKey port, DelayPair value) { ports.at(port).route_delay = value; }
 
 void TimingAnalyser::check_primitive_clocks()
