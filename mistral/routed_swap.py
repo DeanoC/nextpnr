@@ -36,7 +36,7 @@ def finite(value):
 def rows(snapshot):
     if snapshot.get('complete') is not True or snapshot.get('unsupported') != []:
         raise ValueError('incomplete native endpoint coverage')
-    if snapshot.get('schema') != 6 or snapshot.get('final_analogue') is not True:
+    if snapshot.get('schema') != 7 or snapshot.get('final_analogue') is not True:
         raise ValueError('not a native final analogue snapshot')
     if snapshot.get('unsupported_details') != {}:
         raise ValueError('unresolved or missing native interface gap details')
@@ -48,6 +48,8 @@ def rows(snapshot):
         raise ValueError('unqualified or missing reset contracts')
     if not isinstance(snapshot.get('forwarded_clocks'), dict) or snapshot['forwarded_clocks']:
         raise ValueError('unqualified or missing forwarded clock contracts')
+    if not isinstance(snapshot.get('unregistered_contracts'), dict) or snapshot['unregistered_contracts']:
+        raise ValueError('unqualified or missing unregistered pad contracts')
     if not isinstance(snapshot.get('constant_outputs'), dict):
         raise ValueError('missing constant output channel contracts')
     if not snapshot.get('clocks') or not snapshot.get('endpoints'):

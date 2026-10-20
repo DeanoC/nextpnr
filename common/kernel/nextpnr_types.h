@@ -279,6 +279,14 @@ struct TimingClockingInfo
     DelayQuad clockToQ;    // Output clock-to-Q time
 };
 
+// Missing physical prefix/tail between a pad and an unregistered routing
+// boundary. Routing itself is excluded; absent means the legacy route boundary.
+struct UnregisteredIoTiming
+{
+    IdString name;
+    DelayQuad delay;
+};
+
 // One registered external-pad relationship, separate from fabric-facing arcs.
 // Input models include the complete pad-to-capture setup/hold checks relative
 // to clock_port's routing ingress. Output models include the complete

@@ -200,6 +200,7 @@ void TimingAnalyser::get_cell_delays()
         auto &pi = port_info(port.first);
         auto &pd = port.second;
         pd.io_delay.reset();
+        pd.pad_model.reset();
 
         IdString name = port.first.port;
         // Ignore dangling ports altogether for timing purposes
@@ -313,6 +314,17 @@ void TimingAnalyser::get_cell_delays()
                 if (pd.io_delay)
                     log_error("Overlapping IO delay constraints at '%s.%s'.\n", buffer->name.c_str(ctx), pin.first.c_str(ctx));
                 pd.io_delay = PerPort::IoDelay{clock->name, row["fall"].bool_value() ? FALLING_EDGE : RISING_EDGE, delay};
+                pd.pad_model = ctx->getUnregisteredIoTiming(buffer, pin.first);
+                if (pd.pad_model) {
+                    const auto &model = *pd.pad_model;
+                    auto valid = [](DelayPair d) {
+                        return std::isfinite(double(d.minDelay())) && std::isfinite(double(d.maxDelay())) &&
+                            d.minDelay() >= 0 && d.minDelay() <= d.maxDelay() &&
+                            double(d.maxDelay()) < double(std::numeric_limits<delay_t>::max()) / 4;
+                    };
+                    if (model.name == IdString() || !valid(model.delay.rise) || !valid(model.delay.fall))
+                        log_error("Invalid unregistered IO pad model at '%s.%s'.\n", buffer->name.c_str(ctx), pin.first.c_str(ctx));
+                }
                 ++matched;
             }
         }
@@ -846,6 +858,7 @@ void TimingAnalyser::walk_forward()
             auto &pd = ports.at(sp.first);
             DelayPair init_arrival(0);
             if (pd.io_delay) init_arrival = pd.io_delay->delay;
+            if (pd.pad_model) init_arrival += pd.pad_model->delay.delayPair();
             CellPortKey clock_key;
             if (sp.second != IdString()) {
                 // clocked startpoints have a clock-to-out time
@@ -905,6 +918,8 @@ void TimingAnalyser::walk_backward()
             DelayPair init_required(0);
             if (pd.io_delay)
                 init_required = DelayPair(-pd.io_delay->delay.maxDelay(), -pd.io_delay->delay.minDelay());
+            if (pd.pad_model)
+                init_required += DelayPair(-pd.pad_model->delay.maxDelay(), -pd.pad_model->delay.minDelay());
             CellPortKey clock_key;
             // TODO: clock routing delay, if analysis of that is enabled
             if (ep.second != IdString()) {
@@ -1675,6 +1690,14 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
         seg_logic.net = IdString();
         report.segments.push_back(seg_logic);
 
+        if (is_startpoint && ports.at(CellPortKey(sp_cell->name, sp_port.name)).pad_model) {
+            const auto &model = *ports.at(CellPortKey(sp_cell->name, sp_port.name)).pad_model;
+            auto pad_segment = seg_logic;
+            pad_segment.type = CriticalPath::Segment::Type::LOGIC;
+            pad_segment.delay = longest_path ? model.delay.maxDelay() : model.delay.minDelay();
+            report.segments.push_back(pad_segment);
+        }
+
         // The private pad bridge has no routing: its complete physical delay
         // is in the architecture's capture/launch model. Keep it out of routing
         // reports, which otherwise query nonexistent physical alias pins.
@@ -1694,6 +1717,15 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
         is_startpoint = false;
     }
 
+    if (io_end && ports.at(CellPortKey(ep_cell->name, ep_port.name)).pad_model) {
+        const auto &model = *ports.at(CellPortKey(ep_cell->name, ep_port.name)).pad_model;
+        CriticalPath::Segment segment;
+        segment.type = CriticalPath::Segment::Type::LOGIC;
+        segment.delay = longest_path ? model.delay.maxDelay() : model.delay.minDelay();
+        segment.from = segment.to = std::make_pair(ep_cell->name, ep_port.name);
+        segment.net = IdString();
+        report.segments.push_back(segment);
+    }
     if (register_end || io_end) {
         CriticalPath::Segment seg_logic;
         seg_logic.delay = 0;

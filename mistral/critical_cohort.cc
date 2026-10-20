@@ -1559,9 +1559,8 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
     auto io_constraints = read_io_delays(ctx);
     // Retain the physical/logical output binding as well as the SDC numbers.
     // In particular, data and OE share a pad contract but are separate endpoints.
-    J::object output_contracts;
+    J::object output_contracts, unregistered_contracts;
     for (const auto &constraint : io_constraints) {
-        if (constraint["input"].bool_value()) continue;
         auto root = ctx->ports.find(ctx->id(constraint["port"].string_value()));
         if (root == ctx->ports.end() || !root->second.net) continue;
         auto *net = root->second.net;
@@ -1571,6 +1570,22 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
         J::object bindings;
         for (auto name : cells) {
             auto *cell = ctx->cells.at(name).get();
+            for (const auto &pin : cell->ports) {
+                if (!pin.second.net || (constraint["input"].bool_value() ? pin.first != id_O : !pin.first.in(id_I, id_OE))) continue;
+                auto model = ctx->getUnregisteredIoTiming(cell, pin.first);
+                if (!model) continue;
+                const auto wire = ctx->getBelPinWire(cell->bel, pin.first);
+                unregistered_contracts[J(J::array{cell->name.str(ctx), pin.first.str(ctx)}).dump()] = J::object{
+                    {"cell", interface_cell(ctx, cell)}, {"port", constraint["port"]},
+                    {"input", constraint["input"]}, {"model", model->name.str(ctx)},
+                    {"boundary", ctx->nameOfWire(wire)},
+                    {"rise", J::array{double(model->delay.rise.minDelay()), double(model->delay.rise.maxDelay())}},
+                    {"fall", J::array{double(model->delay.fall.minDelay()), double(model->delay.fall.maxDelay())}},
+                    {"physically_qualified", false}};
+                physical_obligations.push_back("unregistered pad " + cell->name.str(ctx) + "." + pin.first.str(ctx) +
+                    ": conditional reference; board load/flight and fast-corner route lower bound remain unqualified" +
+                    (pin.first == id_OE ? "; high-Z disable and bus turnaround remain unqualified" : ""));
+            }
             J::object ports, params, pins, attrs;
             for (const auto &pin : cell->ports)
                 ports[pin.first.str(ctx)] = J::array{int(pin.second.type),
@@ -1581,7 +1596,7 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
             bindings[name.str(ctx)] = J::object{{"type", cell->type.str(ctx)}, {"ports", ports},
                 {"params", params}, {"pins", pins}, {"attrs", attrs}};
         }
-        output_contracts[constraint["port"].string_value()] = J::object{
+        if (!constraint["input"].bool_value()) output_contracts[constraint["port"].string_value()] = J::object{
             {"net", net->name.str(ctx)}, {"direction", int(root->second.type)}, {"cells", bindings}};
     }
     J::object unsupported_details;
@@ -1608,7 +1623,7 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
     std::sort(io_constraints.begin(), io_constraints.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
     std::sort(unsupported.begin(), unsupported.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
     unsupported.erase(std::unique(unsupported.begin(), unsupported.end()), unsupported.end());
-    return J::object{{"schema", 6}, {"unsupported_details", unsupported_details}, {"forwarded_clocks", forwarded_clocks}, {"constant_outputs", constant_outputs}, {"reset_contracts", reset_contracts}, {"physical_obligations", physical_obligations}, {"registered_contracts", registered_contracts}, {"primitive_clocks", primitive_clocks}, {"complete", unsupported.empty() && physical_obligations.empty() && !endpoints.empty()},
+    return J::object{{"schema", 7}, {"unregistered_contracts", unregistered_contracts}, {"unsupported_details", unsupported_details}, {"forwarded_clocks", forwarded_clocks}, {"constant_outputs", constant_outputs}, {"reset_contracts", reset_contracts}, {"physical_obligations", physical_obligations}, {"registered_contracts", registered_contracts}, {"primitive_clocks", primitive_clocks}, {"complete", unsupported.empty() && physical_obligations.empty() && !endpoints.empty()},
         {"io_constraints", io_constraints}, {"output_contracts", output_contracts}, {"unsupported", unsupported}, {"static_endpoints", static_endpoints},
         {"clocks", clocks}, {"endpoints", endpoints}};
 }

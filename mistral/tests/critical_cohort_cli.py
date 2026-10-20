@@ -102,7 +102,7 @@ class CriticalCohortCli(unittest.TestCase):
                     self.assertTrue(report["timing_summary"]["final_analogue_model"])
                     self.assertIn("cohort_route_model", report)
                     snapshot = json.loads(endpoints.read_text())
-                    self.assertEqual(snapshot["schema"], 6)
+                    self.assertEqual(snapshot["schema"], 7)
                     self.assertEqual(snapshot["output_contracts"], {})
                     self.assertTrue(snapshot["final_analogue"])
                     self.assertFalse(snapshot["complete"])

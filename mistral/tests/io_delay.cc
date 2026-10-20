@@ -20,6 +20,12 @@ class IoBoundaryTestContext : public Context
     using Context::Context;
     dict<std::pair<IdString, bool>, std::vector<RegisteredIoTiming>> boundary_models;
     dict<IdString, std::vector<PrimitiveClockRequirement>> clock_models;
+    dict<std::pair<IdString, IdString>, UnregisteredIoTiming> pad_models;
+    std::optional<UnregisteredIoTiming> getUnregisteredIoTiming(const CellInfo *cell, IdString port) const override
+    {
+        auto it = pad_models.find({cell->name, port});
+        return it == pad_models.end() ? Arch::getUnregisteredIoTiming(cell, port) : std::optional<UnregisteredIoTiming>(it->second);
+    }
     bool native_models = false;
     std::vector<PrimitiveClockRequirement> getPrimitiveClockRequirements(const CellInfo *cell) const override
     {
@@ -1662,4 +1668,167 @@ TEST_F(IoDelayTest, ForwardedClockContractKeepsPhysicalRouteAndBothEdges)
     if (const char *file = std::getenv("NEXTPNR_TEST_FORWARDED_CONTRACTS")) {
         std::ofstream out(file); out << J(cases).dump() << "\n"; ASSERT_TRUE(bool(out));
     }
+}
+
+TEST_F(IoDelayTest, UnregisteredPadPrefixesAndTailsAreSeparateFromRoutesAndBudgets)
+{
+    sdc("set_input_delay -clock memory -min 1 [get_ports din]\n"
+        "set_input_delay -clock memory -max 3 [get_ports din]\n"
+        "set_output_delay -clock memory -min -2 [get_ports dout]\n"
+        "set_output_delay -clock memory -max 4 [get_ports dout]\n");
+    auto &models = static_cast<IoBoundaryTestContext *>(ctx.get())->pad_models;
+    TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
+    CellPortKey in(capture->name, id_DATAIN), out(output->name, id_I);
+    auto si = timing.get_setup_slack(in), so = timing.get_setup_slack(out);
+    auto hold = [&](CellPortKey key) {
+        std::vector<EndpointClockPairTiming> rows;
+        if (!timing.get_endpoint_clock_pair_timings(key, rows, true, true) || rows.size()!=1 || !rows[0].hold_margin) {
+            ADD_FAILURE() << "missing complete native hold row";
+            return delay_t(0);
+        }
+        return *rows[0].hold_margin;
+    };
+    auto hi = hold(in), ho = hold(out);
+    models[{input->name,id_O}] = {ctx->id("input-prefix"), DelayQuad(100,700)};
+    models[{output->name,id_I}] = {ctx->id("data-tail"), DelayQuad(200,900)};
+    timing.setup(false, false, true);
+    EXPECT_EQ(timing.get_setup_slack(in), si-700);
+    EXPECT_EQ(hold(in), hi+100);
+    EXPECT_EQ(timing.get_setup_slack(out), so-900);
+    EXPECT_EQ(hold(out), ho+200);
+    auto p=find_path(timing.get_timing_result(),output);
+    ASSERT_GE(p.segments.size(),2u);
+    EXPECT_EQ(p.segments.back().delay,4000);
+    EXPECT_EQ(p.segments[p.segments.size()-2].delay,900);
+    EXPECT_EQ(p.segments[p.segments.size()-2].type,CriticalPath::Segment::Type::LOGIC);
+    timing.set_route_delay(out, DelayPair(300,1100)); timing.run(false);
+    EXPECT_EQ(timing.get_setup_slack(out),so-900-1100);
+    EXPECT_EQ(hold(out),ho+200+300);
+    models.clear(); timing.setup(false,false,true);
+    EXPECT_EQ(timing.get_setup_slack(out),so);
+}
+
+TEST_F(IoDelayTest, UnregisteredPadRejectsMalformedModels)
+{
+    sdc("set_output_delay -clock memory 1 [get_ports dout]\n");
+    auto &models = static_cast<IoBoundaryTestContext *>(ctx.get())->pad_models;
+    for (auto delay : {DelayQuad(-1,100),DelayQuad(200,100),DelayQuad(0,std::numeric_limits<delay_t>::max())}) {
+        models[{output->name,id_I}]={ctx->id("bad"),delay};
+        EXPECT_THROW(TimingAnalyser(ctx.get()).setup(),log_execution_error_exception);
+    }
+    models[{output->name,id_I}]={IdString(),DelayQuad(0,100)};
+    EXPECT_THROW(TimingAnalyser(ctx.get()).setup(),log_execution_error_exception);
+}
+
+TEST_F(IoDelayTest, UnregisteredDqReferenceRejectsConfigurationMismatch)
+{
+    bidir->attrs[ctx->id("NEXTPNR_GPIO_TIMING_PROFILE")] = std::string("QUARTUS_17_0_2_DQ_UNREGISTERED");
+    bidir->attrs[ctx->id("BOARD_MODEL_FAR_C")] = std::string("30P");
+    const char *pins[]={"V12","E8","D11","W12","AH13","D8","AH14","AF7","AE24","AD23","AE6","AE23","AG14","AD5","AF4","AH3"};
+    bidir->attrs[ctx->id("NEXTPNR_INPUT_REG4_SEL")]=std::string("BYPASS");
+    for(int i=0;i<16;++i) {
+        bidir->attrs[id_LOC]=std::string("PIN_")+pins[i];
+        ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name(pins[i])),bidir,STRENGTH_LOCKED);
+        for(auto pin:{id_I,id_OE}) {
+            auto m=ctx->getUnregisteredIoTiming(bidir,pin); ASSERT_TRUE(m);
+            EXPECT_EQ(m->delay.minDelay(),0); EXPECT_GT(m->delay.maxDelay(),4000);
+        }
+        EXPECT_TRUE(ctx->getUnregisteredIoTiming(bidir,id_O));
+        ctx->unbindBel(bidir->bel);
+    }
+    bidir->attrs[id_LOC]=std::string("PIN_V12");
+    ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name("V12")),bidir,STRENGTH_LOCKED);
+    for(auto attr:{"D1_DELAY","D3_DELAY","D5_DELAY","D5_OE_DELAY"}) {
+        bidir->attrs[ctx->id(attr)]=std::string("0");
+        EXPECT_THROW(ctx->getUnregisteredIoTiming(bidir,id_I),log_execution_error_exception);
+        bidir->attrs.erase(ctx->id(attr));
+    }
+    for(auto load:{"nan","inf","-1","31P","30junk",""}) {
+        bidir->attrs[ctx->id("BOARD_MODEL_FAR_C")]=std::string(load);
+        EXPECT_THROW(ctx->getUnregisteredIoTiming(bidir,id_I),log_execution_error_exception);
+    }
+    bidir->attrs[ctx->id("BOARD_MODEL_FAR_C")]=std::string("30P");
+    bidir->attrs[id_LOC]=std::string("PIN_E8");
+    EXPECT_THROW(ctx->getUnregisteredIoTiming(bidir,id_I),log_execution_error_exception);
+    bidir->attrs[id_LOC]=std::string("PIN_V12");
+    bidir->pin_data[id_OE].state=PIN_INV;
+    EXPECT_THROW(ctx->getUnregisteredIoTiming(bidir,id_OE),log_execution_error_exception);
+    bidir->pin_data[id_OE].state=PIN_SIG;
+    bidir->params[ctx->id("IOREG_OUT")]=1;
+    EXPECT_THROW(ctx->getUnregisteredIoTiming(bidir,id_I),log_execution_error_exception);
+}
+
+TEST(UnregisteredDq, EmittedConfigurationAndBoundaries)
+{
+    ArchArgs args; args.device="5CSEBA6U23I7";
+    Context ctx(args);
+    const char *pins[]={"V12","E8","D11","W12","AH13","D8","AH14","AF7","AE24","AD23","AE6","AE23","AG14","AD5","AF4","AH3"};
+    std::vector<CellInfo*> pads;
+    for(auto pin:pins) {
+        auto *cell=ctx.createCell(ctx.id(pin),id_MISTRAL_IO);
+        cell->addInput(id_I);cell->addInput(id_OE);cell->addOutput(id_O);cell->addInout(id_PAD);
+        for(auto port:{id_I,id_OE,id_O,id_PAD}) cell->connectPort(port,ctx.createNet(ctx.id(std::string(pin)+port.str(&ctx))));
+        cell->attrs[id_LOC]=std::string("PIN_")+pin;
+        ctx.bindBel(ctx.get_io_pin_bel(ctx.cyclonev->pin_find_name(pin)),cell,STRENGTH_LOCKED);
+        pads.push_back(cell);
+    }
+    ctx.assignArchInfo();
+    auto save = [&](const char *suffix) {
+        std::vector<uint8_t> bytes; ctx.cyclonev->rbf_save(bytes);
+        if(const char *path=std::getenv("NEXTPNR_TEST_DQ_CONFIG")) {
+            std::ofstream f(std::string(path)+suffix,std::ios::binary);
+            f.write(reinterpret_cast<const char*>(bytes.data()),bytes.size());
+        }
+        return bytes;
+    };
+    ctx.configure_bitstream();auto baseline=save(".baseline.rbf");
+    for(auto *cell:pads) {
+        cell->attrs[ctx.id("NEXTPNR_GPIO_TIMING_PROFILE")]=std::string("QUARTUS_17_0_2_DQ_UNREGISTERED");
+        cell->attrs[ctx.id("BOARD_MODEL_FAR_C")]=std::string("30P");
+    }
+    ctx.configure_bitstream();EXPECT_EQ(baseline,save(".profile-only.rbf"));
+    for(auto *cell:pads) {
+        EXPECT_THROW(ctx.getUnregisteredIoTiming(cell,id_I),log_execution_error_exception);
+        cell->attrs[ctx.id("NEXTPNR_INPUT_REG4_SEL")]=std::string("invalid");
+        EXPECT_THROW(ctx.getUnregisteredIoTiming(cell,id_I),log_execution_error_exception);
+        EXPECT_THROW(ctx.configure_bitstream(),log_execution_error_exception);
+        cell->attrs[ctx.id("NEXTPNR_INPUT_REG4_SEL")]=std::string("BYPASS");
+    }
+    auto *first=pads.front();
+    first->attrs[ctx.id("NEXTPNR_INPUT_REG4_SEL")]=1;
+    EXPECT_THROW(ctx.configure_bitstream(),log_execution_error_exception);
+    first->attrs[ctx.id("NEXTPNR_INPUT_REG4_SEL")]=std::string("BYPASS");
+    first->type=id_MISTRAL_OB;
+    EXPECT_THROW(ctx.configure_bitstream(),log_execution_error_exception);
+    first->type=id_MISTRAL_IO;
+    auto *oe=first->getPort(id_OE);first->disconnectPort(id_OE);
+    EXPECT_THROW(ctx.configure_bitstream(),log_execution_error_exception);
+    first->connectPort(id_OE,oe);
+    ctx.configure_bitstream();EXPECT_NE(baseline,save(".bypass.rbf"));
+    json11::Json::object receipt;
+    for(auto *cell:pads) {
+        auto pos=ctx.getBelLocation(cell->bel);
+        auto lane=ctx.cyclonev->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO,pos.x,pos.y,CycloneV::PNONE,pos.z,-1});
+        json11::Json::object config,boundaries;
+        for(auto mux:{CycloneV::RB_T1_SEL_IREG_CFF_DELAY,CycloneV::SET_T3_FOR_CDATA0IN,CycloneV::SET_T3_FOR_CDATA1IN,
+                      CycloneV::RB_T9_SEL_OREG_DFF_DELAY,CycloneV::RB_T9_SEL_EREG_CFF_DELAY,CycloneV::INPUT_REG4_SEL,
+                      CycloneV::OUTREG_OUTPUT_SEL,CycloneV::OEREG_OUTPUT_SEL}) {
+            CycloneV::bmux_setting_t s;
+            ASSERT_TRUE(ctx.cyclonev->bmux_get(CycloneV::DQS16,lane.p(),mux,lane.bi(),s));
+            json11::Json::array raw;for(auto byte:s.r)raw.push_back(int(byte));
+            config[CycloneV::bmux_type_names[mux]]=json11::Json::object{{"selection",int(s.s)},{"raw",raw}};
+        }
+        for(auto port:{id_I,id_OE,id_O}) boundaries[port.str(&ctx)]=ctx.nameOfWire(ctx.getBelPinWire(cell->bel,port));
+        json11::Json::object models;
+        for(auto port:{id_I,id_OE,id_O}) {
+            auto m=ctx.getUnregisteredIoTiming(cell,port);ASSERT_TRUE(m);
+            models[port.str(&ctx)]=json11::Json::object{{"name",m->name.str(&ctx)},
+                {"rise",json11::Json::array{double(m->delay.rise.minDelay()),double(m->delay.rise.maxDelay())}},
+                {"fall",json11::Json::array{double(m->delay.fall.minDelay()),double(m->delay.fall.maxDelay())}}};
+        }
+        receipt[cell->name.str(&ctx)]=json11::Json::object{{"config",config},{"boundaries",boundaries},{"models",models}};
+        EXPECT_EQ(config["RB_T9_SEL_EREG_CFF_DELAY"]["raw"][0].int_value(),31);
+        EXPECT_EQ(config["RB_T9_SEL_OREG_DFF_DELAY"]["raw"][0].int_value(),0);
+    }
+    if(const char *path=std::getenv("NEXTPNR_TEST_DQ_CONFIG")) {std::ofstream f(path);f<<json11::Json(receipt).dump()<<"\n";}
 }

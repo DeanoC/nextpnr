@@ -47,7 +47,7 @@ class RoutedSwap(unittest.TestCase):
         a, b = self.constant['baseline'], self.constant['safe']
         self.assertTrue(guard.compare(a, b)[0], guard.compare(a, b)[1])
         self.assertFalse(guard.compare(self.constant['hps'], self.constant['hps'])[0])
-        for mode in ('missing', 'both_missing', 'value', 'chain', 'oe', 'pins', 'attrs', 'reset', 'obligations'):
+        for mode in ('missing', 'both_missing', 'value', 'chain', 'oe', 'pins', 'attrs', 'reset', 'obligations', 'unregistered', 'unregistered_missing', 'unregistered_forged'):
             old, new = copy.deepcopy(a), copy.deepcopy(b)
             proof = next(iter(new['constant_outputs'].values()))
             if mode in ('missing', 'both_missing'):
@@ -60,6 +60,11 @@ class RoutedSwap(unittest.TestCase):
             elif mode == 'attrs': proof['cell']['attrs']['LOC'] = 'PIN_BAD'
             elif mode == 'reset': del new['reset_contracts']
             elif mode == 'obligations': del new['physical_obligations']
+            elif mode == 'unregistered': new['unregistered_contracts'] = []
+            elif mode == 'unregistered_missing':
+                del old['unregistered_contracts']; del new['unregistered_contracts']
+            elif mode == 'unregistered_forged':
+                old['unregistered_contracts'] = new['unregistered_contracts'] = {'fake': {'physically_qualified': True}}
             self.assertFalse(guard.compare(old, new)[0], mode)
             with tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)

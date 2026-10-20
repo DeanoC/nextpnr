@@ -317,6 +317,68 @@ std::optional<DelayQuad> Arch::getForwardedClockPadTiming(const CellInfo *cell) 
     return DelayQuad(DelayPair(0, 6960), DelayPair(0, 6490));
 }
 
+// Native-default unregistered DQ reference. Exact pin/configuration guards
+// prevent a profile declaration from silently falling back to route-only STA.
+std::optional<UnregisteredIoTiming> Arch::getUnregisteredIoTiming(const CellInfo *cell, IdString port) const
+{
+    const auto *ctx = getCtx();
+    if (!cell->type.in(id_MISTRAL_IO, id_MISTRAL_IB, id_MISTRAL_OB)) return {};
+    auto profile = cell->attrs.find(ctx->id("NEXTPNR_GPIO_TIMING_PROFILE"));
+    if (profile == cell->attrs.end()) return {};
+    if (cell->type == id_MISTRAL_OB && profile->second.is_string &&
+        profile->second.as_string() == "QUARTUS_17_0_2_AG5_CLOCK") return {};
+    auto fail = [&]() -> std::optional<UnregisteredIoTiming> {
+        log_error("Unsupported unregistered DQ reference configuration at '%s.%s'.\n", cell->name.c_str(ctx), port.c_str(ctx));
+        return {};
+    };
+    if (!profile->second.is_string || profile->second.as_string() != "QUARTUS_17_0_2_DQ_UNREGISTERED" ||
+        ctx->getChipName() != "5CSEBA6U23I7" || cell->type != id_MISTRAL_IO ||
+        !cell->params.empty() || cell->ports.size() != 4 || cell->bel == BelId() ||
+        !port.in(id_I, id_OE, id_O)) return fail();
+    auto config = cell->attrs.find(ctx->id("NEXTPNR_INPUT_REG4_SEL"));
+    if (config == cell->attrs.end() || !config->second.is_string || config->second.as_string() != "BYPASS") return fail();
+    auto loc = cell->attrs.find(id_LOC);
+    if (loc == cell->attrs.end() || !loc->second.is_string) return fail();
+    const char *pins[] = {"V12", "E8", "D11", "W12", "AH13", "D8", "AH14", "AF7",
+                         "AE24", "AD23", "AE6", "AE23", "AG14", "AD5", "AF4", "AH3"};
+    int index = -1;
+    for (int i=0; i<16; ++i)
+        if (loc->second.as_string() == std::string("PIN_") + pins[i]) index = i;
+    if (index < 0 || ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name(pins[index])) != cell->bel) return fail();
+    for (auto pin : {id_I, id_OE, id_O, id_PAD})
+        if (!cell->getPort(pin) || cell->get_pin_state(pin) != PIN_SIG ||
+            cell->ports.at(pin).type != (pin == id_PAD ? PORT_INOUT : pin == id_O ? PORT_OUT : PORT_IN)) return fail();
+    const auto io = ctx->get_io_electrical(cell);
+    if (io.lvcmos || io.bus_hold || io.d1_delay >= 0 || io.d3_delay >= 0 || io.d5_delay >= 0 || io.d5_oe_delay >= 0 ||
+        io.drive_strength != CycloneV::V3P3_LVTTL_16MA_LVCMOS_2MA || io.slow_slew || io.weak_pullup || io.clamp_diode ||
+        !gpio_pad_load(ctx, cell)) return fail();
+    // Per-pin pad-transition envelopes (ps), rounded outward from exact
+    // GOUT/GIN reference paths. Early bounds are conservative zero. The input
+    // prefix excludes VIO_BUFFER, which is already simulated by native GIN.
+    // Input reference fits explicitly constrain every native GIN boundary.
+    static const int bounds[16][6] = {
+        {5000, 4650, 6280, 5790, 2520, 2890}, // V12
+        {5270, 4790, 6330, 5860, 2550, 2820}, // E8
+        {5250, 4750, 6430, 5940, 2480, 2740}, // D11
+        {5100, 4730, 6390, 5890, 2330, 2730}, // W12
+        {6910, 6430, 8000, 7530, 4870, 5140}, // AH13
+        {5230, 4750, 6330, 5860, 2540, 2800}, // D8
+        {6900, 6420, 6310, 5840, 2380, 2780}, // AH14
+        {6940, 6460, 6310, 5830, 2400, 2810}, // AF7
+        {6810, 6320, 7950, 7460, 4970, 5220}, // AE24
+        {6810, 6310, 7940, 7450, 2590, 2970}, // AD23
+        {5350, 4860, 6400, 5920, 2580, 2840}, // AE6
+        {6910, 6410, 8060, 7570, 4800, 5060}, // AE23
+        {6940, 6460, 6310, 5830, 2400, 2810}, // AG14
+        {5390, 4900, 6390, 5920, 2600, 2870}, // AD5
+        {5090, 4750, 6320, 5850, 2390, 2790}, // AF4
+        {6960, 6480, 6330, 5850, 2420, 2830}, // AH3
+    };
+    int channel = port == id_I ? 0 : port == id_OE ? 2 : 4;
+    return UnregisteredIoTiming{ctx->id(port == id_I ? "dq-data-tail" : port == id_OE ? "dq-oe-tail" : "dq-input-prefix"),
+        DelayQuad(DelayPair(0, bounds[index][channel]), DelayPair(0, bounds[index][channel+1]))};
+}
+
 TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, int &clockInfoCount) const
 {
     clockInfoCount = 0;

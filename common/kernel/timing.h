@@ -297,6 +297,7 @@ struct TimingAnalyser
             DelayPair delay;
         };
         std::optional<IoDelay> io_delay;
+        std::optional<UnregisteredIoTiming> pad_model;
         // Private timing graph aliases; never inserted into Context or routed.
         struct TimingPort
         {

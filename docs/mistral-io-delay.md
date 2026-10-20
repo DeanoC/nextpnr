@@ -315,3 +315,64 @@ or arbitrary launch delay is assigned to the hard IP.
 obligation. The driver additionally rejects unqualified reset/forwarded
 contracts even if the Boolean is forged, preserving the existing timing and
 byte-exact artifact retention gates.
+
+### Unregistered SDRAM DQ reference (schema 7)
+
+`QUARTUS_17_0_2_DQ_UNREGISTERED` adds a separate pad prefix/tail to the
+unregistered routing boundary, without changing the saved external delays.
+It is restricted to unregistered bidirectional `MISTRAL_IO` on the actual
+sixteen SDRAM DQ pins of `5CSEBA6U23I7`, with matching placed BEL, native
+selectors (D1/D3/data D5 zero, OE D5=31), 3.3-V LVTTL, 16mA, fast slew,
+no pull-up/bus-hold/clamp, normal polarity and declared 0..30pF load.
+All four corners and both pad transitions are retained at 0/30pF. Bounds
+are per pin and per data/OE channel, rounded outward to 10ps with conservative
+zero early bounds. They are conditional reference envelopes, not measured
+KitA/KitB board loads or qualified SDRAM interface budgets.
+
+Data and OE tails start after the exact native GOUT/LEIM ingress, including
+any HMC bypass and pad buffer after that point. Input prefixes stop before
+the native GIN/VIO driver, because that driver is already included in native
+analogue routing. Reports show the prefix/tail as a separate logic segment;
+external source/setup/hold budgets and native routing segments remain separate.
+The common API rejects malformed/negative/reversed/unbounded model intervals.
+Unknown or mismatched explicit DQ profiles reject instead of silently falling
+back to a routing-only model.
+
+All sixteen input paths use explicitly targeted native GINs in two additional
+RCF reference fits. Earlier fits that used different mirrored GIN nodes are
+retained as excluded evidence, not treated as equivalent routes.
+
+The profile additionally requires a separate hardware configuration assignment:
+
+```tcl
+set_instance_assignment -name NEXTPNR_INPUT_REG4_SEL BYPASS -to {SDRAM_DQ[*]}
+set_instance_assignment -name NEXTPNR_GPIO_TIMING_PROFILE QUARTUS_17_0_2_DQ_UNREGISTERED -to {SDRAM_DQ[*]}
+set_instance_assignment -name BOARD_MODEL_FAR_C 30P -to {SDRAM_DQ[*]}
+```
+
+`NEXTPNR_INPUT_REG4_SEL` accepts only `BYPASS` on an unregistered bidirectional
+IO with a writable DQS lane and output-enable path. The fitted selector differs
+from legacy native `LOCKED_DPA`; its irrelevance to these paths has not been
+proven. The timing annotation alone changes no bits and rejects without the
+separate matching configuration. These models therefore describe explicitly
+new-config artifacts, not existing native RBF bytes. A native emission test
+retains baseline, annotation-only and BYPASS bytes and their exact differences.
+A separate host snapshot preserves all original rows and budgets, then adds
+the explicitly configured reference scope without routing or physical signoff.
+
+Schema 7 requires `unregistered_contracts`, including an explicit empty
+object when unused. It binds cell configuration, native boundary and model
+bounds; each modeled or explicitly unmodeled direction retains pending
+physical obligations. The retention driver rejects these unqualified
+contracts even if a caller forges `complete` or clears the obligation list.
+Schemas 1–6 are ineligible for new retention decisions.
+
+OE reports represent vendor rise/fall paths through the output-enable pin;
+they do not independently establish pad high-impedance disable timing, release
+thresholds, SDRAM tHZ/tLZ, or contention-free bus turnaround. HPS I2C output
+CELL delays likewise do not supply a peripheral-clock launch relationship:
+the reference pseudo-registers terminate at an internal source with no
+synchronous predecessor and no constrained clock. HPS OE remains unsupported.
+
+See the retained [pad reference audit](validation/2026-10-20-unregistered-pads-265/summary.md)
+for exact boundaries, selector decoding, raw reports and scope limitations.

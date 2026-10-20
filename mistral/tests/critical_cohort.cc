@@ -1471,6 +1471,23 @@ TEST(ExternalEndpointDiagnostic, PlacedCheckpointSyntheticInputConstraints)
         ctx.settings[ctx.id("timing/reset_contracts")] = contract["declarations"].dump();
         cases["reset"] = snapshot();
     }
+    if (const char *overlay = std::getenv("NEXTPNR_TEST_UNREGISTERED_OVERLAY")) {
+        std::ifstream source(overlay);
+        std::string text((std::istreambuf_iterator<char>(source)), std::istreambuf_iterator<char>()), error;
+        auto attrs = json11::Json::parse(text, error);
+        ASSERT_TRUE(error.empty()); ASSERT_TRUE(attrs.is_object());
+        for (const auto &entry : attrs.object_items()) {
+            auto *cell = ctx.cells.at(ctx.id(entry.first)).get();
+            for (const auto &attr : entry.second.object_items()) {
+                ASSERT_TRUE(attr.first == "NEXTPNR_GPIO_TIMING_PROFILE" || attr.first == "BOARD_MODEL_FAR_C" || attr.first == "NEXTPNR_INPUT_REG4_SEL");
+                ASSERT_TRUE(attr.second.is_string());
+                cell->attrs[ctx.id(attr.first)] = attr.second.string_value();
+            }
+            ASSERT_TRUE(ctx.getUnregisteredIoTiming(cell, id_I));
+            ASSERT_TRUE(ctx.getUnregisteredIoTiming(cell, id_OE));
+        }
+        cases["unregistered"] = snapshot();
+    }
     std::ofstream out(output);
     out << json11::Json(cases).dump() << "\n";
     ASSERT_TRUE(bool(out));

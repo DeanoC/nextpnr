@@ -152,6 +152,11 @@ template <typename R> struct ArchAPI : BaseCtx
     virtual TimingClockingInfo getPortClockingInfo(const CellInfo *cell, IdString port, int index) const = 0;
     // Empty means no complete, qualified model for this pad/direction/profile.
     // These are external boundaries, not getPortClockingInfo's fabric arcs.
+    virtual std::optional<UnregisteredIoTiming> getUnregisteredIoTiming(const CellInfo * /*cell*/,
+                                                                      IdString /*port*/) const
+    {
+        return {};
+    }
     virtual std::vector<RegisteredIoTiming> getRegisteredIoTiming(const CellInfo * /*cell*/, IdString /*pad_port*/,
                                                                bool /*input*/) const
     {

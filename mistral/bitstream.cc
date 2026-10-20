@@ -389,12 +389,19 @@ struct MistralBitgen
         const bool oe_reg = ci->type == id_MISTRAL_SDRIO && ioreg("IOREG_OE");
         auto pos = CycloneV::xycoords{x, y};
         const Arch::IoElectrical io = ctx->get_io_electrical(ci);
+        auto input_reg4 = ci->attrs.find(ctx->id("NEXTPNR_INPUT_REG4_SEL"));
+        const bool explicit_input_bypass = input_reg4 != ci->attrs.end();
+        if (explicit_input_bypass && (ci->type != id_MISTRAL_IO || !input_reg4->second.is_string ||
+                                     input_reg4->second.as_string() != "BYPASS"))
+            log_error("Unsupported NEXTPNR_INPUT_REG4_SEL configuration on '%s'.\n", ctx->nameOf(ci));
         cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_WEAK_PULLUP, bi, io.weak_pullup);
         if (io.bus_hold)
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_BUS_HOLD, bi, true));
         if (io.clamp_diode)
             NPNR_ASSERT(cv->bmux_b_set(CycloneV::GPIO, pos, CycloneV::USE_PCI_DIODE_CLAMP, bi, true));
         auto delay_lane = cv->p2p_to(CycloneV::pnode_coords{CycloneV::GPIO, pos, CycloneV::PNONE, bi, -1});
+        if (explicit_input_bypass && (!delay_lane || !is_output))
+            log_error("NEXTPNR_INPUT_REG4_SEL has no writable unregistered selector on '%s'.\n", ctx->nameOf(ci));
         auto set_delay = [&](CycloneV::bmux_type_t mux, int value) {
             if (value < 0)
                 return;
@@ -469,8 +476,12 @@ struct MistralBitgen
                     NPNR_ASSERT(cv->bmux_r_set(CycloneV::DQS16, dp, CycloneV::OEREG_POWER_UP_STATE, lane, 1));
                 }
             } else if (has_dqs) {
-                cv->bmux_m_set(CycloneV::DQS16, dqs.p(), CycloneV::INPUT_REG4_SEL, dqs.bi(),
-                               CycloneV::SEL_LOCKED_DPA);
+                // A timing profile never changes emitted hardware. This separate
+                // configuration opt-in selects the fitted BYPASS setting.
+                const bool input_selector_written = cv->bmux_m_set(CycloneV::DQS16, dqs.p(), CycloneV::INPUT_REG4_SEL, dqs.bi(),
+                               explicit_input_bypass ? CycloneV::SEL_BYPASS : CycloneV::SEL_LOCKED_DPA);
+                if (explicit_input_bypass && !input_selector_written)
+                    log_error("Failed to write NEXTPNR_INPUT_REG4_SEL on '%s'.\n", ctx->nameOf(ci));
                 cv->bmux_r_set(CycloneV::DQS16, dqs.p(), CycloneV::RB_T9_SEL_EREG_CFF_DELAY,
                                dqs.bi(), 0x1f);
             }
