@@ -262,3 +262,56 @@ an actual primitive-clock requirement. Schemas 1–4 remain ineligible; historic
 evidence checkers adapt only explicitly isolated diagnostic fixtures, never old
 whole-design inventories. No propagation formula, pad-model coefficient or
 physical budget was added.
+
+### Scoped interface contracts (schema 6)
+
+Schema 6 additionally requires `constant_outputs`, `reset_contracts`,
+`forwarded_clocks`, `physical_obligations` and `unsupported_details`, including
+explicit empty collections. Missing fields or prior schemas reject retention.
+The [portable interface audit](validation/2026-10-20-interface-contracts-265/summary.md)
+retains the exact native and reference evidence and the unresolved physical scope.
+
+A `timing/reset_contracts` JSON setting declares ordered stage names, for example:
+
+```json
+[{"stages": ["release_stage_0", "release_stage_1"]}]
+```
+
+Declarations require explicit `async_reg` intent on every native FF and validate
+whole-chain topology, common clock/edge/reset polarity, inactive overrides,
+constant inactive first D, sole intermediate fanout, raw reset fanout and
+conservative same-domain synchronous final consumers. All interstage and final
+native setup/hold rows must remain checked; cuts or missing rows reject.
+Structural contracts are not physical reset qualification. Pulse width, PLL
+lock/relock, recovery/removal containment and MTBF obligations remain mandatory.
+Neither stage names nor missing legacy metadata establish synchronizer intent.
+
+The reference-only `QUARTUS_17_0_2_AG5_CLOCK` profile supports a direct uninverted
+CLKBUF-to-unregistered-OB path on AG5 with declared 0..30pF, 3.3-V LVTTL, 16mA,
+fast slew and default selectors. An explicit `timing/forwarded_clocks` setting
+binds the top-level port and source clock:
+
+```json
+[{"port": "HDMI_TX_CLK", "clock": "clk_pixel"}]
+```
+
+The contract preserves both source-relative pad edges and waveform bounds. The
+native routing interval ends at GOUT.037.000.0000 / HMC.IOINTADDRDOUT.8; the
+separate reference tail includes HMCPHY and the output buffer/pad. It adds each
+delay once. It creates no register launch or automatic downstream SDC generated
+clock, and supplies no external receiver budget. Board load/flight, receiver
+pulse/data timing and a qualified fast-corner route lower bound remain open.
+Reference contracts cannot authorize retention, including when their conservative
+pulse bounds are negative. Native defaults are data D5=0 and OE D5=31; these are
+different selectors. Nondefault configurations are rejected by this profile.
+
+Constant-low unregistered IO data can have an I-only proof through uninverted
+constant/identity sources. The proof freezes the complete pad and source graph;
+OE remains a separate required endpoint. HPS peripheral I2C launch and input
+feedback/electrical obligations are not supplied by this proof. No fabric clock
+or arbitrary launch delay is assigned to the hard IP.
+
+`complete` stays false with any unsupported endpoint or pending physical
+obligation. The driver additionally rejects unqualified reset/forwarded
+contracts even if the Boolean is forged, preserving the existing timing and
+byte-exact artifact retention gates.

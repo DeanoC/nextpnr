@@ -1,0 +1,195 @@
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = IoDelayTest.*:CriticalCohort.*
+[==========] Running 91 tests from 2 test suites.
+[----------] Global test environment set-up.
+[----------] 42 tests from IoDelayTest
+[ RUN      ] IoDelayTest.InputBudgetAndExternalDelayReport
+[       OK ] IoDelayTest.InputBudgetAndExternalDelayReport (3964 ms)
+[ RUN      ] IoDelayTest.OutputSetupAndNegativeMinimumHold
+[       OK ] IoDelayTest.OutputSetupAndNegativeMinimumHold (3878 ms)
+[ RUN      ] IoDelayTest.ExternalClockAdjustmentsHaveLogicalTerminalsWithoutPhysicalClockRoutes
+[       OK ] IoDelayTest.ExternalClockAdjustmentsHaveLogicalTerminalsWithoutPhysicalClockRoutes (3912 ms)
+[ RUN      ] IoDelayTest.DetailedReportPrintsIoClockTerminalsWithoutAsserting
+[       OK ] IoDelayTest.DetailedReportPrintsIoClockTerminalsWithoutAsserting (4055 ms)
+[ RUN      ] IoDelayTest.FallingReferenceUsesHalfCycleAndMatchesHoldSlack
+[       OK ] IoDelayTest.FallingReferenceUsesHalfCycleAndMatchesHoldSlack (4203 ms)
+[ RUN      ] IoDelayTest.ExternalInputClockSkewDoesNotClaimAClockRouteFromTheDataPort
+[       OK ] IoDelayTest.ExternalInputClockSkewDoesNotClaimAClockRouteFromTheDataPort (4032 ms)
+[ RUN      ] IoDelayTest.BidirectionalDataAndOeReceiveOutputBudget
+[       OK ] IoDelayTest.BidirectionalDataAndOeReceiveOutputBudget (3962 ms)
+[ RUN      ] IoDelayTest.RejectsMalformedAndUnsupportedConstraints
+[       OK ] IoDelayTest.RejectsMalformedAndUnsupportedConstraints (3985 ms)
+[ RUN      ] IoDelayTest.RejectsMissingMinimumReversedBoundsAndUnrelatedClock
+[       OK ] IoDelayTest.RejectsMissingMinimumReversedBoundsAndUnrelatedClock (3927 ms)
+[ RUN      ] IoDelayTest.ConstraintsSurviveJsonCheckpoint
+[       OK ] IoDelayTest.ConstraintsSurviveJsonCheckpoint (7706 ms)
+[ RUN      ] IoDelayTest.PhaseRelatedOutputAndClockSkewUseRealWindows
+[       OK ] IoDelayTest.PhaseRelatedOutputAndClockSkewUseRealWindows (3855 ms)
+[ RUN      ] IoDelayTest.WorstSetupSlackDoesNotScalePhaseRelatedIoMarginByFmax
+[       OK ] IoDelayTest.WorstSetupSlackDoesNotScalePhaseRelatedIoMarginByFmax (3891 ms)
+[ RUN      ] IoDelayTest.VirtualClockIsIgnoredAndRegisteredIoFails
+[       OK ] IoDelayTest.VirtualClockIsIgnoredAndRegisteredIoFails (3819 ms)
+[ RUN      ] IoDelayTest.EmptyClockTargetExpressionIsAnError
+[       OK ] IoDelayTest.EmptyClockTargetExpressionIsAnError (3828 ms)
+[ RUN      ] IoDelayTest.ClockFalsePathCutsExternalSetupAndHold
+[       OK ] IoDelayTest.ClockFalsePathCutsExternalSetupAndHold (4058 ms)
+[ RUN      ] IoDelayTest.SetupMulticycleRelaxesExternalSetupWithoutRelaxingHold
+[       OK ] IoDelayTest.SetupMulticycleRelaxesExternalSetupWithoutRelaxingHold (3998 ms)
+[ RUN      ] IoDelayTest.RegisteredDdrFabricHandoffUsesRisingEdgeForBothWords
+[       OK ] IoDelayTest.RegisteredDdrFabricHandoffUsesRisingEdgeForBothWords (3962 ms)
+[ RUN      ] IoDelayTest.RegisteredFabricTimingDoesNotEnableExternalPadTiming
+[       OK ] IoDelayTest.RegisteredFabricTimingDoesNotEnableExternalPadTiming (3942 ms)
+[ RUN      ] IoDelayTest.UncharacterizedElectricalProfilesKeepRegisterTimingUnsupported
+[       OK ] IoDelayTest.UncharacterizedElectricalProfilesKeepRegisterTimingUnsupported (4005 ms)
+[ RUN      ] IoDelayTest.RegisteredOutputFabricPathIsTimedButExternalPadRemainsUnsupported
+[       OK ] IoDelayTest.RegisteredOutputFabricPathIsTimedButExternalPadRemainsUnsupported (4092 ms)
+[ RUN      ] IoDelayTest.RegisteredPadReadEdgesAndWriteDataOeAreIndependent
+[       OK ] IoDelayTest.RegisteredPadReadEdgesAndWriteDataOeAreIndependent (4159 ms)
+[ RUN      ] IoDelayTest.RegisteredPadClockSkewAndMulticycleUseTheSameReportFrame
+[       OK ] IoDelayTest.RegisteredPadClockSkewAndMulticycleUseTheSameReportFrame (4165 ms)
+[ RUN      ] IoDelayTest.RegisteredPadGraphDoesNotChangeCheckpointOrLeakAcrossSetup
+[       OK ] IoDelayTest.RegisteredPadGraphDoesNotChangeCheckpointOrLeakAcrossSetup (8298 ms)
+[ RUN      ] IoDelayTest.DetailedPadCoverageDistinguishesSetupOnly
+[       OK ] IoDelayTest.DetailedPadCoverageDistinguishesSetupOnly (4071 ms)
+[ RUN      ] IoDelayTest.RegisteredPadCutsDoNotBypassModelAndClockValidation
+[       OK ] IoDelayTest.RegisteredPadCutsDoNotBypassModelAndClockValidation (4019 ms)
+[ RUN      ] IoDelayTest.RegisteredPadUsesSeparatePhaseRelatedCaptureClock
+[       OK ] IoDelayTest.RegisteredPadUsesSeparatePhaseRelatedCaptureClock (3986 ms)
+[ RUN      ] IoDelayTest.PrimitiveClockLimitsFollowRoutedWaveformAndReentry
+[       OK ] IoDelayTest.PrimitiveClockLimitsFollowRoutedWaveformAndReentry (4132 ms)
+[ RUN      ] IoDelayTest.PrimitiveClockLimitsCannotBeCutOrRelaxed
+[       OK ] IoDelayTest.PrimitiveClockLimitsCannotBeCutOrRelaxed (4227 ms)
+[ RUN      ] IoDelayTest.PrimitiveClockModelsRejectMalformedDeclarations
+[       OK ] IoDelayTest.PrimitiveClockModelsRejectMalformedDeclarations (4103 ms)
+[ RUN      ] IoDelayTest.NativeReferencePadModelsTimeCompleteDqAndGuardClock
+[       OK ] IoDelayTest.NativeReferencePadModelsTimeCompleteDqAndGuardClock (4146 ms)
+[ RUN      ] IoDelayTest.NativeReferenceProfileRejectsUnqualifiedPinsLoadsAndModes
+[       OK ] IoDelayTest.NativeReferenceProfileRejectsUnqualifiedPinsLoadsAndModes (4227 ms)
+[ RUN      ] IoDelayTest.NativeReferenceProfileSupportsStandaloneSdrOutputAndDdrInput
+[       OK ] IoDelayTest.NativeReferenceProfileSupportsStandaloneSdrOutputAndDdrInput (4285 ms)
+[ RUN      ] IoDelayTest.DynamicOutputEnableReferenceKeepsDataControlPadAndClockTiming
+[       OK ] IoDelayTest.DynamicOutputEnableReferenceKeepsDataControlPadAndClockTiming (4197 ms)
+[ RUN      ] IoDelayTest.NativeClockForwardingPreservesPadPolarityAndBothLaunchPhases
+[       OK ] IoDelayTest.NativeClockForwardingPreservesPadPolarityAndBothLaunchPhases (4292 ms)
+[ RUN      ] IoDelayTest.NativeSdrCaptureHasOnePadEdgeAndCompleteDataOeTiming
+[       OK ] IoDelayTest.NativeSdrCaptureHasOnePadEdgeAndCompleteDataOeTiming (4496 ms)
+[ RUN      ] IoDelayTest.ExternalEndpointInventory
+[       OK ] IoDelayTest.ExternalEndpointInventory (4286 ms)
+[ RUN      ] IoDelayTest.ExternalOutputEndpointInventory
+[       OK ] IoDelayTest.ExternalOutputEndpointInventory (4395 ms)
+[ RUN      ] IoDelayTest.OutputInventoryNeverSubstitutesFabricTimingForPrivatePadBoundary
+[       OK ] IoDelayTest.OutputInventoryNeverSubstitutesFabricTimingForPrivatePadBoundary (4338 ms)
+[ RUN      ] IoDelayTest.RegisteredEndpointInventory
+[       OK ] IoDelayTest.RegisteredEndpointInventory (4118 ms)
+[ RUN      ] IoDelayTest.ConstantOpenDrainInventory
+[       OK ] IoDelayTest.ConstantOpenDrainInventory (4213 ms)
+[ RUN      ] IoDelayTest.ResetContractWholeChainAndPhysicalObligations
+[       OK ] IoDelayTest.ResetContractWholeChainAndPhysicalObligations (4111 ms)
+[ RUN      ] IoDelayTest.ForwardedClockContractKeepsPhysicalRouteAndBothEdges
+[       OK ] IoDelayTest.ForwardedClockContractKeepsPhysicalRouteAndBothEdges (4126 ms)
+[----------] 42 tests from IoDelayTest (179486 ms total)
+
+[----------] 49 tests from CriticalCohort
+[ RUN      ] CriticalCohort.SwapChangesOnlyBindingsOfTwoOriginalLuts
+[       OK ] CriticalCohort.SwapChangesOnlyBindingsOfTwoOriginalLuts (4160 ms)
+[ RUN      ] CriticalCohort.SwapRejectionAndExceptionRestoreBothBindings
+[       OK ] CriticalCohort.SwapRejectionAndExceptionRestoreBothBindings (4178 ms)
+[ RUN      ] CriticalCohort.SwapRejectsProtectedClusteredAndIllegalDestinations
+[       OK ] CriticalCohort.SwapRejectsProtectedClusteredAndIllegalDestinations (4403 ms)
+[ RUN      ] CriticalCohort.SwapPreservesRegionsAndAbsoluteConstraints
+[       OK ] CriticalCohort.SwapPreservesRegionsAndAbsoluteConstraints (5570 ms)
+[ RUN      ] CriticalCohort.SwapSearchRepairsThroughOccupiedSitesWithoutChangingFunctions
+[       OK ] CriticalCohort.SwapSearchRepairsThroughOccupiedSitesWithoutChangingFunctions (5372 ms)
+[ RUN      ] CriticalCohort.SwapSearchImprovesNativeReportedCone
+[       OK ] CriticalCohort.SwapSearchImprovesNativeReportedCone (4675 ms)
+[ RUN      ] CriticalCohort.EmptyDestinationMovesWholeCohort
+[       OK ] CriticalCohort.EmptyDestinationMovesWholeCohort (4543 ms)
+[ RUN      ] CriticalCohort.SingleRegisterCanPackWithItsDriverAtAnotherAlmSlot
+[       OK ] CriticalCohort.SingleRegisterCanPackWithItsDriverAtAnotherAlmSlot (5150 ms)
+[ RUN      ] CriticalCohort.RejectedRegisterSlotChangeRestoresEveryParticipant
+[       OK ] CriticalCohort.RejectedRegisterSlotChangeRestoresEveryParticipant (4591 ms)
+[ RUN      ] CriticalCohort.MultiCellCohortsCannotChangeTheirAlmSlots
+[       OK ] CriticalCohort.MultiCellCohortsCannotChangeTheirAlmSlots (4543 ms)
+[ RUN      ] CriticalCohort.PinPreviewMatchesRoutingWithoutInsertingRouteThroughs
+[       OK ] CriticalCohort.PinPreviewMatchesRoutingWithoutInsertingRouteThroughs (4593 ms)
+[ RUN      ] CriticalCohort.PinPreviewTimesSharedInputsOnTheirPhysicalPins
+[       OK ] CriticalCohort.PinPreviewTimesSharedInputsOnTheirPhysicalPins (4751 ms)
+[ RUN      ] CriticalCohort.PinPreviewExceptionRestoresPinsAndLabModes
+[       OK ] CriticalCohort.PinPreviewExceptionRestoresPinsAndLabModes (6981 ms)
+[ RUN      ] CriticalCohort.RouteThroughPreviewMatchesInsertedGraphEarlyAndLateTiming
+[       OK ] CriticalCohort.RouteThroughPreviewMatchesInsertedGraphEarlyAndLateTiming (7495 ms)
+[ RUN      ] CriticalCohort.ReservedLutPreservesDataInputInPreviewAndRouting
+[       OK ] CriticalCohort.ReservedLutPreservesDataInputInPreviewAndRouting (7457 ms)
+[ RUN      ] CriticalCohort.RouteThroughSelectionMatchesFourRegisterRoutingPriority
+[       OK ] CriticalCohort.RouteThroughSelectionMatchesFourRegisterRoutingPriority (7323 ms)
+[ RUN      ] CriticalCohort.RouteThroughPreviewLeavesFrozenLabTimingUntouched
+[       OK ] CriticalCohort.RouteThroughPreviewLeavesFrozenLabTimingUntouched (7483 ms)
+[ RUN      ] CriticalCohort.RouteThroughSelectionExcludesOccupiedLutCarryAndLut6Modes
+[       OK ] CriticalCohort.RouteThroughSelectionExcludesOccupiedLutCarryAndLut6Modes (7647 ms)
+[ RUN      ] CriticalCohort.NeighborhoodIncludesDirectDataNeighborsOnly
+[       OK ] CriticalCohort.NeighborhoodIncludesDirectDataNeighborsOnly (7374 ms)
+[ RUN      ] CriticalCohort.NeighborhoodClosesNeighborCarryCluster
+[       OK ] CriticalCohort.NeighborhoodClosesNeighborCarryCluster (7852 ms)
+[ RUN      ] CriticalCohort.UnrelatedDestinationGuestsStayAtHome
+[       OK ] CriticalCohort.UnrelatedDestinationGuestsStayAtHome (7428 ms)
+[ RUN      ] CriticalCohort.ClearsAnOccupiedLabAndPreservesGuests
+[       OK ] CriticalCohort.ClearsAnOccupiedLabAndPreservesGuests (7444 ms)
+[ RUN      ] CriticalCohort.IncludesCarryMembersOutsideTheSelectedLab
+[       OK ] CriticalCohort.IncludesCarryMembersOutsideTheSelectedLab (7703 ms)
+[ RUN      ] CriticalCohort.DisplacesWholeDestinationCarryCluster
+[       OK ] CriticalCohort.DisplacesWholeDestinationCarryCluster (7508 ms)
+[ RUN      ] CriticalCohort.RejectedTimingRestoresBindingsStrengthsAndInputCounts
+[       OK ] CriticalCohort.RejectedTimingRestoresBindingsStrengthsAndInputCounts (7743 ms)
+[ RUN      ] CriticalCohort.ExceptionDuringAcceptanceRestoresThePlacement
+[       OK ] CriticalCohort.ExceptionDuringAcceptanceRestoresThePlacement (7772 ms)
+[ RUN      ] CriticalCohort.SearchExhaustionRestoresPartiallyMovedParticipants
+[       OK ] CriticalCohort.SearchExhaustionRestoresPartiallyMovedParticipants (7634 ms)
+[ RUN      ] CriticalCohort.UnrelatedProtectedDestinationIsUntouched
+[       OK ] CriticalCohort.UnrelatedProtectedDestinationIsUntouched (7296 ms)
+[ RUN      ] CriticalCohort.CollidingProtectedDestinationIsUntouched
+[       OK ] CriticalCohort.CollidingProtectedDestinationIsUntouched (7020 ms)
+[ RUN      ] CriticalCohort.ProtectedMemberOutsideTheLabBlocksClusterMovement
+[       OK ] CriticalCohort.ProtectedMemberOutsideTheLabBlocksClusterMovement (10080 ms)
+[ RUN      ] CriticalCohort.MalformedClusterIsRejectedBeforeAnyMove
+[       OK ] CriticalCohort.MalformedClusterIsRejectedBeforeAnyMove (7660 ms)
+[ RUN      ] CriticalCohort.NativeTimingAcceptsCompleteSetupImprovement
+[       OK ] CriticalCohort.NativeTimingAcceptsCompleteSetupImprovement (7787 ms)
+[ RUN      ] CriticalCohort.NativeTimingRejectsRegressingAPassingClock
+[       OK ] CriticalCohort.NativeTimingRejectsRegressingAPassingClock (15690 ms)
+[ RUN      ] CriticalCohort.ImprovingWorstSetupCannotWorsenAnotherFailingEndpoint
+[       OK ] CriticalCohort.ImprovingWorstSetupCannotWorsenAnotherFailingEndpoint (7743 ms)
+[ RUN      ] CriticalCohort.ImprovedClockPairCannotMakeAPassingEndpointFail
+[       OK ] CriticalCohort.ImprovedClockPairCannotMakeAPassingEndpointFail (7497 ms)
+[ RUN      ] CriticalCohort.RoutedFocusCanImproveWithoutChangingThePredictedWorstEndpoint
+[       OK ] CriticalCohort.RoutedFocusCanImproveWithoutChangingThePredictedWorstEndpoint (7579 ms)
+[ RUN      ] CriticalCohort.NativeTimingRejectsRelatedClockHoldFailure
+[       OK ] CriticalCohort.NativeTimingRejectsRelatedClockHoldFailure (7530 ms)
+[ RUN      ] CriticalCohort.PassingDesignRemainsUnmoved
+[       OK ] CriticalCohort.PassingDesignRemainsUnmoved (7483 ms)
+[ RUN      ] CriticalCohort.RoutedGuidanceRepairsAMatchingNativeTimingCone
+[       OK ] CriticalCohort.RoutedGuidanceRepairsAMatchingNativeTimingCone (7680 ms)
+[ RUN      ] CriticalCohort.RoutedGuidanceResolvesInsertedRegisterRouteThrough
+[       OK ] CriticalCohort.RoutedGuidanceResolvesInsertedRegisterRouteThrough (7704 ms)
+[ RUN      ] CriticalCohort.RouteThroughGuidanceRejectsADifferentOriginalDriver
+[       OK ] CriticalCohort.RouteThroughGuidanceRejectsADifferentOriginalDriver (7629 ms)
+[ RUN      ] CriticalCohort.MismatchedGuidanceFailsBeforeMovingAnyCell
+[       OK ] CriticalCohort.MismatchedGuidanceFailsBeforeMovingAnyCell (7628 ms)
+[ RUN      ] CriticalCohort.NativeTimingRejectsChangedClockConstraints
+[       OK ] CriticalCohort.NativeTimingRejectsChangedClockConstraints (7699 ms)
+[ RUN      ] CriticalCohort.MeasuredModelMatchesInsertedGraphAndRejectsMismatches
+[       OK ] CriticalCohort.MeasuredModelMatchesInsertedGraphAndRejectsMismatches (15569 ms)
+[ RUN      ] CriticalCohort.CalibratedRepairPacksACriticalRegisterWithItsDriver
+[       OK ] CriticalCohort.CalibratedRepairPacksACriticalRegisterWithItsDriver (15626 ms)
+[ RUN      ] CriticalCohort.CalibratedRepairImprovesOneOfTwoTiedEnableEndpoints
+[       OK ] CriticalCohort.CalibratedRepairImprovesOneOfTwoTiedEnableEndpoints (16655 ms)
+[ RUN      ] CriticalCohort.CalibratedRepairImprovesOneOfTwoTiedMemoryAddressInputs
+[       OK ] CriticalCohort.CalibratedRepairImprovesOneOfTwoTiedMemoryAddressInputs (21470 ms)
+[ RUN      ] CriticalCohort.RoutedInventoryUsesNativeSetupHoldAndFailsClosed
+[       OK ] CriticalCohort.RoutedInventoryUsesNativeSetupHoldAndFailsClosed (17250 ms)
+[ RUN      ] CriticalCohort.StaticEndpointCoverageRequiresConstantProof
+[       OK ] CriticalCohort.StaticEndpointCoverageRequiresConstantProof (25542 ms)
+[----------] 49 tests from CriticalCohort (413232 ms total)
+
+[----------] Global test environment tear-down
+[==========] 91 tests from 2 test suites ran. (592731 ms total)
+[  PASSED  ] 91 tests.

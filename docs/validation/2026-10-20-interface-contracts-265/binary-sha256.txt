@@ -1,0 +1,2 @@
+ac4c7a17f6a9689bdd03fdf30b6bf2162a206fa2a8d711c5e51e14dd0fad9f67  final-bin/nextpnr-mistral
+ca512d6bc1ddbd3a8144f610569109b305da1f24fb8c029d74a6ea81bf286bfe  final-bin/nextpnr-mistral-test

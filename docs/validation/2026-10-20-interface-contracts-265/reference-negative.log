@@ -1,0 +1,10 @@
+rejected load
+rejected data_selector
+rejected oe_selector
+rejected inversion
+rejected corner
+rejected edge
+rejected boundary
+rejected early_query
+rejected buffer
+PASS: 9 reference semantic corruptions rejected

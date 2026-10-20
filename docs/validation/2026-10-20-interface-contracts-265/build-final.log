@@ -1,0 +1,81 @@
+[  0%] Built target oourafft
+[  0%] Built target nextpnr_route
+[  1%] Built target json11
+[  5%] Built target tools
+[  5%] Built target nextpnr_kernel
+[  5%] Built target nextpnr_place
+[ 17%] Built target generator
+[ 51%] Built target mistral
+[ 51%] Building CXX object mistral/CMakeFiles/nextpnr-mistral.dir/critical_cohort.cc.o
+[ 51%] Building CXX object mistral/CMakeFiles/nextpnr-mistral.dir/delay.cc.o
+[ 51%] Linking CXX executable ../nextpnr-mistral
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc: In member function ‘rnode_timing_build_input_wave.constprop’:
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1355:30: warning: ‘s.s’ may be used uninitialized [-Wmaybe-uninitialized]
+ 1355 |     lab_output_type labt = s.s == REG ? LAB_OUTPUTT_FF : LAB_OUTPUTT_COMB;
+      |                              ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1353:20: note: ‘s’ declared here
+ 1353 |     bmux_setting_t s;
+      |                    ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1355:30: warning: ‘s.s’ may be used uninitialized [-Wmaybe-uninitialized]
+ 1355 |     lab_output_type labt = s.s == REG ? LAB_OUTPUTT_FF : LAB_OUTPUTT_COMB;
+      |                              ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1353:20: note: ‘s’ declared here
+ 1353 |     bmux_setting_t s;
+      |                    ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1355:30: warning: ‘s.s’ may be used uninitialized [-Wmaybe-uninitialized]
+ 1355 |     lab_output_type labt = s.s == REG ? LAB_OUTPUTT_FF : LAB_OUTPUTT_COMB;
+      |                              ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1353:20: note: ‘s’ declared here
+ 1353 |     bmux_setting_t s;
+      |                    ^
+[100%] Built target nextpnr-mistral
+[  0%] Built target oourafft
+[  2%] Built target tools
+[  2%] Built target nextpnr_place
+[  2%] Built target nextpnr_kernel
+[  4%] Built target json11
+[  4%] Built target nextpnr_route
+[  4%] Built target gtest
+[ 14%] Built target generator
+[ 16%] Built target gtest_main
+[ 44%] Built target mistral
+[ 46%] Building CXX object mistral/CMakeFiles/nextpnr-mistral-test.dir/critical_cohort.cc.o
+[ 46%] Building CXX object mistral/CMakeFiles/nextpnr-mistral-test.dir/delay.cc.o
+[ 47%] Building CXX object mistral/CMakeFiles/nextpnr-mistral-test.dir/tests/io_delay.cc.o
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/io_delay.cc: In member function ‘virtual void IoDelayTest_DetailedReportPrintsIoClockTerminalsWithoutAsserting_Test::TestBody()’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/io_delay.cc:229:12: warning: suggest explicit braces to avoid ambiguous ‘else’ [-Wdangling-else]
+  229 |         if (segment.type == CriticalPath::Segment::Type::CLK_SKEW)
+      |            ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/io_delay.cc:259:16: warning: suggest explicit braces to avoid ambiguous ‘else’ [-Wdangling-else]
+  259 |             if (type == "clk-skew")
+      |                ^
+[ 47%] Linking CXX executable ../nextpnr-mistral-test
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc: In member function ‘rnode_timing_build_input_wave.constprop’:
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1355:30: warning: ‘s.s’ may be used uninitialized [-Wmaybe-uninitialized]
+ 1355 |     lab_output_type labt = s.s == REG ? LAB_OUTPUTT_FF : LAB_OUTPUTT_COMB;
+      |                              ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1353:20: note: ‘s’ declared here
+ 1353 |     bmux_setting_t s;
+      |                    ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1355:30: warning: ‘s.s’ may be used uninitialized [-Wmaybe-uninitialized]
+ 1355 |     lab_output_type labt = s.s == REG ? LAB_OUTPUTT_FF : LAB_OUTPUTT_COMB;
+      |                              ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1353:20: note: ‘s’ declared here
+ 1353 |     bmux_setting_t s;
+      |                    ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1355:30: warning: ‘s.s’ may be used uninitialized [-Wmaybe-uninitialized]
+ 1355 |     lab_output_type labt = s.s == REG ? LAB_OUTPUTT_FF : LAB_OUTPUTT_COMB;
+      |                              ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1353:20: note: ‘s’ declared here
+ 1353 |     bmux_setting_t s;
+      |                    ^
+In member function ‘__ct ’,
+    inlined from ‘TestBody’ at /home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/timing_report_paths.cc:619:1:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/nextpnr_types.h:428:8: warning: ‘MEM[(const struct CriticalPath &)&cross_clock_hold].max_delay’ may be used uninitialized [-Wmaybe-uninitialized]
+  428 | struct CriticalPath
+      |        ^
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/timing_report_paths.cc: In member function ‘TestBody’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/timing_report_paths.cc:606:18: note: ‘MEM[(const struct CriticalPath &)&cross_clock_hold].max_delay’ was declared here
+  606 |     CriticalPath cross_clock_hold;
+      |                  ^
+[100%] Built target nextpnr-mistral-test
