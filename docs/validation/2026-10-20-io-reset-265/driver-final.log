@@ -1,0 +1,41 @@
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = CriticalCohort.RoutedInventoryUsesNativeSetupHoldAndFailsClosed
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from CriticalCohort
+[ RUN      ] CriticalCohort.RoutedInventoryUsesNativeSetupHoldAndFailsClosed
+[       OK ] CriticalCohort.RoutedInventoryUsesNativeSetupHoldAndFailsClosed (4701 ms)
+[----------] 1 test from CriticalCohort (4701 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (4701 ms total)
+[  PASSED  ] 1 test.
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = CriticalCohort.StaticEndpointCoverageRequiresConstantProof
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from CriticalCohort
+[ RUN      ] CriticalCohort.StaticEndpointCoverageRequiresConstantProof
+[       OK ] CriticalCohort.StaticEndpointCoverageRequiresConstantProof (4812 ms)
+[----------] 1 test from CriticalCohort (4812 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (4812 ms total)
+[  PASSED  ] 1 test.
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = IoDelayTest.ExternalEndpointInventory
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from IoDelayTest
+[ RUN      ] IoDelayTest.ExternalEndpointInventory
+[       OK ] IoDelayTest.ExternalEndpointInventory (4780 ms)
+[----------] 1 test from IoDelayTest (4780 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (4780 ms total)
+[  PASSED  ] 1 test.
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 14.423s
+
+OK
