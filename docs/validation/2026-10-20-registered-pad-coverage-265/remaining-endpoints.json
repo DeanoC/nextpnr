@@ -1,0 +1,702 @@
+[
+  {
+    "cell": "HDMI_TX_CLK_MISTRAL_OB_PAD",
+    "port": "I",
+    "reason": "unmodeled HDMI clock-buffer launch",
+    "type": "MISTRAL_OB",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.38.0.2",
+      "FES_PINMAP_V1": "7b22636f756e74223a20322c202270696e73223a207b2249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AG5",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {},
+    "connections": {
+      "PAD": [
+        3257
+      ],
+      "I": [
+        3279
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.32.0.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_W11",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60577
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3360
+      ],
+      "I": [
+        60610
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_1",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.56.0.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AA13",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60577
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3363
+      ],
+      "I": [
+        60666
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_10",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.23.2",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AB26",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60727
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3366
+      ],
+      "I": [
+        60726
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_11",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.8.3",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AB23",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60577
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3369
+      ],
+      "I": [
+        60576
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_12",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.40.81.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_C12",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60577
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3372
+      ],
+      "I": [
+        60653
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_2",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.8.0.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_Y11",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60577
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3375
+      ],
+      "I": [
+        60680
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_3",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.4.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_Y19",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60577
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3378
+      ],
+      "I": [
+        60597
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_4",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.8.0.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AA11",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60577
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3381
+      ],
+      "I": [
+        60712
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_5",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.23.3",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AA26",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60577
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3384
+      ],
+      "I": [
+        60639
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_6",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.84.0.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AC23",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60577
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3387
+      ],
+      "I": [
+        60623
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_7",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.84.0.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AC22",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60577
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3390
+      ],
+      "I": [
+        60587
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_BA_MISTRAL_OB_PAD",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.25.3",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AB25",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60577
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3399
+      ],
+      "I": [
+        60777
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_BA_MISTRAL_OB_PAD_1",
+    "port": "PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference profile",
+    "type": "MISTRAL_SDROUT",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.6.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_Y17",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "parameters": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "connections": {
+      "CEOUT": [
+        60577
+      ],
+      "CLK": [
+        3502
+      ],
+      "PAD": [
+        3402
+      ],
+      "I": [
+        60787
+      ]
+    }
+  },
+  {
+    "cell": "locked_MISTRAL_FF_ACLR",
+    "port": "ACLR",
+    "reason": "ACLR requires validated reset-synchronizer/interface contract; physical qualification open",
+    "type": "MISTRAL_FF",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000001",
+      "NEXTPNR_BEL": "MISTRAL_FF.10.15.10",
+      "FES_PINMAP_V1": "7b22636f756e74223a20382c202270696e73223a207b2241434c52223a205b302c202241434c52225d2c2022434c4b223a205b302c2022434c4b225d2c202244415441494e223a205b302c202244415441494e225d2c2022454e41223a205b322c2022454e41225d2c202251223a205b302c202251225d2c202253434c52223a205b312c202253434c52225d2c20225344415441223a205b302c20225344415441225d2c2022534c4f4144223a205b312c2022534c4f4144225d7d7d",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:36.5-38.48|/home/deano/fes/out/cache/misteross-toolchains/slots/8e7eeca0616bb73be28b6f12b17c33a19dd11c12dc9fdb56d964e086621867a2/install/bin/../share/yosys/intel_alm/common/dff_map.v:6.16-6.121",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "parameters": {},
+    "connections": {
+      "SLOAD": [],
+      "SDATA": [],
+      "SCLR": [],
+      "Q": [
+        3830
+      ],
+      "ENA": [],
+      "DATAIN": [
+        6640
+      ],
+      "CLK": [
+        3502
+      ],
+      "ACLR": [
+        62
+      ]
+    }
+  },
+  {
+    "cell": "locked_MISTRAL_FF_ACLR_1",
+    "port": "ACLR",
+    "reason": "ACLR requires validated reset-synchronizer/interface contract; physical qualification open",
+    "type": "MISTRAL_FF",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000001",
+      "NEXTPNR_BEL": "MISTRAL_FF.11.20.20",
+      "FES_PINMAP_V1": "7b22636f756e74223a20382c202270696e73223a207b2241434c52223a205b302c202241434c52225d2c2022434c4b223a205b302c2022434c4b225d2c202244415441494e223a205b302c202244415441494e225d2c2022454e41223a205b322c2022454e41225d2c202251223a205b302c202251225d2c202253434c52223a205b312c202253434c52225d2c20225344415441223a205b302c20225344415441225d2c2022534c4f4144223a205b312c2022534c4f4144225d7d7d",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:39.5-41.52|/home/deano/fes/out/cache/misteross-toolchains/slots/8e7eeca0616bb73be28b6f12b17c33a19dd11c12dc9fdb56d964e086621867a2/install/bin/../share/yosys/intel_alm/common/dff_map.v:6.16-6.121",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "parameters": {},
+    "connections": {
+      "SLOAD": [],
+      "SDATA": [],
+      "SCLR": [],
+      "Q": [
+        6654
+      ],
+      "ENA": [],
+      "DATAIN": [
+        78385
+      ],
+      "CLK": [
+        3279
+      ],
+      "ACLR": [
+        62
+      ]
+    }
+  },
+  {
+    "cell": "locked_MISTRAL_FF_ACLR_1_Q_MISTRAL_FF_DATAIN",
+    "port": "ACLR",
+    "reason": "ACLR requires validated reset-synchronizer/interface contract; physical qualification open",
+    "type": "MISTRAL_FF",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000001",
+      "NEXTPNR_BEL": "MISTRAL_FF.11.20.56",
+      "FES_PINMAP_V1": "7b22636f756e74223a20382c202270696e73223a207b2241434c52223a205b302c202241434c52225d2c2022434c4b223a205b302c2022434c4b225d2c202244415441494e223a205b302c202244415441494e225d2c2022454e41223a205b322c2022454e41225d2c202251223a205b302c202251225d2c202253434c52223a205b312c202253434c52225d2c20225344415441223a205b302c20225344415441225d2c2022534c4f4144223a205b312c2022534c4f4144225d7d7d",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:39.5-41.52|/home/deano/fes/out/cache/misteross-toolchains/slots/8e7eeca0616bb73be28b6f12b17c33a19dd11c12dc9fdb56d964e086621867a2/install/bin/../share/yosys/intel_alm/common/dff_map.v:6.16-6.121",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "parameters": {},
+    "connections": {
+      "SLOAD": [],
+      "SDATA": [],
+      "SCLR": [],
+      "Q": [
+        6665
+      ],
+      "ENA": [],
+      "DATAIN": [
+        6654
+      ],
+      "CLK": [
+        3279
+      ],
+      "ACLR": [
+        62
+      ]
+    }
+  },
+  {
+    "cell": "locked_MISTRAL_FF_ACLR_DATAIN_MISTRAL_FF_Q",
+    "port": "ACLR",
+    "reason": "ACLR requires validated reset-synchronizer/interface contract; physical qualification open",
+    "type": "MISTRAL_FF",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000001",
+      "NEXTPNR_BEL": "MISTRAL_FF.10.15.46",
+      "FES_PINMAP_V1": "7b22636f756e74223a20382c202270696e73223a207b2241434c52223a205b302c202241434c52225d2c2022434c4b223a205b302c2022434c4b225d2c202244415441494e223a205b302c202244415441494e225d2c2022454e41223a205b322c2022454e41225d2c202251223a205b302c202251225d2c202253434c52223a205b312c202253434c52225d2c20225344415441223a205b302c20225344415441225d2c2022534c4f4144223a205b312c2022534c4f4144225d7d7d",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:36.5-38.48|/home/deano/fes/out/cache/misteross-toolchains/slots/8e7eeca0616bb73be28b6f12b17c33a19dd11c12dc9fdb56d964e086621867a2/install/bin/../share/yosys/intel_alm/common/dff_map.v:6.16-6.121",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "parameters": {},
+    "connections": {
+      "SLOAD": [],
+      "SDATA": [],
+      "SCLR": [],
+      "Q": [
+        6640
+      ],
+      "ENA": [],
+      "DATAIN": [
+        78385
+      ],
+      "CLK": [
+        3502
+      ],
+      "ACLR": [
+        62
+      ]
+    }
+  },
+  {
+    "cell": "scl",
+    "port": "I",
+    "reason": "constant open-drain data has no complete external proof",
+    "type": "MISTRAL_IO",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.6.0.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2249223a205b302c202249225d2c20224f223a205b302c20224f225d2c20224f45223a205b302c20224f45225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_U10",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:76.16-76.76",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "parameters": {},
+    "connections": {
+      "PAD": [
+        3255
+      ],
+      "OE": [
+        6631
+      ],
+      "O": [
+        6633
+      ],
+      "I": [
+        78384
+      ]
+    }
+  },
+  {
+    "cell": "scl",
+    "port": "OE",
+    "reason": "HPS I2C OE source lacks native launch timing",
+    "type": "MISTRAL_IO",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.6.0.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2249223a205b302c202249225d2c20224f223a205b302c20224f225d2c20224f45223a205b302c20224f45225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_U10",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:76.16-76.76",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "parameters": {},
+    "connections": {
+      "PAD": [
+        3255
+      ],
+      "OE": [
+        6631
+      ],
+      "O": [
+        6633
+      ],
+      "I": [
+        78384
+      ]
+    }
+  },
+  {
+    "cell": "sda",
+    "port": "I",
+    "reason": "constant open-drain data has no complete external proof",
+    "type": "MISTRAL_IO",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.4.0.2",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2249223a205b302c202249225d2c20224f223a205b302c20224f225d2c20224f45223a205b302c20224f45225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AA4",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:77.16-77.76",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "parameters": {},
+    "connections": {
+      "PAD": [
+        3256
+      ],
+      "OE": [
+        6632
+      ],
+      "O": [
+        6634
+      ],
+      "I": [
+        78384
+      ]
+    }
+  },
+  {
+    "cell": "sda",
+    "port": "OE",
+    "reason": "HPS I2C OE source lacks native launch timing",
+    "type": "MISTRAL_IO",
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.4.0.2",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2249223a205b302c202249225d2c20224f223a205b302c20224f225d2c20224f45223a205b302c20224f45225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AA4",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:77.16-77.76",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "parameters": {},
+    "connections": {
+      "PAD": [
+        3256
+      ],
+      "OE": [
+        6632
+      ],
+      "O": [
+        6634
+      ],
+      "I": [
+        78384
+      ]
+    }
+  }
+]

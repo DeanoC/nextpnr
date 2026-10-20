@@ -1,0 +1,41 @@
+{
+  "base_commit": "47c61f2295b96552b58db668a4ec98d4d819e717",
+  "implementation_commit": "dd2fee70864e47787678eb4249d4b69c75197ea5",
+  "implementation_tree": "1d31dc248a50fe8cb53411711046ae65dd6ae602",
+  "driver_commit": "dcd31ef372858bb919375c5e34f07b6f02885ebe",
+  "driver_tree": "65885a75f7353521e1cf77ede62ca42b111f2442",
+  "binary_source_commit": "dd2fee70864e47787678eb4249d4b69c75197ea5",
+  "binary_sha256": {
+    "nextpnr-mistral": "9a79f9cb0f1f2dcad0f3189ba920620b5bd2351f36e1cdc37713c3a668352bf6",
+    "nextpnr-mistral-test": "145960a68bf238ebf97242aac3b8161765602b5d4a8e19565bf1153f6f77cded"
+  },
+  "original_checkpoint_sha256": "733f1cc8ea765bed46dae44dcd744e4432edd75ddedaf232061c0a1d9756b4a6",
+  "new_route_invocations": 0,
+  "prior_charged_route_seconds": 1972.156284888,
+  "remaining_route_seconds": 1627.843715112,
+  "evidence_sha256": {
+    "binary-sha256.txt": "4b76404b32e35cdd3adf08fb3062f3df0818269ec037a7d0d7fca6caadc8078b",
+    "binary-version.txt": "e13f1f269573dd9849c0211e2fb8112c14251b5a811365bb9487a0d67350de53",
+    "check.py": "ba4eedbbd064d0717a6d1a87aee0db0c7750243e0a86f9a242b9c5c87e2339e2",
+    "driver-final.log": "814e91201ba0d083decef1733527acf03ef9f1b2c0e63e46a5905dc0fe94ed26",
+    "excluded-registered-pads.json": "5b668614aa8468e3cc404de16bf2146d3d3e07a76b304b99f89662bf5da18e26",
+    "focused-dev.log": "b8a4487303db8e7bb32c1631637664a58dc5ecedaf4b4d559825ccc6b75a21b2",
+    "forwarder-fixtures.json.gz": "91b866ff9db20a1adc9a3fa27e26b4441503564e5aee0f7731a624b883bb1a8e",
+    "host-final.log": "16fde6322838d2c10ec63aaaacde4f3c8867e51e473e2661986bdf95ef78f899",
+    "host-summary.json": "ecfa6d701983f420ce8d54fd486cda289d523569f16da389d48a650fa8552760",
+    "native-final.log": "a78762414d4585df8d5a118f7fce040aad0521c4349f74fa0c4825eeaa6511f6",
+    "pcxt-host-diagnostic.json.gz": "5e542d4f6b17a6f6ff0d15ce1539f9e510b6affbbdc6f5b4417cd0b6e138811a",
+    "physical-output-accounting.json": "67bb5da1456c408423636d74ea8835f8242d3800d907d327f11bc9609457b8be",
+    "previous-critical-swaps.log": "7f98307d654aa71e4e90740d609df26e4a02c8db83726711d104f73b0d31e320",
+    "previous-endpoint-coverage.log": "902608fe05cb207738af07f3a8b3f65333ba7ec77c93d754b8421974370271f0",
+    "previous-io-reset.log": "21fcfb611f535303115abf031faeae0c4ab6c1dbefb6f65cc061b1409deb0fc7",
+    "previous-output-coverage.log": "9f300e9932a30b79d428cbe04df84d5584efb10c1845b4960270c890db33b6dc",
+    "previous-routed-swap-guard.log": "bf0ae6786818d0c94b31eac5f350dc41ccacd6defc7718e7e7cc3f64a173ef46",
+    "reference-profile-overlay.json": "d8d45b035f8c1464cbed1bed804f237a2635dc14407a916089693f63b916daee",
+    "registered-fixtures.json.gz": "959f1df028090af532ceca76b5e0a22071772b29fd763c8eabf9c7ff62c4659e",
+    "registered-synthetic.sdc": "af4b53d02311f6fb41c74aafd19edbb3f2f6bc1246e6847cdf6f9f5bf61a01ba",
+    "remaining-endpoints.json": "f4350ef028a3a267501a81a671526b38ebc42d4599628ba0591acda2ac951456",
+    "synthetic-io.sdc": "91441c5e1650a1d585172ffc8f6337965ee55f3ee6a5ac006889f94718e487ba"
+  },
+  "scope": "Host-only conditional reference profile/load and arbitrary synthetic IO budgets. No physical signoff."
+}

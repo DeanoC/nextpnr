@@ -1,0 +1,32 @@
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = IoDelayTest.RegisteredEndpointInventory:IoDelayTest.NativeClockForwardingPreservesPadPolarityAndBothLaunchPhases:IoDelayTest.OutputInventoryNeverSubstitutesFabricTimingForPrivatePadBoundary
+[==========] Running 3 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 3 tests from IoDelayTest
+[ RUN      ] IoDelayTest.NativeClockForwardingPreservesPadPolarityAndBothLaunchPhases
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/io_delay.cc:1078: Failure
+Expected equality of these values:
+  *rows[0].hold_margin
+    Which is: 5000
+  0
+
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/io_delay.cc:1078: Failure
+Expected equality of these values:
+  *rows[0].hold_margin
+    Which is: 5000
+  0
+
+[  FAILED  ] IoDelayTest.NativeClockForwardingPreservesPadPolarityAndBothLaunchPhases (4675 ms)
+[ RUN      ] IoDelayTest.OutputInventoryNeverSubstitutesFabricTimingForPrivatePadBoundary
+[       OK ] IoDelayTest.OutputInventoryNeverSubstitutesFabricTimingForPrivatePadBoundary (5363 ms)
+[ RUN      ] IoDelayTest.RegisteredEndpointInventory
+[       OK ] IoDelayTest.RegisteredEndpointInventory (5247 ms)
+[----------] 3 tests from IoDelayTest (15287 ms total)
+
+[----------] Global test environment tear-down
+[==========] 3 tests from 1 test suite ran. (15287 ms total)
+[  PASSED  ] 2 tests.
+[  FAILED  ] 1 test, listed below:
+[  FAILED  ] IoDelayTest.NativeClockForwardingPreservesPadPolarityAndBothLaunchPhases
+
+ 1 FAILED TEST

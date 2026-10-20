@@ -1,0 +1,241 @@
+{
+  "original": {
+    "dynamic_pairs": 17147,
+    "static_proofs": 1888,
+    "unsupported": 107,
+    "complete": false,
+    "final_analogue": false
+  },
+  "registered": {
+    "dynamic_pairs": 17233,
+    "static_proofs": 1888,
+    "unsupported": 22,
+    "complete": false,
+    "final_analogue": false
+  },
+  "synthetic": {
+    "dynamic_pairs": 17224,
+    "static_proofs": 1888,
+    "unsupported": 30,
+    "complete": false,
+    "final_analogue": false
+  },
+  "previous_rows_identical": true,
+  "overlay_preserves_all_previous_rows": true,
+  "all_static_proofs_identical": true,
+  "all_clocks_identical": true,
+  "resolved_physical_pads": [
+    [
+      "SDRAM_A_MISTRAL_OB_PAD_8",
+      "PAD"
+    ],
+    [
+      "SDRAM_A_MISTRAL_OB_PAD_9",
+      "PAD"
+    ],
+    [
+      "SDRAM_CKE_MISTRAL_OB_PAD",
+      "PAD"
+    ],
+    [
+      "SDRAM_CLK_MISTRAL_OB_PAD",
+      "PAD"
+    ],
+    [
+      "SDRAM_nCAS_MISTRAL_OB_PAD",
+      "PAD"
+    ],
+    [
+      "SDRAM_nCS_MISTRAL_OB_PAD",
+      "PAD"
+    ],
+    [
+      "SDRAM_nRAS_MISTRAL_OB_PAD",
+      "PAD"
+    ],
+    [
+      "SDRAM_nWE_MISTRAL_OB_PAD",
+      "PAD"
+    ]
+  ],
+  "new_channels": {
+    "[\"SDRAM_A_MISTRAL_OB_PAD_8\", \"PAD$timing$write$data$external\"]": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 5900,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -4180,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ],
+    "[\"SDRAM_A_MISTRAL_OB_PAD_9\", \"PAD$timing$write$data$external\"]": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 5570,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -3850,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ],
+    "[\"SDRAM_CKE_MISTRAL_OB_PAD\", \"PAD$timing$write$data$external\"]": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 5290,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -3570,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ],
+    "[\"SDRAM_CLK_MISTRAL_OB_PAD\", \"PAD$timing$write$fall$external\"]": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 5850,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7400,
+        "min_path": -1000,
+        "setup": -4250,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ],
+    "[\"SDRAM_CLK_MISTRAL_OB_PAD\", \"PAD$timing$write$rise$external\"]": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 10850,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          1
+        ],
+        "max_path": 7380,
+        "min_path": 4000,
+        "setup": -9230,
+        "setup_timed": true,
+        "setup_window": 5000
+      }
+    ],
+    "[\"SDRAM_nCAS_MISTRAL_OB_PAD\", \"PAD$timing$write$data$external\"]": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 5780,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -4060,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ],
+    "[\"SDRAM_nCS_MISTRAL_OB_PAD\", \"PAD$timing$write$data$external\"]": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 5915,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -4195,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ],
+    "[\"SDRAM_nRAS_MISTRAL_OB_PAD\", \"PAD$timing$write$data$external\"]": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 5500,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -3780,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ],
+    "[\"SDRAM_nWE_MISTRAL_OB_PAD\", \"PAD$timing$write$data$external\"]": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 5780,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -4060,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  "remaining_classes": {
+    "unmodeled HDMI clock-buffer launch": 1,
+    "dynamic CEOUT outside constant-enable reference profile": 13,
+    "ACLR requires validated reset-synchronizer/interface contract; physical qualification open": 4,
+    "constant open-drain data has no complete external proof": 2,
+    "HPS I2C OE source lacks native launch timing": 2
+  }
+}

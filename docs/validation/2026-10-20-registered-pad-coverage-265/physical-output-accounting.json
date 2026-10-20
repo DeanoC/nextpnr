@@ -1,0 +1,3288 @@
+[
+  {
+    "cell": "sda",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "HDMI_I2C_SDA"
+    ],
+    "dynamic_endpoints": {},
+    "registered_contracts": {},
+    "unsupported": [
+      "I",
+      "OE"
+    ]
+  },
+  {
+    "cell": "scl",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "HDMI_I2C_SCL"
+    ],
+    "dynamic_endpoints": {},
+    "registered_contracts": {},
+    "unsupported": [
+      "I",
+      "OE"
+    ]
+  },
+  {
+    "cell": "SDRAM_nWE_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_nWE"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_nWE_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 3037,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8583,
+          "min_path": 5920,
+          "setup": 3377,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_nWE_MISTRAL_OB_PAD\", \"PAD$timing$write$data$external\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 5780,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7280,
+          "min_path": -1000,
+          "setup": -4060,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {
+      "[\"SDRAM_nWE_MISTRAL_OB_PAD\", \"PAD\", false]": {
+        "attrs": {
+          "BEL_STRENGTH": "00000000000000000000000000000101",
+          "BOARD_MODEL_FAR_C": "30P",
+          "FAST_OUTPUT_REGISTER": "ON",
+          "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+          "IO_STANDARD": "3.3-V LVTTL",
+          "LOC": "PIN_AA19",
+          "NEXTPNR_BEL": "MISTRAL_IO.68.0.0",
+          "NEXTPNR_GPIO_TIMING_PROFILE": "QUARTUS_17_0_2_RAMTEST",
+          "keep": "00000000000000000000000000000001"
+        },
+        "bel": "MISTRAL_IO.68.0.0",
+        "channels": {
+          "data": {
+            "clock_port": "CLK",
+            "clock_to_q_fall": [
+              0,
+              5280
+            ],
+            "clock_to_q_rise": [
+              0,
+              5280
+            ],
+            "edge": 0,
+            "endpoint": [
+              "SDRAM_nWE_MISTRAL_OB_PAD",
+              "PAD$timing$write$data$external"
+            ],
+            "hold": [
+              0,
+              0
+            ],
+            "setup": [
+              0,
+              0
+            ]
+          }
+        },
+        "net": "SDRAM_nWE",
+        "params": {
+          "IOREG_OUT_POWER_UP": "00000000000000000000000000000001"
+        },
+        "pins": {
+          "CLK": 0,
+          "I": 0,
+          "PAD": 0
+        },
+        "port": "SDRAM_nWE",
+        "ports": {
+          "CLK": [
+            0,
+            "clocks[0]"
+          ],
+          "I": [
+            0,
+            "system.sdram_nwe"
+          ],
+          "PAD": [
+            1,
+            "SDRAM_nWE"
+          ]
+        },
+        "type": "MISTRAL_SDROUT"
+      }
+    },
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_nRAS_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_nRAS"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_nRAS_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 2787,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 9134,
+          "min_path": 5872,
+          "setup": 3527,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_nRAS_MISTRAL_OB_PAD\", \"PAD$timing$write$data$external\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 5500,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7280,
+          "min_path": -1000,
+          "setup": -3780,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {
+      "[\"SDRAM_nRAS_MISTRAL_OB_PAD\", \"PAD\", false]": {
+        "attrs": {
+          "BEL_STRENGTH": "00000000000000000000000000000101",
+          "BOARD_MODEL_FAR_C": "30P",
+          "FAST_OUTPUT_REGISTER": "ON",
+          "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+          "IO_STANDARD": "3.3-V LVTTL",
+          "LOC": "PIN_W14",
+          "NEXTPNR_BEL": "MISTRAL_IO.60.0.0",
+          "NEXTPNR_GPIO_TIMING_PROFILE": "QUARTUS_17_0_2_RAMTEST",
+          "keep": "00000000000000000000000000000001"
+        },
+        "bel": "MISTRAL_IO.60.0.0",
+        "channels": {
+          "data": {
+            "clock_port": "CLK",
+            "clock_to_q_fall": [
+              0,
+              5280
+            ],
+            "clock_to_q_rise": [
+              0,
+              5280
+            ],
+            "edge": 0,
+            "endpoint": [
+              "SDRAM_nRAS_MISTRAL_OB_PAD",
+              "PAD$timing$write$data$external"
+            ],
+            "hold": [
+              0,
+              0
+            ],
+            "setup": [
+              0,
+              0
+            ]
+          }
+        },
+        "net": "SDRAM_nRAS",
+        "params": {
+          "IOREG_OUT_POWER_UP": "00000000000000000000000000000001"
+        },
+        "pins": {
+          "CLK": 0,
+          "I": 0,
+          "PAD": 0
+        },
+        "port": "SDRAM_nRAS",
+        "ports": {
+          "CLK": [
+            0,
+            "clocks[0]"
+          ],
+          "I": [
+            0,
+            "system.sdram_nras"
+          ],
+          "PAD": [
+            1,
+            "SDRAM_nRAS"
+          ]
+        },
+        "type": "MISTRAL_SDROUT"
+      }
+    },
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_nCS_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_nCS"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_nCS_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 2054,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8975,
+          "min_path": 5272,
+          "setup": 4258,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_nCS_MISTRAL_OB_PAD\", \"PAD$timing$write$data$external\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 5915,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7280,
+          "min_path": -1000,
+          "setup": -4195,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {
+      "[\"SDRAM_nCS_MISTRAL_OB_PAD\", \"PAD\", false]": {
+        "attrs": {
+          "BEL_STRENGTH": "00000000000000000000000000000101",
+          "BOARD_MODEL_FAR_C": "30P",
+          "FAST_OUTPUT_REGISTER": "ON",
+          "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+          "IO_STANDARD": "3.3-V LVTTL",
+          "LOC": "PIN_Y18",
+          "NEXTPNR_BEL": "MISTRAL_IO.89.6.1",
+          "NEXTPNR_GPIO_TIMING_PROFILE": "QUARTUS_17_0_2_RAMTEST",
+          "keep": "00000000000000000000000000000001"
+        },
+        "bel": "MISTRAL_IO.89.6.1",
+        "channels": {
+          "data": {
+            "clock_port": "CLK",
+            "clock_to_q_fall": [
+              0,
+              5280
+            ],
+            "clock_to_q_rise": [
+              0,
+              5280
+            ],
+            "edge": 0,
+            "endpoint": [
+              "SDRAM_nCS_MISTRAL_OB_PAD",
+              "PAD$timing$write$data$external"
+            ],
+            "hold": [
+              0,
+              0
+            ],
+            "setup": [
+              0,
+              0
+            ]
+          }
+        },
+        "net": "SDRAM_nCS",
+        "params": {},
+        "pins": {
+          "CLK": 0,
+          "I": 0,
+          "PAD": 0
+        },
+        "port": "SDRAM_nCS",
+        "ports": {
+          "CLK": [
+            0,
+            "clocks[0]"
+          ],
+          "I": [
+            0,
+            "SDRAM_nCS_MISTRAL_OB_PAD$sdr_data"
+          ],
+          "PAD": [
+            1,
+            "SDRAM_nCS"
+          ]
+        },
+        "type": "MISTRAL_SDROUT"
+      }
+    },
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_nCAS_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_nCAS"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_nCAS_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 3037,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8893,
+          "min_path": 6142,
+          "setup": 3067,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_nCAS_MISTRAL_OB_PAD\", \"PAD$timing$write$data$external\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 5780,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7280,
+          "min_path": -1000,
+          "setup": -4060,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {
+      "[\"SDRAM_nCAS_MISTRAL_OB_PAD\", \"PAD\", false]": {
+        "attrs": {
+          "BEL_STRENGTH": "00000000000000000000000000000101",
+          "BOARD_MODEL_FAR_C": "30P",
+          "FAST_OUTPUT_REGISTER": "ON",
+          "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+          "IO_STANDARD": "3.3-V LVTTL",
+          "LOC": "PIN_AA18",
+          "NEXTPNR_BEL": "MISTRAL_IO.68.0.1",
+          "NEXTPNR_GPIO_TIMING_PROFILE": "QUARTUS_17_0_2_RAMTEST",
+          "keep": "00000000000000000000000000000001"
+        },
+        "bel": "MISTRAL_IO.68.0.1",
+        "channels": {
+          "data": {
+            "clock_port": "CLK",
+            "clock_to_q_fall": [
+              0,
+              5280
+            ],
+            "clock_to_q_rise": [
+              0,
+              5280
+            ],
+            "edge": 0,
+            "endpoint": [
+              "SDRAM_nCAS_MISTRAL_OB_PAD",
+              "PAD$timing$write$data$external"
+            ],
+            "hold": [
+              0,
+              0
+            ],
+            "setup": [
+              0,
+              0
+            ]
+          }
+        },
+        "net": "SDRAM_nCAS",
+        "params": {
+          "IOREG_OUT_POWER_UP": "00000000000000000000000000000001"
+        },
+        "pins": {
+          "CLK": 0,
+          "I": 0,
+          "PAD": 0
+        },
+        "port": "SDRAM_nCAS",
+        "ports": {
+          "CLK": [
+            0,
+            "clocks[0]"
+          ],
+          "I": [
+            0,
+            "system.sdram_ncas"
+          ],
+          "PAD": [
+            1,
+            "SDRAM_nCAS"
+          ]
+        },
+        "type": "MISTRAL_SDROUT"
+      }
+    },
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_9",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[8]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_9\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7901,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6521,
+          "min_path": 3521,
+          "setup": -901,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_9\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7901,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7431,
+          "min_path": 4431,
+          "setup": -901,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_8",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[10]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_8\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7971,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6761,
+          "min_path": 3761,
+          "setup": -971,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_8\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7691,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7221,
+          "min_path": 4221,
+          "setup": -691,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_7",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[15]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_7\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7061,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5516,
+          "min_path": 2516,
+          "setup": -61,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_7\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 6711,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6241,
+          "min_path": 3241,
+          "setup": 289,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_6",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[12]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_6\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7131,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5546,
+          "min_path": 2546,
+          "setup": -131,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_6\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7131,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6661,
+          "min_path": 3661,
+          "setup": -131,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_5",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[1]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_5\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 10291,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 9646,
+          "min_path": 6646,
+          "setup": -3291,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_5\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 9941,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 9471,
+          "min_path": 6471,
+          "setup": -2941,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_4",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[3]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_4\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 6921,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5576,
+          "min_path": 2576,
+          "setup": 79,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_4\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 6571,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6101,
+          "min_path": 3101,
+          "setup": 429,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_3",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[2]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_3\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 11511,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 10361,
+          "min_path": 7361,
+          "setup": -4511,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_3\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 10151,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 9681,
+          "min_path": 6681,
+          "setup": -3151,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_2",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[7]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_2\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7131,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5786,
+          "min_path": 2786,
+          "setup": -131,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_2\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 6781,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6311,
+          "min_path": 3311,
+          "setup": 219,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_15",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[13]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_15\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7971,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6461,
+          "min_path": 3461,
+          "setup": -971,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_15\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7691,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7221,
+          "min_path": 4221,
+          "setup": -691,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_14",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[6]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_14\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7201,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5716,
+          "min_path": 2716,
+          "setup": -201,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_14\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7201,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6731,
+          "min_path": 3731,
+          "setup": -201,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_13",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[5]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_13\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 10291,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 9646,
+          "min_path": 6646,
+          "setup": -3291,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_13\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 9941,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 9471,
+          "min_path": 6471,
+          "setup": -2941,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_12",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[4]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_12\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7131,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5646,
+          "min_path": 2646,
+          "setup": -131,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_12\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7131,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6661,
+          "min_path": 3661,
+          "setup": -131,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_11",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[11]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_11\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7901,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6451,
+          "min_path": 3451,
+          "setup": -901,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_11\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7901,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7431,
+          "min_path": 4431,
+          "setup": -901,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_10",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[9]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_10\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7691,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6311,
+          "min_path": 3311,
+          "setup": -691,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_10\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7691,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7221,
+          "min_path": 4221,
+          "setup": -691,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_1",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[0]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_1\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 6991,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5611,
+          "min_path": 2611,
+          "setup": 9,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD_1\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 6571,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6101,
+          "min_path": 3101,
+          "setup": 429,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[14]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7481,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6101,
+          "min_path": 3101,
+          "setup": -481,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_DQ_MISTRAL_IO_PAD\", \"OE\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 7061,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6591,
+          "min_path": 3591,
+          "setup": -61,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQML_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "SDRAM_DQML"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQML_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 6781,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6201,
+          "min_path": 3201,
+          "setup": 219,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQMH_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "SDRAM_DQMH"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_DQMH_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 6781,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6201,
+          "min_path": 3201,
+          "setup": 219,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_CLK_MISTRAL_OB_PAD",
+    "type": "MISTRAL_DDROUT",
+    "top_ports": [
+      "SDRAM_CLK"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_CLK_MISTRAL_OB_PAD\", \"PAD$timing$write$fall$external\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 5850,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7400,
+          "min_path": -1000,
+          "setup": -4250,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_CLK_MISTRAL_OB_PAD\", \"PAD$timing$write$rise$external\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 10850,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            1
+          ],
+          "max_path": 7380,
+          "min_path": 4000,
+          "setup": -9230,
+          "setup_timed": true,
+          "setup_window": 5000
+        }
+      ]
+    },
+    "registered_contracts": {
+      "[\"SDRAM_CLK_MISTRAL_OB_PAD\", \"PAD\", false]": {
+        "attrs": {
+          "BEL_STRENGTH": "00000000000000000000000000000101",
+          "BOARD_MODEL_FAR_C": "30P",
+          "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+          "IO_STANDARD": "3.3-V LVTTL",
+          "LOC": "PIN_AD20",
+          "NEXTPNR_BEL": "MISTRAL_IO.70.0.1",
+          "NEXTPNR_GPIO_TIMING_PROFILE": "QUARTUS_17_0_2_RAMTEST",
+          "keep": "00000000000000000000000000000001"
+        },
+        "bel": "MISTRAL_IO.70.0.1",
+        "channels": {
+          "fall": {
+            "clock_port": "CLK",
+            "clock_to_q_fall": [
+              0,
+              5400
+            ],
+            "clock_to_q_rise": [
+              0,
+              5400
+            ],
+            "edge": 0,
+            "endpoint": [
+              "SDRAM_CLK_MISTRAL_OB_PAD",
+              "PAD$timing$write$fall$external"
+            ],
+            "hold": [
+              0,
+              0
+            ],
+            "setup": [
+              0,
+              0
+            ]
+          },
+          "rise": {
+            "clock_port": "CLK",
+            "clock_to_q_fall": [
+              0,
+              5380
+            ],
+            "clock_to_q_rise": [
+              0,
+              5380
+            ],
+            "edge": 1,
+            "endpoint": [
+              "SDRAM_CLK_MISTRAL_OB_PAD",
+              "PAD$timing$write$rise$external"
+            ],
+            "hold": [
+              0,
+              0
+            ],
+            "setup": [
+              0,
+              0
+            ]
+          }
+        },
+        "net": "SDRAM_CLK",
+        "params": {
+          "DDR_HIGH": "00000000000000000000000000000000"
+        },
+        "pins": {
+          "CLK": 0,
+          "I": 0,
+          "PAD": 0
+        },
+        "port": "SDRAM_CLK",
+        "ports": {
+          "CLK": [
+            0,
+            "clocks[0]"
+          ],
+          "PAD": [
+            1,
+            "SDRAM_CLK"
+          ]
+        },
+        "type": "MISTRAL_DDROUT"
+      }
+    },
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_CKE_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_CKE"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_CKE_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 2304,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7299,
+          "min_path": 3464,
+          "setup": 4171,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_CKE_MISTRAL_OB_PAD\", \"PAD$timing$write$data$external\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 5290,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7280,
+          "min_path": -1000,
+          "setup": -3570,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {
+      "[\"SDRAM_CKE_MISTRAL_OB_PAD\", \"PAD\", false]": {
+        "attrs": {
+          "BEL_STRENGTH": "00000000000000000000000000000101",
+          "BOARD_MODEL_FAR_C": "30P",
+          "FAST_OUTPUT_REGISTER": "ON",
+          "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+          "IO_STANDARD": "3.3-V LVTTL",
+          "LOC": "PIN_AG10",
+          "NEXTPNR_BEL": "MISTRAL_IO.54.0.2",
+          "NEXTPNR_GPIO_TIMING_PROFILE": "QUARTUS_17_0_2_RAMTEST",
+          "keep": "00000000000000000000000000000001"
+        },
+        "bel": "MISTRAL_IO.54.0.2",
+        "channels": {
+          "data": {
+            "clock_port": "CLK",
+            "clock_to_q_fall": [
+              0,
+              5280
+            ],
+            "clock_to_q_rise": [
+              0,
+              5280
+            ],
+            "edge": 0,
+            "endpoint": [
+              "SDRAM_CKE_MISTRAL_OB_PAD",
+              "PAD$timing$write$data$external"
+            ],
+            "hold": [
+              0,
+              0
+            ],
+            "setup": [
+              0,
+              0
+            ]
+          }
+        },
+        "net": "SDRAM_CKE",
+        "params": {},
+        "pins": {
+          "CLK": 0,
+          "I": 0,
+          "PAD": 0
+        },
+        "port": "SDRAM_CKE",
+        "ports": {
+          "CLK": [
+            0,
+            "clocks[0]"
+          ],
+          "I": [
+            0,
+            "SDRAM_CKE_MISTRAL_OB_PAD$sdr_data"
+          ],
+          "PAD": [
+            1,
+            "SDRAM_CKE"
+          ]
+        },
+        "type": "MISTRAL_SDROUT"
+      }
+    },
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_BA_MISTRAL_OB_PAD_1",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_BA[0]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_BA_MISTRAL_OB_PAD_1\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 1825,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8238,
+          "min_path": 4090,
+          "setup": 4909,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_BA_MISTRAL_OB_PAD_1\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 2053,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5828,
+          "min_path": 4483,
+          "setup": 6437,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_BA_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_BA[1]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_BA_MISTRAL_OB_PAD\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 3825,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8338,
+          "min_path": 4190,
+          "setup": 2909,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_BA_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 3453,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5528,
+          "min_path": 4048,
+          "setup": 4837,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_9",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[11]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_9\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 2685,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8205,
+          "min_path": 5575,
+          "setup": 3785,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD_9\", \"PAD$timing$write$data$external\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 5570,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7280,
+          "min_path": -1000,
+          "setup": -3850,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_9\", \"PAD\", false]": {
+        "attrs": {
+          "BEL_STRENGTH": "00000000000000000000000000000101",
+          "BOARD_MODEL_FAR_C": "30P",
+          "FAST_OUTPUT_REGISTER": "ON",
+          "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+          "IO_STANDARD": "3.3-V LVTTL",
+          "LOC": "PIN_AD17",
+          "NEXTPNR_BEL": "MISTRAL_IO.62.0.0",
+          "NEXTPNR_GPIO_TIMING_PROFILE": "QUARTUS_17_0_2_RAMTEST",
+          "keep": "00000000000000000000000000000001"
+        },
+        "bel": "MISTRAL_IO.62.0.0",
+        "channels": {
+          "data": {
+            "clock_port": "CLK",
+            "clock_to_q_fall": [
+              0,
+              5280
+            ],
+            "clock_to_q_rise": [
+              0,
+              5280
+            ],
+            "edge": 0,
+            "endpoint": [
+              "SDRAM_A_MISTRAL_OB_PAD_9",
+              "PAD$timing$write$data$external"
+            ],
+            "hold": [
+              0,
+              0
+            ],
+            "setup": [
+              0,
+              0
+            ]
+          }
+        },
+        "net": "SDRAM_A[11]",
+        "params": {},
+        "pins": {
+          "CLK": 0,
+          "I": 0,
+          "PAD": 0
+        },
+        "port": "SDRAM_A[11]",
+        "ports": {
+          "CLK": [
+            0,
+            "clocks[0]"
+          ],
+          "I": [
+            0,
+            "SDRAM_A_MISTRAL_OB_PAD_9$sdr_data"
+          ],
+          "PAD": [
+            1,
+            "SDRAM_A[11]"
+          ]
+        },
+        "type": "MISTRAL_SDROUT"
+      }
+    },
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_8",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[12]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_8\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 5795,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 11645,
+          "min_path": 9015,
+          "setup": 675,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD_8\", \"PAD$timing$write$data$external\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 5900,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7280,
+          "min_path": -1000,
+          "setup": -4180,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_8\", \"PAD\", false]": {
+        "attrs": {
+          "BEL_STRENGTH": "00000000000000000000000000000101",
+          "BOARD_MODEL_FAR_C": "30P",
+          "FAST_OUTPUT_REGISTER": "ON",
+          "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+          "IO_STANDARD": "3.3-V LVTTL",
+          "LOC": "PIN_D12",
+          "NEXTPNR_BEL": "MISTRAL_IO.40.81.0",
+          "NEXTPNR_GPIO_TIMING_PROFILE": "QUARTUS_17_0_2_RAMTEST",
+          "keep": "00000000000000000000000000000001"
+        },
+        "bel": "MISTRAL_IO.40.81.0",
+        "channels": {
+          "data": {
+            "clock_port": "CLK",
+            "clock_to_q_fall": [
+              0,
+              5280
+            ],
+            "clock_to_q_rise": [
+              0,
+              5280
+            ],
+            "edge": 0,
+            "endpoint": [
+              "SDRAM_A_MISTRAL_OB_PAD_8",
+              "PAD$timing$write$data$external"
+            ],
+            "hold": [
+              0,
+              0
+            ],
+            "setup": [
+              0,
+              0
+            ]
+          }
+        },
+        "net": "SDRAM_A[12]",
+        "params": {},
+        "pins": {
+          "CLK": 0,
+          "I": 0,
+          "PAD": 0
+        },
+        "port": "SDRAM_A[12]",
+        "ports": {
+          "CLK": [
+            0,
+            "clocks[0]"
+          ],
+          "I": [
+            0,
+            "SDRAM_A_MISTRAL_OB_PAD_8$sdr_data"
+          ],
+          "PAD": [
+            1,
+            "SDRAM_A[12]"
+          ]
+        },
+        "type": "MISTRAL_SDROUT"
+      }
+    },
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_7",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[8]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_7\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 1825,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8663,
+          "min_path": 4515,
+          "setup": 4909,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD_7\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 2053,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6078,
+          "min_path": 4808,
+          "setup": 6637,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_6",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[7]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_6\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 1825,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8663,
+          "min_path": 4515,
+          "setup": 4909,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD_6\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 2053,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6078,
+          "min_path": 4708,
+          "setup": 7087,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_5",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[1]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_5\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 3425,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8138,
+          "min_path": 3990,
+          "setup": 3309,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD_5\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 2450,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5491,
+          "min_path": 3580,
+          "setup": 5144,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_4",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[3]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_4\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 4765,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8943,
+          "min_path": 4795,
+          "setup": 1969,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD_4\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 4555,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6934,
+          "min_path": 4690,
+          "setup": 3966,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_3",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[5]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_3\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 1825,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8438,
+          "min_path": 4290,
+          "setup": 4909,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD_3\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 2175,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6498,
+          "min_path": 4576,
+          "setup": 6837,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_2",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[0]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_2\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 4765,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8943,
+          "min_path": 4795,
+          "setup": 1969,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD_2\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 4625,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 6934,
+          "min_path": 4825,
+          "setup": 3697,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_12",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[9]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_12\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 6525,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 12923,
+          "min_path": 8775,
+          "setup": 209,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD_12\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 4953,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 10113,
+          "min_path": 8103,
+          "setup": 2137,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_11",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[6]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_11\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 1825,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8038,
+          "min_path": 3890,
+          "setup": 4909,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD_11\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 2053,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5568,
+          "min_path": 4288,
+          "setup": 6497,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_10",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[10]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_10\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 4003,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8488,
+          "min_path": 5073,
+          "setup": 3257,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD_10\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 3381,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5328,
+          "min_path": 4146,
+          "setup": 5237,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_1",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[2]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD_1\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 1825,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 7683,
+          "min_path": 3535,
+          "setup": 4909,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD_1\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 1825,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5814,
+          "min_path": 3700,
+          "setup": 6344,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[4]"
+    ],
+    "dynamic_endpoints": {
+      "[\"SDRAM_A_MISTRAL_OB_PAD\", \"CEOUT\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 3085,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 8103,
+          "min_path": 3955,
+          "setup": 3649,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ],
+      "[\"SDRAM_A_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clocks[0]",
+            0
+          ],
+          "hold": 3033,
+          "hold_related": true,
+          "launch": [
+            "clocks[0]",
+            0
+          ],
+          "max_path": 5238,
+          "min_path": 4043,
+          "setup": 5827,
+          "setup_timed": true,
+          "setup_window": 10000
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "HDMI_TX_VS_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_VS"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_VS_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 7131,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 5061,
+          "min_path": 2061,
+          "setup": 3337,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_HS_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_HS"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_HS_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 5521,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 3906,
+          "min_path": 906,
+          "setup": 4947,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_9",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[3]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_9\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 5661,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4011,
+          "min_path": 1011,
+          "setup": 4807,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_8",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[1]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_8\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6361,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4326,
+          "min_path": 1326,
+          "setup": 4107,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_7",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[17]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_7\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6291,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4256,
+          "min_path": 1256,
+          "setup": 4177,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_6",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[9]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_6\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 5661,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4011,
+          "min_path": 1011,
+          "setup": 4807,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_5",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[10]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_5\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 5941,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 3906,
+          "min_path": 906,
+          "setup": 4527,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_4",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[8]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_4\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6221,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4186,
+          "min_path": 1186,
+          "setup": 4247,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_3",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[22]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_3\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6081,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4046,
+          "min_path": 1046,
+          "setup": 4387,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_23",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[15]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_23\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6151,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4116,
+          "min_path": 1116,
+          "setup": 4317,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_22",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[16]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_22\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 5941,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 3906,
+          "min_path": 906,
+          "setup": 4527,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_21",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[4]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_21\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6081,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4046,
+          "min_path": 1046,
+          "setup": 4387,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_20",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[12]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_20\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6011,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 3976,
+          "min_path": 976,
+          "setup": 4457,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_2",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[6]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_2\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6081,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4046,
+          "min_path": 1046,
+          "setup": 4387,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_19",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[0]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_19\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6361,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4326,
+          "min_path": 1326,
+          "setup": 4107,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_18",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[11]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_18\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 5591,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 3941,
+          "min_path": 941,
+          "setup": 4877,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_17",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[5]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_17\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 5941,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 3906,
+          "min_path": 906,
+          "setup": 4527,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_16",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[18]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_16\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6361,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4326,
+          "min_path": 1326,
+          "setup": 4107,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_15",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[2]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_15\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6011,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4186,
+          "min_path": 1186,
+          "setup": 4457,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_14",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[23]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_14\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6081,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4046,
+          "min_path": 1046,
+          "setup": 4387,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_13",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[19]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_13\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6431,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4396,
+          "min_path": 1396,
+          "setup": 4037,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_12",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[14]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_12\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6011,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 3976,
+          "min_path": 976,
+          "setup": 4457,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_11",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[20]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_11\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6431,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4396,
+          "min_path": 1396,
+          "setup": 4037,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_10",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[13]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_10\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6151,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4116,
+          "min_path": 1116,
+          "setup": 4317,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_1",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[7]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD_1\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6011,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4186,
+          "min_path": 1186,
+          "setup": 4457,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[21]"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_D_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 6221,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 4186,
+          "min_path": 1186,
+          "setup": 4247,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_DE_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_DE"
+    ],
+    "dynamic_endpoints": {
+      "[\"HDMI_TX_DE_MISTRAL_OB_PAD\", \"I\"]": [
+        {
+          "capture": [
+            "clk_pixel",
+            0
+          ],
+          "hold": 7341,
+          "hold_related": true,
+          "launch": [
+            "clk_pixel",
+            0
+          ],
+          "max_path": 5236,
+          "min_path": 2236,
+          "setup": 3127,
+          "setup_timed": true,
+          "setup_window": 13468
+        }
+      ]
+    },
+    "registered_contracts": {},
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_CLK_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_CLK"
+    ],
+    "dynamic_endpoints": {},
+    "registered_contracts": {},
+    "unsupported": [
+      "I"
+    ]
+  }
+]

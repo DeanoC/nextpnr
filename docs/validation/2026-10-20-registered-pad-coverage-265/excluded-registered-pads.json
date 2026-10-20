@@ -1,0 +1,106 @@
+[
+  {
+    "cell": "SDRAM_BA_MISTRAL_OB_PAD_1",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60577
+    ],
+    "LOC": "PIN_Y17"
+  },
+  {
+    "cell": "SDRAM_BA_MISTRAL_OB_PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60577
+    ],
+    "LOC": "PIN_AB25"
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_7",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60577
+    ],
+    "LOC": "PIN_AC22"
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_6",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60577
+    ],
+    "LOC": "PIN_AC23"
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_5",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60577
+    ],
+    "LOC": "PIN_AA26"
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_4",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60577
+    ],
+    "LOC": "PIN_AA11"
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_3",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60577
+    ],
+    "LOC": "PIN_Y19"
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_2",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60577
+    ],
+    "LOC": "PIN_Y11"
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_12",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60577
+    ],
+    "LOC": "PIN_C12"
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_11",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60577
+    ],
+    "LOC": "PIN_AB23"
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_10",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60727
+    ],
+    "LOC": "PIN_AB26"
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_1",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60577
+    ],
+    "LOC": "PIN_AA13"
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD",
+    "reason": "dynamic CEOUT outside constant-enable reference model",
+    "CEOUT": [
+      60577
+    ],
+    "LOC": "PIN_W11"
+  }
+]
