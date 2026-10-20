@@ -771,9 +771,15 @@ void repair_critical_swaps(Context *ctx, int timing_budget)
         struct Candidate { CellInfo *cell; BelId target; int64_t delta; };
         std::vector<std::vector<Candidate>> proposals;
         std::set<IdString> seen;
-        // The report orders paths by criticality. Consider both ends of every
-        // hop, including an ordinary result mux driven by a fixed carry chain.
-        for (const auto &hop : guidance.hops) {
+        // Rank long reported hops deterministically, rather than spending the
+        // source budget on the prefix of just the first reported path.
+        auto hops = guidance.hops;
+        std::sort(hops.begin(), hops.end(), [](const Hop &a, const Hop &b) {
+            if (a.delay != b.delay) return a.delay > b.delay;
+            return std::tie(a.sink->name, a.driver->name, a.port) <
+                   std::tie(b.sink->name, b.driver->name, b.port);
+        });
+        for (const auto &hop : hops) {
             for (auto *cell : {hop.sink, hop.driver}) {
                 if (!swap_movable(ctx, cell) || !seen.insert(cell->name).second) continue;
                 auto *anchor = cell == hop.sink ? hop.driver : hop.sink;
@@ -804,8 +810,15 @@ void repair_critical_swaps(Context *ctx, int timing_budget)
                     Loc x = ctx->getBelLocation(a.target), y = ctx->getBelLocation(b.target);
                     return std::tie(a.delta, x.x, x.y, x.z) < std::tie(b.delta, y.x, y.y, y.z);
                 });
-                if (candidates.size() > 32) candidates.resize(32);
-                proposals.push_back(std::move(candidates));
+                std::vector<Candidate> diverse;
+                std::map<std::pair<int, int>, int> per_tile;
+                for (const auto &candidate : candidates) {
+                    auto at = ctx->getBelLocation(candidate.target);
+                    if (per_tile[{at.x, at.y}]++ >= 4) continue;
+                    diverse.push_back(candidate);
+                    if (diverse.size() == 32) break;
+                }
+                proposals.push_back(std::move(diverse));
                 if (proposals.size() == 8) break;
             }
             if (proposals.size() == 8) break;
@@ -828,7 +841,6 @@ void repair_critical_swaps(Context *ctx, int timing_budget)
                         // Permit progress on tied failing endpoints, retaining
                         // the cohort's full-design endpoint/clock/hold guards.
                         for (const auto &endpoint : guidance.endpoints) {
-                            if (before.get_setup_slack(endpoint) >= 0) continue;
                             if (after.get_setup_slack(endpoint) < before.get_setup_slack(endpoint) + 20) continue;
                             auto checks = timing_guard(ctx, before, after, {endpoint}, &rows);
                             log_info("Critical swap guards: gain=%d clocks=%d holds=%d endpoints=%d.\n",
