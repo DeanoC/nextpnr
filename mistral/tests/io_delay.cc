@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <memory>
 #include <sstream>
+#include <fstream>
+#include "critical_cohort.h"
 #include "gtest/gtest.h"
 #include "io_delay.h"
 #include "log.h"
@@ -1102,4 +1104,106 @@ TEST_F(IoDelayTest, NativeSdrCaptureHasOnePadEdgeAndCompleteDataOeTiming)
     sdc("set_input_delay -clock memory -min -2 [get_ports {dq[*]}]\n");
     timing.setup(false, false, true);
     EXPECT_EQ(timing.get_timing_result().clock_hold_slack.at(clock->name), -1690);
+}
+
+
+// Real native graph with synthetic external budgets and controlled route
+// intervals. No placed/routed hardware or pad characterization is asserted.
+TEST_F(IoDelayTest, ExternalEndpointInventory)
+{
+    using J = json11::Json;
+    output->disconnectPort(id_I);
+    bidir->disconnectPort(id_I); bidir->disconnectPort(id_OE);
+    auto *buffer = ctx->createCell(ctx->id("input_route_through"), id_MISTRAL_BUF);
+    buffer->addInput(id_A); buffer->addOutput(id_Q);
+    buffer->connectPort(id_A, input->getPort(id_O));
+    buffer->connectPort(id_Q, net("buffered_input"));
+    capture->disconnectPort(id_DATAIN); capture->connectPort(id_DATAIN, buffer->getPort(id_Q));
+    ctx->assignArchInfo();
+    CellPortKey endpoint(capture->name, id_DATAIN);
+    const auto endpoint_key = J(J::array{capture->name.str(ctx.get()), "DATAIN"}).dump();
+    auto snapshot = [&](int early, int late, int clock_early = 200, int clock_late = 400) {
+        TimingAnalyser timing(ctx.get()), unskewed(ctx.get());
+        timing.with_clock_skew = true; unskewed.with_clock_skew = false;
+        for (auto *t : {&timing, &unskewed}) {
+            t->setup(false, false, true);
+            t->set_route_delay({buffer->name, id_A}, DelayPair(100, 200));
+            t->set_route_delay(endpoint, DelayPair(early, late));
+            t->set_route_delay({capture->name, id_CLK}, DelayPair(clock_early, clock_late));
+            t->run(false, false, false, true);
+        }
+        auto result = critical_swap_endpoint_snapshot(ctx.get(), timing, unskewed).object_items();
+        // Like the existing driver fixture, emulate the bitgen envelope only.
+        result["final_analogue"] = true;
+        return J(result);
+    };
+    J::object cases;
+    cases["missing"] = snapshot(500, 800);
+    EXPECT_FALSE(cases["missing"]["complete"].bool_value());
+    sdc("set_input_delay -clock memory -min 1 [get_ports din]\n"
+        "set_input_delay -clock memory -max 3 [get_ports din]\n");
+    cases["baseline"] = snapshot(500, 800);
+    ASSERT_TRUE(cases["baseline"]["complete"].bool_value());
+    const auto row = cases["baseline"]["endpoints"][endpoint_key][0];
+    EXPECT_EQ(row["launch"][0].string_value(), "clock");
+    EXPECT_EQ(row["capture"][0].string_value(), "clock");
+    EXPECT_TRUE(row["setup_timed"].bool_value());
+    EXPECT_TRUE(row["hold_related"].bool_value());
+    cases["safe"] = snapshot(500, 600);
+    cases["new_failure"] = snapshot(500, 12000);
+    cases["hold_regression"] = snapshot(100, 600);
+    cases["clock_latency"] = snapshot(500, 800, 300, 600);
+    auto latency = cases["clock_latency"]["endpoints"][endpoint_key][0];
+    EXPECT_EQ(latency["setup"].number_value() - row["setup"].number_value(), 100);
+    EXPECT_EQ(latency["hold"].number_value() - row["hold"].number_value(), -200);
+    // Unskewed extrema must not silently absorb physical clock latency.
+    EXPECT_EQ(latency["min_path"], row["min_path"]);
+    EXPECT_EQ(latency["max_path"], row["max_path"]);
+    sdc("set_input_delay -clock memory -min 0.5 [get_ports din]\n");
+    cases["min_changed"] = snapshot(500, 600);
+    EXPECT_EQ(cases["min_changed"]["endpoints"][endpoint_key][0]["hold"].number_value(),
+              row["hold"].number_value() - 500);
+    sdc("set_input_delay -clock memory -min 1 [get_ports din]\n"
+        "set_input_delay -clock memory -max 2 [get_ports din]\n");
+    cases["max_changed"] = snapshot(500, 800);
+    EXPECT_EQ(cases["max_changed"]["endpoints"][endpoint_key][0]["setup"].number_value(),
+              row["setup"].number_value() + 1000);
+    // Separate physical capture clock, justified only by this synthetic phase group.
+    auto *shifted = net("capture_clock"); ctx->addClock(shifted->name, 100);
+    clock->clkconstr->phase_group = ctx->id("synthetic_pll");
+    shifted->clkconstr->phase_group = ctx->id("synthetic_pll");
+    shifted->clkconstr->phase_shift = 2500;
+    capture->disconnectPort(id_CLK); capture->connectPort(id_CLK, shifted); ctx->assignArchInfo();
+    cases["phase"] = snapshot(500, 800);
+    ASSERT_TRUE(cases["phase"]["complete"].bool_value());
+    auto phase = cases["phase"]["endpoints"][endpoint_key][0];
+    EXPECT_EQ(phase["launch"][0].string_value(), "clock");
+    EXPECT_EQ(phase["capture"][0].string_value(), "capture_clock");
+    EXPECT_EQ(phase["setup_window"].number_value(), 2500);
+    auto constraints = read_io_delays(ctx.get());
+    auto falling = constraints[0].object_items(); falling["fall"] = true;
+    ctx->settings[ctx->id("timing/io_delays")] = J(J::array{falling}).dump();
+    cases["falling"] = snapshot(500, 800);
+    EXPECT_TRUE(cases["falling"]["complete"].bool_value());
+    EXPECT_EQ(cases["falling"]["endpoints"][endpoint_key][0]["launch"][1].int_value(), int(FALLING_EDGE));
+    EXPECT_EQ(cases["falling"]["endpoints"][endpoint_key][0]["setup_window"].number_value(), 7500);
+    // Ambiguous saved constraints must fail at graph construction.
+    ctx->settings[ctx->id("timing/io_delays")] = J(J::array{falling, falling}).dump();
+    EXPECT_THROW(snapshot(500, 800), log_execution_error_exception);
+    ctx->settings[ctx->id("timing/io_delays")] = J(constraints).dump();
+    // Explicit data budgets do not supply recovery/removal for an IO-fed reset.
+    capture->connectPort(id_ACLR, input->getPort(id_O)); ctx->assignArchInfo();
+    cases["external_reset"] = snapshot(500, 600);
+    EXPECT_FALSE(cases["external_reset"]["complete"].bool_value());
+    capture->disconnectPort(id_ACLR);
+    // An ordinary asynchronous PLL source is not legalized by other IO constraints.
+    auto *pll = ctx->createCell(ctx->id("pll"), ctx->id("altera_pll"));
+    pll->addOutput(ctx->id("locked")); pll->connectPort(ctx->id("locked"), net("lock"));
+    capture->connectPort(id_ACLR, pll->getPort(ctx->id("locked")));
+    ctx->assignArchInfo();
+    cases["async_reset"] = snapshot(500, 600);
+    EXPECT_FALSE(cases["async_reset"]["complete"].bool_value());
+    if (const char *file = std::getenv("NEXTPNR_TEST_IO_ENDPOINTS")) {
+        std::ofstream out(file); out << J(cases).dump() << "\n"; ASSERT_TRUE(bool(out));
+    }
 }

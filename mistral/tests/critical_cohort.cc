@@ -8,6 +8,7 @@
 #include "critical_cohort_model.h"
 #include "gtest/gtest.h"
 #include "json11.hpp"
+#include "json_frontend.h"
 #include "log.h"
 #include "place_common.h"
 #include "timing.h"
@@ -1388,4 +1389,39 @@ TEST_F(CriticalCohort, StaticEndpointCoverageRequiresConstantProof)
     clk->clkconstr.reset();
     EXPECT_TRUE(snapshot()["static_endpoints"].object_items().empty());
     EXPECT_EQ(snapshot()["unsupported"].array_items().size(), 2);
+}
+
+
+// Optional host-only connectivity/STA diagnostic. It deliberately neither routes
+// nor runs bitgen, and its arbitrary budgets cannot qualify an SDRAM interface.
+TEST(ExternalEndpointDiagnostic, PlacedCheckpointSyntheticInputConstraints)
+{
+    const char *path = std::getenv("NEXTPNR_TEST_IO_CHECKPOINT");
+    const char *sdc_path = std::getenv("NEXTPNR_TEST_IO_SDC");
+    const char *output = std::getenv("NEXTPNR_TEST_IO_DIAGNOSTIC");
+    if (!path || !sdc_path || !output)
+        GTEST_SKIP() << "Optional host-only checkpoint coverage diagnostic";
+    ArchArgs args; args.device = "5CSEBA6U23I7";
+    Context ctx(args);
+    std::ifstream input(path);
+    ASSERT_TRUE(parse_json(input, path, &ctx));
+    ctx.restore_placed_pin_maps();
+    auto snapshot = [&]() {
+        TimingAnalyser timing(&ctx), unskewed(&ctx);
+        timing.with_clock_skew = true;
+        unskewed.with_clock_skew = false;
+        timing.setup(false, false, true); unskewed.setup(false, false, true);
+        auto result = critical_swap_endpoint_snapshot(&ctx, timing, unskewed).object_items();
+        result["final_analogue"] = false;
+        result["scope"] = "host-only placed graph; synthetic external budgets; no route or hardware qualification";
+        return json11::Json(result);
+    };
+    auto original = snapshot();
+    std::ifstream constraints(sdc_path);
+    ASSERT_TRUE(constraints.good());
+    ctx.read_sdc(constraints);
+    auto synthetic = snapshot();
+    std::ofstream out(output);
+    out << json11::Json(json11::Json::object{{"original", original}, {"synthetic", synthetic}}).dump() << "\n";
+    ASSERT_TRUE(bool(out));
 }

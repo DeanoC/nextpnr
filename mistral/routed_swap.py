@@ -36,13 +36,29 @@ def finite(value):
 def rows(snapshot):
     if snapshot.get('complete') is not True or snapshot.get('unsupported') != []:
         raise ValueError('incomplete native endpoint coverage')
-    if snapshot.get('schema') != 2 or snapshot.get('final_analogue') is not True:
+    if snapshot.get('schema') != 3 or snapshot.get('final_analogue') is not True:
         raise ValueError('not a native final analogue snapshot')
     if not snapshot.get('clocks') or not snapshot.get('endpoints'):
         raise ValueError('empty clock or endpoint coverage')
     for clock in snapshot['clocks'].values():
         if len(clock) != 8 or not all(finite(v) for v in clock[:7]) or not isinstance(clock[7], str):
             raise ValueError('invalid clock constraint')
+    constraints = snapshot.get('io_constraints')
+    if not isinstance(constraints, list):
+        raise ValueError('invalid IO constraints')
+    seen = set()
+    for constraint in constraints:
+        if (not isinstance(constraint, dict) or
+                not isinstance(constraint.get('port'), str) or not constraint['port'] or
+                not isinstance(constraint.get('clock'), str) or constraint['clock'] not in snapshot['clocks'] or
+                type(constraint.get('input')) is not bool or type(constraint.get('fall')) is not bool or
+                not finite(constraint.get('min')) or not finite(constraint.get('max')) or
+                constraint['min'] > constraint['max']):
+            raise ValueError('invalid IO constraint')
+        key = (constraint['port'], constraint['input'])
+        if key in seen:
+            raise ValueError('ambiguous IO constraints')
+        seen.add(key)
     static = snapshot.get('static_endpoints')
     if not isinstance(static, dict):
         raise ValueError('missing static endpoint proofs')
@@ -77,6 +93,8 @@ def compare(before, after):
         old, new = rows(before), rows(after)
         if before['clocks'] != after['clocks']:
             return False, 'clock constraints changed'
+        if before['io_constraints'] != after['io_constraints']:
+            return False, 'IO boundary constraints changed'
         if before['static_endpoints'] != after['static_endpoints']:
             return False, 'static endpoint semantics/coverage changed'
         if old.keys() != new.keys():

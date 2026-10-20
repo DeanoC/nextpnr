@@ -166,3 +166,34 @@ and output hold budgets through routing and bitstream generation. It retains
 logs, constraints, reports and a results receipt. It also reloads the passing
 checkpoint in a fresh process without an SDC file and verifies the external
 requirements in its timing reports. It does not program hardware.
+
+## Routed endpoint retention inventory
+
+The opt-in routed-swap inventory can represent explicitly constrained
+unregistered input paths into native registered sinks, including fabric
+route-through buffers. It validates both native early and late backpointer
+walks, the source delay interval and launch clock/edge, and the registered
+capture clock. The row uses the existing STA setup/hold margins and report
+segments; no delay coefficient or clock relation is invented by the exporter.
+Physical capture-clock latency stays in the skewed margins. A separate
+unskewed analysis supplies path extrema. Schema 3 requires explicit IO constraint metadata, even for an empty set.
+All saved IO constraints are exported
+in canonical order and must match exactly between baseline and candidate,
+including top-level port, direction, min/max, clock and edge.
+
+The common endpoint API requires explicit `allow_external_launch=true` for
+this extension; its existing callers retain register-only validation. Mistral
+never enables external launch support on FF ACLR: its legacy synchronous
+ACLR approximation is not a recovery/removal model. Unconstrained inputs,
+PLL lock sources, unsupported private registered-pad endpoint aliases and
+unconstrained output boundaries remain unsupported. Enabling input delays
+also exposes output/OE boundaries under the existing architecture timing
+classes; input-only constraints do not cover them.
+
+This is retention within the existing model, not complete physical interface
+qualification. The unregistered input boundary is routing ingress, and its
+slow-corner minimum is not an independently characterized fast-corner hold
+bound. The existing RAM Tester `mistral/tests/ramtest-io/budget.py` and GPIO
+reference profile should be reused when their supported topology and evidenced
+assumptions apply. Test budgets or that fixture's unmeasured board-flight
+examples must not be reused as qualified PC/XT interface limits.

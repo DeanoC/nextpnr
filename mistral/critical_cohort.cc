@@ -7,6 +7,7 @@
 #include <map>
 #include <set>
 #include <tuple>
+#include "io_delay.h"
 #include "json11.hpp"
 #include "log.h"
 #include "place_common.h"
@@ -1213,8 +1214,11 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
             J key = J::array{cell.first.str(ctx), port.first.str(ctx)};
             std::vector<EndpointClockPairTiming> rows, reference;
             CellPortKey endpoint(cell.first, port.first);
-            if (!timing.get_endpoint_clock_pair_timings(endpoint, rows) || rows.empty() ||
-                !unskewed.get_endpoint_clock_pair_timings(endpoint, reference) ||
+            // FF ACLR has only the legacy synchronous approximation, not a
+            // recovery/removal model. Do not extend it to external reset inputs.
+            const bool external = !(cell.second->type == id_MISTRAL_FF && port.first == id_ACLR);
+            if (!timing.get_endpoint_clock_pair_timings(endpoint, rows, external) || rows.empty() ||
+                !unskewed.get_endpoint_clock_pair_timings(endpoint, reference, external) ||
                 !guard::rows_match(rows, reference)) {
                 auto proof = static_endpoint_proof(ctx, cell.second.get(), port.first);
                 if (!proof.is_null()) static_endpoints[key.dump()] = proof;
@@ -1235,8 +1239,13 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
             endpoints[key.dump()] = values;
         }
     }
+    // Preserve the complete explicit boundary contract, including min/max and
+    // launch clock/edge. A changed budget must never masquerade as route gain.
+    auto io_constraints = read_io_delays(ctx);
+    std::sort(io_constraints.begin(), io_constraints.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
     std::sort(unsupported.begin(), unsupported.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
-    return J::object{{"schema", 2}, {"complete", unsupported.empty() && !endpoints.empty()},
-        {"unsupported", unsupported}, {"static_endpoints", static_endpoints}, {"clocks", clocks}, {"endpoints", endpoints}};
+    return J::object{{"schema", 3}, {"complete", unsupported.empty() && !endpoints.empty()},
+        {"io_constraints", io_constraints}, {"unsupported", unsupported}, {"static_endpoints", static_endpoints},
+        {"clocks", clocks}, {"endpoints", endpoints}};
 }
 NEXTPNR_NAMESPACE_END

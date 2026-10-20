@@ -1235,7 +1235,8 @@ std::vector<CriticalPath> TimingAnalyser::get_report_setup_paths(int count)
 }
 
 bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
-                                                    std::vector<EndpointClockPairTiming> &rows)
+                                                    std::vector<EndpointClockPairTiming> &rows,
+                                                    bool allow_external_launch)
 {
     rows.clear();
     auto found = ports.find(endpoint);
@@ -1284,8 +1285,9 @@ bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
         return matched;
     };
     // Validate the native backpointer walk before using the existing report
-    // builder, which assumes a complete registered path and dereferences it.
-    auto registered_path = [&](domain_id_t launch_id, bool longest) {
+    // builder. External launches must carry an explicitly validated IO delay;
+    // a bare asynchronous startpoint (including PLL lock) is never a launch clock.
+    auto launch_path = [&](domain_id_t launch_id, bool longest) {
         auto cursor = endpoint;
         std::set<CellPortKey> seen;
         while (seen.insert(cursor).second) {
@@ -1301,6 +1303,16 @@ bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
                 registered(cursor, TMG_REGISTER_OUTPUT, domains.at(launch_id).key))
                 return connection.net && connection.net->driver.cell == cell->second.get() &&
                        connection.net->driver.port == cursor.port;
+            if (allow_external_launch && connection.type == PORT_OUT && port->second.io_delay) {
+                int count = 0;
+                const auto &io = *port->second.io_delay;
+                const auto &domain = domains.at(launch_id).key;
+                return port_timing_class(cell->second.get(), cursor.port, count) == TMG_STARTPOINT &&
+                       io.clock == domain.clock && io.edge == domain.edge && finite_pair(io.delay) &&
+                       io.delay.minDelay() <= io.delay.maxDelay() && connection.net &&
+                       connection.net->driver.cell == cell->second.get() &&
+                       connection.net->driver.port == cursor.port;
+            }
             auto previous = longest ? tag->second.bwd_max : tag->second.bwd_min;
             if (previous.cell == IdString() || previous.port == IdString())
                 return false;
@@ -1327,7 +1339,7 @@ bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
     for (const auto &arrival : data.arrival) {
         if (arrival.first < 0 || size_t(arrival.first) >= domains.size() ||
             !valid_clock(domains.at(arrival.first).key) || !finite_pair(arrival.second.value) ||
-            !registered_path(arrival.first, true) || !registered_path(arrival.first, false))
+            !launch_path(arrival.first, true) || !launch_path(arrival.first, false))
             return false;
         for (const auto &required : data.required) {
             if (required.first < 0 || size_t(required.first) >= domains.size() ||

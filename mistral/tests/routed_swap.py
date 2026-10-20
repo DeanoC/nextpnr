@@ -27,6 +27,9 @@ class RoutedSwap(unittest.TestCase):
             subprocess.run([BINARY, '--gtest_filter=CriticalCohort.StaticEndpointCoverageRequiresConstantProof'],
                            env=dict(os.environ, NEXTPNR_TEST_STATIC_ENDPOINTS=str(path)), check=True)
             cls.static = json.loads(path.read_text())
+            subprocess.run([BINARY, '--gtest_filter=IoDelayTest.ExternalEndpointInventory'],
+                           env=dict(os.environ, NEXTPNR_TEST_IO_ENDPOINTS=str(path)), check=True)
+            cls.io = json.loads(path.read_text())
 
     def test_safe_native_route_delay_improvement(self):
         self.assertTrue(guard.compare(self.cases['baseline'], self.cases['safe'])[0])
@@ -107,6 +110,62 @@ class RoutedSwap(unittest.TestCase):
                 key = next(iter(new['endpoints'])) if change == 'overlap' else 'missing'
                 new['static_endpoints'][key] = {'reason': 'same-unsupported-on-both-sides'}
             self.assertFalse(guard.compare(self.cases['baseline'], new)[0])
+
+    def test_native_external_input_paths(self):
+        self.assertTrue(guard.compare(self.io['baseline'], self.io['safe'])[0])
+        for case, reason in [('new_failure', 'setup regression'), ('hold_regression', 'hold regression'),
+                             ('clock_latency', 'hold regression'), ('missing', 'coverage failure'),
+                             ('async_reset', 'coverage failure'), ('external_reset', 'coverage failure'), ('min_changed', 'IO boundary constraints changed'),
+                             ('max_changed', 'IO boundary constraints changed'), ('phase', 'clock constraints changed'),
+                             ('falling', 'clock constraints changed')]:
+            ok, message = guard.compare(self.io['baseline'], self.io[case])
+            self.assertFalse(ok, case)
+            self.assertIn(reason, message, case)
+
+    def test_external_contract_changes_cannot_purchase_gain(self):
+        for field, value in [('min', 0.5), ('max', 2), ('clock', 'missing'),
+                             ('fall', True), ('port', 'other'), ('input', False)]:
+            changed = copy.deepcopy(self.io['safe'])
+            changed['io_constraints'][0][field] = value
+            self.assertFalse(guard.compare(self.io['baseline'], changed)[0], field)
+        for mode in ('missing', 'duplicate', 'nonfinite', 'reversed'):
+            changed = copy.deepcopy(self.io['safe'])
+            if mode == 'missing':
+                del changed['io_constraints']
+            elif mode == 'duplicate':
+                changed['io_constraints'] *= 2
+            elif mode == 'nonfinite':
+                changed['io_constraints'][0]['min'] = float('nan')
+            else:
+                changed['io_constraints'][0]['min'] = 99
+            self.assertFalse(guard.compare(self.io['baseline'], changed)[0], mode)
+
+    def test_both_sides_require_explicit_boundary_metadata(self):
+        old, new = copy.deepcopy(self.io['baseline']), copy.deepcopy(self.io['safe'])
+        del old['io_constraints']
+        del new['io_constraints']
+        self.assertFalse(guard.compare(old, new)[0])
+        old, new = copy.deepcopy(self.cases['baseline']), copy.deepcopy(self.cases['safe'])
+        del old['io_constraints']
+        del new['io_constraints']
+        self.assertFalse(guard.compare(old, new)[0])
+
+    def test_external_failures_retain_exact_baseline(self):
+        previous = self.cases
+        self.cases = self.io
+        try:
+            for case in ('new_failure', 'hold_regression', 'missing', 'async_reset', 'external_reset', 'min_changed', 'max_changed'):
+                with tempfile.TemporaryDirectory() as tmp:
+                    output = Path(tmp)
+                    before = self.bundle(output / 'baseline', 'baseline')
+                    original = {n: (output / 'baseline' / n).read_bytes() for n in guard.ARTIFACTS}
+                    decision = guard.guarded_candidate(output, before,
+                        lambda: self.bundle(output / 'candidate', case))
+                    self.assertEqual(decision['selected'], 'baseline', case)
+                    for name, data in original.items():
+                        self.assertEqual((output / 'retained' / name).read_bytes(), data, case)
+        finally:
+            self.cases = previous
 
     def bundle(self, directory, case):
         directory.mkdir()
