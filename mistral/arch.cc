@@ -958,6 +958,7 @@ void diagnostic_retained_enable(Context *, const char *, bool);
 
 bool Arch::place()
 {
+    apply_place_regions();
     std::string placer = str_or_default(settings, id_placer, defaultPlacer);
     if (critical_cohort_budget && (placer != "heap" || fes_any_slot_region_active))
         log_error("Critical cohort repair requires fresh ordinary HeAP placement.\n");
@@ -1099,6 +1100,7 @@ bool Arch::place()
         lut_driver_copy_selection >= 0)
         log_error("Requested LUT driver copy candidate was not qualified; routing was not started.\n");
     repair_critical_cohorts(getCtx(), critical_cohort_budget);
+    check_place_regions();
     getCtx()->attrs[id_step] = std::string("place");
     save_fes_pin_maps(false);
     archInfoToAttributes();

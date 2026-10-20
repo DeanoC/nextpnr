@@ -1,0 +1,5 @@
+set_location_assignment PIN_V11 -to clk
+set_location_assignment PIN_AD12 -to a
+set_location_assignment PIN_AE12 -to b
+set_location_assignment PIN_W8 -to qa
+set_location_assignment PIN_Y8 -to qb

@@ -842,6 +842,21 @@ struct Arch : BaseArch<ArchRanges>
     void read_qsf(std::istream &in);                       // qsf.cc
     void apply_io_attrs(IdString port, CellInfo *cell);    // qsf.cc
 
+    // PLACE_REGION instance assignments ("X<x0> Y<y0> X<x1> Y<y1>", grid
+    // coordinates, inclusive), in file order. place() constrains each
+    // matching cell to its most specific assignment's rectangle before
+    // placement and checks every such cell is still inside it afterwards.
+    struct PlaceRegionAssignment
+    {
+        std::string target;
+        int x0, y0, x1, y1;
+    };
+    std::vector<PlaceRegionAssignment> place_region_assignments;
+    pool<IdString> place_region_names;
+    void note_place_region(const std::string &target, const std::string &value); // qsf.cc
+    void apply_place_regions();                                                  // qsf.cc
+    void check_place_regions() const;                                            // qsf.cc
+
     // Static expansion slot(s): HeAP may not place unconstrained cells on
     // these BELs. Explicit BEL cells, FES_SLOT cells tagged for the owning
     // region and cells locked by the scaffold reload at their original BEL
