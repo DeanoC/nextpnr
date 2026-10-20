@@ -65,7 +65,8 @@ def rows(snapshot):
         raise ValueError('missing output boundary contracts')
     for contract in contracts.values():
         if (not isinstance(contract, dict) or not isinstance(contract.get('net'), str) or
-                not contract['net'] or contract.get('direction') not in (1, 2) or
+                not contract['net'] or type(contract.get('direction')) is not int or
+                contract['direction'] not in (1, 2) or
                 not isinstance(contract.get('cells'), dict) or not contract['cells']):
             raise ValueError('invalid output boundary contract')
         for cell in contract['cells'].values():
@@ -114,7 +115,8 @@ def compare(before, after):
             return False, 'clock constraints changed'
         if before['io_constraints'] != after['io_constraints']:
             return False, 'IO boundary constraints changed'
-        if before['output_contracts'] != after['output_contracts']:
+        # Preserve JSON types too: Python otherwise equates True with 1.
+        if json.dumps(before['output_contracts'], sort_keys=True) != json.dumps(after['output_contracts'], sort_keys=True):
             return False, 'output boundary semantics changed'
         if before['static_endpoints'] != after['static_endpoints']:
             return False, 'static endpoint semantics/coverage changed'

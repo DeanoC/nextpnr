@@ -176,7 +176,7 @@ walks, the source delay interval and launch clock/edge, and the registered
 capture clock. The row uses the existing STA setup/hold margins and report
 segments; no delay coefficient or clock relation is invented by the exporter.
 Physical capture-clock latency stays in the skewed margins. A separate
-unskewed analysis supplies path extrema. Schema 3 requires explicit IO constraint metadata, even for an empty set.
+unskewed analysis supplies path extrema. Schema 4 requires explicit IO and output-contract metadata, even for empty sets.
 All saved IO constraints are exported
 in canonical order and must match exactly between baseline and candidate,
 including top-level port, direction, min/max, clock and edge.

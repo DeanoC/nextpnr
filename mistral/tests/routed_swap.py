@@ -198,7 +198,7 @@ class RoutedSwap(unittest.TestCase):
             row[field] = value
             self.assertFalse(guard.compare(self.outputs['baseline'], changed)[0], field)
         for mode in ('missing', 'duplicate', 'omit_output', 'omit_contracts', 'both_omit',
-                     'polarity', 'oe_net', 'direction', 'remove_oe'):
+                     'polarity', 'oe_net', 'direction', 'boolean_direction', 'boolean_pin', 'remove_oe'):
             old, new = copy.deepcopy(self.outputs['baseline']), copy.deepcopy(self.outputs['safe'])
             if mode == 'missing':
                 del new['io_constraints']
@@ -210,8 +210,11 @@ class RoutedSwap(unittest.TestCase):
                 del new['output_contracts']
                 if mode == 'both_omit':
                     del old['output_contracts']
-            elif mode == 'direction':
-                new['output_contracts']['dout']['direction'] = 999
+            elif mode in ('direction', 'boolean_direction'):
+                new['output_contracts']['dout']['direction'] = 999 if mode == 'direction' else True
+            elif mode == 'boolean_pin':
+                old['output_contracts']['dq[0]']['cells']['dq_pad']['pins']['OE'] = 0
+                new['output_contracts']['dq[0]']['cells']['dq_pad']['pins']['OE'] = False
             elif mode == 'remove_oe':
                 new['endpoints'].pop('["dq_pad", "OE"]')
             else:
