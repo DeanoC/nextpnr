@@ -61,26 +61,31 @@ class RoutedSwap(unittest.TestCase):
             self.assertFalse(guard.compare(old, new)[0], mode)
 
     def test_registered_malformed_metadata_retains_baseline(self):
-        for field in ('primitive_clocks', 'registered_contracts'):
-            for invalid in (None, [], False, 'bad'):
-                before = copy.deepcopy(self.registered['baseline'])
-                after = copy.deepcopy(self.registered['safe'])
+        mutations = [(field, invalid) for field in ('primitive_clocks', 'registered_contracts')
+                     for invalid in (None, [], False, 'bad')]
+        mutations += [('endpoint', invalid) for invalid in ('[]', '["x"]', 'null', '{}', '["x", 1]')]
+        for field, invalid in mutations:
+            before = copy.deepcopy(self.registered['baseline'])
+            after = copy.deepcopy(self.registered['safe'])
+            if field == 'endpoint':
+                after['endpoints'][invalid] = next(iter(after['endpoints'].values()))
+            else:
                 key = next(iter(after[field]))
                 after[field][key] = invalid
-                self.assertFalse(guard.compare(before, after)[0])
-                with tempfile.TemporaryDirectory() as tmp:
-                    output = Path(tmp)
-                    receipt = self.bundle(output / 'baseline', 'baseline')
-                    guard.write_json(output / 'baseline' / 'endpoints.json', before)
-                    old = {n: (output / 'baseline' / n).read_bytes() for n in guard.ARTIFACTS}
-                    def candidate():
-                        result = self.bundle(output / 'candidate', 'safe')
-                        guard.write_json(output / 'candidate' / 'endpoints.json', after)
-                        return result
-                    decision = guard.guarded_candidate(output, receipt, candidate)
-                    self.assertEqual(decision['selected'], 'baseline')
-                    for name, data in old.items():
-                        self.assertEqual((output / 'retained' / name).read_bytes(), data)
+            self.assertFalse(guard.compare(before, after)[0])
+            with tempfile.TemporaryDirectory() as tmp:
+                output = Path(tmp)
+                receipt = self.bundle(output / 'baseline', 'baseline')
+                guard.write_json(output / 'baseline' / 'endpoints.json', before)
+                old = {n: (output / 'baseline' / n).read_bytes() for n in guard.ARTIFACTS}
+                def candidate():
+                    result = self.bundle(output / 'candidate', 'safe')
+                    guard.write_json(output / 'candidate' / 'endpoints.json', after)
+                    return result
+                decision = guard.guarded_candidate(output, receipt, candidate)
+                self.assertEqual(decision['selected'], 'baseline')
+                for name, data in old.items():
+                    self.assertEqual((output / 'retained' / name).read_bytes(), data)
 
     def test_safe_native_route_delay_improvement(self):
         self.assertTrue(guard.compare(self.cases['baseline'], self.cases['safe'])[0])

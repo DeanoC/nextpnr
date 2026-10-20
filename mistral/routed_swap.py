@@ -40,6 +40,16 @@ def rows(snapshot):
         raise ValueError('not a native final analogue snapshot')
     if not snapshot.get('clocks') or not snapshot.get('endpoints'):
         raise ValueError('empty clock or endpoint coverage')
+    endpoints = snapshot['endpoints']
+    if not isinstance(endpoints, dict):
+        raise ValueError('invalid endpoint inventory')
+    endpoint_keys = {}
+    for key in endpoints:
+        identity = json.loads(key)
+        if (not isinstance(identity, list) or len(identity) != 2 or
+                not all(isinstance(v, str) and v for v in identity) or tuple(identity) in endpoint_keys):
+            raise ValueError('invalid or duplicate endpoint identity')
+        endpoint_keys[tuple(identity)] = key
     for clock in snapshot['clocks'].values():
         if len(clock) != 8 or not all(finite(v) for v in clock[:7]) or not isinstance(clock[7], str):
             raise ValueError('invalid clock constraint')
@@ -119,11 +129,12 @@ def rows(snapshot):
             if not isinstance(channel, dict):
                 raise ValueError('invalid registered channel')
             endpoint = channel.get('endpoint')
-            if (not name or not isinstance(endpoint, list) or len(endpoint) != 2 or endpoint[0] != identity[0] or
+            if (not name or not isinstance(endpoint, list) or len(endpoint) != 2 or
+                    not all(isinstance(v, str) and v for v in endpoint) or endpoint[0] != identity[0] or
                     type(channel.get('edge')) is not int or channel['edge'] not in (0, 1) or
                     not isinstance(channel.get('clock_port'), str)):
                 raise ValueError('invalid registered channel identity')
-            endpoint_key = next((k for k in snapshot['endpoints'] if json.loads(k) == endpoint), None)
+            endpoint_key = endpoint_keys.get(tuple(endpoint))
             if endpoint_key is None or endpoint_key in channel_endpoints:
                 raise ValueError('missing or duplicate registered channel endpoint')
             channel_endpoints.add(endpoint_key)
@@ -138,7 +149,7 @@ def rows(snapshot):
             if any(row['capture' if identity[2] else 'launch'] != domain for row in snapshot['endpoints'][endpoint_key]):
                 raise ValueError('registered channel clock mismatch')
     # No private endpoint can escape its physical pad/channel contract.
-    if any('$timing$' in json.loads(k)[1] and k not in channel_endpoints for k in snapshot['endpoints']):
+    if any('$timing$' in identity[1] and key not in channel_endpoints for identity, key in endpoint_keys.items()):
         raise ValueError('unbound registered endpoint')
     static = snapshot.get('static_endpoints')
     if not isinstance(static, dict):
