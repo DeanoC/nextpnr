@@ -854,6 +854,7 @@ struct Arch : BaseArch<ArchRanges>
     std::vector<PlaceRegionAssignment> place_region_assignments;
     pool<IdString> place_region_names;
     void note_place_region(const std::string &target, const std::string &value); // qsf.cc
+    void restore_place_regions(bool qsf_supplied);                               // qsf.cc
     void apply_place_regions();                                                  // qsf.cc
     void check_place_regions() const;                                            // qsf.cc
 

@@ -20,14 +20,18 @@
 #include "log.h"
 #include "nextpnr.h"
 #include "util.h"
+#include "json11.hpp"
 
 #include <algorithm>
 #include <iterator>
+#include <limits>
 #include <regex>
 
 NEXTPNR_NAMESPACE_BEGIN
 
 namespace {
+
+const char *place_region_setting = "mistral/place_region_assignments_v1";
 
 struct QsfOption
 {
@@ -416,6 +420,52 @@ void Arch::note_place_region(const std::string &target, const std::string &value
         log_error("PLACE_REGION '%s' for '%s' is empty or outside the %dx%d device grid.\n", value.c_str(),
                   target.c_str(), getGridDimX(), getGridDimY());
     place_region_assignments.push_back(assignment);
+    json11::Json::array saved;
+    for (const auto &entry : place_region_assignments)
+        saved.emplace_back(json11::Json::array{entry.target, entry.x0, entry.y0, entry.x1, entry.y1});
+    settings[id(place_region_setting)] = json11::Json(saved).dump();
+}
+
+void Arch::restore_place_regions(bool qsf_supplied)
+{
+    const IdString setting_id = id(place_region_setting);
+    if (qsf_supplied) {
+        place_region_assignments.clear();
+        settings.erase(setting_id);
+        return;
+    }
+
+    for (const auto &setting : settings) {
+        const std::string name = setting.first.str(this);
+        if (name.find("mistral/place_region_assignments_") == 0 && name != place_region_setting)
+            log_error("Unsupported PLACE_REGION checkpoint version '%s'.\n", name.c_str());
+    }
+    auto found = settings.find(setting_id);
+    if (found == settings.end())
+        return;
+    if (!found->second.is_string)
+        log_error("Invalid PLACE_REGION checkpoint: expected a string.\n");
+    std::string error;
+    const auto snapshot = json11::Json::parse(found->second.as_string(), error);
+    if (!error.empty() || !snapshot.is_array())
+        log_error("Invalid PLACE_REGION checkpoint: expected an assignment array.\n");
+    for (const auto &entry : snapshot.array_items()) {
+        if (!entry.is_array() || entry.array_items().size() != 5 || !entry[0].is_string() ||
+            entry[0].string_value().empty())
+            log_error("Invalid PLACE_REGION checkpoint assignment.\n");
+        for (size_t i = 1; i < 5; ++i) {
+            if (!entry[i].is_number() || entry[i].number_value() < 0 ||
+                entry[i].number_value() > std::numeric_limits<int>::max() ||
+                entry[i].number_value() != entry[i].int_value())
+                log_error("Invalid PLACE_REGION checkpoint coordinates.\n");
+        }
+    }
+    place_region_assignments.clear();
+    for (const auto &entry : snapshot.array_items()) {
+        note_place_region(entry[0].string_value(),
+                          stringf("X%d Y%d X%d Y%d", entry[1].int_value(), entry[2].int_value(),
+                                  entry[3].int_value(), entry[4].int_value()));
+    }
 }
 
 void Arch::apply_place_regions()
@@ -436,6 +486,7 @@ void Arch::apply_place_regions()
                            id_MISTRAL_MUL18X19_COMBINED);
     };
     std::vector<int> matched(place_region_assignments.size(), 0);
+    std::vector<int> covered(place_region_assignments.size(), 0);
     dict<IdString, pool<IdString>> region_types;
     for (auto &cell : cells) {
         CellInfo *ci = cell.second.get();
@@ -456,6 +507,7 @@ void Arch::apply_place_regions()
                 score = target.size();
             else
                 continue;
+            covered.at(i)++;
             if (best < 0 || score >= best_score) {
                 best = i;
                 best_score = score;
@@ -486,7 +538,7 @@ void Arch::apply_place_regions()
     }
     for (int i = 0; i < int(place_region_assignments.size()); i++) {
         const auto &assignment = place_region_assignments.at(i);
-        if (matched.at(i) == 0)
+        if (covered.at(i) == 0)
             log_error("PLACE_REGION target '%s' matches no core logic cell.\n", assignment.target.c_str());
         log_info("PLACE_REGION X%d Y%d X%d Y%d -to %s: %d cells\n", assignment.x0, assignment.y0, assignment.x1,
                  assignment.y1, assignment.target.c_str(), matched.at(i));

@@ -222,6 +222,7 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
     ctx->restore_fes_reservations();
+    ctx->restore_place_regions(vm.count("qsf") != 0);
     // Saved provenance does not enable fresh placement heuristics. A routed
     // checkpoint already records the physical pins and needs no option to replay.
     auto pin_policy = [&](const char *name, bool enabled) {
