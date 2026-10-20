@@ -1187,12 +1187,182 @@ static json11::Json static_endpoint_proof(Context *ctx, CellInfo *sink, IdString
     return J(); // Undriven nets and cycles are not constants.
 }
 
+// Contracts preserve topology and intent, never invent timing arcs. In particular
+// structural reset validation cannot discharge recovery/removal or MTBF.
+static json11::Json interface_cell(Context *ctx, const CellInfo *cell)
+{
+    using J = json11::Json;
+    J::object ports, params, attrs, pins;
+    for (const auto &p : cell->ports)
+        ports[p.first.str(ctx)] = J::array{int(p.second.type), p.second.net ? p.second.net->name.str(ctx) : ""};
+    for (const auto &p : cell->params) params[p.first.str(ctx)] = p.second.to_string();
+    for (const auto &p : cell->attrs) attrs[p.first.str(ctx)] = p.second.to_string();
+    for (const auto &p : cell->pin_data) pins[p.first.str(ctx)] = int(p.second.state);
+    return J::object{{"type", cell->type.str(ctx)}, {"ports", ports}, {"params", params},
+                     {"attrs", attrs}, {"pins", pins}};
+}
+
+// Reuse the deliberately narrow constant/identity proof without pretending that
+// an unregistered IO data input is a register capture. Only low data on an
+// unregistered open-drain pad qualifies; OE remains an independent endpoint.
+static json11::Json constant_open_drain(Context *ctx, CellInfo *cell, IdString port)
+{
+    using J = json11::Json;
+    if (cell->type != id_MISTRAL_IO || port != id_I || !cell->params.empty() ||
+        cell->get_pin_state(id_I) != PIN_SIG || cell->get_pin_state(id_OE) != PIN_SIG ||
+        !cell->getPort(id_PAD) || !cell->getPort(id_OE) || !cell->getPort(id_OE)->driver.cell)
+        return J();
+    auto *net = cell->getPort(id_I);
+    J::object chain;
+    pool<IdString> seen;
+    while (net && net->driver.cell && seen.insert(net->name).second) {
+        auto *driver = net->driver.cell;
+        if (net->driver.port != id_Q || driver->getPort(id_Q) != net) return J();
+        chain[driver->name.str(ctx)] = interface_cell(ctx, driver);
+        if (driver->type == id_MISTRAL_CONST) {
+            auto v = driver->params.find(id_LUT);
+            if (driver->ports.size() != 1 || driver->ports.at(id_Q).type != PORT_OUT ||
+                driver->params.size() != 1 || v == driver->params.end() || v->second.is_string ||
+                v->second.str.empty() || v->second.str.size() > 64 ||
+                v->second.str.find_first_not_of("0") != std::string::npos)
+                return J();
+            if (cell->getPort(id_OE)->driver.cell->type == id_MISTRAL_CONST) return J();
+            return J::object{{"reason", "constant-open-drain-data"}, {"value", 0},
+                {"scope", "I-only; OE and input feedback remain independent"},
+                {"cell", interface_cell(ctx, cell)}, {"chain", chain},
+                {"oe_endpoint", J::array{cell->name.str(ctx), "OE"}}};
+        }
+        if (driver->type != id_MISTRAL_BUF || driver->ports.size() != 2 || !driver->params.empty() ||
+            !driver->ports.count(id_A) || driver->ports.at(id_A).type != PORT_IN ||
+            driver->ports.at(id_Q).type != PORT_OUT || driver->get_pin_state(id_A) != PIN_SIG)
+            return J();
+        net = driver->getPort(id_A);
+    }
+    return J();
+}
+
+static json11::Json reset_interface_contracts(Context *ctx, pool<IdString> &stages)
+{
+    using J = json11::Json;
+    const auto setting = ctx->settings.find(ctx->id("timing/reset_contracts"));
+    if (setting == ctx->settings.end()) return J::object{};
+    std::string error;
+    J declarations = J::parse(setting->second.as_string(), error);
+    auto fail = [](const char *reason) { log_error("Invalid reset interface contract: %s.\n", reason); };
+    if (!error.empty() || !declarations.is_array()) fail("expected array of ordered stage declarations");
+    J::object result;
+    for (const auto &declaration : declarations.array_items()) {
+        if (!declaration.is_object() || declaration.object_items().size() != 1 ||
+            !declaration["stages"].is_array() || declaration["stages"].array_items().size() < 2)
+            fail("each declaration requires at least two stages and no other fields");
+        std::vector<CellInfo *> chain;
+        for (const auto &name : declaration["stages"].array_items()) {
+            if (!name.is_string() || name.string_value().empty()) fail("invalid stage name");
+            auto found = ctx->cells.find(ctx->id(name.string_value()));
+            if (found == ctx->cells.end() || !stages.insert(found->first).second) fail("missing or repeated stage");
+            chain.push_back(found->second.get());
+        }
+        auto *clock = chain.front()->getPort(id_CLK);
+        auto *reset = chain.front()->getPort(id_ACLR);
+        auto clock_state = chain.front()->get_pin_state(id_CLK);
+        auto reset_state = chain.front()->get_pin_state(id_ACLR);
+        if (!clock || !clock->clkconstr || clock->clkconstr->period.minDelay() <= 0 ||
+            !reset || !reset->driver.cell || (clock_state != PIN_SIG && clock_state != PIN_INV) ||
+            (reset_state != PIN_SIG && reset_state != PIN_INV)) fail("missing clock waveform or raw reset driver/polarity");
+        J::object cells, cone;
+        for (size_t i = 0; i < chain.size(); ++i) {
+            auto *ff = chain[i];
+            auto attr = ff->attrs.find(ctx->id("async_reg"));
+            if (ff->type != id_MISTRAL_FF || !ff->params.empty() || attr == ff->attrs.end() ||
+                !((!attr->second.is_string && attr->second.as_int64() == 1) ||
+                  (attr->second.is_string && attr->second.as_string() == "true")))
+                fail("stage requires native FF and explicit async_reg intent");
+            if (ff->getPort(id_CLK) != clock || ff->getPort(id_ACLR) != reset ||
+                ff->get_pin_state(id_CLK) != clock_state || ff->get_pin_state(id_ACLR) != reset_state ||
+                ff->get_pin_state(id_DATAIN) != PIN_SIG || ff->get_pin_state(id_Q) != PIN_SIG)
+                fail("stage clock, edge, reset or data polarity mismatch");
+            for (auto pin : {id_ENA, id_SCLR, id_SLOAD})
+                if (ff->getPort(pin) || ff->get_pin_state(pin) != (pin == id_ENA ? PIN_1 : PIN_0))
+                    fail("stage override is not tied inactive");
+            if (ff->getPort(id_SDATA)) fail("stage has connected synchronous load data");
+            if (!i) {
+                auto proof = static_endpoint_proof(ctx, ff, id_DATAIN);
+                if (proof.is_null() || proof["value"].int_value() != 1)
+                    fail("first D must be constant one opposite native FF reset zero");
+                cone["constant_source"] = proof;
+            } else if (ff->getPort(id_DATAIN) != chain[i-1]->getPort(id_Q))
+                fail("stage data does not follow previous Q");
+            auto *q = ff->getPort(id_Q);
+            if (!q || q->driver.cell != ff || q->driver.port != id_Q || q->users.empty()) fail("missing stage Q fanout");
+            if (i + 1 < chain.size() && (q->users.entries() != 1 ||
+                q->users.begin()->cell != chain[i+1] || q->users.begin()->port != id_DATAIN))
+                fail("intermediate Q must have sole next-stage D fanout");
+            // A top-level alias would escape the users list.
+            for (const auto &p : ctx->ports) if (p.second.net == q) fail("stage Q escapes to top level");
+            cells[ff->name.str(ctx)] = interface_cell(ctx, ff);
+        }
+        J::array sinks, raw_fanout;
+        pool<IdString> visiting, visited;
+        std::function<bool(NetInfo *)> walk = [&](NetInfo *net) {
+            if (!net || visiting.count(net->name)) return false;
+            if (visited.count(net->name)) return true;
+            visiting.insert(net->name);
+            for (const auto &p : ctx->ports) if (p.second.net == net) return false;
+            if (net->users.empty()) return false;
+            for (const auto &user : net->users) {
+                auto *cell = user.cell;
+                int count = 0;
+                auto kind = ctx->getPortTimingClass(cell, user.port, count);
+                cone[cell->name.str(ctx)] = interface_cell(ctx, cell);
+                if (kind == TMG_REGISTER_INPUT) {
+                    if ((cell->type != id_MISTRAL_FF && !(cell->type.in(id_MISTRAL_SDROUT, id_MISTRAL_SDRIO) && user.port.in(id_I, id_CEOUT))) || user.port == id_ACLR || count != 1 ||
+                        std::find(chain.begin(), chain.end(), cell) != chain.end()) return false;
+                    auto info = ctx->getPortClockingInfo(cell, user.port, 0);
+                    if (cell->getPort(info.clock_port) != clock ||
+                        info.edge != (clock_state == PIN_INV ? FALLING_EDGE : RISING_EDGE)) return false;
+                    sinks.push_back(J::array{cell->name.str(ctx), user.port.str(ctx)});
+                } else if (kind == TMG_COMB_INPUT && (ctx->is_comb_cell(cell->type) || cell->type.in(id_MISTRAL_BUF, id_MISTRAL_NOT))) {
+                    bool output = false;
+                    for (const auto &p : cell->ports) if (p.second.type == PORT_OUT && p.second.net) {
+                        int unused = 0;
+                        if (ctx->getPortTimingClass(cell, p.first, unused) != TMG_COMB_OUTPUT || !walk(p.second.net)) return false;
+                        output = true;
+                    }
+                    if (!output) return false;
+                } else return false;
+            }
+            visiting.erase(net->name); visited.insert(net->name);
+            return true;
+        };
+        if (!walk(chain.back()->getPort(id_Q)) || sinks.empty()) fail("final Q has unproved synchronous same-domain fanout");
+        for (const auto &user : reset->users) raw_fanout.push_back(J::array{user.cell->name.str(ctx), user.port.str(ctx)});
+        std::sort(raw_fanout.begin(), raw_fanout.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
+        std::sort(sinks.begin(), sinks.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
+        result[chain.front()->name.str(ctx)] = J::object{{"declaration", declaration}, {"stages", cells}, {"cone", cone},
+            {"clock", clock->name.str(ctx)}, {"edge", int(clock_state == PIN_INV ? FALLING_EDGE : RISING_EDGE)},
+            {"raw_reset", reset->name.str(ctx)}, {"raw_reset_driver", interface_cell(ctx, reset->driver.cell)},
+            {"raw_reset_fanout", raw_fanout}, {"synchronous_sinks", sinks},
+            {"reset_active", reset_state == PIN_INV ? 1 : 0}, {"reset_value", 0},
+            {"status", "structurally-validated"}, {"physically_qualified", false}};
+    }
+    for (const auto &entry : result)
+        for (const auto &user : entry.second["raw_reset_fanout"].array_items())
+            if (user[1].string_value() != "ACLR" || !stages.count(ctx->id(user[0].string_value())))
+                fail("raw reset fanout escapes declared chains");
+    return result;
+}
+
 // Unlike placement guidance, a routed retention decision must account for every
 // connected endpoint. Unsupported IO/constant/unknown-clock paths fail closed.
 json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timing, TimingAnalyser &unskewed)
 {
     using J = json11::Json;
-    J::object endpoints, clocks, static_endpoints;
+    J::object endpoints, clocks, static_endpoints, constant_outputs;
+    pool<IdString> reset_stages;
+    auto reset_contracts = reset_interface_contracts(ctx, reset_stages);
+    J::array physical_obligations;
+    if (!reset_stages.empty())
+        physical_obligations.push_back("reset: minimum assertion pulse; PLL lock stability/relock; recovery/removal containment; metastability/MTBF");
     J::array unsupported;
     auto clock_key = [&](const ClockDomainKey &key) {
         return J::array{key.clock.str(ctx), int(key.edge)};
@@ -1300,6 +1470,11 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
                 }
                 continue;
             }
+            if (port.first == id_ACLR && reset_stages.count(cell.first)) continue;
+            if (unregistered_output) {
+                auto proof = constant_open_drain(ctx, cell.second.get(), port.first);
+                if (!proof.is_null()) { constant_outputs[key.dump()] = proof; continue; }
+            }
             // FF ACLR's legacy synchronous approximation is not recovery/removal.
             const bool external = !(cell.second->type == id_MISTRAL_FF && port.first == id_ACLR);
             if (!export_endpoint({cell.first, port.first}, external, false)) {
@@ -1309,6 +1484,10 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
             }
         }
     }
+    for (const auto &contract : reset_contracts.object_items())
+        for (const auto &sink : contract.second["synchronous_sinks"].array_items())
+            if (!endpoints.count(sink.dump()))
+                log_error("Reset contract final consumer lacks native setup/hold endpoint: %s.\n", sink.dump().c_str());
     // Preserve the complete explicit boundary contract, including min/max and
     // launch clock/edge. A changed budget must never masquerade as route gain.
     auto io_constraints = read_io_delays(ctx);
@@ -1342,7 +1521,7 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
     std::sort(io_constraints.begin(), io_constraints.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
     std::sort(unsupported.begin(), unsupported.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
     unsupported.erase(std::unique(unsupported.begin(), unsupported.end()), unsupported.end());
-    return J::object{{"schema", 5}, {"registered_contracts", registered_contracts}, {"primitive_clocks", primitive_clocks}, {"complete", unsupported.empty() && !endpoints.empty()},
+    return J::object{{"schema", 6}, {"constant_outputs", constant_outputs}, {"reset_contracts", reset_contracts}, {"physical_obligations", physical_obligations}, {"registered_contracts", registered_contracts}, {"primitive_clocks", primitive_clocks}, {"complete", unsupported.empty() && physical_obligations.empty() && !endpoints.empty()},
         {"io_constraints", io_constraints}, {"output_contracts", output_contracts}, {"unsupported", unsupported}, {"static_endpoints", static_endpoints},
         {"clocks", clocks}, {"endpoints", endpoints}};
 }

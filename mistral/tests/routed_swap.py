@@ -36,6 +36,54 @@ class RoutedSwap(unittest.TestCase):
             subprocess.run([BINARY, '--gtest_filter=IoDelayTest.RegisteredEndpointInventory'],
                            env=dict(os.environ, NEXTPNR_TEST_REGISTERED_ENDPOINTS=str(path)), check=True)
             cls.registered = json.loads(path.read_text())
+            for test, env, field in [('ConstantOpenDrainInventory', 'NEXTPNR_TEST_CONSTANT_OUTPUTS', 'constant'),
+                                     ('ResetContractWholeChainAndPhysicalObligations', 'NEXTPNR_TEST_RESET_CONTRACTS', 'reset')]:
+                subprocess.run([BINARY, '--gtest_filter=IoDelayTest.' + test],
+                               env=dict(os.environ, **{env: str(path)}), check=True)
+                setattr(cls, field, json.loads(path.read_text()))
+
+    def test_constant_channels_and_contract_mutations(self):
+        a, b = self.constant['baseline'], self.constant['safe']
+        self.assertTrue(guard.compare(a, b)[0], guard.compare(a, b)[1])
+        self.assertFalse(guard.compare(self.constant['hps'], self.constant['hps'])[0])
+        for mode in ('missing', 'both_missing', 'value', 'chain', 'oe', 'pins', 'attrs', 'reset', 'obligations'):
+            old, new = copy.deepcopy(a), copy.deepcopy(b)
+            proof = next(iter(new['constant_outputs'].values()))
+            if mode in ('missing', 'both_missing'):
+                del new['constant_outputs']
+                if mode == 'both_missing': del old['constant_outputs']
+            elif mode == 'value': proof['value'] = False
+            elif mode == 'chain': proof['chain'] = {}
+            elif mode == 'oe': proof['oe_endpoint'][1] = 'I'
+            elif mode == 'pins': proof['cell']['pins']['I'] = 3
+            elif mode == 'attrs': proof['cell']['attrs']['LOC'] = 'PIN_BAD'
+            elif mode == 'reset': del new['reset_contracts']
+            elif mode == 'obligations': del new['physical_obligations']
+            self.assertFalse(guard.compare(old, new)[0], mode)
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                baseline = self.bundle(root / 'baseline', 'baseline')
+                guard.write_json(root / 'baseline' / 'endpoints.json', old)
+                original = {n: (root / 'baseline' / n).read_bytes() for n in guard.ARTIFACTS}
+                def candidate():
+                    receipt = self.bundle(root / 'candidate', 'safe')
+                    guard.write_json(root / 'candidate' / 'endpoints.json', new)
+                    return receipt
+                self.assertEqual(guard.guarded_candidate(root, baseline, candidate)['selected'], 'baseline')
+                for name, data in original.items():
+                    self.assertEqual((root / 'retained' / name).read_bytes(), data)
+
+    def test_reset_structure_cannot_be_promoted_to_physical_coverage(self):
+        a = self.reset['validated']
+        self.assertFalse(guard.compare(a, a)[0])
+        for mode in ('complete', 'erase_obligations', 'missing_obligations', 'missing_contracts'):
+            forged = copy.deepcopy(a)
+            forged['complete'] = True
+            if mode == 'erase_obligations': forged['physical_obligations'] = []
+            elif mode == 'missing_obligations': del forged['physical_obligations']
+            elif mode == 'missing_contracts': del forged['reset_contracts']
+            self.assertFalse(guard.compare(forged, forged)[0], mode)
+
 
     def test_registered_channels_and_clock_margins(self):
         a, b = self.registered['baseline'], self.registered['safe']

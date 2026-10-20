@@ -36,8 +36,16 @@ def finite(value):
 def rows(snapshot):
     if snapshot.get('complete') is not True or snapshot.get('unsupported') != []:
         raise ValueError('incomplete native endpoint coverage')
-    if snapshot.get('schema') != 5 or snapshot.get('final_analogue') is not True:
+    if snapshot.get('schema') != 6 or snapshot.get('final_analogue') is not True:
         raise ValueError('not a native final analogue snapshot')
+    if not isinstance(snapshot.get('physical_obligations'), list) or snapshot['physical_obligations']:
+        raise ValueError('unresolved or missing physical interface obligations')
+    if not isinstance(snapshot.get('reset_contracts'), dict) or snapshot['reset_contracts']:
+        # Structure alone is never physical reset qualification. No qualified
+        # reset model is implemented, so no declaration can bypass this gate.
+        raise ValueError('unqualified or missing reset contracts')
+    if not isinstance(snapshot.get('constant_outputs'), dict):
+        raise ValueError('missing constant output channel contracts')
     if not snapshot.get('clocks') or not snapshot.get('endpoints'):
         raise ValueError('empty clock or endpoint coverage')
     endpoints = snapshot['endpoints']
@@ -151,6 +159,24 @@ def rows(snapshot):
     # No private endpoint can escape its physical pad/channel contract.
     if any('$timing$' in identity[1] and key not in channel_endpoints for identity, key in endpoint_keys.items()):
         raise ValueError('unbound registered endpoint')
+    for key, proof in snapshot['constant_outputs'].items():
+        identity = json.loads(key)
+        if (not isinstance(identity, list) or len(identity) != 2 or identity[1] != 'I' or
+                not isinstance(identity[0], str) or not identity[0] or key in endpoints or
+                not isinstance(proof, dict) or proof.get('reason') != 'constant-open-drain-data' or
+                type(proof.get('value')) is not int or proof['value'] != 0 or
+                proof.get('scope') != 'I-only; OE and input feedback remain independent' or
+                proof.get('oe_endpoint') != [identity[0], 'OE'] or
+                (identity[0], 'OE') not in endpoint_keys or
+                not isinstance(proof.get('chain'), dict) or not proof['chain'] or
+                not isinstance(proof.get('cell'), dict)):
+            raise ValueError('invalid constant output channel proof')
+        cell = proof['cell']
+        bindings = [c for boundary in contracts.values() for name, c in boundary['cells'].items()
+                    if name == identity[0]]
+        if (cell.get('type') != 'MISTRAL_IO' or cell.get('params') != {} or
+                not bindings or any(json.dumps(c, sort_keys=True) != json.dumps(cell, sort_keys=True) for c in bindings)):
+            raise ValueError('unbound constant output channel')
     static = snapshot.get('static_endpoints')
     if not isinstance(static, dict):
         raise ValueError('missing static endpoint proofs')
@@ -199,6 +225,9 @@ def compare(before, after):
         for key, value in before['primitive_clocks'].items():
             if any(b < a for a, b in zip(value['margins'], after['primitive_clocks'][key]['margins'])):
                 return False, 'primitive clock margin regression'
+        for field in ('constant_outputs', 'reset_contracts', 'physical_obligations'):
+            if json.dumps(before[field], sort_keys=True) != json.dumps(after[field], sort_keys=True):
+                return False, 'interface contract changed: ' + field
         if before['static_endpoints'] != after['static_endpoints']:
             return False, 'static endpoint semantics/coverage changed'
         if old.keys() != new.keys():

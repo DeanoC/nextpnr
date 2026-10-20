@@ -1460,3 +1460,133 @@ TEST_F(IoDelayTest, RegisteredEndpointInventory)
         std::ofstream out(file); out << J(cases).dump() << "\n"; ASSERT_TRUE(bool(out));
     }
 }
+
+TEST_F(IoDelayTest, ConstantOpenDrainInventory)
+{
+    using J = json11::Json;
+    capture->disconnectPort(id_DATAIN);
+    auto *zero = ctx->createCell(ctx->id("zero"), id_MISTRAL_CONST);
+    zero->params[id_LUT] = 0; zero->addOutput(id_Q); zero->connectPort(id_Q, net("zero_net"));
+    bidir->disconnectPort(id_I); bidir->connectPort(id_I, zero->getPort(id_Q));
+    sdc("set_output_delay -clock memory -min 1 [get_ports {dout dq[*]}]\n"
+        "set_output_delay -clock memory -max 3 [get_ports {dout dq[*]}]\n");
+    auto snapshot = [&](int late = 800) {
+        ctx->assignArchInfo();
+        TimingAnalyser timing(ctx.get()), unskewed(ctx.get());
+        timing.with_clock_skew = true; unskewed.with_clock_skew = false;
+        for (auto *t : {&timing, &unskewed}) {
+            t->setup(false, false, true);
+            t->set_route_delay({output->name, id_I}, DelayPair(500, late));
+            t->run(false, false, false, true);
+        }
+        auto result = critical_swap_endpoint_snapshot(ctx.get(), timing, unskewed).object_items();
+        result["final_analogue"] = true; // synthetic host fixture only
+        return J(result);
+    };
+    J::object cases;
+    cases["baseline"] = snapshot(); cases["safe"] = snapshot(600);
+    ASSERT_TRUE(cases["baseline"]["complete"].bool_value());
+    ASSERT_EQ(cases["baseline"]["constant_outputs"].object_items().size(), 1u);
+    ASSERT_EQ(cases["baseline"]["endpoints"].object_items().size(), 2u);
+    zero->params[id_LUT] = 1;
+    EXPECT_FALSE(snapshot()["complete"].bool_value());
+    zero->params[id_LUT] = 0;
+    bidir->pin_data[id_I].state = PIN_INV;
+    EXPECT_FALSE(snapshot()["complete"].bool_value());
+    bidir->pin_data[id_I].state = PIN_SIG;
+    bidir->pin_data[id_OE].state = PIN_INV;
+    EXPECT_FALSE(snapshot()["complete"].bool_value());
+    bidir->pin_data[id_OE].state = PIN_SIG;
+    auto *buffer = ctx->createCell(ctx->id("constant_buffer"), id_MISTRAL_BUF);
+    buffer->addInput(id_A); buffer->addOutput(id_Q);
+    buffer->connectPort(id_A, zero->getPort(id_Q)); buffer->connectPort(id_Q, net("buffered_zero"));
+    bidir->disconnectPort(id_I); bidir->connectPort(id_I, buffer->getPort(id_Q));
+    EXPECT_TRUE(snapshot()["complete"].bool_value());
+    buffer->pin_data[id_A].state = PIN_INV;
+    EXPECT_FALSE(snapshot()["complete"].bool_value());
+    buffer->pin_data[id_A].state = PIN_SIG;
+    buffer->disconnectPort(id_A); buffer->connectPort(id_A, buffer->getPort(id_Q));
+    EXPECT_FALSE(snapshot()["complete"].bool_value());
+    buffer->disconnectPort(id_A); buffer->connectPort(id_A, zero->getPort(id_Q));
+    auto *hps = ctx->createCell(ctx->id("hps"), ctx->id("cyclonev_hps_interface_peripheral_i2c"));
+    hps->addOutput(ctx->id("out_clk")); hps->connectPort(ctx->id("out_clk"), net("hps_oe"));
+    bidir->disconnectPort(id_OE); bidir->connectPort(id_OE, hps->getPort(ctx->id("out_clk")));
+    cases["hps"] = snapshot();
+    EXPECT_FALSE(cases["hps"]["complete"].bool_value());
+    EXPECT_EQ(cases["hps"]["constant_outputs"].object_items().size(), 1u);
+    EXPECT_EQ(cases["hps"]["unsupported"].array_items().size(), 1u);
+    if (const char *file = std::getenv("NEXTPNR_TEST_CONSTANT_OUTPUTS")) {
+        std::ofstream out(file); out << J(cases).dump() << "\n"; ASSERT_TRUE(bool(out));
+    }
+}
+
+TEST_F(IoDelayTest, ResetContractWholeChainAndPhysicalObligations)
+{
+    using J = json11::Json;
+    output->disconnectPort(id_I); bidir->disconnectPort(id_I); bidir->disconnectPort(id_OE);
+    auto *first = ff("first"), *last = ff("last");
+    auto *one = ctx->createCell(ctx->id("one"), id_MISTRAL_CONST);
+    one->params[id_LUT] = 1; one->addOutput(id_Q); one->connectPort(id_Q, net("one_net"));
+    auto *pll = ctx->createCell(ctx->id("pll"), id_altera_pll);
+    pll->addOutput(id_locked); pll->connectPort(id_locked, net("raw_reset"));
+    for (auto *f : {first, last}) {
+        f->connectPort(id_ACLR, pll->getPort(id_locked)); f->pin_data[id_ACLR].state = PIN_SIG;
+        f->attrs[ctx->id("async_reg")] = std::string("true");
+    }
+    first->connectPort(id_DATAIN, one->getPort(id_Q)); last->connectPort(id_DATAIN, first->getPort(id_Q));
+    auto *buffer = ctx->createCell(ctx->id("reset_buffer"), id_MISTRAL_BUF);
+    buffer->addInput(id_A); buffer->addOutput(id_Q);
+    buffer->connectPort(id_A, last->getPort(id_Q)); buffer->connectPort(id_Q, net("reset_sync"));
+    capture->disconnectPort(id_DATAIN); capture->connectPort(id_DATAIN, buffer->getPort(id_Q));
+    auto snapshot = [&]() {
+        ctx->assignArchInfo();
+        TimingAnalyser timing(ctx.get()), unskewed(ctx.get());
+        timing.with_clock_skew = true; unskewed.with_clock_skew = false;
+        timing.setup(false, false, true); unskewed.setup(false, false, true);
+        auto result = critical_swap_endpoint_snapshot(ctx.get(), timing, unskewed).object_items();
+        result["final_analogue"] = true;
+        return J(result);
+    };
+    J::object cases;
+    cases["undeclared"] = snapshot();
+    const J declarations = J::array{J::object{{"stages", J::array{"first", "last"}}}};
+    auto declare = [&]() { ctx->settings[ctx->id("timing/reset_contracts")] = declarations.dump(); };
+    declare();
+    cases["validated"] = snapshot();
+    EXPECT_EQ(cases["validated"]["unsupported"].array_items().size(), 0u);
+    EXPECT_EQ(cases["validated"]["reset_contracts"].object_items().size(), 1u);
+    EXPECT_FALSE(cases["validated"]["complete"].bool_value());
+    EXPECT_FALSE(cases["validated"]["physical_obligations"].array_items().empty());
+    EXPECT_EQ(cases["validated"]["endpoints"], cases["undeclared"]["endpoints"]);
+    EXPECT_EQ(cases["validated"]["static_endpoints"], cases["undeclared"]["static_endpoints"]);
+    first->attrs.erase(ctx->id("async_reg"));
+    EXPECT_THROW(snapshot(), log_execution_error_exception);
+    first->attrs[ctx->id("async_reg")] = std::string("true");
+    first->attrs[ctx->id("async_reg")] = std::string("false");
+    EXPECT_THROW(snapshot(), log_execution_error_exception);
+    first->attrs[ctx->id("async_reg")] = std::string("true");
+    ctx->settings[ctx->id("timing/reset_contracts")] = J(J::array{J::object{{"stages", J::array{"first"}}}}).dump();
+    EXPECT_THROW(snapshot(), log_execution_error_exception); declare();
+    ctx->settings[ctx->id("timing/reset_contracts")] = J(J::array{J::object{{"stages", J::array{"first", "first"}}}}).dump();
+    EXPECT_THROW(snapshot(), log_execution_error_exception); declare();
+    one->params[id_LUT] = 0; EXPECT_THROW(snapshot(), log_execution_error_exception); one->params[id_LUT] = 1;
+    last->pin_data[id_ACLR].state = PIN_INV; EXPECT_THROW(snapshot(), log_execution_error_exception); last->pin_data[id_ACLR].state = PIN_SIG;
+    last->pin_data[id_CLK].state = PIN_INV; EXPECT_THROW(snapshot(), log_execution_error_exception); last->pin_data[id_CLK].state = PIN_SIG;
+    first->pin_data[id_ENA].state = PIN_0; EXPECT_THROW(snapshot(), log_execution_error_exception); first->pin_data[id_ENA].state = PIN_1;
+    first->pin_data[id_SCLR].state = PIN_1; EXPECT_THROW(snapshot(), log_execution_error_exception); first->pin_data[id_SCLR].state = PIN_0;
+    first->pin_data[id_SLOAD].state = PIN_1; EXPECT_THROW(snapshot(), log_execution_error_exception); first->pin_data[id_SLOAD].state = PIN_0;
+    launch->connectPort(id_DATAIN, first->getPort(id_Q)); EXPECT_THROW(snapshot(), log_execution_error_exception); launch->disconnectPort(id_DATAIN);
+    launch->connectPort(id_ACLR, pll->getPort(id_locked)); EXPECT_THROW(snapshot(), log_execution_error_exception); launch->disconnectPort(id_ACLR);
+    capture->pin_data[id_CLK].state = PIN_INV; EXPECT_THROW(snapshot(), log_execution_error_exception); capture->pin_data[id_CLK].state = PIN_SIG;
+    capture->disconnectPort(id_DATAIN); capture->connectPort(id_ACLR, buffer->getPort(id_Q));
+    EXPECT_THROW(snapshot(), log_execution_error_exception);
+    capture->disconnectPort(id_ACLR); capture->connectPort(id_DATAIN, buffer->getPort(id_Q));
+    port("escape", PORT_OUT, last->getPort(id_Q)); EXPECT_THROW(snapshot(), log_execution_error_exception); ctx->ports.erase(ctx->id("escape"));
+    for (auto *f : {first, last}) f->pin_data[id_ACLR].state = PIN_INV;
+    EXPECT_FALSE(snapshot()["complete"].bool_value());
+    for (auto *f : {first, last, capture}) f->pin_data[id_CLK].state = PIN_INV;
+    EXPECT_EQ(snapshot()["reset_contracts"]["first"]["edge"].int_value(), int(FALLING_EDGE));
+    if (const char *file = std::getenv("NEXTPNR_TEST_RESET_CONTRACTS")) {
+        std::ofstream out(file); out << J(cases).dump() << "\n"; ASSERT_TRUE(bool(out));
+    }
+}

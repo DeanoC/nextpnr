@@ -1440,6 +1440,21 @@ TEST(ExternalEndpointDiagnostic, PlacedCheckpointSyntheticInputConstraints)
         std::ifstream extra(extra_sdc); ASSERT_TRUE(extra.good()); ctx.read_sdc(extra);
         cases["registered"] = snapshot();
     }
+    if (const char *overlay = std::getenv("NEXTPNR_TEST_RESET_OVERLAY")) {
+        std::ifstream source(overlay);
+        std::string text((std::istreambuf_iterator<char>(source)), std::istreambuf_iterator<char>()), error;
+        auto contract = json11::Json::parse(text, error);
+        ASSERT_TRUE(error.empty()); ASSERT_TRUE(contract.is_object());
+        for (const auto &entry : contract["attrs"].object_items()) {
+            auto *cell = ctx.cells.at(ctx.id(entry.first)).get();
+            ASSERT_EQ(entry.second.object_items().size(), 1u);
+            ASSERT_EQ(entry.second["async_reg"].string_value(), "true");
+            ASSERT_FALSE(cell->attrs.count(ctx.id("async_reg")));
+            cell->attrs[ctx.id("async_reg")] = std::string("true");
+        }
+        ctx.settings[ctx.id("timing/reset_contracts")] = contract["declarations"].dump();
+        cases["reset"] = snapshot();
+    }
     std::ofstream out(output);
     out << json11::Json(cases).dump() << "\n";
     ASSERT_TRUE(bool(out));

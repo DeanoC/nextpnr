@@ -27,7 +27,7 @@ physical=json.loads((here/'physical-output-accounting.json').read_text())
 assert len(physical)==69 and all(r['dynamic_endpoints'] or r['unsupported'] for r in physical)
 f=json.loads(gzip.decompress((here/'output-fixtures.json.gz').read_bytes()))
 # Isolated native fixture envelopes only; historical physical inventories remain schema 4.
-for v in f.values():v.update(schema=5,registered_contracts={},primitive_clocks={})
+for v in f.values():v.update(schema=6,constant_outputs={},reset_contracts={},physical_obligations=[],registered_contracts={},primitive_clocks={})
 assert guard.compare(f['baseline'],f['safe'])[0]
 for n in ('new_failure','hold_regression','clock_latency','missing','min_changed','max_changed','phase','falling_capture','falling_launch','constant'):
  assert not guard.compare(f['baseline'],f[n])[0],n

@@ -30,7 +30,7 @@ f=json.loads(gzip.decompress((here/'io-fixtures.json.gz').read_bytes()))
 # these isolated synthetic input fixtures to exercise unchanged timing checks;
 # this is not promotion of an old full-design inventory to schema 4.
 assert not guard.compare(f['baseline'],f['safe'])[0]
-for v in f.values():v.update(schema=5,output_contracts={},registered_contracts={},primitive_clocks={})
+for v in f.values():v.update(schema=6,constant_outputs={},reset_contracts={},physical_obligations=[],output_contracts={},registered_contracts={},primitive_clocks={})
 assert guard.compare(f['baseline'],f['safe'])[0]
 for name in ['missing','new_failure','hold_regression','clock_latency','min_changed','max_changed','phase','falling','external_reset','async_reset']:
  assert not guard.compare(f['baseline'],f[name])[0],name
