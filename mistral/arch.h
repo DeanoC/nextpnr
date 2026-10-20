@@ -683,6 +683,9 @@ struct Arch : BaseArch<ArchRanges>
 
     void create_lab(int x, int y, bool is_mlab);       // lab.cc
     void create_m10k(int x, int y);                    // m10k.cc
+    // Whether an M10K's A or B output half (DATAAOUT / DATABOUT) reads through
+    // its output register, as the bitstream programs A/B_OUTPUT_SEL.
+    bool m10k_output_registered(const CellInfo *cell, bool a_half) const; // m10k.cc
     void create_dsp(int x, int y);                     // dsp.cc
     void create_plls();                               // globals.cc
     dict<PipId, int> pll_ref_select, pll_clock_select;

@@ -52,4 +52,24 @@ void Arch::create_m10k(int x, int y)
     }
 }
 
+bool Arch::m10k_output_registered(const CellInfo *cell, bool a_half) const
+{
+    bool tdp = bool_or_default(cell->params, id_CFG_TDP, false);
+    int dbits = int_or_default(cell->params, id_CFG_DBITS, 10);
+    int rdbits = bool_or_default(cell->params, id_CFG_MIXED_WIDTH, false) ?
+            int_or_default(cell->params, id_CFG_RD_DBITS, dbits) : dbits;
+    bool reg_a = bool_or_default(cell->params, id_CFG_OUT_REG_A, false);
+    bool reg_b = bool_or_default(cell->params, id_CFG_OUT_REG_B, false);
+    // A 40-bit SDP B result is physically split across the A and B output
+    // halves. A partial registration would give the logical result two
+    // different latencies, so any request registers both halves.
+    bool split = !tdp && rdbits == 40;
+    if (split ? reg_a || reg_b : a_half ? reg_a : reg_b)
+        return true;
+    // An active output clear also selects the register. ACLR0 clears the A
+    // half, which only carries read data in TDP and 40-bit SDP modes.
+    auto clear = cell->pin_data.find(a_half ? id_ACLR0 : id_ACLR1);
+    return clear != cell->pin_data.end() && clear->second.state != PIN_0 && (!a_half || tdp || rdbits == 40);
+}
+
 NEXTPNR_NAMESPACE_END

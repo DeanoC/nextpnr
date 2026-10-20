@@ -16,8 +16,13 @@ oracles are in [oracle](oracle/README.md).
 
 Timing now recognizes indexed A1DATA/B1DATA pins and supplies clocking info
 for B1ADDR/B1DATA. Write inputs use CLK1; read address/enable and output use
-CLK2 in the new mode. This preserves the existing M10K delay values; it does
-not characterize new silicon delays.
+CLK2 in the new mode. Read clock-to-output timing now uses a TimeQuest-derived
+envelope selected by the M10K read mode and output-register setting, replacing
+the former flat 1.004 ns read delay. The characterized maximum is 2.581–2.704
+ns for unregistered reads and 0.709–0.749 ns for registered reads; the
+unregistered minimum remains at 1.004 ns to avoid loosening hold checks. The
+per-class characterization and method are in
+[M10K read clock-to-output](clock-to-out/README.md).
 
 Use Yosys with the paired `intel_alm` M10K inference changes. Old Yosys maps
 independent-clock RAM to FFs; new inference emits CLK2 and CFG_DUAL_CLOCK=1,
@@ -86,3 +91,6 @@ For a design-scale audit of every packed M10K clock selector, see
 
 For equal-width 1-, 2- and 5-bit true-dual-port geometries, see
 [narrow true-dual-port M10K](README-narrow.md).
+
+For the TimeQuest clock-to-output of every read mode, see
+[M10K read clock-to-output](clock-to-out/README.md).
