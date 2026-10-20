@@ -1043,6 +1043,65 @@ TEST_F(IoDelayTest, NativeReferenceProfileSupportsStandaloneSdrOutputAndDdrInput
     EXPECT_TRUE(ctx->getRegisteredIoTiming(output, id_PAD, false).empty());
 }
 
+TEST_F(IoDelayTest, DynamicOutputEnableReferenceKeepsDataControlPadAndClockTiming)
+{
+    static_cast<IoBoundaryTestContext *>(ctx.get())->native_models = true;
+    output->type = id_MISTRAL_SDROUT;
+    output->addInput(id_CLK); output->connectPort(id_CLK, clock);
+    output->addInput(id_CEOUT); output->connectPort(id_CEOUT, launch->getPort(id_Q));
+    output->pin_data[id_CEOUT].state = PIN_SIG;
+    output->params[ctx->id("IOREG_OUT_CE")] = 1;
+    output->params[ctx->id("IOREG_CEOUT_INV")] = 0;
+    output->attrs[ctx->id("NEXTPNR_GPIO_TIMING_PROFILE")] = std::string("QUARTUS_17_0_2_RAMTEST");
+    output->attrs[ctx->id("BOARD_MODEL_FAR_C")] = std::string("30P");
+    for (const char *pin : {"Y11", "AA26", "AA13", "AA11", "W11", "Y19", "AB23",
+                            "AC23", "AC22", "C12", "AB26", "Y17", "AB25"}) {
+        output->attrs[id_LOC] = std::string("PIN_") + pin;
+        ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name(pin)), output, STRENGTH_LOCKED);
+        auto model = ctx->getRegisteredIoTiming(output, id_PAD, false);
+        ASSERT_EQ(model.size(), 1u) << pin;
+        EXPECT_EQ(model.front().clocking.clockToQ.minDelay(), 0);
+        EXPECT_EQ(model.front().clocking.clockToQ.maxDelay(), 5280);
+        EXPECT_EQ(ctx->getPrimitiveClockRequirements(output).size(), 1u);
+        for (auto port : {id_I, id_CEOUT}) {
+            int count = 0;
+            EXPECT_EQ(ctx->getPortTimingClass(output, port, count), TMG_REGISTER_INPUT);
+            EXPECT_EQ(count, 1);
+            auto timing = ctx->getPortClockingInfo(output, port, 0);
+            EXPECT_EQ(timing.clock_port, id_CLK);
+            EXPECT_EQ(timing.setup.maxDelay(), 120);
+            EXPECT_EQ(timing.hold.maxDelay(), 310);
+        }
+        ctx->unbindBel(output->bel);
+    }
+    output->attrs[id_LOC] = std::string("PIN_Y11");
+    ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name("Y11")), output, STRENGTH_LOCKED);
+    auto rejects = [&]() {
+        EXPECT_TRUE(ctx->getRegisteredIoTiming(output, id_PAD, false).empty());
+        EXPECT_TRUE(ctx->getPrimitiveClockRequirements(output).empty());
+    };
+    for (auto state : {PIN_0, PIN_INV}) {
+        output->pin_data[id_CEOUT].state = state; rejects();
+    }
+    output->pin_data[id_CEOUT].state = PIN_SIG;
+    for (auto entry : std::vector<std::pair<const char *, int>>{
+            {"IOREG_OUT_CE", 0}, {"IOREG_OUT_CE", 2}, {"IOREG_CEOUT_INV", 1}, {"IOREG_OUT_ACLR", 1}}) {
+        auto id = ctx->id(entry.first); auto old = output->params.find(id);
+        Property saved = old == output->params.end() ? Property(0) : old->second;
+        output->params[id] = entry.second; rejects(); output->params[id] = saved;
+    }
+    auto ce = output->getPort(id_CEOUT);
+    output->disconnectPort(id_CEOUT); rejects();
+    output->connectPort(id_CEOUT, net("undriven_ce")); rejects();
+    output->disconnectPort(id_CEOUT); output->connectPort(id_CEOUT, ce);
+    ctx->unbindBel(output->bel);
+    for (const char *pin : {"AD17", "D12", "AG10", "V12"}) {
+        output->attrs[id_LOC] = std::string("PIN_") + pin;
+        ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name(pin)), output, STRENGTH_LOCKED);
+        rejects(); ctx->unbindBel(output->bel);
+    }
+}
+
 TEST_F(IoDelayTest, NativeClockForwardingPreservesPadPolarityAndBothLaunchPhases)
 {
     static_cast<IoBoundaryTestContext *>(ctx.get())->native_models = true;

@@ -73,7 +73,14 @@ set_instance_assignment -name BOARD_MODEL_FAR_C 30P -to {SDRAM_DQ[*]}
 
 The profile uses the retained Quartus 17.0.2 four-corner reference fits for
 `5CSEBA6U23I7`, default delay chains, 3.3-V LVTTL, 16mA, fast slew, no bus
-hold, pull-up or clamp, inactive asynchronous clear and constant clock enables.
+hold, pull-up or clamp, inactive asynchronous clear and constant clock enables. A separately fitted extension
+allows active-high dynamic CEOUT on standalone SDR outputs at the thirteen
+SDRAM address/bank pins Y11, AA26, AA13, AA11, W11, Y19, AB23, AC23, AC22,
+C12, AB26, Y17 and AB25. It requires a connected driven signal, IOREG_OUT_CE=1,
+IOREG_CEOUT_INV=0 and inactive output clear. Other dynamic controls remain
+unqualified. The [dynamic-CE reference audit](validation/2026-10-20-dynamic-ce-coverage-265/reference_check.py)
+checks the 0/30pF four-corner fits, hardware CE configuration, pad transitions,
+local data/CE setup/hold and primitive-clock requirements against unchanged bounds.
 It requires the tested package pin assignment and a matching placed BEL.
 This is an opt-in fitted reference envelope, not board or silicon signoff.
 The [characterization fixture](../mistral/tests/gpio-timing/README.md) records
@@ -242,8 +249,9 @@ Each named channel records its endpoint, clock ingress/edge and native model
 bounds. SDR/DDR input captures, registered data/OE, and both edges/polarities of
 the qualified constant clock forwarder retain separate rows. Missing constraints,
 models or primitive-clock coverage keep the physical pad unsupported. The
-existing profile's pin, electrical, load and constant-enable restrictions are
-unchanged; a dynamic CEOUT is not qualified by this extension.
+existing profile's pin, electrical and load restrictions still apply. Dynamic
+CEOUT is accepted only by the separately qualified thirteen-pin SDR extension
+described above; endpoint export itself does not qualify a model.
 
 The native primitive-clock checker now exposes the requirements and evaluated
 period/high/low margins it already checks. Schema 5 retains these, including

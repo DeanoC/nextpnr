@@ -112,9 +112,31 @@ bool gpio_pad_profile(const Context *ctx, const CellInfo *cell, bool dq_only)
             return false;
     if (cell->getPort(id_ACLR) && cell->get_pin_state(id_ACLR) != PIN_0)
         return false;
-    for (IdString port : {id_CEIN, id_CEOUT})
-        if (cell->getPort(port) && cell->get_pin_state(port) != PIN_1)
+    if (int_or_default(cell->params, ctx->id("IOREG_OUT_CE"), 0) && !cell->getPort(id_CEOUT))
+        return false;
+    for (IdString port : {id_CEIN, id_CEOUT}) {
+        if (!cell->getPort(port) || cell->get_pin_state(port) == PIN_1)
+            continue;
+        // Dynamic active-high CE was independently fitted on these thirteen
+        // SDR address/bank pins at 0/30pF, all corners and pad transitions.
+        // The retained fits cover the existing pad/clock/fabric envelopes;
+        // neither a connected signal nor a pin-state flag alone enables CE
+        // in the bitstream. Keep other modes and controls unqualified.
+        const char *ce_pins[] = {"Y11", "AA26", "AA13", "AA11", "W11", "Y19", "AB23",
+                                 "AC23", "AC22", "C12", "AB26", "Y17", "AB25"};
+        bool ce_pin = false;
+        for (const char *name : ce_pins)
+            ce_pin |= pin == std::string("PIN_") + name;
+        const NetInfo *ce = cell->getPort(port);
+        if (port != id_CEOUT || cell->type != id_MISTRAL_SDROUT || !ce_pin ||
+            cell->get_pin_state(port) != PIN_SIG || !ce->driver.cell ||
+            ce->driver.cell->type.in(id_VCC, id_GND, id_MISTRAL_CONST) ||
+            int_or_default(cell->params, ctx->id("IOREG_OUT_CE"), 0) != 1 ||
+            int_or_default(cell->params, ctx->id("IOREG_CEOUT_INV"), 0) != 0 ||
+            int_or_default(cell->params, ctx->id("IOREG_OUT_ACLR"), 0) != 0 ||
+            !cell->getPort(id_CLK))
             return false;
+    }
     return true;
 }
 
