@@ -51,6 +51,10 @@ sinks together (#247). On the FES Atari ST the native-capture frame buffer
 (about 234 M10Ks fed by broadcast writes) lost to the CPU-side snoop nets
 and drifted toward `machine.system` on most seeds. A fence at x >= 20 for
 `video.native_capture.capture`, with its output pipeline left free, placed
-the capture well on 10 of 10 seeds against 1 of 10 without it. With
-congestion-driven HeAP (#250), and the ST's timing fixes, three of four
-fenced DSP seeds met both clocks, against one of four unfenced.
+the capture well on 10 of 10 seeds against 1 of 10 without it.
+
+That experiment first used an environment hook and showed a second bug:
+SA refinement's single-cell swap bound the displaced cell to the old BEL
+without checking its region, so refinement leaked fenced cells across the
+boundary. `placer1` now refuses such swaps, and the post-placement check
+above catches any other pass that does the same.
