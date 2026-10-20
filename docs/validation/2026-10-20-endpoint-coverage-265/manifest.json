@@ -1,0 +1,217 @@
+{
+  "accounting": "All paired route wall time including lease waits, plus full CLI durations rounded up. Native nonrouting STA tests and CPU builds excluded. All invocations terminal.",
+  "artifact_root": "/home/deano/harnesses/pcxt-endpoint-coverage/paired",
+  "artifacts": {
+    "baseline": {
+      "diagnostic.rbf": "b26f71da2eae6bf99771065f4972d3dec003ddd3edb78ab8c05296e28acc08b4",
+      "endpoints.json": "e7671b1b225548abcc1415125801fba386f2069a0174b2edf70ef835c732b66c",
+      "nextpnr.log": "78b144357169ff9f6cc04dc2eca10b0c5f02a1e8ab2a703d3b51fd6d22855f66",
+      "receipt.json": "91aeea11c511f1d165405eb13f9d32c95b51654eea93f96919c9ea3bc05f8e5d",
+      "routed.json": "2f4baf311bd61b67ead1c847bd1f55034a4517c97b88d71a6400f04efd7e1c04",
+      "timing.json": "82316e156a2bd845ed705f7b38076296ae998d61221b5d8373648a82af2493f7"
+    },
+    "candidate": {
+      "diagnostic.rbf": "a8a080c9682dde88d5fd9b4508fc58b5af57daa10a66093de83412a345d2d84d",
+      "endpoints.json": "f840aaddc832e26f531381eb0873221c4c82ec55b43d527079dcb3bff62fe0d8",
+      "nextpnr.log": "10c6238ec982822b9451c9f80da30c338a908277cee80470ec72a2c8bf402bfb",
+      "receipt.json": "4a65678c16b8dd42587cc575980c0e6266ebc3ba8037e57bfb88bf6a40dd354e",
+      "routed.json": "a44b0a8ca62719631289c238e4f1a0145000a66d2251de5eb30f64d5674ebc08",
+      "timing.json": "2a13e80dc72b7a7e171ce70fbf8996f01c728d1c85d6e74f2f773689bbcc8355"
+    }
+  },
+  "base": "70dfc6f8afc6f33588d1186853cb3acf8ee7e9a0",
+  "binary_sha256": "d169b7d646f5619a9f192ecec1952945c2a87866bfa57e877767aa45332d0cde",
+  "build_flags": {
+    "ARCH": "mistral",
+    "BUILD_GUI": "OFF",
+    "BUILD_PYTHON": "OFF",
+    "BUILD_TESTS": "ON",
+    "CMAKE_BUILD_TYPE": "Release",
+    "GPU_ROUTER": "HIP",
+    "GPU_TARGETS": "gfx1100;gfx1201"
+  },
+  "cli_budget": {
+    "accounting": "Entire CLI duration including empty CPU routes",
+    "charged_seconds": 150,
+    "reservation_seconds": 300,
+    "returncode": 0
+  },
+  "cli_followup_budget": {
+    "accounting": "Remaining initial 300-second CLI reservation; full wall time charged",
+    "charged_seconds": 19,
+    "reservation_seconds": 150,
+    "returncode": 0
+  },
+  "followup_test_binary_sha256": "ed8cb00b72b42855519cddfc9f4370cbc6b900d4b3a45cc843d3b005a38047e4",
+  "followup_test_configured_version": "6bf43568 (cached; unchanged compiler source; updated test source only)",
+  "followup_test_cpp_source_commit": "1846e3c5",
+  "implementation": "6bf435684ee84dbf2782fc33af687e7ceed990fc",
+  "inputs": {
+    "clocks.sdc": {
+      "sha256": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041",
+      "source": "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/experiments/fixture/clocks.sdc"
+    },
+    "compiler": {
+      "sha256": "d169b7d646f5619a9f192ecec1952945c2a87866bfa57e877767aa45332d0cde",
+      "source": "/home/deano/harnesses/pcxt-endpoint-coverage/final-bin/nextpnr-mistral"
+    },
+    "constraints.qsf": {
+      "sha256": "d21b3f91fcb1c0eba57042ef61a951382d3284a9b5f3731dcc13362b1fd3aab2",
+      "source": "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/experiments/fixture/constraints.qsf"
+    },
+    "guidance.json": {
+      "sha256": "d996a67c0e380205bd2c97f308501cb9b6463e8aaef7d25c564c6c2bd975ac02",
+      "source": "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/experiments/baseline-run/timing.json"
+    },
+    "placed.json": {
+      "sha256": "733f1cc8ea765bed46dae44dcd744e4432edd75ddedaf232061c0a1d9756b4a6",
+      "source": "/home/deano/harnesses/pcxt-routed-guard/fixture/placed.json"
+    }
+  },
+  "previous_charged_seconds": 1444.1564739826135,
+  "receipts": {
+    "baseline": {
+      "artifacts": {
+        "diagnostic.rbf": "b26f71da2eae6bf99771065f4972d3dec003ddd3edb78ab8c05296e28acc08b4",
+        "endpoints.json": "e7671b1b225548abcc1415125801fba386f2069a0174b2edf70ef835c732b66c",
+        "routed.json": "2f4baf311bd61b67ead1c847bd1f55034a4517c97b88d71a6400f04efd7e1c04",
+        "timing.json": "82316e156a2bd845ed705f7b38076296ae998d61221b5d8373648a82af2493f7"
+      },
+      "binary_sha256": "d169b7d646f5619a9f192ecec1952945c2a87866bfa57e877767aa45332d0cde",
+      "charged_seconds": 154.50666688475758,
+      "command": [
+        "/home/deano/harnesses/pcxt-endpoint-coverage/paired/inputs/compiler",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/harnesses/pcxt-endpoint-coverage/paired/inputs/placed.json",
+        "--qsf",
+        "/home/deano/harnesses/pcxt-endpoint-coverage/paired/inputs/constraints.qsf",
+        "--sdc",
+        "/home/deano/harnesses/pcxt-endpoint-coverage/paired/inputs/clocks.sdc",
+        "--seed",
+        "1",
+        "--freq",
+        "100",
+        "--router",
+        "gpu",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--no-pack",
+        "--no-place",
+        "--rbf",
+        "diagnostic.rbf",
+        "--compress-rbf",
+        "--write",
+        "routed.json",
+        "--report",
+        "timing.json",
+        "--detailed-timing-report",
+        "--timing-report-paths",
+        "1024",
+        "--routed-endpoints",
+        "endpoints.json"
+      ],
+      "environment": {
+        "FES_GPU_LEASE_OWNER": "pcxt-agent",
+        "GPU_LEASE_MAX_PER_OWNER": "2",
+        "NEXTPNR_REQUIRE_GPU": "1"
+      },
+      "returncode": 1,
+      "timeout": 600.0
+    },
+    "candidate": {
+      "artifacts": {
+        "diagnostic.rbf": "a8a080c9682dde88d5fd9b4508fc58b5af57daa10a66093de83412a345d2d84d",
+        "endpoints.json": "f840aaddc832e26f531381eb0873221c4c82ec55b43d527079dcb3bff62fe0d8",
+        "routed.json": "a44b0a8ca62719631289c238e4f1a0145000a66d2251de5eb30f64d5674ebc08",
+        "timing.json": "2a13e80dc72b7a7e171ce70fbf8996f01c728d1c85d6e74f2f773689bbcc8355"
+      },
+      "binary_sha256": "d169b7d646f5619a9f192ecec1952945c2a87866bfa57e877767aa45332d0cde",
+      "charged_seconds": 183.0671043493785,
+      "command": [
+        "/home/deano/harnesses/pcxt-endpoint-coverage/paired/inputs/compiler",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/harnesses/pcxt-endpoint-coverage/paired/inputs/placed.json",
+        "--qsf",
+        "/home/deano/harnesses/pcxt-endpoint-coverage/paired/inputs/constraints.qsf",
+        "--sdc",
+        "/home/deano/harnesses/pcxt-endpoint-coverage/paired/inputs/clocks.sdc",
+        "--seed",
+        "1",
+        "--freq",
+        "100",
+        "--router",
+        "gpu",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--no-pack",
+        "--no-place",
+        "--rbf",
+        "diagnostic.rbf",
+        "--compress-rbf",
+        "--write",
+        "routed.json",
+        "--report",
+        "timing.json",
+        "--detailed-timing-report",
+        "--timing-report-paths",
+        "1024",
+        "--routed-endpoints",
+        "endpoints.json",
+        "--critical-swap-budget",
+        "64",
+        "--critical-cohort-report",
+        "/home/deano/harnesses/pcxt-endpoint-coverage/paired/inputs/guidance.json",
+        "--critical-swap-routed-trial"
+      ],
+      "environment": {
+        "FES_GPU_LEASE_OWNER": "pcxt-agent",
+        "GPU_LEASE_MAX_PER_OWNER": "2",
+        "NEXTPNR_REQUIRE_GPU": "1"
+      },
+      "returncode": 1,
+      "timeout": 600.0
+    }
+  },
+  "remaining_seconds": 1649.2697547832504,
+  "reservation": {
+    "accounting": "Charge all wall time including waits; CLI entire duration rounded up; CPU build and nonrouting STA tests excluded.",
+    "cli_reserved_seconds": 300,
+    "paired_reserved_seconds": 1200,
+    "per_invocation_limit_seconds": 600,
+    "previous_charged_seconds": 1444.1564739826135,
+    "remaining_unreserved_seconds": 655.8435260173865,
+    "total_allowance_seconds": 3600
+  },
+  "route_budget": {
+    "accounting": "full wall time, including lease waits",
+    "allowance_seconds": 1200.0,
+    "charged_seconds": 337.5737712341361
+  },
+  "runner_root": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross",
+  "runner_sha256": "3c262a7a2e61bb07783ab361055b1f30d2617e5ae304e6f50787430d82c6e7fd",
+  "source_files": {
+    "mistral/critical_cohort.cc": "46263a82acd94d0284b06befb2108ae75da9c75b24d46f11cb9f64cf97e8c0a6",
+    "mistral/routed_swap.py": "9f464d7ebb371b046e183de6a2aa14ebb505c04d188fe4f0e13185900ec5c5cc",
+    "mistral/tests/critical_cohort.cc": "ab33ff449270d555db6f7c0806b6c2b198d197fd83c2b680064b599b2ce1764e",
+    "mistral/tests/critical_cohort_cli.py": "b38c7f06ab223cd34abb954d2d9e35c8363ddb82c06213cd10c2a531727113a6",
+    "mistral/tests/routed_swap.py": "83bb319c5316a9abb7d22ca9f69096051d80f6088abbcf3ecd547b949f3b3459"
+  },
+  "test_binary_sha256": "efacda389c6188bce4fa319280d89c4bb34ebbb50b04a1bf37aca70dd0534cb8",
+  "test_followup": "8b3b5271b81a67541a17138d4260bbd8cd1e42d4",
+  "total_charged_seconds": 1950.7302452167496,
+  "validation": {
+    "cli": "15/15 plus enhanced baseline export case (two CPU routes)",
+    "driver": "13/13",
+    "native": "49/49 at 6bf43568; changed IO test passed again in follow-up driver invocation",
+    "portable": "prior two checkers pass; new checker passes including all artifact hashes"
+  },
+  "version": "\"nextpnr-mistral\" -- Next Generation Place and Route (Version nextpnr-0.11.1-560-g6bf43568)"
+}

@@ -1,0 +1,333 @@
+{
+  "available_rows_scope": "Diagnostic only; unsupported reset paths still prohibit acceptance.",
+  "baseline": {
+    "dynamic_endpoints": 17147,
+    "dynamic_pairs": 17147,
+    "fmax": {
+      "clk_pixel": {
+        "achieved": 83.74507904052734,
+        "constraint": 74.25006866455078
+      },
+      "clocks[0]": {
+        "achieved": 89.58164978027344,
+        "constraint": 100
+      },
+      "clocks[1]": {
+        "achieved": 242.24807739257812,
+        "constraint": 100
+      },
+      "clocks[2]": {
+        "achieved": 103.76756286621094,
+        "constraint": 100
+      }
+    },
+    "previous_clocks_equal": true,
+    "previous_dynamic_rows_equal": true,
+    "previous_fmax_equal": true,
+    "previous_rbf_equal": true,
+    "static": 1888,
+    "static_proof_lengths": {
+      "1": 1867,
+      "2": 21
+    },
+    "timing_summary": {
+      "clocks": {
+        "clk_pixel": {
+          "hold_wns_ns": 0.7549999952316284,
+          "setup_wns_ns": 1.5269999504089355
+        },
+        "clocks[0]": {
+          "hold_wns_ns": 0.7229999899864197,
+          "setup_wns_ns": -1.1629999876022339
+        },
+        "clocks[1]": {
+          "hold_wns_ns": 5.749000072479248,
+          "setup_wns_ns": 2.936000108718872
+        },
+        "clocks[2]": {
+          "hold_wns_ns": 4.6539998054504395,
+          "setup_wns_ns": 0.23600000143051147
+        }
+      },
+      "final_analogue_model": true
+    },
+    "unsupported": 20,
+    "unsupported_accounted": true,
+    "unsupported_keys": [
+      [
+        "locked_MISTRAL_FF_ACLR",
+        "ACLR"
+      ],
+      [
+        "locked_MISTRAL_FF_ACLR_1",
+        "ACLR"
+      ],
+      [
+        "locked_MISTRAL_FF_ACLR_1_Q_MISTRAL_FF_DATAIN",
+        "ACLR"
+      ],
+      [
+        "locked_MISTRAL_FF_ACLR_DATAIN_MISTRAL_FF_Q",
+        "ACLR"
+      ],
+      [
+        "sdram_pads[0].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[10].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[11].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[12].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[13].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[14].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[15].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[1].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[2].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[3].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[4].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[5].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[6].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[7].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[8].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[9].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ]
+    ]
+  },
+  "candidate": {
+    "dynamic_endpoints": 17147,
+    "dynamic_pairs": 17147,
+    "fmax": {
+      "clk_pixel": {
+        "achieved": 86.79048919677734,
+        "constraint": 74.25006866455078
+      },
+      "clocks[0]": {
+        "achieved": 91.72628784179688,
+        "constraint": 100
+      },
+      "clocks[1]": {
+        "achieved": 242.24807739257812,
+        "constraint": 100
+      },
+      "clocks[2]": {
+        "achieved": 103.85045623779297,
+        "constraint": 100
+      }
+    },
+    "previous_clocks_equal": true,
+    "previous_dynamic_rows_equal": true,
+    "previous_fmax_equal": true,
+    "previous_rbf_equal": true,
+    "static": 1888,
+    "static_proof_lengths": {
+      "1": 1867,
+      "2": 21
+    },
+    "timing_summary": {
+      "clocks": {
+        "clk_pixel": {
+          "hold_wns_ns": 0.7549999952316284,
+          "setup_wns_ns": 1.9459999799728394
+        },
+        "clocks[0]": {
+          "hold_wns_ns": 0.7229999899864197,
+          "setup_wns_ns": -0.9020000100135803
+        },
+        "clocks[1]": {
+          "hold_wns_ns": 5.922999858856201,
+          "setup_wns_ns": 2.936000108718872
+        },
+        "clocks[2]": {
+          "hold_wns_ns": 4.65500020980835,
+          "setup_wns_ns": 0.2409999966621399
+        }
+      },
+      "final_analogue_model": true
+    },
+    "unsupported": 20,
+    "unsupported_accounted": true,
+    "unsupported_keys": [
+      [
+        "locked_MISTRAL_FF_ACLR",
+        "ACLR"
+      ],
+      [
+        "locked_MISTRAL_FF_ACLR_1",
+        "ACLR"
+      ],
+      [
+        "locked_MISTRAL_FF_ACLR_1_Q_MISTRAL_FF_DATAIN",
+        "ACLR"
+      ],
+      [
+        "locked_MISTRAL_FF_ACLR_DATAIN_MISTRAL_FF_Q",
+        "ACLR"
+      ],
+      [
+        "sdram_pads[0].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[10].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[11].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[12].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[13].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[14].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[15].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[1].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[2].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[3].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[4].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[5].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[6].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[7].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[8].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      [
+        "sdram_pads[9].captured_MISTRAL_FF_Q",
+        "DATAIN"
+      ]
+    ]
+  },
+  "decision": {
+    "accepted": false,
+    "artifacts": {
+      "diagnostic.rbf": "b26f71da2eae6bf99771065f4972d3dec003ddd3edb78ab8c05296e28acc08b4",
+      "endpoints.json": "e7671b1b225548abcc1415125801fba386f2069a0174b2edf70ef835c732b66c",
+      "routed.json": "2f4baf311bd61b67ead1c847bd1f55034a4517c97b88d71a6400f04efd7e1c04",
+      "timing.json": "82316e156a2bd845ed705f7b38076296ae998d61221b5d8373648a82af2493f7"
+    },
+    "baseline_coverage": {
+      "complete": false,
+      "endpoints": 17147,
+      "unsupported": 20
+    },
+    "candidate_coverage": {
+      "complete": false,
+      "endpoints": 17147,
+      "unsupported": 20
+    },
+    "reason": "coverage failure: incomplete native endpoint coverage",
+    "retained_returncode": 1,
+    "selected": "baseline",
+    "timing_summary": {
+      "clocks": {
+        "clk_pixel": {
+          "hold_wns_ns": 0.7549999952316284,
+          "setup_wns_ns": 1.5269999504089355
+        },
+        "clocks[0]": {
+          "hold_wns_ns": 0.7229999899864197,
+          "setup_wns_ns": -1.1629999876022339
+        },
+        "clocks[1]": {
+          "hold_wns_ns": 5.749000072479248,
+          "setup_wns_ns": 2.936000108718872
+        },
+        "clocks[2]": {
+          "hold_wns_ns": 4.6539998054504395,
+          "setup_wns_ns": 0.23600000143051147
+        }
+      },
+      "final_analogue_model": true
+    }
+  },
+  "dynamic_pair_keys_equal": true,
+  "exact_retention": {
+    "diagnostic.rbf": true,
+    "endpoints.json": true,
+    "routed.json": true,
+    "timing.json": true
+  },
+  "hold_decreases": 6181,
+  "live_comparison": [
+    false,
+    "coverage failure: incomplete native endpoint coverage"
+  ],
+  "newly_failing_setup": 15,
+  "setup_decreases": 7135,
+  "static_proofs_equal": true
+}

@@ -1,0 +1,55 @@
+[  0%] Built target oourafft
+[  0%] Built target nextpnr_place
+[  0%] Built target nextpnr_route
+[  2%] Built target tools
+[  2%] Built target gtest
+[  2%] Built target nextpnr_kernel
+[  3%] Built target nextpnr_gpuroute_device
+[  4%] Built target json11
+[  4%] Built target bbasm
+[  5%] Built target gtest_main
+[ 12%] Built target generator
+[ 13%] Built target nextpnr-heap-congestion-test
+[ 16%] Built target nextpnr-reserved-route-slack-test
+[ 16%] Built target nextpnr-gpuroute-telemetry-test
+[ 16%] Built target nextpnr-heap-control-set-test
+[ 17%] Built target nextpnr-command-settings-test
+[ 17%] Built target nextpnr-gpu-lease-test
+[ 36%] Built target mistral
+[ 36%] Building CXX object mistral/CMakeFiles/nextpnr-mistral.dir/__/common/kernel/command.cc.o
+[ 36%] Building CXX object mistral/CMakeFiles/nextpnr-mistral.dir/critical_cohort.cc.o
+[ 37%] Building CXX object mistral/CMakeFiles/nextpnr-mistral.dir/__/json/jsonwrite.cc.o
+[ 37%] Building CXX object mistral/CMakeFiles/nextpnr-mistral-test.dir/__/common/kernel/command.cc.o
+[ 37%] Building CXX object mistral/CMakeFiles/nextpnr-mistral-test.dir/critical_cohort.cc.o
+[ 37%] Building CXX object mistral/CMakeFiles/nextpnr-mistral-test.dir/__/json/jsonwrite.cc.o
+[ 38%] Building CXX object mistral/CMakeFiles/nextpnr-mistral-test.dir/tests/critical_cohort.cc.o
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/critical_cohort.cc: In member function ‘virtual void CriticalCohort_StaticEndpointCoverageRequiresConstantProof_Test::TestBody()’:
+/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/critical_cohort.cc:1360:39: error: ‘Sx’ was not declared in this scope
+ 1360 |     source->params[id_LUT] = Property(Sx);
+      |                                       ^~
+gmake[2]: *** [mistral/CMakeFiles/nextpnr-mistral-test.dir/build.make:107: mistral/CMakeFiles/nextpnr-mistral-test.dir/tests/critical_cohort.cc.o] Error 1
+gmake[2]: *** Waiting for unfinished jobs....
+[ 39%] Linking CXX executable ../nextpnr-mistral
+gmake[1]: *** [CMakeFiles/Makefile2:1092: mistral/CMakeFiles/nextpnr-mistral-test.dir/all] Error 2
+gmake[1]: *** Waiting for unfinished jobs....
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc: In member function ‘rnode_timing_build_input_wave.constprop’:
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1355:30: warning: ‘s.s’ may be used uninitialized [-Wmaybe-uninitialized]
+ 1355 |     lab_output_type labt = s.s == REG ? LAB_OUTPUTT_FF : LAB_OUTPUTT_COMB;
+      |                              ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1353:20: note: ‘s’ declared here
+ 1353 |     bmux_setting_t s;
+      |                    ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1355:30: warning: ‘s.s’ may be used uninitialized [-Wmaybe-uninitialized]
+ 1355 |     lab_output_type labt = s.s == REG ? LAB_OUTPUTT_FF : LAB_OUTPUTT_COMB;
+      |                              ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1353:20: note: ‘s’ declared here
+ 1353 |     bmux_setting_t s;
+      |                    ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1355:30: warning: ‘s.s’ may be used uninitialized [-Wmaybe-uninitialized]
+ 1355 |     lab_output_type labt = s.s == REG ? LAB_OUTPUTT_FF : LAB_OUTPUTT_COMB;
+      |                              ^
+/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rmux.cc:1353:20: note: ‘s’ declared here
+ 1353 |     bmux_setting_t s;
+      |                    ^
+[ 64%] Built target nextpnr-mistral
+gmake: *** [Makefile:146: all] Error 2
