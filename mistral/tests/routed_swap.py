@@ -83,7 +83,8 @@ class RoutedSwap(unittest.TestCase):
     def test_static_endpoint_semantics_are_invariant(self):
         old = copy.deepcopy(self.cases['baseline'])
         new = copy.deepcopy(self.cases['safe'])
-        key, proof = next(iter(self.static.items()))
+        key, proof = next((key, proof) for key, proof in self.static.items()
+                          if key not in old['endpoints'])
         old['static_endpoints'][key] = copy.deepcopy(proof)
         new['static_endpoints'][key] = copy.deepcopy(proof)
         self.assertTrue(guard.compare(old, new)[0])
