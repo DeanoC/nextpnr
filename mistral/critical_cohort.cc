@@ -1295,7 +1295,7 @@ static json11::Json reset_interface_contracts(Context *ctx, pool<IdString> &stag
             auto *q = ff->getPort(id_Q);
             if (!q || q->driver.cell != ff || q->driver.port != id_Q || q->users.empty()) fail("missing stage Q fanout");
             if (i + 1 < chain.size() && (q->users.entries() != 1 ||
-                q->users.begin()->cell != chain[i+1] || q->users.begin()->port != id_DATAIN))
+                (*q->users.begin()).cell != chain[i+1] || (*q->users.begin()).port != id_DATAIN))
                 fail("intermediate Q must have sole next-stage D fanout");
             // A top-level alias would escape the users list.
             for (const auto &p : ctx->ports) if (p.second.net == q) fail("stage Q escapes to top level");
