@@ -1,0 +1,17 @@
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = CriticalCohort.RoutedInventoryUsesNativeSetupHoldAndFailsClosed
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from CriticalCohort
+[ RUN      ] CriticalCohort.RoutedInventoryUsesNativeSetupHoldAndFailsClosed
+[       OK ] CriticalCohort.RoutedInventoryUsesNativeSetupHoldAndFailsClosed (4208 ms)
+[----------] 1 test from CriticalCohort (4208 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (4208 ms total)
+[  PASSED  ] 1 test.
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 4.266s
+
+OK
