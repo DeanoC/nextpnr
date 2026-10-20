@@ -43,6 +43,35 @@ TEST(HeapCongestionTest, RegionCapacityCannotExceedTileCapacityAfterFixedOccupan
     EXPECT_EQ(heap_congestion_detail::region_capacity(12, 12, 16, 4, 0), 8);
 }
 
+TEST(HeapCongestionTest, FixedRegionOccupancyOnlyReducesCapacityAtItsLocation)
+{
+    // A two-location region has one fixed occupant in the first location.
+    // The occupant must not also reduce the capacity at the second location.
+    const std::vector<int> scaled_bels = {8, 8};
+    const std::vector<int> region_bels = {8, 8};
+    const std::vector<int> location_bels = {8, 8};
+    const std::vector<int> fixed_occupancy = {1, 0};
+    const std::vector<int> region_fixed_occupancy = {1, 0};
+    int region_capacity = 0;
+    for (size_t location = 0; location < scaled_bels.size(); location++)
+        region_capacity += heap_congestion_detail::region_capacity(
+                scaled_bels.at(location), region_bels.at(location), location_bels.at(location),
+                fixed_occupancy.at(location), region_fixed_occupancy.at(location));
+
+    EXPECT_EQ(region_capacity, 15);
+    EXPECT_TRUE(heap_congestion_detail::scale_is_usable(14, region_capacity, 0.95f));
+
+    // Repeating the region-wide fixed count at both locations incorrectly
+    // reduces the total to 14 and rejects this otherwise usable scale.
+    int region_wide_fixed_count_applied_twice = 0;
+    for (size_t location = 0; location < scaled_bels.size(); location++)
+        region_wide_fixed_count_applied_twice += heap_congestion_detail::region_capacity(
+                scaled_bels.at(location), region_bels.at(location), location_bels.at(location),
+                fixed_occupancy.at(location), 1);
+    EXPECT_EQ(region_wide_fixed_count_applied_twice, 14);
+    EXPECT_FALSE(heap_congestion_detail::scale_is_usable(14, region_wide_fixed_count_applied_twice, 0.95f));
+}
+
 TEST(HeapCongestionTest, DetectsSharedBelsBetweenConstrainedRegions)
 {
     std::set<int> left = {1, 2, 3, 4, 5, 6, 7, 8};

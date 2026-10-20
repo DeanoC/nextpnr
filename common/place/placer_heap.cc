@@ -1807,7 +1807,7 @@ class HeAPPlacer
             if (!p->cong_scale.empty()) {
                 std::vector<int> cells(buckets.size(), 0), scaled(buckets.size(), 0);
                 dict<IdString, std::vector<int>> region_cells;
-                dict<IdString, std::vector<int>> region_fixed_occupancy;
+                dict<IdString, std::vector<std::vector<int>>> region_fixed_occupancy;
                 dict<IdString, Region *> constrained_regions;
                 for (auto &cell_loc : p->cell_locs) {
                     const CellInfo &cell = *ctx->cells.at(cell_loc.first);
@@ -1821,20 +1821,23 @@ class HeAPPlacer
                     counts.resize(buckets.size(), 0);
                     counts.at(cell_index(cell))++;
                     constrained_regions[cell.region->name] = cell.region;
-                    region_fixed_occupancy[cell.region->name].resize(buckets.size(), 0);
+                    region_fixed_occupancy[cell.region->name].resize(
+                            buckets.size(), std::vector<int>((p->max_x + 1) * (p->max_y + 1), 0));
                 }
 
-                // Count fixed cluster members in each constrained region so
-                // its capacity is reduced where those occupants actually sit.
+                // Count fixed cluster members in each constrained region and
+                // bucket at the location where each occupant actually sits.
                 for (auto &cell_loc : p->cell_locs) {
                     const CellInfo &cell = *ctx->cells.at(cell_loc.first);
                     if (is_cell_fixed(cell) || cell.belStrength > STRENGTH_STRONG || cell.cluster == ClusterId() ||
                         cell.bel == BelId() || !is_cell_fixed(*ctx->getClusterRootCell(cell.cluster)))
                         continue;
                     size_t t = cell_index(cell);
+                    Loc loc = ctx->getBelLocation(cell.bel);
+                    size_t location = loc.x * (p->max_y + 1) + loc.y;
                     for (auto &entry : constrained_regions)
                         if (region_cells.at(entry.first).at(t) != 0 && entry.second->bels.count(cell.bel))
-                            region_fixed_occupancy.at(entry.first).at(t)++;
+                            region_fixed_occupancy.at(entry.first).at(t).at(location)++;
                 }
 
                 // Per-region checks cannot safely credit shared BELs to
@@ -1880,11 +1883,12 @@ class HeAPPlacer
                         for (int x = 0; x <= p->max_x; x++)
                             for (int y = 0; y <= p->max_y; y++) {
                                 int here = region_bels.at(x * (p->max_y + 1) + y);
+                                size_t location = x * (p->max_y + 1) + y;
                                 if (here != 0)
                                     region_scaled += heap_congestion_detail::region_capacity(
                                             scaled_bels_at(x, y, t), here, location_bels(x, y, t),
                                             fixed_occupancy.at(x).at(y).at(t),
-                                            region_fixed_occupancy.at(entry.first).at(t));
+                                            region_fixed_occupancy.at(entry.first).at(t).at(location));
                             }
                         if (!heap_congestion_detail::scale_is_usable(entry.second.at(t), region_scaled, p->cfg.beta))
                             use_congestion = false;
