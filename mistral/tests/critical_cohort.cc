@@ -228,6 +228,44 @@ TEST_F(CriticalCohort, SwapRejectsProtectedClusteredAndIllegalDestinations)
     EXPECT_EQ(chain.front()->bel, bel(24, 19, 0));
 }
 
+TEST_F(CriticalCohort, SwapPreservesRegionsAndAbsoluteConstraints)
+{
+    auto *a = lut(30, 20, 0), *b = lut(24, 20, 19);
+    Region region;
+    a->region = &region;
+    auto unexpected = [] { ADD_FAILURE() << "constrained swap was timed"; return true; };
+    EXPECT_FALSE(critical_cohort_swap_trial(ctx.get(), a, b->bel, unexpected));
+    a->region = nullptr; b->region = &region;
+    EXPECT_FALSE(critical_cohort_swap_trial(ctx.get(), a, b->bel, unexpected));
+    b->region = nullptr; a->constr_abs_z = true;
+    EXPECT_FALSE(critical_cohort_swap_trial(ctx.get(), a, b->bel, unexpected));
+    EXPECT_EQ(a->bel, bel(30, 20, 0)); EXPECT_EQ(b->bel, bel(24, 20, 19));
+}
+
+TEST_F(CriticalCohort, SwapSearchRepairsThroughOccupiedSitesWithoutChangingFunctions)
+{
+    auto *logic = timing_cone(clock("clk", 3000));
+    for (int x = 27; x <= 33; ++x) for (int y = 17; y <= 23; ++y) {
+        if (std::abs(x - 30) + std::abs(y - 20) > 3) continue;
+        for (auto site : ctx->getBelsByTile(x, y)) {
+            if (!ctx->getBelType(site).in(id_MISTRAL_COMB, id_MISTRAL_MCOMB) || !ctx->checkBelAvail(site)) continue;
+            auto at = ctx->getBelLocation(site);
+            lut(at.x, at.y, at.z);
+        }
+    }
+    ctx->critical_cohort_report = guidance(logic).dump();
+    auto home = logic->bel;
+    auto cells = ctx->cells.size(), nets = ctx->nets.size();
+    auto *output = logic->getPort(id_Q);
+    repair_critical_swaps(ctx.get(), 16);
+    EXPECT_NE(logic->bel, home);
+    EXPECT_EQ(ctx->cells.size(), cells); EXPECT_EQ(ctx->nets.size(), nets);
+    EXPECT_EQ(logic->getPort(id_Q), output); EXPECT_EQ(output->driver.cell, logic);
+    EXPECT_NE(ctx->getBoundBelCell(home), nullptr);
+    EXPECT_NE(ctx->getBoundBelCell(home), logic);
+    ctx->check();
+}
+
 TEST_F(CriticalCohort, SwapSearchImprovesNativeReportedCone)
 {
     auto *logic = timing_cone(clock("clk", 3000));

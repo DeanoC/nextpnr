@@ -9,7 +9,7 @@ Do not combine with cohort placement repair or frozen FES slot/scaffold modes.
 
 The pass extends the critical-cohort transaction and timing guards with direct
 occupied-site exchanges. It considers ordinary unclustered LUTs on both ends of
-the longest reported critical hops, including result muxes driven by carry chains. Carry
+the longest reported critical hops (prioritizing carry-to-LUT hops), including result muxes driven by carry chains. Carry
 cells, registers, constraints, functions, nets, port states and physical pin maps
 remain unchanged. Fixed, kept, region-constrained and clustered LUTs are excluded.
 An occupied destination must itself be movable. Every occupied BEL in both
@@ -18,10 +18,11 @@ packing rule is relaxed. Rejected and throwing trials restore bindings, strength
 and LAB state.
 
 Each iteration considers at most eight LUTs, sites within Manhattan radius three
-of the opposite hop end, and 32 ranked sites per LUT (at most four per tile). Ranking sums every incoming
+of the opposite hop end, and 32 legal ranked sites per LUT (at most four per tile), checking at most
+256 geometries per source before STA. Ranking sums every incoming
 and outgoing data connection of both exchange participants with the existing
 critical-cohort weighting. Trials visit different LUTs in rounds. Across the
-whole invocation, geometry attempts are capped at 32 times the STA budget.
+whole invocation, geometry attempts are capped at 128 times the STA budget.
 Accepted moves trigger fresh timing and proposals; exhaustion stops the pass.
 
 Qualification uses native ideal-clock placement STA with routing's reversible

@@ -755,7 +755,7 @@ void repair_critical_swaps(Context *ctx, int timing_budget)
     for (const auto &entry : ctx->nets)
         if (!entry.second->wires.empty()) log_error("Critical swaps require an unrouted design.\n");
     int timed = 0, attempted = 0, kept = 0;
-    const int max_attempts = timing_budget * 32;
+    const int max_attempts = timing_budget * 128;
     while (timed < timing_budget && attempted < max_attempts) {
         TimingAnalyser before(ctx);
         before.with_clock_skew = false;
@@ -774,7 +774,12 @@ void repair_critical_swaps(Context *ctx, int timing_budget)
         // Rank long reported hops deterministically, rather than spending the
         // source budget on the prefix of just the first reported path.
         auto hops = guidance.hops;
-        std::sort(hops.begin(), hops.end(), [](const Hop &a, const Hop &b) {
+        std::sort(hops.begin(), hops.end(), [&](const Hop &a, const Hop &b) {
+            // A carry chain cannot be freely translated, but its ordinary
+            // result mux can. Reserve discovery priority for that frontier.
+            bool ac = a.driver->type == id_MISTRAL_ALUT_ARITH && swap_movable(ctx, a.sink);
+            bool bc = b.driver->type == id_MISTRAL_ALUT_ARITH && swap_movable(ctx, b.sink);
+            if (ac != bc) return ac > bc;
             if (a.delay != b.delay) return a.delay > b.delay;
             return std::tie(a.sink->name, a.driver->name, a.port) <
                    std::tie(b.sink->name, b.driver->name, b.port);
@@ -812,9 +817,16 @@ void repair_critical_swaps(Context *ctx, int timing_budget)
                 });
                 std::vector<Candidate> diverse;
                 std::map<std::pair<int, int>, int> per_tile;
+                int checked = 0;
                 for (const auto &candidate : candidates) {
                     auto at = ctx->getBelLocation(candidate.target);
-                    if (per_tile[{at.x, at.y}]++ >= 4) continue;
+                    if (per_tile[{at.x, at.y}] >= 4) continue;
+                    if (checked++ == 256 || attempted >= max_attempts) break;
+                    ++attempted;
+                    bool legal = false;
+                    critical_cohort_swap_trial(ctx, cell, candidate.target, [&]() { legal = true; return false; });
+                    if (!legal) continue;
+                    ++per_tile[{at.x, at.y}];
                     diverse.push_back(candidate);
                     if (diverse.size() == 32) break;
                 }

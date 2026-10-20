@@ -224,6 +224,14 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
+    if (vm.count("critical-swap-budget")) {
+        int budget = vm["critical-swap-budget"].as<int>();
+        if (budget < 0 || budget > 64) log_error("--critical-swap-budget must be between 0 and 64.\n");
+        if (budget && (!vm.count("no-pack") || !vm.count("no-place") || vm.count("pack-only") ||
+                       vm.count("fes-cart") || vm.count("fes-scaffold") || !vm.count("critical-cohort-report") ||
+                       !ctx->attrs.count(id_step) || ctx->attrs.at(id_step).as_string() != "place"))
+            log_error("Critical swaps require --no-pack --no-place, a placed checkpoint and --critical-cohort-report.\n");
+    }
     ctx->restore_fes_reservations();
     ctx->restore_place_regions(vm.count("qsf") != 0);
     // Saved provenance does not enable fresh placement heuristics. A routed
@@ -292,7 +300,8 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     if (vm.count("critical-cohort-model-out") && ctx->critical_cohort_budget)
         log_error("Critical cohort route model export requires --critical-cohort-budget 0 (unrepaired baseline).\n");
     if (vm.count("critical-cohort-report")) {
-        if (!ctx->critical_cohort_budget && !vm.count("critical-swap-budget"))
+        if (!ctx->critical_cohort_budget &&
+            !(vm.count("critical-swap-budget") && vm["critical-swap-budget"].as<int>() > 0))
             log_error("--critical-cohort-report requires a positive --critical-cohort-budget.\n");
         auto in = open_ifstream_and_log_error(vm["critical-cohort-report"].as<std::string>(), "critical cohort report");
         ctx->critical_cohort_report.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
