@@ -1,0 +1,353 @@
+[
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD",
+    "pin": "PIN_W11",
+    "endpoint": [
+      "SDRAM_A_MISTRAL_OB_PAD",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 4520,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -2800,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_1",
+    "pin": "PIN_AA13",
+    "endpoint": [
+      "SDRAM_A_MISTRAL_OB_PAD_1",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 5360,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -3640,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_10",
+    "pin": "PIN_AB26",
+    "endpoint": [
+      "SDRAM_A_MISTRAL_OB_PAD_10",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 4215,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -2495,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_11",
+    "pin": "PIN_AB23",
+    "endpoint": [
+      "SDRAM_A_MISTRAL_OB_PAD_11",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 5715,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -3995,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_12",
+    "pin": "PIN_C12",
+    "endpoint": [
+      "SDRAM_A_MISTRAL_OB_PAD_12",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 5900,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -4180,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_2",
+    "pin": "PIN_Y11",
+    "endpoint": [
+      "SDRAM_A_MISTRAL_OB_PAD_2",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 3680,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -1960,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_3",
+    "pin": "PIN_Y19",
+    "endpoint": [
+      "SDRAM_A_MISTRAL_OB_PAD_3",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 6115,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -4395,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_4",
+    "pin": "PIN_AA11",
+    "endpoint": [
+      "SDRAM_A_MISTRAL_OB_PAD_4",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 3680,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -1960,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_5",
+    "pin": "PIN_AA26",
+    "endpoint": [
+      "SDRAM_A_MISTRAL_OB_PAD_5",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 4215,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -2495,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_6",
+    "pin": "PIN_AC23",
+    "endpoint": [
+      "SDRAM_A_MISTRAL_OB_PAD_6",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 6340,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -4620,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_7",
+    "pin": "PIN_AC22",
+    "endpoint": [
+      "SDRAM_A_MISTRAL_OB_PAD_7",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 6340,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -4620,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  {
+    "cell": "SDRAM_BA_MISTRAL_OB_PAD",
+    "pin": "PIN_AB25",
+    "endpoint": [
+      "SDRAM_BA_MISTRAL_OB_PAD",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 4015,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -2295,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  },
+  {
+    "cell": "SDRAM_BA_MISTRAL_OB_PAD_1",
+    "pin": "PIN_Y17",
+    "endpoint": [
+      "SDRAM_BA_MISTRAL_OB_PAD_1",
+      "PAD$timing$write$data$external"
+    ],
+    "rows": [
+      {
+        "capture": [
+          "clocks[0]",
+          0
+        ],
+        "hold": 5915,
+        "hold_related": true,
+        "launch": [
+          "clocks[0]",
+          0
+        ],
+        "max_path": 7280,
+        "min_path": -1000,
+        "setup": -4195,
+        "setup_timed": true,
+        "setup_window": 10000
+      }
+    ]
+  }
+]

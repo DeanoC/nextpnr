@@ -1,0 +1,8 @@
+PASS rejection: missing_corner
+PASS rejection: missing_pad_transition
+PASS rejection: missing_ce_path
+PASS rejection: missing_data_path
+PASS rejection: missing_clock_check
+PASS rejection: disabled_hardware_ce
+PASS rejection: inverted_ce
+PASS rejection: nonzero_delay

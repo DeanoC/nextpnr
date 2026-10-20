@@ -1,0 +1,1 @@
+PASS: 61 output/OE +16 input rows; 30 explicit unsupported; schema4 contracts; exact historical rows/proofs; no physical qualification
