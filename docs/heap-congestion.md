@@ -30,7 +30,12 @@ would hold fewer than 105% of its cells. The check applies the same beta
 threshold as overuse detection, including its small-capacity exception. Cells
 with a BEL-constrained region can only spread within that region, so each
 such region must also hold its own cells of each type under the same
-threshold, counting only its own share of each location's scaled BELs.
+threshold, counting only its own share of each location's scaled BELs and
+subtracting fixed cluster members that occupy BELs in the region. Fixed
+occupants also reduce the location's total capacity. If two active constrained
+regions share a BEL of the same cell type, congestion scaling is disabled for
+the spreader run because the independent region checks cannot safely
+apportion that shared capacity.
 
 | Setting | Default | Meaning |
 |---|---|---|

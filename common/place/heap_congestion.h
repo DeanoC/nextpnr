@@ -19,6 +19,7 @@
 #ifndef HEAP_CONGESTION_H
 #define HEAP_CONGESTION_H
 
+#include <algorithm>
 #include <cstdint>
 #include "nextpnr_namespaces.h"
 
@@ -36,13 +37,27 @@ inline bool scale_is_usable(int cells, int scaled_bels, float beta)
     return effective_capacity >= required_capacity;
 }
 
-// The share of a location's scaled capacity that lies in a region holding
-// `region_bels` of its `location_bels` BELs.
-inline int region_capacity(int scaled_bels, int region_bels, int location_bels)
+// The usable share of a location's scaled capacity that lies in a region,
+// accounting for fixed occupants in the location and in the region.
+inline int region_capacity(int scaled_bels, int region_bels, int location_bels, int fixed_occupancy,
+                           int region_fixed_occupancy)
 {
     if (location_bels == 0)
         return 0;
-    return int(int64_t(scaled_bels) * region_bels / location_bels);
+    int location_free = std::max(0, scaled_bels - fixed_occupancy);
+    int region_free = std::max(0, int(int64_t(scaled_bels) * region_bels / location_bels) - region_fixed_occupancy);
+    return std::min(location_free, region_free);
+}
+
+template <typename BelSet, typename BucketLocations> bool regions_overlap_bels(const BelSet &left, const BelSet &right,
+                                                                                 const BucketLocations &locations)
+{
+    for (const auto &column : locations)
+        for (const auto &location : column)
+            for (const auto &bel : location)
+                if (left.count(bel) && right.count(bel))
+                    return true;
+    return false;
 }
 
 } // namespace heap_congestion_detail
