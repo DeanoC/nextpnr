@@ -27,10 +27,10 @@ legalisation and makes the spreader treat congested locations as smaller:
 
 A spreader run ignores the scale when any cell type's effective capacity
 would hold fewer than 105% of its cells. The check applies the same beta
-threshold as overuse detection, including its small-capacity exception. It
-also ignores congestion scaling when a movable cell has a BEL-constrained
-region: device-wide capacity cannot show that the cell's own region has enough
-scaled BELs.
+threshold as overuse detection, including its small-capacity exception. Cells
+with a BEL-constrained region can only spread within that region, so each
+such region must also hold its own cells of each type under the same
+threshold, counting only its own share of each location's scaled BELs.
 
 | Setting | Default | Meaning |
 |---|---|---|

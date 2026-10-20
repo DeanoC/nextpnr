@@ -19,21 +19,30 @@
 #ifndef HEAP_CONGESTION_H
 #define HEAP_CONGESTION_H
 
+#include <cstdint>
 #include "nextpnr_namespaces.h"
 
 NEXTPNR_NAMESPACE_BEGIN
 
 namespace heap_congestion_detail {
 
-inline bool scale_is_usable(bool has_region_constrained_cells, int cells, int scaled_bels, float beta)
+// Whether `cells` fit in `scaled_bels` under the beta threshold that
+// SpreaderRegion::overused applies, including its small-capacity exception.
+inline bool scale_is_usable(int cells, int scaled_bels, float beta)
 {
-    if (has_region_constrained_cells)
-        return false;
-
     int required_capacity = cells + cells / 20;
     // Match SpreaderRegion::overused: small capacities do not use beta.
     float effective_capacity = scaled_bels < 4 ? scaled_bels : beta * scaled_bels;
     return effective_capacity >= required_capacity;
+}
+
+// The share of a location's scaled capacity that lies in a region holding
+// `region_bels` of its `location_bels` BELs.
+inline int region_capacity(int scaled_bels, int region_bels, int location_bels)
+{
+    if (location_bels == 0)
+        return 0;
+    return int(int64_t(scaled_bels) * region_bels / location_bels);
 }
 
 } // namespace heap_congestion_detail
