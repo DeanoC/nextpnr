@@ -1,0 +1,94 @@
+{
+  "base": "b0f3ea1acd0170f9734bd9009f3f8ac9ee7282b0",
+  "implementation": "3cb77ec27fd977ab719dde1611d8bbf36e033d02",
+  "branch": "feat/bounded-placement-swaps",
+  "artifact_root": "/home/deano/harnesses/pcxt-io-reset",
+  "binary_hashes": {
+    "nextpnr-mistral": "9de2f921b79bc7b6b7a434cef377865ca86911e5e6d428313622ca9d124fbe2b",
+    "nextpnr-mistral-test": "2fadd85a265ec378ba2712897d5bfb23639d7311b4b48f96e8875f8d3f514ef8"
+  },
+  "source_files": {
+    "common/kernel/timing.cc": "0fe6740e808b3b4a3be1ab5e81558cf8ddf858444cb049b656404bc799096287",
+    "common/kernel/timing.h": "e1c1b094fec4a59bc8dd22fbb8fc1c66123f9d3bb7800cd8afb7f121e6797fb0",
+    "mistral/critical_cohort.cc": "6628e3f120ce6fa7de3a1735dcfbf425d8e237eb17dd3a64b68f952197c511b0",
+    "mistral/routed_swap.py": "c2664a8ddb9bf66abc5576e8e83e528a44b5d58e3bf5781cd8b9ba4e66914cf4",
+    "mistral/tests/io_delay.cc": "0990a2c85c075ff4853017d65b90f7aa9400188e67679ca02d3d2ce523df9f97",
+    "mistral/tests/critical_cohort.cc": "ad10f93f9d1b363cbd149de54b442815ba29a09208971b88233acba8ff193947",
+    "mistral/tests/routed_swap.py": "def91f0b0f29624f84484a37663f07e7a568147049e99491a126dd8beef54914",
+    "mistral/tests/critical_cohort_cli.py": "be334604d92feedff8ff16c218f44fe0777d8d39c3453b0ddfa817fa50d8a768"
+  },
+  "input_hashes": {
+    "/home/deano/harnesses/pcxt-endpoint-coverage/paired/inputs/placed.json": "733f1cc8ea765bed46dae44dcd744e4432edd75ddedaf232061c0a1d9756b4a6",
+    "/home/deano/harnesses/pcxt-io-reset/synthetic-inputs.sdc": "4b8d4821901d7a2892bab4d0231fb239ab53cdda2ff01f0f52333e5192e7942b"
+  },
+  "build_flags": {
+    "ARCH": "mistral",
+    "BUILD_TESTS": true,
+    "BUILD_GUI": false,
+    "BUILD_PYTHON": false,
+    "GPU_ROUTER": "OFF",
+    "CMAKE_BUILD_TYPE": "Release"
+  },
+  "prior_charged_seconds": 1950.73,
+  "total_charged_seconds": 1962.1549265906401,
+  "remaining_seconds": 1637.8450734093599,
+  "new_full_design_routes": 0,
+  "new_empty_cpu_routes": 2,
+  "host_only_topology": true,
+  "analogue_or_hardware_qualification": false,
+  "accounting": "Only two empty CPU CLI routes; entire successful invocation plus initial misspelled test-selector duration charged. Native STA tests, import-only topology diagnostics and builds do not route.",
+  "tests": {
+    "native": {
+      "command": "final-bin/nextpnr-mistral-test --gtest_filter='IoDelayTest.*:CriticalCohort.*'",
+      "expected_tests": 84,
+      "log": "native-final.log",
+      "status": "passed"
+    },
+    "driver": {
+      "tests": 17,
+      "status": "passed",
+      "log": "driver-final.log"
+    },
+    "host_topology": {
+      "tests": 1,
+      "status": "passed",
+      "log": "pcxt-host-diagnostic.log"
+    },
+    "cli": {
+      "tests": 1,
+      "empty_cpu_routes": 2,
+      "status": "passed",
+      "log": "cli-final.log"
+    },
+    "portable_and_prior_evidence": {
+      "status": "passed",
+      "logs": [
+        "portable-check.log",
+        "previous-evidence-check-schema3.log",
+        "earlier-critical-check.log",
+        "earlier-routed-check.log"
+      ]
+    }
+  },
+  "evidence_sha256": {
+    "cli-final.log": "477a895e552f12f0b9cfc99dd63e03f8f02c92c633e485bc8394c50e842a562b",
+    "pcxt-host-diagnostic.log": "fab39e02c835ac2aadd7c2fd06e3de983cbe0987fda14cd298b33356ed963e64",
+    "earlier-routed-check.log": "bf0ae6786818d0c94b31eac5f350dc41ccacd6defc7718e7e7cc3f64a173ef46",
+    "binary-sha256.txt": "e55122a9ee4fa3dae486d48c316aac44f99fd8a969dfdfe65fbb6c85ebfb7a94",
+    "cli-receipt.json": "361a8283ff26a3bb0af807d80b51e77bf8ab55f6214f2eac1a2421c0dd2631b9",
+    "native-final.log": "f714058cd2b2171c587362d2bd9ad0ce4a62f0af08a4478a5a1074e130f55c4a",
+    "route-budget-reservation.json": "2888d0e409a76325d5e89c433ed3fe945f81ecca97f746f1a313a0849c6bc1ef",
+    "pcxt-host-diagnostic.json.gz": "8ce9750d714b5e30b7757d1d0966f99b7d40b48296e64f1ccd7b0a88ea093887",
+    "portable-check.log": "21fcfb611f535303115abf031faeae0c4ab6c1dbefb6f65cc061b1409deb0fc7",
+    "previous-evidence-check-schema3.log": "902608fe05cb207738af07f3a8b3f65333ba7ec77c93d754b8421974370271f0",
+    "summary.md": "feb6fc2bfcebc5526ec2ebf91a344fb3d78b6b024d4a2d26e4ebfc4d31b48623",
+    "reset-topology.json": "1ece9f0697b848a00a3e59276a3326dc4f2dc245c5d75f663d76e13ff8b81d23",
+    "host-summary.json": "18f5594d4499f36d1050a432d7f28e7cf92b321e82c3d94ec349d523841a34d0",
+    "driver-final.log": "a7a6a0e4150d96a7e8dc1046c0cd3e3d97c98c201af2c4798e415cca1cd70d44",
+    "io-fixtures.json.gz": "f04da18f0bf02ae5a0c9c63a57c29e4852568bf44ac01f7e045788da131d3ce1",
+    "earlier-critical-check.log": "7f98307d654aa71e4e90740d609df26e4a02c8db83726711d104f73b0d31e320",
+    "synthetic-inputs.sdc": "4b8d4821901d7a2892bab4d0231fb239ab53cdda2ff01f0f52333e5192e7942b",
+    "binary-version.txt": "87bc3ffc60d078542a99ca01335f60426edbe45e8cf90824a95c26e9d3d0f303",
+    "check.py": "f4e33aa9dbc99207621580241df7e7d7d588b4162c5bc84adaecdd2764f77b73"
+  }
+}

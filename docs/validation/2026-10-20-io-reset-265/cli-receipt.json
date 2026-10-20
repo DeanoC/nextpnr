@@ -1,0 +1,12 @@
+{
+  "returncode": 0,
+  "command": [
+    "python3",
+    "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/critical_cohort_cli.py",
+    "/home/deano/harnesses/pcxt-io-reset/final-bin/nextpnr-mistral",
+    "CriticalCohortCli.test_model_export_accepts_baseline_budget"
+  ],
+  "charged_seconds": 11.359993654303253,
+  "total_charged_seconds": 1962.1549265906401,
+  "remaining_seconds": 1637.8450734093599
+}
