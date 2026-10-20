@@ -240,7 +240,8 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
     if (vm.count("routed-endpoints") &&
-        (ctx->force || bool_or_default(ctx->settings, ctx->id("timing/allowFail"), false)))
+        (ctx->force || (ctx->settings.count(ctx->id("timing/allowFail")) &&
+                        ctx->setting<bool>("timing/allowFail"))))
         log_error("Routed endpoint qualification forbids --force and timing/allowFail, including saved settings.\n");
     if (vm.count("routed-endpoints") && (!vm.count("rbf") || vm.count("no-route") || vm.count("pack-only")))
         log_error("--routed-endpoints requires a full route with --rbf.\n");
