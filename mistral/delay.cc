@@ -304,12 +304,14 @@ std::optional<DelayQuad> Arch::getForwardedClockPadTiming(const CellInfo *cell) 
         profile->second.as_string() != "QUARTUS_17_0_2_AG5_CLOCK" ||
         loc == cell->attrs.end() || !loc->second.is_string || loc->second.as_string() != "PIN_AG5" ||
         cell->bel == BelId() || ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name("AG5")) != cell->bel ||
-        !cell->getPort(id_I) || !cell->getPort(id_PAD) || cell->get_pin_state(id_I) != PIN_SIG ||
+        !cell->getPort(id_I) || !cell->getPort(id_PAD) || cell->ports.at(id_I).type != PORT_IN ||
+        cell->ports.at(id_PAD).type != PORT_OUT || cell->get_pin_state(id_I) != PIN_SIG ||
         cell->get_pin_state(id_PAD) != PIN_SIG || !gpio_pad_load(ctx, cell)) return {};
     const auto io = ctx->get_io_electrical(cell);
     if (io.lvcmos || io.bus_hold || io.d1_delay >= 0 || io.d3_delay >= 0 || io.d5_delay >= 0 || io.d5_oe_delay >= 0 ||
         io.drive_strength != CycloneV::V3P3_LVTTL_16MA_LVCMOS_2MA || io.slow_slew || io.weak_pullup || io.clamp_diode)
         return {};
+    // Native unregistered defaults: OREG_DFF (data D5)=0, EREG_CFF (OE D5)=31.
     // Rounded outward from the 0/30pF four-corner, both-transition fits.
     // Conservative zero early bound is not a characterized silicon minimum.
     return DelayQuad(DelayPair(0, 6960), DelayPair(0, 6490));

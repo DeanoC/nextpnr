@@ -1502,6 +1502,15 @@ TEST_F(IoDelayTest, ConstantOpenDrainInventory)
     buffer->connectPort(id_A, zero->getPort(id_Q)); buffer->connectPort(id_Q, net("buffered_zero"));
     bidir->disconnectPort(id_I); bidir->connectPort(id_I, buffer->getPort(id_Q));
     EXPECT_TRUE(snapshot()["complete"].bool_value());
+    buffer->pin_data[id_Q].state = PIN_INV;
+    EXPECT_FALSE(snapshot()["complete"].bool_value());
+    buffer->pin_data[id_Q].state = PIN_SIG;
+    zero->pin_data[id_Q].state = PIN_INV;
+    EXPECT_FALSE(snapshot()["complete"].bool_value());
+    zero->pin_data[id_Q].state = PIN_SIG;
+    bidir->pin_data[id_PAD].state = PIN_INV;
+    EXPECT_FALSE(snapshot()["complete"].bool_value());
+    bidir->pin_data[id_PAD].state = PIN_SIG;
     buffer->pin_data[id_A].state = PIN_INV;
     EXPECT_FALSE(snapshot()["complete"].bool_value());
     buffer->pin_data[id_A].state = PIN_SIG;

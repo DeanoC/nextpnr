@@ -37,7 +37,8 @@ class RoutedSwap(unittest.TestCase):
                            env=dict(os.environ, NEXTPNR_TEST_REGISTERED_ENDPOINTS=str(path)), check=True)
             cls.registered = json.loads(path.read_text())
             for test, env, field in [('ConstantOpenDrainInventory', 'NEXTPNR_TEST_CONSTANT_OUTPUTS', 'constant'),
-                                     ('ResetContractWholeChainAndPhysicalObligations', 'NEXTPNR_TEST_RESET_CONTRACTS', 'reset')]:
+                                     ('ResetContractWholeChainAndPhysicalObligations', 'NEXTPNR_TEST_RESET_CONTRACTS', 'reset'),
+                                     ('ForwardedClockContractKeepsPhysicalRouteAndBothEdges', 'NEXTPNR_TEST_FORWARDED_CONTRACTS', 'forwarded')]:
                 subprocess.run([BINARY, '--gtest_filter=IoDelayTest.' + test],
                                env=dict(os.environ, **{env: str(path)}), check=True)
                 setattr(cls, field, json.loads(path.read_text()))
@@ -84,6 +85,17 @@ class RoutedSwap(unittest.TestCase):
             elif mode == 'missing_contracts': del forged['reset_contracts']
             self.assertFalse(guard.compare(forged, forged)[0], mode)
 
+
+    def test_forwarded_reference_cannot_be_promoted_to_physical_coverage(self):
+        original = self.forwarded['reference']
+        for mode in ('complete', 'erase_obligations', 'missing_obligations', 'missing_contracts', 'old_schema'):
+            forged = copy.deepcopy(original)
+            forged.update(complete=True, final_analogue=True)
+            if mode == 'erase_obligations': forged['physical_obligations'] = []
+            elif mode == 'missing_obligations': del forged['physical_obligations']
+            elif mode == 'missing_contracts': del forged['forwarded_clocks']
+            elif mode == 'old_schema': forged['schema'] = 5
+            self.assertFalse(guard.compare(forged, forged)[0], mode)
 
     def test_registered_channels_and_clock_margins(self):
         a, b = self.registered['baseline'], self.registered['safe']

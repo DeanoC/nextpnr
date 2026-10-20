@@ -1159,7 +1159,7 @@ static json11::Json static_endpoint_proof(Context *ctx, CellInfo *sink, IdString
     pool<IdString> seen;
     while (net && net->driver.cell && seen.insert(net->name).second) {
         auto *cell = net->driver.cell;
-        if (net->driver.port != id_Q || cell->getPort(id_Q) != net)
+        if (net->driver.port != id_Q || cell->getPort(id_Q) != net || cell->get_pin_state(id_Q) != PIN_SIG)
             return J();
         auto node = describe(cell);
         node["net"] = net->name.str(ctx);
@@ -1209,7 +1209,7 @@ static json11::Json constant_open_drain(Context *ctx, CellInfo *cell, IdString p
 {
     using J = json11::Json;
     if (cell->type != id_MISTRAL_IO || port != id_I || !cell->params.empty() ||
-        cell->get_pin_state(id_I) != PIN_SIG || cell->get_pin_state(id_OE) != PIN_SIG ||
+        cell->get_pin_state(id_I) != PIN_SIG || cell->get_pin_state(id_OE) != PIN_SIG || cell->get_pin_state(id_PAD) != PIN_SIG ||
         !cell->getPort(id_PAD) || !cell->getPort(id_OE) || !cell->getPort(id_OE)->driver.cell)
         return J();
     auto *net = cell->getPort(id_I);
@@ -1217,7 +1217,7 @@ static json11::Json constant_open_drain(Context *ctx, CellInfo *cell, IdString p
     pool<IdString> seen;
     while (net && net->driver.cell && seen.insert(net->name).second) {
         auto *driver = net->driver.cell;
-        if (net->driver.port != id_Q || driver->getPort(id_Q) != net) return J();
+        if (net->driver.port != id_Q || driver->getPort(id_Q) != net || driver->get_pin_state(id_Q) != PIN_SIG) return J();
         chain[driver->name.str(ctx)] = interface_cell(ctx, driver);
         if (driver->type == id_MISTRAL_CONST) {
             auto v = driver->params.find(id_LUT);
@@ -1274,7 +1274,8 @@ static json11::Json reset_interface_contracts(Context *ctx, pool<IdString> &stag
             auto *ff = chain[i];
             auto attr = ff->attrs.find(ctx->id("async_reg"));
             if (ff->type != id_MISTRAL_FF || !ff->params.empty() || attr == ff->attrs.end() ||
-                !((!attr->second.is_string && attr->second.as_int64() == 1) ||
+                !((!attr->second.is_string && !attr->second.str.empty() && attr->second.str.size() <= 64 &&
+                   attr->second.str.find_first_not_of("01") == std::string::npos && attr->second.as_int64() == 1) ||
                   (attr->second.is_string && attr->second.as_string() == "true")))
                 fail("stage requires native FF and explicit async_reg intent");
             if (ff->getPort(id_CLK) != clock || ff->getPort(id_ACLR) != reset ||
@@ -1416,6 +1417,9 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
             forwarded_clocks[declaration["port"].string_value()] = J::object{
                 {"declaration", declaration}, {"cell", interface_cell(ctx, cell)}, {"source", interface_cell(ctx, source)},
                 {"endpoint", J::array{cell->name.str(ctx), "I"}}, {"source_cell", source->name.str(ctx)},
+                {"source_input_driver", source->getPort(id_A)->driver.cell ? interface_cell(ctx, source->getPort(id_A)->driver.cell) : J()},
+                {"configuration", J::object{{"data_delay_selector", 0}, {"oe_delay_selector", 31},
+                    {"data_inversion", false}, {"boundary", "GOUT.037.000.0000 / HMC.IOINTADDRDOUT.8"}}},
                 {"bel", ctx->getBelName(cell->bel).str(ctx)}, {"clock", clock->name.str(ctx)},
                 {"route", pair(route)}, {"pad_rise", pair(model->rise)}, {"pad_fall", pair(model->fall)},
                 {"rise", J::array{rise_early, rise_late}}, {"fall", J::array{fall_early, fall_late}},
