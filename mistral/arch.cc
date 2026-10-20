@@ -145,6 +145,9 @@ Arch::Arch(ArchArgs args)
     // override them without Arch::place silently replacing their values.
     settings[id("placerHeap/beta")] = std::to_string(0.5);
     settings[id("placerHeap/criticalityExponent")] = std::to_string(7);
+    // Spread cells out of regions whose estimated routing demand would
+    // overflow; dense FES cores otherwise fail to route on most seeds (#247).
+    settings[id("placerHeap/congestion")] = std::to_string(1);
     this->cyclonev = mistral::CycloneV::get_model(args.device);
     NPNR_ASSERT(this->cyclonev != nullptr);
 
@@ -1014,6 +1017,11 @@ bool Arch::place()
             // A cart confined to a small rectangle can cycle evictions for
             // a long time; report the cycling cell instead of running on.
             cfg.cellRipupLimit = std::max(cfg.cellRipupLimit, 500);
+            // Its rectangle has no spare capacity to spread into.
+            cfg.congestionDriven = false;
+            // Saved settings must record the effective mode used for this
+            // placement so the checkpoint remains a faithful replay record.
+            settings[id("placerHeap/congestion")] = std::to_string(int(cfg.congestionDriven));
         }
         {
             // Prefer nearby FFs with matching controls. A LAB can legally

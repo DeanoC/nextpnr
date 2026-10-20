@@ -32,6 +32,7 @@
  */
 
 #include "placer_heap.h"
+#include "heap_congestion.h"
 #include <Eigen/Core>
 #include <Eigen/IterativeLinearSolvers>
 #include <boost/optional.hpp>
@@ -277,6 +278,9 @@ class HeAPPlacer
                          iter + 1, (run.size() > 1 ? "ALL" : bucket_name.c_str(ctx)), int(solved_hpwl),
                          int(spread_hpwl), int(legal_hpwl),
                          std::chrono::duration<double>(run_stopt - run_startt).count());
+                // Scale the next spreading by the demand of this legal placement
+                if (cfg.congestionDriven)
+                    update_congestion_scale();
             }
 
             // Update timing weights
@@ -987,6 +991,99 @@ class HeAPPlacer
             }
     }
 
+    // Routability-driven spreading. Each location's routing demand is
+    // estimated with RUDY (every net's wirelength spread evenly over its
+    // bounding box) and, where it exceeds cfg.congestionTarget, the capacity
+    // the cut spreader sees there is scaled down so cells spread out of the
+    // region before legalisation packs it.
+    std::vector<float> cong_scale;
+
+    // HPWL underestimates the wiring of multi-pin nets; scale by the
+    // expected number of bounding-box crossings (Cheng, "RISA", ICCAD 1994).
+    static double net_crossing_factor(int pins)
+    {
+        static const double table[] = {1.0,    1.0,    1.0,    1.0828, 1.1536, 1.2206, 1.2823, 1.3385, 1.3991, 1.4493,
+                                       1.4974, 1.5455, 1.5937, 1.6418, 1.6899, 1.7304, 1.7709, 1.8114, 1.8519, 1.8924,
+                                       1.9288, 1.9652, 2.0015, 2.0379, 2.0743, 2.1061, 2.1379, 2.1698, 2.2016, 2.2334,
+                                       2.2646, 2.2958, 2.3271, 2.3583, 2.3895, 2.4187, 2.4479, 2.4772, 2.5064, 2.5356,
+                                       2.5610, 2.5864, 2.6117, 2.6371, 2.6625, 2.6887, 2.7148, 2.7410, 2.7671, 2.7933};
+        if (pins < 50)
+            return table[pins];
+        return 2.7933 + 0.02616 * (pins - 49);
+    }
+
+    float congestion_scale(int x, int y) const
+    {
+        return cong_scale.empty() ? 1.0f : cong_scale.at(x * (max_y + 1) + y);
+    }
+
+    // RUDY demand at each location, indexed x * (max_y + 1) + y
+    std::vector<float> estimate_congestion()
+    {
+        int w = max_x + 1, h = max_y + 1;
+        // 2D difference array, one row/column of padding
+        std::vector<double> diff((w + 1) * (h + 1), 0.0);
+        auto at = [&](int x, int y) -> double & { return diff.at(x * (h + 1) + y); };
+        for (auto &net : ctx->nets) {
+            NetInfo *ni = net.second.get();
+            if (ni->driver.cell == nullptr || ni->users.empty())
+                continue;
+            CellLocation &drvloc = cell_locs.at(ni->driver.cell->name);
+            if (drvloc.global)
+                continue;
+            int xmin = drvloc.x, xmax = drvloc.x, ymin = drvloc.y, ymax = drvloc.y;
+            for (auto &user : ni->users) {
+                CellLocation &usrloc = cell_locs.at(user.cell->name);
+                xmin = std::min(xmin, usrloc.x);
+                xmax = std::max(xmax, usrloc.x);
+                ymin = std::min(ymin, usrloc.y);
+                ymax = std::max(ymax, usrloc.y);
+            }
+            int bw = xmax - xmin + 1, bh = ymax - ymin + 1;
+            double dens = net_crossing_factor(int(ni->users.entries()) + 1) * (bw + bh - 1) / double(bw * bh);
+            at(xmin, ymin) += dens;
+            at(xmax + 1, ymin) -= dens;
+            at(xmin, ymax + 1) -= dens;
+            at(xmax + 1, ymax + 1) += dens;
+        }
+        std::vector<float> demand(w * h, 0.0f);
+        for (int x = 0; x < w; x++)
+            for (int y = 0; y < h; y++) {
+                if (x > 0)
+                    at(x, y) += at(x - 1, y);
+                if (y > 0)
+                    at(x, y) += at(x, y - 1);
+                if (x > 0 && y > 0)
+                    at(x, y) -= at(x - 1, y - 1);
+                demand.at(x * h + y) = float(at(x, y));
+            }
+        return demand;
+    }
+
+    // Move the capacity scale halfway towards target/demand at every
+    // location whose estimated demand exceeds the target. Averaging with the
+    // previous scale keeps one iteration's legalisation from swinging it.
+    void update_congestion_scale()
+    {
+        std::vector<float> demand = estimate_congestion();
+        if (cong_scale.empty())
+            cong_scale.assign(demand.size(), 1.0f);
+        int over = 0;
+        float peak = 0;
+        for (size_t i = 0; i < demand.size(); i++) {
+            float d = demand.at(i);
+            peak = std::max(peak, d);
+            float target = 1.0f;
+            if (d > cfg.congestionTarget) {
+                ++over;
+                target = std::max(cfg.congestionMinScale, cfg.congestionTarget / d);
+            }
+            cong_scale.at(i) = 0.5f * (cong_scale.at(i) + target);
+        }
+        log_info("        congestion: %d locations over target %.1f, peak demand %.1f\n", over, cfg.congestionTarget,
+                 peak);
+    }
+
     // Compute HPWL
     wirelen_t total_hpwl()
     {
@@ -1584,6 +1681,8 @@ class HeAPPlacer
 
         std::vector<SpreaderRegion> regions;
         pool<int> merged_regions;
+        // Whether bels_at applies the placer's congestion scale
+        bool use_congestion = false;
         // Cells at a location, sorted by real (not integer) x and y
         std::vector<std::vector<std::vector<CellInfo *>>> cells_at_location;
 
@@ -1593,7 +1692,11 @@ class HeAPPlacer
         {
             if (x >= int(fb.at(type)->size()) || y >= int(fb.at(type)->at(x).size()))
                 return 0;
-            return std::max(0, int(fb.at(type)->at(x).at(y).size()) - fixed_occupancy.at(x).at(y).at(type));
+            int bels = int(fb.at(type)->at(x).at(y).size());
+            // Single hard blocks (RAM, DSP) are not worth spreading for
+            if (use_congestion && bels >= 4)
+                bels = int(bels * p->congestion_scale(x, y) + 0.5f);
+            return std::max(0, bels - fixed_occupancy.at(x).at(y).at(type));
         }
 
         bool is_cell_fixed(const CellInfo &cell) const
@@ -1688,6 +1791,30 @@ class HeAPPlacer
                 }
 
                 cells_at_location.at(p->cell_locs.at(cell->name).x).at(p->cell_locs.at(cell->name).y).push_back(cell);
+            }
+
+            // Congestion may only shrink capacity while every cell still
+            // fits. Region-constrained cells can only spread within their own
+            // BEL sets, which this global capacity check cannot account for.
+            if (!p->cong_scale.empty()) {
+                std::vector<int> cells(buckets.size(), 0), scaled(buckets.size(), 0);
+                bool has_region_constrained_cells = false;
+                for (CellInfo *cell : p->solve_cells)
+                    if (cell->region != nullptr && cell->region->constr_bels)
+                        has_region_constrained_cells = true;
+                for (int x = 0; x <= p->max_x; x++)
+                    for (int y = 0; y <= p->max_y; y++)
+                        for (size_t t = 0; t < buckets.size(); t++)
+                            cells.at(t) += occ_at(x, y, t);
+                use_congestion = true;
+                for (int x = 0; x <= p->max_x; x++)
+                    for (int y = 0; y <= p->max_y; y++)
+                        for (size_t t = 0; t < buckets.size(); t++)
+                            scaled.at(t) += bels_at(x, y, t);
+                for (size_t t = 0; t < buckets.size(); t++)
+                    if (!heap_congestion_detail::scale_is_usable(has_region_constrained_cells, cells.at(t),
+                                                                  scaled.at(t), p->cfg.beta))
+                        use_congestion = false;
             }
         }
 
@@ -2174,6 +2301,10 @@ PlacerHeapCfg::PlacerHeapCfg(Context *ctx)
     chainRipup = false;
 
     cellRipupLimit = ctx->setting<int>("placerHeap/cellRipupLimit", 0);
+
+    congestionDriven = ctx->setting<bool>("placerHeap/congestion", false);
+    congestionTarget = ctx->setting<float>("placerHeap/congestionTarget", 100);
+    congestionMinScale = ctx->setting<float>("placerHeap/congestionMinScale", 0.5);
 
     int timeout_divisor = ctx->setting<int>("placerHeap/cellPlacementTimeout", 8);
     if (timeout_divisor > 0) {
