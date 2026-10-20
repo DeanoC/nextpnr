@@ -1357,7 +1357,7 @@ TEST_F(CriticalCohort, StaticEndpointCoverageRequiresConstantProof)
         out << result["static_endpoints"].dump() << "\n";
         ASSERT_TRUE(bool(out));
     }
-    source->params[id_LUT] = Property(Sx);
+    source->params[id_LUT] = Property(Property::Sx);
     EXPECT_EQ(snapshot()["unsupported"].array_items().size(), 2);
     source->params[id_LUT] = 2;
     EXPECT_EQ(snapshot()["unsupported"].array_items().size(), 2);
