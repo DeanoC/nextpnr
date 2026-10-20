@@ -1,0 +1,88 @@
+{
+  "base": "5b3e84e7f6add81f3d0e3d81f0e944f06cc4164b",
+  "native_source_commit": "16a066248e874c42f16da9e1d85a666915e09ee8",
+  "driver_source_commit": "6df8562fd8923e35141051fec3f86a70c62e7278",
+  "native_source_tree": "f6d185558b904b4a88bd4b9d02bdc8691d18f705",
+  "branch": "feat/bounded-placement-swaps",
+  "artifact_root": "/home/deano/harnesses/pcxt-output-coverage",
+  "binary_sha256": {
+    "nextpnr-mistral": "c71eabe9b85173eb5c5914b4714f713ade28adc04e2645ec7ec46a2ef460f633",
+    "nextpnr-mistral-test": "24da46ed13cce17366ba27b87ad98afdf4d1c6f7c4ec1fb25ded752d1017f400"
+  },
+  "source_sha256": {
+    "common/kernel/timing.cc": "fd7f04b33651ec8db22854608e4885c2101ee7c6a35845949ff393c21982ca0a",
+    "common/kernel/timing.h": "89171adf3f158d974f2fc5af212c6077ca55a4c8922066c47a23e4f98695f97c",
+    "docs/mistral-io-delay.md": "ea30809107cedb6bcea2e218fcc76b611ba6a0543c27ef68be7b9fdd102c055e",
+    "docs/validation/2026-10-20-endpoint-coverage-265/check.py": "e747820ea106a0fb427d2bf6fbac0ad95a122e40a367c0ef25f81740479462cd",
+    "docs/validation/2026-10-20-io-reset-265/check.py": "c9440800c9595eeffec50a14bb623c213c8e68d78ab85a6c1934cf30fac1db52",
+    "mistral/critical_cohort.cc": "8c885c9e22d347e3d48668e14de9cb7cb59fdcc73babf313b0933d6c73fa50f3",
+    "mistral/routed_swap.py": "7f35a3a15ad4ae14f62aef9d6e6285c9f6f678cfbe1a307fada92ab9b644d2cb",
+    "mistral/tests/critical_cohort_cli.py": "4ee200e42e0dbfec21aca6f711eccc945c182c631df421e5c5ead24b2231c061",
+    "mistral/tests/io_delay.cc": "e3394dbb32ae30ef84b0264ab3c25500e42ad12070347b249813e8f98f960840",
+    "mistral/tests/routed_swap.py": "42c8abe120daf76850bf3550c87dbc5de38f0d6a4f780de157847754e9795d91"
+  },
+  "input_sha256": {
+    "/home/deano/harnesses/pcxt-endpoint-coverage/paired/inputs/placed.json": "733f1cc8ea765bed46dae44dcd744e4432edd75ddedaf232061c0a1d9756b4a6",
+    "/home/deano/harnesses/pcxt-output-coverage/synthetic-io.sdc": "91441c5e1650a1d585172ffc8f6337965ee55f3ee6a5ac006889f94718e487ba"
+  },
+  "build_flags": {
+    "ARCH": "mistral",
+    "BUILD_TESTS": true,
+    "BUILD_GUI": false,
+    "BUILD_PYTHON": false,
+    "GPU_ROUTER": "OFF",
+    "CMAKE_BUILD_TYPE": "Release"
+  },
+  "evidence_sha256": {
+    "cli-final.log": "e8da46941197c02558e3644071a9e1c57de320c9b5bbdfec2e570202eee4d212",
+    "earlier-routed-check.log": "bf0ae6786818d0c94b31eac5f350dc41ccacd6defc7718e7e7cc3f64a173ef46",
+    "binary-sha256.txt": "b2c715bb74f81202c17626853c2e3b5ee9684cdb4900eaa0c4b30fe8e7a57a36",
+    "classify.py": "d566719f3009a2e9de7cc92a838ecc6487e08f2c5e1f456869dd24db9f430612",
+    "pcxt-host-final.log": "7756b454d3d04a36c59fb8d18f5b2a752fe5e8c66d1a8b6a7ba96147b96c9691",
+    "cli-receipt.json": "3f20a8c0fce744a4ab438f420f13bd5380f1fd60a5de08f88194e28d5df5027b",
+    "native-final.log": "307f92c08d332fdc7c9bec8731348be043c41f27512baf12374db70f1112c801",
+    "previous-evidence-check-schema4.log": "902608fe05cb207738af07f3a8b3f65333ba7ec77c93d754b8421974370271f0",
+    "previous-io-check-schema4.log": "21fcfb611f535303115abf031faeae0c4ab6c1dbefb6f65cc061b1409deb0fc7",
+    "route-budget-reservation.json": "6572bf39ab942ee6654d5b911e8bb9e6f125a4d6150eff8dc18bf3a03fb54c78",
+    "previous-evidence-check-final.log": "902608fe05cb207738af07f3a8b3f65333ba7ec77c93d754b8421974370271f0",
+    "physical-output-accounting.json": "127d9013b4bff24fd56d4f26c092448960ac964fa6a91aa22e798a0ebe3d277f",
+    "output-fixtures.json.gz": "c971338fd86e2ffa47968419ec062c64e3ef687a0a929058eb106ae27b892158",
+    "pcxt-host-diagnostic.json.gz": "887c2c62cb58ad9cca931ac8866a746e0ccb5353141b065361b33bf9a5704e0c",
+    "portable-check.log": "9f300e9932a30b79d428cbe04df84d5584efb10c1845b4960270c890db33b6dc",
+    "previous-io-check-final.log": "21fcfb611f535303115abf031faeae0c4ab6c1dbefb6f65cc061b1409deb0fc7",
+    "input-fixtures.json.gz": "2aa218e212de82cc80b0f2bf2744bb6b89743a3a90b24ba0d0e82fd9e6032686",
+    "synthetic-io.sdc": "91441c5e1650a1d585172ffc8f6337965ee55f3ee6a5ac006889f94718e487ba",
+    "host-summary.json": "130913f3f1c1ae1d17f5d3e6ec6bb5d6a8a7a084ec88fb56b71d58d8dbc1a370",
+    "driver-contract-types.log": "fa6093f691a6325270e96485e82b7e29e76a246b2c64a9cbe24daaaa66d067dd",
+    "driver-final.log": "572d66ecfaaec5cc27b6ba9cce2841a45bb08bfd188d26425874dfc6153be968",
+    "earlier-critical-check.log": "7f98307d654aa71e4e90740d609df26e4a02c8db83726711d104f73b0d31e320",
+    "remaining-endpoints.json": "ca45521b50ae36382d57921164da9a53c5b5bb711bcb1abf96ceb4d7bf571c6d",
+    "binary-version.txt": "9192d4d14ebb74b8a391160f4cebe4e2a854a4b7f2e2fc9358c03d357de21fab"
+  },
+  "prior_charged_seconds": 1962.155,
+  "new_full_design_routes": 0,
+  "new_empty_cpu_routes": 2,
+  "new_route_charged_seconds": 10.001284888014197,
+  "total_charged_seconds": 1972.1562848880142,
+  "remaining_seconds": 1627.8437151119858,
+  "scope": "host-only graph/STA; test budgets; no physical IO or 100MHz/hardware qualification",
+  "tests": {
+    "native": {
+      "command": "final-bin/nextpnr-mistral-test --gtest_filter='IoDelayTest.*:CriticalCohort.*'",
+      "passed": 86
+    },
+    "driver": {
+      "command": "python3 mistral/tests/routed_swap.py final-bin/nextpnr-mistral-test",
+      "passed": 19
+    },
+    "cli": [
+      "python3",
+      "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/tests/critical_cohort_cli.py",
+      "/home/deano/harnesses/pcxt-output-coverage/final-bin/nextpnr-mistral",
+      "CriticalCohortCli.test_model_export_accepts_baseline_budget"
+    ],
+    "host_diagnostic": "NEXTPNR_TEST_IO_CHECKPOINT=<original placed.json> NEXTPNR_TEST_IO_SDC=synthetic-io.sdc NEXTPNR_TEST_IO_DIAGNOSTIC=<new json> final-bin/nextpnr-mistral-test --gtest_filter=ExternalEndpointDiagnostic.PlacedCheckpointSyntheticInputConstraints"
+  },
+  "failed_development_capture": "native-output-dev.log (unsupported attempt to add second clock/edge to existing SDC constraint); fixed fixture, retained original log",
+  "earlier_artifacts_preserved": true
+}

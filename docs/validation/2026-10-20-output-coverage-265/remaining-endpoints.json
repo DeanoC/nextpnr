@@ -1,0 +1,4620 @@
+[
+  {
+    "cell": "HDMI_TX_CLK_MISTRAL_OB_PAD",
+    "port": "I",
+    "class": "hdmi-clock-forwarder",
+    "type": "MISTRAL_OB",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.38.0.2",
+      "FES_PINMAP_V1": "7b22636f756e74223a20322c202270696e73223a207b2249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AG5",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "clk_pixel_MISTRAL_CLKBUF_Q",
+        "type": "MISTRAL_CLKBUF",
+        "port": "Q",
+        "params": {}
+      }
+    ],
+    "input_sources": {
+      "I": [
+        {
+          "cell": "clk_pixel_MISTRAL_CLKBUF_Q",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.32.0.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_W11",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000101100000000000000010000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_B_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000001"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_a_MISTRAL_FF_Q_11_DATAIN_MISTRAL_ALUT4_Q",
+          "type": "MISTRAL_ALUT4",
+          "port": "Q",
+          "params": {
+            "LUT": "1110101011000000"
+          },
+          "input_sources": {
+            "D": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q_9",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_18",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_1",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.56.0.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AA13",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_1",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000101100000000000000010000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_B_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000001"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_a_MISTRAL_FF_Q_4_DATAIN_MISTRAL_ALUT6_Q",
+          "type": "MISTRAL_ALUT6",
+          "port": "Q",
+          "params": {
+            "LUT": "1111111011111010111011101010101011111100111100001100110000000000"
+          },
+          "input_sources": {
+            "F": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "E": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_14",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_1",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_10",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.23.2",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AB26",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_10",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_a_MISTRAL_FF_Q_8_ENA_MISTRAL_ALUT5_Q",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000000011000000000000001000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.sdram_a_MISTRAL_FF_Q_8_ENA_MISTRAL_ALUT5_Q_C_MISTRAL_ALUT5_Q",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_a_MISTRAL_FF_Q_8_ENA_MISTRAL_ALUT5_Q_A_MISTRAL_ALUT2_Q",
+                      "type": "MISTRAL_ALUT2",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "0001"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_8",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "B": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.sdram_a_MISTRAL_FF_Q_8_ENA_MISTRAL_ALUT5_Q_A_MISTRAL_ALUT2_Q",
+                "type": "MISTRAL_ALUT2",
+                "port": "Q",
+                "params": {
+                  "LUT": "0001"
+                },
+                "input_sources": {
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_2",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_a_MISTRAL_FF_Q_8_DATAIN_MISTRAL_ALUT5_Q",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "11111011101010111111000100000001"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q_2",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_11",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.8.3",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AB23",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_11",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000101100000000000000010000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_B_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000001"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_a_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT4_Q",
+          "type": "MISTRAL_ALUT4",
+          "port": "Q",
+          "params": {
+            "LUT": "1110101011000000"
+          },
+          "input_sources": {
+            "D": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q_14",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_13",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_12",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.40.81.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_C12",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_12",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000101100000000000000010000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_B_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000001"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_a_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q",
+          "type": "MISTRAL_ALUT4",
+          "port": "Q",
+          "params": {
+            "LUT": "1110101011000000"
+          },
+          "input_sources": {
+            "D": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q_18",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_7",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_2",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.8.0.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_Y11",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_2",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000101100000000000000010000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_B_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000001"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_a_MISTRAL_FF_Q_5_DATAIN_MISTRAL_ALUT6_Q",
+          "type": "MISTRAL_ALUT6",
+          "port": "Q",
+          "params": {
+            "LUT": "1111111011101110111110101010101011111100110011001111000000000000"
+          },
+          "input_sources": {
+            "F": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q_1",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "E": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_16",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_4",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_3",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.4.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_Y19",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_3",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000101100000000000000010000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_B_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000001"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_a_MISTRAL_FF_Q_10_DATAIN_MISTRAL_ALUT5_Q",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "11111011101010111111000100000001"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_17",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_4",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.8.0.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AA11",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_4",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000101100000000000000010000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_B_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000001"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_a_MISTRAL_FF_Q_7_DATAIN_MISTRAL_ALUT6_Q",
+          "type": "MISTRAL_ALUT6",
+          "port": "Q",
+          "params": {
+            "LUT": "1111111011111010111011101010101011111100111100001100110000000000"
+          },
+          "input_sources": {
+            "F": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "E": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_12",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_5",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.23.3",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AA26",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_5",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000101100000000000000010000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_B_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000001"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_a_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT6_Q",
+          "type": "MISTRAL_ALUT6",
+          "port": "Q",
+          "params": {
+            "LUT": "1111111011101110111110101010101011111100110011001111000000000000"
+          },
+          "input_sources": {
+            "F": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "E": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_6",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_2",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_6",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.84.0.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AC23",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_6",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000101100000000000000010000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_B_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000001"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_a_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT4_Q",
+          "type": "MISTRAL_ALUT4",
+          "port": "Q",
+          "params": {
+            "LUT": "1110101011000000"
+          },
+          "input_sources": {
+            "D": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q_4",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_9",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_7",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.84.0.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AC22",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_7",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000101100000000000000010000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_B_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000001"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_a_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT4_Q",
+          "type": "MISTRAL_ALUT4",
+          "port": "Q",
+          "params": {
+            "LUT": "1110101011000000"
+          },
+          "input_sources": {
+            "D": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q_13",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_8",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.40.81.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_D12",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_8",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {}
+      }
+    ],
+    "input_sources": {
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "SDRAM_A_MISTRAL_OB_PAD_8$sdr_sclr",
+          "type": "MISTRAL_ALUT2",
+          "port": "Q",
+          "params": {
+            "LUT": "0010"
+          },
+          "input_sources": {
+            "B": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.sdram_a_MISTRAL_FF_Q_9_DATAIN_MISTRAL_ALUT6_Q",
+                "type": "MISTRAL_ALUT6",
+                "port": "Q",
+                "params": {
+                  "LUT": "1111100011111000111111111111100010001000100010001111111110001000"
+                },
+                "input_sources": {
+                  "F": [
+                    {
+                      "cell": "system.storage.controller.write_byte_enable_MISTRAL_NOT_A_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+                      "type": "MISTRAL_ALUT2",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "0100"
+                      }
+                    }
+                  ],
+                  "E": [
+                    {
+                      "cell": "dq_oe_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT4_Q",
+                      "type": "MISTRAL_ALUT4",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "0000000000000001"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.sdram_dqmh_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_Q",
+                      "type": "MISTRAL_ALUT2",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "1000"
+                      }
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.addr_MISTRAL_FF_Q_10",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_10",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_9",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.62.0.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AD17",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_A_MISTRAL_OB_PAD_9",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {}
+      }
+    ],
+    "input_sources": {
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "SDRAM_A_MISTRAL_OB_PAD_9$sdr_sclr",
+          "type": "MISTRAL_ALUT2",
+          "port": "Q",
+          "params": {
+            "LUT": "0010"
+          },
+          "input_sources": {
+            "B": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.sdram_a_MISTRAL_FF_Q_6_DATAIN_MISTRAL_ALUT6_Q",
+                "type": "MISTRAL_ALUT6",
+                "port": "Q",
+                "params": {
+                  "LUT": "1111100011111000111111111111100010001000100010001111111110001000"
+                },
+                "input_sources": {
+                  "F": [
+                    {
+                      "cell": "system.storage.controller.write_byte_enable_MISTRAL_NOT_A_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+                      "type": "MISTRAL_ALUT2",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "0100"
+                      }
+                    }
+                  ],
+                  "E": [
+                    {
+                      "cell": "dq_oe_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT4_Q",
+                      "type": "MISTRAL_ALUT4",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "0000000000000001"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.write_byte_enable_MISTRAL_NOT_A_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT2_B",
+                      "type": "MISTRAL_ALUT2",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "1000"
+                      }
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.addr_MISTRAL_FF_Q_8",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_8",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_BA_MISTRAL_OB_PAD",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.25.3",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AB25",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_BA_MISTRAL_OB_PAD",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000101100000000000000010000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_B_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000001"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_ba_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT4_Q",
+          "type": "MISTRAL_ALUT4",
+          "port": "Q",
+          "params": {
+            "LUT": "1011101000010000"
+          },
+          "input_sources": {
+            "D": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q_16",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_BA_MISTRAL_OB_PAD_1",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_CE": "00000000000000000000000000000001",
+      "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.6.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2243454f5554223a205b302c202243454f5554225d2c2022434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_Y17",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_BA_MISTRAL_OB_PAD_1",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_CE": "00000000000000000000000000000001",
+          "IOREG_CEOUT_INV": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CEOUT": [
+        {
+          "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E",
+          "type": "MISTRAL_ALUT5",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000101100000000000000010000"
+          },
+          "input_sources": {
+            "E": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                "type": "MISTRAL_ALUT5",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000000000000010000000000000000"
+                },
+                "input_sources": {
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_Q",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_6",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_9",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_7",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.wait_count_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "D": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "10001010"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.seen_MISTRAL_ALUT3_B",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00100000"
+                      }
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.refresh_due_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "C": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_B_MISTRAL_ALUT3_Q",
+                "type": "MISTRAL_ALUT3",
+                "port": "Q",
+                "params": {
+                  "LUT": "00000001"
+                },
+                "input_sources": {
+                  "C": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_3",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_14",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_ba_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT4_Q",
+          "type": "MISTRAL_ALUT4",
+          "port": "Q",
+          "params": {
+            "LUT": "1011101000010000"
+          },
+          "input_sources": {
+            "D": [
+              {
+                "cell": "system.storage.controller.addr_MISTRAL_FF_Q_7",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "C": [
+              {
+                "cell": "system.storage.controller.held_addr_MISTRAL_FF_Q_15",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "B": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_5",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.storage.controller.state_MISTRAL_FF_Q_11",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_CKE_MISTRAL_OB_PAD",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.54.0.2",
+      "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AG10",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_CKE_MISTRAL_OB_PAD",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {}
+      }
+    ],
+    "input_sources": {
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "SDRAM_CKE_MISTRAL_OB_PAD$sdr_sclr",
+          "type": "MISTRAL_ALUT2",
+          "port": "Q",
+          "params": {
+            "LUT": "0010"
+          },
+          "input_sources": {
+            "B": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_Q",
+                "type": "MISTRAL_ALUT2",
+                "port": "Q",
+                "params": {
+                  "LUT": "1110"
+                },
+                "input_sources": {
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_10_DATAIN_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_D",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "10000000000000000000000000000000"
+                      }
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_CLK_MISTRAL_OB_PAD",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_DDROUT",
+    "params": {
+      "DDR_HIGH": "00000000000000000000000000000000"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.70.0.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AD20",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_CLK_MISTRAL_OB_PAD",
+        "type": "MISTRAL_DDROUT",
+        "port": "PAD",
+        "params": {
+          "DDR_HIGH": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_nCAS_MISTRAL_OB_PAD",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_POWER_UP": "00000000000000000000000000000001"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.68.0.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AA18",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_nCAS_MISTRAL_OB_PAD",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_POWER_UP": "00000000000000000000000000000001"
+        }
+      }
+    ],
+    "input_sources": {
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_ncas_MISTRAL_NOT_Q",
+          "type": "MISTRAL_NOT",
+          "port": "Q",
+          "params": {}
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_nCS_MISTRAL_OB_PAD",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.89.6.1",
+      "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_Y18",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_nCS_MISTRAL_OB_PAD",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {}
+      }
+    ],
+    "input_sources": {
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "SDRAM_nCS_MISTRAL_OB_PAD$sdr_sclr",
+          "type": "MISTRAL_ALUT2",
+          "port": "Q",
+          "params": {
+            "LUT": "0010"
+          },
+          "input_sources": {
+            "B": [
+              {
+                "cell": "locked_MISTRAL_FF_ACLR",
+                "type": "MISTRAL_FF",
+                "port": "Q",
+                "params": {}
+              }
+            ],
+            "A": [
+              {
+                "cell": "system.sdram_ncs_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q",
+                "type": "MISTRAL_ALUT6",
+                "port": "Q",
+                "params": {
+                  "LUT": "1111111111111111101011111110111111111111111111111010111110101111"
+                },
+                "input_sources": {
+                  "F": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E",
+                      "type": "MISTRAL_ALUT5",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00000000000000010000000000000000"
+                      }
+                    }
+                  ],
+                  "E": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q_1_E_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT3_Q",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "10001010"
+                      }
+                    }
+                  ],
+                  "D": [
+                    {
+                      "cell": "system.sdram_ncs_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q_D_MISTRAL_ALUT3_Q",
+                      "type": "MISTRAL_ALUT3",
+                      "port": "Q",
+                      "params": {
+                        "LUT": "00010000"
+                      }
+                    }
+                  ],
+                  "C": [
+                    {
+                      "cell": "system.sdram_cke_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_B_Q_MISTRAL_FF_DATAIN",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "B": [
+                    {
+                      "cell": "system.storage.controller.init_hi_MISTRAL_FF_Q",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ],
+                  "A": [
+                    {
+                      "cell": "system.storage.controller.state_MISTRAL_FF_Q_13",
+                      "type": "MISTRAL_FF",
+                      "port": "Q",
+                      "params": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_nRAS_MISTRAL_OB_PAD",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_POWER_UP": "00000000000000000000000000000001"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.60.0.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_W14",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_nRAS_MISTRAL_OB_PAD",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_POWER_UP": "00000000000000000000000000000001"
+        }
+      }
+    ],
+    "input_sources": {
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_nras_MISTRAL_NOT_Q",
+          "type": "MISTRAL_NOT",
+          "port": "Q",
+          "params": {}
+        }
+      ]
+    }
+  },
+  {
+    "cell": "SDRAM_nWE_MISTRAL_OB_PAD",
+    "port": "PAD",
+    "class": "registered-sdram-pad",
+    "type": "MISTRAL_SDROUT",
+    "params": {
+      "IOREG_OUT_POWER_UP": "00000000000000000000000000000001"
+    },
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.68.0.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20332c202270696e73223a207b22434c4b223a205b302c2022434c4b225d2c202249223a205b302c202249225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AA19",
+      "FAST_OUTPUT_REGISTER": "ON",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "keep": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "SDRAM_nWE_MISTRAL_OB_PAD",
+        "type": "MISTRAL_SDROUT",
+        "port": "PAD",
+        "params": {
+          "IOREG_OUT_POWER_UP": "00000000000000000000000000000001"
+        }
+      }
+    ],
+    "input_sources": {
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "system.sdram_nwe_MISTRAL_NOT_Q",
+          "type": "MISTRAL_NOT",
+          "port": "Q",
+          "params": {}
+        }
+      ]
+    }
+  },
+  {
+    "cell": "locked_MISTRAL_FF_ACLR",
+    "port": "ACLR",
+    "class": "reset-aclr",
+    "type": "MISTRAL_FF",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000001",
+      "NEXTPNR_BEL": "MISTRAL_FF.10.15.10",
+      "FES_PINMAP_V1": "7b22636f756e74223a20382c202270696e73223a207b2241434c52223a205b302c202241434c52225d2c2022434c4b223a205b302c2022434c4b225d2c202244415441494e223a205b302c202244415441494e225d2c2022454e41223a205b322c2022454e41225d2c202251223a205b302c202251225d2c202253434c52223a205b312c202253434c52225d2c20225344415441223a205b302c20225344415441225d2c2022534c4f4144223a205b312c2022534c4f4144225d7d7d",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:36.5-38.48|/home/deano/fes/out/cache/misteross-toolchains/slots/8e7eeca0616bb73be28b6f12b17c33a19dd11c12dc9fdb56d964e086621867a2/install/bin/../share/yosys/intel_alm/common/dff_map.v:6.16-6.121",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "locked_MISTRAL_ALUT2_Q",
+        "type": "MISTRAL_ALUT2",
+        "port": "Q",
+        "params": {
+          "LUT": "1000"
+        },
+        "input_sources": {
+          "B": [
+            {
+              "cell": "memory_clock",
+              "type": "altera_pll",
+              "port": "locked",
+              "params": {
+                "reference_clock_frequency": "50.0 MHz",
+                "phase_shift2": "3500 ps",
+                "phase_shift1": "5000 ps",
+                "phase_shift0": "0 ps",
+                "output_clock_frequency2": "100.0 MHz",
+                "output_clock_frequency1": "100.0 MHz",
+                "output_clock_frequency0": "100.0 MHz",
+                "operation_mode": "direct",
+                "number_of_clocks": "00000000000000000000000000000011",
+                "fractional_vco_multiplier": "false",
+                "duty_cycle2": "00000000000000000000000000110010",
+                "duty_cycle1": "00000000000000000000000000110010",
+                "duty_cycle0": "00000000000000000000000000110010"
+              }
+            }
+          ],
+          "A": [
+            {
+              "cell": "video_clock",
+              "type": "altera_pll",
+              "port": "locked",
+              "params": {
+                "reference_clock_frequency": "50.0 MHz",
+                "phase_shift0": "0 ps",
+                "output_clock_frequency0": "74.25 MHz",
+                "operation_mode": "direct",
+                "number_of_clocks": "00000000000000000000000000000001",
+                "fractional_vco_multiplier": "true",
+                "duty_cycle0": "00000000000000000000000000110010"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "input_sources": {
+      "SLOAD": [],
+      "SDATA": [],
+      "SCLR": [],
+      "ENA": [],
+      "DATAIN": [
+        {
+          "cell": "locked_MISTRAL_FF_ACLR_DATAIN_MISTRAL_FF_Q",
+          "type": "MISTRAL_FF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "ACLR": [
+        {
+          "cell": "locked_MISTRAL_ALUT2_Q",
+          "type": "MISTRAL_ALUT2",
+          "port": "Q",
+          "params": {
+            "LUT": "1000"
+          },
+          "input_sources": {
+            "B": [
+              {
+                "cell": "memory_clock",
+                "type": "altera_pll",
+                "port": "locked",
+                "params": {
+                  "reference_clock_frequency": "50.0 MHz",
+                  "phase_shift2": "3500 ps",
+                  "phase_shift1": "5000 ps",
+                  "phase_shift0": "0 ps",
+                  "output_clock_frequency2": "100.0 MHz",
+                  "output_clock_frequency1": "100.0 MHz",
+                  "output_clock_frequency0": "100.0 MHz",
+                  "operation_mode": "direct",
+                  "number_of_clocks": "00000000000000000000000000000011",
+                  "fractional_vco_multiplier": "false",
+                  "duty_cycle2": "00000000000000000000000000110010",
+                  "duty_cycle1": "00000000000000000000000000110010",
+                  "duty_cycle0": "00000000000000000000000000110010"
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "video_clock",
+                "type": "altera_pll",
+                "port": "locked",
+                "params": {
+                  "reference_clock_frequency": "50.0 MHz",
+                  "phase_shift0": "0 ps",
+                  "output_clock_frequency0": "74.25 MHz",
+                  "operation_mode": "direct",
+                  "number_of_clocks": "00000000000000000000000000000001",
+                  "fractional_vco_multiplier": "true",
+                  "duty_cycle0": "00000000000000000000000000110010"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "locked_MISTRAL_FF_ACLR_1",
+    "port": "ACLR",
+    "class": "reset-aclr",
+    "type": "MISTRAL_FF",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000001",
+      "NEXTPNR_BEL": "MISTRAL_FF.11.20.20",
+      "FES_PINMAP_V1": "7b22636f756e74223a20382c202270696e73223a207b2241434c52223a205b302c202241434c52225d2c2022434c4b223a205b302c2022434c4b225d2c202244415441494e223a205b302c202244415441494e225d2c2022454e41223a205b322c2022454e41225d2c202251223a205b302c202251225d2c202253434c52223a205b312c202253434c52225d2c20225344415441223a205b302c20225344415441225d2c2022534c4f4144223a205b312c2022534c4f4144225d7d7d",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:39.5-41.52|/home/deano/fes/out/cache/misteross-toolchains/slots/8e7eeca0616bb73be28b6f12b17c33a19dd11c12dc9fdb56d964e086621867a2/install/bin/../share/yosys/intel_alm/common/dff_map.v:6.16-6.121",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "locked_MISTRAL_ALUT2_Q",
+        "type": "MISTRAL_ALUT2",
+        "port": "Q",
+        "params": {
+          "LUT": "1000"
+        },
+        "input_sources": {
+          "B": [
+            {
+              "cell": "memory_clock",
+              "type": "altera_pll",
+              "port": "locked",
+              "params": {
+                "reference_clock_frequency": "50.0 MHz",
+                "phase_shift2": "3500 ps",
+                "phase_shift1": "5000 ps",
+                "phase_shift0": "0 ps",
+                "output_clock_frequency2": "100.0 MHz",
+                "output_clock_frequency1": "100.0 MHz",
+                "output_clock_frequency0": "100.0 MHz",
+                "operation_mode": "direct",
+                "number_of_clocks": "00000000000000000000000000000011",
+                "fractional_vco_multiplier": "false",
+                "duty_cycle2": "00000000000000000000000000110010",
+                "duty_cycle1": "00000000000000000000000000110010",
+                "duty_cycle0": "00000000000000000000000000110010"
+              }
+            }
+          ],
+          "A": [
+            {
+              "cell": "video_clock",
+              "type": "altera_pll",
+              "port": "locked",
+              "params": {
+                "reference_clock_frequency": "50.0 MHz",
+                "phase_shift0": "0 ps",
+                "output_clock_frequency0": "74.25 MHz",
+                "operation_mode": "direct",
+                "number_of_clocks": "00000000000000000000000000000001",
+                "fractional_vco_multiplier": "true",
+                "duty_cycle0": "00000000000000000000000000110010"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "input_sources": {
+      "SLOAD": [],
+      "SDATA": [],
+      "SCLR": [],
+      "ENA": [],
+      "DATAIN": [
+        {
+          "cell": "$PACKER_VCC_DRV",
+          "type": "MISTRAL_CONST",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000000000000000000000000001"
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clk_pixel_MISTRAL_CLKBUF_Q",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "ACLR": [
+        {
+          "cell": "locked_MISTRAL_ALUT2_Q",
+          "type": "MISTRAL_ALUT2",
+          "port": "Q",
+          "params": {
+            "LUT": "1000"
+          },
+          "input_sources": {
+            "B": [
+              {
+                "cell": "memory_clock",
+                "type": "altera_pll",
+                "port": "locked",
+                "params": {
+                  "reference_clock_frequency": "50.0 MHz",
+                  "phase_shift2": "3500 ps",
+                  "phase_shift1": "5000 ps",
+                  "phase_shift0": "0 ps",
+                  "output_clock_frequency2": "100.0 MHz",
+                  "output_clock_frequency1": "100.0 MHz",
+                  "output_clock_frequency0": "100.0 MHz",
+                  "operation_mode": "direct",
+                  "number_of_clocks": "00000000000000000000000000000011",
+                  "fractional_vco_multiplier": "false",
+                  "duty_cycle2": "00000000000000000000000000110010",
+                  "duty_cycle1": "00000000000000000000000000110010",
+                  "duty_cycle0": "00000000000000000000000000110010"
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "video_clock",
+                "type": "altera_pll",
+                "port": "locked",
+                "params": {
+                  "reference_clock_frequency": "50.0 MHz",
+                  "phase_shift0": "0 ps",
+                  "output_clock_frequency0": "74.25 MHz",
+                  "operation_mode": "direct",
+                  "number_of_clocks": "00000000000000000000000000000001",
+                  "fractional_vco_multiplier": "true",
+                  "duty_cycle0": "00000000000000000000000000110010"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "locked_MISTRAL_FF_ACLR_1_Q_MISTRAL_FF_DATAIN",
+    "port": "ACLR",
+    "class": "reset-aclr",
+    "type": "MISTRAL_FF",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000001",
+      "NEXTPNR_BEL": "MISTRAL_FF.11.20.56",
+      "FES_PINMAP_V1": "7b22636f756e74223a20382c202270696e73223a207b2241434c52223a205b302c202241434c52225d2c2022434c4b223a205b302c2022434c4b225d2c202244415441494e223a205b302c202244415441494e225d2c2022454e41223a205b322c2022454e41225d2c202251223a205b302c202251225d2c202253434c52223a205b312c202253434c52225d2c20225344415441223a205b302c20225344415441225d2c2022534c4f4144223a205b312c2022534c4f4144225d7d7d",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:39.5-41.52|/home/deano/fes/out/cache/misteross-toolchains/slots/8e7eeca0616bb73be28b6f12b17c33a19dd11c12dc9fdb56d964e086621867a2/install/bin/../share/yosys/intel_alm/common/dff_map.v:6.16-6.121",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "locked_MISTRAL_ALUT2_Q",
+        "type": "MISTRAL_ALUT2",
+        "port": "Q",
+        "params": {
+          "LUT": "1000"
+        },
+        "input_sources": {
+          "B": [
+            {
+              "cell": "memory_clock",
+              "type": "altera_pll",
+              "port": "locked",
+              "params": {
+                "reference_clock_frequency": "50.0 MHz",
+                "phase_shift2": "3500 ps",
+                "phase_shift1": "5000 ps",
+                "phase_shift0": "0 ps",
+                "output_clock_frequency2": "100.0 MHz",
+                "output_clock_frequency1": "100.0 MHz",
+                "output_clock_frequency0": "100.0 MHz",
+                "operation_mode": "direct",
+                "number_of_clocks": "00000000000000000000000000000011",
+                "fractional_vco_multiplier": "false",
+                "duty_cycle2": "00000000000000000000000000110010",
+                "duty_cycle1": "00000000000000000000000000110010",
+                "duty_cycle0": "00000000000000000000000000110010"
+              }
+            }
+          ],
+          "A": [
+            {
+              "cell": "video_clock",
+              "type": "altera_pll",
+              "port": "locked",
+              "params": {
+                "reference_clock_frequency": "50.0 MHz",
+                "phase_shift0": "0 ps",
+                "output_clock_frequency0": "74.25 MHz",
+                "operation_mode": "direct",
+                "number_of_clocks": "00000000000000000000000000000001",
+                "fractional_vco_multiplier": "true",
+                "duty_cycle0": "00000000000000000000000000110010"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "input_sources": {
+      "SLOAD": [],
+      "SDATA": [],
+      "SCLR": [],
+      "ENA": [],
+      "DATAIN": [
+        {
+          "cell": "locked_MISTRAL_FF_ACLR_1",
+          "type": "MISTRAL_FF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clk_pixel_MISTRAL_CLKBUF_Q",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "ACLR": [
+        {
+          "cell": "locked_MISTRAL_ALUT2_Q",
+          "type": "MISTRAL_ALUT2",
+          "port": "Q",
+          "params": {
+            "LUT": "1000"
+          },
+          "input_sources": {
+            "B": [
+              {
+                "cell": "memory_clock",
+                "type": "altera_pll",
+                "port": "locked",
+                "params": {
+                  "reference_clock_frequency": "50.0 MHz",
+                  "phase_shift2": "3500 ps",
+                  "phase_shift1": "5000 ps",
+                  "phase_shift0": "0 ps",
+                  "output_clock_frequency2": "100.0 MHz",
+                  "output_clock_frequency1": "100.0 MHz",
+                  "output_clock_frequency0": "100.0 MHz",
+                  "operation_mode": "direct",
+                  "number_of_clocks": "00000000000000000000000000000011",
+                  "fractional_vco_multiplier": "false",
+                  "duty_cycle2": "00000000000000000000000000110010",
+                  "duty_cycle1": "00000000000000000000000000110010",
+                  "duty_cycle0": "00000000000000000000000000110010"
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "video_clock",
+                "type": "altera_pll",
+                "port": "locked",
+                "params": {
+                  "reference_clock_frequency": "50.0 MHz",
+                  "phase_shift0": "0 ps",
+                  "output_clock_frequency0": "74.25 MHz",
+                  "operation_mode": "direct",
+                  "number_of_clocks": "00000000000000000000000000000001",
+                  "fractional_vco_multiplier": "true",
+                  "duty_cycle0": "00000000000000000000000000110010"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "locked_MISTRAL_FF_ACLR_DATAIN_MISTRAL_FF_Q",
+    "port": "ACLR",
+    "class": "reset-aclr",
+    "type": "MISTRAL_FF",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000001",
+      "NEXTPNR_BEL": "MISTRAL_FF.10.15.46",
+      "FES_PINMAP_V1": "7b22636f756e74223a20382c202270696e73223a207b2241434c52223a205b302c202241434c52225d2c2022434c4b223a205b302c2022434c4b225d2c202244415441494e223a205b302c202244415441494e225d2c2022454e41223a205b322c2022454e41225d2c202251223a205b302c202251225d2c202253434c52223a205b312c202253434c52225d2c20225344415441223a205b302c20225344415441225d2c2022534c4f4144223a205b312c2022534c4f4144225d7d7d",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:36.5-38.48|/home/deano/fes/out/cache/misteross-toolchains/slots/8e7eeca0616bb73be28b6f12b17c33a19dd11c12dc9fdb56d964e086621867a2/install/bin/../share/yosys/intel_alm/common/dff_map.v:6.16-6.121",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "locked_MISTRAL_ALUT2_Q",
+        "type": "MISTRAL_ALUT2",
+        "port": "Q",
+        "params": {
+          "LUT": "1000"
+        },
+        "input_sources": {
+          "B": [
+            {
+              "cell": "memory_clock",
+              "type": "altera_pll",
+              "port": "locked",
+              "params": {
+                "reference_clock_frequency": "50.0 MHz",
+                "phase_shift2": "3500 ps",
+                "phase_shift1": "5000 ps",
+                "phase_shift0": "0 ps",
+                "output_clock_frequency2": "100.0 MHz",
+                "output_clock_frequency1": "100.0 MHz",
+                "output_clock_frequency0": "100.0 MHz",
+                "operation_mode": "direct",
+                "number_of_clocks": "00000000000000000000000000000011",
+                "fractional_vco_multiplier": "false",
+                "duty_cycle2": "00000000000000000000000000110010",
+                "duty_cycle1": "00000000000000000000000000110010",
+                "duty_cycle0": "00000000000000000000000000110010"
+              }
+            }
+          ],
+          "A": [
+            {
+              "cell": "video_clock",
+              "type": "altera_pll",
+              "port": "locked",
+              "params": {
+                "reference_clock_frequency": "50.0 MHz",
+                "phase_shift0": "0 ps",
+                "output_clock_frequency0": "74.25 MHz",
+                "operation_mode": "direct",
+                "number_of_clocks": "00000000000000000000000000000001",
+                "fractional_vco_multiplier": "true",
+                "duty_cycle0": "00000000000000000000000000110010"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "input_sources": {
+      "SLOAD": [],
+      "SDATA": [],
+      "SCLR": [],
+      "ENA": [],
+      "DATAIN": [
+        {
+          "cell": "$PACKER_VCC_DRV",
+          "type": "MISTRAL_CONST",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000000000000000000000000001"
+          }
+        }
+      ],
+      "CLK": [
+        {
+          "cell": "clocks_MISTRAL_CLKBUF_Q_1",
+          "type": "MISTRAL_CLKBUF",
+          "port": "Q",
+          "params": {}
+        }
+      ],
+      "ACLR": [
+        {
+          "cell": "locked_MISTRAL_ALUT2_Q",
+          "type": "MISTRAL_ALUT2",
+          "port": "Q",
+          "params": {
+            "LUT": "1000"
+          },
+          "input_sources": {
+            "B": [
+              {
+                "cell": "memory_clock",
+                "type": "altera_pll",
+                "port": "locked",
+                "params": {
+                  "reference_clock_frequency": "50.0 MHz",
+                  "phase_shift2": "3500 ps",
+                  "phase_shift1": "5000 ps",
+                  "phase_shift0": "0 ps",
+                  "output_clock_frequency2": "100.0 MHz",
+                  "output_clock_frequency1": "100.0 MHz",
+                  "output_clock_frequency0": "100.0 MHz",
+                  "operation_mode": "direct",
+                  "number_of_clocks": "00000000000000000000000000000011",
+                  "fractional_vco_multiplier": "false",
+                  "duty_cycle2": "00000000000000000000000000110010",
+                  "duty_cycle1": "00000000000000000000000000110010",
+                  "duty_cycle0": "00000000000000000000000000110010"
+                }
+              }
+            ],
+            "A": [
+              {
+                "cell": "video_clock",
+                "type": "altera_pll",
+                "port": "locked",
+                "params": {
+                  "reference_clock_frequency": "50.0 MHz",
+                  "phase_shift0": "0 ps",
+                  "output_clock_frequency0": "74.25 MHz",
+                  "operation_mode": "direct",
+                  "number_of_clocks": "00000000000000000000000000000001",
+                  "fractional_vco_multiplier": "true",
+                  "duty_cycle0": "00000000000000000000000000110010"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "scl",
+    "port": "I",
+    "class": "hps-i2c-constant-data",
+    "type": "MISTRAL_IO",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.6.0.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2249223a205b302c202249225d2c20224f223a205b302c20224f225d2c20224f45223a205b302c20224f45225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_U10",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:76.16-76.76",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "$PACKER_GND_DRV",
+        "type": "MISTRAL_CONST",
+        "port": "Q",
+        "params": {
+          "LUT": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "OE": [
+        {
+          "cell": "hdmi_i2c",
+          "type": "cyclonev_hps_interface_peripheral_i2c",
+          "port": "out_clk",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "$PACKER_GND_DRV",
+          "type": "MISTRAL_CONST",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000000000000000000000000000"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "scl",
+    "port": "OE",
+    "class": "hps-i2c-enable-unmodeled-source",
+    "type": "MISTRAL_IO",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.6.0.0",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2249223a205b302c202249225d2c20224f223a205b302c20224f225d2c20224f45223a205b302c20224f45225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_U10",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:76.16-76.76",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "hdmi_i2c",
+        "type": "cyclonev_hps_interface_peripheral_i2c",
+        "port": "out_clk",
+        "params": {}
+      }
+    ],
+    "input_sources": {
+      "OE": [
+        {
+          "cell": "hdmi_i2c",
+          "type": "cyclonev_hps_interface_peripheral_i2c",
+          "port": "out_clk",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "$PACKER_GND_DRV",
+          "type": "MISTRAL_CONST",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000000000000000000000000000"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "sda",
+    "port": "I",
+    "class": "hps-i2c-constant-data",
+    "type": "MISTRAL_IO",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.4.0.2",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2249223a205b302c202249225d2c20224f223a205b302c20224f225d2c20224f45223a205b302c20224f45225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AA4",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:77.16-77.76",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "$PACKER_GND_DRV",
+        "type": "MISTRAL_CONST",
+        "port": "Q",
+        "params": {
+          "LUT": "00000000000000000000000000000000"
+        }
+      }
+    ],
+    "input_sources": {
+      "OE": [
+        {
+          "cell": "hdmi_i2c",
+          "type": "cyclonev_hps_interface_peripheral_i2c",
+          "port": "out_data",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "$PACKER_GND_DRV",
+          "type": "MISTRAL_CONST",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000000000000000000000000000"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "cell": "sda",
+    "port": "OE",
+    "class": "hps-i2c-enable-unmodeled-source",
+    "type": "MISTRAL_IO",
+    "params": {},
+    "attributes": {
+      "BEL_STRENGTH": "00000000000000000000000000000101",
+      "NEXTPNR_BEL": "MISTRAL_IO.4.0.2",
+      "FES_PINMAP_V1": "7b22636f756e74223a20342c202270696e73223a207b2249223a205b302c202249225d2c20224f223a205b302c20224f225d2c20224f45223a205b302c20224f45225d2c2022504144223a205b302c2022504144225d7d7d",
+      "LOC": "PIN_AA4",
+      "IO_STANDARD": "3.3-V LVTTL",
+      "src": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross/cores/fes-pcxt/rtl/fes_pcxt_top.sv:77.16-77.76",
+      "module_not_derived": "00000000000000000000000000000001"
+    },
+    "source": [
+      {
+        "cell": "hdmi_i2c",
+        "type": "cyclonev_hps_interface_peripheral_i2c",
+        "port": "out_data",
+        "params": {}
+      }
+    ],
+    "input_sources": {
+      "OE": [
+        {
+          "cell": "hdmi_i2c",
+          "type": "cyclonev_hps_interface_peripheral_i2c",
+          "port": "out_data",
+          "params": {}
+        }
+      ],
+      "I": [
+        {
+          "cell": "$PACKER_GND_DRV",
+          "type": "MISTRAL_CONST",
+          "port": "Q",
+          "params": {
+            "LUT": "00000000000000000000000000000000"
+          }
+        }
+      ]
+    }
+  }
+]

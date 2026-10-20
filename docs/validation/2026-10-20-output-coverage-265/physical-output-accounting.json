@@ -1,0 +1,832 @@
+[
+  {
+    "cell": "sda",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "HDMI_I2C_SDA"
+    ],
+    "dynamic_endpoints": [],
+    "unsupported": [
+      "I",
+      "OE"
+    ]
+  },
+  {
+    "cell": "scl",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "HDMI_I2C_SCL"
+    ],
+    "dynamic_endpoints": [],
+    "unsupported": [
+      "I",
+      "OE"
+    ]
+  },
+  {
+    "cell": "SDRAM_nWE_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_nWE"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_nRAS_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_nRAS"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_nCS_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_nCS"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_nCAS_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_nCAS"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_9",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[8]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_8",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[10]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_7",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[15]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_6",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[12]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_5",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[1]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_4",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[3]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_3",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[2]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_2",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[7]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_15",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[13]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_14",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[6]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_13",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[5]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_12",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[4]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_11",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[11]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_10",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[9]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD_1",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[0]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQ_MISTRAL_IO_PAD",
+    "type": "MISTRAL_IO",
+    "top_ports": [
+      "SDRAM_DQ[14]"
+    ],
+    "dynamic_endpoints": [
+      "I",
+      "OE"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQML_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "SDRAM_DQML"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_DQMH_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "SDRAM_DQMH"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "SDRAM_CLK_MISTRAL_OB_PAD",
+    "type": "MISTRAL_DDROUT",
+    "top_ports": [
+      "SDRAM_CLK"
+    ],
+    "dynamic_endpoints": [],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_CKE_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_CKE"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_BA_MISTRAL_OB_PAD_1",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_BA[0]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_BA_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_BA[1]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_9",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[11]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_8",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[12]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_7",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[8]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_6",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[7]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_5",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[1]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_4",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[3]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_3",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[5]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_2",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[0]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_12",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[9]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_11",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[6]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_10",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[10]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD_1",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[2]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "SDRAM_A_MISTRAL_OB_PAD",
+    "type": "MISTRAL_SDROUT",
+    "top_ports": [
+      "SDRAM_A[4]"
+    ],
+    "dynamic_endpoints": [
+      "CEOUT",
+      "I"
+    ],
+    "unsupported": [
+      "PAD"
+    ]
+  },
+  {
+    "cell": "HDMI_TX_VS_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_VS"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_HS_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_HS"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_9",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[3]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_8",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[1]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_7",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[17]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_6",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[9]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_5",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[10]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_4",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[8]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_3",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[22]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_23",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[15]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_22",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[16]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_21",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[4]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_20",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[12]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_2",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[6]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_19",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[0]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_18",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[11]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_17",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[5]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_16",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[18]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_15",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[2]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_14",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[23]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_13",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[19]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_12",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[14]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_11",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[20]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_10",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[13]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD_1",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[7]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_D_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_D[21]"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_DE_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_DE"
+    ],
+    "dynamic_endpoints": [
+      "I"
+    ],
+    "unsupported": []
+  },
+  {
+    "cell": "HDMI_TX_CLK_MISTRAL_OB_PAD",
+    "type": "MISTRAL_OB",
+    "top_ports": [
+      "HDMI_TX_CLK"
+    ],
+    "dynamic_endpoints": [],
+    "unsupported": [
+      "I"
+    ]
+  }
+]
