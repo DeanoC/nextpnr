@@ -90,6 +90,10 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("device", po::value<std::string>(), "device name (e.g. 5CSEBA6U23I7)");
     specific.add_options()("qsf", po::value<std::string>(), "path to QSF constraints file");
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
+    specific.add_options()("routed-endpoints", po::value<std::string>(),
+                           "write complete native endpoint inventory after full-route analogue signoff");
+    specific.add_options()("critical-swap-routed-trial",
+                           "allow unqualified isolated swap trial (use mistral/routed_swap.py for retention)");
     specific.add_options()("compress-rbf", "generate compressed bitstream");
     specific.add_options()("isolated-lut-placement",
                            "score the earlier L5 LUT inputs on their isolated legal pins during placement (opt-in)");
@@ -170,6 +174,17 @@ void MistralCommandHandler::customBitstream(Context *ctx)
         std::string filename = vm["rbf"].as<std::string>();
         ctx->fes_validate_cram_routing();
         ctx->build_bitstream();
+        if (vm.count("routed-endpoints")) {
+            TimingAnalyser timing(ctx), unskewed(ctx);
+            timing.with_clock_skew = true;
+            timing.setup(false, false, true);
+            unskewed.setup(false, false, true);
+            auto snapshot = critical_swap_endpoint_snapshot(ctx, timing, unskewed).object_items();
+            snapshot["final_analogue"] = ctx->timing_result_is_final_analogue;
+            std::ofstream out(vm["routed-endpoints"].as<std::string>());
+            out << json11::Json(snapshot).dump() << "\n";
+            if (!out) log_error("Failed to write routed endpoint inventory.\n");
+        }
         std::vector<uint8_t> data;
         ctx->cyclonev->rbf_save(data);
 
@@ -224,6 +239,15 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
+    if (vm.count("routed-endpoints") &&
+        (ctx->force || bool_or_default(ctx->settings, ctx->id("timing/allowFail"), false)))
+        log_error("Routed endpoint qualification forbids --force and timing/allowFail, including saved settings.\n");
+    if (vm.count("routed-endpoints") && (!vm.count("rbf") || vm.count("no-route") || vm.count("pack-only")))
+        log_error("--routed-endpoints requires a full route with --rbf.\n");
+    if (vm.count("critical-swap-budget") && vm["critical-swap-budget"].as<int>() > 0 &&
+        !vm.count("no-route") && !vm.count("critical-swap-routed-trial"))
+        log_error("Routed swaps require isolated validation with mistral/routed_swap.py; "
+                  "--critical-swap-routed-trial emits an UNQUALIFIED diagnostic candidate.\n");
     if (vm.count("critical-swap-budget")) {
         int budget = vm["critical-swap-budget"].as<int>();
         if (budget < 0 || budget > 64) log_error("--critical-swap-budget must be between 0 and 64.\n");

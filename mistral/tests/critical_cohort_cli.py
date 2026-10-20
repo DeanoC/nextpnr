@@ -42,6 +42,22 @@ class CriticalCohortCli(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("--critical-cohort-report", result.stdout)
 
+    def test_full_route_swaps_require_isolated_trial_acknowledgement(self):
+        result = self.run_design(["--critical-swap-budget", "1"], route=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Routed swaps require isolated validation", result.stdout)
+
+    def test_endpoint_export_refuses_reload_and_no_bitstream(self):
+        result = self.run_design(["--routed-endpoints", "/tmp/unused-endpoints.json"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("requires a full route with --rbf", result.stdout)
+
+    def test_endpoint_export_refuses_saved_timing_allow_fail(self):
+        result = self.run_design(["--routed-endpoints", "/tmp/unused-endpoints.json"],
+                                 settings={"timing/allowFail": "1"})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("qualification forbids", result.stdout)
+
     def test_swaps_are_explicit_only(self):
         for options, settings in ((["--critical-swap-budget", "0"], None),
                                   ([], {"critical-swap-budget": "64"})):

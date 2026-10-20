@@ -1129,4 +1129,55 @@ bool critical_cohort_timing_safe(Context *ctx, TimingAnalyser &before, TimingAna
 {
     return timing_guard(ctx, before, after, focus).accepts();
 }
+// Unlike placement guidance, a routed retention decision must account for every
+// connected endpoint. Unsupported IO/constant/unknown-clock paths fail closed.
+json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timing, TimingAnalyser &unskewed)
+{
+    using J = json11::Json;
+    J::object endpoints, clocks;
+    J::array unsupported;
+    auto clock_key = [&](const ClockDomainKey &key) {
+        return J::array{key.clock.str(ctx), int(key.edge)};
+    };
+    auto optional = [](const std::optional<delay_t> &v) { return v ? J(double(*v)) : J(); };
+    for (const auto &net : ctx->nets) {
+        if (!net.second->clkconstr) continue;
+        const auto &c = *net.second->clkconstr;
+        clocks[net.first.str(ctx)] = J::array{double(c.period.minDelay()), double(c.period.maxDelay()),
+                double(c.high.minDelay()), double(c.high.maxDelay()), double(c.low.minDelay()),
+                double(c.low.maxDelay()), double(c.phase_shift), c.phase_group.str(ctx)};
+    }
+    for (const auto &cell : ctx->cells) {
+        for (const auto &port : cell.second->ports) {
+            if (!port.second.net) continue;
+            int count = 0;
+            auto kind = ctx->getPortTimingClass(cell.second.get(), port.first, count);
+            if (kind != TMG_REGISTER_INPUT && kind != TMG_ENDPOINT) continue;
+            J key = J::array{cell.first.str(ctx), port.first.str(ctx)};
+            std::vector<EndpointClockPairTiming> rows, reference;
+            CellPortKey endpoint(cell.first, port.first);
+            if (!timing.get_endpoint_clock_pair_timings(endpoint, rows) || rows.empty() ||
+                !unskewed.get_endpoint_clock_pair_timings(endpoint, reference) ||
+                !guard::rows_match(rows, reference)) {
+                unsupported.push_back(key);
+                continue;
+            }
+            J::array values;
+            for (size_t i = 0; i < rows.size(); ++i) {
+                const auto &row = rows[i];
+                // Related setup/hold use signoff's actual clock skew. Untimed
+                // extrema need the separate reference-free analyser frame.
+                values.push_back(J::object{{"launch", clock_key(row.launch)}, {"capture", clock_key(row.capture)},
+                    {"setup_timed", row.setup_timed}, {"hold_related", row.hold_related},
+                    {"setup_window", optional(row.setup_window)}, {"setup", optional(row.setup_margin)},
+                    {"hold", optional(row.hold_margin)}, {"max_path", double(reference[i].max_path_delay)},
+                    {"min_path", double(reference[i].min_path_delay)}});
+            }
+            endpoints[key.dump()] = values;
+        }
+    }
+    std::sort(unsupported.begin(), unsupported.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
+    return J::object{{"schema", 1}, {"complete", unsupported.empty() && !endpoints.empty()},
+        {"unsupported", unsupported}, {"clocks", clocks}, {"endpoints", endpoints}};
+}
 NEXTPNR_NAMESPACE_END

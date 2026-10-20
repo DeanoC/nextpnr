@@ -6,6 +6,7 @@
 #include <vector>
 #include "nextpnr.h"
 #include "timing.h"
+#include "json11.hpp"
 
 NEXTPNR_NAMESPACE_BEGIN
 
@@ -38,6 +39,8 @@ bool critical_cohort_timing_safe(Context *ctx, TimingAnalyser &before, TimingAna
 // Exchange two unconstrained ordinary LUTs (or move into an empty site).
 // Reuse the cohort transaction and affected-LAB legality; callback is inspection only.
 bool critical_cohort_swap_trial(Context *ctx, CellInfo *cell, BelId target, const std::function<bool()> &accept);
+// Complete endpoint inventory, including explicit unsupported rows. Never intersect reports.
+json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timing, TimingAnalyser &unskewed);
 void repair_critical_swaps(Context *ctx, int timing_budget);
 void repair_critical_cohorts(Context *ctx, int timing_budget);
 

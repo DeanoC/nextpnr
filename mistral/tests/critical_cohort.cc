@@ -1,6 +1,8 @@
 /* Real LAB geometry, cluster closure and transactional rollback. SPDX-License-Identifier: ISC */
 #include "critical_cohort.h"
 #include <memory>
+#include <fstream>
+#include <cstdlib>
 #include <sstream>
 #include <stdexcept>
 #include "critical_cohort_model.h"
@@ -1273,4 +1275,55 @@ TEST_F(CriticalCohort, CalibratedRepairImprovesOneOfTwoTiedMemoryAddressInputs)
         EXPECT_EQ(std::min(first_gain, second_gain), 0);
     });
     ctx->check();
+}
+
+// Export real native STA fixtures for the isolated retention integration test.
+// Route delays are controlled; these are not analogue hardware qualification.
+TEST_F(CriticalCohort, RoutedInventoryUsesNativeSetupHoldAndFailsClosed)
+{
+    using J = json11::Json;
+    auto *clk = clock("clk", 3000);
+    auto *logic = timing_cone(clk);
+    auto sink = *logic->getPort(id_Q)->users.begin();
+    auto capture = CellPortKey(sink);
+    auto snapshot = [&](int early, int late, bool unknown = false) {
+        TimingAnalyser timed(ctx.get()), unskewed(ctx.get());
+        timed.with_clock_skew = true;
+        timed.setup(false, false, true);
+        unskewed.setup(false, false, true);
+        for (auto *t : {&timed, &unskewed}) {
+            t->set_route_delay({logic->name, id_A}, DelayPair(500));
+            t->set_route_delay(capture, DelayPair(early, late));
+            t->run(false, false, false, true);
+        }
+        if (unknown) clk->clkconstr.reset();
+        auto result = critical_swap_endpoint_snapshot(ctx.get(), timed, unskewed).object_items();
+        result["final_analogue"] = true; // fixture exercises export/selection, not bitgen
+        return J(result);
+    };
+    J::object cases;
+    cases["baseline"] = snapshot(500, 800);
+    cases["safe"] = snapshot(500, 600);
+    cases["setup_regression"] = snapshot(500, 1000);
+    cases["new_failure"] = snapshot(500, 10000);
+    cases["hold_regression"] = snapshot(100, 600);
+    ASSERT_TRUE(cases["baseline"]["complete"].bool_value());
+    EXPECT_EQ(cases["baseline"]["endpoints"].object_items().size(), 2);
+    TimingAnalyser predicted_before(ctx.get());
+    predicted_before.with_clock_skew = true;
+    predicted_before.setup(false, false, true);
+    move_logic(logic);
+    TimingAnalyser predicted_after(ctx.get());
+    predicted_after.with_clock_skew = true;
+    predicted_after.setup(false, false, true);
+    ASSERT_TRUE(critical_cohort_timing_safe(ctx.get(), predicted_before, predicted_after));
+    cases["predicted_gain_routed_loss"] = snapshot(500, 10000);
+    cases["missing_clock"] = snapshot(500, 600, true);
+    EXPECT_FALSE(cases["missing_clock"]["complete"].bool_value());
+    EXPECT_FALSE(cases["missing_clock"]["unsupported"].array_items().empty());
+    if (const char *file = std::getenv("NEXTPNR_TEST_SWAP_SNAPSHOTS")) {
+        std::ofstream out(file);
+        out << J(cases).dump() << "\n";
+        ASSERT_TRUE(bool(out));
+    }
 }

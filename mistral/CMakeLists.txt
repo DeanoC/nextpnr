@@ -57,6 +57,9 @@ add_nextpnr_architecture(${family}
 )
 
 if (BUILD_TESTS)
+    add_test(NAME nextpnr-${family}-routed-swap
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/routed_swap.py
+                $<TARGET_FILE:nextpnr-${family}-test>)
     find_program(MISTRAL_CHECKPOINT_YOSYS yosys)
     add_test(NAME nextpnr-${family}-pad-clock
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/pad_clock.py)
