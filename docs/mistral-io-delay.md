@@ -176,7 +176,7 @@ walks, the source delay interval and launch clock/edge, and the registered
 capture clock. The row uses the existing STA setup/hold margins and report
 segments; no delay coefficient or clock relation is invented by the exporter.
 Physical capture-clock latency stays in the skewed margins. A separate
-unskewed analysis supplies path extrema. Schema 4 requires explicit IO and output-contract metadata, even for empty sets.
+unskewed analysis supplies path extrema. Schema 5 requires explicit IO, output, registered-pad and primitive-clock metadata, even for empty sets.
 All saved IO constraints are exported
 in canonical order and must match exactly between baseline and candidate,
 including top-level port, direction, min/max, clock and edge.
@@ -185,7 +185,7 @@ The common endpoint API requires explicit `allow_external_launch=true` for
 this extension; its existing callers retain register-only validation. Mistral
 never enables external launch support on FF ACLR: its legacy synchronous
 ACLR approximation is not a recovery/removal model. Unconstrained inputs,
-PLL lock sources, unsupported private registered-pad endpoint aliases and
+PLL lock sources, registered-pad aliases without the separate opt-in and
 unconstrained output boundaries remain unsupported. Enabling input delays
 also exposes output/OE boundaries under the existing architecture timing
 classes; input-only constraints do not cover them.
@@ -213,16 +213,44 @@ when there are no output constraints), in addition to `io_constraints`. The
 contracts bind each constrained top-level output port to its pad net, direction,
 cell type, all port/net connections, pin polarities, parameters and attributes.
 The retention driver requires exact identity. Missing metadata on either or both
-sides rejects. Schema-3 inventories are no longer eligible because they could
+sides rejects. Schema-3 and schema-4 inventories are no longer eligible because they could
 omit physical output boundaries.
 
 The exporter now counts unregistered output data/OE even without IO constraints,
 and explicitly lists registered output PAD boundaries as unsupported. Timing a
 fabric-side GPIO register input does not time that register's external pad.
-Private pad aliases, unmodeled clock forwarding and constant output channels are
+Unmodeled clock forwarding and constant output channels are
 not promoted to dynamic rows or constant register-sink proofs. Constant open-drain
 I2C data, for example, still needs its external capture/OE contract accounted for;
 a missing transition alone is not a complete external-interface proof. These
-classes remain fail-closed pending a sound supported model/proof. The existing
-registered-pad STA reference profile is unchanged and is not approximated by this
-export API.
+classes remain fail-closed pending a sound supported model/proof. The existing registered-pad STA reference profile is reused by the explicit
+schema-5 extension below.
+
+### Registered-pad endpoint inventory (schema 5)
+
+The common endpoint API additionally requires `allow_registered_io=true` to
+accept architecture-created private endpoints. `get_registered_io_endpoints()`
+returns each endpoint with its physical cell/pad, direction and named native
+model; consumers do not synthesize private port names. Both external flags are
+still required for the corresponding external launch/capture. Ordinary callers
+retain real-port validation. The native early and late backpointer walks, report
+segments and physical clock skew remain the source of all timing values.
+
+Schema 5 binds every modeled pad direction to its top-level constraint, pad net,
+placed BEL, complete cell connections, attributes, parameters and pin states.
+Each named channel records its endpoint, clock ingress/edge and native model
+bounds. SDR/DDR input captures, registered data/OE, and both edges/polarities of
+the qualified constant clock forwarder retain separate rows. Missing constraints,
+models or primitive-clock coverage keep the physical pad unsupported. The
+existing profile's pin, electrical, load and constant-enable restrictions are
+unchanged; a dynamic CEOUT is not qualified by this extension.
+
+The native primitive-clock checker now exposes the requirements and evaluated
+period/high/low margins it already checks. Schema 5 retains these, including
+physical routed early/late clock delay. The driver rejects changed requirements,
+missing clock/channel metadata, any clock-margin regression (even while positive),
+and ordinary endpoint setup/hold regressions. A passing pad row cannot discharge
+an actual primitive-clock requirement. Schemas 1–4 remain ineligible; historical
+evidence checkers adapt only explicitly isolated diagnostic fixtures, never old
+whole-design inventories. No propagation formula, pad-model coefficient or
+physical budget was added.

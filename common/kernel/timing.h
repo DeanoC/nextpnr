@@ -165,12 +165,31 @@ struct TimingAnalyser
     // rows for loops, unknown clocks, incomplete tags or unconstrained launches.
     // Opt-in allow_external_launch supports explicit unregistered IO delays into
     // registered sinks. allow_external_capture supports explicit unregistered output
-    // constraints; both default off. Private pad aliases still fail closed.
+    // constraints; both default off. Architecture registered boundaries require
+    // allow_registered_io as well, and are enumerated explicitly below.
     // Path extrema are sums of native report segments in this analyser's
     // frame. Use a separate false-skew analyser for reference-free unrelated
     // extrema: true-skew backpointers can select a different launch register.
     bool get_endpoint_clock_pair_timings(CellPortKey endpoint, std::vector<EndpointClockPairTiming> &rows,
-                                         bool allow_external_launch = false, bool allow_external_capture = false);
+                                         bool allow_external_launch = false, bool allow_external_capture = false,
+                                         bool allow_registered_io = false);
+
+    struct RegisteredIoEndpoint {
+        CellPortKey pad, endpoint;
+        bool input;
+        RegisteredIoTiming model;
+    };
+    // These identities are recorded when the architecture model creates the
+    // private graph. Callers must not construct alias names from physical ports.
+    const std::vector<RegisteredIoEndpoint> &get_registered_io_endpoints() const { return registered_io_endpoints; }
+    struct PrimitiveClockTiming {
+        CellPortKey port;
+        IdString clock;
+        PrimitiveClockRequirement requirement;
+        DelayPair route;
+        std::array<double, 3> margins;
+    };
+    const std::vector<PrimitiveClockTiming> &get_primitive_clock_timings() const { return primitive_clock_timings; }
 
     // Enable analysis of clock skew between FFs.
     bool with_clock_skew = false;
@@ -180,6 +199,8 @@ struct TimingAnalyser
     bool updated_domains = false;
 
   private:
+    std::vector<RegisteredIoEndpoint> registered_io_endpoints;
+    std::vector<PrimitiveClockTiming> primitive_clock_timings;
     void init_ports();
     void get_cell_delays();
     void get_route_delays();

@@ -163,6 +163,7 @@ void TimingAnalyser::init_ports()
 {
     timing_nets.clear();
     ports.clear();
+    registered_io_endpoints.clear();
     // Per cell port structures
     for (auto &cell : ctx->cells) {
         CellInfo *ci = cell.second.get();
@@ -374,6 +375,7 @@ void TimingAnalyser::add_registered_io_boundary(CellInfo *cell, IdString pad, bo
         }
         ports.emplace(key, std::move(data));
     }
+    registered_io_endpoints.push_back({CellPortKey(cell->name, pad), sink, input, model});
     timing_nets.push_back(std::move(bridge));
 }
 
@@ -402,6 +404,7 @@ void TimingAnalyser::set_route_delay(CellPortKey port, DelayPair value) { ports.
 
 void TimingAnalyser::check_primitive_clocks()
 {
+    primitive_clock_timings.clear();
     // This validates the domain of the architecture's primitive model, even
     // with setup_only, disabled clock skew, false paths or asynchronous groups.
     // Run after routing updates, including callers supplying manual delays.
@@ -444,6 +447,8 @@ void TimingAnalyser::check_primitive_clocks()
                     log_error("Primitive clock '%s.%s' %s %.3f ns is outside its timing model (minimum %.3f ns).\n",
                               ctx->nameOf(cell), requirement.clock_port.c_str(ctx), names[i],
                               ctx->getDelayNS(delay_t(actual[i])), ctx->getDelayNS(required[i]));
+            primitive_clock_timings.push_back({{cell->name, requirement.clock_port}, clock->name, requirement, route,
+                {{actual[0] - required[0], actual[1] - required[1], actual[2] - required[2]}}});
         }
     }
 }
@@ -1236,15 +1241,37 @@ std::vector<CriticalPath> TimingAnalyser::get_report_setup_paths(int count)
 
 bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
                                                     std::vector<EndpointClockPairTiming> &rows,
-                                                    bool allow_external_launch, bool allow_external_capture)
+                                                    bool allow_external_launch, bool allow_external_capture,
+                                                    bool allow_registered_io)
 {
     rows.clear();
     auto found = ports.find(endpoint);
     auto owner = ctx->cells.find(endpoint.cell);
     if (!analysis_complete || setup_only || analysed_setup_only || with_clock_skew != analysed_clock_skew ||
         have_loops || found == ports.end() || owner == ctx->cells.end() ||
-        !owner->second->ports.count(endpoint.port) || !owner->second->getPort(endpoint.port))
+        (!owner->second->ports.count(endpoint.port) && !(allow_registered_io && found->second.timing_port)) ||
+        !port_info(endpoint).net)
         return false;
+    if (found->second.timing_port) {
+        bool matched = false;
+        auto pair_equal = [](DelayPair a, DelayPair b) {
+            return a.minDelay() == b.minDelay() && a.maxDelay() == b.maxDelay();
+        };
+        for (const auto &boundary : registered_io_endpoints) {
+            if (boundary.endpoint != endpoint) continue;
+            auto *pad_net = owner->second->getPort(boundary.pad.port);
+            if (!pad_net || pad_net->name != port_info(endpoint).net->name) return false;
+            const auto models = ctx->getRegisteredIoTiming(owner->second.get(), boundary.pad.port, boundary.input);
+            for (const auto &model : models) {
+                if (model.name != boundary.model.name) continue;
+                const auto &a = model.clocking, &b = boundary.model.clocking;
+                matched = a.clock_port == b.clock_port && a.edge == b.edge &&
+                    pair_equal(a.setup, b.setup) && pair_equal(a.hold, b.hold) &&
+                    pair_equal(a.clockToQ.rise, b.clockToQ.rise) && pair_equal(a.clockToQ.fall, b.clockToQ.fall);
+            }
+        }
+        if (!matched) return false;
+    }
     const auto &data = found->second;
     if (data.type != PORT_IN || data.arrival.empty() || data.required.empty() ||
         data.domain_pairs.size() != data.arrival.size() * data.required.size())
@@ -1268,7 +1295,8 @@ bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
     };
     auto registered = [&](CellPortKey key, TimingPortClass kind, const ClockDomainKey &domain) {
         auto cell = ctx->cells.find(key.cell);
-        if (cell == ctx->cells.end() || !cell->second->ports.count(key.port))
+        if (cell == ctx->cells.end() || (!cell->second->ports.count(key.port) &&
+            !(allow_registered_io && ports.count(key) && ports.at(key).timing_port)))
             return false;
         int count = 0;
         if (port_timing_class(cell->second.get(), key.port, count) != kind || count <= 0)
@@ -1304,12 +1332,13 @@ bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
         while (seen.insert(cursor).second) {
             auto port = ports.find(cursor);
             auto cell = ctx->cells.find(cursor.cell);
-            if (port == ports.end() || cell == ctx->cells.end() || !cell->second->ports.count(cursor.port))
+            if (port == ports.end() || cell == ctx->cells.end() ||
+                (!cell->second->ports.count(cursor.port) && !(allow_registered_io && port->second.timing_port)))
                 return false;
             auto tag = port->second.arrival.find(launch_id);
             if (tag == port->second.arrival.end() || !finite_pair(tag->second.value))
                 return false;
-            const auto &connection = cell->second->ports.at(cursor.port);
+            const auto &connection = port_info(cursor);
             if (connection.type == PORT_OUT &&
                 registered(cursor, TMG_REGISTER_OUTPUT, domains.at(launch_id).key))
                 return connection.net && connection.net->driver.cell == cell->second.get() &&

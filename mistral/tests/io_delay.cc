@@ -1053,6 +1053,7 @@ TEST_F(IoDelayTest, NativeClockForwardingPreservesPadPolarityAndBothLaunchPhases
     output->attrs[ctx->id("NEXTPNR_GPIO_TIMING_PROFILE")] = std::string("QUARTUS_17_0_2_RAMTEST");
     output->attrs[ctx->id("BOARD_MODEL_FAR_C")] = std::string("30P");
     ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name("AD20")), output, STRENGTH_LOCKED);
+    json11::Json::object cases;
     for (bool normal : {true, false}) {
         output->params[id_DDR_HIGH] = int(normal);
         auto models = ctx->getRegisteredIoTiming(output, id_PAD, false);
@@ -1069,8 +1070,21 @@ TEST_F(IoDelayTest, NativeClockForwardingPreservesPadPolarityAndBothLaunchPhases
                                                              model.name.str(ctx.get()) + "$external"));
             const int window = model.clocking.edge == RISING_EDGE ? 10000 : 5000;
             EXPECT_EQ(timing.get_setup_slack(key), window - model.clocking.clockToQ.maxDelay() - 1000);
+            std::vector<EndpointClockPairTiming> rows;
+            EXPECT_FALSE(timing.get_endpoint_clock_pair_timings(key, rows, true, true));
+            ASSERT_TRUE(timing.get_endpoint_clock_pair_timings(key, rows, true, true, true));
+            ASSERT_EQ(rows.size(), 1u);
+            EXPECT_EQ(rows[0].launch.edge, model.clocking.edge);
+            EXPECT_EQ(*rows[0].setup_margin, window - model.clocking.clockToQ.maxDelay() - 1000);
+            EXPECT_EQ(*rows[0].hold_margin, model.clocking.edge == RISING_EDGE ? 0 : 5000);
         }
         EXPECT_EQ(ctx->getPrimitiveClockRequirements(output).size(), 1u);
+        auto snapshot = critical_swap_endpoint_snapshot(ctx.get(), timing, timing).object_items();
+        snapshot["final_analogue"] = false; // native host fixture only
+        cases[normal ? "normal" : "inverted"] = snapshot;
+    }
+    if (const char *file = std::getenv("NEXTPNR_TEST_FORWARDER_ENDPOINTS")) {
+        std::ofstream out(file); out << json11::Json(cases).dump() << "\n"; ASSERT_TRUE(bool(out));
     }
     output->addInput(id_D_H); output->connectPort(id_D_H, launch->getPort(id_Q));
     EXPECT_TRUE(ctx->getRegisteredIoTiming(output, id_PAD, false).empty());
@@ -1326,4 +1340,64 @@ TEST_F(IoDelayTest, OutputInventoryNeverSubstitutesFabricTimingForPrivatePadBoun
     EXPECT_NE(std::find(result["unsupported"].array_items().begin(), result["unsupported"].array_items().end(), pad),
               result["unsupported"].array_items().end());
     EXPECT_FALSE(result["complete"].bool_value());
+}
+
+TEST_F(IoDelayTest, RegisteredEndpointInventory)
+{
+    using J = json11::Json;
+    registered_boundaries();
+    auto *native = static_cast<IoBoundaryTestContext *>(ctx.get());
+    native->native_models = true;
+    bidir->params[ctx->id("IOREG_IN_DDR")] = 1;
+    bidir->attrs[id_LOC] = std::string("PIN_V12");
+    bidir->attrs[ctx->id("NEXTPNR_GPIO_TIMING_PROFILE")] = std::string("QUARTUS_17_0_2_RAMTEST");
+    bidir->attrs[ctx->id("BOARD_MODEL_FAR_C")] = std::string("30P");
+    ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name("V12")), bidir, STRENGTH_LOCKED);
+    sdc("set_input_delay -clock memory 1 [get_ports din]\n"
+        "set_output_delay -clock memory 1 [get_ports dout]\n");
+    auto snapshot = [&](int late, int clock_late = 200) {
+        TimingAnalyser timing(ctx.get()), unskewed(ctx.get());
+        timing.with_clock_skew = true;
+        for (auto *t : {&timing, &unskewed}) {
+            t->setup(false, false, true);
+            t->set_route_delay({capture->name, id_DATAIN}, DelayPair(100, late));
+            t->set_route_delay({bidir->name, id_CLK}, DelayPair(100, clock_late));
+            t->set_route_delay({bidir->name, id_CLKIN}, DelayPair(100, clock_late));
+            t->run(false, false, false, true);
+            EXPECT_EQ(t->get_registered_io_endpoints().size(), 4u);
+            for (const auto &entry : t->get_registered_io_endpoints()) {
+                EXPECT_EQ(entry.pad, CellPortKey(bidir->name, id_PAD));
+                std::vector<EndpointClockPairTiming> rows;
+                EXPECT_FALSE(t->get_endpoint_clock_pair_timings(entry.endpoint, rows, true, true));
+                EXPECT_TRUE(t->get_endpoint_clock_pair_timings(entry.endpoint, rows, true, true, true));
+                EXPECT_EQ(rows.size(), 1u);
+                EXPECT_EQ(*rows[0].setup_margin, t->get_setup_slack(entry.endpoint));
+            }
+        }
+        auto result = critical_swap_endpoint_snapshot(ctx.get(), timing, unskewed).object_items();
+        result["final_analogue"] = true; // controlled host fixture, never a routed capture
+        return J(result);
+    };
+    J::object cases;
+    cases["baseline"] = snapshot(800);
+    EXPECT_TRUE(cases["baseline"]["complete"].bool_value());
+    EXPECT_EQ(cases["baseline"]["registered_contracts"].object_items().size(), 2u);
+    EXPECT_EQ(cases["baseline"]["primitive_clocks"].object_items().size(), 2u);
+    cases["safe"] = snapshot(600);
+    cases["clock_regression"] = snapshot(600, 300);
+    sdc("set_output_delay -clock memory -max 9 [get_ports {dq[*]}]\n");
+    cases["setup_failure"] = snapshot(600);
+    sdc("set_output_delay -clock memory -max 4 [get_ports {dq[*]}]\n"
+        "set_output_delay -clock memory -min -2 [get_ports {dq[*]}]\n");
+    cases["hold_regression"] = snapshot(600);
+    bidir->attrs.erase(ctx->id("BOARD_MODEL_FAR_C"));
+    EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
+    bidir->attrs[ctx->id("BOARD_MODEL_FAR_C")] = std::string("30P");
+    bidir->addInput(id_CEOUT); bidir->connectPort(id_CEOUT, launch->getPort(id_Q));
+    bidir->pin_data[id_CEOUT].state = PIN_SIG;
+    EXPECT_TRUE(ctx->getRegisteredIoTiming(bidir, id_PAD, false).empty());
+    EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
+    if (const char *file = std::getenv("NEXTPNR_TEST_REGISTERED_ENDPOINTS")) {
+        std::ofstream out(file); out << J(cases).dump() << "\n"; ASSERT_TRUE(bool(out));
+    }
 }

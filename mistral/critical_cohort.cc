@@ -1205,6 +1205,34 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
                 double(c.high.minDelay()), double(c.high.maxDelay()), double(c.low.minDelay()),
                 double(c.low.maxDelay()), double(c.phase_shift), c.phase_group.str(ctx)};
     }
+    auto export_endpoint = [&](CellPortKey endpoint, bool external, bool registered_io) {
+        std::vector<EndpointClockPairTiming> rows, reference;
+        if (!timing.get_endpoint_clock_pair_timings(endpoint, rows, external, external, registered_io) || rows.empty() ||
+            !unskewed.get_endpoint_clock_pair_timings(endpoint, reference, external, external, registered_io) ||
+            !guard::rows_match(rows, reference)) return false;
+        J::array values;
+        for (size_t i = 0; i < rows.size(); ++i) {
+            const auto &row = rows[i];
+            // Related setup/hold use signoff's actual clock skew. Untimed
+            // extrema need the separate reference-free analyser frame.
+            values.push_back(J::object{{"launch", clock_key(row.launch)}, {"capture", clock_key(row.capture)},
+                {"setup_timed", row.setup_timed}, {"hold_related", row.hold_related},
+                {"setup_window", optional(row.setup_window)}, {"setup", optional(row.setup_margin)},
+                {"hold", optional(row.hold_margin)}, {"max_path", double(reference[i].max_path_delay)},
+                {"min_path", double(reference[i].min_path_delay)}});
+        }
+        endpoints[J(J::array{endpoint.cell.str(ctx), endpoint.port.str(ctx)}).dump()] = values;
+        return true;
+    };
+    J::object registered_contracts, primitive_clocks;
+    for (const auto &entry : timing.get_primitive_clock_timings()) {
+        const auto &r = entry.requirement;
+        J key = J::array{entry.port.cell.str(ctx), entry.port.port.str(ctx)};
+        primitive_clocks[key.dump()] = J::object{{"clock", entry.clock.str(ctx)},
+            {"limits", J::array{double(r.min_period), double(r.min_high), double(r.min_low)}},
+            {"route", J::array{double(entry.route.minDelay()), double(entry.route.maxDelay())}},
+            {"margins", J::array{entry.margins[0], entry.margins[1], entry.margins[2]}}};
+    }
     for (const auto &cell : ctx->cells) {
         for (const auto &port : cell.second->ports) {
             if (!port.second.net) continue;
@@ -1217,35 +1245,68 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
             const bool unregistered_output = (type == id_MISTRAL_OB && port.first == id_I) ||
                 (type == id_MISTRAL_IO && port.first.in(id_I, id_OE));
             const bool registered_pad = port.first == id_PAD && type.in(id_MISTRAL_SDROUT,
-                id_MISTRAL_DDROUT, id_MISTRAL_SDRIO, id_MISTRAL_DDRBIDIR);
+                id_MISTRAL_DDROUT, id_MISTRAL_SDRIO, id_MISTRAL_DDRBIDIR, id_MISTRAL_SDRIN, id_MISTRAL_DDRIN);
             if (kind != TMG_REGISTER_INPUT && kind != TMG_ENDPOINT &&
                 !unregistered_output && !registered_pad) continue;
             J key = J::array{cell.first.str(ctx), port.first.str(ctx)};
-            std::vector<EndpointClockPairTiming> rows, reference;
-            CellPortKey endpoint(cell.first, port.first);
-            // FF ACLR has only the legacy synchronous approximation, not a
-            // recovery/removal model. Do not extend it to external reset inputs.
+            if (registered_pad) {
+                for (bool input : {false, true}) {
+                    auto models = ctx->getRegisteredIoTiming(cell.second.get(), port.first, input);
+                    const bool required = input ? (type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN) ||
+                        (type == id_MISTRAL_SDRIO && cell.second->params.count(ctx->id("IOREG_IN")) &&
+                         cell.second->params.at(ctx->id("IOREG_IN")).as_int64())) :
+                        type.in(id_MISTRAL_SDROUT, id_MISTRAL_DDROUT, id_MISTRAL_SDRIO, id_MISTRAL_DDRBIDIR);
+                    if (models.empty()) {
+                        if (required) unsupported.push_back(key);
+                        continue;
+                    }
+                    J::object channels;
+                    bool complete = true;
+                    for (const auto &model : models) {
+                        const TimingAnalyser::RegisteredIoEndpoint *boundary = nullptr;
+                        for (const auto &entry : timing.get_registered_io_endpoints())
+                            if (entry.pad == CellPortKey(cell.first, port.first) && entry.input == input &&
+                                entry.model.name == model.name) boundary = &entry;
+                        J clock_identity = J::array{cell.first.str(ctx), model.clocking.clock_port.str(ctx)};
+                        if (!boundary || !primitive_clocks.count(clock_identity.dump()) ||
+                            !export_endpoint(boundary->endpoint, true, true)) { complete = false; continue; }
+                        const auto &info = model.clocking;
+                        auto pair = [](DelayPair d) { return J::array{double(d.minDelay()), double(d.maxDelay())}; };
+                        channels[model.name.str(ctx)] = J::object{
+                            {"endpoint", J::array{boundary->endpoint.cell.str(ctx), boundary->endpoint.port.str(ctx)}},
+                            {"clock_port", info.clock_port.str(ctx)}, {"edge", int(info.edge)},
+                            {"setup", pair(info.setup)}, {"hold", pair(info.hold)},
+                            {"clock_to_q_rise", pair(info.clockToQ.rise)}, {"clock_to_q_fall", pair(info.clockToQ.fall)}};
+                    }
+                    if (complete && !channels.empty()) {
+                        J::object params, pins, attrs, connections;
+                        for (const auto &p : cell.second->params) params[p.first.str(ctx)] = p.second.to_string();
+                        for (const auto &p : cell.second->pin_data) pins[p.first.str(ctx)] = int(p.second.state);
+                        for (const auto &p : cell.second->attrs) attrs[p.first.str(ctx)] = p.second.to_string();
+                        for (const auto &p : cell.second->ports) connections[p.first.str(ctx)] = J::array{
+                            int(p.second.type), p.second.net ? p.second.net->name.str(ctx) : ""};
+                        std::string top_port;
+                        for (const auto &constraint : read_io_delays(ctx)) {
+                            auto root = ctx->ports.find(ctx->id(constraint["port"].string_value()));
+                            if (constraint["input"].bool_value() == input && root != ctx->ports.end() &&
+                                root->second.net == port.second.net) top_port = constraint["port"].string_value();
+                        }
+                        if (top_port.empty()) { unsupported.push_back(key); continue; }
+                        J identity = J::array{cell.first.str(ctx), port.first.str(ctx), input};
+                        registered_contracts[identity.dump()] = J::object{{"net", port.second.net->name.str(ctx)}, {"port", top_port},
+                            {"type", cell.second->type.str(ctx)}, {"bel", cell.second->bel == BelId() ? "" : ctx->getBelName(cell.second->bel).str(ctx)},
+                            {"params", params}, {"pins", pins}, {"attrs", attrs}, {"ports", connections}, {"channels", channels}};
+                    } else unsupported.push_back(key);
+                }
+                continue;
+            }
+            // FF ACLR's legacy synchronous approximation is not recovery/removal.
             const bool external = !(cell.second->type == id_MISTRAL_FF && port.first == id_ACLR);
-            if (!timing.get_endpoint_clock_pair_timings(endpoint, rows, external, external) || rows.empty() ||
-                !unskewed.get_endpoint_clock_pair_timings(endpoint, reference, external, external) ||
-                !guard::rows_match(rows, reference)) {
+            if (!export_endpoint({cell.first, port.first}, external, false)) {
                 auto proof = static_endpoint_proof(ctx, cell.second.get(), port.first);
                 if (!proof.is_null()) static_endpoints[key.dump()] = proof;
                 else unsupported.push_back(key);
-                continue;
             }
-            J::array values;
-            for (size_t i = 0; i < rows.size(); ++i) {
-                const auto &row = rows[i];
-                // Related setup/hold use signoff's actual clock skew. Untimed
-                // extrema need the separate reference-free analyser frame.
-                values.push_back(J::object{{"launch", clock_key(row.launch)}, {"capture", clock_key(row.capture)},
-                    {"setup_timed", row.setup_timed}, {"hold_related", row.hold_related},
-                    {"setup_window", optional(row.setup_window)}, {"setup", optional(row.setup_margin)},
-                    {"hold", optional(row.hold_margin)}, {"max_path", double(reference[i].max_path_delay)},
-                    {"min_path", double(reference[i].min_path_delay)}});
-            }
-            endpoints[key.dump()] = values;
         }
     }
     // Preserve the complete explicit boundary contract, including min/max and
@@ -1280,7 +1341,8 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
     }
     std::sort(io_constraints.begin(), io_constraints.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
     std::sort(unsupported.begin(), unsupported.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
-    return J::object{{"schema", 4}, {"complete", unsupported.empty() && !endpoints.empty()},
+    unsupported.erase(std::unique(unsupported.begin(), unsupported.end()), unsupported.end());
+    return J::object{{"schema", 5}, {"registered_contracts", registered_contracts}, {"primitive_clocks", primitive_clocks}, {"complete", unsupported.empty() && !endpoints.empty()},
         {"io_constraints", io_constraints}, {"output_contracts", output_contracts}, {"unsupported", unsupported}, {"static_endpoints", static_endpoints},
         {"clocks", clocks}, {"endpoints", endpoints}};
 }

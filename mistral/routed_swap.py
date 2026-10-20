@@ -36,7 +36,7 @@ def finite(value):
 def rows(snapshot):
     if snapshot.get('complete') is not True or snapshot.get('unsupported') != []:
         raise ValueError('incomplete native endpoint coverage')
-    if snapshot.get('schema') != 4 or snapshot.get('final_analogue') is not True:
+    if snapshot.get('schema') != 5 or snapshot.get('final_analogue') is not True:
         raise ValueError('not a native final analogue snapshot')
     if not snapshot.get('clocks') or not snapshot.get('endpoints'):
         raise ValueError('empty clock or endpoint coverage')
@@ -79,6 +79,67 @@ def rows(snapshot):
                         type(connection[0]) is not int or connection[0] not in (0, 1, 2) or
                         not isinstance(connection[1], str)):
                     raise ValueError('invalid output port binding')
+    registered = snapshot.get('registered_contracts')
+    primitive = snapshot.get('primitive_clocks')
+    if not isinstance(registered, dict) or not isinstance(primitive, dict):
+        raise ValueError('missing registered boundary or primitive clock contracts')
+    for key, requirement in primitive.items():
+        identity = json.loads(key)
+        if (not isinstance(requirement, dict) or not isinstance(identity, list) or len(identity) != 2 or
+                requirement.get('clock') not in snapshot['clocks'] or
+                not isinstance(requirement.get('limits'), list) or not isinstance(requirement.get('route'), list) or
+                len(requirement['limits']) != 3 or len(requirement['route']) != 2 or
+                not all(finite(v) and v >= 0 for v in requirement['limits'] + requirement['route']) or
+                requirement['route'][0] > requirement['route'][1]):
+            raise ValueError('invalid primitive clock contract')
+        if not isinstance(requirement.get('margins'), list) or len(requirement['margins']) != 3 or not all(finite(v) and v >= 0 for v in requirement['margins']):
+            raise ValueError('invalid primitive clock margins')
+        wave = snapshot['clocks'][requirement['clock']]
+        distortion = requirement['route'][1] - requirement['route'][0]
+        if any(a < b for a, b in zip((wave[0], wave[2] - distortion, wave[4] - distortion), requirement['limits'])):
+            raise ValueError('primitive clock waveform outside model')
+    channel_endpoints = set()
+    for key, contract in registered.items():
+        identity = json.loads(key)
+        if (not isinstance(contract, dict) or not isinstance(identity, list) or len(identity) != 3 or type(identity[2]) is not bool or
+                not all(isinstance(v, str) and v for v in identity[:2]) or
+                any(not isinstance(contract.get(f), dict) for f in ('params', 'pins', 'attrs', 'ports', 'channels')) or
+                not contract['channels'] or not isinstance(contract.get('net'), str) or not contract['net'] or
+                not isinstance(contract.get('bel'), str) or not contract['bel'] or not isinstance(contract.get('type'), str)):
+            raise ValueError('invalid registered boundary contract')
+        if (not isinstance(contract.get('port'), str) or (contract['port'], identity[2]) not in seen or
+                not isinstance(contract['ports'].get(identity[1]), list) or
+                len(contract['ports'][identity[1]]) != 2 or contract['ports'][identity[1]][1] != contract['net'] or
+                any(not isinstance(contract['attrs'].get(k), str) or not contract['attrs'][k]
+                    for k in ('LOC', 'NEXTPNR_GPIO_TIMING_PROFILE') + (() if identity[2] else ('BOARD_MODEL_FAR_C',)))):
+            raise ValueError('missing registered physical binding')
+        if not identity[2] and contracts[contract['port']]['net'] != contract['net']:
+            raise ValueError('registered output net mismatch')
+        for name, channel in contract['channels'].items():
+            if not isinstance(channel, dict):
+                raise ValueError('invalid registered channel')
+            endpoint = channel.get('endpoint')
+            if (not name or not isinstance(endpoint, list) or len(endpoint) != 2 or endpoint[0] != identity[0] or
+                    type(channel.get('edge')) is not int or channel['edge'] not in (0, 1) or
+                    not isinstance(channel.get('clock_port'), str)):
+                raise ValueError('invalid registered channel identity')
+            endpoint_key = next((k for k in snapshot['endpoints'] if json.loads(k) == endpoint), None)
+            if endpoint_key is None or endpoint_key in channel_endpoints:
+                raise ValueError('missing or duplicate registered channel endpoint')
+            channel_endpoints.add(endpoint_key)
+            for field in ('setup', 'hold', 'clock_to_q_rise', 'clock_to_q_fall'):
+                interval = channel.get(field)
+                if not isinstance(interval, list) or len(interval) != 2 or not all(finite(v) for v in interval) or interval[0] > interval[1]:
+                    raise ValueError('invalid registered channel model')
+            clock_key = next((k for k in primitive if json.loads(k) == [identity[0], channel['clock_port']]), None)
+            if clock_key is None:
+                raise ValueError('missing primitive clock requirements')
+            domain = [primitive[clock_key]['clock'], channel['edge']]
+            if any(row['capture' if identity[2] else 'launch'] != domain for row in snapshot['endpoints'][endpoint_key]):
+                raise ValueError('registered channel clock mismatch')
+    # No private endpoint can escape its physical pad/channel contract.
+    if any('$timing$' in json.loads(k)[1] and k not in channel_endpoints for k in snapshot['endpoints']):
+        raise ValueError('unbound registered endpoint')
     static = snapshot.get('static_endpoints')
     if not isinstance(static, dict):
         raise ValueError('missing static endpoint proofs')
@@ -118,6 +179,15 @@ def compare(before, after):
         # Preserve JSON types too: Python otherwise equates True with 1.
         if json.dumps(before['output_contracts'], sort_keys=True) != json.dumps(after['output_contracts'], sort_keys=True):
             return False, 'output boundary semantics changed'
+        if json.dumps(before['registered_contracts'], sort_keys=True) != json.dumps(after['registered_contracts'], sort_keys=True):
+            return False, 'registered boundary semantics changed'
+        def clock_contracts(snapshot):
+            return {k: {f: v for f, v in c.items() if f not in ('route', 'margins')} for k, c in snapshot['primitive_clocks'].items()}
+        if json.dumps(clock_contracts(before), sort_keys=True) != json.dumps(clock_contracts(after), sort_keys=True):
+            return False, 'primitive clock requirements changed'
+        for key, value in before['primitive_clocks'].items():
+            if any(b < a for a, b in zip(value['margins'], after['primitive_clocks'][key]['margins'])):
+                return False, 'primitive clock margin regression'
         if before['static_endpoints'] != after['static_endpoints']:
             return False, 'static endpoint semantics/coverage changed'
         if old.keys() != new.keys():

@@ -33,6 +33,54 @@ class RoutedSwap(unittest.TestCase):
             subprocess.run([BINARY, '--gtest_filter=IoDelayTest.ExternalOutputEndpointInventory'],
                            env=dict(os.environ, NEXTPNR_TEST_OUTPUT_ENDPOINTS=str(path)), check=True)
             cls.outputs = json.loads(path.read_text())
+            subprocess.run([BINARY, '--gtest_filter=IoDelayTest.RegisteredEndpointInventory'],
+                           env=dict(os.environ, NEXTPNR_TEST_REGISTERED_ENDPOINTS=str(path)), check=True)
+            cls.registered = json.loads(path.read_text())
+
+    def test_registered_channels_and_clock_margins(self):
+        a, b = self.registered['baseline'], self.registered['safe']
+        self.assertTrue(guard.compare(a, b)[0], guard.compare(a, b)[1])
+        self.assertIn('primitive clock margin regression', guard.compare(a, self.registered['clock_regression'])[1])
+        self.assertTrue(all(v > 0 for c in self.registered['clock_regression']['primitive_clocks'].values() for v in c['margins']))
+        for case in ('clock_regression', 'setup_failure', 'hold_regression'):
+            self.assertFalse(guard.compare(a, self.registered[case])[0], case)
+        for mode in ('missing', 'channel', 'model', 'pin', 'polarity', 'requirement', 'margin', 'both_missing'):
+            old, new = copy.deepcopy(a), copy.deepcopy(b)
+            contract = next(iter(new['registered_contracts'].values()))
+            channel = next(iter(contract['channels'].values()))
+            clock = next(iter(new['primitive_clocks'].values()))
+            if mode in ('missing', 'both_missing'):
+                del new['registered_contracts']
+                if mode == 'both_missing': del old['registered_contracts']
+            elif mode == 'channel': contract['channels'].pop(next(iter(contract['channels'])))
+            elif mode == 'model': channel['setup'][1] += 1
+            elif mode == 'pin': contract['attrs']['LOC'] = 'PIN_AD20'
+            elif mode == 'polarity': channel['edge'] = 1 - channel['edge']
+            elif mode == 'requirement': clock['limits'][0] += 1
+            elif mode == 'margin': clock['margins'][1] -= 1
+            self.assertFalse(guard.compare(old, new)[0], mode)
+
+    def test_registered_malformed_metadata_retains_baseline(self):
+        for field in ('primitive_clocks', 'registered_contracts'):
+            for invalid in (None, [], False, 'bad'):
+                before = copy.deepcopy(self.registered['baseline'])
+                after = copy.deepcopy(self.registered['safe'])
+                key = next(iter(after[field]))
+                after[field][key] = invalid
+                self.assertFalse(guard.compare(before, after)[0])
+                with tempfile.TemporaryDirectory() as tmp:
+                    output = Path(tmp)
+                    receipt = self.bundle(output / 'baseline', 'baseline')
+                    guard.write_json(output / 'baseline' / 'endpoints.json', before)
+                    old = {n: (output / 'baseline' / n).read_bytes() for n in guard.ARTIFACTS}
+                    def candidate():
+                        result = self.bundle(output / 'candidate', 'safe')
+                        guard.write_json(output / 'candidate' / 'endpoints.json', after)
+                        return result
+                    decision = guard.guarded_candidate(output, receipt, candidate)
+                    self.assertEqual(decision['selected'], 'baseline')
+                    for name, data in old.items():
+                        self.assertEqual((output / 'retained' / name).read_bytes(), data)
 
     def test_safe_native_route_delay_improvement(self):
         self.assertTrue(guard.compare(self.cases['baseline'], self.cases['safe'])[0])

@@ -1421,7 +1421,26 @@ TEST(ExternalEndpointDiagnostic, PlacedCheckpointSyntheticInputConstraints)
     ASSERT_TRUE(constraints.good());
     ctx.read_sdc(constraints);
     auto synthetic = snapshot();
+    json11::Json::object cases{{"original", original}, {"synthetic", synthetic}};
+    if (const char *overlay = std::getenv("NEXTPNR_TEST_REGISTERED_OVERLAY")) {
+        std::ifstream source(overlay);
+        std::string text((std::istreambuf_iterator<char>(source)), std::istreambuf_iterator<char>()), error;
+        auto attrs = json11::Json::parse(text, error);
+        ASSERT_TRUE(error.empty()); ASSERT_TRUE(attrs.is_object());
+        for (const auto &entry : attrs.object_items()) {
+            auto *cell = ctx.cells.at(ctx.id(entry.first)).get();
+            for (const auto &attr : entry.second.object_items()) {
+                ASSERT_TRUE(attr.first == "NEXTPNR_GPIO_TIMING_PROFILE" || attr.first == "BOARD_MODEL_FAR_C");
+                ASSERT_TRUE(attr.second.is_string());
+                cell->attrs[ctx.id(attr.first)] = attr.second.string_value();
+            }
+            ASSERT_FALSE(ctx.getRegisteredIoTiming(cell, id_PAD, false).empty()) << entry.first;
+        }
+        const char *extra_sdc = std::getenv("NEXTPNR_TEST_REGISTERED_SDC"); ASSERT_NE(extra_sdc, nullptr);
+        std::ifstream extra(extra_sdc); ASSERT_TRUE(extra.good()); ctx.read_sdc(extra);
+        cases["registered"] = snapshot();
+    }
     std::ofstream out(output);
-    out << json11::Json(json11::Json::object{{"original", original}, {"synthetic", synthetic}}).dump() << "\n";
+    out << json11::Json(cases).dump() << "\n";
     ASSERT_TRUE(bool(out));
 }
