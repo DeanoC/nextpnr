@@ -1,0 +1,207 @@
+{
+  "source_base": "7e58803aa44dbae9c2ed2b61e8024db5163185a9",
+  "implementation": "2aec8f7a871e7ab7aef4a202219746b9bf390b0e",
+  "branch": "feat/bounded-placement-swaps",
+  "worktree": "/home/deano/harnesses/pcxt-compiler-repair/nextpnr",
+  "artifact_root": "/home/deano/harnesses/pcxt-routed-guard/paired",
+  "compiler_version": "nextpnr-0.11.1-556-g2aec8f7a",
+  "binary_sha256": "f95cffa60910293c467294520e21738abf17f72fb511b7e7d2edb372b7e49395",
+  "test_binary_sha256": "76730087b61ff6d792355e23e32a97cd60cd9948fd109550d0b5291dde016cb2",
+  "previous_charged_seconds": 865.7637834772468,
+  "new_charged_seconds": 578.3926905053668,
+  "budget_seconds": 3600,
+  "total_charged_seconds": 1444.1564739826135,
+  "remaining_seconds": 2155.8435260173865,
+  "accounting": "Full-design route wall time including all lease waits, plus conservatively rounded full CLI suite durations covering empty CPU routes. Native STA tests and CPU builds excluded; they invoke no router.",
+  "inputs": {
+    "clocks.sdc": {
+      "sha256": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041",
+      "source": "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/experiments/fixture/clocks.sdc"
+    },
+    "compiler": {
+      "sha256": "f95cffa60910293c467294520e21738abf17f72fb511b7e7d2edb372b7e49395",
+      "source": "/home/deano/harnesses/pcxt-routed-guard/final-bin/nextpnr-mistral"
+    },
+    "constraints.qsf": {
+      "sha256": "d21b3f91fcb1c0eba57042ef61a951382d3284a9b5f3731dcc13362b1fd3aab2",
+      "source": "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/experiments/fixture/constraints.qsf"
+    },
+    "guidance.json": {
+      "sha256": "d996a67c0e380205bd2c97f308501cb9b6463e8aaef7d25c564c6c2bd975ac02",
+      "source": "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/experiments/baseline-run/timing.json"
+    },
+    "placed.json": {
+      "sha256": "733f1cc8ea765bed46dae44dcd744e4432edd75ddedaf232061c0a1d9756b4a6",
+      "source": "/home/deano/harnesses/pcxt-routed-guard/fixture/placed.json"
+    }
+  },
+  "artifacts": {
+    "baseline": {
+      "timing.json": "82316e156a2bd845ed705f7b38076296ae998d61221b5d8373648a82af2493f7",
+      "nextpnr.log": "14d7a2cec55010bd7fd347d0a0c6ad7356b44e0171fa3f343c805fbfd5e7c7a7",
+      "receipt.json": "4f322975581e549ee0f1092ba198d8d6eb0bacc872f4c83e59391bccae5a55c6",
+      "endpoints.json": "e0f125c5992bd30ba6dc8a1ab8f4820e8d1b5d7f5b53264cb40667a278759a33",
+      "routed.json": "9762778bedbdf86445ca2327f0dc53d3febe03696024764dfce821185711988e",
+      "diagnostic.rbf": "b26f71da2eae6bf99771065f4972d3dec003ddd3edb78ab8c05296e28acc08b4"
+    },
+    "candidate": {
+      "timing.json": "2a13e80dc72b7a7e171ce70fbf8996f01c728d1c85d6e74f2f773689bbcc8355",
+      "nextpnr.log": "a699fde36fc7432bef3c1e9543d4816bb0baa5aeeadc299b86f891b63884e157",
+      "receipt.json": "a91e0079965e670deb453c6a0201a510ad7450ce37f5b4cc1c8964d321d30bd6",
+      "endpoints.json": "a00a4819b3f072cf14d31f4d468b091611fab4ea8ee098abea3a4bbd94f01787",
+      "routed.json": "61b603d7b2309db6503c29471db190de7f3c7b5eb3094244b91cbc3e26212c53",
+      "diagnostic.rbf": "a8a080c9682dde88d5fd9b4508fc58b5af57daa10a66093de83412a345d2d84d"
+    }
+  },
+  "receipts": {
+    "baseline": {
+      "artifacts": {
+        "diagnostic.rbf": "b26f71da2eae6bf99771065f4972d3dec003ddd3edb78ab8c05296e28acc08b4",
+        "endpoints.json": "e0f125c5992bd30ba6dc8a1ab8f4820e8d1b5d7f5b53264cb40667a278759a33",
+        "routed.json": "9762778bedbdf86445ca2327f0dc53d3febe03696024764dfce821185711988e",
+        "timing.json": "82316e156a2bd845ed705f7b38076296ae998d61221b5d8373648a82af2493f7"
+      },
+      "binary_sha256": "f95cffa60910293c467294520e21738abf17f72fb511b7e7d2edb372b7e49395",
+      "charged_seconds": 148.77597264107317,
+      "command": [
+        "/home/deano/harnesses/pcxt-routed-guard/paired/inputs/compiler",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/harnesses/pcxt-routed-guard/paired/inputs/placed.json",
+        "--qsf",
+        "/home/deano/harnesses/pcxt-routed-guard/paired/inputs/constraints.qsf",
+        "--sdc",
+        "/home/deano/harnesses/pcxt-routed-guard/paired/inputs/clocks.sdc",
+        "--seed",
+        "1",
+        "--freq",
+        "100",
+        "--router",
+        "gpu",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--no-pack",
+        "--no-place",
+        "--rbf",
+        "diagnostic.rbf",
+        "--compress-rbf",
+        "--write",
+        "routed.json",
+        "--report",
+        "timing.json",
+        "--detailed-timing-report",
+        "--timing-report-paths",
+        "1024",
+        "--routed-endpoints",
+        "endpoints.json"
+      ],
+      "environment": {
+        "FES_GPU_LEASE_OWNER": "pcxt-agent",
+        "GPU_LEASE_MAX_PER_OWNER": "2",
+        "NEXTPNR_REQUIRE_GPU": "1"
+      },
+      "returncode": 1,
+      "timeout": 600.0
+    },
+    "candidate": {
+      "artifacts": {
+        "diagnostic.rbf": "a8a080c9682dde88d5fd9b4508fc58b5af57daa10a66093de83412a345d2d84d",
+        "endpoints.json": "a00a4819b3f072cf14d31f4d468b091611fab4ea8ee098abea3a4bbd94f01787",
+        "routed.json": "61b603d7b2309db6503c29471db190de7f3c7b5eb3094244b91cbc3e26212c53",
+        "timing.json": "2a13e80dc72b7a7e171ce70fbf8996f01c728d1c85d6e74f2f773689bbcc8355"
+      },
+      "binary_sha256": "f95cffa60910293c467294520e21738abf17f72fb511b7e7d2edb372b7e49395",
+      "charged_seconds": 169.6167178642936,
+      "command": [
+        "/home/deano/harnesses/pcxt-routed-guard/paired/inputs/compiler",
+        "--device",
+        "5CSEBA6U23I7",
+        "--json",
+        "/home/deano/harnesses/pcxt-routed-guard/paired/inputs/placed.json",
+        "--qsf",
+        "/home/deano/harnesses/pcxt-routed-guard/paired/inputs/constraints.qsf",
+        "--sdc",
+        "/home/deano/harnesses/pcxt-routed-guard/paired/inputs/clocks.sdc",
+        "--seed",
+        "1",
+        "--freq",
+        "100",
+        "--router",
+        "gpu",
+        "--placer-heap-timingweight",
+        "2000",
+        "--placer-heap-critexp",
+        "5",
+        "--no-pack",
+        "--no-place",
+        "--rbf",
+        "diagnostic.rbf",
+        "--compress-rbf",
+        "--write",
+        "routed.json",
+        "--report",
+        "timing.json",
+        "--detailed-timing-report",
+        "--timing-report-paths",
+        "1024",
+        "--routed-endpoints",
+        "endpoints.json",
+        "--critical-swap-budget",
+        "64",
+        "--critical-cohort-report",
+        "/home/deano/harnesses/pcxt-routed-guard/paired/inputs/guidance.json",
+        "--critical-swap-routed-trial"
+      ],
+      "environment": {
+        "FES_GPU_LEASE_OWNER": "pcxt-agent",
+        "GPU_LEASE_MAX_PER_OWNER": "2",
+        "NEXTPNR_REQUIRE_GPU": "1"
+      },
+      "returncode": 1,
+      "timeout": 600.0
+    }
+  },
+  "runner_root": "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/sources/misteross",
+  "build_flags": {
+    "ARCH": "mistral",
+    "BUILD_TESTS": "ON",
+    "BUILD_GUI": "OFF",
+    "BUILD_PYTHON": "OFF",
+    "GPU_ROUTER": "HIP",
+    "GPU_TARGETS": "gfx1100;gfx1201",
+    "CMAKE_BUILD_TYPE": "Release"
+  },
+  "validation": {
+    "native": "48/48",
+    "routed_driver": "11/11",
+    "cohort_cli": "15/15",
+    "selection": "baseline",
+    "coverage": "incomplete, fail closed"
+  },
+  "limitations": [
+    "1908 unsupported connected endpoints in both trials prevent acceptance even with matching coverage lists.",
+    "Available native pair diagnostic has 15 newly failing setup endpoints; all pair margins are not nonregressing.",
+    "26 inherited unrelated LAB (24,8) host legality failures unresolved; not a whole-checkpoint legality pass.",
+    "Inherited LUT-pair loaded-SA/explicit-HeAP CLI failure not changed; suite not rerun.",
+    "Safe acceptance regression uses controlled native STA wire delays and artifact fixtures; no full GPU candidate accepted.",
+    "No 100MHz closure, FES seed qualification, producer qualification or hardware acceptance.",
+    "Historical reload/full-route timing discrepancy remains undiagnosed; no reload timing used."
+  ],
+  "runner_sha256": "3c262a7a2e61bb07783ab361055b1f30d2617e5ae304e6f50787430d82c6e7fd",
+  "full_design_route_seconds": 318.3926905053668,
+  "cli_cpu_route_charge_seconds": 260,
+  "cli_cpu_route_accounting": {
+    "development_suite": {
+      "reported_seconds": 119.47,
+      "charged_seconds": 120
+    },
+    "final_suite": {
+      "reported_seconds": 137.936,
+      "charged_seconds": 140
+    },
+    "reason": "Conservatively charge both entire CLI suites, including interpreter overhead, because each includes two empty-design CPU routes."
+  }
+}

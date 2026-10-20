@@ -1,0 +1,424 @@
+{
+  "scope": "DIAGNOSTIC intersection of available native rows only. Missing coverage forbids acceptance.",
+  "baseline": {
+    "complete": false,
+    "endpoints": 17147,
+    "pairs": 17147,
+    "unsupported": 1908
+  },
+  "candidate": {
+    "complete": false,
+    "endpoints": 17147,
+    "pairs": 17147,
+    "unsupported": 1908
+  },
+  "common_pairs": 17147,
+  "baseline_only_pairs": 0,
+  "candidate_only_pairs": 0,
+  "setup_regressions": 7135,
+  "newly_failing_setup": 15,
+  "hold_regressions": 6181,
+  "newly_failing_examples": [
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.t_biu_nmi_debounce_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 191,
+      "candidate_setup_ps": -115,
+      "baseline_hold_ps": 3409,
+      "candidate_hold_ps": 3285
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.t_eu_register_r3_MISTRAL_FF_Q_2",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 1162,
+      "candidate_setup_ps": -34,
+      "baseline_hold_ps": 4274,
+      "candidate_hold_ps": 5013
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.eu_register_ax_MISTRAL_FF_Q_15",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 164,
+      "candidate_setup_ps": -255,
+      "baseline_hold_ps": 1394,
+      "candidate_hold_ps": 1394
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.eu_register_bp_MISTRAL_FF_Q_1",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 582,
+      "candidate_setup_ps": -75,
+      "baseline_hold_ps": 3018,
+      "candidate_hold_ps": 3245
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.eu_register_di_MISTRAL_FF_Q_12",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 391,
+      "candidate_setup_ps": -583,
+      "baseline_hold_ps": 3147,
+      "candidate_hold_ps": 4157
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.eu_register_di_MISTRAL_FF_Q_2",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 428,
+      "candidate_setup_ps": -16,
+      "baseline_hold_ps": 3186,
+      "candidate_hold_ps": 3200
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.eu_register_dx_MISTRAL_FF_Q_4",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 119,
+      "candidate_setup_ps": -299,
+      "baseline_hold_ps": 1333,
+      "candidate_hold_ps": 1333
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.eu_register_r2_MISTRAL_FF_Q_1",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 228,
+      "candidate_setup_ps": -422,
+      "baseline_hold_ps": 3273,
+      "candidate_hold_ps": 3741
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.eu_register_sp_MISTRAL_FF_Q_3",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 110,
+      "candidate_setup_ps": -313,
+      "baseline_hold_ps": 3504,
+      "candidate_hold_ps": 3497
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.u_ucode_rom.bytes[0].read_address_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 866,
+      "candidate_setup_ps": -56,
+      "baseline_hold_ps": 2835,
+      "candidate_hold_ps": 2834
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.u_ucode_rom.bytes[1].read_address_MISTRAL_FF_Q_8",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 558,
+      "candidate_setup_ps": -388,
+      "baseline_hold_ps": 3143,
+      "candidate_hold_ps": 3166
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.u_ucode_rom.bytes[2].read_address_MISTRAL_FF_Q",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 830,
+      "candidate_setup_ps": -393,
+      "baseline_hold_ps": 2871,
+      "candidate_hold_ps": 3171
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.u_ucode_rom.bytes[2].read_address_MISTRAL_FF_Q_10",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 477,
+      "candidate_setup_ps": -54,
+      "baseline_hold_ps": 3384,
+      "candidate_hold_ps": 3571
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.u_ucode_rom.bytes[2].read_address_MISTRAL_FF_Q_7",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 70,
+      "candidate_setup_ps": -274,
+      "baseline_hold_ps": 3497,
+      "candidate_hold_ps": 3497
+    },
+    {
+      "endpoint": [
+        "system.machine.cpu.cpu.u_eu_core.u_ucode_rom.bytes[3].read_address_MISTRAL_FF_Q_2",
+        "DATAIN"
+      ],
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "baseline_setup_ps": 111,
+      "candidate_setup_ps": -240,
+      "baseline_hold_ps": 3324,
+      "candidate_hold_ps": 3331
+    }
+  ],
+  "prior_baseline_rbf_equal": true,
+  "prior_candidate_rbf_equal": true,
+  "exact_retention": {
+    "diagnostic.rbf": true,
+    "routed.json": true,
+    "timing.json": true,
+    "endpoints.json": true
+  },
+  "baseline_timing": {
+    "clocks": {
+      "clk_pixel": {
+        "hold_wns_ns": 0.7549999952316284,
+        "setup_wns_ns": 1.5269999504089355
+      },
+      "clocks[0]": {
+        "hold_wns_ns": 0.7229999899864197,
+        "setup_wns_ns": -1.1629999876022339
+      },
+      "clocks[1]": {
+        "hold_wns_ns": 5.749000072479248,
+        "setup_wns_ns": 2.936000108718872
+      },
+      "clocks[2]": {
+        "hold_wns_ns": 4.6539998054504395,
+        "setup_wns_ns": 0.23600000143051147
+      }
+    },
+    "final_analogue_model": true
+  },
+  "candidate_timing": {
+    "clocks": {
+      "clk_pixel": {
+        "hold_wns_ns": 0.7549999952316284,
+        "setup_wns_ns": 1.9459999799728394
+      },
+      "clocks[0]": {
+        "hold_wns_ns": 0.7229999899864197,
+        "setup_wns_ns": -0.9020000100135803
+      },
+      "clocks[1]": {
+        "hold_wns_ns": 5.922999858856201,
+        "setup_wns_ns": 2.936000108718872
+      },
+      "clocks[2]": {
+        "hold_wns_ns": 4.65500020980835,
+        "setup_wns_ns": 0.2409999966621399
+      }
+    },
+    "final_analogue_model": true
+  },
+  "baseline_fmax": {
+    "clk_pixel": {
+      "achieved": 83.74507904052734,
+      "constraint": 74.25006866455078
+    },
+    "clocks[0]": {
+      "achieved": 89.58164978027344,
+      "constraint": 100
+    },
+    "clocks[1]": {
+      "achieved": 242.24807739257812,
+      "constraint": 100
+    },
+    "clocks[2]": {
+      "achieved": 103.76756286621094,
+      "constraint": 100
+    }
+  },
+  "candidate_fmax": {
+    "clk_pixel": {
+      "achieved": 86.79048919677734,
+      "constraint": 74.25006866455078
+    },
+    "clocks[0]": {
+      "achieved": 91.72628784179688,
+      "constraint": 100
+    },
+    "clocks[1]": {
+      "achieved": 242.24807739257812,
+      "constraint": 100
+    },
+    "clocks[2]": {
+      "achieved": 103.85045623779297,
+      "constraint": 100
+    }
+  },
+  "prior_baseline_clock_summary_equal": true,
+  "prior_candidate_clock_summary_equal": true,
+  "decision": {
+    "accepted": false,
+    "artifacts": {
+      "diagnostic.rbf": "b26f71da2eae6bf99771065f4972d3dec003ddd3edb78ab8c05296e28acc08b4",
+      "endpoints.json": "e0f125c5992bd30ba6dc8a1ab8f4820e8d1b5d7f5b53264cb40667a278759a33",
+      "routed.json": "9762778bedbdf86445ca2327f0dc53d3febe03696024764dfce821185711988e",
+      "timing.json": "82316e156a2bd845ed705f7b38076296ae998d61221b5d8373648a82af2493f7"
+    },
+    "baseline_coverage": {
+      "complete": false,
+      "endpoints": 17147,
+      "unsupported": 1908
+    },
+    "candidate_coverage": {
+      "complete": false,
+      "endpoints": 17147,
+      "unsupported": 1908
+    },
+    "reason": "coverage failure: incomplete native endpoint coverage",
+    "retained_returncode": 1,
+    "selected": "baseline",
+    "timing_summary": {
+      "clocks": {
+        "clk_pixel": {
+          "hold_wns_ns": 0.7549999952316284,
+          "setup_wns_ns": 1.5269999504089355
+        },
+        "clocks[0]": {
+          "hold_wns_ns": 0.7229999899864197,
+          "setup_wns_ns": -1.1629999876022339
+        },
+        "clocks[1]": {
+          "hold_wns_ns": 5.749000072479248,
+          "setup_wns_ns": 2.936000108718872
+        },
+        "clocks[2]": {
+          "hold_wns_ns": 4.6539998054504395,
+          "setup_wns_ns": 0.23600000143051147
+        }
+      },
+      "final_analogue_model": true
+    }
+  }
+}
