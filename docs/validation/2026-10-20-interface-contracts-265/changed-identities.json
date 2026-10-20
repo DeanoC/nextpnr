@@ -1,0 +1,93 @@
+{
+  "baseline": "dynamic-ce registered snapshot",
+  "candidate": "interface reset snapshot",
+  "unchanged_fields": [
+    "clocks",
+    "complete",
+    "endpoints",
+    "final_analogue",
+    "io_constraints",
+    "primitive_clocks",
+    "registered_contracts",
+    "scope",
+    "static_endpoints"
+  ],
+  "added_fields": [
+    "constant_outputs",
+    "forwarded_clocks",
+    "physical_obligations",
+    "reset_contracts",
+    "unsupported_details"
+  ],
+  "changed_fields": {
+    "schema": {
+      "before": 5,
+      "after": 6
+    },
+    "unsupported": {
+      "before": [
+        [
+          "HDMI_TX_CLK_MISTRAL_OB_PAD",
+          "I"
+        ],
+        [
+          "locked_MISTRAL_FF_ACLR",
+          "ACLR"
+        ],
+        [
+          "locked_MISTRAL_FF_ACLR_1",
+          "ACLR"
+        ],
+        [
+          "locked_MISTRAL_FF_ACLR_1_Q_MISTRAL_FF_DATAIN",
+          "ACLR"
+        ],
+        [
+          "locked_MISTRAL_FF_ACLR_DATAIN_MISTRAL_FF_Q",
+          "ACLR"
+        ],
+        [
+          "scl",
+          "I"
+        ],
+        [
+          "scl",
+          "OE"
+        ],
+        [
+          "sda",
+          "I"
+        ],
+        [
+          "sda",
+          "OE"
+        ]
+      ],
+      "after": [
+        [
+          "scl",
+          "OE"
+        ],
+        [
+          "sda",
+          "OE"
+        ]
+      ]
+    },
+    "output_contracts": {
+      "added_attributes": {
+        "HDMI_TX_CLK_MISTRAL_OB_PAD": {
+          "NEXTPNR_GPIO_TIMING_PROFILE": "QUARTUS_17_0_2_AG5_CLOCK",
+          "BOARD_MODEL_FAR_C": "30P"
+        }
+      },
+      "other_bindings_exact": true
+    }
+  },
+  "source_checkpoint_mutated": false,
+  "overlays": [
+    "reset-overlay.json",
+    "forward-overlay.json"
+  ],
+  "full_contract_records": "pcxt-host-diagnostic.json.gz"
+}

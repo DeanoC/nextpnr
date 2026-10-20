@@ -1,0 +1,21 @@
+{
+  "endpoints": true,
+  "static_endpoints": true,
+  "registered_contracts": true,
+  "primitive_clocks": true,
+  "clocks": true,
+  "io_constraints": true,
+  "unsupported": [
+    [
+      "scl",
+      "OE"
+    ],
+    [
+      "sda",
+      "OE"
+    ]
+  ],
+  "dynamic_rows": 17246,
+  "static_proofs": 1888,
+  "physically_complete": false
+}

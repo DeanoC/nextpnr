@@ -1,0 +1,11 @@
+{
+  "native_source_commit": "0d7db17ecc32dfaf83fea89be526d75d6eeeab5b",
+  "native_source_tree": "90724201d7b76099df758474a9f3942699d1abd3",
+  "native_mistral_source_commit": "8fcc4cb41c51f8918f1d3ad70def2febcbf20d8f",
+  "native_mistral_status": "",
+  "binary_sha256": {
+    "nextpnr-mistral": "ac4c7a17f6a9689bdd03fdf30b6bf2162a206fa2a8d711c5e51e14dd0fad9f67",
+    "nextpnr-mistral-test": "ca512d6bc1ddbd3a8144f610569109b305da1f24fb8c029d74a6ea81bf286bfe"
+  },
+  "build_cache_sha256": "d4e7708c174d143ba8aab4bc1b4d1a596781052a3acc7590c2dd55080b30c055"
+}
