@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "heap_congestion.h"
+#include <map>
 #include <set>
 #include <vector>
 
@@ -70,6 +71,37 @@ TEST(HeapCongestionTest, FixedRegionOccupancyOnlyReducesCapacityAtItsLocation)
                 fixed_occupancy.at(location), 1);
     EXPECT_EQ(region_wide_fixed_count_applied_twice, 14);
     EXPECT_FALSE(heap_congestion_detail::scale_is_usable(14, region_wide_fixed_count_applied_twice, 0.95f));
+}
+
+TEST(HeapCongestionTest, CollectsFixedOccupancyForMatchingRegionBucketAndBelLocation)
+{
+    struct TestRegion
+    {
+        std::set<int> bels;
+    } region_a{{101}}, region_b{{202}}, inactive_a{{101}}, inactive_b{{202}};
+    std::map<int, TestRegion *> constrained_regions = {
+            {1, &region_a}, {2, &region_b}, {3, &inactive_a}, {4, &inactive_b}};
+    std::map<int, std::vector<int>> region_cells = {
+            {1, {1, 0}}, {2, {0, 1}}, {3, {0, 1}}, {4, {1, 0}}};
+    std::map<int, std::vector<std::vector<int>>> occupancy;
+    for (int region : {1, 2, 3, 4})
+        occupancy[region] = std::vector<std::vector<int>>(2, std::vector<int>(6, 0));
+
+    // A fixed BEL at (1, 2) belongs to region 1 in bucket 0. Region 3 has
+    // that BEL too, but has no movable cells in bucket 0.
+    heap_congestion_detail::collect_fixed_region_occupancy(occupancy, region_cells, constrained_regions, 0, 1, 2, 2,
+                                                           101);
+    // A second fixed BEL at (0, 1) belongs to region 2 in bucket 1. Region 4
+    // has it too, but has no movable cells in bucket 1.
+    heap_congestion_detail::collect_fixed_region_occupancy(occupancy, region_cells, constrained_regions, 1, 0, 1, 2,
+                                                           202);
+
+    EXPECT_EQ(occupancy.at(1).at(0).at(5), 1);
+    EXPECT_EQ(occupancy.at(2).at(1).at(1), 1);
+    EXPECT_EQ(occupancy.at(3).at(0).at(5), 0);
+    EXPECT_EQ(occupancy.at(4).at(1).at(1), 0);
+    EXPECT_EQ(occupancy.at(1).at(0).at(1), 0);
+    EXPECT_EQ(occupancy.at(2).at(1).at(5), 0);
 }
 
 TEST(HeapCongestionTest, DetectsSharedBelsBetweenConstrainedRegions)

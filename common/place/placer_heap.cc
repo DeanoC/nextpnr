@@ -1821,8 +1821,10 @@ class HeAPPlacer
                     counts.resize(buckets.size(), 0);
                     counts.at(cell_index(cell))++;
                     constrained_regions[cell.region->name] = cell.region;
-                    region_fixed_occupancy[cell.region->name].resize(
-                            buckets.size(), std::vector<int>((p->max_x + 1) * (p->max_y + 1), 0));
+                    auto fixed_occupancy_entry = region_fixed_occupancy.insert(cell.region->name);
+                    if (fixed_occupancy_entry.second)
+                        fixed_occupancy_entry.first->second.resize(
+                                buckets.size(), std::vector<int>((p->max_x + 1) * (p->max_y + 1), 0));
                 }
 
                 // Count fixed cluster members in each constrained region and
@@ -1834,10 +1836,9 @@ class HeAPPlacer
                         continue;
                     size_t t = cell_index(cell);
                     Loc loc = ctx->getBelLocation(cell.bel);
-                    size_t location = loc.x * (p->max_y + 1) + loc.y;
-                    for (auto &entry : constrained_regions)
-                        if (region_cells.at(entry.first).at(t) != 0 && entry.second->bels.count(cell.bel))
-                            region_fixed_occupancy.at(entry.first).at(t).at(location)++;
+                    heap_congestion_detail::collect_fixed_region_occupancy(
+                            region_fixed_occupancy, region_cells, constrained_regions, t, loc.x, loc.y, p->max_y,
+                            cell.bel);
                 }
 
                 // Per-region checks cannot safely credit shared BELs to

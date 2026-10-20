@@ -60,6 +60,17 @@ template <typename BelSet, typename BucketLocations> bool regions_overlap_bels(c
     return false;
 }
 
+template <typename OccupancyMap, typename RegionCellsMap, typename RegionMap, typename Bel>
+void collect_fixed_region_occupancy(OccupancyMap &occupancy, const RegionCellsMap &region_cells,
+                                    const RegionMap &constrained_regions, size_t bucket, int x, int y, int max_y,
+                                    const Bel &bel)
+{
+    size_t location = x * (max_y + 1) + y;
+    for (const auto &entry : constrained_regions)
+        if (region_cells.at(entry.first).at(bucket) != 0 && entry.second->bels.count(bel))
+            occupancy.at(entry.first).at(bucket).at(location)++;
+}
+
 } // namespace heap_congestion_detail
 
 NEXTPNR_NAMESPACE_END
