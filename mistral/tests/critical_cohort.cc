@@ -1376,6 +1376,15 @@ TEST_F(CriticalCohort, StaticEndpointCoverageRequiresConstantProof)
     EXPECT_EQ(snapshot()["unsupported"].array_items().size(), 2);
     direct->disconnectPort(id_DATAIN);
     direct->connectPort(id_DATAIN, net);
+    auto *io = ctx->createCell(ctx->id("external_input"), id_MISTRAL_IO);
+    io->addOutput(id_O);
+    auto *input = ctx->createNet(ctx->id("external_net"));
+    io->connectPort(id_O, input);
+    buffer->disconnectPort(id_A);
+    buffer->connectPort(id_A, input);
+    EXPECT_EQ(snapshot()["static_endpoints"].object_items().size(), 1);
+    EXPECT_EQ(snapshot()["unsupported"].array_items().size(), 1);
+    // An external input through the same route-through is not a constant.
     clk->clkconstr.reset();
     EXPECT_TRUE(snapshot()["static_endpoints"].object_items().empty());
     EXPECT_EQ(snapshot()["unsupported"].array_items().size(), 2);

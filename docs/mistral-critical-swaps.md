@@ -100,3 +100,8 @@ PLL `locked` is an asynchronous startpoint. A path from it to FF `ACLR` still
 has no supported registered-launch timing pair or recovery/removal model. Such
 paths remain unsupported even if the netlist and route are unchanged. Completing
 static coverage does not authorize retention when these paths are present.
+
+Unconstrained external input paths also remain unsupported. In particular,
+constant-fed and IO-fed route-through buffers must not be conflated: a
+`MISTRAL_IO.O` source is not static. External launch requirements require actual
+board/interface constraints and supported IO timing, not invented clock tags.

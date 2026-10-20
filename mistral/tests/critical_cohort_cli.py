@@ -90,7 +90,9 @@ class CriticalCohortCli(unittest.TestCase):
                 with self.subTest(budget=budget):
                     model = Path(directory) / f"model-{budget}.json"
                     bitstream = Path(directory) / f"design-{budget}.rbf"
-                    options = ["--critical-cohort-model-out", str(model), "--rbf", str(bitstream)]
+                    endpoints = Path(directory) / f"endpoints-{budget}.json"
+                    options = ["--critical-cohort-model-out", str(model), "--rbf", str(bitstream),
+                               "--routed-endpoints", str(endpoints)]
                     if budget is not None:
                         options += ["--critical-cohort-budget", str(budget)]
                     result = self.run_design(options, route=True)
@@ -99,6 +101,12 @@ class CriticalCohortCli(unittest.TestCase):
                     report = json.loads(model.read_text())
                     self.assertTrue(report["timing_summary"]["final_analogue_model"])
                     self.assertIn("cohort_route_model", report)
+                    snapshot = json.loads(endpoints.read_text())
+                    self.assertEqual(snapshot["schema"], 2)
+                    self.assertTrue(snapshot["final_analogue"])
+                    self.assertFalse(snapshot["complete"])
+                    self.assertEqual(snapshot["static_endpoints"], {})
+                    self.assertEqual(snapshot["endpoints"], {})
 
     def test_invalid_budget(self):
         for budget in (-1, 65):
