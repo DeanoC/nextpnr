@@ -172,6 +172,10 @@ struct GpuRouterCfg
     bool gpu_required;
     // Print per-iteration timing and backend statistics
     bool perf_profile;
+    // Diagnostic: rewritten after every negotiation iteration with each
+    // overused wire, its occupancy and, for heavily shared wires, some of
+    // the nets on it. Empty disables it.
+    std::string overuse_report;
     // Empty disables telemetry. The writer creates this path exclusively.
     std::string telemetry_path;
     // Original explicit or randomized command seed. This is kept separate
