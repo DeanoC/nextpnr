@@ -37,6 +37,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <functional>
 #include <limits>
 #include <mutex>
@@ -1291,9 +1292,16 @@ struct GpuRouter
                 batches[K - 1].push_back(std::move(t));
         }
         std::vector<std::vector<HostTask>> out;
-        for (auto &b : batches)
-            if (!b.empty())
-                out.push_back(std::move(b));
+        for (int b = 0; b < K - 1; b++)
+            if (!batches[b].empty())
+                out.push_back(std::move(batches[b]));
+        auto &overflow = batches[K - 1];
+        const size_t chunk = cfg.overflow_chunk > 0 ? size_t(cfg.overflow_chunk) : overflow.size();
+        for (size_t i = 0; i < overflow.size(); i += chunk) {
+            out.emplace_back();
+            for (size_t j = i; j < std::min(overflow.size(), i + chunk); j++)
+                out.back().push_back(std::move(overflow[j]));
+        }
         return out;
     }
 
@@ -1622,12 +1630,16 @@ struct GpuRouter
                         if (telemetry)
                             telemetry->emit("phase_end", "negotiation", attempt,
                                             {gpuroute::Telemetry::Field::string("status", "plateau")});
+                        if (!cfg.overuse_report.empty())
+                            write_overuse_report();
                         return result;
                     }
                     if (!escape_soft_plateau()) {
                         if (telemetry)
                             telemetry->emit("phase_end", "negotiation", attempt,
                                             {gpuroute::Telemetry::Field::string("status", "plateau")});
+                        if (!cfg.overuse_report.empty())
+                            write_overuse_report();
                         return false;
                     }
                 }
@@ -1644,6 +1656,8 @@ struct GpuRouter
                     if (telemetry)
                         telemetry->emit("phase_end", "negotiation", attempt,
                                         {gpuroute::Telemetry::Field::string("status", "plateau")});
+                    if (!cfg.overuse_report.empty())
+                        write_overuse_report();
                     return false;
                 }
                 congestion_plateau.clear_tiny();
@@ -1705,6 +1719,8 @@ struct GpuRouter
             log_info("    iter=%d wires=%d overused=%d overuse=%d tmgfail=%d nets=%zu batches=%zu archfail=%s\n", iter,
                      total_wire_use, overused_wires, total_overuse, tmgfail, ntasks, batches.size(),
                      (overused_wires > 0 || tmgfail > 0) ? "NA" : std::to_string(arch_fail).c_str());
+            if (!cfg.overuse_report.empty())
+                write_overuse_report();
             if (telemetry) {
                 const auto &bs = backend->stats();
                 std::vector<gpuroute::Telemetry::Field> fields{
@@ -1858,6 +1874,32 @@ struct GpuRouter
         if (thawed > 0)
             flush_state();
         return thawed;
+    }
+
+    // One line per overused wire: name, occupancy, then for wires shared by
+    // at least 20 nets up to eight of those nets as name/arcs-on-the-wire.
+    void write_overuse_report()
+    {
+        dict<int32_t, std::vector<int>> hot_users;
+        for (int n : failed_nets)
+            for (auto &w : nets.at(n).wires)
+                if (occ[w.first] >= 20 && hot_users[w.first].size() < 8)
+                    hot_users[w.first].push_back(n);
+        std::ofstream rpt(cfg.overuse_report);
+        rpt << "iter " << iter << "\n";
+        for (size_t w = 0; w < occ.size(); w++) {
+            if (occ[w] <= 1)
+                continue;
+            rpt << ctx->nameOfWire(idx_to_wire[w]) << " " << occ[w];
+            auto fnd = hot_users.find(int32_t(w));
+            if (fnd != hot_users.end())
+                for (int n : fnd->second)
+                    rpt << " " << ctx->nameOf(nets_by_udata.at(n)) << "/" << nets.at(n).wires.at(int32_t(w)).count;
+            rpt << "\n";
+        }
+        rpt.close();
+        if (!rpt)
+            log_warning("could not write GPU router overuse report '%s'\n", cfg.overuse_report.c_str());
     }
 
     void log_overused_wires()
@@ -3618,6 +3660,7 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     candidate_expand_k = ctx->setting<int>("gpurouter/candidateExpandK", expand_k);
     expand_div = ctx->setting<int>("gpurouter/expandDiv", 0);
     max_batches = ctx->setting<int>("gpurouter/maxBatches", 12);
+    overflow_chunk = ctx->setting<int>("gpurouter/overflowChunk", 128);
     small_slots = ctx->setting<int>("gpurouter/smallSlots", 384);
     large_slots = ctx->setting<int>("gpurouter/largeSlots", 0);
     small_bits = ctx->setting<int>("gpurouter/smallBits", 16);
@@ -3628,6 +3671,8 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     const char *gpu_required_env = std::getenv("NEXTPNR_REQUIRE_GPU");
     gpu_required = gpu_required || (gpu_required_env != nullptr && std::strcmp(gpu_required_env, "1") == 0);
     perf_profile = ctx->setting<bool>("gpurouter/perfProfile", false);
+    auto overuse_setting = ctx->settings.find(ctx->id("gpurouter/overuseReport"));
+    overuse_report = overuse_setting == ctx->settings.end() ? std::string() : overuse_setting->second.as_string();
     auto telemetry_setting = ctx->settings.find(ctx->id("gpurouter/telemetryPath"));
     telemetry_path = telemetry_setting == ctx->settings.end() ? std::string() : telemetry_setting->second.as_string();
     auto telemetry_seed_setting = ctx->settings.find(ctx->id("gpurouter/telemetrySeed"));
