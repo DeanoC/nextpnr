@@ -30,6 +30,9 @@ class RoutedSwap(unittest.TestCase):
             subprocess.run([BINARY, '--gtest_filter=IoDelayTest.ExternalEndpointInventory'],
                            env=dict(os.environ, NEXTPNR_TEST_IO_ENDPOINTS=str(path)), check=True)
             cls.io = json.loads(path.read_text())
+            subprocess.run([BINARY, '--gtest_filter=IoDelayTest.ExternalOutputEndpointInventory'],
+                           env=dict(os.environ, NEXTPNR_TEST_OUTPUT_ENDPOINTS=str(path)), check=True)
+            cls.outputs = json.loads(path.read_text())
 
     def test_safe_native_route_delay_improvement(self):
         self.assertTrue(guard.compare(self.cases['baseline'], self.cases['safe'])[0])
@@ -166,6 +169,58 @@ class RoutedSwap(unittest.TestCase):
                         self.assertEqual((output / 'retained' / name).read_bytes(), data, case)
         finally:
             self.cases = previous
+
+    def test_native_output_coverage_and_retention(self):
+        self.assertTrue(guard.compare(self.outputs['baseline'], self.outputs['safe'])[0])
+        previous = self.cases
+        self.cases = self.outputs
+        try:
+            for case in ('new_failure', 'hold_regression', 'clock_latency', 'min_changed',
+                         'max_changed', 'missing', 'phase', 'falling_capture', 'falling_launch', 'constant'):
+                self.assertFalse(guard.compare(self.outputs['baseline'], self.outputs[case])[0], case)
+                with tempfile.TemporaryDirectory() as tmp:
+                    output = Path(tmp)
+                    before = self.bundle(output / 'baseline', 'baseline')
+                    original = {n: (output / 'baseline' / n).read_bytes() for n in guard.ARTIFACTS}
+                    decision = guard.guarded_candidate(output, before,
+                        lambda: self.bundle(output / 'candidate', case))
+                    self.assertEqual(decision['selected'], 'baseline', case)
+                    for name, data in original.items():
+                        self.assertEqual((output / 'retained' / name).read_bytes(), data, case)
+        finally:
+            self.cases = previous
+
+    def test_output_contract_is_complete_and_invariant(self):
+        for field, value in [('min', 0.5), ('max', 2), ('clock', 'missing'),
+                             ('fall', True), ('port', 'other'), ('input', True)]:
+            changed = copy.deepcopy(self.outputs['safe'])
+            row = next(c for c in changed['io_constraints'] if not c['input'])
+            row[field] = value
+            self.assertFalse(guard.compare(self.outputs['baseline'], changed)[0], field)
+        for mode in ('missing', 'duplicate', 'omit_output', 'omit_contracts', 'both_omit',
+                     'polarity', 'oe_net', 'direction', 'remove_oe'):
+            old, new = copy.deepcopy(self.outputs['baseline']), copy.deepcopy(self.outputs['safe'])
+            if mode == 'missing':
+                del new['io_constraints']
+            elif mode == 'duplicate':
+                new['io_constraints'] *= 2
+            elif mode == 'omit_output':
+                new['output_contracts'].pop('dout')
+            elif mode in ('omit_contracts', 'both_omit'):
+                del new['output_contracts']
+                if mode == 'both_omit':
+                    del old['output_contracts']
+            elif mode == 'direction':
+                new['output_contracts']['dout']['direction'] = 999
+            elif mode == 'remove_oe':
+                new['endpoints'].pop('["dq_pad", "OE"]')
+            else:
+                cell = new['output_contracts']['dq[0]']['cells']['dq_pad']
+                if mode == 'polarity':
+                    cell['pins']['OE'] = 999
+                else:
+                    cell['ports']['OE'][1] = 'different_net'
+            self.assertFalse(guard.compare(old, new)[0], mode)
 
     def bundle(self, directory, case):
         directory.mkdir()

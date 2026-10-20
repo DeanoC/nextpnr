@@ -1236,7 +1236,7 @@ std::vector<CriticalPath> TimingAnalyser::get_report_setup_paths(int count)
 
 bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
                                                     std::vector<EndpointClockPairTiming> &rows,
-                                                    bool allow_external_launch)
+                                                    bool allow_external_launch, bool allow_external_capture)
 {
     rows.clear();
     auto found = ports.find(endpoint);
@@ -1283,6 +1283,17 @@ bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
                 matched = true;
         }
         return matched;
+    };
+    auto capture_path = [&](const ClockDomainKey &domain) {
+        if (registered(endpoint, TMG_REGISTER_INPUT, domain))
+            return true;
+        int count = 0;
+        if (!allow_external_capture || !data.io_delay ||
+            port_timing_class(owner->second.get(), endpoint.port, count) != TMG_ENDPOINT)
+            return false;
+        const auto &io = *data.io_delay;
+        return io.clock == domain.clock && io.edge == domain.edge && finite_pair(io.delay) &&
+               io.delay.minDelay() <= io.delay.maxDelay();
     };
     // Validate the native backpointer walk before using the existing report
     // builder. External launches must carry an explicitly validated IO delay;
@@ -1344,7 +1355,7 @@ bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
         for (const auto &required : data.required) {
             if (required.first < 0 || size_t(required.first) >= domains.size() ||
                 !valid_clock(domains.at(required.first).key) || !finite_pair(required.second.value) ||
-                !registered(endpoint, TMG_REGISTER_INPUT, domains.at(required.first).key))
+                !capture_path(domains.at(required.first).key))
                 return false;
             auto pair = pair_to_id.find(ClockDomainPairKey(arrival.first, required.first));
             if (pair == pair_to_id.end() || pair->second < 0 || size_t(pair->second) >= domain_pairs.size())

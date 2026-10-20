@@ -197,3 +197,32 @@ bound. The existing RAM Tester `mistral/tests/ramtest-io/budget.py` and GPIO
 reference profile should be reused when their supported topology and evidenced
 assumptions apply. Test budgets or that fixture's unmeasured board-flight
 examples must not be reused as qualified PC/XT interface limits.
+
+### External output endpoint inventory
+
+Schema 4 additionally exports explicitly constrained unregistered output captures.
+The common API requires `allow_external_capture=true`; both external options
+remain false for ordinary callers. It uses native output min/max, launch clock
+latency, reference edge/phase and setup/hold report arithmetic. Both data and OE
+of an unregistered bidirectional pad are separate endpoints. Registered launches
+through supported combinational cells are validated using both native early and
+late backpointer walks. No propagation or architecture delay model is changed.
+
+Every schema-4 inventory requires `output_contracts` (an explicit empty object
+when there are no output constraints), in addition to `io_constraints`. The
+contracts bind each constrained top-level output port to its pad net, direction,
+cell type, all port/net connections, pin polarities, parameters and attributes.
+The retention driver requires exact identity. Missing metadata on either or both
+sides rejects. Schema-3 inventories are no longer eligible because they could
+omit physical output boundaries.
+
+The exporter now counts unregistered output data/OE even without IO constraints,
+and explicitly lists registered output PAD boundaries as unsupported. Timing a
+fabric-side GPIO register input does not time that register's external pad.
+Private pad aliases, unmodeled clock forwarding and constant output channels are
+not promoted to dynamic rows or constant register-sink proofs. Constant open-drain
+I2C data, for example, still needs its external capture/OE contract accounted for;
+a missing transition alone is not a complete external-interface proof. These
+classes remain fail-closed pending a sound supported model/proof. The existing
+registered-pad STA reference profile is unchanged and is not approximated by this
+export API.

@@ -26,6 +26,11 @@ for endpoint in old-new:
  assert len(rows)==1 and rows[0]['launch']==['clocks[0]',1] and rows[0]['capture']==['clocks[1]',0]
 assert not guard.compare(a,b)[0]
 f=json.loads(gzip.decompress((here/'io-fixtures.json.gz').read_bytes()))
+# Historical schema-3 complete captures are now rejected. Re-envelope only
+# these isolated synthetic input fixtures to exercise unchanged timing checks;
+# this is not promotion of an old full-design inventory to schema 4.
+assert not guard.compare(f['baseline'],f['safe'])[0]
+for v in f.values():v.update(schema=4,output_contracts={})
 assert guard.compare(f['baseline'],f['safe'])[0]
 for name in ['missing','new_failure','hold_regression','clock_latency','min_changed','max_changed','phase','falling','external_reset','async_reset']:
  assert not guard.compare(f['baseline'],f[name])[0],name

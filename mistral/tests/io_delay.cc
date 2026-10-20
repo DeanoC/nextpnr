@@ -1207,3 +1207,123 @@ TEST_F(IoDelayTest, ExternalEndpointInventory)
         std::ofstream out(file); out << J(cases).dump() << "\n"; ASSERT_TRUE(bool(out));
     }
 }
+
+TEST_F(IoDelayTest, ExternalOutputEndpointInventory)
+{
+    using J = json11::Json;
+    capture->disconnectPort(id_DATAIN);
+    auto *buffer = ctx->createCell(ctx->id("output_route_through"), id_MISTRAL_BUF);
+    buffer->addInput(id_A); buffer->addOutput(id_Q);
+    buffer->connectPort(id_A, launch->getPort(id_Q));
+    buffer->connectPort(id_Q, net("buffered_output"));
+    output->disconnectPort(id_I); output->connectPort(id_I, buffer->getPort(id_Q));
+    ctx->assignArchInfo();
+    CellPortKey endpoint(output->name, id_I);
+    const auto key = J(J::array{output->name.str(ctx.get()), "I"}).dump();
+    auto snapshot = [&](int early, int late, int clock_early = 200, int clock_late = 400) {
+        TimingAnalyser timing(ctx.get()), unskewed(ctx.get());
+        timing.with_clock_skew = true; unskewed.with_clock_skew = false;
+        for (auto *t : {&timing, &unskewed}) {
+            t->setup(false, false, true);
+            t->set_route_delay({buffer->name, id_A}, DelayPair(100, 200));
+            t->set_route_delay(endpoint, DelayPair(early, late));
+            t->set_route_delay({launch->name, id_CLK}, DelayPair(clock_early, clock_late));
+            t->run(false, false, false, true);
+        }
+        std::vector<EndpointClockPairTiming> rows;
+        EXPECT_FALSE(timing.get_endpoint_clock_pair_timings(endpoint, rows));
+        EXPECT_FALSE(timing.get_endpoint_clock_pair_timings(endpoint, rows, true));
+        auto result = critical_swap_endpoint_snapshot(ctx.get(), timing, unskewed).object_items();
+        result["final_analogue"] = true; // controlled host fixture only
+        return J(result);
+    };
+    J::object cases;
+    // Turn on the existing architecture IO classes but leave outputs unconstrained.
+    sdc("set_input_delay -clock memory 1 [get_ports din]\n");
+    cases["missing"] = snapshot(500, 800);
+    EXPECT_FALSE(cases["missing"]["complete"].bool_value());
+    sdc("set_output_delay -clock memory -min 1 [get_ports {dout dq[*]}]\n"
+        "set_output_delay -clock memory -max 3 [get_ports {dout dq[*]}]\n");
+    cases["baseline"] = snapshot(500, 800);
+    ASSERT_TRUE(cases["baseline"]["complete"].bool_value());
+    ASSERT_EQ(cases["baseline"]["endpoints"].object_items().size(), 3u);
+    const auto row = cases["baseline"]["endpoints"][key][0];
+    EXPECT_GT(row["setup"].number_value(), 0);
+    EXPECT_GT(row["hold"].number_value(), 0);
+    cases["safe"] = snapshot(500, 600);
+    cases["new_failure"] = snapshot(500, 12000);
+    EXPECT_LT(cases["new_failure"]["endpoints"][key][0]["setup"].number_value(), 0);
+    cases["hold_regression"] = snapshot(100, 600);
+    cases["clock_latency"] = snapshot(500, 800, 300, 600);
+    const auto latency = cases["clock_latency"]["endpoints"][key][0];
+    EXPECT_EQ(latency["setup"].number_value() - row["setup"].number_value(), -200);
+    EXPECT_EQ(latency["hold"].number_value() - row["hold"].number_value(), 100);
+    EXPECT_EQ(latency["min_path"], row["min_path"]);
+    EXPECT_EQ(latency["max_path"], row["max_path"]);
+    sdc("set_output_delay -clock memory -min -2 [get_ports dout]\n");
+    cases["min_changed"] = snapshot(500, 800);
+    EXPECT_EQ(cases["min_changed"]["endpoints"][key][0]["hold"].number_value(), row["hold"].number_value() - 3000);
+    EXPECT_LT(cases["min_changed"]["endpoints"][key][0]["hold"].number_value(), 0);
+    sdc("set_output_delay -clock memory -min 1 [get_ports dout]\n"
+        "set_output_delay -clock memory -max 2 [get_ports dout]\n");
+    cases["max_changed"] = snapshot(500, 800);
+    EXPECT_EQ(cases["max_changed"]["endpoints"][key][0]["setup"].number_value(), row["setup"].number_value() + 1000);
+    sdc("set_output_delay -clock memory -max 3 [get_ports dout]\n");
+    const auto constraints = read_io_delays(ctx.get());
+    auto *external = net("external_clock"); ctx->addClock(external->name, 100);
+    clock->clkconstr->phase_group = ctx->id("synthetic_pll");
+    external->clkconstr->phase_group = ctx->id("synthetic_pll");
+    external->clkconstr->phase_shift = 2500;
+    auto changed = constraints;
+    for (auto &c : changed) {
+        if (c["port"].string_value() != "dout") continue;
+        auto fields = c.object_items(); fields["clock"] = "external_clock"; c = fields;
+    }
+    ctx->settings[ctx->id("timing/io_delays")] = J(changed).dump();
+    cases["phase"] = snapshot(500, 800);
+    EXPECT_TRUE(cases["phase"]["complete"].bool_value());
+    EXPECT_EQ(cases["phase"]["endpoints"][key][0]["setup_window"].number_value(), 2500);
+    for (auto &c : changed) {
+        if (c["port"].string_value() != "dout") continue;
+        auto fields = c.object_items(); fields["fall"] = true; c = fields;
+    }
+    ctx->settings[ctx->id("timing/io_delays")] = J(changed).dump();
+    cases["falling_capture"] = snapshot(500, 800);
+    EXPECT_EQ(cases["falling_capture"]["endpoints"][key][0]["capture"][1].int_value(), int(FALLING_EDGE));
+    EXPECT_EQ(cases["falling_capture"]["endpoints"][key][0]["setup_window"].number_value(), 7500);
+    launch->pin_data[id_CLK].state = PIN_INV; ctx->assignArchInfo();
+    cases["falling_launch"] = snapshot(500, 800);
+    EXPECT_EQ(cases["falling_launch"]["endpoints"][key][0]["launch"][1].int_value(), int(FALLING_EDGE));
+    EXPECT_EQ(cases["falling_launch"]["endpoints"][key][0]["setup_window"].number_value(), 2500);
+    auto duplicate = constraints; duplicate.push_back(constraints.back());
+    ctx->settings[ctx->id("timing/io_delays")] = J(duplicate).dump();
+    EXPECT_THROW(snapshot(500, 800), log_execution_error_exception);
+    ctx->settings[ctx->id("timing/io_delays")] = J(constraints).dump();
+    // A constant output is not a registered launch; keep it explicit/unsupported.
+    auto *constant = ctx->createCell(ctx->id("constant"), id_MISTRAL_CONST);
+    constant->params[id_LUT] = 1; constant->addOutput(id_Q); constant->connectPort(id_Q, net("constant_net"));
+    output->disconnectPort(id_I); output->connectPort(id_I, constant->getPort(id_Q));
+    ctx->assignArchInfo();
+    cases["constant"] = snapshot(500, 800);
+    EXPECT_FALSE(cases["constant"]["complete"].bool_value());
+    EXPECT_EQ(cases["constant"]["unsupported"].array_items().size(), 1u);
+    if (const char *file = std::getenv("NEXTPNR_TEST_OUTPUT_ENDPOINTS")) {
+        std::ofstream out(file); out << J(cases).dump() << "\n"; ASSERT_TRUE(bool(out));
+    }
+}
+
+TEST_F(IoDelayTest, OutputInventoryNeverSubstitutesFabricTimingForPrivatePadBoundary)
+{
+    registered_boundaries();
+    TimingAnalyser timing(ctx.get()), unskewed(ctx.get());
+    timing.with_clock_skew = true;
+    timing.setup(false, false, true); unskewed.setup(false, false, true);
+    std::vector<EndpointClockPairTiming> rows;
+    EXPECT_FALSE(timing.get_endpoint_clock_pair_timings(boundary_key("write", "data", false), rows, true, true));
+    EXPECT_FALSE(timing.get_endpoint_clock_pair_timings(boundary_key("write", "oe", false), rows, true, true));
+    const auto result = critical_swap_endpoint_snapshot(ctx.get(), timing, unskewed);
+    const json11::Json pad = json11::Json::array{bidir->name.str(ctx.get()), "PAD"};
+    EXPECT_NE(std::find(result["unsupported"].array_items().begin(), result["unsupported"].array_items().end(), pad),
+              result["unsupported"].array_items().end());
+    EXPECT_FALSE(result["complete"].bool_value());
+}

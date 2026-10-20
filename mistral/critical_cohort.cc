@@ -1210,15 +1210,24 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
             if (!port.second.net) continue;
             int count = 0;
             auto kind = ctx->getPortTimingClass(cell.second.get(), port.first, count);
-            if (kind != TMG_REGISTER_INPUT && kind != TMG_ENDPOINT) continue;
+            // Inventory physical output boundaries even when the architecture's
+            // ordinary unconstrained timing classification ignores them. Fabric
+            // register inputs never stand in for a private clock-to-pad capture.
+            const auto type = cell.second->type;
+            const bool unregistered_output = (type == id_MISTRAL_OB && port.first == id_I) ||
+                (type == id_MISTRAL_IO && port.first.in(id_I, id_OE));
+            const bool registered_pad = port.first == id_PAD && type.in(id_MISTRAL_SDROUT,
+                id_MISTRAL_DDROUT, id_MISTRAL_SDRIO, id_MISTRAL_DDRBIDIR);
+            if (kind != TMG_REGISTER_INPUT && kind != TMG_ENDPOINT &&
+                !unregistered_output && !registered_pad) continue;
             J key = J::array{cell.first.str(ctx), port.first.str(ctx)};
             std::vector<EndpointClockPairTiming> rows, reference;
             CellPortKey endpoint(cell.first, port.first);
             // FF ACLR has only the legacy synchronous approximation, not a
             // recovery/removal model. Do not extend it to external reset inputs.
             const bool external = !(cell.second->type == id_MISTRAL_FF && port.first == id_ACLR);
-            if (!timing.get_endpoint_clock_pair_timings(endpoint, rows, external) || rows.empty() ||
-                !unskewed.get_endpoint_clock_pair_timings(endpoint, reference, external) ||
+            if (!timing.get_endpoint_clock_pair_timings(endpoint, rows, external, external) || rows.empty() ||
+                !unskewed.get_endpoint_clock_pair_timings(endpoint, reference, external, external) ||
                 !guard::rows_match(rows, reference)) {
                 auto proof = static_endpoint_proof(ctx, cell.second.get(), port.first);
                 if (!proof.is_null()) static_endpoints[key.dump()] = proof;
@@ -1242,10 +1251,37 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
     // Preserve the complete explicit boundary contract, including min/max and
     // launch clock/edge. A changed budget must never masquerade as route gain.
     auto io_constraints = read_io_delays(ctx);
+    // Retain the physical/logical output binding as well as the SDC numbers.
+    // In particular, data and OE share a pad contract but are separate endpoints.
+    J::object output_contracts;
+    for (const auto &constraint : io_constraints) {
+        if (constraint["input"].bool_value()) continue;
+        auto root = ctx->ports.find(ctx->id(constraint["port"].string_value()));
+        if (root == ctx->ports.end() || !root->second.net) continue;
+        auto *net = root->second.net;
+        pool<IdString> cells;
+        if (net->driver.cell) cells.insert(net->driver.cell->name);
+        for (const auto &user : net->users) cells.insert(user.cell->name);
+        J::object bindings;
+        for (auto name : cells) {
+            auto *cell = ctx->cells.at(name).get();
+            J::object ports, params, pins, attrs;
+            for (const auto &pin : cell->ports)
+                ports[pin.first.str(ctx)] = J::array{int(pin.second.type),
+                    pin.second.net ? pin.second.net->name.str(ctx) : ""};
+            for (const auto &param : cell->params) params[param.first.str(ctx)] = param.second.to_string();
+            for (const auto &pin : cell->pin_data) pins[pin.first.str(ctx)] = int(pin.second.state);
+            for (const auto &attr : cell->attrs) attrs[attr.first.str(ctx)] = attr.second.to_string();
+            bindings[name.str(ctx)] = J::object{{"type", cell->type.str(ctx)}, {"ports", ports},
+                {"params", params}, {"pins", pins}, {"attrs", attrs}};
+        }
+        output_contracts[constraint["port"].string_value()] = J::object{
+            {"net", net->name.str(ctx)}, {"direction", int(root->second.type)}, {"cells", bindings}};
+    }
     std::sort(io_constraints.begin(), io_constraints.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
     std::sort(unsupported.begin(), unsupported.end(), [](const J &a, const J &b) { return a.dump() < b.dump(); });
-    return J::object{{"schema", 3}, {"complete", unsupported.empty() && !endpoints.empty()},
-        {"io_constraints", io_constraints}, {"unsupported", unsupported}, {"static_endpoints", static_endpoints},
+    return J::object{{"schema", 4}, {"complete", unsupported.empty() && !endpoints.empty()},
+        {"io_constraints", io_constraints}, {"output_contracts", output_contracts}, {"unsupported", unsupported}, {"static_endpoints", static_endpoints},
         {"clocks", clocks}, {"endpoints", endpoints}};
 }
 NEXTPNR_NAMESPACE_END

@@ -44,7 +44,7 @@ assert sum(v['hold_related'] and y[k]['hold']<v['hold'] for k,v in x.items())==6
 for k in new_failures:
  e,_,_=k;pair=[]
  for s,r in ((snapshots[0],x[k]),(snapshots[1],y[k])):
-  pair.append(dict(schema=3,io_constraints=[],final_analogue=True,complete=True,unsupported=[],static_endpoints={},clocks=s['clocks'],endpoints={e:[r]}))
+  pair.append(dict(schema=4,output_contracts={},io_constraints=[],final_analogue=True,complete=True,unsupported=[],static_endpoints={},clocks=s['clocks'],endpoints={e:[r]}))
  assert guard.compare(*pair)[0] is False
  assert 'setup regression' in guard.compare(*pair)[1]
 assert summary['decision']['selected']=='baseline' and all(summary['exact_retention'].values())

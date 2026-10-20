@@ -36,7 +36,7 @@ def finite(value):
 def rows(snapshot):
     if snapshot.get('complete') is not True or snapshot.get('unsupported') != []:
         raise ValueError('incomplete native endpoint coverage')
-    if snapshot.get('schema') != 3 or snapshot.get('final_analogue') is not True:
+    if snapshot.get('schema') != 4 or snapshot.get('final_analogue') is not True:
         raise ValueError('not a native final analogue snapshot')
     if not snapshot.get('clocks') or not snapshot.get('endpoints'):
         raise ValueError('empty clock or endpoint coverage')
@@ -59,6 +59,25 @@ def rows(snapshot):
         if key in seen:
             raise ValueError('ambiguous IO constraints')
         seen.add(key)
+    outputs = {c['port'] for c in constraints if not c['input']}
+    contracts = snapshot.get('output_contracts')
+    if not isinstance(contracts, dict) or set(contracts) != outputs:
+        raise ValueError('missing output boundary contracts')
+    for contract in contracts.values():
+        if (not isinstance(contract, dict) or not isinstance(contract.get('net'), str) or
+                not contract['net'] or contract.get('direction') not in (1, 2) or
+                not isinstance(contract.get('cells'), dict) or not contract['cells']):
+            raise ValueError('invalid output boundary contract')
+        for cell in contract['cells'].values():
+            if (not isinstance(cell, dict) or not isinstance(cell.get('type'), str) or not cell['type'] or
+                    any(not isinstance(cell.get(f), dict) for f in ('ports', 'params', 'pins', 'attrs')) or
+                    not cell['ports']):
+                raise ValueError('invalid output cell contract')
+            for connection in cell['ports'].values():
+                if (not isinstance(connection, list) or len(connection) != 2 or
+                        type(connection[0]) is not int or connection[0] not in (0, 1, 2) or
+                        not isinstance(connection[1], str)):
+                    raise ValueError('invalid output port binding')
     static = snapshot.get('static_endpoints')
     if not isinstance(static, dict):
         raise ValueError('missing static endpoint proofs')
@@ -95,6 +114,8 @@ def compare(before, after):
             return False, 'clock constraints changed'
         if before['io_constraints'] != after['io_constraints']:
             return False, 'IO boundary constraints changed'
+        if before['output_contracts'] != after['output_contracts']:
+            return False, 'output boundary semantics changed'
         if before['static_endpoints'] != after['static_endpoints']:
             return False, 'static endpoint semantics/coverage changed'
         if old.keys() != new.keys():

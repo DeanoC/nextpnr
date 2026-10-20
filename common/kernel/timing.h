@@ -164,12 +164,13 @@ struct TimingAnalyser
     // Complete, stable clock-pair coverage after full STA, or false with no
     // rows for loops, unknown clocks, incomplete tags or unconstrained launches.
     // Opt-in allow_external_launch supports explicit unregistered IO delays into
-    // registered sinks; asynchronous control and private pad aliases fail closed.
+    // registered sinks. allow_external_capture supports explicit unregistered output
+    // constraints; both default off. Private pad aliases still fail closed.
     // Path extrema are sums of native report segments in this analyser's
     // frame. Use a separate false-skew analyser for reference-free unrelated
     // extrema: true-skew backpointers can select a different launch register.
     bool get_endpoint_clock_pair_timings(CellPortKey endpoint, std::vector<EndpointClockPairTiming> &rows,
-                                         bool allow_external_launch = false);
+                                         bool allow_external_launch = false, bool allow_external_capture = false);
 
     // Enable analysis of clock skew between FFs.
     bool with_clock_skew = false;
