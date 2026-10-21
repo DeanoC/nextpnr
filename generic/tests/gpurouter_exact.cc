@@ -70,11 +70,11 @@ RouteParams parameters()
     p.expand_k = 1; p.expand_div = 0;
     return p;
 }
-Result run(Graph &graph, RouteParams p, const std::vector<int32_t> &seeds, const std::vector<float> &delays,
-           const std::vector<float> &loads, const std::vector<ArcDesc> &arcs, int path_cap = 128,
-           int bits = 10, bool bounded = false, bool large = true)
+Result run_with_backend(std::unique_ptr<Backend> backend, Graph &graph, RouteParams p,
+                        const std::vector<int32_t> &seeds, const std::vector<float> &delays,
+                        const std::vector<float> &loads, const std::vector<ArcDesc> &arcs, int path_cap = 128,
+                        int bits = 10, bool bounded = false, bool large = true)
 {
-    auto backend = create_cpu_backend();
     std::string error;
     const auto data = graph.data();
     if (!backend->init(data, 1, bits, 1, bits + 1, error))
@@ -87,6 +87,12 @@ Result run(Graph &graph, RouteParams p, const std::vector<int32_t> &seeds, const
     Result result;
     backend->route(p, {t}, arcs, seeds, delays, loads, {}, large, result.arcs, result.paths);
     return result;
+}
+Result run(Graph &graph, RouteParams p, const std::vector<int32_t> &seeds, const std::vector<float> &delays,
+           const std::vector<float> &loads, const std::vector<ArcDesc> &arcs, int path_cap = 128,
+           int bits = 10, bool bounded = false, bool large = true)
+{
+    return run_with_backend(create_cpu_backend(), graph, p, seeds, delays, loads, arcs, path_cap, bits, bounded, large);
 }
 uint32_t bits(float value)
 {
@@ -230,6 +236,38 @@ void rounded_threshold_regression()
 TEST(GpuApproximateSearch, RoundedHistogramThresholdMakesProgress)
 {
     rounded_threshold_regression();
+}
+
+TEST(GpuApproximateSearch, RoundedHistogramThresholdMakesProgressOnDevice)
+{
+    if (!device_backend_available())
+        GTEST_SKIP() << "GPU device backend or GPU device unavailable";
+
+    for (float base : {16.0f, 65536.0f, 1.0e12f}) {
+        for (bool reachable : {false, true}) {
+            Graph graph(3);
+            const float upper = std::nextafter(base, std::numeric_limits<float>::infinity());
+            const float cost = upper - base;
+            if (reachable) {
+                graph.edge(0, 2, cost);
+                graph.edge(1, 2, cost);
+            }
+            auto p = parameters();
+            p.exact = 0;
+            std::string error;
+            auto backend = create_device_backend(-1, error);
+            ASSERT_NE(backend, nullptr) << error;
+            const auto result = run_with_backend(std::move(backend), graph, p, {0, 1}, {base, upper}, {0, 0},
+                                                 {{2, 1, 1}});
+            const auto &arc = result.arcs.at(0);
+            ASSERT_EQ(arc.status, reachable ? ARC_OK : ARC_NO_PATH);
+            if (reachable) {
+                EXPECT_EQ(arc.cost, upper);
+                ASSERT_EQ(arc.path_len, 1);
+                EXPECT_EQ(result.paths.at(arc.path_off).parent, 0);
+            }
+        }
+    }
 }
 
 TEST(GpuExactSearch, EqualCostFrontierChoosesLowerWireThenSinkEdge)
