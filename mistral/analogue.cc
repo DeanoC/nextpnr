@@ -175,6 +175,7 @@ void Arch::compute_analogue_arcs(bool observe)
         DelayQuad delay;
         bool ok = false;
         std::vector<AnalogueHop> hops;
+        DelayQuad lut_input_delay;
     };
     std::vector<Job> jobs;
     for (auto &net : nets) {
@@ -188,13 +189,13 @@ void Arch::compute_analogue_arcs(bool observe)
     const int nthreads = std::max(1, std::min(int(std::thread::hardware_concurrency()), 32));
     nextpnr_mistral_workers::run(jobs.size(), nthreads, [&](size_t index) {
         auto &job = jobs[index];
-        job.ok = analogue_arc_delay(job.ni, *job.usr, job.delay,
-                                    observe && !job.ni->is_global ? &job.hops : nullptr);
+        job.ok = analogue_arc_delay(job.ni, *job.usr, job.delay, observe && !job.ni->is_global ? &job.hops : nullptr,
+                                    &job.lut_input_delay);
     });
     analogue_arc_cache.clear();
     analogue_arc_cache.reserve(jobs.size());
     for (auto &job : jobs)
-        analogue_arc_cache.emplace(job.usr, AnalogueArc{job.delay, job.ok});
+        analogue_arc_cache.emplace(job.usr, AnalogueArc{job.delay, job.ok, job.lut_input_delay});
     analogue_cache_valid = true;
     if (!observe)
         return;
@@ -386,6 +387,7 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float limit, bool improv
         float best_score = score_old + min_gain;
         int best = -1;
         std::vector<DelayQuad> best_delay;
+        std::vector<DelayQuad> best_lut_input_delay;
         std::vector<SavedRouting::Entry> best_entries;
         for (size_t c = 0; c < cands.size(); c++) {
             cfg.check_stop();
@@ -408,13 +410,14 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float limit, bool improv
             auto te = std::chrono::steady_clock::now();
             // Every sink is an independent simulation over const state
             std::vector<DelayQuad> d_new(users.size());
+            std::vector<DelayQuad> input_new(users.size());
             std::vector<uint8_t> ok(users.size(), 1);
             auto simulate = [&](size_t first, size_t step) {
                 for (size_t i = first; i < users.size(); i += step) {
                     if (!counted[i])
                         continue;
                     DelayQuad d;
-                    ok[i] = analogue_arc_delay(ni, *users[i], d, nullptr);
+                    ok[i] = analogue_arc_delay(ni, *users[i], d, nullptr, &input_new[i]);
                     d_new[i] = d;
                 }
             };
@@ -441,6 +444,7 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float limit, bool improv
                 best_score = score;
                 best = int(c);
                 best_delay = d_new;
+                best_lut_input_delay = input_new;
                 best_entries = entries;
             }
             // back to the original routing, then the original mux state
@@ -459,7 +463,7 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float limit, bool improv
         analogue_relink(old_pips, new_pips);
         for (size_t i = 0; i < users.size(); i++)
             if (counted[i])
-                analogue_arc_cache[users[i]] = AnalogueArc{best_delay[i], true};
+                analogue_arc_cache[users[i]] = AnalogueArc{best_delay[i], true, best_lut_input_delay[i]};
         cr.resync(ni);
         improved++;
         total_gain += best_score - score_old;

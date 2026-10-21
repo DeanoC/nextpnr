@@ -1,0 +1,70 @@
+{
+ "launch": "ce_6m5_MISTRAL_FF_Q",
+ "luts": [
+  {
+   "name": "video.old_hblank_MISTRAL_ALUT3_A_Q_MISTRAL_ALUT5_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 34,
+   "y": 23,
+   "alm": 1,
+   "half": 0,
+   "phys": "F0",
+   "chain": [
+    "GIN.022.012.0000",
+    "H3.023.012.0001",
+    "WM.025.012.0001",
+    "V12.025.013.0000",
+    "WM.025.022.0001",
+    "H14.026.022.0000",
+    "V2.033.023.0010",
+    "TD.034.023.0008",
+    "GOUT.034.023.0009"
+   ],
+   "route_ps": 1460.9999656677246,
+   "cell_ps": 224.99999403953552,
+   "signal": "q0",
+   "atom": "n1"
+  },
+  {
+   "name": "video.fb.0.112_A1EN_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 34,
+   "y": 28,
+   "alm": 6,
+   "half": 0,
+   "phys": "F0",
+   "chain": [
+    "GIN.034.023.0004",
+    "V2.034.024.0003",
+    "V2.034.026.0003",
+    "V2.034.028.0003",
+    "H3.032.028.0014",
+    "TD.034.028.0022",
+    "GOUT.034.028.0049"
+   ],
+   "route_ps": 1095.0000286102295,
+   "cell_ps": 224.99999403953552,
+   "signal": "n1",
+   "atom": "n2"
+  },
+  {
+   "name": "video.fb.0.122_A1EN_MISTRAL_ALUT5_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 34,
+   "y": 28,
+   "alm": 8,
+   "half": 0,
+   "phys": "F0",
+   "chain": [
+    "GIN.034.028.0025",
+    "H3.034.028.0006",
+    "TD.034.028.0013",
+    "GOUT.034.028.0065"
+   ],
+   "route_ps": 527.0000100135803,
+   "cell_ps": 240.9999966621399,
+   "signal": "n2",
+   "atom": "n3"
+  }
+ ]
+}

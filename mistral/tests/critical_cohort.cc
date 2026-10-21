@@ -875,7 +875,7 @@ TEST_F(CriticalCohort, MeasuredModelMatchesInsertedGraphAndRejectsMismatches)
     auto measured_arcs = route_model.at("arcs").array_items();
     for (auto &entry : measured_arcs) {
         auto row = entry.object_items();
-        row["wire"] = json11::Json::array{100, 250};
+        row["wire"] = json11::Json::array{100, 225};
         row["local"] = json11::Json::array{0, 0};
         auto name = ctx->id(row.at("sink").string_value());
         auto port = ctx->id(row.at("port").string_value());
@@ -884,7 +884,7 @@ TEST_F(CriticalCohort, MeasuredModelMatchesInsertedGraphAndRejectsMismatches)
             name = ctx->id(name.str(ctx.get()) + "$ROUTETHRU");
             port = id_A;
         }
-        actual.set_route_delay({name, port}, DelayPair(100, 250));
+        actual.set_route_delay({name, port}, DelayPair(100, 225));
         entry = row;
     }
     actual.run(false, false, false, true);
@@ -915,16 +915,16 @@ TEST_F(CriticalCohort, MeasuredModelMatchesInsertedGraphAndRejectsMismatches)
             EXPECT_EQ(got[i].hold_margin, expected[i].hold_margin);
         }
         auto *capture = ctx->cells.at(capture_name).get();
-        // Measured wire max is 250 ps. The route-through adds the F-pin
-        // logic delay, whose max is 97 ps.
-        EXPECT_EQ(model.route_delay(ctx.get(), {capture, id_DATAIN}), 250 + 97);
+        // Measured wire max is 225 ps. The route-through adds the F-pin
+        // logic (97 ps) and estimated GOUT mux (175 ps), totaling 497 ps.
+        EXPECT_EQ(model.route_delay(ctx.get(), {capture, id_DATAIN}), 225 + 97 + 175);
         const auto original_input = capture->getPort(id_DATAIN);
         const auto original_count = ctx->cells.size();
         CriticalCohortStats stats;
         // The matching driver half removes the virtual buffer. The calibrated
         // wire clamps at zero rather than becoming a negative arrival delay.
-        // F-pin logic is 97 ps, so this 17-tile move does not reproduce the
-        // old half-nanosecond setup improvement from a C-pin buffer.
+        // The 225 ps measured wire plus the estimated 272 ps route-through
+        // cell arc stays below the existing 500 ps setup-improvement guard.
         EXPECT_FALSE(critical_cohort_trial(
                 ctx.get(), {capture}, -6, -17, 10000,
                 [&]() {

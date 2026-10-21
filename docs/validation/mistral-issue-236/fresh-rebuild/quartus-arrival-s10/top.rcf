@@ -1,0 +1,73 @@
+section global_data {
+	rcf_written_by = "nextpnr #174 replica";
+	device = 5CSEBA6U23I7;
+}
+
+signal_name = q0 {
+	LE_BUFFER:X22Y16S0I14;
+	C2:X22Y14S0I12;
+	C2:X22Y12S0I12;
+	C2:X22Y10S0I12;
+	C2:X22Y8S0I12;
+	R3:X20Y8S0I15;
+	LOCAL_INTERCONNECT:X22Y8S0I35;
+	BLOCK_INPUT_MUX:X22Y8S0I79;
+	dest = ( n1, DATAA ), route_port = DATAF;
+}
+signal_name = n1 {
+	LOCAL_LINE:X22Y8S0I19;
+	BLOCK_INPUT_MUX:X22Y8S0I3;
+	dest = ( n2, DATAA ), route_port = DATAB;
+}
+signal_name = n2 {
+	LE_BUFFER:X22Y8S0I0;
+	R3:X20Y8S0I17;
+	LOCAL_INTERCONNECT:X22Y8S0I8;
+	BLOCK_INPUT_MUX:X22Y8S0I15;
+	dest = ( n3, DATAA ), route_port = DATAF;
+}
+signal_name = n3 {
+	LOCAL_LINE:X22Y8S0I3;
+	BLOCK_INPUT_MUX:X22Y8S0I57;
+	dest = ( n4, DATAA ), route_port = DATAF;
+}
+signal_name = n4 {
+	LE_BUFFER:X22Y8S0I29;
+	R3:X19Y8S0I19;
+	R6:X13Y8S0I38;
+	LOCAL_INTERCONNECT:X12Y8S0I15;
+	BLOCK_INPUT_MUX:X12Y8S0I41;
+	dest = ( n5, DATAA ), route_port = DATAF;
+}
+signal_name = n5 {
+	LOCAL_LINE:X12Y8S0I10;
+	BLOCK_INPUT_MUX:X12Y8S0I27;
+	dest = ( n6, DATAA ), route_port = DATAB;
+}
+signal_name = n6 {
+	LE_BUFFER:X12Y8S0I12;
+	R6:X13Y8S0I0;
+	R6:X18Y8S0I0;
+	LOCAL_INTERCONNECT:X21Y8S0I0;
+	BLOCK_INPUT_MUX:X21Y8S0I55;
+	dest = ( n7, DATAA ), route_port = DATAF;
+}
+signal_name = n7 {
+	LE_BUFFER:X21Y8S0I26;
+	C4:X21Y9S0I0;
+	LOCAL_INTERCONNECT:X22Y9S0I10;
+	BLOCK_INPUT_MUX:X22Y9S0I41;
+	dest = ( n8, DATAA ), route_port = DATAF;
+}
+signal_name = n8 {
+	LOCAL_LINE:X22Y9S0I10;
+	BLOCK_INPUT_MUX:X22Y9S0I65;
+	dest = ( n9, DATAA ), route_port = DATAF;
+}
+signal_name = n9 {
+	LE_BUFFER:X22Y9S0I33;
+	R6:X22Y9S0I6;
+	LOCAL_INTERCONNECT:X22Y9S0I41;
+	BLOCK_INPUT_MUX:X22Y9S0I45;
+	dest = ( n10, DATAA ), route_port = DATAD;
+}

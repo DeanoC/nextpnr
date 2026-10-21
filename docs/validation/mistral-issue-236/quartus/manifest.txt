@@ -1,0 +1,161 @@
+{
+ "launch": "machine.ce_3m25_MISTRAL_FF_Q",
+ "luts": [
+  {
+   "name": "machine.cpu.bus.length_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT2_Q",
+   "kind": "MISTRAL_COMB",
+   "x": 16,
+   "y": 3,
+   "alm": 4,
+   "half": 1,
+   "phys": "E1",
+   "chain": [
+    "GIN.021.006.0034",
+    "V4.021.002.0006",
+    "H6.016.003.0021",
+    "TD.016.003.0034",
+    "GOUT.016.003.0038"
+   ],
+   "route_ps": 1047.0000505447388,
+   "cell_ps": 335.00000834465027,
+   "signal": "q0",
+   "atom": "n1"
+  },
+  {
+   "name": "machine.cpu.bus.length_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT4_Q_1",
+   "kind": "MISTRAL_COMB",
+   "x": 16,
+   "y": 3,
+   "alm": 9,
+   "half": 0,
+   "phys": "E0",
+   "chain": [
+    "LD.016.003.0009",
+    "GOUT.016.003.0072"
+   ],
+   "route_ps": 108.99999737739563,
+   "cell_ps": 335.00000834465027,
+   "signal": "n1",
+   "atom": "n2"
+  },
+  {
+   "name": "machine.cpu.bus.length_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_F",
+   "kind": "MISTRAL_COMB",
+   "x": 16,
+   "y": 3,
+   "alm": 8,
+   "half": 0,
+   "phys": "F0",
+   "chain": [
+    "GIN.016.003.0037",
+    "H3.016.003.0007",
+    "TD.016.003.0015",
+    "GOUT.016.003.0065"
+   ],
+   "route_ps": 467.00000762939453,
+   "cell_ps": 97.00000286102295,
+   "signal": "n2",
+   "atom": "n3"
+  },
+  {
+   "name": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B",
+   "kind": "MISTRAL_COMB",
+   "x": 10,
+   "y": 8,
+   "alm": 5,
+   "half": 0,
+   "phys": "C",
+   "chain": [
+    "GIN.016.003.0033",
+    "V2.015.004.0004",
+    "V2.015.006.0004",
+    "V2.015.007.0010",
+    "H6.010.008.0025",
+    "TD.010.008.0039",
+    "GOUT.010.008.0044"
+   ],
+   "route_ps": 1514.0000581741333,
+   "cell_ps": 512.0000243186951,
+   "signal": "n3",
+   "atom": "n4"
+  },
+  {
+   "name": "machine.cpu.cpu.indexed_cb_MISTRAL_FF_Q_ENA_MISTRAL_ALUT3_Q_A_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+   "kind": "MISTRAL_COMB",
+   "x": 10,
+   "y": 8,
+   "alm": 1,
+   "half": 1,
+   "phys": "B",
+   "chain": [
+    "LD.010.008.0010",
+    "GOUT.010.008.0011"
+   ],
+   "route_ps": 122.00000137090683,
+   "cell_ps": 583.0000042915344,
+   "signal": "n4",
+   "atom": "n5"
+  },
+  {
+   "name": "machine.cpu.cpu.branch_taken_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT4_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 6,
+   "y": 3,
+   "alm": 4,
+   "half": 1,
+   "phys": "B",
+   "chain": [
+    "GIN.010.008.0006",
+    "V2.010.006.0019",
+    "H3.008.007.0012",
+    "V4.009.003.0007",
+    "H6.004.003.0021",
+    "TD.006.003.0023",
+    "GOUT.006.003.0035"
+   ],
+   "route_ps": 1394.0000534057617,
+   "cell_ps": 583.0000042915344,
+   "signal": "n5",
+   "atom": "n6"
+  },
+  {
+   "name": "machine.cpu.cpu.recognition_nmi_MISTRAL_FF_Q_ENA_MISTRAL_FF_ENA_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D",
+   "kind": "MISTRAL_COMB",
+   "x": 2,
+   "y": 3,
+   "alm": 2,
+   "half": 1,
+   "phys": "A",
+   "chain": [
+    "GIN.006.003.0019",
+    "H3.003.003.0016",
+    "TD.002.003.0005",
+    "GOUT.002.003.0018"
+   ],
+   "route_ps": 512.0000243186951,
+   "cell_ps": 605.0000190734863,
+   "signal": "n6",
+   "atom": "n7"
+  },
+  {
+   "name": "machine.cpu.cpu.group_sel_MISTRAL_FF_Q_1_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT5_B",
+   "kind": "MISTRAL_COMB",
+   "x": 7,
+   "y": 1,
+   "alm": 7,
+   "half": 0,
+   "phys": "A",
+   "chain": [
+    "GIN.002.003.0010",
+    "V2.002.001.0021",
+    "H6.003.001.0010",
+    "TD.007.001.0001",
+    "GOUT.007.001.0058"
+   ],
+   "route_ps": 1008.0000162124634,
+   "cell_ps": 605.0000190734863,
+   "signal": "n7",
+   "atom": "n8"
+  }
+ ]
+}

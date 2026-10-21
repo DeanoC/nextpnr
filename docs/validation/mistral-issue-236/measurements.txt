@@ -1,0 +1,615 @@
+{
+  "nextpnr_commit": "e904cbfbf18c4218f03a9e1e121d19ada0bbdaf4",
+  "binary_sha256": "994d96247e09ee60087edab569bdbaec88fd0c3c0272fee0a3b92ee4647f904a",
+  "build": {
+    "arch": "mistral",
+    "GPU_ROUTER": "OFF",
+    "BUILD_PYTHON": false,
+    "BUILD_GUI": false
+  },
+  "inputs": {
+    "clocks.sdc": {
+      "path": "/home/deano/tmp/k845-cuda/in/clocks.sdc",
+      "sha256": "3ebc0f6ce0f96c2b88e4f358a6fc6111065bb559135cc47164a6c70372450186"
+    },
+    "cart.json": {
+      "path": "/home/deano/tmp/k845-cuda/in/cart.json",
+      "sha256": "152d391f1cc0e62dd10c89577f7af62c66bc726a41f4b23ccc7b27378618b86f"
+    },
+    "scaffold.json": {
+      "path": "/home/deano/tmp/k845-cuda/in/scaffold.json",
+      "sha256": "d861c5eb530ef101e90b24ab890da2b5ecd120733e2c7c6ab36e7c15e8cad688"
+    },
+    "socket.qsf": {
+      "path": "/home/deano/tmp/k845-cuda/in/socket.qsf",
+      "sha256": "399a6fce230eb82f32cb1eef8c9c6d54ab9fb2b222475539977b698cc986cab0"
+    }
+  },
+  "runs": {
+    "table": {
+      "command": [
+        "/tmp/issue236-build/nextpnr-mistral",
+        "--device",
+        "5CSEBA6U23I7",
+        "--qsf",
+        "/home/deano/tmp/k845-cuda/in/socket.qsf",
+        "--sdc",
+        "/home/deano/tmp/k845-cuda/in/clocks.sdc",
+        "--freq",
+        "52.224",
+        "--fes-scaffold",
+        "--no-pack",
+        "--no-place",
+        "--no-route",
+        "--json",
+        "/home/deano/tmp/k845-cuda/in/scaffold.json",
+        "--report",
+        "/tmp/issue236/table.json"
+      ],
+      "exit_code": 0,
+      "report_sha256": "88ac3a89b897921461cd87389a9b28c3955bdf11702eed1aaa8638e320f93ded",
+      "fmax": {
+        "audio_clk": {
+          "achieved": 163.98818969726562,
+          "constraint": 12.288031578063965
+        },
+        "clk_sys": {
+          "achieved": 46.913116455078125,
+          "constraint": 52.22477340698242
+        },
+        "display.control.clk": {
+          "achieved": 87.09284210205078,
+          "constraint": 74.25006866455078
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "audio_clk": {
+            "hold_wns_ns": 1.0130000114440918,
+            "setup_wns_ns": 75.28199768066406
+          },
+          "clk_sys": {
+            "hold_wns_ns": 0.8920000195503235,
+            "setup_wns_ns": -2.1449999809265137
+          },
+          "display.control.clk": {
+            "hold_wns_ns": 0.984000027179718,
+            "setup_wns_ns": 1.9859999418258667
+          }
+        },
+        "final_analogue_model": false
+      }
+    },
+    "options": {
+      "command": [
+        "/tmp/issue236-build/nextpnr-mistral",
+        "--device",
+        "5CSEBA6U23I7",
+        "--qsf",
+        "/home/deano/tmp/k845-cuda/in/socket.qsf",
+        "--sdc",
+        "/home/deano/tmp/k845-cuda/in/clocks.sdc",
+        "--freq",
+        "52.224",
+        "--fes-scaffold",
+        "--no-pack",
+        "--no-place",
+        "--no-route",
+        "--json",
+        "/home/deano/tmp/k845-cuda/in/scaffold.json",
+        "--report",
+        "/tmp/issue236/options.json",
+        "--isolated-lut-placement",
+        "--arrival-pin-assignment"
+      ],
+      "exit_code": 0,
+      "report_sha256": "88ac3a89b897921461cd87389a9b28c3955bdf11702eed1aaa8638e320f93ded",
+      "fmax": {
+        "audio_clk": {
+          "achieved": 163.98818969726562,
+          "constraint": 12.288031578063965
+        },
+        "clk_sys": {
+          "achieved": 46.913116455078125,
+          "constraint": 52.22477340698242
+        },
+        "display.control.clk": {
+          "achieved": 87.09284210205078,
+          "constraint": 74.25006866455078
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "audio_clk": {
+            "hold_wns_ns": 1.0130000114440918,
+            "setup_wns_ns": 75.28199768066406
+          },
+          "clk_sys": {
+            "hold_wns_ns": 0.8920000195503235,
+            "setup_wns_ns": -2.1449999809265137
+          },
+          "display.control.clk": {
+            "hold_wns_ns": 0.984000027179718,
+            "setup_wns_ns": 1.9859999418258667
+          }
+        },
+        "final_analogue_model": false
+      }
+    },
+    "analogue-strict": {
+      "command": [
+        "/tmp/issue236-build/nextpnr-mistral",
+        "--device",
+        "5CSEBA6U23I7",
+        "--qsf",
+        "/home/deano/tmp/k845-cuda/in/socket.qsf",
+        "--sdc",
+        "/home/deano/tmp/k845-cuda/in/clocks.sdc",
+        "--freq",
+        "52.224",
+        "--fes-scaffold",
+        "--no-pack",
+        "--no-place",
+        "--no-route",
+        "--json",
+        "/tmp/issue236/scaffold-strict.json",
+        "--report",
+        "/tmp/issue236/analogue-strict.json",
+        "--rbf",
+        "/tmp/issue236/scaffold-strict.rbf",
+        "--compress-rbf"
+      ],
+      "exit_code": 1,
+      "report_sha256": "d036b8227b4fbedac48f6a242ea769d570d6e0d3fd3ff3967bf8db08477afcca",
+      "fmax": {
+        "audio_clk": {
+          "achieved": 162.70745849609375,
+          "constraint": 12.288031578063965
+        },
+        "clk_sys": {
+          "achieved": 45.69966125488281,
+          "constraint": 52.22477340698242
+        },
+        "display.control.clk": {
+          "achieved": 85.49931335449219,
+          "constraint": 74.25006866455078
+        }
+      },
+      "timing_summary": {
+        "clocks": {
+          "audio_clk": {
+            "hold_wns_ns": 0.9020000100135803,
+            "setup_wns_ns": 75.23400115966797
+          },
+          "clk_sys": {
+            "hold_wns_ns": 0.7419999837875366,
+            "setup_wns_ns": -1.6080000400543213
+          },
+          "display.control.clk": {
+            "hold_wns_ns": 0.7829999923706055,
+            "setup_wns_ns": 1.7719999551773071
+          }
+        },
+        "final_analogue_model": true
+      }
+    }
+  },
+  "failing_reported_clk_sys_paths": [
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.367,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_9",
+        "loc": [
+          4,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.607999,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q",
+        "loc": [
+          22,
+          2
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.483999,
+      "endpoint": {
+        "cell": "machine.cpu.bus.rdata_MISTRAL_FF_Q_4",
+        "loc": [
+          18,
+          8
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.282999,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_Q_A_MISTRAL_ALUT2_A_1_Q_MISTRAL_FF_SCLR",
+        "loc": [
+          11,
+          8
+        ],
+        "port": "SCLR"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.277,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_FF_Q",
+        "loc": [
+          22,
+          2
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.222999,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_Q_A_MISTRAL_ALUT2_A_1_Q_MISTRAL_FF_SCLR",
+        "loc": [
+          11,
+          8
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.005999,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT2_Q_A_MISTRAL_ALUT2_A_Q_MISTRAL_FF_DATAIN_1",
+        "loc": [
+          23,
+          6
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -0.874999,
+      "endpoint": {
+        "cell": "gp_mailbox.media_write_busy_MISTRAL_FF_Q",
+        "loc": [
+          3,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -0.873999,
+      "endpoint": {
+        "cell": "machine.tape_addr_MISTRAL_FF_Q_5",
+        "loc": [
+          17,
+          3
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -0.789,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_9",
+        "loc": [
+          4,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -0.707999,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_FF_Q",
+        "loc": [
+          22,
+          2
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -0.707,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.state_MISTRAL_FF_Q_19",
+        "loc": [
+          12,
+          6
+        ],
+        "port": "DATAIN"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -0.702,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -0.702,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_1",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -0.702,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_10",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -0.702,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_11",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "posedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -0.702,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_12",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_1",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_10",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_11",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_12",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_13",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_14",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_15",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_2",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_3",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_4",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_5",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_6",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_7",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    },
+    {
+      "from": "negedge clk_sys",
+      "to": "posedge clk_sys",
+      "slack_ns": -1.28,
+      "endpoint": {
+        "cell": "machine.cpu.cpu.push_value_MISTRAL_FF_Q_8",
+        "loc": [
+          7,
+          1
+        ],
+        "port": "ENA"
+      }
+    }
+  ]
+}
