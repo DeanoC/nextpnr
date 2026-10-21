@@ -93,7 +93,7 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("isolated-lut-placement",
                            "score the earlier L5 LUT inputs on their isolated legal pins during placement (opt-in)");
     specific.add_options()("arrival-pin-assignment",
-                           "permute private LUT inputs by arrival after legalisation (opt-in)");
+                           "permute private LUT inputs by setup-relative arrival after legalisation (opt-in)");
     specific.add_options()("fes-scaffold", "lock loaded shell BEL+routing to STRENGTH_USER");
     specific.add_options()("fes-cart", po::value<std::string>(), "merge unbound cart JSON into the reserved socket");
     specific.add_options()("fes-cart-region", po::value<std::string>(),

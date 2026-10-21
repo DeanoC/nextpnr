@@ -1,0 +1,47 @@
+Running main() from /home/deano/harnesses/worktrees/nextpnr/vivid-island/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = LutInputDelayTest.*:CompletedObservationsTest.*:LutPlacementTiming.*
+[==========] Running 15 tests from 3 test suites.
+[----------] Global test environment set-up.
+[----------] 2 tests from LutInputDelayTest
+[ RUN      ] LutInputDelayTest.PlacementChargesMuxWithoutInventingEarlyMargin
+[       OK ] LutInputDelayTest.PlacementChargesMuxWithoutInventingEarlyMargin (5816 ms)
+[ RUN      ] LutInputDelayTest.AnalogueIncludesTerminalStageAndPreservesControlArc
+[       OK ] LutInputDelayTest.AnalogueIncludesTerminalStageAndPreservesControlArc (5689 ms)
+[----------] 2 tests from LutInputDelayTest (11506 ms total)
+
+[----------] 9 tests from LutPlacementTiming
+[ RUN      ] LutPlacementTiming.Lut6PhysicalFIsFasterThanE
+[       OK ] LutPlacementTiming.Lut6PhysicalFIsFasterThanE (11347 ms)
+[ RUN      ] LutPlacementTiming.IsolatedCellEstimatesMatchBothPhysicalHalves
+[       OK ] LutPlacementTiming.IsolatedCellEstimatesMatchBothPhysicalHalves (22014 ms)
+[ RUN      ] LutPlacementTiming.DefaultEstimateGivesTheLastInputF
+[       OK ] LutPlacementTiming.DefaultEstimateGivesTheLastInputF (5601 ms)
+[ RUN      ] LutPlacementTiming.IsolatedSparseInputsMatchLegalisation
+[       OK ] LutPlacementTiming.IsolatedSparseInputsMatchLegalisation (10983 ms)
+[ RUN      ] LutPlacementTiming.SharedAndPrivateL5PinsRemainLegal
+[       OK ] LutPlacementTiming.SharedAndPrivateL5PinsRemainLegal (5428 ms)
+[ RUN      ] LutPlacementTiming.PinOptionsLeaveThePlacementEstimate
+[       OK ] LutPlacementTiming.PinOptionsLeaveThePlacementEstimate (16882 ms)
+[ RUN      ] LutPlacementTiming.SharedLastInputKeepsAFreePrivateFastPin
+[       OK ] LutPlacementTiming.SharedLastInputKeepsAFreePrivateFastPin (5547 ms)
+[ RUN      ] LutPlacementTiming.DirectDataFlipFlopDoesNotShareItsFabricPin
+[       OK ] LutPlacementTiming.DirectDataFlipFlopDoesNotShareItsFabricPin (8123 ms)
+[ RUN      ] LutPlacementTiming.SynchronousLoadKeepsASelectorInput
+[       OK ] LutPlacementTiming.SynchronousLoadKeepsASelectorInput (6854 ms)
+[----------] 9 tests from LutPlacementTiming (92784 ms total)
+
+[----------] 4 tests from CompletedObservationsTest
+[ RUN      ] CompletedObservationsTest.RealFailedHpsHopNeverBecomesObservation
+[       OK ] CompletedObservationsTest.RealFailedHpsHopNeverBecomesObservation (6855 ms)
+[ RUN      ] CompletedObservationsTest.FailedCachedOverridePreservesFallbackRouteMinimum
+[       OK ] CompletedObservationsTest.FailedCachedOverridePreservesFallbackRouteMinimum (5585 ms)
+[ RUN      ] CompletedObservationsTest.CompletedZeroPrefixesSurviveLaterFailureAndRepeatedAggregation
+[       OK ] CompletedObservationsTest.CompletedZeroPrefixesSurviveLaterFailureAndRepeatedAggregation (5785 ms)
+[ RUN      ] CompletedObservationsTest.PhysicalLabCircuitHopKeepsPositiveCompletedObservation
+LAB circuit GIN.1.1.0 -> H3.0.1.46 rise=63 fall=83 quad=60,63,79,83
+[       OK ] CompletedObservationsTest.PhysicalLabCircuitHopKeepsPositiveCompletedObservation (7734 ms)
+[----------] 4 tests from CompletedObservationsTest (25960 ms total)
+
+[----------] Global test environment tear-down
+[==========] 15 tests from 3 test suites ran. (130251 ms total)
+[  PASSED  ] 15 tests.

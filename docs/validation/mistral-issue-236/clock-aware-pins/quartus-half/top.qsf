@@ -1,0 +1,18 @@
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEBA6U23I7
+set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name VERILOG_FILE top.v
+set_global_assignment -name SDC_FILE top.sdc
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name GENERATE_RBF_FILE ON
+set_instance_assignment -name VIRTUAL_PIN ON -to din
+set_instance_assignment -name VIRTUAL_PIN ON -to dout
+set_location_assignment PIN_V11 -to clk
+set_location_assignment FF_X22_Y12_N1 -to q0
+set_location_assignment MLABCELL_X34_Y23_N6 -to n1
+set_location_assignment MLABCELL_X34_Y28_N36 -to n2
+set_location_assignment MLABCELL_X34_Y28_N48 -to n3
+set_location_assignment FF_X34_Y28_N49 -to qc
+set_global_assignment -name ROUTING_BACK_ANNOTATION_FILE top.rcf
+
+set_global_assignment -name LAST_QUARTUS_VERSION "17.0.2 Lite Edition"

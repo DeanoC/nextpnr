@@ -1,0 +1,77 @@
+The terminal-input model correction is implemented; see terminal-input-fix/findings.txt.
+
+Fresh producer comparison is now complete; see fresh-rebuild/findings.txt.
+
+Regression mechanism, follow-up to the initial #236 investigation
+
+The initial investigation established the failure, but did not sufficiently
+separate a model-only loss from worse placement/routing or test a fresh
+producer build. Option tests against a frozen scaffold cannot measure the
+benefit of those options during shell production.
+
+The same physical critical path, holding routes, pins, clock-to-Q, setup and
+skew fixed, has these LUT maximum-delay charges (ps):
+
+Stage  logical input  physical input  pre-#172  current  delta
+1      ALUT2.B        E1              97        335      +238
+2      ALUT4.B        E0              512       335      -177
+3      ALUT6.F        F0              97        97          0
+4      ALUT2.A        C               400       512      +112
+5      ALUT2.B        B               97        583      +486
+6      ALUT4.D        B               97        583      +486
+7      ALUT5.E        A               97        605      +508
+8      ALUT5.E        A               97        605      +508
+Total                               1493      3655     +2162
+
+Pre-#172 charges come directly from d869795b^:mistral/delay.cc.
+Current charges and physical pins come from the original routed checkpoint's
+FES_PINMAP_V1 and final analogue report. This is a re-cost of identical
+hardware, not an old-vs-new full-build benchmark.
+
+The resulting path totals are 8.779 ns (56.95 MHz) and 10.941 ns (45.70 MHz).
+The complete 11.25 MHz difference on this path can therefore be explained
+without any new routing regression: the old logical-position model hid
+2.162 ns of LUT delay. The Quartus identical-data-route replica supports
+the current physical-model conclusion rather than the historical pass.
+
+Physical cause: synthesis puts the important input last because its ALUT
+model calls that input fastest. The old ALM legalizer could assign that
+logical input to slow physical A/B instead of F. The old timer still charged
+97 ps, regardless of the physical assignment. #172 (d869795b) corrected
+the reporting; #218 (552ba246) subsequently changed fresh legalisation
+to put the last private L5 input on F and to keep eligible shared critical
+inputs private. It also corrected placement's estimate for that last input.
+The frozen shell still contains the historical A/B assignments, so loading
+it with latest nextpnr preserves the defect in the artifact.
+
+Targeted fix hypothesis to validate first
+
+Build a NEW shell from its pre-seal synthesized input using latest nextpnr,
+with the #218 pin assignment active. Compare the original production seed
+(10 in the linked #214 producer regression) and seeds 1 and 3, then test
+arrival-pin-assignment, isolated-lut-placement and their combination on
+the same input. Pin down the exact producer input and command hashes first;
+the retained #214 fixture is on Powerboat at:
+/home/deano/tmp/k791-6fb7/replay/fes-zx81-oss/inputs
+
+For every candidate, inspect which of stages 1,5,6,7,8 actually moves to
+F, the resulting routing delta, all clk_sys setup paths, and other clocks.
+Their naive pin-only saving relative to the frozen assignments is
+0.238+0.486+0.486+0.508+0.508 = 2.226 ns, more than this path's 1.367 ns
+deficit. That is an opportunity estimate, NOT a measured closure result:
+shared inputs, selectors, timing shifts on other inputs and new routing
+can consume the gain. Latest fresh full-shell closure has not been run in
+this investigation, and the exact package producer input identity is not
+yet established against that retained fixture.
+
+If latest legalisation still leaves a late critical input on A/B, diagnose
+its actual eligibility and shared-pin/selector reservation before changing
+code. A remaining legalizer/placement mismatch should be fixed in nextpnr;
+rebuild the shell and verify positive final analogue setup/hold margins.
+If the latest mapping fixes those pins but routing consumes the benefit,
+compare path-by-path placement/routing under the same current timer and
+target the measured routing regression. Do not jump first to RTL retiming,
+clock reductions or reverting the corrected timing model.
+
+No fresh producer P&R result is claimed here. The previous findings.txt
+contains the successful current-main scaffold-only STA and Quartus evidence.

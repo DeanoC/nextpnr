@@ -413,7 +413,10 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                         unsigned long long e = far2[i];
                         const uint32_t v = pack_lo(e);
                         const float f = pack_g(e) + h_est(p, g.wx[v], g.wy[v], sx, sy);
-                        if (f < thr) {
+                        // The bin boundary can round back to minf when the range
+                        // is small relative to the costs. Always expand the minima
+                        // so a nonempty frontier cannot repeat without progress.
+                        if (f < thr || f == minf) {
                             int pos = atomicAdd(&st.near_n, 1);
                             if (pos < cap)
                                 near[pos] = e;

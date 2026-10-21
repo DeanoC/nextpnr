@@ -1,0 +1,135 @@
+Follow-up: ../clock-aware-pins/findings.txt records the physical optimization and passing seed-1 rebuild candidate. This file retains the earlier timer-only results.
+
+Terminal LUT-input timing correction for issue #236
+2026-10-20, base nextpnr e904cbfb
+
+Implemented
+
+The native wire used as a Boolean LUT input ends at GOUT, before its
+block-input mux. The old analogue arc stopped there and getCellDelay
+charged only the physical LUT mux levels. The terminal stage was absent
+from both terms. Synthetic FF/control endpoints already include it.
+
+delay.cc now simulates the terminal GOUT circuit using the propagated
+input waveform for ordinary ALUT2-6, BUF and NOT inputs. Both rise/fall
+and early/late results are retained. The existing graph boundary stays
+at GOUT: getCellDelay adds the measured terminal input term, and the
+routed override removes that same term from the full analogue arc.
+The sum counts the circuit once. Graph topology, pin maps, routing
+constraints, bitstream generation and frozen-shell locks are unchanged.
+
+Before an analogue observation exists, the cell-input stage uses the
+existing GOUT table's 175 ps late estimate. The early estimate is zero,
+so placement/routing cannot invent hold margin from an unmeasured mux.
+The cell-side charge makes the corrected budget visible to placement,
+pin assignment and every router's timing analysis, including the GPU
+router's internal table-based arc updates.
+
+The analogue cache retains the complete routed observation and its
+terminal component. Candidate-route comparisons use full observations;
+STA splits them at GOUT. Both initial computation and accepted candidate
+updates preserve the terminal component. Existing per-net rip-up
+invalidation drops it with the routed observation. Planning copies
+cannot borrow the incumbent cell's cached input delay.
+
+The terminal circuit is not a real routing pip. It is excluded from
+pip-delay observations and type calibration, preventing calibration from
+charging it again. Existing FF/control arcs, arithmetic and hard-block
+timing are unchanged. This correction is specifically for the measured
+ordinary Boolean LUT input boundary, not a new characterization of the
+entire device.
+
+Tests
+
+All 15 focused tests pass:
+  LutInputDelayTest (2)
+  LutPlacementTiming (9)
+  CompletedObservationsTest (4)
+
+The new native LD.22.8.19 -> GOUT.22.8.3 fixture checks:
+  - a positive terminal circuit delay on a real device path;
+  - equality with the same circuit ending on a synthetic FF/control sink;
+  - complete delay = routing override + cell input/LUT charge;
+  - measured cache use and rip-up invalidation;
+  - exclusion of the terminal circuit from pip calibration;
+  - preservation of the conservative placement early bound;
+  - rejection of a planning copy's inherited BEL and port indices.
+
+The four placement tests whose expected cell values were raw LUT tables
+now include the input stage, or explicitly compare the raw LUT mux
+levels when that is the property being tested. No design timing check
+or acceptance threshold was relaxed.
+
+The physical_lut_timing.py integration regression also passes: five
+logical L5/L6 input permutations preserve the complete RBF and every
+reported endpoint delay and setup/hold margin.
+
+Independent exact-route comparison
+
+Re-timing the previously passing arrival/seed-10 checkpoint changes its
+clk_sys result from 56.38 MHz to 49.04 MHz and makes it exit 1. Its RBF
+remains byte-identical. The data path selected for Quartus is unchanged;
+the corrected report reconstructs identical Verilog, QSF, RCF and SDC
+for all ten replicated data hops. Existing independently compiled
+Quartus 17.0.2 timing and decoded route evidence therefore apply to the
+same hardware, without a new placement or vendor route.
+
+For that same Q -> last LUT output cone at slow 100 C:
+  old nextpnr charge:                  7.559 ns
+  corrected nextpnr charge:            8.887 ns
+  Quartus replica data:                8.574 ns
+  Mistral removed-branch correction:    0.111 ns
+  loading-corrected Quartus estimate:  8.685 ns
+
+The corrected nextpnr charge is approximately 2.3% conservative on
+this data cone instead of omitting roughly a nanosecond. Restoring
+nextpnr's original clock/skew/setup and final endpoint gives a Quartus
+data-substitution estimate of 50.03 MHz at 100 C, also a miss. At -40 C
+the same estimate is 51.90 MHz. This is a data-path cross-check, not
+full-shell TimeQuest signoff or a silicon measurement.
+
+The analysis helpers now read charged cell delays from the report,
+resolve physical LUT pins from decoded destinations rather than from
+delay values, and include the terminal stage on both sides of the
+removed-branch loading correction. Earlier retained outputs record
+the pre-correction measurements; current comparisons are in quartus/.
+
+Fresh strict producer runs with the completed implementation
+
+The retained #214 producer fixture and its hashes are unchanged from
+../fresh-rebuild/. The original package's exact pre-seal input was
+unavailable; the user confirmed it was probably cleared. This remains
+a reproduction on the retained regression fixture, not the missing
+package-producing input.
+
+All runs use --arrival-pin-assignment, seed 1/3/10, timing weight 300,
+criticality exponent 5, the original clock constraints, --rbf and a
+final analogue report. GPU work used gpu-run with whichever device was
+leased. No GPU_LEASE_IDS, vendor pin, force or allow-fail override was
+used. The tested completed binary SHA256 is:
+431d3a37b85ea1d500d84fdd74f67c278c503b713b49d0bdb9c2b5cf7cd5b748
+
+Seed  clk_sys MHz  setup WNS ns  hold WNS ns  exit
+1     51.051666    -0.220        +0.693       1
+3     48.718700    -0.689        +0.682       1
+10    46.356388    -1.212        +0.792       1
+
+All final reports identify the analogue model. Pixel/audio targets and
+hold checks pass. The required 52.224 MHz clk_sys setup check fails in
+all three; none is an accepted replacement shell. Exact arguments,
+binary/artifact hashes and clock results are in measurements.txt and
+results.csv. A failed strict command still emits an RBF under existing
+nextpnr behavior; existence of that file does not qualify it.
+
+The original issue scaffold was also re-timed with the final source.
+Its complete RBF remains identical to the earlier strict scaffold replay;
+clk_sys is now 41.98 MHz, setup WNS -3.310 ns, and exit status 1.
+See original-frozen-shell.txt. The final formatted/shared-constant source
+also reproduces the retained candidate replay report and RBF exactly,
+and all six boundary/observation tests pass again.
+
+The missing-delay model bug is corrected and verified. Physical timing
+closure remains unresolved and issue #236 should remain open. Further
+placement/logic optimization must be evaluated under this corrected
+model; reverting the terminal charge or weakening constraints would
+restore the reporting error rather than fix the shell.

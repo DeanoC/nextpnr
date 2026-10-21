@@ -3,9 +3,12 @@
 #include "gpu/gpuroute_backend.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <stdexcept>
@@ -68,11 +71,11 @@ RouteParams parameters()
     p.expand_k = 1; p.expand_div = 0;
     return p;
 }
-Result run(Graph &graph, RouteParams p, const std::vector<int32_t> &seeds, const std::vector<float> &delays,
-           const std::vector<float> &loads, const std::vector<ArcDesc> &arcs, int path_cap = 128,
-           int bits = 10, bool bounded = false, bool large = true)
+Result run_with_backend(std::unique_ptr<Backend> backend, Graph &graph, RouteParams p,
+                        const std::vector<int32_t> &seeds, const std::vector<float> &delays,
+                        const std::vector<float> &loads, const std::vector<ArcDesc> &arcs, int path_cap = 128,
+                        int bits = 10, bool bounded = false, bool large = true)
 {
-    auto backend = create_cpu_backend();
     std::string error;
     const auto data = graph.data();
     if (!backend->init(data, 1, bits, 1, bits + 1, error))
@@ -85,6 +88,12 @@ Result run(Graph &graph, RouteParams p, const std::vector<int32_t> &seeds, const
     Result result;
     backend->route(p, {t}, arcs, seeds, delays, loads, {}, large, result.arcs, result.paths);
     return result;
+}
+Result run(Graph &graph, RouteParams p, const std::vector<int32_t> &seeds, const std::vector<float> &delays,
+           const std::vector<float> &loads, const std::vector<ArcDesc> &arcs, int path_cap = 128,
+           int bits = 10, bool bounded = false, bool large = true)
+{
+    return run_with_backend(create_cpu_backend(), graph, p, seeds, delays, loads, arcs, path_cap, bits, bounded, large);
 }
 uint32_t bits(float value)
 {
@@ -197,7 +206,78 @@ std::vector<std::string> corpus()
     return result;
 }
 
+// Issue #228: a one-ULP frontier range gives a positive bin width, but
+// minf + binw rounds back to minf. A strict threshold alone expands nothing.
+// Keep this in the standalone runner too, so it can be run under a timeout.
+void rounded_threshold_regression()
+{
+    for (float base : {16.0f, 65536.0f, 1.0e12f}) {
+        for (bool reachable : {false, true}) {
+            Graph graph(3);
+            const float upper = std::nextafter(base, std::numeric_limits<float>::infinity());
+            const float cost = upper - base;
+            if (reachable) {
+                graph.edge(0, 2, cost);
+                graph.edge(1, 2, cost);
+            }
+            auto p = parameters();
+            p.exact = 0;
+            const auto result = run(graph, p, {0, 1}, {base, upper}, {0, 0}, {{2, 1, 1}});
+            const auto &arc = result.arcs.at(0);
+            if (arc.status != (reachable ? ARC_OK : ARC_NO_PATH) ||
+                arc.steps != (reachable ? 1 : 2) || arc.expanded != (reachable ? 1 : 2))
+                throw std::runtime_error("rounded histogram threshold failed to make progress");
+            if (reachable && (arc.cost != upper || arc.path_len != 1 || result.paths[0].parent != 0))
+                throw std::runtime_error("rounded histogram threshold returned the wrong route");
+        }
+    }
+}
+
 #ifndef GPUROUTE_EXACT_STANDALONE
+TEST(GpuApproximateSearch, RoundedHistogramThresholdMakesProgress)
+{
+    rounded_threshold_regression();
+}
+
+TEST(GpuApproximateSearch, RoundedHistogramThresholdMakesProgressOnDevice)
+{
+    // Only under a gpu-run lease. It exports the leased ids as FES_GPU_IDS and
+    // makes only those GPUs visible, so the default device below is a leased
+    // one; a --phase-lease run sets neither and skips. Check first: even
+    // device_backend_available() starts the GPU runtime.
+    const char *leased = std::getenv("FES_GPU_IDS");
+    if (leased == nullptr || *leased == '\0')
+        GTEST_SKIP() << "needs a gpu-run GPU lease (no FES_GPU_IDS)";
+    if (!device_backend_available())
+        GTEST_SKIP() << "GPU device backend or GPU device unavailable";
+
+    for (float base : {16.0f, 65536.0f, 1.0e12f}) {
+        for (bool reachable : {false, true}) {
+            Graph graph(3);
+            const float upper = std::nextafter(base, std::numeric_limits<float>::infinity());
+            const float cost = upper - base;
+            if (reachable) {
+                graph.edge(0, 2, cost);
+                graph.edge(1, 2, cost);
+            }
+            auto p = parameters();
+            p.exact = 0;
+            std::string error;
+            auto backend = create_device_backend(-1, error);
+            ASSERT_NE(backend, nullptr) << error;
+            const auto result = run_with_backend(std::move(backend), graph, p, {0, 1}, {base, upper}, {0, 0},
+                                                 {{2, 1, 1}});
+            const auto &arc = result.arcs.at(0);
+            ASSERT_EQ(arc.status, reachable ? ARC_OK : ARC_NO_PATH);
+            if (reachable) {
+                EXPECT_EQ(arc.cost, upper);
+                ASSERT_EQ(arc.path_len, 1);
+                EXPECT_EQ(result.paths.at(arc.path_off).parent, 0);
+            }
+        }
+    }
+}
+
 TEST(GpuExactSearch, EqualCostFrontierChoosesLowerWireThenSinkEdge)
 {
     Graph graph(4);
@@ -290,6 +370,7 @@ TEST(GpuExactSearch, DeterministicCorpusCoversExactAndApproximateSearches)
 #ifdef GPUROUTE_EXACT_STANDALONE
 int main()
 {
+    rounded_threshold_regression();
     const auto rows = corpus();
     for (size_t i = 0; i < rows.size(); ++i)
         std::cout << i << ':' << rows[i] << '\n';
