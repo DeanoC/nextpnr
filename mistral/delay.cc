@@ -293,6 +293,25 @@ DelayQuad m10k_clock_to_out(const Context *ctx, const CellInfo *cell, const std:
 // AG5 reference tail starts at GOUT.037.000.0000 / HMC IOINTADDRDOUT.8,
 // after the routing ingress LEIM and before HMCPHY and the output buffer.
 // It excludes the entire upstream clock network. Reference loads are declarations.
+// Diagnostic same-corner point-load pulse losses, not independent STA arcs.
+// See docs/validation/2026-10-21-clock-waveform-265/reference.json. The pair
+// is output high/low loss; the inverted forwarder swaps ingress low/high.
+std::optional<std::pair<delay_t, delay_t>> Arch::getInvertedClockPulseLoss(const CellInfo *cell, double load_pf) const
+{
+    if (cell->type != id_MISTRAL_DDROUT || !gpio_pad_profile(getCtx(), cell, false) ||
+        !gpio_pad_load(getCtx(), cell) || cell->params.size() != 1 || cell->params.at(id_DDR_HIGH).as_int64() != 0 || !cell->getPort(id_CLK))
+        return {};
+    for (const auto &port : cell->ports)
+        if (!port.first.in(id_CLK, id_PAD) && port.second.net)
+            return {};
+    // An explicit diagnostic scenario: do not reinterpret BOARD_MODEL_FAR_C
+    // (an upper bound in existing pad models) as a measured point load.
+    if (load_pf == 0) return std::make_pair(170, 160);
+    if (load_pf == 15) return std::make_pair(380, 30);
+    if (load_pf == 30) return std::make_pair(660, -250);
+    return {};
+}
+
 std::optional<DelayQuad> Arch::getForwardedClockPadTiming(const CellInfo *cell) const
 {
     const auto *ctx = getCtx();

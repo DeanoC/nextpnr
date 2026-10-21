@@ -1670,6 +1670,93 @@ TEST_F(IoDelayTest, ForwardedClockContractKeepsPhysicalRouteAndBothEdges)
     }
 }
 
+TEST_F(IoDelayTest, InvertedDdioWaveformKeepsRouteSpreadPolarityAndQualification)
+{
+    using J = json11::Json;
+    static_cast<IoBoundaryTestContext *>(ctx.get())->native_models = true;
+    output->disconnectPort(id_I); output->ports.erase(id_I);
+    output->type = id_MISTRAL_DDROUT;
+    output->params[id_DDR_HIGH] = 0;
+    output->addInput(id_CLK); output->connectPort(id_CLK, clock);
+    auto *buffer = ctx->createCell(ctx->id("clock_buffer"), id_MISTRAL_CLKBUF);
+    buffer->addInput(id_A); buffer->addOutput(id_Q);
+    buffer->connectPort(id_A, net("clock_input")); buffer->connectPort(id_Q, clock);
+    ctx->bindBel(ctx->get_io_pin_bel(ctx->cyclonev->pin_find_name("AD20")), output, STRENGTH_LOCKED);
+    output->attrs[id_LOC] = std::string("PIN_AD20");
+    output->attrs[ctx->id("NEXTPNR_GPIO_TIMING_PROFILE")] = std::string("QUARTUS_17_0_2_RAMTEST");
+    output->attrs[ctx->id("BOARD_MODEL_FAR_C")] = std::string("30P");
+    sdc("create_clock -period 10 -name memory [get_ports clk]\n");
+    clock->clkconstr->high = DelayPair(4000); clock->clkconstr->low = DelayPair(6000);
+    auto snapshot = [&](int early = 100, int late = 300) {
+        ctx->assignArchInfo();
+        TimingAnalyser timing(ctx.get()), unskewed(ctx.get());
+        timing.with_clock_skew = true; unskewed.with_clock_skew = false;
+        timing.setup(false, false, true); unskewed.setup(false, false, true);
+        timing.set_route_delay({output->name, id_CLK}, DelayPair(early, late));
+        unskewed.set_route_delay({output->name, id_CLK}, DelayPair(early, late));
+        return critical_swap_endpoint_snapshot(ctx.get(), timing, unskewed);
+    };
+    auto baseline = snapshot();
+    auto declare = [&](double load, double uncertainty) {
+        ctx->settings[ctx->id("timing/forwarded_clocks")] = J(J::array{J::object{
+            {"port", "dout"}, {"clock", "clock"}, {"load_pf", load}, {"uncertainty_ps", uncertainty}}}).dump();
+    };
+    declare(30, 100);
+    auto result = snapshot(); auto contract = result["forwarded_clocks"]["dout"];
+    EXPECT_EQ(contract["minimum_high"].number_value(), 5040);
+    EXPECT_EQ(contract["minimum_low"].number_value(), 3950);
+    EXPECT_FALSE(contract["physically_qualified"].bool_value());
+    EXPECT_FALSE(result["complete"].bool_value());
+    EXPECT_EQ(result["endpoints"], baseline["endpoints"]);
+    EXPECT_EQ(result["unsupported"], baseline["unsupported"]);
+    EXPECT_GT(result["physical_obligations"].array_items().size(), baseline["physical_obligations"].array_items().size());
+    auto moved = snapshot(200, 600)["forwarded_clocks"]["dout"];
+    EXPECT_EQ(moved["minimum_high"].number_value(), 4840);
+    EXPECT_EQ(moved["minimum_low"].number_value(), 3750);
+    // Equal latency added to both route bounds cannot change pulse width.
+    EXPECT_EQ(snapshot(200, 400)["forwarded_clocks"]["dout"]["minimum_high"], contract["minimum_high"]);
+    for (auto row : std::vector<std::tuple<int,int,int>>{{0,170,160},{15,380,30},{30,660,-250}}) {
+        declare(std::get<0>(row), 0);
+        auto value = snapshot()["forwarded_clocks"]["dout"];
+        EXPECT_EQ(value["minimum_high"].number_value(), 5800-std::get<1>(row));
+        EXPECT_EQ(value["minimum_low"].number_value(), 3800-std::get<2>(row));
+    }
+    declare(30, 10000);
+    EXPECT_LT(snapshot()["forwarded_clocks"]["dout"]["minimum_high"].number_value(), 0);
+    for (double load : {-1.0, 1.0, 14.9, 29.9, 31.0}) {
+        declare(load, 0); EXPECT_THROW(snapshot(), log_execution_error_exception);
+    }
+    declare(30, -1); EXPECT_THROW(snapshot(), log_execution_error_exception);
+    declare(30, 0);
+    EXPECT_THROW(snapshot(400, 300), log_execution_error_exception);
+    EXPECT_THROW(snapshot(-1, 300), log_execution_error_exception);
+    output->params[id_DDR_HIGH] = 1; EXPECT_THROW(snapshot(), log_execution_error_exception);
+    output->params[id_DDR_HIGH] = 0;
+    for (const auto &mutation : std::vector<std::pair<std::string,std::string>>{
+            {"LOC","PIN_AG5"}, {"NEXTPNR_GPIO_TIMING_PROFILE","unknown"}, {"BOARD_MODEL_FAR_C","31P"},
+            {"BOARD_MODEL_FAR_C",""}, {"IO_STANDARD","3.3-V LVCMOS"},
+            {"CURRENT_STRENGTH_NEW","8MA"}, {"SLEW_RATE","0"}, {"D5_DELAY","1"}}) {
+        auto key = ctx->id(mutation.first);
+        bool had = output->attrs.count(key); auto saved = had ? output->attrs.at(key) : Property();
+        output->attrs[key] = mutation.second;
+        EXPECT_THROW(snapshot(), log_execution_error_exception) << mutation.first;
+        if (had) output->attrs[key] = saved; else output->attrs.erase(key);
+    }
+    output->params[ctx->id("UNKNOWN_MODE")] = 1;
+    EXPECT_THROW(snapshot(), log_execution_error_exception); output->params.erase(ctx->id("UNKNOWN_MODE"));
+    output->pin_data[id_CLK].state = PIN_INV;
+    EXPECT_THROW(snapshot(), log_execution_error_exception); output->pin_data[id_CLK].state = PIN_SIG;
+    buffer->pin_data[id_A].state = PIN_INV;
+    EXPECT_THROW(snapshot(), log_execution_error_exception); buffer->pin_data[id_A].state = PIN_SIG;
+    output->disconnectPort(id_CLK);
+    EXPECT_THROW(snapshot(), log_execution_error_exception); output->connectPort(id_CLK, clock);
+    ctx->settings[ctx->id("timing/forwarded_clocks")] = J(J::array{J::object{{"port", "dout"}, {"clock", "clock"}}}).dump();
+    EXPECT_THROW(snapshot(), log_execution_error_exception);
+    if (const char *file = std::getenv("NEXTPNR_TEST_DDIO_WAVEFORM")) {
+        std::ofstream out(file); out << result.dump() << "\n"; ASSERT_TRUE(bool(out));
+    }
+}
+
 TEST_F(IoDelayTest, UnregisteredPadPrefixesAndTailsAreSeparateFromRoutesAndBudgets)
 {
     sdc("set_input_delay -clock memory -min 1 [get_ports din]\n"

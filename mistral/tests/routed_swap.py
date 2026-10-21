@@ -38,7 +38,8 @@ class RoutedSwap(unittest.TestCase):
             cls.registered = json.loads(path.read_text())
             for test, env, field in [('ConstantOpenDrainInventory', 'NEXTPNR_TEST_CONSTANT_OUTPUTS', 'constant'),
                                      ('ResetContractWholeChainAndPhysicalObligations', 'NEXTPNR_TEST_RESET_CONTRACTS', 'reset'),
-                                     ('ForwardedClockContractKeepsPhysicalRouteAndBothEdges', 'NEXTPNR_TEST_FORWARDED_CONTRACTS', 'forwarded')]:
+                                     ('ForwardedClockContractKeepsPhysicalRouteAndBothEdges', 'NEXTPNR_TEST_FORWARDED_CONTRACTS', 'forwarded'),
+                                     ('InvertedDdioWaveformKeepsRouteSpreadPolarityAndQualification', 'NEXTPNR_TEST_DDIO_WAVEFORM', 'ddio')]:
                 subprocess.run([BINARY, '--gtest_filter=IoDelayTest.' + test],
                                env=dict(os.environ, **{env: str(path)}), check=True)
                 setattr(cls, field, json.loads(path.read_text()))
@@ -101,6 +102,26 @@ class RoutedSwap(unittest.TestCase):
             elif mode == 'missing_contracts': del forged['forwarded_clocks']
             elif mode == 'old_schema': forged['schema'] = 5
             self.assertFalse(guard.compare(forged, forged)[0], mode)
+
+    def test_ddio_waveform_reference_and_forged_qualification(self):
+        reference = json.loads((Path(__file__).resolve().parents[2] /
+            'docs/validation/2026-10-21-clock-waveform-265/reference.json').read_text())
+        losses = next(r['worst_local_loss_ps'] for r in reference['loads'] if r['load_pf'] == 30)
+        contract = self.ddio['forwarded_clocks']['dout']
+        self.assertEqual(contract['local_high_loss'], losses['high'])
+        self.assertEqual(contract['local_low_loss'], losses['low'])
+        self.assertEqual(contract['minimum_high'], 6000-200-losses['high']-100)
+        self.assertEqual(contract['minimum_low'], 4000-200-losses['low']-100)
+        self.assertFalse(contract['physically_qualified'])
+        # Start with otherwise admissible native inventories, so rejection is
+        # attributable to this contract, not an unrelated unsupported endpoint.
+        for qualified in (False, True):
+            old, new = copy.deepcopy(self.cases['baseline']), copy.deepcopy(self.cases['safe'])
+            for snapshot in (old, new):
+                snapshot['forwarded_clocks'] = copy.deepcopy(self.ddio['forwarded_clocks'])
+                snapshot['forwarded_clocks']['dout']['physically_qualified'] = qualified
+            self.assertIn('forwarded clock', guard.compare(old, new)[1])
+            self.assertFalse(guard.compare(old, new)[0])
 
     def test_registered_channels_and_clock_margins(self):
         a, b = self.registered['baseline'], self.registered['safe']

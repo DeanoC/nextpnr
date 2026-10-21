@@ -305,6 +305,47 @@ Reference contracts cannot authorize retention, including when their conservativ
 pulse bounds are negative. Native defaults are data D5=0 and OE D5=31; these are
 different selectors. Nondefault configurations are rejected by this profile.
 
+The inverted constant AD20 DDROUT can also be inspected with an explicit
+**diagnostic point-load scenario** (schema 7). It requires the existing
+`QUARTUS_17_0_2_RAMTEST` profile, `DDR_HIGH=0`, the physical AD20 BEL, default
+selectors, LVTTL 16 mA fast slew, a valid explicit `BOARD_MODEL_FAR_C`
+bound for the existing pad model, no extra cell parameters or connected data/
+control ports, and a direct uninverted native clock buffer. Declare the buffered
+clock net, sampled load and uncertainty explicitly:
+
+```json
+[{"port": "SDRAM_CLK", "clock": "buffered_memory", "load_pf": 30, "uncertainty_ps": 100}]
+```
+
+The values above are illustrative, not kit constraints. Only 0, 15 and 30 pF
+reference scenarios exist; no interpolation is supported. `load_pf` does not
+reinterpret `BOARD_MODEL_FAR_C` as a measured load. The latter attribute still
+has its existing independent pad-envelope meaning. The two extra declaration
+fields are mandatory for DDROUT and rejected for the AG5 OB contract.
+
+For analyser route interval `[early, late]` ending at the DDIO clock ingress,
+let `spread = late - early`. The conditional output pulse estimates in ps are:
+
+```
+high = source_low  - spread - local_high_loss - uncertainty
+low  = source_high - spread - local_low_loss  - uncertainty
+```
+
+The swapped source phases reflect inversion. Local losses come from the
+[same-corner reference](validation/2026-10-21-clock-waveform-265/summary.md);
+no vendor clock-pessimism credit is applied. Equal additional early/late
+latency cancels, widening the interval worsens both pulses, and negative
+results remain visible. Native independent setup/hold arcs are untouched.
+
+These values are conditional diagnostics, including when positive: the
+analyser can use estimated delays before routing, its interval is not a
+qualified silicon fast-corner bound, and the declared buffered waveform does
+not prove source/PLL/buffer pulse distortion. Actual emitted selector
+correspondence and board load/flight/slew/receiver requirements remain explicit
+physical obligations. The record always has `physically_qualified=false` and
+keeps `complete=false`. Existing retention rules reject nonempty forwarded
+clock contracts even if a caller forges a positive completeness flag.
+
 Constant-low unregistered IO data can have an I-only proof through uninverted
 constant/identity sources. The proof freezes the complete pad and source graph;
 OE remains a separate required endpoint. HPS peripheral I2C launch and input

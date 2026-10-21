@@ -1,0 +1,24 @@
+{
+  "attrs": {
+    "HDMI_TX_CLK_MISTRAL_OB_PAD": {
+      "NEXTPNR_GPIO_TIMING_PROFILE": "QUARTUS_17_0_2_AG5_CLOCK",
+      "BOARD_MODEL_FAR_C": "30P"
+    },
+    "SDRAM_CLK_MISTRAL_OB_PAD": {
+      "NEXTPNR_GPIO_TIMING_PROFILE": "QUARTUS_17_0_2_RAMTEST",
+      "BOARD_MODEL_FAR_C": "30P"
+    }
+  },
+  "declarations": [
+    {
+      "port": "HDMI_TX_CLK",
+      "clock": "clk_pixel"
+    },
+    {
+      "port": "SDRAM_CLK",
+      "clock": "clocks[0]",
+      "load_pf": 30,
+      "uncertainty_ps": 0
+    }
+  ]
+}

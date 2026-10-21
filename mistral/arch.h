@@ -548,6 +548,7 @@ struct Arch : BaseArch<ArchRanges>
     std::vector<PrimitiveClockRequirement> getPrimitiveClockRequirements(const CellInfo *cell) const override;
     std::optional<UnregisteredIoTiming> getUnregisteredIoTiming(const CellInfo *cell, IdString port) const override;
     std::optional<DelayQuad> getForwardedClockPadTiming(const CellInfo *cell) const;
+    std::optional<std::pair<delay_t, delay_t>> getInvertedClockPulseLoss(const CellInfo *cell, double load_pf) const;
     bool getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort,
                       DelayQuad &delay) const override;                                                      // delay.cc
     bool get_lut_pin_delay(IdString physical, bool l6, DelayQuad &delay) const; // delay.cc

@@ -3,6 +3,7 @@
 #include "critical_cohort_model.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <map>
 #include <set>
@@ -1384,17 +1385,35 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
         auto declarations = J::parse(forward_setting->second.as_string(), error);
         if (!error.empty() || !declarations.is_array()) log_error("Invalid forwarded clock declarations.\n");
         for (const auto &declaration : declarations.array_items()) {
-            if (!declaration.is_object() || declaration.object_items().size() != 2 ||
+            if (!declaration.is_object() ||
+                (declaration.object_items().size() != 2 && declaration.object_items().size() != 4) ||
                 !declaration["port"].is_string() || !declaration["clock"].is_string())
                 log_error("Forwarded clock requires exact top-level port and source clock.\n");
             auto root = ctx->ports.find(ctx->id(declaration["port"].string_value()));
             if (root == ctx->ports.end() || root->second.type != PORT_OUT || !root->second.net || !root->second.net->driver.cell)
                 log_error("Forwarded clock requires an output pad.\n");
             auto *cell = root->second.net->driver.cell;
-            auto model = ctx->getForwardedClockPadTiming(cell);
-            if (!model || cell->getPort(id_PAD) != root->second.net || root->second.net->driver.port != id_PAD ||
+            const bool inverted_ddr = cell->type == id_MISTRAL_DDROUT;
+            std::optional<std::pair<delay_t, delay_t>> pulse_loss;
+            std::optional<DelayQuad> model;
+            double uncertainty = 0;
+            if (inverted_ddr) {
+                if (declaration.object_items().size() != 4 || !declaration["load_pf"].is_number() ||
+                    !declaration["uncertainty_ps"].is_number())
+                    log_error("Inverted DDIO waveform diagnostic requires explicit sampled load and uncertainty.\n");
+                uncertainty = declaration["uncertainty_ps"].number_value();
+                if (!std::isfinite(uncertainty) || uncertainty < 0)
+                    log_error("Invalid waveform uncertainty.\n");
+                pulse_loss = ctx->getInvertedClockPulseLoss(cell, declaration["load_pf"].number_value());
+            } else {
+                if (declaration.object_items().size() != 2) log_error("Unexpected forwarded clock fields.\n");
+                model = ctx->getForwardedClockPadTiming(cell);
+            }
+            if ((!model && !pulse_loss) || cell->getPort(id_PAD) != root->second.net || root->second.net->driver.port != id_PAD ||
                 !forwarded_pads.insert(cell->name).second) log_error("Unqualified or repeated forwarded clock pad.\n");
-            auto *clock = cell->getPort(id_I);
+            const IdString clock_port = inverted_ddr ? id_CLK : id_I;
+            auto *clock = cell->getPort(clock_port);
+            if (!clock) log_error("Missing forwarded clock source.\n");
             auto *source = clock->driver.cell;
             if (!source || source->type != id_MISTRAL_CLKBUF || clock->driver.port != id_Q ||
                 source->get_pin_state(id_A) != PIN_SIG || source->get_pin_state(id_Q) != PIN_SIG ||
@@ -1407,9 +1426,32 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
                 wave.low.minDelay() <= 0 || wave.low.minDelay() != wave.low.maxDelay() ||
                 wave.high.minDelay() + wave.low.minDelay() != wave.period.minDelay())
                 log_error("Forwarded clock requires a complete physical source waveform.\n");
-            auto route = timing.get_route_delay({cell->name, id_I});
+            auto route = timing.get_route_delay({cell->name, clock_port});
             if (route.minDelay() < 0 || route.minDelay() > route.maxDelay()) log_error("Invalid forwarded clock route.\n");
             auto pair = [](DelayPair d) { return J::array{double(d.minDelay()), double(d.maxDelay())}; };
+            if (inverted_ddr) {
+                // Use the full interval spread conservatively on each pulse.
+                // Source-clock distortion and native fast-corner qualification
+                // remain obligations; this cannot make inventory complete.
+                double spread = double(route.maxDelay()) - double(route.minDelay());
+                double high = double(wave.low.minDelay()) - spread - pulse_loss->first - uncertainty;
+                double low = double(wave.high.minDelay()) - spread - pulse_loss->second - uncertainty;
+                forwarded_clocks[declaration["port"].string_value()] = J::object{
+                    {"declaration", declaration}, {"cell", interface_cell(ctx, cell)},
+                    {"source", interface_cell(ctx, source)},
+                    {"source_input_driver", source->getPort(id_A)->driver.cell ? interface_cell(ctx, source->getPort(id_A)->driver.cell) : J()},
+                    {"endpoint", J::array{cell->name.str(ctx), "CLK"}},
+                    {"bel", ctx->getBelName(cell->bel).str(ctx)}, {"clock", clock->name.str(ctx)},
+                    {"model", "QUARTUS_17_0_2_AD20_INVERTED_POINT_LOAD"},
+                    {"route", pair(route)}, {"source_high", pair(wave.high)}, {"source_low", pair(wave.low)},
+                    {"local_high_loss", double(pulse_loss->first)}, {"local_low_loss", double(pulse_loss->second)},
+                    {"minimum_high", high}, {"minimum_low", low},
+                    {"status", "conditional sampled-load waveform diagnostic; source, route and board unqualified"},
+                    {"physically_qualified", false}};
+                physical_obligations.push_back("forwarded clock " + declaration["port"].string_value() +
+                    ": source/buffer waveform distortion; emitted DDIO selector equivalence; native route fast-corner lower bound; actual load/flight/slew and receiver pulse/data relationship");
+                continue;
+            }
             double rise_early = route.minDelay() + model->rise.minDelay();
             double rise_late = route.maxDelay() + model->rise.maxDelay();
             double fall_early = wave.high.minDelay() + route.minDelay() + model->fall.minDelay();

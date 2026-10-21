@@ -1,0 +1,47 @@
+{
+  "base": "4bd7d3e3f8114f95e43c164e149f4ecb70774b48",
+  "new_pcxt_routes": 0,
+  "hardware_used": false,
+  "remaining_route_seconds": 1627.843715112,
+  "physical_signoff": false,
+  "native_diagnostic_changed": true,
+  "native_sta_arcs_changed": false,
+  "focused_tests": 2,
+  "driver_tests": 25,
+  "host_tests": 1,
+  "unchanged_host_endpoints": 17246,
+  "code_sha256": {
+    "mistral/arch.h": "d07a92caadeed1588b7be0fbd1e30be51dc0aca55eeee75d35ea26234cb02ab9",
+    "mistral/delay.cc": "55e02cc73c7bc42d5864082277b3d9688661c879110463cd7a460ba1fa8ab878",
+    "mistral/critical_cohort.cc": "d8bdf4bf4e11f90d54446b408df2f08190d77a9420907c18f2f0313cbdcbfb62",
+    "mistral/tests/io_delay.cc": "6ee58ae09bc0495ae2ee38d31317cbb685ecdfe7e9b8f9480f305098ef501d7f",
+    "mistral/tests/routed_swap.py": "54e1fa169e6141384ef59bff2982afadcc0a4da0b1952f19333b42ec1774052b",
+    "mistral/routed_swap.py": "d9d4db019da4b32d9ae4fda4a0a433bd9303ceb587078c2d89162cfe8066d553",
+    "docs/mistral-io-delay.md": "ee694244d8a644699d74a0e9da4d0748071c43396b92d0f224d059cafdc7ae16"
+  },
+  "evidence_sha256": {
+    "build-final.log.gz": "154c252322507a4374a8f4791b45fe02a106d001a0b4349e31a11044ffad5faf",
+    "check.py": "7b14dff698138e484833246917408f4ed229b89daf8bb4c5701769eaad3846b5",
+    "driver.log": "8bc108a67b9c937e943690bb5e32b1e449cd778c48c6aa45a502a263f1ef2641",
+    "focused.log": "2029989f7878b902582f20e6a662ea588dbf1cb4315f2a4a90edeeab83b1f7bd",
+    "forward-overlay.json": "6a413a86b5355dc923b7ae904cbbff7a60208d71d974eb5a07543bdec1ce29e1",
+    "host-after.json.gz": "7668f73fe9340892b20d2f2e1e1a3114950e452cc63396b4ab28cd8c70b0d371",
+    "host-before.json.gz": "33c5bd378a7a5026d9695a0796e1ea82bd357f21a340385418b2214971147db8",
+    "host.log": "56b10f21d43777de650ca869f5a83ee404ce723ab9fc04b5a638c5270b9af3e9",
+    "native-fixture.json.gz": "28f7c35fc09c5da0690e5572c5a494dbecec1d669b45dbadc75e78e11eee49b5",
+    "reproduce-host.sh": "f482758f43ed4bf9d959045db716c7c0ea89960f05958e69645494a0acea85e1",
+    "summary.md": "24c3a5df66f998f3397cbf28fc9cceb1622631960d8e21829605a31074bcf996"
+  },
+  "input_sha256": {
+    "/home/deano/harnesses/pcxt-endpoint-coverage/paired/inputs/placed.json": "733f1cc8ea765bed46dae44dcd744e4432edd75ddedaf232061c0a1d9756b4a6",
+    "/home/deano/harnesses/pcxt-dynamic-ce-coverage/synthetic-io.sdc": "91441c5e1650a1d585172ffc8f6337965ee55f3ee6a5ac006889f94718e487ba",
+    "/home/deano/harnesses/pcxt-dynamic-ce-coverage/reference-profile-overlay.json": "80e9c59c39d392804599a3499c74b9cbfc18bbabcddce4c2b727fc76e6264161",
+    "/home/deano/harnesses/pcxt-dynamic-ce-coverage/registered-synthetic.sdc": "31c0f53bda32bc3e99cfa13a0f24ee9c2df48b1e26d620170bb3f6a9deb47012",
+    "/home/deano/harnesses/pcxt-interface-contracts/reset-overlay.json": "c792ddf45b3c592b8f8373a89de1c4407505ee685999e61ad0a7f9319f45cd83",
+    "/home/deano/harnesses/pcxt-pad-models/dq-overlay.json": "52d92b447d235cf46541856fd72f1c2babdafbab54ae05abe43aafd9fbb4a900",
+    "/home/deano/harnesses/pcxt-pad-models/host-final.json": "8c6e62a1df1f73923effe5a759ac77fe5ed1bd2927a92975220e3b9573f525f7"
+  },
+  "binary_sha256": {
+    "/home/deano/harnesses/pcxt-compiler-repair/build-candidate/nextpnr-mistral-test": "93833a3d27349c6997e91b09593bd5b8edd9ac580fc3fbe4ae8df491fe48a6d1"
+  }
+}
