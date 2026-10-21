@@ -1,0 +1,17 @@
+rejected noninverted model
+rejected unsampled load 1
+rejected unsampled load 14.9
+rejected unsampled load 29.9
+rejected unsampled load 31
+rejected unsampled load nan
+rejected negative uncertainty
+rejected nonfinite ingress
+rejected modified credit
+rejected missing pulse edge
+rejected wrong polarity
+rejected load declaration mismatch
+rejected changed raw transfer
+rejected mixed corner
+rejected changed pulse boundary
+rejected changed pulse local delay
+PASS: 12 same-corner/load scenarios,24 pulse decompositions; unknown loads and malformed evidence reject

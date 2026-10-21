@@ -1,0 +1,23 @@
+{
+  "base": "dee2b36890255a3c9c9b85ceff74e83095d7c9d0",
+  "fits": 3,
+  "fit_limit_seconds": 600,
+  "query_limit_seconds": 120,
+  "failed_queries": 1,
+  "new_pcxt_routes": 0,
+  "remaining_route_seconds": 1627.843715112,
+  "physical_signoff": false,
+  "native_model_changed": false,
+  "code_sha256": {
+    "mistral/tests/gpio-timing/clock_waveform.py": "e51a1c2810b4ec0ec3c2ad5fae294a214edc36bfdf27d240bcd7ffa71affa7ac",
+    "mistral/tests/gpio-timing/check_clock_waveform.py": "8393f0323793ebb1f6dd18e93fc86f5c2cee85974c3670a7188b85190e3a5388",
+    "mistral/tests/gpio-timing/characterize.py": "09852b6d65e58eee9b9e9ef0623a5bded96a6f7ae2b52e763dc346fb54eb62f3",
+    "mistral/tests/gpio-timing/pad_summary.py": "9923e8c7f445f13c16b488306c49e96071ddccf200768a799acaf927f3f101c4"
+  },
+  "evidence_sha256": {
+    "reference.json": "0ee5b7698a91f247461dd8eb3eb490aa99e340ee426783a9f3f3c425cd2141ea",
+    "files.json": "77f248388e9fe8c2d46f4a29ebaaf60573afb1eda0ae2ab226a3bf6943fa85e6",
+    "reference-fits.tar.gz": "5c6db892ee0538c87aded8015ea4d32a34009680d0ec505edf5ac3ce19fe11e9",
+    "check.log": "e65a23567c92ee40f5020ee0fe43d3b197f88a56dae27a574d1142ce31fb75f5"
+  }
+}

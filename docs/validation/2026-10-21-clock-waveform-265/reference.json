@@ -1,0 +1,418 @@
+{
+  "format": 1,
+  "device": "5CSEBA6U23I7",
+  "pin": "AD20",
+  "inverted": true,
+  "physical_signoff": false,
+  "native_model_changed": false,
+  "interpolation_supported": false,
+  "loads": [
+    {
+      "load_pf": 0.0,
+      "load_scope": "default zero load",
+      "scenarios": [
+        {
+          "corner": "7_slow_1100mv_-40c",
+          "local_loss_ps": {
+            "high": 131,
+            "low": 129
+          },
+          "vendor_pulses": {
+            "high": {
+              "raw_width_ps": 4384,
+              "vendor_actual_ps": 5018,
+              "removed_credit_ps": 634,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4515
+            },
+            "low": {
+              "raw_width_ps": 4333,
+              "vendor_actual_ps": 4967,
+              "removed_credit_ps": 634,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4462
+            }
+          }
+        },
+        {
+          "corner": "7_slow_1100mv_100c",
+          "local_loss_ps": {
+            "high": 162,
+            "low": 160
+          },
+          "vendor_pulses": {
+            "high": {
+              "raw_width_ps": 4254,
+              "vendor_actual_ps": 4917,
+              "removed_credit_ps": 663,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4416
+            },
+            "low": {
+              "raw_width_ps": 4400,
+              "vendor_actual_ps": 5063,
+              "removed_credit_ps": 663,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4560
+            }
+          }
+        },
+        {
+          "corner": "MIN_fast_1100mv_-40c",
+          "local_loss_ps": {
+            "high": 55,
+            "low": 31
+          },
+          "vendor_pulses": {
+            "high": {
+              "raw_width_ps": 4083,
+              "vendor_actual_ps": 4371,
+              "removed_credit_ps": 288,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4138
+            },
+            "low": {
+              "raw_width_ps": 5333,
+              "vendor_actual_ps": 5621,
+              "removed_credit_ps": 288,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 5364
+            }
+          }
+        },
+        {
+          "corner": "MIN_fast_1100mv_100c",
+          "local_loss_ps": {
+            "high": 54,
+            "low": 42
+          },
+          "vendor_pulses": {
+            "high": {
+              "raw_width_ps": 4146,
+              "vendor_actual_ps": 4440,
+              "removed_credit_ps": 294,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4200
+            },
+            "low": {
+              "raw_width_ps": 5261,
+              "vendor_actual_ps": 5555,
+              "removed_credit_ps": 294,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 5303
+            }
+          }
+        }
+      ],
+      "worst_local_loss_ps": {
+        "high": 170,
+        "low": 160
+      },
+      "hashes": {
+        "top.qsf": "c52c606ccd1cfe7cea08fe816e151a20e43af2b819b042f19c0b7a091927ec70",
+        "clock-forward-inverted.v": "f5762f83b17ed7c9dfd5b4aed12aa37c860ca01a7c5ae1879ab9ad624f74ae93",
+        "clocks.sdc": "92319d793f093012fa28a2a0fb84a46304f3403d5aa73a17a5f6f9cf63cee2c7",
+        "output_files/top.fit.rpt": "100787aa8196108091560e51ad1d466e74edb24d689475d441459c4665ab5ca2",
+        "7_slow_1100mv_-40c/output-rise-hold.rpt": "ca1e3480b070009fcd5dadb4986e0dceefd840b17c891d85906e5b51b02c2b1b",
+        "7_slow_1100mv_-40c/output-rise-setup.rpt": "628b69d4341c170572c79ac7e8cd169e977e87c217fb459aeb50b79ca26cf8fb",
+        "7_slow_1100mv_-40c/output-fall-hold.rpt": "b1397465a6243f6a8eb02f2e42eb574732be1ed518010c7a146821ea3d6a57af",
+        "7_slow_1100mv_-40c/output-fall-setup.rpt": "a8fdc08502499dd2f4a114af9e33c226e2705c67e86eff547a05d6c9d7fb0995",
+        "pulse-check/7_slow_1100mv_-40c/pulse.rpt": "577c01ad3a9e59c74fed39d2668a405c95a588fc6dbea7862f14cb3d79c73a80",
+        "7_slow_1100mv_100c/output-rise-hold.rpt": "f84969ce7d0f565a6ce4388b3862352db820aee32ef0d513292d0940ec12ef3d",
+        "7_slow_1100mv_100c/output-rise-setup.rpt": "d9f635fd9480d7bc4ba6f6c7f0746bde394e7256316f59158db08a615d7a0850",
+        "7_slow_1100mv_100c/output-fall-hold.rpt": "adbd72aff51c38e487e87476744d0eab55435d24949521db34964498d3df3195",
+        "7_slow_1100mv_100c/output-fall-setup.rpt": "9ae199fdc588e594b202e81897c179c45a35317871deacfef5c652da0225e905",
+        "pulse-check/7_slow_1100mv_100c/pulse.rpt": "e263f7aad0fd98ee3a09cb2a0895da690b43a20bfd9f4f86a2a109b2f1961047",
+        "MIN_fast_1100mv_-40c/output-rise-hold.rpt": "db1a94d3d40b232c0e5f2a545fe1e0d2b802d76e27df5192f4525317f8aa9718",
+        "MIN_fast_1100mv_-40c/output-rise-setup.rpt": "ffbc399b5578e136793d4280ce9e3ac94ed1a7046c000bddc1c83567b6bc04ac",
+        "MIN_fast_1100mv_-40c/output-fall-hold.rpt": "a9431707530edad2243121c8d0c6fae9e10f620f705c2af2006cedca8d8d8ab9",
+        "MIN_fast_1100mv_-40c/output-fall-setup.rpt": "2c390dfa11465d0c63bb3f5686f1992d74d415cb1480c5219dd8397b570bd025",
+        "pulse-check/MIN_fast_1100mv_-40c/pulse.rpt": "1b191e939f5588d70be2da5f56c423257b5ce84856e8f6c14d59b267023cc941",
+        "MIN_fast_1100mv_100c/output-rise-hold.rpt": "0b015240c3146af558b6bfcd473104ce5f217539b4949be73fc4b58ab1f750e7",
+        "MIN_fast_1100mv_100c/output-rise-setup.rpt": "1bd5f09dc4ec1ff7b357f0bc5c87cc55df96115d06340a048f676edcc51ec3a3",
+        "MIN_fast_1100mv_100c/output-fall-hold.rpt": "34a3b2f4978fe545fa3b1023a61af6cebd11e05bb2e3814605558dceb0e4e83f",
+        "MIN_fast_1100mv_100c/output-fall-setup.rpt": "61e996ce3a2a30ec173ce717c3313b0ef501bd92d06212662db58123ccd4f96a",
+        "pulse-check/MIN_fast_1100mv_100c/pulse.rpt": "c28ab7bafa2230cf4c5565e2a30f780953195cae8c72491c4810d90df1fa0701",
+        "../evidence.json": "ee0d3b1463281a98cedd87043ea25201a5d4a68fbba937a12b328c7a20f0ba92"
+      }
+    },
+    {
+      "load_pf": 15.0,
+      "load_scope": "declared fixed load",
+      "scenarios": [
+        {
+          "corner": "7_slow_1100mv_-40c",
+          "local_loss_ps": {
+            "high": 238,
+            "low": 22
+          },
+          "vendor_pulses": {
+            "high": {
+              "raw_width_ps": 4277,
+              "vendor_actual_ps": 4911,
+              "removed_credit_ps": 634,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4515
+            },
+            "low": {
+              "raw_width_ps": 4440,
+              "vendor_actual_ps": 5074,
+              "removed_credit_ps": 634,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4462
+            }
+          }
+        },
+        {
+          "corner": "7_slow_1100mv_100c",
+          "local_loss_ps": {
+            "high": 378,
+            "low": -56
+          },
+          "vendor_pulses": {
+            "high": {
+              "raw_width_ps": 4038,
+              "vendor_actual_ps": 4701,
+              "removed_credit_ps": 663,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4416
+            },
+            "low": {
+              "raw_width_ps": 4616,
+              "vendor_actual_ps": 5279,
+              "removed_credit_ps": 663,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4560
+            }
+          }
+        },
+        {
+          "corner": "MIN_fast_1100mv_-40c",
+          "local_loss_ps": {
+            "high": 124,
+            "low": -38
+          },
+          "vendor_pulses": {
+            "high": {
+              "raw_width_ps": 4014,
+              "vendor_actual_ps": 4302,
+              "removed_credit_ps": 288,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4138
+            },
+            "low": {
+              "raw_width_ps": 5402,
+              "vendor_actual_ps": 5690,
+              "removed_credit_ps": 288,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 5364
+            }
+          }
+        },
+        {
+          "corner": "MIN_fast_1100mv_100c",
+          "local_loss_ps": {
+            "high": 175,
+            "low": -79
+          },
+          "vendor_pulses": {
+            "high": {
+              "raw_width_ps": 4025,
+              "vendor_actual_ps": 4319,
+              "removed_credit_ps": 294,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4200
+            },
+            "low": {
+              "raw_width_ps": 5382,
+              "vendor_actual_ps": 5676,
+              "removed_credit_ps": 294,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 5303
+            }
+          }
+        }
+      ],
+      "worst_local_loss_ps": {
+        "high": 380,
+        "low": 30
+      },
+      "hashes": {
+        "top.qsf": "661558a112ba346a9b3f30890cf5b2bb777b126c023f0a519a26b0b878913350",
+        "clock-forward-inverted.v": "f5762f83b17ed7c9dfd5b4aed12aa37c860ca01a7c5ae1879ab9ad624f74ae93",
+        "clocks.sdc": "92319d793f093012fa28a2a0fb84a46304f3403d5aa73a17a5f6f9cf63cee2c7",
+        "output_files/top.fit.rpt": "c23c53b91cd126b26b1c0410babb385fc48c22bf11442dcc00d5c887c55d8b48",
+        "7_slow_1100mv_-40c/output-rise-hold.rpt": "f05c4f926727070f1d4a19aef6f64fd7ee0f2fa244164781d3f7e3563e73d9c8",
+        "7_slow_1100mv_-40c/output-rise-setup.rpt": "cb23529561091848eb9993d2282c3d7d86fd17b9112fd355954b0379bbb41509",
+        "7_slow_1100mv_-40c/output-fall-hold.rpt": "f2903533ddf51b21160eed841f7b00f432505edfc5d23833fe9f1f53d7a8d4de",
+        "7_slow_1100mv_-40c/output-fall-setup.rpt": "00b568b860684e3f9b4cee601f76ecbe752e7b182fe2f07a8aa8b632e4295822",
+        "pulse-check/7_slow_1100mv_-40c/pulse.rpt": "1999394d0f9f899b10f9757894a6f3e2aecd3828213f146ca2eea98f626593b8",
+        "7_slow_1100mv_100c/output-rise-hold.rpt": "c40f632f1ac0b57129f174caf1478bc4bb8cf539bda255e4c0880bbe67ddc970",
+        "7_slow_1100mv_100c/output-rise-setup.rpt": "82287591856a2d6f09a85086c72056fcb81c0b40ee0dc0a955841b425c052fb8",
+        "7_slow_1100mv_100c/output-fall-hold.rpt": "a9f071d4443ce4262fcc88ee9de9d7f3b2202d9fe01c8a294944e8573f5cc536",
+        "7_slow_1100mv_100c/output-fall-setup.rpt": "43cc6cf0ef91446f512387b4b9b5d0b4c42673e8f0050c4cfc5c203c9c5e469d",
+        "pulse-check/7_slow_1100mv_100c/pulse.rpt": "cfcf8f8064abf369b8a8a81330015c7c66bb2d7df6f84746bb9532cc0bf72f47",
+        "MIN_fast_1100mv_-40c/output-rise-hold.rpt": "24b2c54a34e2402210ba8ea7edc47948aa3b0a4558ca35360dfd1c25eaf8c9c5",
+        "MIN_fast_1100mv_-40c/output-rise-setup.rpt": "733306440f72021c5c629de59c2f0024bdd66a01228991350104e4dfbf699ddc",
+        "MIN_fast_1100mv_-40c/output-fall-hold.rpt": "1377da9e8f0baf85a0c2fb858eba2dde734401ab075f9eac81a360ccbec07c23",
+        "MIN_fast_1100mv_-40c/output-fall-setup.rpt": "0735514719036efdaaf12aef8a05c4bfb7566ce852e0f21904422fcaf334c4f6",
+        "pulse-check/MIN_fast_1100mv_-40c/pulse.rpt": "0c397d442e3bcaf1b91d948a6d4c3242729305b0890c67ce22a264fa9ecd5061",
+        "MIN_fast_1100mv_100c/output-rise-hold.rpt": "fc4df95172d73939d21fefd2d52fb389c55f30c2f8c1dc7a87b8ee084c489a81",
+        "MIN_fast_1100mv_100c/output-rise-setup.rpt": "d1005ba10eb0d982740a23a08fb6b4a548714660f0aeb796cea5fc8d388d56e1",
+        "MIN_fast_1100mv_100c/output-fall-hold.rpt": "259fe3e1e757a21803aae595aee33bdb0f5ac8f0e6f424251f82fc0f20ac59eb",
+        "MIN_fast_1100mv_100c/output-fall-setup.rpt": "3430f28548be67e63e0141969f9fa87d4aee5916ff121cb78f2aa6498a0552ef",
+        "pulse-check/MIN_fast_1100mv_100c/pulse.rpt": "ab57e728c8a5fc50e102f2656619f940f9688b5b0be3fbfbacd5e04621b30407",
+        "../evidence.json": "78077a8464490d6cea0fb78510ff778eae29db472e575cf50c0408514ddfa835"
+      }
+    },
+    {
+      "load_pf": 30.0,
+      "load_scope": "declared fixed load",
+      "scenarios": [
+        {
+          "corner": "7_slow_1100mv_-40c",
+          "local_loss_ps": {
+            "high": 557,
+            "low": -297
+          },
+          "vendor_pulses": {
+            "high": {
+              "raw_width_ps": 3958,
+              "vendor_actual_ps": 4592,
+              "removed_credit_ps": 634,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4515
+            },
+            "low": {
+              "raw_width_ps": 4759,
+              "vendor_actual_ps": 5393,
+              "removed_credit_ps": 634,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4462
+            }
+          }
+        },
+        {
+          "corner": "7_slow_1100mv_100c",
+          "local_loss_ps": {
+            "high": 655,
+            "low": -333
+          },
+          "vendor_pulses": {
+            "high": {
+              "raw_width_ps": 3761,
+              "vendor_actual_ps": 4424,
+              "removed_credit_ps": 663,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4416
+            },
+            "low": {
+              "raw_width_ps": 4893,
+              "vendor_actual_ps": 5556,
+              "removed_credit_ps": 663,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4560
+            }
+          }
+        },
+        {
+          "corner": "MIN_fast_1100mv_-40c",
+          "local_loss_ps": {
+            "high": 342,
+            "low": -256
+          },
+          "vendor_pulses": {
+            "high": {
+              "raw_width_ps": 3796,
+              "vendor_actual_ps": 4084,
+              "removed_credit_ps": 288,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4138
+            },
+            "low": {
+              "raw_width_ps": 5620,
+              "vendor_actual_ps": 5908,
+              "removed_credit_ps": 288,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 5364
+            }
+          }
+        },
+        {
+          "corner": "MIN_fast_1100mv_100c",
+          "local_loss_ps": {
+            "high": 445,
+            "low": -349
+          },
+          "vendor_pulses": {
+            "high": {
+              "raw_width_ps": 3755,
+              "vendor_actual_ps": 4049,
+              "removed_credit_ps": 294,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 4200
+            },
+            "low": {
+              "raw_width_ps": 5652,
+              "vendor_actual_ps": 5946,
+              "removed_credit_ps": 294,
+              "vendor_requirement_ps": 0,
+              "ingress_width_ps": 5303
+            }
+          }
+        }
+      ],
+      "worst_local_loss_ps": {
+        "high": 660,
+        "low": -250
+      },
+      "hashes": {
+        "top.qsf": "c1ffb05fd057f9e591ad4d62906d5d5fbfa7328f3c7554d831268769f52bb981",
+        "clock-forward-inverted.v": "f5762f83b17ed7c9dfd5b4aed12aa37c860ca01a7c5ae1879ab9ad624f74ae93",
+        "clocks.sdc": "92319d793f093012fa28a2a0fb84a46304f3403d5aa73a17a5f6f9cf63cee2c7",
+        "output_files/top.fit.rpt": "5665ad6262f6dd0dcf197103c508b0da5e37e4e1f68d0fe06c3f0670aa79906f",
+        "7_slow_1100mv_-40c/output-rise-hold.rpt": "f0c7333b325cab924b7dea88c0cbf35000004af4c828770d9b090a7e528ef278",
+        "7_slow_1100mv_-40c/output-rise-setup.rpt": "972f0ae52a2c6f735e86555a559ba2170737385fc520c1979e4a5a9c1cee54eb",
+        "7_slow_1100mv_-40c/output-fall-hold.rpt": "6caca7268f8177f72454e688dc1d9320610437e882a5bfea80b9a4d66c6cbaea",
+        "7_slow_1100mv_-40c/output-fall-setup.rpt": "96d95bc2c490e02e51a1651751412f670b894f0848d99d4b0c91499428dbb06c",
+        "pulse-check/7_slow_1100mv_-40c/pulse.rpt": "1ec37e78d70ac579d56f004e3c67dc3e388c546d555d17bc4d6fed7e8ce1e625",
+        "7_slow_1100mv_100c/output-rise-hold.rpt": "29f30fa19f2c3ce79a9aaf46703522230cefd82d176f9c907b1c76fb70da85bc",
+        "7_slow_1100mv_100c/output-rise-setup.rpt": "894c656e8343612837453a82bef78eda628f5db3c1b57a21a87ea27a8a9427d7",
+        "7_slow_1100mv_100c/output-fall-hold.rpt": "8bc6710a146cb38bc021ba797062a5416b22c7b9b2960322cfd09a9be22eec5c",
+        "7_slow_1100mv_100c/output-fall-setup.rpt": "f4c08a99b62efe67f68ef12628fd9d99169fbec72950577549b1ea55fd105c45",
+        "pulse-check/7_slow_1100mv_100c/pulse.rpt": "a1e34886f40a2cd9731b307145d3cdfa3371d1fe8e26fb45a80d4b57fee13a79",
+        "MIN_fast_1100mv_-40c/output-rise-hold.rpt": "142350c1540dbec67d2aabcaa55ee06df1bf215a4c25911a1d522af9c7b43042",
+        "MIN_fast_1100mv_-40c/output-rise-setup.rpt": "c3ce75a35110a1a11afd59a482540593d251b04da5401209b28485c618d89e62",
+        "MIN_fast_1100mv_-40c/output-fall-hold.rpt": "3ab1458e3bbad3b95d857384f66d532bb3c233c9c2017e8c7a39e31d8e3233cf",
+        "MIN_fast_1100mv_-40c/output-fall-setup.rpt": "78267c9db673bbe76bdf0fa9ec07e53ba8e206961b8f86de079249ff312fe109",
+        "pulse-check/MIN_fast_1100mv_-40c/pulse.rpt": "024fe6c58e3096ec176a25f70a45b833b565a6bab46626b74bc98cf94ab4bb5e",
+        "MIN_fast_1100mv_100c/output-rise-hold.rpt": "c0b73a8eef5fb545a11df3305174f8a9bf2c23325c811a975c37aab87c86bb32",
+        "MIN_fast_1100mv_100c/output-rise-setup.rpt": "6db2a63c6260c25211ee6d187a0526ff14bc9331cfb3f74dd3a856ae0baeaf50",
+        "MIN_fast_1100mv_100c/output-fall-hold.rpt": "ff75d2296829988f72c6f979c01005ebff3d2627526dea34734cf8f3c9c60d9c",
+        "MIN_fast_1100mv_100c/output-fall-setup.rpt": "be271b8ca91b186562854b9a33cc365812d36be227e0b497917d566e0f140df6",
+        "pulse-check/MIN_fast_1100mv_100c/pulse.rpt": "b0036a0958ded0c79a29494cd9882686908e8de60f61b3d3c4ee3fbabcf72cc8",
+        "../evidence.json": "1a7e3aebe897ed460634657c3b7c436909fc2544772671c94075eac15cf3e09a"
+      }
+    }
+  ],
+  "ideal_5ns_ingress_diagnostics": {
+    "0": {
+      "high_min_ps": 4830,
+      "low_min_ps": 4840,
+      "physical_signoff": false,
+      "classification": "conditional point-load diagnostic"
+    },
+    "15": {
+      "high_min_ps": 4620,
+      "low_min_ps": 4970,
+      "physical_signoff": false,
+      "classification": "conditional point-load diagnostic"
+    },
+    "30": {
+      "high_min_ps": 4340,
+      "low_min_ps": 5250,
+      "physical_signoff": false,
+      "classification": "conditional point-load diagnostic"
+    }
+  }
+}

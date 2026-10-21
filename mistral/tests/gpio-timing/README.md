@@ -305,3 +305,40 @@ python3 mistral/tests/gpio-timing/check_input_configuration.py /tmp/ramtest-zero
   --database-doc /path/to/mistral/docs/gendoc/dqs16-dmux.rst \
   --output /tmp/input-zero-reference30.json
 ```
+
+## Same-corner clock waveform references
+
+`clock_waveform.py` extracts local AD20 pulse losses from an inverted constant
+forwarder, pairing the closing-edge early delay with the opening-edge late
+delay at the **same load and timing corner**. It cross-checks both paths against
+Quartus's generated-output-clock pulse reports, verifies the mux ingress, and
+records but excludes vendor clock-pessimism removal. It never subtracts one
+corner's early delay from another corner's late delay.
+
+The retained [21 October reference](../../../docs/validation/2026-10-21-clock-waveform-265/summary.md)
+covers the default zero-load fixture and declared 15/30 pF point loads at all
+four corners. This is a diagnostic reference, not a native production timing
+model, a continuous load envelope or an identified board. `evaluate()` accepts
+explicit conservative high/low pulse widths at the DDIO mux routing ingress
+and uncertainty, subtracting the worst local pulse loss across the selected
+load's corners. Inversion maps ingress low to output high and ingress high
+to output low; asymmetric pulse tests and the raw reports check this mapping.
+It rejects unsampled loads and nonfinite/negative inputs;
+its result always retains `physical_signoff=false`. Native STA, emitted bytes,
+and the whole-design retention gate are unchanged.
+
+After extracting the retained fit archive, reproduce the reference and checks:
+
+```sh
+python3 mistral/tests/gpio-timing/clock_waveform.py /path/to/reference-root \
+  --output /tmp/clock-waveform.json
+python3 mistral/tests/gpio-timing/check_clock_waveform.py /path/to/reference-root \
+  /tmp/clock-waveform.json
+```
+
+The generated-clock query is `pulse.tcl` in the archive. Quartus 17.0.2 does not
+support the attempted `set_min_pulse_width` command; the failed probe is retained.
+The successful query's vendor required pulse width is zero, so its positive
+slack is **not** SDRAM acceptance. Apply the actual receiver's requirement,
+board skew/slew and routed ingress waveform separately. In particular, no
+pessimism-removal credit from the reference fixture transfers to another route.
