@@ -155,7 +155,13 @@ struct GpuRouterCfg
     // Bounding-box-disjoint batches per iteration before nets are allowed
     // to be routed concurrently with overlapping boxes
     int max_batches;
-    // Maximum number of nets routed concurrently on the device
+    // Nets whose boxes overlap every one of those batches are routed in
+    // chunks of at most this many (0: all in one batch). Every failing net
+    // is ripped up before the first batch, so nets sharing a batch all see
+    // the wire they fought over as free and take it together again.
+    int overflow_chunk;
+    // Maximum number of nets routed concurrently on the device; large_slots
+    // 0 sizes the large lane from free device memory
     int small_slots, large_slots;
     // log2 of the per-net hash table size for the two lanes
     int small_bits, large_bits;
@@ -167,6 +173,10 @@ struct GpuRouterCfg
     bool gpu_required;
     // Print per-iteration timing and backend statistics
     bool perf_profile;
+    // Diagnostic: rewritten after every negotiation iteration with each
+    // overused wire, its occupancy and, for heavily shared wires, some of
+    // the nets on it. Empty disables it.
+    std::string overuse_report;
     // Empty disables telemetry. The writer creates this path exclusively.
     std::string telemetry_path;
     // Original explicit or randomized command seed. This is kept separate

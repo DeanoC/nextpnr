@@ -1,0 +1,315 @@
+[
+ {
+  "class": "SDP registered",
+  "configs": [
+   "dc20clr",
+   "dc20r",
+   "sdp10r",
+   "sdp20clr",
+   "sdp20r",
+   "sdp2r"
+  ],
+  "7_slow_1100mv_100c": {
+   "setup_min": 0.667,
+   "setup_max": 0.709,
+   "hold_min": 0.566,
+   "hold_max": 0.603,
+   "arcs": 552
+  },
+  "7_slow_1100mv_-40c": {
+   "setup_min": 0.672,
+   "setup_max": 0.717,
+   "hold_min": 0.582,
+   "hold_max": 0.623,
+   "arcs": 552
+  },
+  "MIN_fast_1100mv_100c": {
+   "setup_min": 0.347,
+   "setup_max": 0.364,
+   "hold_min": 0.306,
+   "hold_max": 0.32,
+   "arcs": 552
+  },
+  "MIN_fast_1100mv_-40c": {
+   "setup_min": 0.333,
+   "setup_max": 0.349,
+   "hold_min": 0.291,
+   "hold_max": 0.304,
+   "arcs": 552
+  }
+ },
+ {
+  "class": "SDP unregistered",
+  "configs": [
+   "dc10",
+   "dc20",
+   "mw10r20",
+   "mw20r10",
+   "sdp1",
+   "sdp10",
+   "sdp10b",
+   "sdp2",
+   "sdp20",
+   "sdp20be",
+   "sdp5"
+  ],
+  "7_slow_1100mv_100c": {
+   "setup_min": 2.592,
+   "setup_max": 2.62,
+   "hold_min": 1.441,
+   "hold_max": 1.454,
+   "arcs": 768
+  },
+  "7_slow_1100mv_-40c": {
+   "setup_min": 2.66,
+   "setup_max": 2.696,
+   "hold_min": 1.505,
+   "hold_max": 1.525,
+   "arcs": 768
+  },
+  "MIN_fast_1100mv_100c": {
+   "setup_min": 1.308,
+   "setup_max": 1.309,
+   "hold_min": 0.769,
+   "hold_max": 0.771,
+   "arcs": 768
+  },
+  "MIN_fast_1100mv_-40c": {
+   "setup_min": 1.267,
+   "setup_max": 1.268,
+   "hold_min": 0.742,
+   "hold_max": 0.743,
+   "arcs": 768
+  }
+ },
+ {
+  "class": "SDP 40-bit registered",
+  "configs": [
+   "dc40r",
+   "sdp40clr",
+   "sdp40r"
+  ],
+  "7_slow_1100mv_100c": {
+   "setup_min": 0.674,
+   "setup_max": 0.749,
+   "hold_min": 0.574,
+   "hold_max": 0.641,
+   "arcs": 720
+  },
+  "7_slow_1100mv_-40c": {
+   "setup_min": 0.678,
+   "setup_max": 0.751,
+   "hold_min": 0.589,
+   "hold_max": 0.659,
+   "arcs": 720
+  },
+  "MIN_fast_1100mv_100c": {
+   "setup_min": 0.351,
+   "setup_max": 0.391,
+   "hold_min": 0.312,
+   "hold_max": 0.344,
+   "arcs": 720
+  },
+  "MIN_fast_1100mv_-40c": {
+   "setup_min": 0.336,
+   "setup_max": 0.373,
+   "hold_min": 0.297,
+   "hold_max": 0.327,
+   "arcs": 720
+  }
+ },
+ {
+  "class": "SDP 40-bit unregistered",
+  "configs": [
+   "dc40",
+   "mw10r40",
+   "mw20r40",
+   "mw40r10",
+   "sdp40"
+  ],
+  "7_slow_1100mv_100c": {
+   "setup_min": 2.594,
+   "setup_max": 2.704,
+   "hold_min": 2.246,
+   "hold_max": 2.339,
+   "arcs": 1020
+  },
+  "7_slow_1100mv_-40c": {
+   "setup_min": 2.687,
+   "setup_max": 2.82,
+   "hold_min": 2.364,
+   "hold_max": 2.446,
+   "arcs": 1020
+  },
+  "MIN_fast_1100mv_100c": {
+   "setup_min": 1.308,
+   "setup_max": 1.345,
+   "hold_min": 1.172,
+   "hold_max": 1.208,
+   "arcs": 1020
+  },
+  "MIN_fast_1100mv_-40c": {
+   "setup_min": 1.267,
+   "setup_max": 1.304,
+   "hold_min": 1.13,
+   "hold_max": 1.161,
+   "arcs": 1020
+  }
+ },
+ {
+  "class": "TDP A registered",
+  "configs": [
+   "tdp10clra",
+   "tdp10rab",
+   "tdp20clr",
+   "tdp20ra"
+  ],
+  "7_slow_1100mv_100c": {
+   "setup_min": 0.697,
+   "setup_max": 0.744,
+   "hold_min": 0.592,
+   "hold_max": 0.634,
+   "arcs": 360
+  },
+  "7_slow_1100mv_-40c": {
+   "setup_min": 0.696,
+   "setup_max": 0.744,
+   "hold_min": 0.607,
+   "hold_max": 0.652,
+   "arcs": 360
+  },
+  "MIN_fast_1100mv_100c": {
+   "setup_min": 0.367,
+   "setup_max": 0.374,
+   "hold_min": 0.325,
+   "hold_max": 0.341,
+   "arcs": 360
+  },
+  "MIN_fast_1100mv_-40c": {
+   "setup_min": 0.35,
+   "setup_max": 0.37,
+   "hold_min": 0.308,
+   "hold_max": 0.324,
+   "arcs": 360
+  }
+ },
+ {
+  "class": "TDP A unregistered",
+  "configs": [
+   "tdp1",
+   "tdp10",
+   "tdp10sc",
+   "tdp2",
+   "tdp20",
+   "tdp20rb",
+   "tdp5",
+   "tdpmw10r20"
+  ],
+  "7_slow_1100mv_100c": {
+   "setup_min": 2.578,
+   "setup_max": 2.61,
+   "hold_min": 1.422,
+   "hold_max": 1.44,
+   "arcs": 468
+  },
+  "7_slow_1100mv_-40c": {
+   "setup_min": 2.666,
+   "setup_max": 2.679,
+   "hold_min": 1.486,
+   "hold_max": 1.508,
+   "arcs": 468
+  },
+  "MIN_fast_1100mv_100c": {
+   "setup_min": 1.303,
+   "setup_max": 1.311,
+   "hold_min": 0.761,
+   "hold_max": 0.767,
+   "arcs": 468
+  },
+  "MIN_fast_1100mv_-40c": {
+   "setup_min": 1.258,
+   "setup_max": 1.263,
+   "hold_min": 0.732,
+   "hold_max": 0.738,
+   "arcs": 468
+  }
+ },
+ {
+  "class": "TDP B registered",
+  "configs": [
+   "tdp10rab",
+   "tdp20clr",
+   "tdp20rb"
+  ],
+  "7_slow_1100mv_100c": {
+   "setup_min": 0.667,
+   "setup_max": 0.709,
+   "hold_min": 0.569,
+   "hold_max": 0.603,
+   "arcs": 300
+  },
+  "7_slow_1100mv_-40c": {
+   "setup_min": 0.672,
+   "setup_max": 0.716,
+   "hold_min": 0.584,
+   "hold_max": 0.623,
+   "arcs": 300
+  },
+  "MIN_fast_1100mv_100c": {
+   "setup_min": 0.347,
+   "setup_max": 0.363,
+   "hold_min": 0.307,
+   "hold_max": 0.32,
+   "arcs": 300
+  },
+  "MIN_fast_1100mv_-40c": {
+   "setup_min": 0.333,
+   "setup_max": 0.349,
+   "hold_min": 0.292,
+   "hold_max": 0.304,
+   "arcs": 300
+  }
+ },
+ {
+  "class": "TDP B unregistered",
+  "configs": [
+   "tdp1",
+   "tdp10",
+   "tdp10clra",
+   "tdp10sc",
+   "tdp2",
+   "tdp20",
+   "tdp20ra",
+   "tdp5",
+   "tdpmw10r20"
+  ],
+  "7_slow_1100mv_100c": {
+   "setup_min": 2.548,
+   "setup_max": 2.581,
+   "hold_min": 1.403,
+   "hold_max": 1.422,
+   "arcs": 588
+  },
+  "7_slow_1100mv_-40c": {
+   "setup_min": 2.623,
+   "setup_max": 2.659,
+   "hold_min": 1.469,
+   "hold_max": 1.488,
+   "arcs": 588
+  },
+  "MIN_fast_1100mv_100c": {
+   "setup_min": 1.282,
+   "setup_max": 1.286,
+   "hold_min": 0.745,
+   "hold_max": 0.749,
+   "arcs": 588
+  },
+  "MIN_fast_1100mv_-40c": {
+   "setup_min": 1.242,
+   "setup_max": 1.245,
+   "hold_min": 0.719,
+   "hold_max": 0.722,
+   "arcs": 588
+  }
+ }
+]

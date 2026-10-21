@@ -370,6 +370,10 @@ void BaseMainWindow::open_json()
         if (ctx->settings.find(ctx->id("synth")) == ctx->settings.end()) {
             ArchArgs chipArgs = ctx->args;
             std::unique_ptr<Context> new_ctx = std::unique_ptr<Context>(new Context(chipArgs));
+            // createContext wrote explicit architecture options on the old context.
+            // This replacement does not run it, and load_json snapshots only what
+            // is present here, so those options would lose to the checkpoint.
+            handler->copyDedicatedCommandSettings(ctx.get(), new_ctx.get());
             for (const char *name : {"gpurouter/telemetryPath", "gpurouter/telemetrySeed"}) {
                 auto setting = ctx->settings.find(ctx->id(name));
                 if (setting != ctx->settings.end())

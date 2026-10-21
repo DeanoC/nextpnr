@@ -17,13 +17,18 @@ hardware L5/L6 mux mode. All ordinary LUTs smaller than six inputs, including
 buffers and inverters, use L5 mode. The mux-level assignments follow
 `get_phys_pin_val`: E selects the final mux in L6 mode, while F selects the final
 mux in L5 mode. C/D exchange the middle levels between the two L6 halves, so
-their existing early/late envelope is used. Before input legalisation, the
-default uses the fastest-first placement scaffold. `--isolated-lut-placement`
-uses F, E, C, B, A for an isolated L5 cell and A through F for LUT6.
-`--arrival-pin-assignment` does not change this estimate; it permutes private
-pins after legalisation. Hypothetical cells without nets use the same
+their existing early/late envelope is used. Legalisation gives an L5 cell's
+last private input F, then E, C/D, B and A, and keeps LUT6 inputs in order.
+Yosys times the last ALUT input fastest, so that is where abc9 puts the
+critical signal (#214). A last input shared with the other half of the ALM
+keeps its own F as well when that half has a free private pin; the other
+half reads the net on A/B. Before input legalisation, placement times every
+pin legalisation fixes: LUT6 inputs in order and the last L5 input on F. The
+other L5 inputs keep the #206 fastest-first scaffold order on E, C/D, B and
+A. `--isolated-lut-placement` times them on the isolated legal map instead.
+`--arrival-pin-assignment` does not change either estimate; it permutes
+private pins after legalisation. Hypothetical cells without nets use the same
 order as a fully connected cell; connected cells skip disconnected inputs.
-These estimates affect placement QoR and remain opt-in following #206.
 After legalisation, timing uses the actual physical maps under every policy.
 The underlying tables retain their existing device, voltage and temperature
 limitations.

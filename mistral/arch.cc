@@ -145,6 +145,9 @@ Arch::Arch(ArchArgs args)
     // override them without Arch::place silently replacing their values.
     settings[id("placerHeap/beta")] = std::to_string(0.5);
     settings[id("placerHeap/criticalityExponent")] = std::to_string(7);
+    // Spread cells out of regions whose estimated routing demand would
+    // overflow; dense FES cores otherwise fail to route on most seeds (#247).
+    settings[id("placerHeap/congestion")] = std::to_string(1);
     this->cyclonev = mistral::CycloneV::get_model(args.device);
     NPNR_ASSERT(this->cyclonev != nullptr);
 
@@ -352,7 +355,7 @@ void Arch::note_reserved_bel(const std::string &name)
         log_error("FES_RESERVED_BEL '%s' is not a device BEL.\n", name.c_str());
     // FES_RESERVED_BEL has no region syntax of its own; it joins the default
     // "cart" region, matching the legacy boolean FES_SLOT=1 cart tag.
-    IdString region_id = id("cart");
+    IdString region_id = id_cart;
     auto absorbed = fes_region_absorbed_by.find(region_id);
     if (absorbed != fes_region_absorbed_by.end())
         log_error("FES_RESERVED_BEL '%s' targets region 'cart', already absorbed into group '%s'.\n", name.c_str(),
@@ -508,15 +511,18 @@ void Arch::note_reserved_rect_group(const std::string &spec)
 
 IdString Arch::fes_cell_slot_region(const CellInfo *cell) const
 {
-    if (cell == nullptr || !cell->attrs.count(id("FES_SLOT")))
+    if (cell == nullptr)
         return IdString();
-    const Property &prop = cell->attrs.at(id("FES_SLOT"));
+    auto found = cell->attrs.find(id_FES_SLOT);
+    if (found == cell->attrs.end())
+        return IdString();
+    const Property &prop = found->second;
     // Legacy carts tag cells with the bare boolean FES_SLOT=1; treat that as
     // the default "cart" region so existing single-socket QSF/cart recipes
     // keep working unchanged.
     if (prop.is_string)
         return prop.as_string().empty() ? IdString() : id(prop.as_string());
-    return prop.as_bool() ? id("cart") : IdString();
+    return prop.as_bool() ? id_cart : IdString();
 }
 
 bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_invalid) const
@@ -569,6 +575,8 @@ bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_i
                      cell_region.c_str(getCtx()), getBelName(bel).str(getCtx()).c_str());
         return false;
     }
+    if (slot_cell && !fes_slot_pins_escape(bel, cell, explain_invalid))
+        return false;
     return true;
 }
 
@@ -953,6 +961,7 @@ void diagnostic_retained_enable(Context *, const char *, bool);
 
 bool Arch::place()
 {
+    apply_place_regions();
     std::string placer = str_or_default(settings, id_placer, defaultPlacer);
     if (critical_cohort_budget && (placer != "heap" || fes_any_slot_region_active))
         log_error("Critical cohort repair requires fresh ordinary HeAP placement.\n");
@@ -1008,6 +1017,11 @@ bool Arch::place()
             // A cart confined to a small rectangle can cycle evictions for
             // a long time; report the cycling cell instead of running on.
             cfg.cellRipupLimit = std::max(cfg.cellRipupLimit, 500);
+            // Its rectangle has no spare capacity to spread into.
+            cfg.congestionDriven = false;
+            // Saved settings must record the effective mode used for this
+            // placement so the checkpoint remains a faithful replay record.
+            settings[id("placerHeap/congestion")] = std::to_string(int(cfg.congestionDriven));
         }
         {
             // Prefer nearby FFs with matching controls. A LAB can legally
@@ -1094,6 +1108,7 @@ bool Arch::place()
         lut_driver_copy_selection >= 0)
         log_error("Requested LUT driver copy candidate was not qualified; routing was not started.\n");
     repair_critical_cohorts(getCtx(), critical_cohort_budget);
+    check_place_regions();
     getCtx()->attrs[id_step] = std::string("place");
     save_fes_pin_maps(false);
     archInfoToAttributes();

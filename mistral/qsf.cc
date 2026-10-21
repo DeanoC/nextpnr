@@ -20,13 +20,18 @@
 #include "log.h"
 #include "nextpnr.h"
 #include "util.h"
+#include "json11.hpp"
 
+#include <algorithm>
 #include <iterator>
+#include <limits>
 #include <regex>
 
 NEXTPNR_NAMESPACE_BEGIN
 
 namespace {
+
+const char *place_region_setting = "mistral/place_region_assignments_v1";
 
 struct QsfOption
 {
@@ -58,6 +63,10 @@ void set_location_assignment_cmd(Context *ctx, const option_map_t &options, cons
 void set_instance_assignment_cmd(Context *ctx, const option_map_t &options, const std::vector<std::string> &pos_args)
 {
     const std::string &to = options.at("to").at(0);
+    if (options.at("name").at(0) == "PLACE_REGION") {
+        ctx->note_place_region(to, pos_args.at(0));
+        return;
+    }
     IdString assignment = ctx->id(options.at("name").at(0));
     if (is_wildcard_target(to)) {
         // Quartus applies '*'/'?' targets such as SDRAM_* or HDMI_TX_D[*] to
@@ -395,6 +404,159 @@ void Arch::apply_io_attrs(IdString port, CellInfo *cell)
     if (exact != io_attr.end())
         for (const auto &kv : exact->second)
             cell->attrs[kv.first] = kv.second;
+}
+
+void Arch::note_place_region(const std::string &target, const std::string &value)
+{
+    static const std::regex rect_pattern(R"(^\s*X([0-9]+)\s+Y([0-9]+)\s+X([0-9]+)\s+Y([0-9]+)\s*$)");
+    std::smatch match;
+    if (!std::regex_match(value, match, rect_pattern))
+        log_error("PLACE_REGION '%s' for '%s' must be one rectangle 'X<x0> Y<y0> X<x1> Y<y1>'.\n", value.c_str(),
+                  target.c_str());
+    PlaceRegionAssignment assignment{target, std::stoi(match[1]), std::stoi(match[2]), std::stoi(match[3]),
+                                     std::stoi(match[4])};
+    if (assignment.x0 > assignment.x1 || assignment.y0 > assignment.y1 || assignment.x1 >= getGridDimX() ||
+        assignment.y1 >= getGridDimY())
+        log_error("PLACE_REGION '%s' for '%s' is empty or outside the %dx%d device grid.\n", value.c_str(),
+                  target.c_str(), getGridDimX(), getGridDimY());
+    place_region_assignments.push_back(assignment);
+    json11::Json::array saved;
+    for (const auto &entry : place_region_assignments)
+        saved.emplace_back(json11::Json::array{entry.target, entry.x0, entry.y0, entry.x1, entry.y1});
+    settings[id(place_region_setting)] = json11::Json(saved).dump();
+}
+
+void Arch::restore_place_regions(bool qsf_supplied)
+{
+    const IdString setting_id = id(place_region_setting);
+    if (qsf_supplied) {
+        place_region_assignments.clear();
+        settings.erase(setting_id);
+        return;
+    }
+
+    for (const auto &setting : settings) {
+        const std::string name = setting.first.str(this);
+        if (name.find("mistral/place_region_assignments_") == 0 && name != place_region_setting)
+            log_error("Unsupported PLACE_REGION checkpoint version '%s'.\n", name.c_str());
+    }
+    auto found = settings.find(setting_id);
+    if (found == settings.end())
+        return;
+    if (!found->second.is_string)
+        log_error("Invalid PLACE_REGION checkpoint: expected a string.\n");
+    std::string error;
+    const auto snapshot = json11::Json::parse(found->second.as_string(), error);
+    if (!error.empty() || !snapshot.is_array())
+        log_error("Invalid PLACE_REGION checkpoint: expected an assignment array.\n");
+    for (const auto &entry : snapshot.array_items()) {
+        if (!entry.is_array() || entry.array_items().size() != 5 || !entry[0].is_string() ||
+            entry[0].string_value().empty())
+            log_error("Invalid PLACE_REGION checkpoint assignment.\n");
+        for (size_t i = 1; i < 5; ++i) {
+            if (!entry[i].is_number() || entry[i].number_value() < 0 ||
+                entry[i].number_value() > std::numeric_limits<int>::max() ||
+                entry[i].number_value() != entry[i].int_value())
+                log_error("Invalid PLACE_REGION checkpoint coordinates.\n");
+        }
+    }
+    place_region_assignments.clear();
+    for (const auto &entry : snapshot.array_items()) {
+        note_place_region(entry[0].string_value(),
+                          stringf("X%d Y%d X%d Y%d", entry[1].int_value(), entry[2].int_value(),
+                                  entry[3].int_value(), entry[4].int_value()));
+    }
+}
+
+void Arch::apply_place_regions()
+{
+    // Quartus-style precedence: an assignment naming the cell itself beats
+    // any hierarchy or wildcard target, a longer target beats a shorter one,
+    // and a later assignment beats an earlier one of the same length. A
+    // plain target names the cell itself or every cell below it in the
+    // hierarchy; '*' and '?' match against the full cell name. Only core
+    // logic is constrained: I/O, clock buffers, PLLs and hard blocks named
+    // under a fenced hierarchy keep their own placement.
+    if (place_region_assignments.empty())
+        return;
+    auto core_logic = [&](const CellInfo *ci) {
+        return is_comb_cell(ci->type) ||
+               ci->type.in(id_MISTRAL_FF, id_MISTRAL_MLAB, id_MISTRAL_M10K, id_MISTRAL_M10K_TDP, id_MISTRAL_MUL9X9,
+                           id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27, id_MISTRAL_MUL18X19,
+                           id_MISTRAL_MUL18X19_COMBINED);
+    };
+    std::vector<int> matched(place_region_assignments.size(), 0);
+    std::vector<int> covered(place_region_assignments.size(), 0);
+    dict<IdString, pool<IdString>> region_types;
+    for (auto &cell : cells) {
+        CellInfo *ci = cell.second.get();
+        if (!core_logic(ci))
+            continue;
+        const std::string name = ci->name.str(this);
+        int best = -1;
+        size_t best_score = 0;
+        for (int i = 0; i < int(place_region_assignments.size()); i++) {
+            const std::string &target = place_region_assignments.at(i).target;
+            size_t score;
+            if (name == target)
+                score = std::string::npos;
+            else if (is_wildcard_target(target) ? quartus_name_match(target.c_str(), name.c_str())
+                                                : name.size() > target.size() &&
+                                                          name.compare(0, target.size(), target) == 0 &&
+                                                          name[target.size()] == '.')
+                score = target.size();
+            else
+                continue;
+            covered.at(i)++;
+            if (best < 0 || score >= best_score) {
+                best = i;
+                best_score = score;
+            }
+        }
+        if (best < 0)
+            continue;
+        const auto &assignment = place_region_assignments.at(best);
+        if (ci->region != nullptr)
+            log_error("PLACE_REGION target '%s' matches cell '%s', which is already constrained to region '%s'.\n",
+                      assignment.target.c_str(), name.c_str(), ci->region->name.c_str(this));
+        IdString region_name = id(stringf("PLACE_REGION X%d Y%d X%d Y%d", assignment.x0, assignment.y0,
+                                          assignment.x1, assignment.y1));
+        if (!region.count(region_name)) {
+            createRectangularRegion(region_name, assignment.x0, assignment.y0, assignment.x1, assignment.y1);
+            place_region_names.insert(region_name);
+        }
+        ci->region = region.at(region_name).get();
+        matched.at(best)++;
+        if (region_types[region_name].insert(ci->type).second) {
+            const auto &bels = ci->region->bels;
+            if (!std::any_of(bels.begin(), bels.end(),
+                             [&](BelId bel) { return isValidBelForCellType(ci->type, bel); }))
+                log_error("PLACE_REGION X%d Y%d X%d Y%d -to %s has no %s location for cell '%s'.\n", assignment.x0,
+                          assignment.y0, assignment.x1, assignment.y1, assignment.target.c_str(),
+                          ci->type.c_str(this), name.c_str());
+        }
+    }
+    for (int i = 0; i < int(place_region_assignments.size()); i++) {
+        const auto &assignment = place_region_assignments.at(i);
+        if (covered.at(i) == 0)
+            log_error("PLACE_REGION target '%s' matches no core logic cell.\n", assignment.target.c_str());
+        log_info("PLACE_REGION X%d Y%d X%d Y%d -to %s: %d cells\n", assignment.x0, assignment.y0, assignment.x1,
+                 assignment.y1, assignment.target.c_str(), matched.at(i));
+    }
+}
+
+void Arch::check_place_regions() const
+{
+    // Later placement passes are trusted to respect regions only as far as
+    // this check: every constrained cell must still sit inside its rectangle.
+    for (auto &cell : cells) {
+        const CellInfo *ci = cell.second.get();
+        if (ci->region == nullptr || !place_region_names.count(ci->region->name))
+            continue;
+        if (ci->bel == BelId() || !ci->region->bels.count(ci->bel))
+            log_error("Cell '%s' was placed at %s, outside its %s.\n", ci->name.c_str(this),
+                      ci->bel == BelId() ? "no BEL" : getCtx()->nameOfBel(ci->bel), ci->region->name.c_str(this));
+    }
 }
 
 NEXTPNR_NAMESPACE_END

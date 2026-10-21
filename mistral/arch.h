@@ -21,6 +21,7 @@
 #define MISTRAL_ARCH_H
 
 #include <array>
+#include <mutex>
 #include <set>
 #include <unordered_map>
 #include <sstream>
@@ -388,6 +389,10 @@ struct Arch : BaseArch<ArchRanges>
     bool fes_pip_in_plug_halo(PipId pip) const;
     bool fes_pip_hits_bound_shell_pin(PipId pip) const;
     bool fes_pip_reaches_net_shell_tile(PipId pip, const NetInfo *net) const;
+    bool fes_search_pin_narrow(WireId wire, const NetInfo *net, bool forward) const;
+    bool fes_slot_pin_narrow(WireId wire, const NetInfo *net, bool forward) const;
+    void fes_precompute_narrow_pins();
+    bool fes_slot_pins_escape(BelId bel, const CellInfo *cell, bool explain_invalid) const;
     void fes_rip_reserved_shell_pips();
     void lock_fes_scaffold();
     void save_fes_pin_maps(bool save_lab_state = true);
@@ -585,9 +590,12 @@ struct Arch : BaseArch<ArchRanges>
     bool analogue_cache_valid = false;
     void compute_analogue_arcs(bool observe);
     bool analogue_repair();
-    // Analogue-scored route selection: several GPU candidate routes per
-    // failing sink, evaluated with the analogue model, best one kept.
-    bool analogue_candidate_pass(TimingAnalyser &tmg, float target, const GpuRouterCfg &repair_cfg);
+    // Analogue-scored route selection: several GPU candidate routes per sink
+    // with less than `limit` slack, evaluated with the analogue model, best
+    // one kept. To repair, a net scores by its worst sink slack; to improve
+    // a passing design, by its worst sink margin over that sink's clock
+    // pairs (TimingAnalyser::get_setup_slack_margin).
+    bool analogue_candidate_pass(TimingAnalyser &tmg, float limit, bool improve, const GpuRouterCfg &repair_cfg);
     // Keep the analogue simulator's routing-mux state in step with a net
     // whose routing changed: removed pips are parked on an unused input,
     // added pips linked.
@@ -675,6 +683,9 @@ struct Arch : BaseArch<ArchRanges>
 
     void create_lab(int x, int y, bool is_mlab);       // lab.cc
     void create_m10k(int x, int y);                    // m10k.cc
+    // Whether an M10K's A or B output half (DATAAOUT / DATABOUT) reads through
+    // its output register, as the bitstream programs A/B_OUTPUT_SEL.
+    bool m10k_output_registered(const CellInfo *cell, bool a_half) const; // m10k.cc
     void create_dsp(int x, int y);                     // dsp.cc
     void create_plls();                               // globals.cc
     dict<PipId, int> pll_ref_select, pll_clock_select;
@@ -705,7 +716,7 @@ struct Arch : BaseArch<ArchRanges>
     // --mistral-ff4: also place flip-flops on the secondary registers (FF1/FF3)
     // of each ALM. Off by default; set from the command line only.
     bool lab_ff4 = false;
-    bool isolated_lut_placement = false; // Opt-in: score the isolated legal LUT input allocation.
+    bool isolated_lut_placement = false; // Opt-in: score earlier L5 inputs on the isolated legal LUT pins.
     bool arrival_pin_assignment = false; // Opt-in: permute private LUT pins by arrival after legalisation.
 
     bool is_comb_cell(IdString cell_type) const;        // lab.cc
@@ -834,6 +845,22 @@ struct Arch : BaseArch<ArchRanges>
     void read_qsf(std::istream &in);                       // qsf.cc
     void apply_io_attrs(IdString port, CellInfo *cell);    // qsf.cc
 
+    // PLACE_REGION instance assignments ("X<x0> Y<y0> X<x1> Y<y1>", grid
+    // coordinates, inclusive), in file order. place() constrains each
+    // matching cell to its most specific assignment's rectangle before
+    // placement and checks every such cell is still inside it afterwards.
+    struct PlaceRegionAssignment
+    {
+        std::string target;
+        int x0, y0, x1, y1;
+    };
+    std::vector<PlaceRegionAssignment> place_region_assignments;
+    pool<IdString> place_region_names;
+    void note_place_region(const std::string &target, const std::string &value); // qsf.cc
+    void restore_place_regions(bool qsf_supplied);                               // qsf.cc
+    void apply_place_regions();                                                  // qsf.cc
+    void check_place_regions() const;                                            // qsf.cc
+
     // Static expansion slot(s): HeAP may not place unconstrained cells on
     // these BELs. Explicit BEL cells, FES_SLOT cells tagged for the owning
     // region and cells locked by the scaffold reload at their original BEL
@@ -871,6 +898,11 @@ struct Arch : BaseArch<ArchRanges>
     // same region as the cart that needs them.
     std::string fes_active_cart_region = "cart";
     std::unordered_map<const CellInfo *, BelId> fes_frozen_cells;
+    // fes_slot_pin_narrow by ((wire, net or net class), forward | class << 1).
+    // Frozen scaffold routing and the fences do not change once the scaffold
+    // is locked.
+    mutable std::mutex fes_narrow_mutex;
+    mutable dict<std::pair<std::pair<WireId, IdString>, int>, bool> fes_narrow_cache;
     bool fes_has_reserved_rect = false;
     bool fes_any_slot_region_active = false;
     bool fes_fence_active = false;

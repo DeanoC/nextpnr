@@ -815,8 +815,8 @@ TEST_F(TwelveReductionTest, SelectedRewriteIsExhaustiveAndPreservesEveryRegister
 TEST_F(TwelveReductionTest, PositiveSubDefaultGainNeedsItsExplicitMinimum)
 {
     // Compact the generic cone, including all twelve launch registers, into
-    // one LAB. Fastest-first L5 pins and the slow-100°C E envelope set the
-    // two chains' cell delays. Any trial outside this LAB pays extra routing.
+    // one LAB. Fastest-last puts each chain's last input on F. The slow
+    // 100°C pins set the other arcs. Any trial outside this LAB pays extra routing.
     for (auto *cell : {leaf, middle, root}) ctx->unbindBel(cell->bel);
     auto *extra_source = inputs[11]->driver.cell;
     ctx->unbindBel(extra_source->bel);
@@ -850,10 +850,8 @@ TEST_F(TwelveReductionTest, PositiveSubDefaultGainNeedsItsExplicitMinimum)
     ASSERT_TRUE(place_in_empty_alm(leaf));
     ASSERT_TRUE(place_in_empty_alm(middle));
     EXPECT_NE(ctx->getBelLocation(leaf->bel).z / 6, ctx->getBelLocation(middle->bel).z / 6);
-    // Keep the intermediate signals on logical A, mapped to physical F by
-    // placement. Exchange the truth-table variables to preserve the function.
-    exchange_inputs(middle, 0, 4);
-    exchange_inputs(root, 0, 4);
+    // The chain nets are already each LUT's last input, which fastest-last
+    // maps to F. Moving them to A would put the chain on the slow pin.
     assert_legal();
     ctx->check();
     CubeSnapshot before(ctx.get());
@@ -920,8 +918,6 @@ TEST_F(TwelveReductionTest, PositiveSubDefaultGainNeedsItsExplicitMinimum)
 TEST_F(NarrowSearchTest, BlockedOriginalUpgradesStillReachTwoSameLabAlms)
 {
     ASSERT_NO_FATAL_FAILURE(compact_with_blocked_upgrades(2));
-    exchange_inputs(middle, 0, 4);
-    exchange_inputs(root, 0, 4);
     ReductionBalancePlan plan;
     ASSERT_TRUE(plan_reduction(ctx.get(), root->name.str(ctx.get()), true, plan));
     ASSERT_EQ(plan.literals.size(), 12u);
@@ -999,9 +995,10 @@ TEST_F(NarrowSearchTest, FutureAlut2ArcsChooseTheActualFasterFirstTuple)
     ReductionBalancePlan plan;
     ASSERT_TRUE(plan_reduction(ctx.get(), root->name.str(ctx.get()), true, plan));
     ASSERT_EQ(plan.literals.size(), 12u);
-    // Derive the future first group's D literal from the actual canonical
-    // policy order. Its diagonal launch site makes the two objectives disagree.
-    auto *diagonal_source = plan.literals.at(3).first->driver.cell;
+    // B is the fast tail of a future ALUT2, so the diagonal launch has to be a
+    // literal of that second group. The first group's D input is the slow pin
+    // and does not separate the two objectives.
+    auto *diagonal_source = plan.literals.at(9).first->driver.cell;
     ASSERT_EQ(diagonal_source->type, id_MISTRAL_FF);
     ctx->unbindBel(diagonal_source->bel);
     // sx120f has an M10K column at x26; use its adjacent real LAB at
@@ -1027,11 +1024,17 @@ TEST_F(NarrowSearchTest, FutureAlut2ArcsChooseTheActualFasterFirstTuple)
     ASSERT_TRUE(ctx->getCellDelay(&future_root, id_B, id_Q, b_arc));
     ASSERT_TRUE(ctx->getCellDelay(root, id_A, id_Q, original_a));
     ASSERT_TRUE(ctx->getCellDelay(root, id_B, id_Q, original_b));
-    EXPECT_EQ(a_arc.maxDelay(), 97);
-    EXPECT_EQ(b_arc.maxDelay(), 335);
-    // Both primitives use the same hardware L5 mode and placement pin map.
-    EXPECT_EQ(a_arc.maxDelay(), original_a.maxDelay());
-    EXPECT_EQ(b_arc.maxDelay(), original_b.maxDelay());
+    // Fastest-last: an unbound ALUT2 puts B on F (97 ps) and A on E (335 ps).
+    EXPECT_EQ(a_arc.maxDelay(), 335);
+    EXPECT_EQ(b_arc.maxDelay(), 97);
+    // The placed root is still an ALUT5. Only its last input E is timed on F;
+    // the inputs before it keep the scaffold order, A on E and B on C/D.
+    // That is a different map from the ALUT2.
+    EXPECT_EQ(original_a.maxDelay(), 335);
+    EXPECT_EQ(original_b.maxDelay(), 512);
+    DelayQuad tail;
+    ASSERT_TRUE(ctx->getCellDelay(root, id_E, id_Q, tail));
+    EXPECT_EQ(tail.maxDelay(), 97);
     struct Measurement { BelId a, b; delay_t leaf_only, root_arrival; };
     std::vector<Measurement> measurements;
     CubeSnapshot before(ctx.get());
@@ -1071,9 +1074,9 @@ TEST_F(NarrowSearchTest, FutureAlut2ArcsChooseTheActualFasterFirstTuple)
     const auto old_best = std::min_element(measurements.begin(), measurements.end(),
         [](const Measurement &a, const Measurement &b) { return a.leaf_only < b.leaf_only; });
     // The five root-neighborhood LABs contain a measured rank reversal, not
-    // merely the two delay constants. The slow-100°C E envelope makes that
-    // gap smaller than the old 400 ps B arc. The logged production prefix
-    // below independently checks its choice.
+    // merely the two delay constants. A is the slow E pin and B is F, so the
+    // diagonal launch is on B's leaf. The logged production prefix below
+    // independently checks its choice.
     for (const auto &row : measurements) {
         if (row.leaf_only == old_best->leaf_only) {
             EXPECT_GT(row.root_arrival - fastest->root_arrival, 0);

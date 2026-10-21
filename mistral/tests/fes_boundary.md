@@ -52,3 +52,44 @@ three fence-blocked pips and 11 frozen blocking nets including
 `video_request[24]`. No backend routing or bitstream generation runs in that
 negative case. The 170 wires include nextpnr's synthetic LAB edges, so that
 count is not the physical-only graph probe's 46 nodes.
+
+## Narrow slot pins (#228)
+
+The boundary check covers locked shell outputs. Cart-internal pins can be cut
+off as well. Frozen shell routes cross the ZX81 cart columns. Some M10K outputs
+in those columns can reach only a few hundred wires, or leave through a single
+shared wire. Placement used to put cart cells on those pins.
+`MISTRAL_M10K.26.11.0` `B1Q[0]` (`GIN.26.11.20`) reaches 549 wires, and none
+of them is its LUT sink, so routing fails at once with `ARC_NO_PATH`.
+`MISTRAL_M10K.26.1.0`'s output leaves only through `V4.24.2.1`. The plug LAB
+at 24,1 drives all 20 `plug_addr` nets. Without the five wires
+`H3.25.1.1`, `H6.25.1.1`, `H6.25.1.10`, `H6.25.1.13` and `V4.24.2.1`,
+`plug_addr[0..4]` reach none of their sinks. Those five nets and the M10K
+output therefore need six distinct wires from a set of five. Negotiation can
+only move the one overused wire between those nets until `maxIter`.
+
+`fes_slot_pins_escape` now rejects such BELs for slot cells. A pin is narrow
+when a search that ignores movable routing reaches no more than 2048 wires. A
+pin is also narrow when one routing wire within four hops of it, and drivable
+from more than one tile, is on every way out. A pin is also narrow when
+another net holds the pin wire itself above placer strength; the candidate
+net's own binding does not. The search applies the router's
+architecture rules: frozen wires, the CRAM fence and the plug halo. LAB inputs
+are assigned after placement and are not checked. The check is a placement
+rule only. It relaxes no seal, fence, timing or routing check. Answers are
+cached per wire for nets with no shell endpoint. For unrouted nets with a
+shell driver they are also cached per wire. Other nets are cached by name.
+Pins of the shared classes are computed on all cores after the slot region is
+constrained.
+
+Run the synthetic-graph tests with:
+
+```sh
+build/nextpnr-mistral-test --gtest_filter='FesNarrowPinTest.*'
+```
+
+The ZX81 ram16k inputs from #228 (seeds 1-4, CUDA via `gpu-run`) now place
+around the narrow pins and route legally in 6-10 iterations. In all four seeds
+`clk_sys` reports 45.70 MHz against the 52.224 MHz constraint. That critical
+path is a negedge-to-posedge path entirely inside the frozen shell
+(`machine.cpu.*`) and contains no cart cell.

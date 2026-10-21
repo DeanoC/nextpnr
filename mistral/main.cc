@@ -91,7 +91,7 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
     specific.add_options()("compress-rbf", "generate compressed bitstream");
     specific.add_options()("isolated-lut-placement",
-                           "score isolated legal LUT input pins during placement (opt-in)");
+                           "score the earlier L5 LUT inputs on their isolated legal pins during placement (opt-in)");
     specific.add_options()("arrival-pin-assignment",
                            "permute private LUT inputs by arrival after legalisation (opt-in)");
     specific.add_options()("fes-scaffold", "lock loaded shell BEL+routing to STRENGTH_USER");
@@ -222,6 +222,7 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
     ctx->restore_fes_reservations();
+    ctx->restore_place_regions(vm.count("qsf") != 0);
     // Saved provenance does not enable fresh placement heuristics. A routed
     // checkpoint already records the physical pins and needs no option to replay.
     auto pin_policy = [&](const char *name, bool enabled) {

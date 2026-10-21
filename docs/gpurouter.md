@@ -97,6 +97,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `analogueCandidates`, `analogueCandidateRounds`, `analogueCandidateArcs` | 4, 2, 200 | analogue-scored candidate selection (below): routes generated per failing sink, passes before each full re-route, failing sinks tried per pass; `analogueCandidates=0` disables it |
 | `analogueCandidateGain`, `analogueCandidateFanout`, `analogueCandidatePrior` | 20 ps, 64, 1.0 | a candidate must raise the net's worst sink slack by this much to be kept; nets with more sinks are left alone; delay prior for unobserved pips while searching candidates |
 | `analogueRipNets` | 64 | nets ripped per re-route round, worst analogue slack first (0: every net with an arc below `analogueRipSlack`) |
+| `analogueImproveRounds`, `analogueImproveBand` | 4, 300 ps | once every clock meets `analogueSlack`, up to this many more candidate passes on the arcs within the band of the worst analogue slack (below); `analogueImproveRounds=0` disables them |
 | `analogueRevert`, `analogueRevertMargin`, `analogueRestoreMargin` | true, 20 ps, 1000 ps | after a re-route, give nets whose worst sink got slower by the margin their old route back where possible; abandon a round this far below the best routing and restore that instead |
 | `candidateMargin`, `candidateUnbounded`, `candidateExpandK` | 8, true, = `expandK` | candidate searches use the net's bounding box widened by this many tiles; whether the two primary candidates may fall back to the search without a box; frontier entries expanded per step (they run one net at a time, so 2048 makes a pass about a third faster, with different routes) |
 | `cpuLaneNets` | 0 | batches of at most this many nets run on the host backend (0: never) |
@@ -104,8 +105,11 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `archRetryLimit` | 8 | maximum re-routing attempts after architecture binding rejects a route, independent of `maxIter`; 0 fails immediately. Normal logs name up to eight rejected wires/pips and their nets per binding pass; the final error lists the rejected nets |
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
-| `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 4, 22 | device scratch: concurrent nets and log2 table size per lane |
-| `maxBatches`, `maxIter` | 12, 2000 | batches per iteration, iteration limit |
+| `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 0, 22 | device scratch: concurrent nets and log2 table size per lane. A search that outgrows the small table is retried in the large lane; `largeSlots=0` gives that lane as many slots (4 to 32) as three quarters of the free device memory holds, at 235 MB per slot with `largeBits=22`. If later route-buffer allocation fails, the automatic lane releases its scratch, retries those allocations, then tries the original slot count down to one and keeps the largest lane that fits |
+| `maxBatches` | 12 | batch slots per iteration; the first `maxBatches - 1` are bounding-box-disjoint and the last is the overlap-tolerant overflow bucket |
+| `maxIter` | 2000 | negotiation iteration limit |
+| `overflowChunk` | 128 | nets whose boxes overlap every disjoint batch are routed in chunks of at most this many, each seeing the routes of earlier batches and chunks; 0 routes them all in one batch |
+| `overuseReport` | empty | diagnostic: path of a text file rewritten after every negotiation iteration. The first line is `iter N`; then one line per overused wire, `name occupancy`, followed for wires shared by at least 20 nets by up to eight `net/arcs` entries |
 
 ## GPU phase lease (`GPU_LEASE_FD`)
 
@@ -337,7 +341,32 @@ with no legal route fails as unroutable instead of repeating one rejected pip.
    their wires left the ripped nets with hard conflicts on local lines that
    no cost could resolve). This repeats for
    up to `analogueRounds` rounds and the routing with the best analogue
-   slack is kept. A design that already meets signoff is unchanged.
+   slack is kept.
+
+   Meeting signoff does not end it. Fmax is set by the worst arcs, and the
+   router ranks those with the table, which can rate the slowest arc under
+   the analogue model as harmless: on the FES menu (seed 5) a chain of 13 V4
+   wires from an address register into the HPS `f2sdram` command port set
+   Fmax at 87.5 MHz with 2.04 ns of analogue slack, while the table gave the
+   whole design 3.83 ns (arcs with six or more V4 hops sign off about 0.9 ns
+   further above the table than arcs with up to two). So once
+   every clock meets `analogueSlack`, up to `analogueImproveRounds` more
+   candidate passes (below) take the sinks within `analogueImproveBand` of
+   the worst analogue slack. There a net scores by its sinks' margins over
+   the worst path of their own clock pairs
+   (`TimingAnalyser::get_setup_slack_margin`) rather than by their slack, so
+   a change that helps one clock cannot slow another clock's critical path.
+   Each pass is timed again and kept only if no clock lost setup slack,
+   Fmax or hold slack (the hold check fails at zero, so a hold slack that
+   was positive may shrink but must stay positive); the stage stops at the
+   first pass that changes nothing or gains nothing. The candidate searches use the calibrated table,
+   recalibrated from each pass's routing, but the passes are timed, and
+   signoff runs, with the table exactly as the repair left it (the plain
+   table if there was nothing to repair): that table times the arcs the
+   analogue model cannot simulate, such as those from HPS outputs, so a
+   recalibration alone must not move signoff.
+   `mistral/tests/analogue_improve.py` checks the stage end to end on the
+   retained menu DDR fixture (see its docstring for the commands).
 
    Repair has a cooperative `analogueTimeBudget` (five minutes by default).
    The initial analogue timing is always obtained before stopping so there
@@ -367,7 +396,9 @@ with no legal route fails as unroutable instead of repeating one rejected pip.
    between equal-cost paths decides how heavily loaded trunks are (see
    Validation). So before a signoff miss is answered with a full re-route,
    `Arch::analogue_candidate_pass` takes the failing sinks worst slack
-   first (`analogueCandidateArcs` of them) and, for each, asks
+   first (`analogueCandidateArcs` of them; when improving a design that
+   passes, the sinks within `analogueImproveBand` of the worst slack) and,
+   for each, asks
    `GpuCandidateRouter` for up to `analogueCandidates` materially
    different pure-delay routes, all inside the net's bounding box: the
    router's own choice (attach anywhere on the tree), a route from the
@@ -392,7 +423,9 @@ with no legal route fails as unroutable instead of repeating one rejected pip.
    routing muxes are updated for the changed pips, and *every* sink of the
    net is simulated, because a new branch changes the load on shared
    upstream segments; the score is the net's worst estimated sink slack
-   (old slack plus old minus new analogue delay). The best candidate is
+   (old slack plus old minus new analogue delay; when improving, the old
+   margin over the sink's clock pairs' worst paths instead of the old
+   slack). The best candidate is
    kept if it beats the current route by `analogueCandidateGain`,
    otherwise the routing and mux state are restored. A pass costs about
    two seconds on the FES cores. Up to `analogueCandidateRounds` passes run,

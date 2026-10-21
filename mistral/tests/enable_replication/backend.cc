@@ -620,14 +620,14 @@ TEST_F(LocalRemapPinTest, ChangedOrderPreservesTruthTableAndEveryUnselectedUserS
     ASSERT_NE(net, enable);
     auto *copy = net->driver.cell;
     ASSERT_EQ(copy->type, id_MISTRAL_ALUT2);
-    // The distant source gets the faster physical F input on logical A;
-    // both pin states were folded into the composed mask. This exercises the
-    // backend's apply_order path.
-    EXPECT_EQ(copy->getPort(id_A), source_b->getPort(id_Q));
-    EXPECT_EQ(copy->getPort(id_B), source_a->getPort(id_Q));
-    EXPECT_EQ(copy->params.at(id_LUT).as_int64(), 0x2);
-    EXPECT_EQ(copy->ports.at(id_A).user_idx, input_b_hole);
-    EXPECT_EQ(copy->ports.at(id_B).user_idx, input_a_hole);
+    // The distant source gets the faster physical F input. For an ALUT2 that
+    // tail is logical B; both pin states were folded into the composed mask.
+    // This exercises the backend's apply_order path.
+    EXPECT_EQ(copy->getPort(id_A), source_a->getPort(id_Q));
+    EXPECT_EQ(copy->getPort(id_B), source_b->getPort(id_Q));
+    EXPECT_EQ(copy->params.at(id_LUT).as_int64(), 0x4);
+    EXPECT_EQ(copy->ports.at(id_A).user_idx, input_a_hole);
+    EXPECT_EQ(copy->ports.at(id_B).user_idx, input_b_hole);
     for (unsigned assignment = 0; assignment < 4; ++assignment) {
         bool expected = !(assignment & 1) && ((assignment >> 1) & 1);
         EXPECT_EQ(evaluate(enable, assignment), expected);
@@ -685,6 +685,6 @@ TEST_F(LocalRemapPinTest, InvalidIndexRestoresGraphAndIndexedFreeListsRepeatedly
     EXPECT_FALSE(ctx->remap_critical(report, 9999, 8));
     expect_restored(state);
     ASSERT_TRUE(ctx->remap_critical(report, 0, 2));
-    EXPECT_EQ(near_a->getPort(id_ENA)->driver.cell->getPort(id_B), source_a->getPort(id_Q));
+    EXPECT_EQ(near_a->getPort(id_ENA)->driver.cell->getPort(id_B), source_b->getPort(id_Q));
     ctx->check();
 }

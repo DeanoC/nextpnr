@@ -8,9 +8,11 @@ MLAB storage. The check decompiles the actual RBF and verifies FF DATAIN
 `MISTRAL_BUF` truth tables in both ALM halves, NOT inversion, an ordinary XOR LUT,
 and every initialized memory bit. It checks physical mask bits rather than
 assuming routed JSON proves correct configuration emission. The fixture's
-half-specific F input occupies truth-table address bit 4; the XOR also uses
-E0/E1 at address bit 3. CRAM storage is active-low. MLAB storage uses its known
-physical permutation. A route-through buffer on F is `0xFFFF0000`.
+half-specific F input occupies truth-table address bit 4, E0/E1 bit 3 and C/D
+bit 2. The XOR's expected mask follows the physical pins recorded for it, which
+are F with E, or C/D when a neighbouring flip-flop keeps E. CRAM storage is
+active-low. MLAB storage uses its known physical permutation. A route-through
+buffer on F is `0xFFFF0000`.
 
 The frozen-scaffold compiler guard introduced in 6916e9d2 excluded MISTRAL_BUF
 from mask evaluation, turning pass-through LUTs into constant masks. Before the

@@ -655,16 +655,10 @@ struct MistralBitgen
         bool tdp = bool_or_default(ci->params, id_CFG_TDP, false);
         bool mixed = bool_or_default(ci->params, id_CFG_MIXED_WIDTH, false);
         int rdbits = mixed ? int_or_default(ci->params, id_CFG_RD_DBITS, dbits) : dbits;
-        bool output_reg_a = bool_or_default(ci->params, id_CFG_OUT_REG_A, false);
-        bool output_reg_b = bool_or_default(ci->params, id_CFG_OUT_REG_B, false);
-        // A 40-bit SDP B result is physically split across the A and B
-        // output halves. A partial registration would give the logical
-        // result two different latencies, so any request registers both
-        // halves.
-        if (!tdp && rdbits == 40 && (output_reg_a || output_reg_b)) {
-            output_reg_a = true;
-            output_reg_b = true;
-        }
+        // The output registers that CFG_OUT_REG_A/B or an active output clear
+        // select; delay.cc times the reads from the same selection.
+        bool output_reg_a = ctx->m10k_output_registered(ci, true);
+        bool output_reg_b = ctx->m10k_output_registered(ci, false);
         // Quartus clears data flow-through when either mixed port spans 40 bits.
         bool wide_mixed = mixed && (dbits == 40 || rdbits == 40);
         cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::A_DATA_FLOW_THRU, bi, !wide_mixed);
@@ -717,8 +711,9 @@ struct MistralBitgen
         // address clears on the input-register modes used by these cells.
         // Keep the physical clear source selectors aligned with the two
         // logical inputs, and only turn on an output-clear register when its
-        // control is actually active. This preserves the existing async
-        // output path for cells that have no reset behavior.
+        // control is actually active (m10k_output_registered() selects that
+        // register above). This preserves the existing async output path for
+        // cells that have no reset behavior.
         NPNR_ASSERT(cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::TOP_CLR_INV, bi,
                                   aclr0 == PIN_INV));
         NPNR_ASSERT(cv->bmux_b_set(CycloneV::M10K, pos, CycloneV::BOT_CLR_INV, bi,
@@ -732,12 +727,10 @@ struct MistralBitgen
             if (rdbits == 40)
                 NPNR_ASSERT(cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::TOP_OUTCLR_SEL, bi, 1));
             NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::A_OUTCLR_EN, bi, CycloneV::REG));
-            NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::A_OUTPUT_SEL, bi, CycloneV::REG));
         }
         if (aclr1 != PIN_0) {
             NPNR_ASSERT(cv->bmux_n_set(CycloneV::M10K, pos, CycloneV::BOT_1_OUTCLR_SEL, bi, 1));
             NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::B_OUTCLR_EN, bi, CycloneV::REG));
-            NPNR_ASSERT(cv->bmux_m_set(CycloneV::M10K, pos, CycloneV::B_OUTPUT_SEL, bi, CycloneV::REG));
         }
         auto clock_state = [&](IdString port) {
             auto it = ci->pin_data.find(port);

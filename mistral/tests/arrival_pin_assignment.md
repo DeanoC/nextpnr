@@ -2,21 +2,24 @@
 
 `--arrival-pin-assignment` takes one arrival snapshot and assigns later
 arriving private inputs to faster physical pins after legal ALM allocation.
-It leaves the placement delay estimate alone. `--isolated-lut-placement`
-selects only that estimate, without the arrival permutation. The estimate
-follows the allocation of an isolated cell with no shared partner. The two
-options combine when both are passed.
+It leaves the placement delay estimate alone. By default that estimate times
+the pins legalisation fixes (LUT6 inputs in order, the last L5 input on F) and
+keeps the #206 fastest-first scaffold for the other L5 inputs.
+`--isolated-lut-placement` times those other inputs on the allocation of an
+isolated cell with no shared partner. The two options combine when both are
+passed.
 Both options are off by default and are initialized when the context is created,
 including Python `--run` invocations without `--json`. Saved JSON settings record
 provenance and do not enable either policy on a new run without its CLI option.
 
-The default retains the fastest-first placement scaffold. Changing placement
-arc estimates changes criticality weights and the resulting placement; a closer
-match to isolated pins need not improve routed timing when LUTs share ALMs.
-Making isolated estimates unconditional in #205 regressed the ST shell pixel
-clock and Coleco shell seed 4 in #206. Use the explicit option to evaluate that
-policy on a qualified design/profile. Physical pin allocation and final routed
-timing use the legalised maps under either placement policy.
+Changing placement arc estimates changes criticality weights and the
+resulting placement; a closer match to isolated pins need not improve routed
+timing when LUTs share ALMs. Making the then C/D-first isolated estimate
+unconditional in #205 regressed the ST shell pixel clock and Coleco shell
+seed 4 in #206. #214 legalises the last private input onto F, the input Yosys
+times fastest, and times that input on F during placement; see
+`physical_lut_timing.md`. Physical pin allocation and final routed timing use
+the legalised maps under every placement policy.
 
 Only ordinary two- through five-input Boolean LUTs are permuted. The physical
 input set stays fixed; inputs reserved by the other ALM half remain fixed.

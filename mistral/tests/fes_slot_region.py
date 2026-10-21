@@ -147,6 +147,8 @@ endmodule
     assert f"FES slot capacity (region 'cart'): {USABLE_LABS} usable LABs (2 frozen)" in text, text
     assert "carry chains 1 (longest 1 LAB rows)" in text, text
     assert_inside("fit-heap")
+    fit_settings = json.loads((output / "fit-heap.json").read_text())["modules"]["top"]["settings"]
+    assert str(fit_settings.get("placerHeap/congestion")).strip() == "0", fit_settings.get("placerHeap/congestion")
     # SA cannot keep cart clusters legal; it must refuse rather than emit an
     # invalid placement.
     code, text = place("fit-sa", "cart-fit", "routed-shell-sa.json", timeout=300)

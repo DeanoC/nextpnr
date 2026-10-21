@@ -499,6 +499,10 @@ class SAPlacer
         if (other_cell != nullptr && !ctx->isValidBelForCellType(other_cell->type, oldBel)) {
             return false;
         }
+        // The swap moves other_cell as well; it must stay inside its own region.
+        if (other_cell != nullptr && !other_cell->testRegion(oldBel)) {
+            return false;
+        }
 
         int net_delta_score = 0;
         if (cfg.netShareWeight > 0)
