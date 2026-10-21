@@ -10,7 +10,7 @@ import json
 import math
 from pathlib import Path
 
-from constraint_coverage import inventory
+from constraint_coverage import design_module, inventory
 
 
 def enabled(cell, name):
@@ -202,7 +202,7 @@ def main():
         return
     if not args.checkpoint or not args.report or not args.output:
         parser.error('--checkpoint, --report and --output are required')
-    result = audit(json.loads(args.checkpoint.read_text())['modules']['top'], json.loads(args.report.read_text()))
+    result = audit(design_module(json.loads(args.checkpoint.read_text())), json.loads(args.report.read_text()))
     result['source_sha256'] = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
                                for p in (args.checkpoint, args.report, Path(__file__))}
     args.output.write_text(json.dumps(result, indent=2) + '\n')
