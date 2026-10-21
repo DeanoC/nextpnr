@@ -282,6 +282,9 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                         w = pe.wire;
                         d = pe.delay;
                     }
+                    // Not an attach point: this wire is the arc's destination.
+                    // An earlier arc of the task may already drive it. The
+                    // host shares that branch instead of binding a second parent.
                     if (w == sink)
                         continue;
                     bool ins;
