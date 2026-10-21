@@ -20,6 +20,8 @@ Never relax a seal or timing check; stop and report instead.
 
 Delete superseded code instead of keeping compatibility shims or "kept for older kits" branches.
 
+A core's locked nextpnr is only its last known good, not a required pin. If a newer nextpnr closes that core's timing, move the lock forward instead of changing RTL to fit the old version. Timing and seal checks still apply.
+
 ## PR scope
 
 - One scope per PR. Don't bundle unrelated fixes.
