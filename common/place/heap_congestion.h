@@ -19,21 +19,56 @@
 #ifndef HEAP_CONGESTION_H
 #define HEAP_CONGESTION_H
 
+#include <algorithm>
+#include <cstdint>
 #include "nextpnr_namespaces.h"
 
 NEXTPNR_NAMESPACE_BEGIN
 
 namespace heap_congestion_detail {
 
-inline bool scale_is_usable(bool has_region_constrained_cells, int cells, int scaled_bels, float beta)
+// Whether `cells` fit in `scaled_bels` under the beta threshold that
+// SpreaderRegion::overused applies, including its small-capacity exception.
+inline bool scale_is_usable(int cells, int scaled_bels, float beta)
 {
-    if (has_region_constrained_cells)
-        return false;
-
     int required_capacity = cells + cells / 20;
     // Match SpreaderRegion::overused: small capacities do not use beta.
     float effective_capacity = scaled_bels < 4 ? scaled_bels : beta * scaled_bels;
     return effective_capacity >= required_capacity;
+}
+
+// The usable share of a location's scaled capacity that lies in a region,
+// accounting for fixed occupants in the location and in the region.
+inline int region_capacity(int scaled_bels, int region_bels, int location_bels, int fixed_occupancy,
+                           int region_fixed_occupancy)
+{
+    if (location_bels == 0)
+        return 0;
+    int location_free = std::max(0, scaled_bels - fixed_occupancy);
+    int region_free = std::max(0, int(int64_t(scaled_bels) * region_bels / location_bels) - region_fixed_occupancy);
+    return std::min(location_free, region_free);
+}
+
+template <typename BelSet, typename BucketLocations> bool regions_overlap_bels(const BelSet &left, const BelSet &right,
+                                                                                 const BucketLocations &locations)
+{
+    for (const auto &column : locations)
+        for (const auto &location : column)
+            for (const auto &bel : location)
+                if (left.count(bel) && right.count(bel))
+                    return true;
+    return false;
+}
+
+template <typename OccupancyMap, typename RegionCellsMap, typename RegionMap, typename Bel>
+void collect_fixed_region_occupancy(OccupancyMap &occupancy, const RegionCellsMap &region_cells,
+                                    const RegionMap &constrained_regions, size_t bucket, int x, int y, int max_y,
+                                    const Bel &bel)
+{
+    size_t location = x * (max_y + 1) + y;
+    for (const auto &entry : constrained_regions)
+        if (region_cells.at(entry.first).at(bucket) != 0 && entry.second->bels.count(bel))
+            occupancy.at(entry.first).at(bucket).at(location)++;
 }
 
 } // namespace heap_congestion_detail
