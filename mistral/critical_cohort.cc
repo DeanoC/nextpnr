@@ -541,6 +541,10 @@ void critical_cohort_setup_timing(Context *ctx, TimingAnalyser &timing)
                 DelayQuad logic;
                 const IdString rt_pin = ctx->alm_route_through_pin(lab, alm, half);
                 NPNR_ASSERT(ctx->get_lut_pin_delay(rt_pin, false, logic));
+                // The temporary LUT input ends at GOUT. Its block-input mux
+                // is charged on the cell side just like an inserted BUF.
+                CellInfo route_through(ctx, ctx->id("$critical_cohort_route_through"), id_MISTRAL_BUF);
+                logic += ctx->get_lut_input_delay(&route_through, id_A);
                 delay_t incoming = ctx->predictDelay(net->driver.cell->bel, pins.front(), lut, rt_pin);
                 delay_t local = ctx->predictDelay(lut, id_COMBOUT, ff->bel, id_DATAIN);
                 // Fold the buffer's two route arcs and logic into DATAIN.
