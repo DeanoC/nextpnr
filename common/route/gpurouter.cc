@@ -449,8 +449,22 @@ struct GpuRouter
             nd.wires[wire] = tw;
             occ[wire]++;
             mark_dirty(wire);
+        } else if (fnd->second.parent != parent) {
+            // A wire has one driver in the tree. A sink an earlier arc of the
+            // launch already reached comes back without a path and shares that
+            // branch (route_tasks), so landing here is a second parent.
+            const char *net_name = "<unknown>";
+            for (size_t i = 0; i < nets.size(); i++) {
+                if (&nets.at(i) == &nd) {
+                    net_name = ctx->nameOf(nets_by_udata.at(i));
+                    break;
+                }
+            }
+            log_error("Internal error: wire %s of net %s is already driven by %s; refusing parent %s.\n",
+                      ctx->nameOfWire(idx_to_wire.at(wire)), net_name,
+                      fnd->second.parent >= 0 ? ctx->nameOfWire(idx_to_wire.at(fnd->second.parent)) : "<root>",
+                      parent >= 0 ? ctx->nameOfWire(idx_to_wire.at(parent)) : "<root>");
         } else {
-            NPNR_ASSERT(fnd->second.parent == parent);
             fnd->second.count++;
         }
     }
@@ -571,6 +585,21 @@ struct GpuRouter
                   ctx->nameOfWire(dw));
     }
 
+    // One more arc uses the branch that already joins `wire` to the source.
+    // Returns the root reached, which is the source when the branch is intact.
+    int32_t note_branch_use(NetData &nd, int32_t wire)
+    {
+        int32_t cursor = wire;
+        while (true) {
+            auto fnd = nd.wires.find(cursor);
+            NPNR_ASSERT(fnd != nd.wires.end());
+            fnd->second.count++;
+            if (fnd->second.parent == -1 || cursor == nd.src)
+                return cursor;
+            cursor = fnd->second.parent;
+        }
+    }
+
     void apply_path(NetData &nd, ArcData &ad, const gpuroute::PathEntry *entries, int len)
     {
         NPNR_ASSERT(len > 0);
@@ -583,15 +612,7 @@ struct GpuRouter
         // The arc also uses the existing tree from the attach point up to
         // the source; count it there too so shared wires survive rip-ups
         // of sibling arcs.
-        int32_t cursor = entries[len - 1].parent;
-        while (true) {
-            auto fnd = nd.wires.find(cursor);
-            NPNR_ASSERT(fnd != nd.wires.end());
-            fnd->second.count++;
-            if (fnd->second.parent == -1 || cursor == nd.src)
-                break;
-            cursor = fnd->second.parent;
-        }
+        note_branch_use(nd, entries[len - 1].parent);
         ad.routed = true;
     }
 
@@ -890,6 +911,8 @@ struct GpuRouter
     std::vector<int> route_queue;
     std::set<int> failed_nets;
     int total_wire_use = 0, overused_wires = 0, total_overuse = 0, arch_fail = 0;
+    // Sinks an earlier arc of the same launch had already reached
+    int shared_branch_sinks = 0;
     double gpu_time = 0.0;
     int64_t last_arcs = 0, last_expanded = 0;
 
@@ -1165,7 +1188,18 @@ struct GpuRouter
                         r.cost, r.expanded, r.steps, r.path_len,
                         r.path_len > 0 ? paths[r.path_off + r.path_len - 1].parent : -1);
                 if (r.status == gpuroute::ARC_OK) {
-                    apply_path(nd, ad, paths.data() + r.path_off, r.path_len);
+                    if (r.path_len == 0) {
+                        // An earlier arc of this task routed through the sink
+                        // and has just been applied. The backend searched
+                        // nothing and offered later arcs no new wires; count
+                        // this arc along that branch back to the source.
+                        NPNR_ASSERT(note_branch_use(nd, ad.sink) == nd.src);
+                        ad.routed = true;
+                        shared_branch_sinks++;
+                    } else {
+                        NPNR_ASSERT(paths[r.path_off].wire == ad.sink);
+                        apply_path(nd, ad, paths.data() + r.path_off, r.path_len);
+                    }
                 } else {
                     last_fail_status = r.status;
                     last_fail_reason = r.reason;
@@ -1517,6 +1551,7 @@ struct GpuRouter
             cfg.check_stop();
             auto istart = Clock::now();
             gpu_time = 0.0;
+            shared_branch_sinks = 0;
             ctx->sorted_shuffle(route_queue);
             if (timing_driven && int(route_queue.size()) >= 30) {
                 for (auto n : route_queue) {
@@ -1719,6 +1754,9 @@ struct GpuRouter
             log_info("    iter=%d wires=%d overused=%d overuse=%d tmgfail=%d nets=%zu batches=%zu archfail=%s\n", iter,
                      total_wire_use, overused_wires, total_overuse, tmgfail, ntasks, batches.size(),
                      (overused_wires > 0 || tmgfail > 0) ? "NA" : std::to_string(arch_fail).c_str());
+            if (shared_branch_sinks > 0)
+                log_info("    shared %d sinks already reached by an earlier arc of the same net\n",
+                         shared_branch_sinks);
             if (!cfg.overuse_report.empty())
                 write_overuse_report();
             if (telemetry) {

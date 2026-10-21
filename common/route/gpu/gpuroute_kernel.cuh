@@ -109,6 +109,7 @@ struct BlockState
     int path_pos;
     int far_idx;
     int decision; // 0 continue, 1 stop
+    int reached;  // an earlier arc of the task already routed through the sink
     float binw;
     uint32_t thr_bits;
     uint32_t prune_bits;
@@ -257,6 +258,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                 st.steps = 0;
                 st.far_idx = 0;
                 st.decision = 0;
+                st.reached = 0;
                 st.minf_bits = INF_BITS;
                 st.maxf_bits = 0;
                 st.prune_bits = INF_BITS;
@@ -282,8 +284,14 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                         w = pe.wire;
                         d = pe.delay;
                     }
-                    if (w == sink)
+                    // Not an attach point: this wire is the arc's destination.
+                    // On the path of an earlier arc of the task it is already
+                    // routed, and the arc shares that branch (see 4.).
+                    if (w == sink) {
+                        if (i >= task.tree_cnt)
+                            st.reached = 1;
                         continue;
+                    }
                     bool ins;
                     int s = table_insert(keys, mask, p.max_probe, (uint32_t)w, &ins);
                     if (s < 0) {
@@ -315,7 +323,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
             if (tid == 0) {
                 if (st.far_n > cap)
                     st.far_n = cap;
-                if (st.fail)
+                if (st.fail || st.reached)
                     st.decision = 1;
             }
             __syncthreads();
@@ -584,7 +592,14 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                 r.path_off = task.path_off + st.path_pos;
                 r.path_len = 0;
                 r.cost = 0.0f;
-                if (st.fail) {
+                if (st.reached) {
+                    // An earlier arc already reaches the sink: routed, with no
+                    // new wires. A searched path would give the sink a second
+                    // parent, and later arcs would seed from wires the host
+                    // never binds.
+                    r.status = ARC_OK;
+                    r.reason = FAIL_NONE;
+                } else if (st.fail) {
                     r.status = ARC_OVERFLOW;
                 } else if (st.best == EMPTY_VAL) {
                     r.status = ARC_NO_PATH;
