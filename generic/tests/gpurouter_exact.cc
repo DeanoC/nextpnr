@@ -234,6 +234,50 @@ void rounded_threshold_regression()
 }
 
 #ifndef GPUROUTE_EXACT_STANDALONE
+// 0 -1-> 1 -5-> 2 -1-> 3 -1-> 4 -1-> 5, and 4 -1-> 2. Sinks 3, 2, 5 in that
+// order. The first arc reaches 3 through 2, so the second arc is already
+// routed; searched, it would return 3 -> 4 -> 2. The third arc must attach to
+// a wire the first arc really added, not to 4.
+Graph shared_sink_graph()
+{
+    Graph graph(6);
+    graph.edge(0, 1, 1); graph.edge(1, 2, 5); graph.edge(2, 3, 1);
+    graph.edge(3, 4, 1); graph.edge(4, 2, 1); graph.edge(4, 5, 1);
+    return graph;
+}
+const std::vector<ArcDesc> shared_sink_arcs = {{3, 1, 0}, {2, 1, 0}, {5, 1, 0}};
+void expect_shared_sink_routes(const Result &result)
+{
+    ASSERT_EQ(result.arcs[0].status, ARC_OK);
+    EXPECT_EQ(result.arcs[0].path_len, 3);
+    ASSERT_EQ(result.arcs[1].status, ARC_OK);
+    EXPECT_EQ(result.arcs[1].path_len, 0);
+    EXPECT_EQ(result.arcs[1].expanded, 0);
+    ASSERT_EQ(result.arcs[2].status, ARC_OK);
+    ASSERT_EQ(result.arcs[2].path_len, 2);
+    const PathEntry *third = &result.paths[result.arcs[2].path_off];
+    EXPECT_EQ(third[0].wire, 5);
+    EXPECT_EQ(third[1].wire, 4);
+    EXPECT_EQ(third[1].parent, 3);
+}
+// Every result field and the path entries each arc returned. Unlike
+// serialize(), unused output slots are left out: the device leaves them unset.
+std::string returned_routes(const Result &result)
+{
+    std::ostringstream out;
+    for (const auto &arc : result.arcs) {
+        out << arc.status << ',' << arc.reason << ',' << std::hex << bits(arc.cost) << std::dec << ','
+            << arc.expanded << ',' << arc.steps << ',' << arc.path_off << ',' << arc.path_len << ':';
+        for (int k = 0; k < arc.path_len; ++k) {
+            const auto &path = result.paths.at(arc.path_off + k);
+            out << path.wire << ',' << path.parent << ',' << path.edge << ',' << std::hex << bits(path.delay)
+                << std::dec << ';';
+        }
+        out << '|';
+    }
+    return out.str();
+}
+
 TEST(GpuApproximateSearch, RoundedHistogramThresholdMakesProgress)
 {
     rounded_threshold_regression();
@@ -276,6 +320,26 @@ TEST(GpuApproximateSearch, RoundedHistogramThresholdMakesProgressOnDevice)
             }
         }
     }
+}
+
+TEST(GpuApproximateSearch, SinkReachedByEarlierArcAddsNoPathOnDevice)
+{
+    // Only under a gpu-run lease, as above
+    const char *leased = std::getenv("FES_GPU_IDS");
+    if (leased == nullptr || *leased == '\0')
+        GTEST_SKIP() << "needs a gpu-run GPU lease (no FES_GPU_IDS)";
+    if (!device_backend_available())
+        GTEST_SKIP() << "GPU device backend or GPU device unavailable";
+
+    Graph graph = shared_sink_graph();
+    auto p = parameters();
+    p.exact = 0;
+    std::string error;
+    auto backend = create_device_backend(-1, error);
+    ASSERT_NE(backend, nullptr) << error;
+    const auto device = run_with_backend(std::move(backend), graph, p, {0}, {0}, {0}, shared_sink_arcs);
+    expect_shared_sink_routes(device);
+    EXPECT_EQ(returned_routes(device), returned_routes(run(graph, p, {0}, {0}, {0}, shared_sink_arcs)));
 }
 
 TEST(GpuExactSearch, EqualCostFrontierChoosesLowerWireThenSinkEdge)
@@ -350,6 +414,17 @@ TEST(GpuExactSearch, TablePathAndReachabilityFailuresRetainCountersAndRetry)
     EXPECT_EQ(blocked.arcs[0].expanded, 2);
 }
 
+TEST(GpuExactSearch, SinkReachedByEarlierArcAddsNoPath)
+{
+    Graph graph = shared_sink_graph();
+    for (int exact : {1, 0}) {
+        SCOPED_TRACE(exact ? "exact" : "K-best");
+        auto p = parameters();
+        p.exact = exact;
+        expect_shared_sink_routes(run(graph, p, {0}, {0}, {0}, shared_sink_arcs));
+    }
+}
+
 TEST(GpuExactSearch, DeterministicCorpusCoversExactAndApproximateSearches)
 {
     // Differential validation against the pre-heap CPU implementation uses
@@ -357,12 +432,14 @@ TEST(GpuExactSearch, DeterministicCorpusCoversExactAndApproximateSearches)
     const auto first = corpus();
     EXPECT_EQ(first.size(), 2560u);
     EXPECT_EQ(first, corpus());
-    // Pin to the pre-heap baseline (main babf6265). Hashes the exact byte
-    // stream printed by the standalone runner: "<index>:<row>\n" per case.
+    // Pin to the pre-heap baseline (main babf6265), except for the 13 cases
+    // whose second sink is on the first arc's path: that arc now comes back
+    // with no path (#270). Hashes the exact byte stream printed by the
+    // standalone runner: "<index>:<row>\n" per case.
     std::ostringstream stream;
     for (size_t i = 0; i < first.size(); ++i)
         stream << i << ':' << first[i] << '\n';
-    EXPECT_EQ(sha256(stream.str()), "a26d6a23dc4f80b478fdb53f6a77991f87870c1eb18540b2c189dd5cab32f430");
+    EXPECT_EQ(sha256(stream.str()), "37bd2c314eac2ea8603baa00ebad464bca38cc7911a66f918df7c3cc8e69c6fb");
 }
 #endif
 } // namespace

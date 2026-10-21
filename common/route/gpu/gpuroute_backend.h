@@ -129,7 +129,9 @@ struct RouteParams
 // each arc is seeded from seeds[tree_off, tree_off + tree_cnt) plus the wires
 // used by the arcs of this task routed earlier in the batch. A seed starts
 // with cost crit * seed_delay_weight * upstream delay, so critical sinks
-// prefer short total paths and non-critical sinks prefer sharing.
+// prefer short total paths and non-critical sinks prefer sharing. An arc
+// whose sink is one of the wires of those earlier arcs is not searched: it
+// comes back ARC_OK with no path entries and shares that branch.
 struct TaskDesc
 {
     int32_t net = 0;
@@ -172,7 +174,7 @@ struct ArcResult
 {
     int32_t status = ARC_NO_PATH;
     int32_t path_off = 0; // absolute index (in pairs) of the first path entry
-    int32_t path_len = 0; // number of (wire, parent) pairs, sink first
+    int32_t path_len = 0; // number of (wire, parent) pairs, sink first; 0 for a shared sink
     int32_t expanded = 0; // wires popped from the frontier
     int32_t steps = 0;    // parallel expansion steps
     int32_t reason = 0;   // FailReason for ARC_OVERFLOW
