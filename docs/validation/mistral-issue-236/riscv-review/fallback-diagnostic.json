@@ -1,0 +1,36 @@
+{
+  "first_critical_arc": {
+    "delay": 2.115000009536743,
+    "from": {
+      "cell": "system.cpu.regs.0.0.1",
+      "loc": [
+        5,
+        3
+      ],
+      "port": "B1DATA[6]"
+    },
+    "net": "system.cpu.rs2[6]",
+    "sources": [
+      "cores/fes-common/rtl/riscv/fes_rv32_cpu.sv:198.18-198.28"
+    ],
+    "to": {
+      "cell": "system.cpu.csr.wdata_MISTRAL_ALUT6_Q_2_F_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT4_Q_1_D_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_B_MISTRAL_ALUT4_Q",
+      "loc": [
+        27,
+        3
+      ],
+      "port": "A"
+    },
+    "type": "routing"
+  },
+  "fresh_report_delay_ns": 2.115000009536743,
+  "replayed_delay_ns": 1.4079999923706055,
+  "analogue_dump": "/home/deano/tmp/issue236-riscv-20261021/pr-new-arcs.tsv",
+  "analogue_dump_sha256": "9034e20680d8d14840ad32eb9400584f39ffb51305d48df13da6a7204a468f59",
+  "in_successful_analogue_dump": false,
+  "fresh_report": "/home/deano/tmp/fixjob-nextpnr-267-20261021-055803/build-pr267/riscv-match/pr-seed1/timing.json",
+  "replayed_report": "/home/deano/tmp/issue236-riscv-20261021/matrix-pr-new/timing.json",
+  "diagnostic_environment": {
+    "NEXTPNR_MISTRAL_ARC_DUMP": "/home/deano/tmp/issue236-riscv-20261021/pr-new-arcs.tsv"
+  }
+}

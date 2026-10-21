@@ -1,0 +1,123 @@
+RISC-V review follow-up for nextpnr #267 / issue #236
+2026-10-21
+
+Result
+
+The successful legacy-pin result is not a passing control at the PR's base.
+A fresh seed-1 build at the actual base e904cbfb fails the unchanged
+74.25 MHz requirement at 66.462852 MHz (setup -1.578 ns, hold +0.716 ns).
+It uses the same ba345def...d54052 synth input, timing weight 10, exponent 2,
+QSF, SDC and router as the reviewed PR replay. The process exits 1, with
+no timing allowance. This is CPU-reference routing evidence, interchangeable
+with device routing for this comparison, not production or seal acceptance.
+The repair finishes its configured rounds without exhausting its time budget.
+
+The historical passing control instead uses nextpnr 9128800f, before the
+physical LUT pin and M10K read-clock-to-output corrections already on main.
+The retained base-seed1/route.log from the earlier follow-up contains only
+"unrecognised option '--set'"; it is not a completed actual-main replay.
+That earlier comment's claim of a matched latest-main pass is unsupported.
+
+This does not dismiss all differences introduced by #267. It adds a real
+missing input-mux charge and its placement changes produce a small route
+quality loss in this seed. No claim is made that RISC-V meets timing now,
+that the reviewer has waived its gate, or that either PR may be merged.
+
+Frozen-hardware comparison
+
+Three complete RBFs are independently re-timed, with pack/place/route off.
+Every successful replay regenerates its source RBF byte-for-byte. Each
+snapshot explicitly disables the inherited search timing allowance. Both
+modern compilers reapply the original QSF, SDC and 74.25 MHz target.
+
+RBF / source route                 9128800f     e904cbfb     6bf1ae66
+Legacy production winner, seed 3    75.165367    60.875389    57.168991
+Fresh actual-base route, seed 1         --      68.245415    64.574455
+Reviewed PR route, seed 1               --      66.988205    63.343258
+All frequencies are MHz; the required clock stays 74.25 MHz throughout.
+Only the first numeric entry passes; all other replay processes exit 1.
+All seven replays preserve the complete RBF. The modern reports identify
+final_analogue_model=true; this flag still permits unsupported-arc fallback.
+
+The legacy replay keeps the snapshot's serialized clock constraints and the
+explicit 74.25 MHz target. Its old SDC parser cannot resolve packed port
+aliases, so that replay does not reread the SDC. Its result matches the
+original retained production report. It is not new acceptance evidence.
+Exact commands, binary/input hashes, clock settings and margins are in
+runs.jsonl. retime-matrix.py and route-base.py reproduce the comparisons
+using the retained Powerboat paths; builds are identified by their hashes.
+
+For the same fresh actual-base hardware, #267's missing terminal stage
+increases the critical period by 0.833 ns. Comparing both fresh routes with
+the same PR timer adds another 0.301 ns for the PR's route (64.574455 vs
+63.343258 MHz). That controls timing-model state while comparing routes;
+it does not attribute the much larger legacy-pin frequency gap to routing.
+
+The older RBF loses most of its apparent margin before #267: it is already
+60.875389 MHz under e904cbfb. For example, its launching 40-bit M10K read
+clock-to-output is 1.004 ns at the old pin and 2.704 ns at the actual base,
+a 1.700 ns correction. The other prior changes time physical rather than
+logical LUT inputs. The selected worst path changes, so changes in the
+whole-design worst result must not be summed as a single fixed-path budget.
+
+Fresh-report versus checkpoint replay
+
+The fresh actual-base result is 66.462852 MHz, while its checkpoint replay
+at that same base gives 68.245415 MHz. The fresh PR result is 60.628109 MHz,
+while its same-RBF replay gives 63.343258 MHz. Neither replay replaces the
+original final signoff result or qualifies a package.
+
+The first PR critical arc, system.cpu.rs2[6], is not in the successful
+analogue-arc dump (82139 completed hop rows). It therefore retains the
+router's delay-table fallback. Its fresh charged routing delay is 2.115 ns;
+the replay is 1.408 ns, exactly the 0.707 ns difference between those critical
+periods. The cell charge remains 0.758 ns, including the conservative
+175 ps input estimate. Route-time pip observations/type calibration are
+not restored from routed.json, so those fallback numbers differ despite
+identical hardware. This is not evidence that the route physically sped up.
+The fresh base exhibits the same class of discrepancy before this PR.
+See fallback-diagnostic.json and the retained full reports/arc dump.
+Do not disable calibration or use the more optimistic replay as signoff.
+
+Remaining fix plan and scope
+
+1. Keep #267's correction and the ZX81 producer evidence explicit. The
+   original five failing unit tests were fixed in 6bf1ae66; its four Mistral
+   shards pass 372 tests with one expected snapshot skip. All 16 architecture
+   CI checks at that implementation head pass. This follow-up adds evidence,
+   not a timing-model relaxation or another core's recipe/RTL change.
+2. Investigate RISC-V closure separately from issue #236. The fresh base's
+   bottleneck launches at the M10K register file and reaches CSR registers
+   (including minstret), with ALU logic between them. The source suggests
+   branch/trap/retirement selection as the control cone to trace next.
+   The PR's seed-1 worst path also contains a long arithmetic carry chain.
+   Earlier arrival-pin/isolation/placement experiments already failed to
+   close it. More blind seed rerolls are not the next step.
+3. A focused RISC-V change should first shorten late branch/trap/retirement
+   control and CSR write selection, or register the late decision in a
+   separate execution phase if same-cycle restructuring is insufficient.
+   Confirm the path by following report cell/port connections; Yosys names
+   that contain csr.wdata are not proof that every path is CSR operand data.
+   Preserve instruction results, traps, interrupt priority, and counter/
+   retirement semantics. Such a core change belongs in a separate FES issue
+   and PR, with CPU/CSR semantic tests and the RISC-V simulation.
+4. Rebuild that core with the corrected compiler, fresh identities, unchanged
+   clocks and strict setup/hold gates. Require a declared three-seed candidate
+   comparison, normal full producer/seal qualification and exact-artifact
+   hardware acceptance before promoting its pin/profile. Preserve the
+   current RISC-V pin until that work qualifies. Do not bundle it into ZX81.
+5. The RISC-V timing gate remains open for review. The evidence corrects the
+   regression attribution; it does not authorize merging, hide the smaller
+   route loss, relax a constraint, or change any factory selection.
+
+Retained artifacts
+
+/home/deano/tmp/issue236-riscv-20261021/
+  base-src/ and base-build/       actual base e904cbfb, Release, GPU_ROUTER=OFF
+  fresh-e904-seed1/               strict fresh CPU-reference comparison
+  matrix-*/                      strict same-RBF replays and timing reports
+  pr-new-arcs.tsv                 diagnostic successful analogue hop dump
+
+Original controls remain unchanged in /home/deano/tmp/k267/ and
+/home/deano/tmp/fixjob-nextpnr-267-20261021-055803/build-pr267/.
+No kit, deployment, production slot mutation, or GPU job was used here.

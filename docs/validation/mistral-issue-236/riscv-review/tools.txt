@@ -1,0 +1,11 @@
+actual PR base: e904cbfbf18c4218f03a9e1e121d19ada0bbdaf4
+PR implementation: 6bf1ae662815b2a2c928c766c84199cb43cb7a44
+Mistral dependency: 8fcc4cb41c51f8918f1d3ad70def2febcbf20d8f
+legacy production compiler: 9128800fa6e77c4138088a7107a95376ba47ff15
+BUILD_GUI:BOOL=OFF
+BUILD_PYTHON:BOOL=OFF
+BUILD_TESTS:BOOL=OFF
+CMAKE_BUILD_TYPE:STRING=Release
+GPU_ROUTER:STRING=OFF
+MISTRAL_ROOT:STRING=/home/deano/tmp/k267/tests/mistral
+USE_OPENMP:BOOL=OFF

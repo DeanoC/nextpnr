@@ -1,3 +1,5 @@
+Follow-up 2026-10-21: riscv-review/findings.txt corrects the review baseline attribution and records strict actual-base and same-RBF comparisons. RISC-V closure remains open.
+
 The terminal-input model correction is implemented; see terminal-input-fix/findings.txt.
 
 Fresh producer comparison is now complete; see fresh-rebuild/findings.txt.
