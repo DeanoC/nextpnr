@@ -1,0 +1,42 @@
+path	slack	from_clock	to_clock	launch	latch	arrival	required	clock_skew	data_delay	point	type	rf	incr	total	src	src_port	src_loc	src_type	dst	dst_port	dst_loc	dst_type
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:0	launch		0.000	0.000								
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:1	srclat		0.000	0.000								
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:2	clksrc		0.000	0.000	clk							
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:3	ic	rr	0.000	0.000	clk				clk~input|i	i	IOIBUF_X32_Y0_N1	cyclonev_io_ibuf
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:4	cell	rr	0.432	0.432	clk~input|i	i	IOIBUF_X32_Y0_N1	cyclonev_io_ibuf	clk~input|o	o	IOIBUF_X32_Y0_N1	cyclonev_io_ibuf
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:5	ic	rr	0.220	0.652	clk~input|o	o	IOIBUF_X32_Y0_N1	cyclonev_io_ibuf	clk~inputCLKENA0|inclk	inclk	CLKCTRL_G6	cyclonev_clkena
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:6	cell	rr	0.151	0.803	clk~inputCLKENA0|inclk	inclk	CLKCTRL_G6	cyclonev_clkena	clk~inputCLKENA0|outclk	outclk	CLKCTRL_G6	cyclonev_clkena
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:7	ic	rr	1.118	1.921	clk~inputCLKENA0|outclk	outclk	CLKCTRL_G6	cyclonev_clkena	q0|clk	clk	FF_X21_Y6_N52	cyclonev_ff
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:8	cell	rr	0.231	2.152	q0|clk	clk	FF_X21_Y6_N52	cyclonev_ff	q0			
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:9	utco		0.000	2.152	q0							
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:10	cell	rr	0.000	2.152	q0				q0|q	q	FF_X21_Y6_N52	cyclonev_ff
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:11	ic	rr	0.545	2.697	q0|q	q	FF_X21_Y6_N52	cyclonev_ff	l1|datae	datae	LABCELL_X16_Y3_N27	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:12	cell	rf	0.117	2.814	l1|datae	datae	LABCELL_X16_Y3_N27	cyclonev_lcell_comb	l1|combout	combout	LABCELL_X16_Y3_N27	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:13	ic	ff	0.117	2.931	l1|combout	combout	LABCELL_X16_Y3_N27	cyclonev_lcell_comb	l2|datae	datae	LABCELL_X16_Y3_N54	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:14	cell	fr	0.097	3.028	l2|datae	datae	LABCELL_X16_Y3_N54	cyclonev_lcell_comb	l2|combout	combout	LABCELL_X16_Y3_N54	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:15	ic	rr	0.263	3.291	l2|combout	combout	LABCELL_X16_Y3_N54	cyclonev_lcell_comb	l3|dataf	dataf	LABCELL_X16_Y3_N48	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:16	cell	rf	0.038	3.329	l3|dataf	dataf	LABCELL_X16_Y3_N48	cyclonev_lcell_comb	l3|combout	combout	LABCELL_X16_Y3_N48	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:17	ic	ff	1.182	4.511	l3|combout	combout	LABCELL_X16_Y3_N48	cyclonev_lcell_comb	l4|datac	datac	LABCELL_X10_Y8_N30	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:18	cell	fr	0.164	4.675	l4|datac	datac	LABCELL_X10_Y8_N30	cyclonev_lcell_comb	l4|combout	combout	LABCELL_X10_Y8_N30	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:19	ic	rr	0.111	4.786	l4|combout	combout	LABCELL_X10_Y8_N30	cyclonev_lcell_comb	l5|datab	datab	LABCELL_X10_Y8_N9	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:20	cell	rf	0.222	5.008	l5|datab	datab	LABCELL_X10_Y8_N9	cyclonev_lcell_comb	l5|combout	combout	LABCELL_X10_Y8_N9	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:21	ic	ff	0.932	5.940	l5|combout	combout	LABCELL_X10_Y8_N9	cyclonev_lcell_comb	l6|datab	datab	MLABCELL_X6_Y3_N27	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:22	cell	fr	0.209	6.149	l6|datab	datab	MLABCELL_X6_Y3_N27	cyclonev_lcell_comb	l6|combout	combout	MLABCELL_X6_Y3_N27	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:23	ic	rr	0.307	6.456	l6|combout	combout	MLABCELL_X6_Y3_N27	cyclonev_lcell_comb	l7|dataa	dataa	LABCELL_X2_Y3_N15	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:24	cell	rf	0.226	6.682	l7|dataa	dataa	LABCELL_X2_Y3_N15	cyclonev_lcell_comb	l7|combout	combout	LABCELL_X2_Y3_N15	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:25	ic	ff	0.740	7.422	l7|combout	combout	LABCELL_X2_Y3_N15	cyclonev_lcell_comb	l8|dataa	dataa	LABCELL_X7_Y1_N42	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:26	cell	fr	0.213	7.635	l8|dataa	dataa	LABCELL_X7_Y1_N42	cyclonev_lcell_comb	l8|combout	combout	LABCELL_X7_Y1_N42	cyclonev_lcell_comb
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:27	ic	rr	0.000	7.635	l8|combout	combout	LABCELL_X7_Y1_N42	cyclonev_lcell_comb	qc|d	d	FF_X7_Y1_N43	cyclonev_ff
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	arrival:28	cell	rr	0.129	7.764	qc|d	d	FF_X7_Y1_N43	cyclonev_ff	qc			
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	required:29	latch		40.000	40.000								
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	required:30	srclat		0.000	40.000								
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	required:31	clksrc		0.000	40.000	clk							
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	required:32	ic	rr	0.000	40.000	clk				clk~input|i	i	IOIBUF_X32_Y0_N1	cyclonev_io_ibuf
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	required:33	cell	rr	0.432	40.432	clk~input|i	i	IOIBUF_X32_Y0_N1	cyclonev_io_ibuf	clk~input|o	o	IOIBUF_X32_Y0_N1	cyclonev_io_ibuf
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	required:34	ic	rr	0.185	40.617	clk~input|o	o	IOIBUF_X32_Y0_N1	cyclonev_io_ibuf	clk~inputCLKENA0|inclk	inclk	CLKCTRL_G6	cyclonev_clkena
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	required:35	cell	rr	0.144	40.761	clk~inputCLKENA0|inclk	inclk	CLKCTRL_G6	cyclonev_clkena	clk~inputCLKENA0|outclk	outclk	CLKCTRL_G6	cyclonev_clkena
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	required:36	ic	rr	0.961	41.722	clk~inputCLKENA0|outclk	outclk	CLKCTRL_G6	cyclonev_clkena	qc|clk	clk	FF_X7_Y1_N43	cyclonev_ff
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	required:37	cell	rr	0.210	41.932	qc|clk	clk	FF_X7_Y1_N43	cyclonev_ff	qc			
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	required:38	ccpp		0.212	42.144								
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	required:39	unc		-0.170	41.974								
+0	34.210	clk	clk	0.000	40.000	7.764	41.974	-0.008	5.612	required:40	utsu		0.000	41.974	qc							

@@ -1,0 +1,7 @@
+{
+  "exit_code": 0,
+  "full_report_identical": true,
+  "rbf_identical": true,
+  "binary_sha256": "7597be35cf505d5abe7c3ed22c110e382d275178b0a26c1f40c56c06e4fa4d7c",
+  "rbf_sha256": "7f155dcdb8ba0714ff4c8966c3760a8212b022852201dc0ab1ce86695406b2e6"
+}

@@ -1025,16 +1025,17 @@ TEST_F(NarrowSearchTest, FutureAlut2ArcsChooseTheActualFasterFirstTuple)
     ASSERT_TRUE(ctx->getCellDelay(root, id_A, id_Q, original_a));
     ASSERT_TRUE(ctx->getCellDelay(root, id_B, id_Q, original_b));
     // Fastest-last: an unbound ALUT2 puts B on F (97 ps) and A on E (335 ps).
-    EXPECT_EQ(a_arc.maxDelay(), 335);
-    EXPECT_EQ(b_arc.maxDelay(), 97);
+    // Native inputs also include the 175 ps estimated GOUT mux stage.
+    EXPECT_EQ(a_arc.maxDelay(), 335 + 175);
+    EXPECT_EQ(b_arc.maxDelay(), 97 + 175);
     // The placed root is still an ALUT5. Only its last input E is timed on F;
     // the inputs before it keep the scaffold order, A on E and B on C/D.
     // That is a different map from the ALUT2.
-    EXPECT_EQ(original_a.maxDelay(), 335);
-    EXPECT_EQ(original_b.maxDelay(), 512);
+    EXPECT_EQ(original_a.maxDelay(), 335 + 175);
+    EXPECT_EQ(original_b.maxDelay(), 512 + 175);
     DelayQuad tail;
     ASSERT_TRUE(ctx->getCellDelay(root, id_E, id_Q, tail));
-    EXPECT_EQ(tail.maxDelay(), 97);
+    EXPECT_EQ(tail.maxDelay(), 97 + 175);
     struct Measurement { BelId a, b; delay_t leaf_only, root_arrival; };
     std::vector<Measurement> measurements;
     CubeSnapshot before(ctx.get());

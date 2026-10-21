@@ -4,6 +4,7 @@
 
 #include "gtest/gtest.h"
 #include "nextpnr.h"
+#include "timing.h"
 
 USING_NEXTPNR_NAMESPACE
 
@@ -121,6 +122,10 @@ TEST(LutPlacementTiming, Lut6PhysicalFIsFasterThanE)
         DelayQuad slow, fast;
         ASSERT_TRUE(ctx.getCellDelay(cell, id_E, id_Q, slow));
         ASSERT_TRUE(ctx.getCellDelay(cell, id_F, id_Q, fast));
+        // Compare the characterized LUT mux levels, excluding the separate
+        // block-input estimate (whose conservative early bound is zero).
+        slow -= ctx.get_lut_input_delay(cell, id_E);
+        fast -= ctx.get_lut_input_delay(cell, id_F);
         EXPECT_LT(fast.maxRiseDelay(), slow.minRiseDelay());
         EXPECT_LT(fast.maxFallDelay(), slow.minFallDelay());
     }
@@ -173,8 +178,10 @@ TEST(LutPlacementTiming, IsolatedCellEstimatesMatchBothPhysicalHalves)
                 SCOPED_TRACE(std::to_string(half) + "/" + std::to_string(width) + "/" + std::to_string(input));
                 DelayQuad actual;
                 ASSERT_TRUE(ctx.getCellDelay(cells[width - 1], inputs[input], id_Q, actual));
-                if (!isolated && width < 6 && input != width - 1)
+                if (!isolated && width < 6 && input != width - 1) {
                     ASSERT_TRUE(ctx.get_lut_pin_delay(scaffold_rest[input], false, actual));
+                    actual += ctx.get_lut_input_delay(cells[width - 1], inputs[input]);
+                }
                 for (const auto &estimate : {hypothetical[width - 1][input], unplaced[width - 1][input],
                                              placed[width - 1][input]}) {
                     EXPECT_EQ(estimate.minRiseDelay(), actual.minRiseDelay());
@@ -218,6 +225,7 @@ TEST(LutPlacementTiming, DefaultEstimateGivesTheLastInputF)
                 DelayQuad estimate, reference;
                 ASSERT_TRUE(ctx.getCellDelay(cell, inputs[i], id_Q, estimate));
                 ASSERT_TRUE(ctx.get_lut_pin_delay(expected, width == 6, reference));
+                reference += ctx.get_lut_input_delay(cell, inputs[i]);
                 EXPECT_EQ(estimate.maxDelay(), reference.maxDelay());
             }
         }
@@ -273,8 +281,10 @@ TEST(LutPlacementTiming, IsolatedSparseInputsMatchLegalisation)
                 ASSERT_TRUE(ctx.getCellDelay(cell, connected[i], id_Q, actual));
                 // By default the L5 inputs before the last connected one keep
                 // the scaffold order, counted over connected inputs only.
-                if (!isolated && width == 5 && i < 2)
+                if (!isolated && width == 5 && i < 2) {
                     ASSERT_TRUE(ctx.get_lut_pin_delay(i == 0 ? id_E0 : id_D, false, actual));
+                    actual += ctx.get_lut_input_delay(cell, connected[i]);
+                }
                 EXPECT_EQ(estimates[width - 5][i].maxDelay(), actual.maxDelay());
                 EXPECT_EQ(estimates[width - 5][i].minDelay(), actual.minDelay());
             }
@@ -534,6 +544,77 @@ TEST(LutInputArrival, PrivateLateInputGetsFastPinAndSharedInputsStayFixed)
     ctx.unbindBel(cells[0]->bel);
     ctx.bindBel(ctx.getBelByLocation(Loc(24, 1, 0)), cells[0], STRENGTH_LOCKED);
     EXPECT_EQ(ctx.optimise_private_lut_pins(lab, 0, 0, arrival), 0);
+}
+
+TEST(LutInputArrival, HalfCycleDeadlineTakesPriorityOverLaterFullCycleArrival)
+{
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    Context ctx(args);
+    ctx.settings[ctx.id("target_freq")] = 1e8;
+    auto *gnd = ctx.createNet(ctx.id("$PACKER_GND_NET"));
+    ctx.createNet(ctx.id("$PACKER_VCC_NET"));
+    auto *clock = ctx.createNet(ctx.id("clock"));
+    clock->is_global = true;
+    clock->clkconstr = std::make_unique<ClockConstraint>();
+    clock->clkconstr->period = DelayPair(10000);
+    clock->clkconstr->high = clock->clkconstr->low = DelayPair(5000);
+    auto ff = [&](const char *name, int y, int z, bool falling) {
+        auto *cell = ctx.createCell(ctx.id(name), id_MISTRAL_FF);
+        for (IdString pin : {id_CLK, id_ENA, id_ACLR, id_SCLR, id_SLOAD, id_SDATA, id_DATAIN})
+            cell->addInput(pin);
+        cell->addOutput(id_Q);
+        cell->connectPort(id_CLK, clock);
+        cell->connectPort(id_DATAIN, gnd);
+        cell->connectPort(id_Q, ctx.createNet(ctx.idf("%s$q", name)));
+        cell->pin_data[id_CLK].state = falling ? PIN_INV : PIN_SIG;
+        cell->pin_data[id_ENA].state = PIN_1;
+        cell->pin_data[id_ACLR].state = PIN_1;
+        cell->pin_data[id_SCLR].state = PIN_0;
+        cell->pin_data[id_SLOAD].state = PIN_0;
+        ctx.assign_ff_info(cell);
+        ctx.bindBel(ctx.getBelByLocation(Loc(24, y, z)), cell, STRENGTH_WEAK);
+        return cell;
+    };
+    auto *half = ff("half", 3, 2, true);
+    auto *full = ff("full", 2, 2, false);
+    auto *capture = ff("capture", 1, 8, false);
+    auto lut = [&](const char *name, IdString type, int y, NetInfo *a, NetInfo *b) {
+        auto *cell = ctx.createCell(ctx.id(name), type);
+        cell->addInput(id_A);
+        cell->connectPort(id_A, a);
+        if (b) {
+            cell->addInput(id_B);
+            cell->connectPort(id_B, b);
+        }
+        cell->addOutput(id_Q);
+        cell->connectPort(id_Q, ctx.createNet(ctx.idf("%s$q", name)));
+        cell->params[id_LUT] = Property(b ? 8 : 2, b ? 4 : 2);
+        ctx.assign_comb_info(cell);
+        ctx.bindBel(ctx.getBelByLocation(Loc(24, y, 0)), cell, STRENGTH_WEAK);
+        return cell;
+    };
+    auto *buffer = lut("full_buffer", id_MISTRAL_BUF, 2, full->getPort(id_Q), nullptr);
+    auto *root = lut("root", id_MISTRAL_ALUT2, 1, half->getPort(id_Q), buffer->getPort(id_Q));
+    capture->disconnectPort(id_DATAIN);
+    capture->connectPort(id_DATAIN, root->getPort(id_Q));
+    ctx.assignArchInfo();
+    ctx.lab_pre_route();
+    EXPECT_EQ(root->pin_data.at(id_B).bel_pins, std::vector<IdString>{id_F0});
+    TimingAnalyser before(&ctx);
+    before.setup();
+    delay_t half_arrival, full_arrival;
+    ASSERT_TRUE(before.get_max_arrival({root->name, id_A}, half_arrival));
+    ASSERT_TRUE(before.get_max_arrival({root->name, id_B}, full_arrival));
+    ASSERT_GT(full_arrival, half_arrival);
+    ASSERT_LT(before.get_setup_slack({root->name, id_A}), before.get_setup_slack({root->name, id_B}));
+    ctx.arrival_pin_assignment = true;
+    ctx.lab_pre_route();
+    EXPECT_EQ(root->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_F0});
+    EXPECT_EQ(root->pin_data.at(id_B).bel_pins, std::vector<IdString>{id_E0});
+    TimingAnalyser after(&ctx);
+    after.setup();
+    EXPECT_GT(after.get_setup_slack({capture->name, id_DATAIN}), before.get_setup_slack({capture->name, id_DATAIN}));
 }
 
 TEST(LutPlacementTiming, DirectDataFlipFlopDoesNotShareItsFabricPin)

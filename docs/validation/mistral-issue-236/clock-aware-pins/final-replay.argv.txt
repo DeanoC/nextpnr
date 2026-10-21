@@ -1,0 +1,23 @@
+[
+  "/tmp/issue236-build/nextpnr-mistral",
+  "--json",
+  "/tmp/issue236-closure/clock-aware-s1/routed.json",
+  "--device",
+  "5CSEBA6U23I7",
+  "--qsf",
+  "/tmp/issue236-closure/in/socket.qsf",
+  "--sdc",
+  "/tmp/issue236-closure/in/clocks-oss.sdc",
+  "--freq",
+  "74.25",
+  "--no-pack",
+  "--no-place",
+  "--no-route",
+  "--rbf",
+  "/tmp/issue236-closure/final-replay.rbf",
+  "--compress-rbf",
+  "--report",
+  "/tmp/issue236-closure/final-replay.json",
+  "--timing-report-paths",
+  "16"
+]

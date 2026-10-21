@@ -1,0 +1,2 @@
+# TimeQuest TSV records retain empty trailing columns as part of their schema.
+*.tsv whitespace=-blank-at-eol

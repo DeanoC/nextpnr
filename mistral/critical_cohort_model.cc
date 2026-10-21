@@ -160,6 +160,10 @@ Prediction predict(Context *ctx, NetInfo *net, PortRef sink)
     DelayQuad d;
     const IdString rt_pin = ctx->alm_route_through_pin(data.lab, data.alm, half);
     NPNR_ASSERT(ctx->get_lut_pin_delay(rt_pin, false, d));
+    // The model folds this temporary BUF into the FF input's route delay.
+    // Preserve the same cell-side terminal GOUT mux charge as an inserted BUF.
+    CellInfo route_through(ctx, ctx->id("$critical_cohort_route_through"), id_MISTRAL_BUF);
+    d += ctx->get_lut_input_delay(&route_through, id_A);
     p.wire = ctx->predictDelay(net->driver.cell->bel, pins.front(), lut, rt_pin);
     p.local = ctx->predictDelay(lut, id_COMBOUT, sink.cell->bel, id_DATAIN);
     p.logic = d.delayPair();
