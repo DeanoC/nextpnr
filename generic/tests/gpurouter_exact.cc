@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <iomanip>
 #include <limits>
@@ -240,6 +241,13 @@ TEST(GpuApproximateSearch, RoundedHistogramThresholdMakesProgress)
 
 TEST(GpuApproximateSearch, RoundedHistogramThresholdMakesProgressOnDevice)
 {
+    // Only under a gpu-run lease. It exports the leased ids as FES_GPU_IDS and
+    // makes only those GPUs visible, so the default device below is a leased
+    // one; a --phase-lease run sets neither and skips. Check first: even
+    // device_backend_available() starts the GPU runtime.
+    const char *leased = std::getenv("FES_GPU_IDS");
+    if (leased == nullptr || *leased == '\0')
+        GTEST_SKIP() << "needs a gpu-run GPU lease (no FES_GPU_IDS)";
     if (!device_backend_available())
         GTEST_SKIP() << "GPU device backend or GPU device unavailable";
 
