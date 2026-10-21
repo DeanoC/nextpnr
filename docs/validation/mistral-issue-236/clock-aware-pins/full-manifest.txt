@@ -1,0 +1,14 @@
+n1   machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTR MISTRAL_MCOMB  X15Y10 alm6 h0 pin A   route 780 cell 731  GIN+H6+TD+GOUT
+n2   machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTR MISTRAL_MCOMB  X15Y11 alm9 h1 pin E1  route 1956 cell 463  GIN+V2+H6+V2+H3+V4+H3+TD+GOUT
+n3   machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ MISTRAL_MCOMB  X15Y11 alm3 h0 pin B   route 98 cell 692  LD+GOUT
+n4   machine.cpu.cpu.illegal_MISTRAL_ALUT2_A_Q_MISTRAL_ALUT5_E_C_ MISTRAL_COMB   X17Y13 alm6 h1 pin D   route 1806 cell 646  GIN+V2+H6+V4+H6+TD+GOUT
+n5   machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ MISTRAL_COMB   X13Y13 alm0 h0 pin D   route 724 cell 644  GIN+H6+TD+GOUT
+n6   machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ MISTRAL_COMB   X17Y13 alm1 h0 pin B   route 520 cell 1062  GIN+H3+TD+GOUT
+n7   machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ MISTRAL_COMB   X17Y13 alm1 h1 pin CI  route 0 cell 35
+n8   machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ MISTRAL_COMB   X17Y13 alm2 h0 pin CI  route 0 cell 35
+n9   machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ MISTRAL_COMB   X17Y13 alm2 h1 pin CI  route 0 cell 368
+n10  machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ MISTRAL_COMB   X18Y13 alm0 h1 pin E1  route 576 cell 458  GIN+H6+TD+GOUT
+n11  machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ MISTRAL_COMB   X17Y15 alm2 h1 pin E1  route 1026 cell 462  GIN+H3+V2+H3+TD+GOUT
+n12  machine.cpu.cpu.alu.flags_in_MISTRAL_FF_Q_DATAIN_MISTRAL_ALU MISTRAL_COMB   X13Y19 alm6 h1 pin F1  route 1031 cell 238  GIN+V4+H6+TD+GOUT
+n13  machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q MISTRAL_COMB   X7Y8 alm3 h1 pin F1  route 1894 cell 243  GIN+H3+V4+V4+V4+H6+TD+GOUT
+n14  machine.cpu.cpu.halted_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q      MISTRAL_MCOMB  X6Y8 alm9 h1 pin F1  route 553 cell 238  GIN+H6+TD+GOUT

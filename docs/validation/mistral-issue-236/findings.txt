@@ -1,0 +1,179 @@
+Follow-up 2026-10-21: riscv-review/findings.txt corrects the review baseline attribution and records strict actual-base and same-RBF comparisons. RISC-V closure remains open.
+
+The terminal-input model correction is implemented; see terminal-input-fix/findings.txt.
+
+Fresh producer comparison is now complete; see fresh-rebuild/findings.txt.
+
+Issue #236 investigation, 2026-10-20
+https://github.com/DeanoC/nextpnr/issues/236
+
+Conclusion
+
+The sealed ZX81 1.5.0 shell fails timing under latest nextpnr main
+e904cbfbf18c4218f03a9e1e121d19ada0bbdaf4 without a cart or routing.
+The matching Quartus data-path replica supports a real timing miss, rather
+than a pessimistic nextpnr LUT/data-route model. This is not full-shell
+TimeQuest signoff and does not establish silicon failure.
+
+Current-main reproduction
+
+Built this checkout with CMake Release, ARCH=mistral, GPU_ROUTER=OFF,
+BUILD_GUI=OFF, BUILD_PYTHON=OFF, using the existing Mistral source at
+/home/deano/tmp/n231-cuda/mistral. Tests were disabled after configuration
+showed missing googletest and tests/gui; no implementation was changed.
+No GPU routing or board access was needed. origin/main was fetched and
+matched HEAD. Raw local evidence and binaries: /tmp/issue236{,-build}.
+Input hashes, commands and measured clock summaries: measurements.txt.
+
+1. Original scaffold, no pack/place/route, report only:
+   clk_sys 46.913116 MHz; setup WNS -2.145 ns; exit 0.
+   This is routed-table timing, not analogue signoff.
+2. Same command plus --isolated-lut-placement --arrival-pin-assignment:
+   complete report byte-identical to (1).
+3. Isolated scaffold copy with only timing/allowFail removed, no
+   pack/place/route, --rbf --compress-rbf --report:
+   clk_sys 45.699661 MHz; setup WNS -1.608 ns; hold WNS +0.742 ns;
+   display.control.clk 85.499313 MHz; audio_clk 162.707458 MHz; exit 1.
+   final_analogue_model=true. A failing RBF is still written.
+4. Expanded strict analogue report (--timing-report-paths 16):
+   same timing; 138 additional paths. It exposes 16 failing falling-to-
+   rising paths and 16 failing rising-to-rising paths in clk_sys.
+   These are a bounded endpoint sample, not all failing paths.
+
+The latest scaffold-only analogue Fmax and timing_summary exactly match
+the retained c2c01bda cart result in /home/deano/tmp/k845-latest/out.
+The clk_sys critical path object is also identical. Other clock/crossing
+path objects need not be identical because the cart adds consumers.
+
+The half-cycle path runs from machine.ce_3m25_MISTRAL_FF_Q.Q to
+machine.cpu.cpu.push_value_MISTRAL_FF_Q_9.ENA, not DATAIN or CLK.
+Clock inversion in its physical pin map selects the falling launch edge.
+The supplied SDC grants 9.574 ns from falling to rising; it contains no
+multicycle or false-path exception. Its 19.148 ns quantized period gives
+52.224773 MHz, a small rounding difference from requested 52.224 MHz.
+
+Eight LUT stages contribute 3.655 ns, nine routing arcs 6.834 ns,
+clock-to-Q 0.731 ns, setup -0.196 ns and clock-skew segment -0.083 ns:
+total 10.941 ns, deficit 1.367 ns. Sixteen push_value enable endpoints
+share the limiting cone. The worst absolute setup slack belongs instead
+to a rising-to-rising path ending at:
+machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q.DATAIN
+at (22,2), slack -1.608 ns. Other full-cycle rdata/SCLR paths fail too.
+Do not use only the lowest-Fmax path as the repair acceptance criterion.
+
+Why exit 0 and why options cannot fix the published package
+
+scaffold.json contains timing/allowFail=1. The setting survives reload;
+omitting --timing-allow-fail does not remove it. The final timing logger
+therefore emits a warning and the command returns success. Removing the
+inherited setting makes the same analogue miss an error and exit 1.
+Report-only analysis deliberately calls timing_analysis without failure
+enforcement, so its exit 0 is not a signoff verdict either.
+
+fes_slot.cc locks shell cells and routes at STRENGTH_LOCKED and restores
+their physical pin maps. Seeds, congestion spreading, timing weights,
+router choice and analogue-repair budgets cannot change this shell cone.
+lab.cc excludes locked cells from arrival-pin reassignment; critical-cohort
+repair rejects them. Local/comb remapping explicitly rejects slot-active
+designs. These options belong in a fresh shell build before sealing.
+Never unlock or modify the published package to try them.
+
+Quartus evidence
+
+Powerboat: /home/deano/tmp/nextpnr-236-e904cbfb/replica.
+Quartus Prime Lite 17.0.2 Build 602. Existing repository replica.py,
+paths.tcl, replica_compare.py and fullpath.py were used. route_delay.cc
+was locally filtered to the critical destinations for speed; the complete
+unfiltered decoder also completed (36,304 routed input ports).
+
+The retained quartus/ project compiles successfully. It preserves the
+launch FF site, eight LUT sites, physical path-input pins and RCF routing.
+Decoded RBF chains match all eight original data-routing hops exactly.
+Read quartus/comparison.txt for per-hop TimeQuest comparisons.
+
+Launch Q to last LUT output:
+  nextpnr original loaded route: 9.828 ns
+  Quartus replica slow 100 C:   10.191 ns
+  Quartus replica slow -40 C:   10.004 ns
+
+Replacing that part of the original timing path with Quartus delays,
+adding Mistral's removed-side-branch loading difference and original final
+hop, and retaining nextpnr skew/clock-to-Q/setup, gives estimates:
+  slow 100 C: 11.541 ns, 43.32 MHz
+  slow -40 C: 11.224 ns, 44.55 MHz
+See quartus/fullpath.txt. The original final control route decodes as
+LAB.004.001:DATAIN.2; this is the physical control-mux input route, while
+the timed logical endpoint remains FF ENA.
+
+Limits: the replica uses inverter LUTs, drops original side branches,
+launches on posedge, and replaces the final hop/capture with a nearby data
+FF. It cross-checks the eight data hops, not the original clock tree, duty
+cycle, launch polarity or capture ENA timing. The full-path estimates use
+nextpnr terms for those omitted pieces and omit Quartus uncertainty.
+They must not be described as a full-shell TimeQuest Fmax measurement.
+Original-route cell-arc re-costing also predicts failure (42.21 MHz at
+100 C), but the actual identical-route replica is stronger evidence.
+
+The earlier logical-position LUT timer would assign this same frozen
+path 56.95 MHz (fullpath.py calculation). That explains how historical
+optimism could hide the miss; it does not prove how this shell was qualified
+or equate that calculation with the issue's 56.63 MHz placement estimate.
+
+Fix plan, in order
+
+1. Make strict final analogue shell acceptance explicit in its producer.
+   Reject inherited timing/allowFail and require exit success, all clock
+   targets met, setup/hold WNS nonnegative, final_analogue_model=true, and
+   the existing seal/CRAM checks. A written RBF alone is insufficient.
+   Treat report-only output as diagnostic. Check every published shell;
+   do not silently reinterpret historical allowed failures as passes.
+   Decide separately whether nextpnr should refuse RBF publication after
+   failed strict signoff; currently it writes the file even with exit 1.
+
+2. Rebuild from the shell's pre-seal synthesis/placement inputs with latest
+   nextpnr and unchanged clock/slot/CRAM constraints. Record hashes. Compare
+   a small fixed seed set (1-4) for default, isolated-lut-placement,
+   arrival-pin-assignment, then both; keep router2/fallback and GPU-reference
+   cohorts separate. Route GPU jobs only through gpu-run. Judge final
+   analogue timing, every clock's setup/hold and seal validity, not placement
+   estimates. No extra vendor run is required.
+
+3. If those builds miss, use pre-seal routed reports to target the whole CPU
+   cohort: critical-cohort placement (--critical-cohort-budget with prior
+   analogue guidance), legal arrival-driven pin assignment and bounded
+   local/comb/LUT-pair remapping where their eligibility rules permit.
+   Target long inter-LAB hops and the A/B-pin stages of the ce_3m25 -> bus ->
+   decode -> group_sel enable chain, as well as the failing full-cycle CPU
+   paths. Never assume each critical input can legally occupy F: shared
+   ALM pins and other consumers constrain the assignment. Seek positive
+   margin beyond the 1.367 ns half-cycle deficit and -1.608 ns overall WNS.
+
+4. If physical optimization is insufficient, change the shell RTL: factor
+   the bus/decode enable cone or precompute decode terms from registered
+   state before the falling-edge launch. Move/register the enable only
+   after proving the CPU bus cycle and interrupt semantics. This is a shell
+   rebuild with functional verification, not a cart patch or an automatic
+   negedge-to-posedge conversion. Do not add an unproven multicycle or
+   false-path exception and do not lower the required clock.
+
+5. Before release, cross-check the candidate's original launch/capture/ENA
+   edges and clock waveform in TimeQuest, including both slow corners and
+   hold. Extend the replica or export the full shell for clock/endpoint
+   coverage. Repeat strict analogue signoff on the sealed shell, then the
+   ram16k cart seeds 1-4 with unchanged seals and timing checks. Run board
+   validation only with a claimed kit and restore/release its baseline.
+   Publish a new shell package; the existing immutable package cannot be
+   repaired by cart-routing options.
+
+Separate replay limitation found during investigation
+
+Latest-main --no-route --rbf replay of the retained already-merged cart
+checkpoint aborts in compute_analogue_arcs -> analogue_arc_delay ->
+getBelPinsForCellPin, dict<IdString,ArchPinInfo>::at. Adding the original
+CRAM region does not avoid it. lock_fes_scaffold skips FES_SLOT cells;
+a missing restored slot pin map is the leading explanation, but the
+specific missing cell/port was not isolated. This is a separate replay follow-up, not a
+timing fix or a successful latest cart run. No source changes were made
+to work around it. The latest no-cart analogue run completed successfully
+and reproduces the issue independently; the Quartus comparison uses the
+retained original cart RBF and report, not the failed replay.

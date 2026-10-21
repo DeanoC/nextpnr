@@ -24,6 +24,7 @@
 #include "util.h"
 
 #include <algorithm>
+#include <limits>
 
 NEXTPNR_NAMESPACE_BEGIN
 
@@ -951,8 +952,9 @@ void Arch::lab_pre_route()
         for (uint8_t alm = 0; alm < 10; alm++)
             reassign_alm_inputs(lab, alm);
     }
-    // Experimental heuristic: use a single arrival snapshot after legalising
-    // the pin maps. Final routing and setup/hold analysis must qualify it.
+    // Experimental heuristic: rank private inputs by their arrival relative
+    // to the setup deadline, so an urgent half-cycle input can outrank a
+    // later full-cycle input. Final routing and setup/hold must qualify it.
     if (arrival_pin_assignment) {
         TimingAnalyser timing(getCtx());
         timing.setup();
@@ -967,8 +969,17 @@ void Arch::lab_pre_route()
                     for (const auto &port : cell->ports) {
                         delay_t value;
                         if (port.second.type == PORT_IN &&
-                            timing.get_max_arrival(CellPortKey(cell->name, port.first), value))
-                            arrival[port.first] = value;
+                            timing.get_max_arrival(CellPortKey(cell->name, port.first), value)) {
+                            const float slack = timing.get_setup_slack(CellPortKey(cell->name, port.first));
+                            DelayQuad logic;
+                            if (slack != std::numeric_limits<delay_t>::max() &&
+                                getCellDelay(cell, port.first, id_Q, logic)) {
+                                // A new pin changes slack by old_delay - new_delay.
+                                // Subtract the old cell charge to rank the incoming
+                                // signal independently of its incumbent pin speed.
+                                arrival[port.first] = -slack - logic.maxDelay();
+                            }
+                        }
                     }
                     changed += optimise_private_lut_pins(lab, alm, half, arrival);
                 }

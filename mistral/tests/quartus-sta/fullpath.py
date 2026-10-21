@@ -82,7 +82,9 @@ def main():
         q = sum(float(r["incr"]) * 1000 for r in pts
                 if (r["type"] == "ic" and r["dst_type"] == "cyclonev_lcell_comb") or
                 (r["type"] == "cell" and r["src_type"] == "cyclonev_lcell_comb"))
-        side = sum(delay(by_dst[d], corner) - delay(replica[d], corner) for d in dsts)
+        # Dropped branches also change the waveform at the terminal input
+        # mux. Include that stage on both sides of the loading correction.
+        side = sum(delay(by_dst[d], corner, True) - delay(replica[d], corner, True) for d in dsts)
         final_ps = delay(final, corner, True)
         full = total - data_np - last_ps + q + side + final_ps
         out[corner] = {"data_nextpnr_ps": round(data_np), "data_quartus_ps": round(q), "side_branch_ps": round(side),

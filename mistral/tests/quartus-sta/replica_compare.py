@@ -6,15 +6,14 @@ replica_compare.py <replica dir>
 Reads replica.json (replica.py), the replica's routes.tsv (route_delay on
 the replica RBF) and paths-<corner>.tsv (paths.tcl), and prints one row per
 routing hop and LUT arc of the q0 -> qc path for every Quartus corner.
+The nextpnr cell charge comes from its report, including the terminal
+input stage; Quartus charges that stage to interconnect instead.
 """
 import csv
 import glob
 import json
 import os
 import sys
-
-NEXTPNR_PIN = {"A": 605, "B": 583, "C": 512, "D": 512, "E0": 335, "E1": 335, "F0": 97, "F1": 97}
-
 
 def main():
     rep_dir = sys.argv[1]
@@ -39,7 +38,7 @@ def main():
         np_r = l["route_ps"]
         rep_r = max(float(r["rise100"]), float(r["fall100"]))
         rep_s = max(float(r["port_rise100"]), float(r["port_fall100"]))
-        np_l = NEXTPNR_PIN[l["phys"]]
+        np_l = l["cell_ps"]
         tot["np_r"] += np_r
         tot["rep_r"] += rep_r
         tot["rep_s"] += rep_s

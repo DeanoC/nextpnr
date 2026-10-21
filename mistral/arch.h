@@ -549,6 +549,9 @@ struct Arch : BaseArch<ArchRanges>
     bool getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort,
                       DelayQuad &delay) const override;                                                      // delay.cc
     bool get_lut_pin_delay(IdString physical, bool l6, DelayQuad &delay) const; // delay.cc
+    // Native LUT input wires end before the block-input mux. Charge that
+    // final stage on the cell side of the existing timing boundary.
+    DelayQuad get_lut_input_delay(const CellInfo *cell, IdString port) const;
     DelayQuad getPipDelay(PipId pip) const override;                                                         // delay.cc
     // The per-type table the routers use until analogue_repair() calibrates it.
     DelayQuad getPipDelayTable(PipId pip) const;
@@ -560,9 +563,11 @@ struct Arch : BaseArch<ArchRanges>
         PipId pip;
         delay_t table, rise, fall;
     };
-    // Mistral analogue delay of one routed arc; optionally records each pip.
+    // Full analogue arc, including a native LUT's terminal input stage.
+    // The optional stage result lets STA retain the graph's GOUT boundary;
+    // hop observations contain real routing pips only.
     bool analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay,
-                            std::vector<AnalogueHop> *hops) const;
+                            std::vector<AnalogueHop> *hops, DelayQuad *lut_input_delay = nullptr) const;
     void dump_analogue_arcs(const std::string &path) const;
 
     // Analogue signoff repair after the GPU router (analogue.cc)
@@ -585,6 +590,9 @@ struct Arch : BaseArch<ArchRanges>
     {
         DelayQuad delay;
         bool ok;
+        // Already included in delay. getCellDelay charges it on the cell
+        // side, so getArcDelayOverride subtracts it from the routing term.
+        DelayQuad lut_input_delay;
     };
     std::unordered_map<const PortRef *, AnalogueArc> analogue_arc_cache;
     bool analogue_cache_valid = false;

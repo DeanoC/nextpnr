@@ -1,0 +1,26 @@
+Running main() from /home/deano/harnesses/worktrees/nextpnr/vivid-island/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = LutInputDelayTest.*:CompletedObservationsTest.*
+[==========] Running 6 tests from 2 test suites.
+[----------] Global test environment set-up.
+[----------] 2 tests from LutInputDelayTest
+[ RUN      ] LutInputDelayTest.PlacementChargesMuxWithoutInventingEarlyMargin
+[       OK ] LutInputDelayTest.PlacementChargesMuxWithoutInventingEarlyMargin (5834 ms)
+[ RUN      ] LutInputDelayTest.AnalogueIncludesTerminalStageAndPreservesControlArc
+[       OK ] LutInputDelayTest.AnalogueIncludesTerminalStageAndPreservesControlArc (6478 ms)
+[----------] 2 tests from LutInputDelayTest (12312 ms total)
+
+[----------] 4 tests from CompletedObservationsTest
+[ RUN      ] CompletedObservationsTest.RealFailedHpsHopNeverBecomesObservation
+[       OK ] CompletedObservationsTest.RealFailedHpsHopNeverBecomesObservation (5364 ms)
+[ RUN      ] CompletedObservationsTest.FailedCachedOverridePreservesFallbackRouteMinimum
+[       OK ] CompletedObservationsTest.FailedCachedOverridePreservesFallbackRouteMinimum (5372 ms)
+[ RUN      ] CompletedObservationsTest.CompletedZeroPrefixesSurviveLaterFailureAndRepeatedAggregation
+[       OK ] CompletedObservationsTest.CompletedZeroPrefixesSurviveLaterFailureAndRepeatedAggregation (5349 ms)
+[ RUN      ] CompletedObservationsTest.PhysicalLabCircuitHopKeepsPositiveCompletedObservation
+LAB circuit GIN.1.1.0 -> H3.0.1.46 rise=63 fall=83 quad=60,63,79,83
+[       OK ] CompletedObservationsTest.PhysicalLabCircuitHopKeepsPositiveCompletedObservation (5333 ms)
+[----------] 4 tests from CompletedObservationsTest (21420 ms total)
+
+[----------] Global test environment tear-down
+[==========] 6 tests from 2 test suites ran. (33733 ms total)
+[  PASSED  ] 6 tests.

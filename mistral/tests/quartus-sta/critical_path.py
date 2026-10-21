@@ -7,8 +7,9 @@ routes.tsv is route_delay's output for the RBF nextpnr wrote with that
 timing report. Each routing segment is matched to the decoded route that
 ends in the sink's LAB with the same analogue delay, which checks that the
 route tool reproduces the timer. Each LUT arc's physical pin follows from
-the per-pin delay the timer charged (--old: the report is from the pre-#172
-logical-position timer, so pins are left unresolved).
+the decoded destination port. The report's cell charge may also include
+the terminal input mux; its total delay no longer identifies the LUT pin.
+--old retains the reported cell charges for a routing-only re-cost.
 
 The Quartus re-cost replaces every LUT arc with the Quartus 17.0.2 cell arc
 of its physical pin (mistral/tests/lut6-select, worst transition) and adds
@@ -29,7 +30,7 @@ PINS = {
     "B": (583, 579, 679),
     "A": (605, 598, 701),
 }
-BY_DELAY = {97: "F", 335: "E", 512: "C/D", 583: "B", 605: "A"}
+PINS_BY_PORT = {"F0": "F", "F1": "F", "E0": "E", "E1": "E", "C": "C/D", "D": "C/D", "B": "B", "A": "A"}
 
 
 def main():
@@ -47,10 +48,12 @@ def main():
     total = sum(s["delay"] for s in path) * 1000
     rows, unmatched = [], 0
     sums = {"np": 0.0, "q100": 0.0, "qn40": 0.0}
+    input_pin = None
     for s in path:
         ps = s["delay"] * 1000
         kind, q100, qn40, note = s["type"], ps, ps, ""
         if s["type"] == "routing":
+            input_pin = None
             x, y = s["to"]["loc"]
             lab = by_lab.get((x, y), [])
             # A LUT pin wire is the GOUT rnode itself, so nextpnr's arc stops
@@ -60,6 +63,7 @@ def main():
             cands += [(r, True) for r in lab if abs(max(float(r["port_rise100"]), float(r["port_fall100"])) - ps) < 1.5]
             if cands:
                 r, included = cands[0]
+                input_pin = PINS_BY_PORT.get(r["dst"].rsplit(":", 1)[-1])
                 q100 = max(float(r["port_rise100"]), float(r["port_fall100"]))
                 qn40 = max(float(r["port_risen40"]), float(r["port_falln40"]))
                 note = r["chain"].replace("GIN.", "").split(",")
@@ -69,7 +73,7 @@ def main():
                 unmatched += 1
                 note = "unmatched"
         elif s["type"] == "logic" and s["to"]["port"] == "Q" and not old:
-            pin = BY_DELAY.get(round(ps))
+            pin = input_pin
             if pin:
                 q100, qn40 = PINS[pin][1], PINS[pin][2]
                 kind, note = f"lut:{pin}", s["from"]["port"]

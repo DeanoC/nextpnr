@@ -1,0 +1,180 @@
+The terminal-input model correction is implemented; see terminal-input-fix/findings.txt.
+
+Fresh producer rebuild comparison, 2026-10-20
+
+Outcome
+
+Latest nextpnr main e904cbfb closes the retained ZX81 producer regression
+fixture from scratch. Seed 10 defaults reach 53.32 MHz against 52.224 MHz;
+--arrival-pin-assignment reaches 56.38 MHz. That profile also passes seeds
+1 and 3. All of these are strict final analogue reports with positive
+setup/hold WNS on every reported clock, not placement estimates.
+
+An independent Quartus critical-data-path cross-check still predicts a
+miss after restoring the endpoint terms. Do not equate recovered nextpnr
+closure with independently qualified shell timing. No new package was
+published, no board was programmed, and no timing or seal checks changed.
+
+Input identity and scope
+
+The exact pre-seal input for package 8e418923... was unavailable; the user
+confirmed it was probably cleared. The retained #214 regression fixture was
+used instead, from Powerboat:
+/home/deano/tmp/k791-6fb7/replay/fes-zx81-oss/inputs
+
+synth.json SHA256:
+8c2cb3ab937b7471d9b340095d92efe07938b4459f88a69a5fe10f8ecbc597f3
+socket.qsf SHA256:
+399a6fce230eb82f32cb1eef8c9c6d54ab9fb2b222475539977b698cc986cab0
+clocks-oss.sdc SHA256:
+38bb8779376406d4dfb1621f05c7eae1cbe3e652aa448becd43a5c63e2eaa7bb
+
+The QSF exactly matches issue #236. The fixture's producer metadata records
+FES revision 507dc554699670cbe9c3438852b3cbab375aee0d, nextpnr 9128800f,
+Yosys 5391eeb1 and Mistral 8fcc4cb4, production seed 10, timing weight 300,
+criticality exponent 5. The issue's shell names FES source 9574303038.
+Only 6,153 cell names are common between the retained reference and sealed
+issue scaffold; their placements differ substantially. These experiments
+establish closure of the retained producer fixture, not a reproduction of
+the missing exact package-producing build.
+
+The same synth, QSF and SDC were used for every fresh comparison. Clock
+requirements were unchanged. No --timing-allow-fail, --force, false paths,
+multicycle exceptions, altered RTL or shell unlocks were used.
+
+Historical reference under the current timer
+
+The retained seed-10 reference reported 53.350407 MHz with 9128800f.
+Replaying its placement, physical pins and routes with latest nextpnr gives
+39.961636 MHz. The original and replayed compressed RBFs have identical
+SHA256 67130e71c1642b21f0fe8b072b6546423c9ced6d127643709426722169398012.
+That is direct evidence of a model-only loss on identical hardware.
+The reference checkpoint inherits timing/allowFail, so its replay exit 0
+does not qualify it; the negative current slacks remain in the report.
+See historical-route-retime.txt for both clock summaries and critical paths.
+
+Fresh production seed 10
+
+Policy                       clk_sys MHz   setup WNS ns   hold WNS ns
+default                      53.321960      +0.197         +0.707
+arrival-pin-assignment        56.382500      +0.706         +0.707
+isolated-lut-placement        52.410900      +0.068         +0.666
+both                         53.783680      +0.555         +0.666
+default, congestion disabled  54.135990      +0.486         +0.729
+
+Arrival policy across seeds
+
+Seed                         clk_sys MHz   setup WNS ns   hold WNS ns
+1                            53.861897      +0.291         +0.668
+3                            53.553257      +0.475         +0.731
+10                           56.382500      +0.706         +0.707
+
+All rows exited 0, final_analogue_model=true, and pass the pixel/audio
+targets and their setup/hold constraints too. See measurements.txt and
+results.csv for precise values, exact arguments, binary/input hashes and
+runtime. Disabling congestion spreading also passes after analogue repair, but
+does not beat arrival-only on this seed. Its validated rerun is included.
+
+Builds and backend evidence
+
+The source was unchanged latest main, built Release against Mistral
+8fcc4cb4 with GUI/Python/tests disabled. CPU/GPU routing policy was not
+changed. Default was run via gpu-run on the local CUDA build; arrival and
+isolated policies via gpu-run on Powerboat's HIP build. Backend equivalence
+is per repository instructions. Both HIP architectures were compiled.
+No GPU vendor or physical GPU was pinned and GPU_LEASE_IDS was never set.
+
+The initial HIP configure used a nonexistent compiler path, leaving empty
+Release HIP flags when corrected. Its first O0 device launch failed. The
+completed failed attempt was rebuilt with the working installed compiler
+and -O3 -DNDEBUG; all accepted HIP rows use that corrected build. It is an
+environment setup failure, not an algorithmic timing result. A separate
+congestion-disabled CUDA attempt was rejected by gpu-run for device-use
+proof; it was repeated with CUDA_DEVICE_ORDER=PCI_BUS_ID, and only the
+wrapper-accepted rerun is included in the comparison.
+
+What changed physically
+
+Default and arrival-only seed-10 outputs have exactly the same 10,877
+cell placements. 2,039 saved cell pin maps differ; the arrival log reports
+5,339 input mappings changed. The ensuing data routes differ as expected.
+The option's gain is therefore input assignment and its resulting routes,
+not a different placement or an alternative timing model.
+
+In the historical reference's limiting cone, the new arrival build maps
+three ALUT5.E inputs from physical A to F, two ALUT4.D inputs from B to F,
+an ALUT2.B from E1 to F1, an ALUT2.A from D to F0 and an ALUT3.C from E0
+to F1. One other ALUT5.B becomes slower, E1 to B, showing why latest-arrival
+selection is more specific than blindly favoring every logical last input.
+The historical generated route-through buffer has no same-named cell in the new output. See reference-cone-pins.txt.
+
+The fresh arrival seed-10 worst half-cycle path now ends on iff2.ENA.
+It has 2.357 ns of LUT logic and 6.042 ns routing, total 8.868 ns including
+clock/setup terms, against 9.574 ns. Its changed cone still has ten LUT
+stages. Seven inputs use F, two use B and one D. The previously frozen
+pin allocation is not carried into this producer rebuild.
+
+Independent Quartus check of arrival seed 10
+
+Quartus 17.0.2 Build 602 on Powerboat compiled the held-route replica in
+quartus-arrival-s10/. All ten decoded rnode chains match the new original
+path exactly. The path-input pins and LUT/launch FF sites also match.
+As with the original investigation, this is a data-path replica: it uses
+inverter LUTs, drops original side branches, replaces the final capture
+with a nearby data FF, and retains nextpnr clock/skew/setup terms for the
+full-path estimate. It is not full-shell TimeQuest signoff.
+
+Q to last LUT output, ns:
+  original nextpnr:             7.559
+  Quartus replica slow 100 C:   8.574
+  Quartus replica slow -40 C:   8.321
+
+The replica's Mistral route-only sum is 5.093 ns. Including the ten block-
+input stages makes it 6.329 ns; Quartus interconnect is 6.309 ns. Mistral
+LUT cell delays sum to 2.357 ns; Quartus sums to 2.265 ns. The 1.2356 ns
+of omitted terminal block-input stages dominates the discrepancy.
+
+After original side-branch loading and final-hop correction, retaining
+nextpnr clock/endpoint terms, the estimates are:
+  slow 100 C: 9.998 ns, 50.01 MHz, approximately -0.424 ns slack
+  slow -40 C: 9.625 ns, 51.95 MHz, approximately -0.051 ns slack
+The uncertainty absent from this estimate would not improve setup margin.
+
+fullpath.py initially found two final-hop candidates because unrelated
+routes can have equal delays in the same tile. The final route was selected
+by also matching its driving physical LUT site: LAB.022.009.5:FFB1 to
+MLAB.015.009:DATAIN.2. This is the physical control-mux route to logical
+iff2.ENA. Both original TSV variants and the selected result are retained;
+this disambiguates the evidence without altering any timed design.
+
+Next fix, based on the measured residual
+
+1. Preserve #218's fast-pin legalisation and the current physical-pin timer.
+   Latest producer builds recover nextpnr timing closure; retiming only the
+   old sealed artifact cannot change its hardware.
+2. Fix Mistral's missing GOUT-to-ALM input stage in routed LUT arcs.
+   analogue_arc_delay currently stops when the native destination GOUT is
+   reached, while FF/control endpoints use a nextpnr-created destination
+   and already simulate the terminal stage. Append the LUT sink's terminal
+   circuit with the propagated waveform, and charge it exactly once.
+   Scope this by the actual LUT input endpoint, not merely all GOUT nodes;
+   FF/control, carry and hard-block arcs need separate admission rules.
+3. Make the routing-table and placement views price that same endpoint
+   stage, so optimization does not chase a path the signoff model calls
+   fast for the wrong reason. Do not double-count it on existing synthetic
+   FF sink arcs. getWireDelay currently returns zero; any implementation
+   using wire costs must account for shared native endpoints explicitly.
+4. Add an exact-route regression using these retained Quartus path points:
+   terminal stage included for LUT sinks, already-covered FF sinks unchanged,
+   all ten chains preserved, and model agreement checked against the actual
+   TimeQuest interconnect-plus-LUT totals. Recheck setup AND hold after the
+   change; an added maximum must not manufacture early-delay margin.
+5. Rebuild this same fixture with the corrected endpoint model and arrival
+   profile on seeds 1,3,10. Judge closure under that corrected model and
+   re-run the Quartus comparison before selecting a replacement shell.
+   This is the next useful nextpnr implementation task. RTL retiming is not
+   justified until that optimization/signoff mismatch has been addressed.
+
+No C++ implementation fix is claimed in this experiment. The measurements
+separate the already-fixed historical pin assignment from the residual
+timing-model undercount and supply an exact fixture for the next change.

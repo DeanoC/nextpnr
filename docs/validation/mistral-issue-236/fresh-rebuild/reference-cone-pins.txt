@@ -1,0 +1,139 @@
+[
+  {
+    "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+    "port": "B",
+    "old": [
+      0,
+      "E1"
+    ],
+    "new": [
+      0,
+      "F1"
+    ],
+    "old_bel": "MISTRAL_COMB.18.15.19",
+    "new_bel": "MISTRAL_COMB.22.8.55"
+  },
+  {
+    "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+    "port": "B",
+    "old": [
+      0,
+      "E1"
+    ],
+    "new": [
+      0,
+      "B"
+    ],
+    "old_bel": "MISTRAL_COMB.18.15.31",
+    "new_bel": "MISTRAL_COMB.22.8.0"
+  },
+  {
+    "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+    "port": "E",
+    "old": [
+      0,
+      "A"
+    ],
+    "new": [
+      0,
+      "F1"
+    ],
+    "old_bel": "MISTRAL_COMB.16.12.31",
+    "new_bel": "MISTRAL_COMB.22.8.7"
+  },
+  {
+    "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_E",
+    "port": "E",
+    "old": [
+      0,
+      "A"
+    ],
+    "new": [
+      0,
+      "F0"
+    ],
+    "old_bel": "MISTRAL_COMB.16.12.24",
+    "new_bel": "MISTRAL_COMB.22.8.42"
+  },
+  {
+    "cell": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B",
+    "port": "A",
+    "old": [
+      0,
+      "D"
+    ],
+    "new": [
+      0,
+      "F0"
+    ],
+    "old_bel": "MISTRAL_COMB.16.12.37",
+    "new_bel": "MISTRAL_COMB.12.8.30"
+  },
+  {
+    "cell": "machine.cpu.cpu.ld_air_MISTRAL_ALUT5_B_C_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT3_Q",
+    "port": "C",
+    "old": [
+      0,
+      "E0"
+    ],
+    "new": [
+      0,
+      "F1"
+    ],
+    "old_bel": "MISTRAL_COMB.12.9.48",
+    "new_bel": "MISTRAL_COMB.12.8.25"
+  },
+  {
+    "cell": "machine.cpu.cpu.opcode_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q",
+    "port": "E",
+    "old": [
+      0,
+      "A"
+    ],
+    "new": [
+      0,
+      "F0"
+    ],
+    "old_bel": "MISTRAL_COMB.12.9.18",
+    "new_bel": "MISTRAL_COMB.22.12.18"
+  },
+  {
+    "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_Q",
+    "port": "D",
+    "old": [
+      0,
+      "B"
+    ],
+    "new": [
+      0,
+      "F0"
+    ],
+    "old_bel": "MISTRAL_COMB.16.13.42",
+    "new_bel": "MISTRAL_COMB.22.12.48"
+  },
+  {
+    "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT4_Q",
+    "port": "D",
+    "old": [
+      0,
+      "B"
+    ],
+    "new": [
+      0,
+      "F0"
+    ],
+    "old_bel": "MISTRAL_COMB.16.13.18",
+    "new_bel": "MISTRAL_COMB.22.12.12"
+  },
+  {
+    "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_SCLR_MISTRAL_FF_SCLR_Q_MISTRAL_ALUT6_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q$ROUTETHRU",
+    "port": "A",
+    "old": [
+      0,
+      "D"
+    ],
+    "new": null,
+    "old_bel": "MISTRAL_COMB.16.13.55",
+    "new_bel": null
+  }
+]

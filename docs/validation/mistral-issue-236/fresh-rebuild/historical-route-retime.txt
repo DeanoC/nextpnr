@@ -1,0 +1,3659 @@
+{
+  "original_report": {
+    "critical_paths": [
+      {
+        "criticality": 1,
+        "from": "negedge clk_sys",
+        "max_delay": 9.574000358581543,
+        "path": [
+          {
+            "delay": -0.057999998331069946,
+            "from": {
+              "cell": "machine.ce_3m25_MISTRAL_FF_Q",
+              "loc": [
+                18,
+                22
+              ],
+              "port": "CLK"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.debug_pc_MISTRAL_FF_Q_9",
+              "loc": [
+                4,
+                2
+              ],
+              "port": "CLK"
+            },
+            "type": "clk-skew"
+          },
+          {
+            "delay": 0.7310000061988831,
+            "from": {
+              "cell": "machine.ce_3m25_MISTRAL_FF_Q",
+              "loc": [
+                18,
+                22
+              ],
+              "port": "Q"
+            },
+            "to": {
+              "cell": "machine.ce_3m25_MISTRAL_FF_Q",
+              "loc": [
+                18,
+                22
+              ],
+              "port": "Q"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 1.2230000495910645,
+            "from": {
+              "cell": "machine.ce_3m25_MISTRAL_FF_Q",
+              "loc": [
+                18,
+                22
+              ],
+              "port": "Q"
+            },
+            "net": "hblank_MISTRAL_FF_DATAIN_ENA[0]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "B"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "B"
+            },
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.10000000149011612,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q[1]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "B"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5099999904632568,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "B"
+            },
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.8429999947547913,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "E"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "E"
+            },
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.10499999672174454,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_E",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "E"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_E",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "E"
+            },
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_E",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.2639999985694885,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_E",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.bus.active_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT4_D_Q[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.4000000059604645,
+            "from": {
+              "cell": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 1.1039999723434448,
+            "from": {
+              "cell": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B_Q[3]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.cpu.ei_delay_MISTRAL_ALUT5_C_Q_MISTRAL_ALUT2_Q",
+              "loc": [
+                9,
+                8
+              ],
+              "port": "B"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "machine.cpu.cpu.ei_delay_MISTRAL_ALUT5_C_Q_MISTRAL_ALUT2_Q",
+              "loc": [
+                9,
+                8
+              ],
+              "port": "B"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.ei_delay_MISTRAL_ALUT5_C_Q_MISTRAL_ALUT2_Q",
+              "loc": [
+                9,
+                8
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.718999981880188,
+            "from": {
+              "cell": "machine.cpu.cpu.ei_delay_MISTRAL_ALUT5_C_Q_MISTRAL_ALUT2_Q",
+              "loc": [
+                9,
+                8
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.cpu.branch_taken_MISTRAL_FF_Q_ENA_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT5_Q_1_D[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.cpu.alu.q_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q_C_MISTRAL_ALUT5_Q_1_A_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT5_Q_1",
+              "loc": [
+                4,
+                8
+              ],
+              "port": "E"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "machine.cpu.cpu.alu.q_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q_C_MISTRAL_ALUT5_Q_1_A_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT5_Q_1",
+              "loc": [
+                4,
+                8
+              ],
+              "port": "E"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.alu.q_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q_C_MISTRAL_ALUT5_Q_1_A_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT5_Q_1",
+              "loc": [
+                4,
+                8
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.8700000047683716,
+            "from": {
+              "cell": "machine.cpu.cpu.alu.q_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q_C_MISTRAL_ALUT5_Q_1_A_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT5_Q_1",
+              "loc": [
+                4,
+                8
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_E_Q[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_D",
+              "loc": [
+                4,
+                2
+              ],
+              "port": "E"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_D",
+              "loc": [
+                4,
+                2
+              ],
+              "port": "E"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_D",
+              "loc": [
+                4,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.5049999952316284,
+            "from": {
+              "cell": "machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_D",
+              "loc": [
+                4,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_D_Q[3]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_D",
+              "loc": [
+                6,
+                2
+              ],
+              "port": "D"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.4000000059604645,
+            "from": {
+              "cell": "machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_D",
+              "loc": [
+                6,
+                2
+              ],
+              "port": "D"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_D",
+              "loc": [
+                6,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 1.2699999809265137,
+            "from": {
+              "cell": "machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_D",
+              "loc": [
+                6,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q_E_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_D_Q",
+            "sources": [],
+            "to": {
+              "cell": "machine.cpu.cpu.debug_pc_MISTRAL_FF_Q_9",
+              "loc": [
+                4,
+                2
+              ],
+              "port": "ENA"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "machine.cpu.cpu.debug_pc_MISTRAL_FF_Q_9",
+              "loc": [
+                4,
+                2
+              ],
+              "port": "ENA"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.debug_pc_MISTRAL_FF_Q_9",
+              "loc": [
+                4,
+                2
+              ],
+              "port": "ENA"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge clk_sys"
+      },
+      {
+        "criticality": 1,
+        "from": "posedge display.control.clk",
+        "max_delay": 13.468000411987305,
+        "path": [
+          {
+            "delay": -0.1420000046491623,
+            "from": {
+              "cell": "display.memory.m0_address_MISTRAL_FF_Q_26",
+              "loc": [
+                31,
+                9
+              ],
+              "port": "CLK"
+            },
+            "to": {
+              "cell": "display.memory.f2sdram",
+              "loc": [
+                52,
+                53
+              ],
+              "port": "cmd_port_clk_0"
+            },
+            "type": "clk-skew"
+          },
+          {
+            "delay": 0.7310000061988831,
+            "from": {
+              "cell": "display.memory.m0_address_MISTRAL_FF_Q_26",
+              "loc": [
+                31,
+                9
+              ],
+              "port": "Q"
+            },
+            "to": {
+              "cell": "display.memory.m0_address_MISTRAL_FF_Q_26",
+              "loc": [
+                31,
+                9
+              ],
+              "port": "Q"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 8.295999526977539,
+            "from": {
+              "cell": "display.memory.m0_address_MISTRAL_FF_Q_26",
+              "loc": [
+                31,
+                9
+              ],
+              "port": "Q"
+            },
+            "net": "display.memory.m0_address[11]",
+            "sources": [
+              "cores/fes-common/rtl/fes_hps_ddr.v:87.18-87.28"
+            ],
+            "to": {
+              "cell": "display.memory.f2sdram",
+              "loc": [
+                52,
+                53
+              ],
+              "port": "cmd_data_0[13]"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 1.4229999780654907,
+            "from": {
+              "cell": "display.memory.f2sdram",
+              "loc": [
+                52,
+                53
+              ],
+              "port": "cmd_data_0[13]"
+            },
+            "to": {
+              "cell": "display.memory.f2sdram",
+              "loc": [
+                52,
+                53
+              ],
+              "port": "cmd_data_0[13]"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge display.control.clk"
+      },
+      {
+        "criticality": 1,
+        "from": "posedge audio_clk",
+        "max_delay": 81.37999725341797,
+        "path": [
+          {
+            "delay": -0.006000000052154064,
+            "from": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2",
+              "loc": [
+                31,
+                2
+              ],
+              "port": "CLK"
+            },
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "CLK"
+            },
+            "type": "clk-skew"
+          },
+          {
+            "delay": 0.7310000061988831,
+            "from": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2",
+              "loc": [
+                31,
+                2
+              ],
+              "port": "Q"
+            },
+            "to": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2",
+              "loc": [
+                31,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 1.0140000581741333,
+            "from": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2",
+              "loc": [
+                31,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q[0]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT6_Q_1_F_MISTRAL_ALUT6_Q",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.6050000190734863,
+            "from": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT6_Q_1_F_MISTRAL_ALUT6_Q",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT6_Q_1_F_MISTRAL_ALUT6_Q",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.4410000145435333,
+            "from": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT6_Q_1_F_MISTRAL_ALUT6_Q",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT6_Q_1_F[5]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT6_Q_1",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "F"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT6_Q_1",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "F"
+            },
+            "to": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT6_Q_1",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.44200000166893005,
+            "from": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT6_Q_1",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "E"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.4000000059604645,
+            "from": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "E"
+            },
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.7089999914169312,
+            "from": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN",
+            "sources": [],
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+            "sources": [],
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge audio_clk"
+      },
+      {
+        "criticality": 0,
+        "from": "<async>",
+        "max_delay": 13.468000411987305,
+        "path": [
+          {
+            "delay": 0,
+            "from": {
+              "cell": "system_clock.pll",
+              "loc": [
+                0,
+                31
+              ],
+              "port": "locked"
+            },
+            "to": {
+              "cell": "system_clock.pll",
+              "loc": [
+                0,
+                31
+              ],
+              "port": "locked"
+            },
+            "type": "source"
+          },
+          {
+            "delay": 2.736999988555908,
+            "from": {
+              "cell": "system_clock.pll",
+              "loc": [
+                0,
+                31
+              ],
+              "port": "locked"
+            },
+            "net": "audio.locked",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "audio.lock_sync_MISTRAL_FF_Q",
+              "loc": [
+                33,
+                2
+              ],
+              "port": "ACLR"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "audio.lock_sync_MISTRAL_FF_Q",
+              "loc": [
+                33,
+                2
+              ],
+              "port": "ACLR"
+            },
+            "to": {
+              "cell": "audio.lock_sync_MISTRAL_FF_Q",
+              "loc": [
+                33,
+                2
+              ],
+              "port": "ACLR"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge audio_clk"
+      },
+      {
+        "criticality": 0,
+        "from": "<async>",
+        "max_delay": 13.468000411987305,
+        "path": [
+          {
+            "delay": 0,
+            "from": {
+              "cell": "video_clock.pll",
+              "loc": [
+                0,
+                14
+              ],
+              "port": "locked"
+            },
+            "to": {
+              "cell": "video_clock.pll",
+              "loc": [
+                0,
+                14
+              ],
+              "port": "locked"
+            },
+            "type": "source"
+          },
+          {
+            "delay": 2.562999963760376,
+            "from": {
+              "cell": "video_clock.pll",
+              "loc": [
+                0,
+                14
+              ],
+              "port": "locked"
+            },
+            "net": "pixel_locked",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.hard_fault_MISTRAL_ALUT2_B",
+              "loc": [
+                29,
+                15
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.4000000059604645,
+            "from": {
+              "cell": "display.hard_fault_MISTRAL_ALUT2_B",
+              "loc": [
+                29,
+                15
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "display.hard_fault_MISTRAL_ALUT2_B",
+              "loc": [
+                29,
+                15
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 1.718999981880188,
+            "from": {
+              "cell": "display.hard_fault_MISTRAL_ALUT2_B",
+              "loc": [
+                29,
+                15
+              ],
+              "port": "Q"
+            },
+            "net": "display.hard_fault_MISTRAL_ALUT2_B_Q",
+            "sources": [],
+            "to": {
+              "cell": "display.memory.port2.finishing_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                19,
+                6
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "display.memory.port2.finishing_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                19,
+                6
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "display.memory.port2.finishing_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                19,
+                6
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge display.control.clk"
+      },
+      {
+        "criticality": 1,
+        "from": "posedge audio_clk",
+        "max_delay": 81.37999725341797,
+        "path": [
+          {
+            "delay": 0.7310000061988831,
+            "from": {
+              "cell": "audio.request_MISTRAL_FF_Q",
+              "loc": [
+                34,
+                2
+              ],
+              "port": "Q"
+            },
+            "to": {
+              "cell": "audio.request_MISTRAL_FF_Q",
+              "loc": [
+                34,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 0.4569999873638153,
+            "from": {
+              "cell": "audio.request_MISTRAL_FF_Q",
+              "loc": [
+                34,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.request",
+            "sources": [
+              "cores/fes-common/rtl/fes_audio_output.v:10.9-10.16"
+            ],
+            "to": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.request_meta_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+            "sources": [],
+            "to": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge clk_sys"
+      },
+      {
+        "criticality": 1,
+        "from": "posedge clk_sys",
+        "max_delay": 19.148000717163086,
+        "path": [
+          {
+            "delay": 0.7310000061988831,
+            "from": {
+              "cell": "expansion.socket.cpu_reset_n_MISTRAL_FF_Q",
+              "loc": [
+                22,
+                31
+              ],
+              "port": "Q"
+            },
+            "to": {
+              "cell": "expansion.socket.cpu_reset_n_MISTRAL_FF_Q",
+              "loc": [
+                22,
+                31
+              ],
+              "port": "Q"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 2.5,
+            "from": {
+              "cell": "expansion.socket.cpu_reset_n_MISTRAL_FF_Q",
+              "loc": [
+                22,
+                31
+              ],
+              "port": "Q"
+            },
+            "net": "bus_rd_n_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT3_C_Q[1]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "Q"
+            },
+            "net": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+            "sources": [],
+            "to": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge audio_clk"
+      },
+      {
+        "criticality": 1,
+        "from": "posedge clk_sys",
+        "max_delay": 19.148000717163086,
+        "path": [
+          {
+            "delay": 0.7310000061988831,
+            "from": {
+              "cell": "expansion.socket.cpu_reset_n_MISTRAL_FF_Q",
+              "loc": [
+                22,
+                31
+              ],
+              "port": "Q"
+            },
+            "to": {
+              "cell": "expansion.socket.cpu_reset_n_MISTRAL_FF_Q",
+              "loc": [
+                22,
+                31
+              ],
+              "port": "Q"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 1.2740000486373901,
+            "from": {
+              "cell": "expansion.socket.cpu_reset_n_MISTRAL_FF_Q",
+              "loc": [
+                22,
+                31
+              ],
+              "port": "Q"
+            },
+            "net": "bus_rd_n_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT3_C_Q[1]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.hard_fault_MISTRAL_ALUT5_A_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                22,
+                26
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "display.hard_fault_MISTRAL_ALUT5_A_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                22,
+                26
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "display.hard_fault_MISTRAL_ALUT5_A_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                22,
+                26
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge display.control.clk"
+      },
+      {
+        "criticality": 1,
+        "from": "posedge display.control.clk",
+        "max_delay": 13.468000411987305,
+        "path": [
+          {
+            "delay": 1.2860000133514404,
+            "from": {
+              "cell": "display.memory.f2sdram",
+              "loc": [
+                52,
+                53
+              ],
+              "port": "rd_valid_1"
+            },
+            "to": {
+              "cell": "display.memory.f2sdram",
+              "loc": [
+                52,
+                53
+              ],
+              "port": "rd_valid_1"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 2.611999988555908,
+            "from": {
+              "cell": "display.memory.f2sdram",
+              "loc": [
+                52,
+                53
+              ],
+              "port": "rd_valid_1"
+            },
+            "net": "display.memory.port0.m_readdatavalid",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.memory.p0_readdatavalid_MISTRAL_ALUT6_C",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "D"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "display.memory.p0_readdatavalid_MISTRAL_ALUT6_C",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "D"
+            },
+            "to": {
+              "cell": "display.memory.p0_readdatavalid_MISTRAL_ALUT6_C",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.09799999743700027,
+            "from": {
+              "cell": "display.memory.p0_readdatavalid_MISTRAL_ALUT6_C",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "Q"
+            },
+            "net": "display.memory.p0_readdatavalid_MISTRAL_ALUT6_C_Q[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.memory.m0_write_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_Q",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "E"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "display.memory.m0_write_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_Q",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "E"
+            },
+            "to": {
+              "cell": "display.memory.m0_write_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_Q",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.8550000190734863,
+            "from": {
+              "cell": "display.memory.m0_write_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_Q",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "Q"
+            },
+            "net": "display.memory.m0_write_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT2_B_Q[3]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.hard_fault_MISTRAL_ALUT5_A",
+              "loc": [
+                29,
+                16
+              ],
+              "port": "D"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.4000000059604645,
+            "from": {
+              "cell": "display.hard_fault_MISTRAL_ALUT5_A",
+              "loc": [
+                29,
+                16
+              ],
+              "port": "D"
+            },
+            "to": {
+              "cell": "display.hard_fault_MISTRAL_ALUT5_A",
+              "loc": [
+                29,
+                16
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 1.1109999418258667,
+            "from": {
+              "cell": "display.hard_fault_MISTRAL_ALUT5_A",
+              "loc": [
+                29,
+                16
+              ],
+              "port": "Q"
+            },
+            "net": "display.hard_fault_MISTRAL_ALUT5_A_Q[5]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "Q"
+            },
+            "net": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+            "sources": [],
+            "to": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge clk_sys"
+      }
+    ],
+    "fmax": {
+      "audio_clk": {
+        "achieved": 230.73373413085938,
+        "constraint": 12.288031578063965
+      },
+      "clk_sys": {
+        "achieved": 53.350406646728516,
+        "constraint": 52.22477340698242
+      },
+      "display.control.clk": {
+        "achieved": 97.01203155517578,
+        "constraint": 74.25006866455078
+      }
+    },
+    "timing_summary": {
+      "clocks": {
+        "audio_clk": {
+          "hold_wns_ns": 0.7570000290870667,
+          "setup_wns_ns": 77.0459976196289
+        },
+        "clk_sys": {
+          "hold_wns_ns": 0.7170000076293945,
+          "setup_wns_ns": 0.20200000703334808
+        },
+        "display.control.clk": {
+          "hold_wns_ns": 0.7329999804496765,
+          "setup_wns_ns": 3.1600000858306885
+        }
+      },
+      "final_analogue_model": true
+    }
+  },
+  "current_report": {
+    "critical_paths": [
+      {
+        "criticality": 1,
+        "from": "negedge clk_sys",
+        "max_delay": 9.574000358581543,
+        "path": [
+          {
+            "delay": 0.06700000166893005,
+            "from": {
+              "cell": "machine.ce_3m25_MISTRAL_FF_Q",
+              "loc": [
+                18,
+                22
+              ],
+              "port": "CLK"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_SCLR_MISTRAL_FF_SCLR_Q_MISTRAL_ALUT6_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "CLK"
+            },
+            "type": "clk-skew"
+          },
+          {
+            "delay": 0.7310000061988831,
+            "from": {
+              "cell": "machine.ce_3m25_MISTRAL_FF_Q",
+              "loc": [
+                18,
+                22
+              ],
+              "port": "Q"
+            },
+            "to": {
+              "cell": "machine.ce_3m25_MISTRAL_FF_Q",
+              "loc": [
+                18,
+                22
+              ],
+              "port": "Q"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 1.2230000495910645,
+            "from": {
+              "cell": "machine.ce_3m25_MISTRAL_FF_Q",
+              "loc": [
+                18,
+                22
+              ],
+              "port": "Q"
+            },
+            "net": "hblank_MISTRAL_FF_DATAIN_ENA[0]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "B"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.33500000834465027,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "B"
+            },
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.10000000149011612,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q[1]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "B"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.33500000834465027,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "B"
+            },
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.8429999947547913,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                18,
+                15
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "E"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.6050000190734863,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "E"
+            },
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.10499999672174454,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_E",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "E"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.6050000190734863,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_E",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "E"
+            },
+            "to": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_E",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.2639999985694885,
+            "from": {
+              "cell": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_E",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.bus.active_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT4_D_Q[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 1.25,
+            "from": {
+              "cell": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B",
+              "loc": [
+                16,
+                12
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B_Q[3]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.cpu.ld_air_MISTRAL_ALUT5_B_C_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT3_Q",
+              "loc": [
+                12,
+                9
+              ],
+              "port": "C"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.33500000834465027,
+            "from": {
+              "cell": "machine.cpu.cpu.ld_air_MISTRAL_ALUT5_B_C_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT3_Q",
+              "loc": [
+                12,
+                9
+              ],
+              "port": "C"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.ld_air_MISTRAL_ALUT5_B_C_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT3_Q",
+              "loc": [
+                12,
+                9
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.11400000005960464,
+            "from": {
+              "cell": "machine.cpu.cpu.ld_air_MISTRAL_ALUT5_B_C_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT3_Q",
+              "loc": [
+                12,
+                9
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.cpu.ld_air_MISTRAL_ALUT5_B_C_MISTRAL_ALUT2_B_Q[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.cpu.opcode_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q",
+              "loc": [
+                12,
+                9
+              ],
+              "port": "E"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.6050000190734863,
+            "from": {
+              "cell": "machine.cpu.cpu.opcode_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q",
+              "loc": [
+                12,
+                9
+              ],
+              "port": "E"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.opcode_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q",
+              "loc": [
+                12,
+                9
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 1.1519999504089355,
+            "from": {
+              "cell": "machine.cpu.cpu.opcode_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q",
+              "loc": [
+                12,
+                9
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR[2]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_Q",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "D"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5830000042915344,
+            "from": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_Q",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "D"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_Q",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.0989999994635582,
+            "from": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_Q",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR[3]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT4_Q",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "D"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5830000042915344,
+            "from": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT4_Q",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "D"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT4_Q",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 1.75,
+            "from": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT4_Q",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT2_Q_B[1]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_SCLR_MISTRAL_FF_SCLR_Q_MISTRAL_ALUT6_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_SCLR_MISTRAL_FF_SCLR_Q_MISTRAL_ALUT6_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_SCLR_MISTRAL_FF_SCLR_Q_MISTRAL_ALUT6_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_SCLR_MISTRAL_FF_SCLR_Q_MISTRAL_ALUT6_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "Q"
+            },
+            "net": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_SCLR_MISTRAL_FF_SCLR_Q_MISTRAL_ALUT6_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+            "sources": [],
+            "to": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_SCLR_MISTRAL_FF_SCLR_Q_MISTRAL_ALUT6_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_SCLR_MISTRAL_FF_SCLR_Q_MISTRAL_ALUT6_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_SCLR_MISTRAL_FF_SCLR_Q_MISTRAL_ALUT6_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q",
+              "loc": [
+                16,
+                13
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge clk_sys"
+      },
+      {
+        "criticality": 1,
+        "from": "posedge display.control.clk",
+        "max_delay": 13.468000411987305,
+        "path": [
+          {
+            "delay": -0.01600000075995922,
+            "from": {
+              "cell": "display.raster_h_MISTRAL_FF_Q_9",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "CLK"
+            },
+            "to": {
+              "cell": "display.video.reader.front_MISTRAL_FF_Q_26",
+              "loc": [
+                18,
+                4
+              ],
+              "port": "CLK"
+            },
+            "type": "clk-skew"
+          },
+          {
+            "delay": 0.7310000061988831,
+            "from": {
+              "cell": "display.raster_h_MISTRAL_FF_Q_9",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "Q"
+            },
+            "to": {
+              "cell": "display.raster_h_MISTRAL_FF_Q_9",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "Q"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 1.1260000467300415,
+            "from": {
+              "cell": "display.raster_h_MISTRAL_FF_Q_9",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "Q"
+            },
+            "net": "display.raster_h[8]",
+            "sources": [
+              "cores/fes-zx81/rtl/zx81_session_display.v:14.23-14.31"
+            ],
+            "to": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 1.0820000171661377,
+            "from": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "CO"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "CO"
+            },
+            "net": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO_CI",
+            "sources": [
+              "cores/fes-zx81/rtl/zx81_video_720p.v:69.17-69.38",
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6",
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114"
+            ],
+            "to": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "CI"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.03500000014901161,
+            "from": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "CI"
+            },
+            "to": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "CO"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI_MISTRAL_ALUT_ARITH_CO",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "CO"
+            },
+            "net": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO_CI",
+            "sources": [
+              "cores/fes-zx81/rtl/zx81_video_720p.v:69.17-69.38",
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/arith_alm_map.v:58.7-63.6",
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_sim.v:189.112-189.114"
+            ],
+            "to": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "CI"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.36800000071525574,
+            "from": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "CI"
+            },
+            "to": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "SO"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 1.3380000591278076,
+            "from": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT_ARITH_SO",
+              "loc": [
+                23,
+                22
+              ],
+              "port": "SO"
+            },
+            "net": "display.video.de_MISTRAL_ALUT4_Q_D[3]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q",
+              "loc": [
+                22,
+                16
+              ],
+              "port": "D"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5830000042915344,
+            "from": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q",
+              "loc": [
+                22,
+                16
+              ],
+              "port": "D"
+            },
+            "to": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q",
+              "loc": [
+                22,
+                16
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.7519999742507935,
+            "from": {
+              "cell": "display.video.de_MISTRAL_ALUT4_Q",
+              "loc": [
+                22,
+                16
+              ],
+              "port": "Q"
+            },
+            "net": "display.video.armed_MISTRAL_ALUT5_A_Q[2]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.video.pixel_index_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_1",
+              "loc": [
+                22,
+                13
+              ],
+              "port": "B"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.33500000834465027,
+            "from": {
+              "cell": "display.video.pixel_index_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_1",
+              "loc": [
+                22,
+                13
+              ],
+              "port": "B"
+            },
+            "to": {
+              "cell": "display.video.pixel_index_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_1",
+              "loc": [
+                22,
+                13
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 1.684999942779541,
+            "from": {
+              "cell": "display.video.pixel_index_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_1",
+              "loc": [
+                22,
+                13
+              ],
+              "port": "Q"
+            },
+            "net": "display.video.pixel_index_MISTRAL_FF_Q_11_DATAIN_MISTRAL_ALUT4_Q_B[2]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.video.reader.active_MISTRAL_ALUT4_A_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT3_C",
+              "loc": [
+                22,
+                4
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "display.video.reader.active_MISTRAL_ALUT4_A_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT3_C",
+              "loc": [
+                22,
+                4
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "display.video.reader.active_MISTRAL_ALUT4_A_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT3_C",
+              "loc": [
+                22,
+                4
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.753000020980835,
+            "from": {
+              "cell": "display.video.reader.active_MISTRAL_ALUT4_A_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT3_C",
+              "loc": [
+                22,
+                4
+              ],
+              "port": "Q"
+            },
+            "net": "display.video.reader.active_MISTRAL_ALUT4_A_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT3_C_Q[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.video.reader.front_MISTRAL_FF_Q_26_DATAIN_MISTRAL_ALUT5_Q",
+              "loc": [
+                18,
+                4
+              ],
+              "port": "E"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.6050000190734863,
+            "from": {
+              "cell": "display.video.reader.front_MISTRAL_FF_Q_26_DATAIN_MISTRAL_ALUT5_Q",
+              "loc": [
+                18,
+                4
+              ],
+              "port": "E"
+            },
+            "to": {
+              "cell": "display.video.reader.front_MISTRAL_FF_Q_26_DATAIN_MISTRAL_ALUT5_Q",
+              "loc": [
+                18,
+                4
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.4690000116825104,
+            "from": {
+              "cell": "display.video.reader.front_MISTRAL_FF_Q_26_DATAIN_MISTRAL_ALUT5_Q",
+              "loc": [
+                18,
+                4
+              ],
+              "port": "Q"
+            },
+            "net": "display.video.reader.front_MISTRAL_FF_Q_26_DATAIN",
+            "sources": [],
+            "to": {
+              "cell": "display.video.reader.front_MISTRAL_FF_Q_26$ROUTETHRU",
+              "loc": [
+                18,
+                4
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "display.video.reader.front_MISTRAL_FF_Q_26$ROUTETHRU",
+              "loc": [
+                18,
+                4
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "display.video.reader.front_MISTRAL_FF_Q_26$ROUTETHRU",
+              "loc": [
+                18,
+                4
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "display.video.reader.front_MISTRAL_FF_Q_26$ROUTETHRU",
+              "loc": [
+                18,
+                4
+              ],
+              "port": "Q"
+            },
+            "net": "display.video.reader.front_MISTRAL_FF_Q_26$ROUTETHRU$conn$Q",
+            "sources": [],
+            "to": {
+              "cell": "display.video.reader.front_MISTRAL_FF_Q_26",
+              "loc": [
+                18,
+                4
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "display.video.reader.front_MISTRAL_FF_Q_26",
+              "loc": [
+                18,
+                4
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "display.video.reader.front_MISTRAL_FF_Q_26",
+              "loc": [
+                18,
+                4
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge display.control.clk"
+      },
+      {
+        "criticality": 1,
+        "from": "posedge audio_clk",
+        "max_delay": 81.37999725341797,
+        "path": [
+          {
+            "delay": -0.006000000052154064,
+            "from": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_Q_D_MISTRAL_FF_Q_1",
+              "loc": [
+                31,
+                2
+              ],
+              "port": "CLK"
+            },
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "CLK"
+            },
+            "type": "clk-skew"
+          },
+          {
+            "delay": 0.7310000061988831,
+            "from": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_Q_D_MISTRAL_FF_Q_1",
+              "loc": [
+                31,
+                2
+              ],
+              "port": "Q"
+            },
+            "to": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_Q_D_MISTRAL_FF_Q_1",
+              "loc": [
+                31,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 0.9620000123977661,
+            "from": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_Q_D_MISTRAL_FF_Q_1",
+              "loc": [
+                31,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_Q_D[3]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_Q",
+              "loc": [
+                31,
+                2
+              ],
+              "port": "D"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_Q",
+              "loc": [
+                31,
+                2
+              ],
+              "port": "D"
+            },
+            "to": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_Q",
+              "loc": [
+                31,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.5479999780654907,
+            "from": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_Q",
+              "loc": [
+                31,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_Q",
+              "loc": [
+                33,
+                2
+              ],
+              "port": "E"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.6050000190734863,
+            "from": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_Q",
+              "loc": [
+                33,
+                2
+              ],
+              "port": "E"
+            },
+            "to": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_Q",
+              "loc": [
+                33,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.5059999823570251,
+            "from": {
+              "cell": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_Q",
+              "loc": [
+                33,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.serializer.sample_tick_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT6_D_Q[5]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "F"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.09700000286102295,
+            "from": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "F"
+            },
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.7089999914169312,
+            "from": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT6_Q",
+              "loc": [
+                30,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN",
+            "sources": [],
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+            "sources": [],
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "audio.sdata_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q",
+              "loc": [
+                35,
+                2
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge audio_clk"
+      },
+      {
+        "criticality": 0,
+        "from": "<async>",
+        "max_delay": 13.468000411987305,
+        "path": [
+          {
+            "delay": 0,
+            "from": {
+              "cell": "system_clock.pll",
+              "loc": [
+                0,
+                31
+              ],
+              "port": "locked"
+            },
+            "to": {
+              "cell": "system_clock.pll",
+              "loc": [
+                0,
+                31
+              ],
+              "port": "locked"
+            },
+            "type": "source"
+          },
+          {
+            "delay": 2.736999988555908,
+            "from": {
+              "cell": "system_clock.pll",
+              "loc": [
+                0,
+                31
+              ],
+              "port": "locked"
+            },
+            "net": "audio.locked",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "audio.lock_sync_MISTRAL_FF_Q",
+              "loc": [
+                33,
+                2
+              ],
+              "port": "ACLR"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "audio.lock_sync_MISTRAL_FF_Q",
+              "loc": [
+                33,
+                2
+              ],
+              "port": "ACLR"
+            },
+            "to": {
+              "cell": "audio.lock_sync_MISTRAL_FF_Q",
+              "loc": [
+                33,
+                2
+              ],
+              "port": "ACLR"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge audio_clk"
+      },
+      {
+        "criticality": 0,
+        "from": "<async>",
+        "max_delay": 13.468000411987305,
+        "path": [
+          {
+            "delay": 0,
+            "from": {
+              "cell": "video_clock.pll",
+              "loc": [
+                0,
+                14
+              ],
+              "port": "locked"
+            },
+            "to": {
+              "cell": "video_clock.pll",
+              "loc": [
+                0,
+                14
+              ],
+              "port": "locked"
+            },
+            "type": "source"
+          },
+          {
+            "delay": 2.562999963760376,
+            "from": {
+              "cell": "video_clock.pll",
+              "loc": [
+                0,
+                14
+              ],
+              "port": "locked"
+            },
+            "net": "pixel_locked",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.hard_fault_MISTRAL_ALUT2_B",
+              "loc": [
+                29,
+                15
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "display.hard_fault_MISTRAL_ALUT2_B",
+              "loc": [
+                29,
+                15
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "display.hard_fault_MISTRAL_ALUT2_B",
+              "loc": [
+                29,
+                15
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 1.718999981880188,
+            "from": {
+              "cell": "display.hard_fault_MISTRAL_ALUT2_B",
+              "loc": [
+                29,
+                15
+              ],
+              "port": "Q"
+            },
+            "net": "display.hard_fault_MISTRAL_ALUT2_B_Q",
+            "sources": [],
+            "to": {
+              "cell": "display.memory.port2.finishing_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                19,
+                6
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "display.memory.port2.finishing_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                19,
+                6
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "display.memory.port2.finishing_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                19,
+                6
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge display.control.clk"
+      },
+      {
+        "criticality": 1,
+        "from": "posedge audio_clk",
+        "max_delay": 81.37999725341797,
+        "path": [
+          {
+            "delay": 0.7310000061988831,
+            "from": {
+              "cell": "audio.request_MISTRAL_FF_Q",
+              "loc": [
+                34,
+                2
+              ],
+              "port": "Q"
+            },
+            "to": {
+              "cell": "audio.request_MISTRAL_FF_Q",
+              "loc": [
+                34,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 0.4569999873638153,
+            "from": {
+              "cell": "audio.request_MISTRAL_FF_Q",
+              "loc": [
+                34,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.request",
+            "sources": [
+              "cores/fes-common/rtl/fes_audio_output.v:10.9-10.16"
+            ],
+            "to": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "Q"
+            },
+            "net": "audio.request_meta_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+            "sources": [],
+            "to": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "audio.request_meta_MISTRAL_FF_Q",
+              "loc": [
+                36,
+                2
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge clk_sys"
+      },
+      {
+        "criticality": 1,
+        "from": "posedge clk_sys",
+        "max_delay": 19.148000717163086,
+        "path": [
+          {
+            "delay": 0.7310000061988831,
+            "from": {
+              "cell": "expansion.socket.cpu_reset_n_MISTRAL_FF_Q",
+              "loc": [
+                22,
+                31
+              ],
+              "port": "Q"
+            },
+            "to": {
+              "cell": "expansion.socket.cpu_reset_n_MISTRAL_FF_Q",
+              "loc": [
+                22,
+                31
+              ],
+              "port": "Q"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 2.5,
+            "from": {
+              "cell": "expansion.socket.cpu_reset_n_MISTRAL_FF_Q",
+              "loc": [
+                22,
+                31
+              ],
+              "port": "Q"
+            },
+            "net": "bus_rd_n_MISTRAL_ALUT2_Q_B_MISTRAL_ALUT3_C_Q[1]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "Q"
+            },
+            "net": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+            "sources": [],
+            "to": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "audio.sclk_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_FF_DATAIN_Q_MISTRAL_FF_Q_2_DATAIN_MISTRAL_ALUT2_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                29,
+                3
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge audio_clk"
+      },
+      {
+        "criticality": 1,
+        "from": "posedge clk_sys",
+        "max_delay": 19.148000717163086,
+        "path": [
+          {
+            "delay": 0.7310000061988831,
+            "from": {
+              "cell": "display.crossing.payload_MISTRAL_FF_Q_19",
+              "loc": [
+                22,
+                21
+              ],
+              "port": "Q"
+            },
+            "to": {
+              "cell": "display.crossing.payload_MISTRAL_FF_Q_19",
+              "loc": [
+                22,
+                21
+              ],
+              "port": "Q"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 1.0850000381469727,
+            "from": {
+              "cell": "display.crossing.payload_MISTRAL_FF_Q_19",
+              "loc": [
+                22,
+                21
+              ],
+              "port": "Q"
+            },
+            "net": "display.crossing.payload[9]",
+            "sources": [
+              "cores/fes-zx81/rtl/zx81_display_cdc.v:22.16-22.23"
+            ],
+            "to": {
+              "cell": "display.control.argument_MISTRAL_FF_Q_8$ROUTETHRU",
+              "loc": [
+                22,
+                22
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "display.control.argument_MISTRAL_FF_Q_8$ROUTETHRU",
+              "loc": [
+                22,
+                22
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "display.control.argument_MISTRAL_FF_Q_8$ROUTETHRU",
+              "loc": [
+                22,
+                22
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "display.control.argument_MISTRAL_FF_Q_8$ROUTETHRU",
+              "loc": [
+                22,
+                22
+              ],
+              "port": "Q"
+            },
+            "net": "display.control.argument_MISTRAL_FF_Q_8$ROUTETHRU$conn$Q",
+            "sources": [],
+            "to": {
+              "cell": "display.control.argument_MISTRAL_FF_Q_8",
+              "loc": [
+                22,
+                22
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "display.control.argument_MISTRAL_FF_Q_8",
+              "loc": [
+                22,
+                22
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "display.control.argument_MISTRAL_FF_Q_8",
+              "loc": [
+                22,
+                22
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge display.control.clk"
+      },
+      {
+        "criticality": 1,
+        "from": "posedge display.control.clk",
+        "max_delay": 13.468000411987305,
+        "path": [
+          {
+            "delay": 1.2860000133514404,
+            "from": {
+              "cell": "display.memory.f2sdram",
+              "loc": [
+                52,
+                53
+              ],
+              "port": "rd_valid_1"
+            },
+            "to": {
+              "cell": "display.memory.f2sdram",
+              "loc": [
+                52,
+                53
+              ],
+              "port": "rd_valid_1"
+            },
+            "type": "clk-to-q"
+          },
+          {
+            "delay": 2.611999988555908,
+            "from": {
+              "cell": "display.memory.f2sdram",
+              "loc": [
+                52,
+                53
+              ],
+              "port": "rd_valid_1"
+            },
+            "net": "display.memory.port0.m_readdatavalid",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.memory.p0_readdatavalid_MISTRAL_ALUT6_C",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "D"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "display.memory.p0_readdatavalid_MISTRAL_ALUT6_C",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "D"
+            },
+            "to": {
+              "cell": "display.memory.p0_readdatavalid_MISTRAL_ALUT6_C",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.09799999743700027,
+            "from": {
+              "cell": "display.memory.p0_readdatavalid_MISTRAL_ALUT6_C",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "Q"
+            },
+            "net": "display.memory.p0_readdatavalid_MISTRAL_ALUT6_C_Q[4]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.memory.m0_write_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_Q",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "E"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.6050000190734863,
+            "from": {
+              "cell": "display.memory.m0_write_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_Q",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "E"
+            },
+            "to": {
+              "cell": "display.memory.m0_write_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_Q",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0.8550000190734863,
+            "from": {
+              "cell": "display.memory.m0_write_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT5_Q",
+              "loc": [
+                31,
+                13
+              ],
+              "port": "Q"
+            },
+            "net": "display.memory.m0_write_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT2_B_Q[3]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "display.hard_fault_MISTRAL_ALUT5_A",
+              "loc": [
+                29,
+                16
+              ],
+              "port": "D"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5830000042915344,
+            "from": {
+              "cell": "display.hard_fault_MISTRAL_ALUT5_A",
+              "loc": [
+                29,
+                16
+              ],
+              "port": "D"
+            },
+            "to": {
+              "cell": "display.hard_fault_MISTRAL_ALUT5_A",
+              "loc": [
+                29,
+                16
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 1.1109999418258667,
+            "from": {
+              "cell": "display.hard_fault_MISTRAL_ALUT5_A",
+              "loc": [
+                29,
+                16
+              ],
+              "port": "Q"
+            },
+            "net": "display.hard_fault_MISTRAL_ALUT5_A_Q[5]",
+            "sources": [
+              "/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/install/bin/../share/yosys/intel_alm/common/alm_map.v:7.19-7.20"
+            ],
+            "to": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "A"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": 0.5120000243186951,
+            "from": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "A"
+            },
+            "to": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "Q"
+            },
+            "type": "logic"
+          },
+          {
+            "delay": 0,
+            "from": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "Q"
+            },
+            "net": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q$ROUTETHRU$conn$Q",
+            "sources": [],
+            "to": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "DATAIN"
+            },
+            "type": "routing"
+          },
+          {
+            "delay": -0.19599999487400055,
+            "from": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "DATAIN"
+            },
+            "to": {
+              "cell": "fpga_to_hps_MISTRAL_FF_Q_15_DATAIN_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT6_D_Q_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT2_B_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_Q",
+              "loc": [
+                19,
+                16
+              ],
+              "port": "DATAIN"
+            },
+            "type": "setup"
+          }
+        ],
+        "to": "posedge clk_sys"
+      }
+    ],
+    "fmax": {
+      "audio_clk": {
+        "achieved": 200.80320739746094,
+        "constraint": 12.288031578063965
+      },
+      "clk_sys": {
+        "achieved": 39.96163558959961,
+        "constraint": 52.22477340698242
+      },
+      "display.control.clk": {
+        "achieved": 93.68559265136719,
+        "constraint": 74.25006866455078
+      }
+    },
+    "timing_summary": {
+      "clocks": {
+        "audio_clk": {
+          "hold_wns_ns": 1.125,
+          "setup_wns_ns": 76.4000015258789
+        },
+        "clk_sys": {
+          "hold_wns_ns": 0.7379999756813049,
+          "setup_wns_ns": -3.0959999561309814
+        },
+        "display.control.clk": {
+          "hold_wns_ns": 0.7979999780654907,
+          "setup_wns_ns": 2.7939999103546143
+        }
+      },
+      "final_analogue_model": true
+    }
+  },
+  "original_and_retimed_rbf_sha256": "67130e71c1642b21f0fe8b072b6546423c9ced6d127643709426722169398012"
+}

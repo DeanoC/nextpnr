@@ -1,0 +1,549 @@
+[
+  {
+    "variant": "arrival",
+    "seed": 1,
+    "exit_code": 0,
+    "seconds": 88.62858819961548,
+    "binary_sha256": "0ff627a0f68e3856ffc42789a28ada1e46098dc869e51dcbe439ee7376316f48",
+    "fmax": {
+      "audio_clk": {
+        "achieved": 196.92791748046875,
+        "constraint": 12.288031578063965
+      },
+      "clk_sys": {
+        "achieved": 53.86189651489258,
+        "constraint": 52.22477340698242
+      },
+      "display.control.clk": {
+        "achieved": 100.3210220336914,
+        "constraint": 74.25006866455078
+      }
+    },
+    "timing_summary": {
+      "clocks": {
+        "audio_clk": {
+          "hold_wns_ns": 0.777999997138977,
+          "setup_wns_ns": 76.302001953125
+        },
+        "clk_sys": {
+          "hold_wns_ns": 0.6679999828338623,
+          "setup_wns_ns": 0.29100000858306885
+        },
+        "display.control.clk": {
+          "hold_wns_ns": 0.7440000176429749,
+          "setup_wns_ns": 3.5
+        }
+      },
+      "final_analogue_model": true
+    },
+    "gpu_run_accepted": true,
+    "command": [
+      "/home/deano/tmp/nextpnr-236-e904cbfb/build/nextpnr-mistral",
+      "--json",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/synth.json",
+      "--device",
+      "5CSEBA6U23I7",
+      "--qsf",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/socket.qsf",
+      "--sdc",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/clocks-oss.sdc",
+      "--seed",
+      "1",
+      "--placer-heap-timingweight",
+      "300",
+      "--placer-heap-critexp",
+      "5",
+      "--freq",
+      "74.25",
+      "--router",
+      "gpu",
+      "--gpu-device",
+      "0",
+      "--rbf",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s1/core.rbf",
+      "--compress-rbf",
+      "--write",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s1/routed.json",
+      "--report",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s1/timing.json",
+      "--timing-report-paths",
+      "16",
+      "--arrival-pin-assignment"
+    ],
+    "input_sha256": {
+      "clocks-oss.sdc": "38bb8779376406d4dfb1621f05c7eae1cbe3e652aa448becd43a5c63e2eaa7bb",
+      "socket.qsf": "399a6fce230eb82f32cb1eef8c9c6d54ab9fb2b222475539977b698cc986cab0",
+      "synth.json": "8c2cb3ab937b7471d9b340095d92efe07938b4459f88a69a5fe10f8ecbc597f3"
+    },
+    "report_sha256": "0967ae94d02d8b236ef8079099d64793ad72f9bef6d1170a296e3b61d005a735"
+  },
+  {
+    "variant": "arrival",
+    "seed": 10,
+    "exit_code": 0,
+    "seconds": 65.8528962135315,
+    "binary_sha256": "0ff627a0f68e3856ffc42789a28ada1e46098dc869e51dcbe439ee7376316f48",
+    "fmax": {
+      "audio_clk": {
+        "achieved": 200.7226104736328,
+        "constraint": 12.288031578063965
+      },
+      "clk_sys": {
+        "achieved": 56.38249969482422,
+        "constraint": 52.22477340698242
+      },
+      "display.control.clk": {
+        "achieved": 93.755859375,
+        "constraint": 74.25006866455078
+      }
+    },
+    "timing_summary": {
+      "clocks": {
+        "audio_clk": {
+          "hold_wns_ns": 0.7689999938011169,
+          "setup_wns_ns": 76.39800262451172
+        },
+        "clk_sys": {
+          "hold_wns_ns": 0.7070000171661377,
+          "setup_wns_ns": 0.7059999704360962
+        },
+        "display.control.clk": {
+          "hold_wns_ns": 0.7300000190734863,
+          "setup_wns_ns": 2.802000045776367
+        }
+      },
+      "final_analogue_model": true
+    },
+    "gpu_run_accepted": true,
+    "command": [
+      "/home/deano/tmp/nextpnr-236-e904cbfb/build/nextpnr-mistral",
+      "--json",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/synth.json",
+      "--device",
+      "5CSEBA6U23I7",
+      "--qsf",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/socket.qsf",
+      "--sdc",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/clocks-oss.sdc",
+      "--seed",
+      "10",
+      "--placer-heap-timingweight",
+      "300",
+      "--placer-heap-critexp",
+      "5",
+      "--freq",
+      "74.25",
+      "--router",
+      "gpu",
+      "--gpu-device",
+      "0",
+      "--rbf",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s10/core.rbf",
+      "--compress-rbf",
+      "--write",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s10/routed.json",
+      "--report",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s10/timing.json",
+      "--timing-report-paths",
+      "16",
+      "--arrival-pin-assignment"
+    ],
+    "input_sha256": {
+      "clocks-oss.sdc": "38bb8779376406d4dfb1621f05c7eae1cbe3e652aa448becd43a5c63e2eaa7bb",
+      "socket.qsf": "399a6fce230eb82f32cb1eef8c9c6d54ab9fb2b222475539977b698cc986cab0",
+      "synth.json": "8c2cb3ab937b7471d9b340095d92efe07938b4459f88a69a5fe10f8ecbc597f3"
+    },
+    "report_sha256": "3349bbde9fa8977eb3ff66964cfaf9ebc9943e38179b5ea4617f94b007072999"
+  },
+  {
+    "variant": "arrival",
+    "seed": 3,
+    "exit_code": 0,
+    "seconds": 121.88724756240845,
+    "binary_sha256": "0ff627a0f68e3856ffc42789a28ada1e46098dc869e51dcbe439ee7376316f48",
+    "fmax": {
+      "audio_clk": {
+        "achieved": 203.66600036621094,
+        "constraint": 12.288031578063965
+      },
+      "clk_sys": {
+        "achieved": 53.55325698852539,
+        "constraint": 52.22477340698242
+      },
+      "display.control.clk": {
+        "achieved": 101.02030181884766,
+        "constraint": 74.25006866455078
+      }
+    },
+    "timing_summary": {
+      "clocks": {
+        "audio_clk": {
+          "hold_wns_ns": 0.7369999885559082,
+          "setup_wns_ns": 76.47000122070312
+        },
+        "clk_sys": {
+          "hold_wns_ns": 0.7310000061988831,
+          "setup_wns_ns": 0.4749999940395355
+        },
+        "display.control.clk": {
+          "hold_wns_ns": 0.7369999885559082,
+          "setup_wns_ns": 3.569000005722046
+        }
+      },
+      "final_analogue_model": true
+    },
+    "gpu_run_accepted": true,
+    "command": [
+      "/home/deano/tmp/nextpnr-236-e904cbfb/build/nextpnr-mistral",
+      "--json",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/synth.json",
+      "--device",
+      "5CSEBA6U23I7",
+      "--qsf",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/socket.qsf",
+      "--sdc",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/clocks-oss.sdc",
+      "--seed",
+      "3",
+      "--placer-heap-timingweight",
+      "300",
+      "--placer-heap-critexp",
+      "5",
+      "--freq",
+      "74.25",
+      "--router",
+      "gpu",
+      "--gpu-device",
+      "0",
+      "--rbf",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s3/core.rbf",
+      "--compress-rbf",
+      "--write",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s3/routed.json",
+      "--report",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s3/timing.json",
+      "--timing-report-paths",
+      "16",
+      "--arrival-pin-assignment"
+    ],
+    "input_sha256": {
+      "clocks-oss.sdc": "38bb8779376406d4dfb1621f05c7eae1cbe3e652aa448becd43a5c63e2eaa7bb",
+      "socket.qsf": "399a6fce230eb82f32cb1eef8c9c6d54ab9fb2b222475539977b698cc986cab0",
+      "synth.json": "8c2cb3ab937b7471d9b340095d92efe07938b4459f88a69a5fe10f8ecbc597f3"
+    },
+    "report_sha256": "babb78570ba15e2aeed4623b43a294a19ea2427143acbe6aa7d13bf488591183"
+  },
+  {
+    "variant": "both",
+    "seed": 10,
+    "exit_code": 0,
+    "seconds": 72.49985337257385,
+    "binary_sha256": "0ff627a0f68e3856ffc42789a28ada1e46098dc869e51dcbe439ee7376316f48",
+    "fmax": {
+      "audio_clk": {
+        "achieved": 167.95431518554688,
+        "constraint": 12.288031578063965
+      },
+      "clk_sys": {
+        "achieved": 53.7836799621582,
+        "constraint": 52.22477340698242
+      },
+      "display.control.clk": {
+        "achieved": 96.98380279541016,
+        "constraint": 74.25006866455078
+      }
+    },
+    "timing_summary": {
+      "clocks": {
+        "audio_clk": {
+          "hold_wns_ns": 1.2209999561309814,
+          "setup_wns_ns": 75.4260025024414
+        },
+        "clk_sys": {
+          "hold_wns_ns": 0.6660000085830688,
+          "setup_wns_ns": 0.5550000071525574
+        },
+        "display.control.clk": {
+          "hold_wns_ns": 0.7269999980926514,
+          "setup_wns_ns": 3.1570000648498535
+        }
+      },
+      "final_analogue_model": true
+    },
+    "gpu_run_accepted": true,
+    "command": [
+      "/home/deano/tmp/nextpnr-236-e904cbfb/build/nextpnr-mistral",
+      "--json",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/synth.json",
+      "--device",
+      "5CSEBA6U23I7",
+      "--qsf",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/socket.qsf",
+      "--sdc",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/clocks-oss.sdc",
+      "--seed",
+      "10",
+      "--placer-heap-timingweight",
+      "300",
+      "--placer-heap-critexp",
+      "5",
+      "--freq",
+      "74.25",
+      "--router",
+      "gpu",
+      "--gpu-device",
+      "0",
+      "--rbf",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/both-s10/core.rbf",
+      "--compress-rbf",
+      "--write",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/both-s10/routed.json",
+      "--report",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/both-s10/timing.json",
+      "--timing-report-paths",
+      "16",
+      "--isolated-lut-placement",
+      "--arrival-pin-assignment"
+    ],
+    "input_sha256": {
+      "clocks-oss.sdc": "38bb8779376406d4dfb1621f05c7eae1cbe3e652aa448becd43a5c63e2eaa7bb",
+      "socket.qsf": "399a6fce230eb82f32cb1eef8c9c6d54ab9fb2b222475539977b698cc986cab0",
+      "synth.json": "8c2cb3ab937b7471d9b340095d92efe07938b4459f88a69a5fe10f8ecbc597f3"
+    },
+    "report_sha256": "ff2e45bbb36ec8dac82ba0b0917c9ec3e3427e2dd24563321ab79ba8fc5888b6"
+  },
+  {
+    "variant": "default",
+    "seed": 10,
+    "exit_code": 0,
+    "seconds": 146.38075256347656,
+    "binary_sha256": "c69ec0cd078ba5056cad0f9307f9a60d1534f08c6db0e136a399984404a605dc",
+    "fmax": {
+      "audio_clk": {
+        "achieved": 212.5850372314453,
+        "constraint": 12.288031578063965
+      },
+      "clk_sys": {
+        "achieved": 53.32196044921875,
+        "constraint": 52.22477340698242
+      },
+      "display.control.clk": {
+        "achieved": 88.15232849121094,
+        "constraint": 74.25006866455078
+      }
+    },
+    "timing_summary": {
+      "clocks": {
+        "audio_clk": {
+          "hold_wns_ns": 0.7689999938011169,
+          "setup_wns_ns": 76.6760025024414
+        },
+        "clk_sys": {
+          "hold_wns_ns": 0.7070000171661377,
+          "setup_wns_ns": 0.19699999690055847
+        },
+        "display.control.clk": {
+          "hold_wns_ns": 0.7300000190734863,
+          "setup_wns_ns": 2.124000072479248
+        }
+      },
+      "final_analogue_model": true
+    },
+    "gpu_run_accepted": true,
+    "command": [
+      "/tmp/issue236-build/nextpnr-mistral",
+      "--json",
+      "/tmp/issue236-fresh/in/synth.json",
+      "--device",
+      "5CSEBA6U23I7",
+      "--qsf",
+      "/tmp/issue236-fresh/in/socket.qsf",
+      "--sdc",
+      "/tmp/issue236-fresh/in/clocks-oss.sdc",
+      "--seed",
+      "10",
+      "--placer-heap-timingweight",
+      "300",
+      "--placer-heap-critexp",
+      "5",
+      "--freq",
+      "74.25",
+      "--router",
+      "gpu",
+      "--gpu-device",
+      "0",
+      "--rbf",
+      "/tmp/issue236-fresh/default-s10/core.rbf",
+      "--compress-rbf",
+      "--write",
+      "/tmp/issue236-fresh/default-s10/routed.json",
+      "--report",
+      "/tmp/issue236-fresh/default-s10/timing.json",
+      "--timing-report-paths",
+      "16"
+    ],
+    "input_sha256": {
+      "clocks-oss.sdc": "38bb8779376406d4dfb1621f05c7eae1cbe3e652aa448becd43a5c63e2eaa7bb",
+      "socket.qsf": "399a6fce230eb82f32cb1eef8c9c6d54ab9fb2b222475539977b698cc986cab0",
+      "synth.json": "8c2cb3ab937b7471d9b340095d92efe07938b4459f88a69a5fe10f8ecbc597f3"
+    },
+    "report_sha256": "947d1862dc1481de14bcc295f1e729352d53721051e7c4a2c6c12d695d402827"
+  },
+  {
+    "variant": "isolated",
+    "seed": 10,
+    "exit_code": 0,
+    "seconds": 78.04560136795044,
+    "binary_sha256": "0ff627a0f68e3856ffc42789a28ada1e46098dc869e51dcbe439ee7376316f48",
+    "fmax": {
+      "audio_clk": {
+        "achieved": 166.16815185546875,
+        "constraint": 12.288031578063965
+      },
+      "clk_sys": {
+        "achieved": 52.4109001159668,
+        "constraint": 52.22477340698242
+      },
+      "display.control.clk": {
+        "achieved": 92.11495971679688,
+        "constraint": 74.25006866455078
+      }
+    },
+    "timing_summary": {
+      "clocks": {
+        "audio_clk": {
+          "hold_wns_ns": 0.796999990940094,
+          "setup_wns_ns": 75.36199951171875
+        },
+        "clk_sys": {
+          "hold_wns_ns": 0.6660000085830688,
+          "setup_wns_ns": 0.06800000369548798
+        },
+        "display.control.clk": {
+          "hold_wns_ns": 0.7269999980926514,
+          "setup_wns_ns": 2.611999988555908
+        }
+      },
+      "final_analogue_model": true
+    },
+    "gpu_run_accepted": true,
+    "command": [
+      "/home/deano/tmp/nextpnr-236-e904cbfb/build/nextpnr-mistral",
+      "--json",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/synth.json",
+      "--device",
+      "5CSEBA6U23I7",
+      "--qsf",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/socket.qsf",
+      "--sdc",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/in/clocks-oss.sdc",
+      "--seed",
+      "10",
+      "--placer-heap-timingweight",
+      "300",
+      "--placer-heap-critexp",
+      "5",
+      "--freq",
+      "74.25",
+      "--router",
+      "gpu",
+      "--gpu-device",
+      "0",
+      "--rbf",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/isolated-s10/core.rbf",
+      "--compress-rbf",
+      "--write",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/isolated-s10/routed.json",
+      "--report",
+      "/home/deano/tmp/nextpnr-236-e904cbfb/fresh/isolated-s10/timing.json",
+      "--timing-report-paths",
+      "16",
+      "--isolated-lut-placement"
+    ],
+    "input_sha256": {
+      "clocks-oss.sdc": "38bb8779376406d4dfb1621f05c7eae1cbe3e652aa448becd43a5c63e2eaa7bb",
+      "socket.qsf": "399a6fce230eb82f32cb1eef8c9c6d54ab9fb2b222475539977b698cc986cab0",
+      "synth.json": "8c2cb3ab937b7471d9b340095d92efe07938b4459f88a69a5fe10f8ecbc597f3"
+    },
+    "report_sha256": "ae9f001911170339ef33bbef71c4525e81a95b0b607fb3947bb8dec185a8635e"
+  },
+  {
+    "variant": "no-congestion",
+    "seed": 10,
+    "exit_code": 0,
+    "seconds": 155.5850281715393,
+    "binary_sha256": "c69ec0cd078ba5056cad0f9307f9a60d1534f08c6db0e136a399984404a605dc",
+    "fmax": {
+      "audio_clk": {
+        "achieved": 180.14772033691406,
+        "constraint": 12.288031578063965
+      },
+      "clk_sys": {
+        "achieved": 54.135990142822266,
+        "constraint": 52.22477340698242
+      },
+      "display.control.clk": {
+        "achieved": 99.7705307006836,
+        "constraint": 74.25006866455078
+      }
+    },
+    "timing_summary": {
+      "clocks": {
+        "audio_clk": {
+          "hold_wns_ns": 0.8370000123977661,
+          "setup_wns_ns": 75.8290023803711
+        },
+        "clk_sys": {
+          "hold_wns_ns": 0.7289999723434448,
+          "setup_wns_ns": 0.4860000014305115
+        },
+        "display.control.clk": {
+          "hold_wns_ns": 0.7379999756813049,
+          "setup_wns_ns": 3.444999933242798
+        }
+      },
+      "final_analogue_model": true
+    },
+    "gpu_run_accepted": true,
+    "command": [
+      "/tmp/issue236-build/nextpnr-mistral",
+      "--json",
+      "/tmp/issue236-fresh/in/synth.json",
+      "--device",
+      "5CSEBA6U23I7",
+      "--qsf",
+      "/tmp/issue236-fresh/in/socket.qsf",
+      "--sdc",
+      "/tmp/issue236-fresh/in/clocks-oss.sdc",
+      "--seed",
+      "10",
+      "--placer-heap-timingweight",
+      "300",
+      "--placer-heap-critexp",
+      "5",
+      "--freq",
+      "74.25",
+      "--router",
+      "gpu",
+      "--gpu-device",
+      "0",
+      "--rbf",
+      "/tmp/issue236-fresh/no-congestion-s10/core.rbf",
+      "--compress-rbf",
+      "--write",
+      "/tmp/issue236-fresh/no-congestion-s10/routed.json",
+      "--report",
+      "/tmp/issue236-fresh/no-congestion-s10/timing.json",
+      "--timing-report-paths",
+      "16",
+      "--set",
+      "placerHeap/congestion=0"
+    ],
+    "input_sha256": {
+      "clocks-oss.sdc": "38bb8779376406d4dfb1621f05c7eae1cbe3e652aa448becd43a5c63e2eaa7bb",
+      "socket.qsf": "399a6fce230eb82f32cb1eef8c9c6d54ab9fb2b222475539977b698cc986cab0",
+      "synth.json": "8c2cb3ab937b7471d9b340095d92efe07938b4459f88a69a5fe10f8ecbc597f3"
+    },
+    "report_sha256": "e122d9d16762b92dcbcd15292361a701444d0124c44fcdf86d5996926f919f03"
+  }
+]

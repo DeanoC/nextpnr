@@ -483,11 +483,12 @@ TEST_F(LutPairPlacementTest, NativeRelatedClockHoldRejectsARealShorterSetupPath)
     ctx->settings[ctx->id("target_freq")] = 125e6;
     ASSERT_NE(clock_source(clock, "hold_primary_clock", true), nullptr);
     auto *capture_clock = clock;
-    // Identity LUT arcs on physical B create a late common-root capture clock.
-    // The default F input is too fast to cross the hold boundary; choose the
-    // physical mux level explicitly, without injection. Non-L6 B maxes at
-    // 583 ps, so six arcs miss the original path's hold by 264 ps. Five stay
-    // non-negative while a shorter copy of the pair still goes negative.
+    // Keep the capture clock late while preserving the baseline hold check
+    // with the new 175 ps terminal GOUT estimate. Relative to five B arcs,
+    // moving one stage to E and one to F reduces the max clock path by 734 ps;
+    // the added mux estimate costs 875 ps, leaving a +178 ps reference margin
+    // from the former +319 ps. The shorter candidate still crosses by 264 ps.
+    const std::array<IdString, 5> clock_pins{id_E0, id_F0, id_B, id_B, id_B};
     for (int index = 0; index < 5; ++index) {
         auto name = "hold_clock_stage_" + std::to_string(index);
         auto *cell = ctx->createCell(ctx->id(name), id_MISTRAL_ALUT2);
@@ -496,7 +497,7 @@ TEST_F(LutPairPlacementTest, NativeRelatedClockHoldRejectsARealShorterSetupPath)
         capture_clock = ctx->createNet(ctx->id(name + "$q")); capture_clock->is_global = true;
         cell->connectPort(id_Q, capture_clock); ctx->assign_comb_info(cell); ctx->assign_default_pinmap(cell);
         place(cell, 2, 35, STRENGTH_LOCKED, 6 * index);
-        cell->pin_data[id_A].bel_pins = {id_B};
+        cell->pin_data[id_A].bel_pins = {clock_pins.at(index)};
     }
     capture_clock->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
     capture_clock->clkconstr->phase_shift = 0;
@@ -1100,14 +1101,17 @@ TEST_F(LutPairCopyTest, RealNegativeHoldRejectsSafely)
     ASSERT_NE(clock_source(clock, "copy_primary_clock", true), nullptr); auto *capture = clock;
     // Real slow physical B arcs place the hold boundary between the original
     // cone and the shorter copy, matching the native placement guard fixture.
-    // Five arcs: six overshoots that boundary by 264 ps at the current B max.
+    // With the 175 ps GOUT mux estimate on each clock input, leave the first
+    // two stages on E/F and the remaining three on B. This retains a positive
+    // reference hold margin while a six-stage copy still crosses the boundary.
+    const std::array<IdString, 5> clock_pins{id_E0, id_F0, id_B, id_B, id_B};
     for (int i = 0; i < 5; ++i) {
         auto *cell = ctx->createCell(ctx->idf("copy_clock_stage_%d", i), id_MISTRAL_ALUT2);
         cell->params[id_LUT] = Property(0xa, 4); cell->addInput(id_A); cell->addInput(id_B); cell->addOutput(id_Q);
         cell->connectPort(id_A, capture); cell->pin_data[id_B].state = PIN_0;
         capture = ctx->createNet(ctx->idf("copy_clock_q_%d", i)); capture->is_global = true; cell->connectPort(id_Q, capture);
         ctx->assign_comb_info(cell); ctx->assign_default_pinmap(cell); place(cell, 2, 35, STRENGTH_LOCKED, 6 * i);
-        cell->pin_data[id_A].bel_pins = {id_B};
+        cell->pin_data[id_A].bel_pins = {clock_pins.at(i)};
     }
     capture->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr); capture->clkconstr->phase_shift = 0;
     sink->disconnectPort(id_CLK); sink->connectPort(id_CLK, capture); ctx->assign_ff_info(sink);

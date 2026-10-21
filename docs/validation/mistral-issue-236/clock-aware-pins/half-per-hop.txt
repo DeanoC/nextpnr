@@ -1,0 +1,7 @@
+hop  pin  nextpnr_route  replica_route(+stage)  Q_ic[7_slow_1100mv_-40c]  Q_ic[7_slow_1100mv_100c]  Q_ic[MIN_fast_1100mv_-40c]  Q_ic[MIN_fast_1100mv_100c]  nextpnr_lut  Q_lut[7_slow_1100mv_-40c]  Q_lut[7_slow_1100mv_100c]  Q_lut[MIN_fast_1100mv_-40c]  Q_lut[MIN_fast_1100mv_100c]
+n1   F0      1461     1409 (1519)     1353     1479      773      937      225      110       96       46       44
+n2   F0      1095     1040 (1154)     1081     1189      425      527      225      107       96       47       41
+n3   F0       527      478 (593)      501      560      268      332      241      107       93       44       43
+sum routing: nextpnr 3083, replica mistral 2928 (+stage 3266); Quartus 7_slow_1100mv_-40c 2935, Quartus 7_slow_1100mv_100c 3228, Quartus MIN_fast_1100mv_-40c 1466, Quartus MIN_fast_1100mv_100c 1796
+sum LUT: nextpnr 691; Quartus 7_slow_1100mv_-40c 324, Quartus 7_slow_1100mv_100c 285, Quartus MIN_fast_1100mv_-40c 137, Quartus MIN_fast_1100mv_100c 128
+sum data (Q -> last LUT out): nextpnr 3774; Quartus 7_slow_1100mv_-40c 3259, Quartus 7_slow_1100mv_100c 3513, Quartus MIN_fast_1100mv_-40c 1603, Quartus MIN_fast_1100mv_100c 1924
