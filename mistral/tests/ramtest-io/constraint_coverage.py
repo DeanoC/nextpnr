@@ -13,17 +13,18 @@ from pathlib import Path
 
 
 def lut_is_hard_constant(value):
-    """True for a MISTRAL_CONST LUT of 0 or 1.
+    """True for a MISTRAL_CONST LUT of 0, 1 or 32 ones.
 
     nextpnr writes the VCC driver as Property(1), width 32. That serialises as
-    31 zeros and a one, not as 32 ones. Any other mask is a function, not a tie.
+    31 zeros and a one. A mask of 32 ones also ties high. Any other mask is a
+    function, not a tie.
     """
     if isinstance(value, bool):
         return False
     if isinstance(value, int):
         return value in (0, 1)
     if isinstance(value, str) and value and all(char in '01' for char in value):
-        return int(value, 2) in (0, 1)
+        return int(value, 2) in (0, 1) or value == '1' * 32
     return False
 
 
@@ -117,9 +118,10 @@ def inventory(module):
 
 
 def self_check():
+    # The packer's constant drivers and comb LUTs output on Q.
     def const(lut, net):
-        return {'type': 'MISTRAL_CONST', 'port_directions': {'Y': 'output'},
-                'connections': {'Y': [net]}, 'parameters': {'LUT': lut}}
+        return {'type': 'MISTRAL_CONST', 'port_directions': {'Q': 'output'},
+                'connections': {'Q': [net]}, 'parameters': {'LUT': lut}}
 
     def ob(net, pad):
         return {'type': 'MISTRAL_OB', 'port_directions': {'I': 'input', 'PAD': 'output'},
@@ -130,26 +132,30 @@ def self_check():
     module = {
         'ports': {
             'SDRAM_CKE': {'direction': 'output', 'bits': ['pad_cke']},
+            'SDRAM_DQMH': {'direction': 'output', 'bits': ['pad_dqmh']},
             'SDRAM_WE': {'direction': 'output', 'bits': ['pad_we']},
             'SDRAM_DQ': {'direction': 'output', 'bits': ['pad_dq']},
         },
         'cells': {
             'tie_high': const(vcc, 'high'),
+            'tie_ones': const('1' * 32, 'ones'),
             'tie_low': const('0' * 32, 'low'),
             'cke_ob': ob('high', 'pad_cke'),
+            'dqmh_ob': ob('ones', 'pad_dqmh'),
             'we_ob': ob('low', 'pad_we'),
             'dq_ob': ob('dq_net', 'pad_dq'),
-            'dq_fn': {'type': 'MISTRAL_ALUT2', 'port_directions': {'Y': 'output'},
-                      'connections': {'Y': ['dq_net']}, 'parameters': {'LUT': '1' * 32}},
+            'dq_fn': {'type': 'MISTRAL_ALUT2', 'port_directions': {'Q': 'output'},
+                      'connections': {'Q': ['dq_net']}, 'parameters': {'LUT': '1' * 32}},
         },
         'settings': {'timing/io_delays': '[]'},
     }
     high = inventory(module)
     exempt = {row['port']: row['exempt_structural_constant'] for row in high['ports']}
-    assert exempt == {'SDRAM_CKE': True, 'SDRAM_WE': True, 'SDRAM_DQ': False}, exempt
+    assert exempt == {'SDRAM_CKE': True, 'SDRAM_DQMH': True, 'SDRAM_WE': True, 'SDRAM_DQ': False}, exempt
     assert high['missing'] == [{'port': 'SDRAM_DQ', 'direction': 'output'}], high['missing']
     assert lut_is_hard_constant(1) and lut_is_hard_constant(0)
-    assert not lut_is_hard_constant('1' * 32)
+    assert lut_is_hard_constant('1' * 32)
+    assert not lut_is_hard_constant('1' * 31 + '0')
     assert not lut_is_hard_constant(True)
     named = design_module({'modules': {'core': module}})
     assert named is module
@@ -159,7 +165,7 @@ def self_check():
         assert 'no top' in str(error), error
     else:
         raise AssertionError('multiple modules were accepted')
-    print('PASS: tied-high LUT 0..01 is exempt; all-ones mask and a missing delay are not')
+    print('PASS: tied-high LUTs 0..01 and 1..1 are exempt; a LUT function and a missing delay are not')
 
 
 def main():
