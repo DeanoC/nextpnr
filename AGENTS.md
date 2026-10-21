@@ -22,7 +22,8 @@ Delete superseded code instead of keeping compatibility shims or "kept for older
 
 ## PR scope
 
-- One issue per PR. Don't bundle unrelated fixes.
-- The PR body says `Closes #N` for the issue it resolves.
+- One scope per PR. Don't bundle unrelated fixes.
+- The PR body says `Closes #N` for the issue it resolves. Agents may open that issue themselves when opening the PR.
+- Small, self-explanatory PRs may skip the issue and the `Closes #N` line.
 - Before opening a PR, check for an open PR that already covers the change, and don't duplicate it.
 - Stay inside the repo and the scope the task names.
