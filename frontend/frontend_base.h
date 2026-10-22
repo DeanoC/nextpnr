@@ -470,9 +470,10 @@ template <typename FrontendType> struct GenericFrontend
             PortType dir = port_dirs.at(ctx->id(name));
             int width = impl.get_vector_length(bits);
             if (width == 0) {
-                // jsonwrite emits a disconnected scalar as an empty list.
-                // Recreate the port with no net so a folded constant still has
-                // a logical pin for the architecture pin-map snapshot to cover.
+                // jsonwrite emits a disconnected scalar, or a lone bus bit
+                // under its literal name, as an empty list. Recreate the port
+                // with no net so a folded constant still has a logical pin for
+                // the architecture pin-map snapshot to cover.
                 IdString port_id = ctx->id(name);
                 ci->ports[port_id].name = port_id;
                 ci->ports[port_id].type = dir;

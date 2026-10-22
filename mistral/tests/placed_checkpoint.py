@@ -104,9 +104,9 @@ endmodule
                 '--rbf', out / 'replayed.rbf'], 'replay')
     assert (out / 'original.rbf').read_bytes() == (out / 'replayed.rbf').read_bytes()
 
-    def corrupt(label, edit, expected_error):
-        bad = copy.deepcopy(placed)
-        cell = bad['modules']['top']['cells']['arithmetic']
+    def edited(label, edit):
+        design = copy.deepcopy(placed)
+        cell = design['modules']['top']['cells']['arithmetic']
         payload = json.loads(bytes.fromhex(cell['attributes']['FES_PINMAP_V1']))
         edit(cell, payload)
         # An edit may remove the snapshot. Leaving the key absent is the case
@@ -114,8 +114,12 @@ endmodule
         if 'FES_PINMAP_V1' in cell['attributes']:
             cell['attributes']['FES_PINMAP_V1'] = json.dumps(payload).encode().hex()
         f = out / (label + '.json')
-        f.write_text(json.dumps(bad))
-        run(base + ['--json', f, '--no-pack', '--no-place', '--no-route'], label, accepted=(1, 125))
+        f.write_text(json.dumps(design))
+        return f
+
+    def corrupt(label, edit, expected_error):
+        run(base + ['--json', edited(label, edit), '--no-pack', '--no-place', '--no-route'], label,
+            accepted=(1, 125))
         assert expected_error in (out / (label + '.log')).read_text()
 
     corrupt('invalid-state', lambda c, p: p['pins']['A'].__setitem__(0, 4), 'Invalid frozen pin state')
@@ -142,6 +146,29 @@ endmodule
 
     corrupt('folded-constant', drop_folded_constant, 'Incomplete frozen pin map')
 
+    # The writer used to drop the index of a cell port that is the only bit
+    # of its bus. A disconnected X[0] came back as X, which the snapshot does
+    # not name, so an unmodified copy of the checkpoint was rejected. Mistral
+    # packing keeps its buses whole, so the arithmetic cell gets a spare one.
+    def lone_bit(c, p):
+        c['port_directions']['X[0]'] = 'input'
+        c['connections']['X[0]'] = []
+        p['pins']['X[0]'] = [1]
+        p['count'] = len(p['pins'])
+
+    run(base + ['--json', edited('lone-bit', lone_bit), '--no-pack', '--no-place', '--no-route',
+                '--write', out / 'lone-bit-copy.json'], 'lone-bit-copy')
+    lone = json.loads((out / 'lone-bit-copy.json').read_text())['modules']['top']['cells']['arithmetic']
+    assert lone['connections'].get('X[0]') == [] and 'X' not in lone['connections'], lone['connections']
+    run(base + ['--json', out / 'lone-bit-copy.json', '--no-pack', '--no-place', '--no-route'], 'lone-bit-reload')
+
+    def unmapped_lone_bit(c, p):
+        lone_bit(c, p)
+        del p['pins']['X[0]']
+        p['count'] = len(p['pins'])
+
+    corrupt('lone-bit-unmapped', unmapped_lone_bit, 'Incomplete frozen pin map for arithmetic.X[0]')
+
     def unknown_version(c, p):
         c['attributes']['FES_PINMAP_V2'] = c['attributes'].pop('FES_PINMAP_V1')
 
@@ -164,6 +191,7 @@ endmodule
     assert 'partially annotated' not in legacy_log, legacy_log
     print('PASS: placed folded inversions/constants survive routing; identical frozen replay; '
           'malformed snapshots rejected, including a removed disconnected constant; '
+          'lone bus bit keeps its name through a copy; '
           'partial annotation rejected; legacy checkpoint warned')
 
 
