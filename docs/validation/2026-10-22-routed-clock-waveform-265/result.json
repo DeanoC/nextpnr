@@ -1,0 +1,224 @@
+{
+  "returncode": 1,
+  "compiler_commit": "45476abd07a8881ebeee1e5d061be6b5fe123d71",
+  "final_analogue": true,
+  "complete": false,
+  "endpoint_count": 17147,
+  "unsupported_count": 105,
+  "setup_failure_rows": 489,
+  "related_hold_failure_rows": 0,
+  "minimum_related_hold_ps": 774,
+  "worst_setup_rows": [
+    {
+      "endpoint": "[\"system.machine.isa.slots[1].cga.card.card.vram.7.0.0\", \"A1EN\"]",
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "hold": 4868,
+      "hold_related": true,
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "max_path": 11728,
+      "min_path": 4796,
+      "setup": -1763,
+      "setup_timed": true,
+      "setup_window": 10000
+    },
+    {
+      "endpoint": "[\"system.machine.cpu.cpu.u_eu_core.eu_alu_last_result_MISTRAL_FF_Q_5\", \"DATAIN\"]",
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "hold": 4830,
+      "hold_related": true,
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "max_path": 11743,
+      "min_path": 4864,
+      "setup": -1689,
+      "setup_timed": true,
+      "setup_window": 10000
+    },
+    {
+      "endpoint": "[\"system.machine.isa.slots[1].cga.card.card.crtc.registers[13]_MISTRAL_FF_Q_2\", \"DATAIN\"]",
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "hold": 3227,
+      "hold_related": true,
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "max_path": 11722,
+      "min_path": 3270,
+      "setup": -1675,
+      "setup_timed": true,
+      "setup_window": 10000
+    },
+    {
+      "endpoint": "[\"system.machine.isa.slots[1].cga.card.card.vram.11.0.0\", \"A1EN\"]",
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "hold": 4810,
+      "hold_related": true,
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "max_path": 11604,
+      "min_path": 4732,
+      "setup": -1645,
+      "setup_timed": true,
+      "setup_window": 10000
+    },
+    {
+      "endpoint": "[\"system.machine.isa.slots[1].cga.card.card.vram.15.0.0\", \"A1EN\"]",
+      "capture": [
+        "clocks[0]",
+        0
+      ],
+      "hold": 4761,
+      "hold_related": true,
+      "launch": [
+        "clocks[0]",
+        0
+      ],
+      "max_path": 11568,
+      "min_path": 4696,
+      "setup": -1596,
+      "setup_timed": true,
+      "setup_window": 10000
+    }
+  ],
+  "fmax": {
+    "clk_pixel": {
+      "achieved": 83.26394653320312,
+      "constraint": 74.25006866455078
+    },
+    "clocks[0]": {
+      "achieved": 85.0123291015625,
+      "constraint": 100
+    },
+    "clocks[1]": {
+      "achieved": 226.65457153320312,
+      "constraint": 100
+    },
+    "clocks[2]": {
+      "achieved": 101.32501983642578,
+      "constraint": 100
+    }
+  },
+  "timing_summary": {
+    "clocks": {
+      "clk_pixel": {
+        "hold_wns_ns": 0.8230000138282776,
+        "setup_wns_ns": 1.4579999446868896
+      },
+      "clocks[0]": {
+        "hold_wns_ns": 0.7739999890327454,
+        "setup_wns_ns": -1.7630000114440918
+      },
+      "clocks[1]": {
+        "hold_wns_ns": 5.955999851226807,
+        "setup_wns_ns": 2.7939999103546143
+      },
+      "clocks[2]": {
+        "hold_wns_ns": 4.65500020980835,
+        "setup_wns_ns": 0.08500000089406967
+      }
+    },
+    "final_analogue_model": true
+  },
+  "waveform": {
+    "route": [
+      1244,
+      1430
+    ],
+    "source_high": [
+      5000,
+      5000
+    ],
+    "source_low": [
+      5000,
+      5000
+    ],
+    "declaration": {
+      "clock": "clocks[0]",
+      "load_pf": 30,
+      "port": "SDRAM_CLK",
+      "uncertainty_ps": 0
+    },
+    "local_high_loss": 660,
+    "local_low_loss": -250,
+    "minimum_high": 4154,
+    "minimum_low": 5064,
+    "physically_qualified": false
+  },
+  "critical_paths": [
+    {
+      "endpoint": {
+        "cell": "system.machine.isa.slots[1].cga.card.card.vram.7.0.0",
+        "loc": [
+          69,
+          3
+        ],
+        "port": "A1EN"
+      },
+      "launch": {
+        "cell": "system.firmware_loaded_MISTRAL_ALUT2_A_Q_MISTRAL_FF_DATAIN",
+        "loc": [
+          37,
+          11
+        ],
+        "port": "CLK"
+      },
+      "delay_by_type_ns": {
+        "clk-skew": 0.03500000014901161,
+        "clk-to-q": 0.7310000061988831,
+        "routing": 9.23100010305643,
+        "logic": 1.6259999871253967,
+        "setup": 0.14000000059604645
+      }
+    },
+    {
+      "endpoint": {
+        "cell": "system.machine.cpu.cpu.u_eu_core.eu_alu_last_result_MISTRAL_FF_Q_5",
+        "loc": [
+          39,
+          4
+        ],
+        "port": "DATAIN"
+      },
+      "launch": {
+        "cell": "system.machine.cpu.cpu.u_eu_core.eu_register_ax_MISTRAL_FF_Q_3",
+        "loc": [
+          46,
+          9
+        ],
+        "port": "CLK"
+      },
+      "delay_by_type_ns": {
+        "clk-skew": -0.03999999910593033,
+        "clk-to-q": 0.7310000061988831,
+        "routing": 7.635999977588654,
+        "logic": 3.5580000057816505,
+        "setup": -0.19599999487400055
+      }
+    }
+  ],
+  "router1_fallback": true,
+  "charged_wall_seconds": 153.4510769387707,
+  "remaining_route_seconds": 1474.3926381732292,
+  "physical_signoff": false,
+  "hardware_used": false
+}

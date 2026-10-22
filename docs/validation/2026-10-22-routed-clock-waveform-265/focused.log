@@ -1,0 +1,21 @@
+Running main() from /home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = IoDelayTest.InvertedDdioWaveformKeepsRouteSpreadPolarityAndQualification:IoDelayTest.ForwardedClockContractKeepsPhysicalRouteAndBothEdges:LutInputDelayTest.*
+[==========] Running 4 tests from 2 test suites.
+[----------] Global test environment set-up.
+[----------] 2 tests from LutInputDelayTest
+[ RUN      ] LutInputDelayTest.PlacementChargesMuxWithoutInventingEarlyMargin
+[       OK ] LutInputDelayTest.PlacementChargesMuxWithoutInventingEarlyMargin (4148 ms)
+[ RUN      ] LutInputDelayTest.AnalogueIncludesTerminalStageAndPreservesControlArc
+[       OK ] LutInputDelayTest.AnalogueIncludesTerminalStageAndPreservesControlArc (3913 ms)
+[----------] 2 tests from LutInputDelayTest (8062 ms total)
+
+[----------] 2 tests from IoDelayTest
+[ RUN      ] IoDelayTest.ForwardedClockContractKeepsPhysicalRouteAndBothEdges
+[       OK ] IoDelayTest.ForwardedClockContractKeepsPhysicalRouteAndBothEdges (4000 ms)
+[ RUN      ] IoDelayTest.InvertedDdioWaveformKeepsRouteSpreadPolarityAndQualification
+[       OK ] IoDelayTest.InvertedDdioWaveformKeepsRouteSpreadPolarityAndQualification (4063 ms)
+[----------] 2 tests from IoDelayTest (8064 ms total)
+
+[----------] Global test environment tear-down
+[==========] 4 tests from 2 test suites ran. (16127 ms total)
+[  PASSED  ] 4 tests.
