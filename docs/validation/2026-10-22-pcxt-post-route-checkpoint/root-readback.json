@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "archive_sha256": "abc3a736d38b920ee7c6753c89aa614d3b06f6d2ef3009cfb72ef687beea4581",
+  "verified_members": 395,
+  "all_member_names_types_hashes_sizes_checked": true,
+  "fresh_extraction": "/tmp/pcxt-checkpoint-root-independent-20261022",
+  "offline_returncode": 0,
+  "offline_wall_seconds": 11.68071582308039,
+  "offline_log_sha256": "eb698b379e8f5c934d53e466bbb7201f07f6a1ff6aa0c7c903cdab2e67c5c385"
+}

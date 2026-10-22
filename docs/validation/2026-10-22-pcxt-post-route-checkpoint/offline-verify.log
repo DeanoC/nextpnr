@@ -1,0 +1,10 @@
+{
+  "status": "pass",
+  "all_manifest_members_verified": 394,
+  "complete_endpoint_comparisons_exact_replay": true,
+  "complete_fixed_graph_comparison_exact_replay": true,
+  "full_original_graph_helper_bridge_replayed": true,
+  "all_three_complete_native_tree_records_bound_to_actual_saved_strings": true,
+  "native_decoder_not_reexecuted": true,
+  "no_GPU_or_route_or_hardware_execution": true
+}
