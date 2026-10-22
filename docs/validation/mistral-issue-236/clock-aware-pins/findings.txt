@@ -1,0 +1,148 @@
+Issue #236: physical timing closure with clock-aware private LUT pins
+2026-10-20, main e904cbfbf18c4218f03a9e1e121d19ada0bbdaf4
+
+Result
+
+The retained ZX81 producer fixture passes strict final analogue timing with
+seed 1, timing weight 300, criticality exponent 5 and the corrected
+--arrival-pin-assignment heuristic. The terminal-input correction from
+../terminal-input-fix/ remains enabled throughout this study.
+
+                          clk_sys MHz   setup WNS ns   hold WNS ns   exit
+Earlier arrival ranking     51.051666       -0.220        +0.693       1
+Clock-aware ranking         53.867702       +0.481        +0.693       0
+
+All three clocks pass setup and hold in the new seed-1 route. The other
+clocks achieve 94.348526 MHz against 74.250069 MHz (pixel), and 155.472626
+MHz against 12.288032 MHz (audio). No allow-fail, force, relaxed clock or
+seal override is used. All reports use the final analogue model.
+
+Why the pin change helps
+
+The old optional heuristic ranked maximum absolute data arrival across
+launch domains. The issue's half-cycle paths compete at LUTs with longer
+full-cycle paths. A later absolute arrival can still have much more time
+to reach capture, so that ranking can assign the fast pin to the wrong
+input. This is distinct from the historical LUT timing undercount and the
+missing terminal-input stage already investigated.
+
+The heuristic now ranks by -setup_slack - current_cell_delay. Reassigning
+an input to a new pin changes its slack by old_cell_delay - new_cell_delay.
+Subtracting the current charge therefore removes incumbent pin speed from
+the priority, while setup slack supplies the correct launch/capture clock
+window and downstream deadline. Untimed inputs remain fixed. This retains
+one timing snapshot and the existing opt-in flag; carry, LUT6, shared pins,
+frozen cells and direct register input exclusions are unchanged.
+
+The old seed-1 worst path starts at ce_3m25's falling edge, crosses ten
+LUTs, and ends at iff1.ENA. Among its changes, the first LUT's critical
+input moves E0 -> F0, and the next LUT's critical input moves B -> E1.
+Those two raw LUT mux costs fall by 486 ps in total. Routing changes too.
+All 10,852 cell names, types, parameters, logical connections and BELs
+are identical between the two results; 115 cells' saved pin maps differ.
+The transformed path ceases to be the worst path. See physical-diff.txt.
+
+Controlled option comparison
+
+With the old arrival ranking, seed 1, exponent 5 and the corrected timer:
+  timing weight 300 (baseline)       51.051666 MHz, setup -0.220 ns
+  timing weight 1000                 50.689373 MHz, setup -0.290 ns
+  timing weight 2000                 47.833157 MHz, setup -1.031 ns
+  weight 300, congestion disabled    49.900196 MHz, setup -0.446 ns
+All four exit 1. Pixel, audio and hold checks pass. The existing
+--remap-critical option with --remap-optimize-pins lists zero qualified
+candidates on this same placement and report. The latter was a placement
+candidate-list diagnostic, not a qualified routed alternative.
+
+The new ranking is not a universal timing-closure guarantee:
+  seed 3: 48.623943 MHz, setup -0.709 ns, hold +0.655 ns, exit 1
+  seed 10: 47.027840 MHz, setup -1.058 ns, hold +0.792 ns, exit 1
+Their earlier results were 48.718700 and 46.356388 MHz respectively.
+Seed 1 is the qualified nextpnr profile in this fixture; the production
+seed 10 is not accepted. The policy remains opt-in.
+
+Independent Quartus check of the passing seed
+
+Quartus Prime Lite 17.0.2 Build 602 on Powerboat reconstructs two critical
+data cones from the seed-1 RBF. All original programmable route chains,
+physical destination pins and sites are preserved in the decoded replica
+bitstreams. The full-cycle replica also preserves the four consecutive
+arithmetic sites and all three dedicated carry connections.
+
+Full-cycle bottleneck, ending at halted.ENA:
+  14 logic cells, 11 programmable routes, 3 dedicated carry hops
+  nextpnr Q -> last logic output:            17.279 ns
+  Quartus same data cone at 100 C:           16.145 ns
+  Mistral correction for removed branches:    0.413 ns
+  full path after data substitution:         17.844 ns, 56.04 MHz
+  same estimate at -40 C:                    17.410 ns, 57.44 MHz
+
+Worst half-cycle bottleneck, ending at video.fb.0.122.A1EN:
+  3 Boolean LUTs and 3 exact programmable data routes
+  nextpnr Q -> last LUT output:               3.774 ns
+  Quartus same data cone at 100 C:            3.513 ns
+  Mistral correction for removed branches:    0.191 ns
+  full path after data substitution:          9.110 ns, 54.88 MHz
+  same estimate at -40 C:                     8.429 ns, 59.32 MHz
+
+The full-path estimates retain nextpnr's launch clock-to-Q, skew and setup;
+use Mistral's final sink hop including its terminal stage at each corner;
+and add the Mistral difference for original side-branch loading. They do
+not add Quartus-derived uncertainty. These are independent data-cone
+cross-checks, not full-shell TimeQuest or hardware signoff.
+
+The carry replica includes two preceding arithmetic cells in ALM 0 so
+Quartus can place the original critical carry section starting in ALM 1.
+That prefix drives a side input of the first critical arithmetic cell;
+it is outside the timed q0 cone. Non-shared arithmetic sharein is left
+unconnected. Ordinary replica LUTs are inverters; carry truth tables
+sensitize B -> CO, CI -> CO and CI -> SO. Original side consumers are
+omitted as in the existing replica method. The retained top.v/QSF/RCF/SDC
+and decoded route chains document the final successful projects. Earlier
+scratch-only replica construction failures were not accepted as evidence.
+
+Checks
+
+17 distinct focused architecture tests pass across clock-aware-unit.log
+and final-unit.log: 2 input-stage, 9 placement, 2 pin-ranking and 4 completed
+observation tests. The new mixed-edge fixture proves that a half-cycle
+input gets F even though a full-cycle input arrives later, and verifies
+that the capture setup slack improves. Existing shared-pin, inversion,
+register and lock checks continue to pass.
+
+The CLI suite passes all 6 JSON policy cases; 4 Python-binding cases skip
+because this build has Python disabled. Changed C++ ranges are clang-format
+clean and git diff --check passes. The final formatted binary reproduces
+the passing RBF and the complete timing JSON exactly without rerouting.
+See replay-result.txt and final-replay.argv.txt. The preceding terminal
+input study's five physical LUT permutation checks remain applicable;
+the pin heuristic is not run when replaying stored physical maps.
+
+Provenance and limits
+
+The original package's producer synth.json was cleared. The fixture is
+the retained #214 producer input already accepted for this investigation,
+with the same QSF as #236; it is not the missing package-producing input.
+Input hashes, exact commands, binary hashes and output hashes are retained
+in measurements.txt. The current main hash was checked with ls-remote.
+
+All routing used gpu-run and whichever Powerboat GPU was leased. Backend
+readiness is logged; no vendor was pinned and GPU_LEASE_IDS was not set.
+Two still-unstarted local lease waiters were withdrawn under the scheduler
+lock after verifying that neither had children or owned a GPU. No GPU job
+was terminated. All our active GPU runs have finished and released leases.
+No hardware kit was used and no external harness was changed.
+
+The passing routed.json, RBF and complete timing report are retained at
+/tmp/issue236-closure/clock-aware-s1/ locally and at
+/home/deano/tmp/nextpnr-236-e904cbfb/closure/arrival-s1/ on Powerboat.
+The final local binary is
+/tmp/issue236-closure/bin/nextpnr-clock-aware-final.
+
+This produces a passing rebuild candidate on the retained fixture. It does
+not alter or re-seal the original frozen package: frozen pins/routes cannot
+benefit from a fresh allocation. Before a replacement package is published,
+its current producer build must use this implementation and the seed-1
+profile, then pass the normal scaffold, cart and seal checks. Those checks
+must not be bypassed using this fixture's result. Issue #236 remains open
+until that production replacement is qualified. No commit or PR had been opened at the time of these measurements.

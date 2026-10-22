@@ -1,0 +1,42 @@
+Running main() from /home/deano/harnesses/worktrees/nextpnr/vivid-island/3rdparty/googletest/googletest/src/gtest_main.cc
+Note: Google Test filter = LutInputArrival.*:LutInputDelayTest.*:LutPlacementTiming.*
+[==========] Running 13 tests from 3 test suites.
+[----------] Global test environment set-up.
+[----------] 2 tests from LutInputDelayTest
+[ RUN      ] LutInputDelayTest.PlacementChargesMuxWithoutInventingEarlyMargin
+[       OK ] LutInputDelayTest.PlacementChargesMuxWithoutInventingEarlyMargin (5873 ms)
+[ RUN      ] LutInputDelayTest.AnalogueIncludesTerminalStageAndPreservesControlArc
+[       OK ] LutInputDelayTest.AnalogueIncludesTerminalStageAndPreservesControlArc (5424 ms)
+[----------] 2 tests from LutInputDelayTest (11298 ms total)
+
+[----------] 9 tests from LutPlacementTiming
+[ RUN      ] LutPlacementTiming.Lut6PhysicalFIsFasterThanE
+[       OK ] LutPlacementTiming.Lut6PhysicalFIsFasterThanE (10954 ms)
+[ RUN      ] LutPlacementTiming.IsolatedCellEstimatesMatchBothPhysicalHalves
+[       OK ] LutPlacementTiming.IsolatedCellEstimatesMatchBothPhysicalHalves (21673 ms)
+[ RUN      ] LutPlacementTiming.DefaultEstimateGivesTheLastInputF
+[       OK ] LutPlacementTiming.DefaultEstimateGivesTheLastInputF (5457 ms)
+[ RUN      ] LutPlacementTiming.IsolatedSparseInputsMatchLegalisation
+[       OK ] LutPlacementTiming.IsolatedSparseInputsMatchLegalisation (10875 ms)
+[ RUN      ] LutPlacementTiming.SharedAndPrivateL5PinsRemainLegal
+[       OK ] LutPlacementTiming.SharedAndPrivateL5PinsRemainLegal (5397 ms)
+[ RUN      ] LutPlacementTiming.PinOptionsLeaveThePlacementEstimate
+[       OK ] LutPlacementTiming.PinOptionsLeaveThePlacementEstimate (16992 ms)
+[ RUN      ] LutPlacementTiming.SharedLastInputKeepsAFreePrivateFastPin
+[       OK ] LutPlacementTiming.SharedLastInputKeepsAFreePrivateFastPin (5449 ms)
+[ RUN      ] LutPlacementTiming.DirectDataFlipFlopDoesNotShareItsFabricPin
+[       OK ] LutPlacementTiming.DirectDataFlipFlopDoesNotShareItsFabricPin (5391 ms)
+[ RUN      ] LutPlacementTiming.SynchronousLoadKeepsASelectorInput
+[       OK ] LutPlacementTiming.SynchronousLoadKeepsASelectorInput (5392 ms)
+[----------] 9 tests from LutPlacementTiming (87584 ms total)
+
+[----------] 2 tests from LutInputArrival
+[ RUN      ] LutInputArrival.PrivateLateInputGetsFastPinAndSharedInputsStayFixed
+[       OK ] LutInputArrival.PrivateLateInputGetsFastPinAndSharedInputsStayFixed (5362 ms)
+[ RUN      ] LutInputArrival.HalfCycleDeadlineTakesPriorityOverLaterFullCycleArrival
+[       OK ] LutInputArrival.HalfCycleDeadlineTakesPriorityOverLaterFullCycleArrival (5415 ms)
+[----------] 2 tests from LutInputArrival (10778 ms total)
+
+[----------] Global test environment tear-down
+[==========] 13 tests from 3 test suites ran. (109660 ms total)
+[  PASSED  ] 13 tests.

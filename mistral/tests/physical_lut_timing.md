@@ -33,6 +33,21 @@ After legalisation, timing uses the actual physical maps under every policy.
 The underlying tables retain their existing device, voltage and temperature
 limitations.
 
+The LUT's graph input is the native GOUT wire, before the block-input mux.
+`getCellDelay` includes that terminal stage as well as the physical LUT-pin
+table. Before analogue configuration it uses the existing 175 ps GOUT table
+estimate with a zero early bound. At signoff it uses the terminal circuit's
+measured delay with the route's propagated waveform. The routed override
+subtracts that same measured term, preserving the graph boundary and counting
+the mux once. Existing synthetic FF/control inputs already traverse the
+terminal circuit and keep their original accounting. Carry and hard-block
+input timing are unchanged.
+
+`LutInputDelayTest` exercises a real LD-to-GOUT path through both a native LUT
+input and a synthetic control sink. It checks complete analogue delay, the
+cell/routing split, cache invalidation, preservation of control delay and
+exclusion of the terminal circuit from per-pip calibration observations.
+
 `physical_lut_timing.py` synthesizes L5/L6 functions and an input inversion that
 the packer folds into the L5 pin state. Five routed replays rotate every input's
 logical name, truth-table variable and physical pin-map entry together. Every

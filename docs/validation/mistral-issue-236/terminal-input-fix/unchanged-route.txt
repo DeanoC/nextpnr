@@ -1,0 +1,35 @@
+{
+  "rbf_sha256": "0c25618ac8d1e1672b99de427ce23f75568040fa4132486c2e8597f7f1e5725e",
+  "rbf_unchanged": true,
+  "timing_summary": {
+    "clocks": {
+      "audio_clk": {
+        "hold_wns_ns": 0.8899999856948853,
+        "setup_wns_ns": 76.25700378417969
+      },
+      "clk_sys": {
+        "hold_wns_ns": 0.7070000171661377,
+        "setup_wns_ns": -0.621999979019165
+      },
+      "display.control.clk": {
+        "hold_wns_ns": 0.8069999814033508,
+        "setup_wns_ns": 2.308000087738037
+      }
+    },
+    "final_analogue_model": true
+  },
+  "fmax": {
+    "audio_clk": {
+      "achieved": 195.1981201171875,
+      "constraint": 12.288031578063965
+    },
+    "clk_sys": {
+      "achieved": 49.03883743286133,
+      "constraint": 52.22477340698242
+    },
+    "display.control.clk": {
+      "achieved": 89.6057357788086,
+      "constraint": 74.25006866455078
+    }
+  }
+}

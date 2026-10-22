@@ -1,0 +1,283 @@
+{
+ "launch": "machine.cpu.bus.rdata_MISTRAL_FF_Q_2",
+ "luts": [
+  {
+   "name": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT3_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 15,
+   "y": 10,
+   "alm": 6,
+   "half": 0,
+   "phys": "A",
+   "out_port": "Q",
+   "chain": [
+    "GIN.013.010.0036",
+    "H6.014.010.0016",
+    "TD.015.010.0015",
+    "GOUT.015.010.0050"
+   ],
+   "route_ps": 779.9999713897705,
+   "cell_ps": 731.000006198883,
+   "signal": "q0",
+   "atom": "n1"
+  },
+  {
+   "name": "machine.cpu.cpu.im_MISTRAL_FF_Q_SCLR_MISTRAL_ALUT4_D_Q_MISTRAL_FF_DATAIN_1_Q_MISTRAL_ALUT6_C_Q_MISTRAL_ALUT5_Q_B_MISTRAL_FF_Q_SCLR_MISTRAL_FF_SCLR_Q_MISTRAL_ALUT6_Q_B_MISTRAL_FF_Q_DATAIN_MISTRAL_FF_DATAIN_Q_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT5_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 15,
+   "y": 11,
+   "alm": 9,
+   "half": 1,
+   "phys": "E1",
+   "out_port": "Q",
+   "chain": [
+    "GIN.015.010.0024",
+    "V2.015.011.0010",
+    "H6.010.011.0021",
+    "V2.015.009.0019",
+    "H3.016.010.0006",
+    "V4.017.011.0000",
+    "H3.015.011.0012",
+    "TD.015.011.0009",
+    "GOUT.015.011.0078"
+   ],
+   "route_ps": 1955.9999704360962,
+   "cell_ps": 462.99999952316284,
+   "signal": "n1",
+   "atom": "n2"
+  },
+  {
+   "name": "machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT4_Q_D_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT3_B_Q_MISTRAL_ALUT3_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 15,
+   "y": 11,
+   "alm": 3,
+   "half": 0,
+   "phys": "B",
+   "out_port": "Q",
+   "chain": [
+    "LD.015.011.0019",
+    "GOUT.015.011.0027"
+   ],
+   "route_ps": 97.99999743700027,
+   "cell_ps": 691.9999718666077,
+   "signal": "n2",
+   "atom": "n3"
+  },
+  {
+   "name": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_A_Q_MISTRAL_ALUT5_E_C_MISTRAL_ALUT5_E_Q_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT4_B_Q_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_C_Q_MISTRAL_ALUT5_Q",
+   "kind": "MISTRAL_COMB",
+   "x": 17,
+   "y": 13,
+   "alm": 6,
+   "half": 1,
+   "phys": "D",
+   "out_port": "Q",
+   "chain": [
+    "GIN.015.011.0013",
+    "V2.014.009.0012",
+    "H6.015.009.0011",
+    "V4.019.010.0001",
+    "H6.014.013.0024",
+    "TD.017.013.0038",
+    "GOUT.017.013.0053"
+   ],
+   "route_ps": 1805.999994277954,
+   "cell_ps": 646.0000276565552,
+   "signal": "n3",
+   "atom": "n4"
+  },
+  {
+   "name": "machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_D_A_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO_B_MISTRAL_ALUT6_Q",
+   "kind": "MISTRAL_COMB",
+   "x": 13,
+   "y": 13,
+   "alm": 0,
+   "half": 0,
+   "phys": "D",
+   "out_port": "Q",
+   "chain": [
+    "GIN.017.013.0027",
+    "H6.011.013.0028",
+    "TD.013.013.0016",
+    "GOUT.013.013.0005"
+   ],
+   "route_ps": 723.9999771118164,
+   "cell_ps": 643.999993801117,
+   "signal": "n4",
+   "atom": "n5"
+  },
+  {
+   "name": "machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_D_A_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_CI_MISTRAL_ALUT_ARITH_CO",
+   "kind": "MISTRAL_COMB",
+   "x": 17,
+   "y": 13,
+   "alm": 1,
+   "half": 0,
+   "phys": "B",
+   "out_port": "CO",
+   "chain": [
+    "GIN.013.013.0000",
+    "H3.014.013.0000",
+    "TD.017.013.0000",
+    "GOUT.017.013.0011"
+   ],
+   "route_ps": 519.9999809265137,
+   "cell_ps": 1062.000036239624,
+   "signal": "n5",
+   "atom": "n6"
+  },
+  {
+   "name": "machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_D_A_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO",
+   "kind": "MISTRAL_COMB",
+   "x": 17,
+   "y": 13,
+   "alm": 1,
+   "half": 1,
+   "phys": "CI",
+   "out_port": "CO",
+   "chain": [],
+   "route_ps": 0,
+   "cell_ps": 35.00000014901161,
+   "signal": "n6",
+   "atom": "n7"
+  },
+  {
+   "name": "machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_D_A_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT_ARITH_B",
+   "kind": "MISTRAL_COMB",
+   "x": 17,
+   "y": 13,
+   "alm": 2,
+   "half": 0,
+   "phys": "CI",
+   "out_port": "CO",
+   "chain": [],
+   "route_ps": 0,
+   "cell_ps": 35.00000014901161,
+   "signal": "n7",
+   "atom": "n8"
+  },
+  {
+   "name": "machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_D_A_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT_ARITH_B_CO_MISTRAL_ALUT_ARITH_CI",
+   "kind": "MISTRAL_COMB",
+   "x": 17,
+   "y": 13,
+   "alm": 2,
+   "half": 1,
+   "phys": "CI",
+   "out_port": "SO",
+   "chain": [],
+   "route_ps": 0,
+   "cell_ps": 368.00000071525574,
+   "signal": "n8",
+   "atom": "n9"
+  },
+  {
+   "name": "machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_D_A_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT5_Q_1",
+   "kind": "MISTRAL_COMB",
+   "x": 18,
+   "y": 13,
+   "alm": 0,
+   "half": 1,
+   "phys": "E1",
+   "out_port": "Q",
+   "chain": [
+    "GIN.017.013.0011",
+    "H6.017.013.0002",
+    "TD.018.013.0005",
+    "GOUT.018.013.0006"
+   ],
+   "route_ps": 575.9999752044678,
+   "cell_ps": 458.0000042915344,
+   "signal": "n9",
+   "atom": "n10"
+  },
+  {
+   "name": "machine.cpu.bus.refresh_addr_MISTRAL_FF_Q_12_DATAIN_MISTRAL_ALUT3_Q_B_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT5_Q_B_MISTRAL_ALUT5_D_A_MISTRAL_ALUT5_B_Q_MISTRAL_ALUT_ARITH_B_CI_MISTRAL_ALUT_ARITH_CO_SO_MISTRAL_ALUT5_D_Q_MISTRAL_ALUT6_F",
+   "kind": "MISTRAL_COMB",
+   "x": 17,
+   "y": 15,
+   "alm": 2,
+   "half": 1,
+   "phys": "E1",
+   "out_port": "Q",
+   "chain": [
+    "GIN.018.013.0002",
+    "H3.016.013.0017",
+    "V2.015.014.0000",
+    "H3.016.015.0001",
+    "TD.017.015.0003",
+    "GOUT.017.015.0022"
+   ],
+   "route_ps": 1026.0000228881836,
+   "cell_ps": 462.0000123977661,
+   "signal": "n10",
+   "atom": "n11"
+  },
+  {
+   "name": "machine.cpu.cpu.alu.flags_in_MISTRAL_FF_Q_DATAIN_MISTRAL_ALUT5_Q_E_MISTRAL_ALUT5_Q_D_MISTRAL_ALUT3_Q_C_MISTRAL_ALUT4_Q_C_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT4_D_Q_MISTRAL_ALUT6_Q_1",
+   "kind": "MISTRAL_COMB",
+   "x": 13,
+   "y": 19,
+   "alm": 6,
+   "half": 1,
+   "phys": "F1",
+   "out_port": "Q",
+   "chain": [
+    "GIN.017.015.0011",
+    "V4.016.016.0001",
+    "H6.011.019.0020",
+    "TD.013.019.0000",
+    "GOUT.013.019.0055"
+   ],
+   "route_ps": 1031.000018119812,
+   "cell_ps": 238.00000548362732,
+   "signal": "n11",
+   "atom": "n12"
+  },
+  {
+   "name": "machine.cpu.cpu.state_MISTRAL_FF_Q_17_DATAIN_MISTRAL_ALUT6_Q_F_MISTRAL_ALUT6_E_Q_MISTRAL_ALUT6_Q_1",
+   "kind": "MISTRAL_COMB",
+   "x": 7,
+   "y": 8,
+   "alm": 3,
+   "half": 1,
+   "phys": "F1",
+   "out_port": "Q",
+   "chain": [
+    "GIN.013.019.0027",
+    "H3.010.019.0023",
+    "V4.012.015.0009",
+    "V4.012.011.0009",
+    "V4.012.007.0009",
+    "H6.007.008.0025",
+    "TD.007.008.0011",
+    "GOUT.007.008.0031"
+   ],
+   "route_ps": 1894.0000534057617,
+   "cell_ps": 243.00000071525574,
+   "signal": "n12",
+   "atom": "n13"
+  },
+  {
+   "name": "machine.cpu.cpu.halted_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 6,
+   "y": 8,
+   "alm": 9,
+   "half": 1,
+   "phys": "F1",
+   "out_port": "Q",
+   "chain": [
+    "GIN.007.008.0014",
+    "H6.002.008.0028",
+    "TD.006.008.0017",
+    "GOUT.006.008.0079"
+   ],
+   "route_ps": 552.9999732971191,
+   "cell_ps": 238.00000548362732,
+   "signal": "n13",
+   "atom": "n14"
+  }
+ ]
+}

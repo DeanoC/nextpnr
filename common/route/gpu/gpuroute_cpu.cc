@@ -189,6 +189,7 @@ class CpuBackend : public Backend
                 const float seed_scale =
                         p.seed_delay_weight * (p.seed_delay_floor + (1.0f - p.seed_delay_floor) * arc.crit);
                 const int nseed = task.tree_cnt + path_pos;
+                bool reached = false;
                 for (int i = 0; i < nseed; i++) {
                     int w;
                     float d, ld = 0.0f;
@@ -201,8 +202,13 @@ class CpuBackend : public Backend
                         w = pe.wire;
                         d = pe.delay;
                     }
-                    if (w == sink)
+                    // Not an attach point: this wire is the arc's destination.
+                    // On the path of an earlier arc of the task it is already
+                    // routed, and the arc shares that branch (see below).
+                    if (w == sink) {
+                        reached |= i >= task.tree_cnt;
                         continue;
+                    }
                     auto ins = table.emplace(w, Entry());
                     if (!ins.second)
                         continue;
@@ -218,6 +224,15 @@ class CpuBackend : public Backend
                         exact_push(e.g, w);
                     else
                         far.push_back(Pile{e.g, w});
+                }
+                // An earlier arc already reaches the sink: routed, with no
+                // new wires. A searched path would give the sink a second
+                // parent, and later arcs would seed from wires the host
+                // never binds.
+                if (reached) {
+                    r.status = ARC_OK;
+                    stats_.arcs_routed++;
+                    continue;
                 }
 
                 bool have_best = false;
@@ -298,7 +313,10 @@ class CpuBackend : public Backend
                         far.clear();
                         for (const Pile &e : far2) {
                             const float f = e.g + h_est(g_.wire_x[e.wire], g_.wire_y[e.wire]);
-                            if (f < thr)
+                            // The bin boundary can round back to minf when the range
+                            // is small relative to the costs. Always expand the minima
+                            // so a nonempty frontier cannot repeat without progress.
+                            if (f < thr || f == minf)
                                 near.push_back(e);
                             else
                                 far.push_back(e);

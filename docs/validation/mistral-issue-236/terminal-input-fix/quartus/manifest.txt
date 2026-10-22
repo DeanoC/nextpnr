@@ -1,0 +1,193 @@
+{
+ "launch": "machine.ce_3m25_MISTRAL_FF_Q",
+ "luts": [
+  {
+   "name": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT2_Q",
+   "kind": "MISTRAL_COMB",
+   "x": 22,
+   "y": 8,
+   "alm": 9,
+   "half": 1,
+   "phys": "F1",
+   "chain": [
+    "GIN.022.016.0014",
+    "V2.022.014.0012",
+    "V2.022.012.0012",
+    "V2.022.010.0012",
+    "V2.022.008.0012",
+    "H3.020.008.0015",
+    "TD.022.008.0035",
+    "GOUT.022.008.0079"
+   ],
+   "route_ps": 1304.0000200271606,
+   "cell_ps": 238.99999260902405,
+   "signal": "q0",
+   "atom": "n1"
+  },
+  {
+   "name": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+   "kind": "MISTRAL_COMB",
+   "x": 22,
+   "y": 8,
+   "alm": 0,
+   "half": 0,
+   "phys": "B",
+   "chain": [
+    "LD.022.008.0019",
+    "GOUT.022.008.0003"
+   ],
+   "route_ps": 111.00000143051147,
+   "cell_ps": 695.9999799728394,
+   "signal": "n1",
+   "atom": "n2"
+  },
+  {
+   "name": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_Q",
+   "kind": "MISTRAL_COMB",
+   "x": 22,
+   "y": 8,
+   "alm": 1,
+   "half": 1,
+   "phys": "F1",
+   "chain": [
+    "GIN.022.008.0000",
+    "H3.020.008.0017",
+    "TD.022.008.0008",
+    "GOUT.022.008.0015"
+   ],
+   "route_ps": 425.00001192092896,
+   "cell_ps": 237.0000034570694,
+   "signal": "n2",
+   "atom": "n3"
+  },
+  {
+   "name": "machine.cpu.bus.length_MISTRAL_FF_Q_3_DATAIN_MISTRAL_ALUT4_Q_A_MISTRAL_ALUT6_F_Q_MISTRAL_ALUT4_B_Q_MISTRAL_FF_DATAIN_Q_MISTRAL_NOT_A_Q_MISTRAL_ALUT_ARITH_B_SO_MISTRAL_ALUT2_B_Q_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT_ARITH_SO_CO_MISTRAL_ALUT_ARITH_CI_SO_MISTRAL_ALUT5_E",
+   "kind": "MISTRAL_COMB",
+   "x": 22,
+   "y": 8,
+   "alm": 7,
+   "half": 0,
+   "phys": "F0",
+   "chain": [
+    "LD.022.008.0003",
+    "GOUT.022.008.0057"
+   ],
+   "route_ps": 108.0000028014183,
+   "cell_ps": 231.00000619888306,
+   "signal": "n3",
+   "atom": "n4"
+  },
+  {
+   "name": "machine.cpu.cpu.illegal_MISTRAL_ALUT2_B",
+   "kind": "MISTRAL_COMB",
+   "x": 12,
+   "y": 8,
+   "alm": 5,
+   "half": 0,
+   "phys": "F0",
+   "chain": [
+    "GIN.022.008.0029",
+    "H3.019.008.0019",
+    "H6.013.008.0038",
+    "TD.012.008.0015",
+    "GOUT.012.008.0041"
+   ],
+   "route_ps": 1024.999976158142,
+   "cell_ps": 224.99999403953552,
+   "signal": "n4",
+   "atom": "n5"
+  },
+  {
+   "name": "machine.cpu.cpu.ei_delay_MISTRAL_ALUT5_C_Q_MISTRAL_ALUT2_Q",
+   "kind": "MISTRAL_COMB",
+   "x": 12,
+   "y": 8,
+   "alm": 3,
+   "half": 0,
+   "phys": "B",
+   "chain": [
+    "LD.012.008.0010",
+    "GOUT.012.008.0027"
+   ],
+   "route_ps": 130.99999725818634,
+   "cell_ps": 708.0000042915344,
+   "signal": "n5",
+   "atom": "n6"
+  },
+  {
+   "name": "machine.cpu.cpu.alu.q_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q_C_MISTRAL_ALUT5_Q_1_A_MISTRAL_ALUT5_C_Q_MISTRAL_ALUT4_Q",
+   "kind": "MISTRAL_MCOMB",
+   "x": 21,
+   "y": 8,
+   "alm": 6,
+   "half": 1,
+   "phys": "F1",
+   "chain": [
+    "GIN.012.008.0012",
+    "H6.013.008.0000",
+    "H6.018.008.0000",
+    "TD.021.008.0000",
+    "GOUT.021.008.0055"
+   ],
+   "route_ps": 1088.0000591278076,
+   "cell_ps": 238.99999260902405,
+   "signal": "n6",
+   "atom": "n7"
+  },
+  {
+   "name": "machine.cpu.cpu.alu.q_MISTRAL_FF_Q_ENA_MISTRAL_ALUT5_Q_C_MISTRAL_ALUT5_Q_1_A_MISTRAL_ALUT5_C_E_MISTRAL_ALUT3_C_Q_MISTRAL_ALUT2_Q_1",
+   "kind": "MISTRAL_COMB",
+   "x": 22,
+   "y": 9,
+   "alm": 5,
+   "half": 0,
+   "phys": "F0",
+   "chain": [
+    "GIN.021.008.0026",
+    "V4.021.009.0000",
+    "TD.022.009.0010",
+    "GOUT.022.009.0041"
+   ],
+   "route_ps": 451.9999921321869,
+   "cell_ps": 225.99999606609344,
+   "signal": "n7",
+   "atom": "n8"
+  },
+  {
+   "name": "machine.cpu.cpu.iff2_MISTRAL_FF_Q_ENA_MISTRAL_ALUT4_Q_B_MISTRAL_ALUT5_Q",
+   "kind": "MISTRAL_COMB",
+   "x": 22,
+   "y": 9,
+   "alm": 8,
+   "half": 0,
+   "phys": "F0",
+   "chain": [
+    "LD.022.009.0010",
+    "GOUT.022.009.0065"
+   ],
+   "route_ps": 101.00000351667404,
+   "cell_ps": 231.99999332427979,
+   "signal": "n8",
+   "atom": "n9"
+  },
+  {
+   "name": "machine.cpu.cpu.iff2_MISTRAL_FF_Q_ENA_MISTRAL_ALUT4_Q",
+   "kind": "MISTRAL_COMB",
+   "x": 22,
+   "y": 9,
+   "alm": 5,
+   "half": 1,
+   "phys": "D",
+   "chain": [
+    "GIN.022.009.0033",
+    "H6.022.009.0006",
+    "TD.022.009.0041",
+    "GOUT.022.009.0045"
+   ],
+   "route_ps": 462.0000123977661,
+   "cell_ps": 647.0000147819519,
+   "signal": "n9",
+   "atom": "n10"
+  }
+ ]
+}

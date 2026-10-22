@@ -1,0 +1,15 @@
+d3065c641a313a2d5b6f89b1e491a40bb9b3771ba6091b8fb6744054c64e0281  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s1/routed.json
+645fd439c96bae9d33852b9e3bda5b5aeae8f9a0bd25302703c6fd1db2ef2b09  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s1/core.rbf
+0967ae94d02d8b236ef8079099d64793ad72f9bef6d1170a296e3b61d005a735  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s1/timing.json
+f49a86565bb7e439551bfbe6f2d09b8efe3737a42b79c877e78d06cfcae01428  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s3/routed.json
+2f3f0df71114acaf7c02cc954073b7015782f5d5a42758a5d2edde363b620718  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s3/core.rbf
+babb78570ba15e2aeed4623b43a294a19ea2427143acbe6aa7d13bf488591183  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s3/timing.json
+cb00d351b57e6327064288d9469cf3eebbf475fcf5c10ab6e13e8a0c9a343432  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s10/routed.json
+0c25618ac8d1e1672b99de427ce23f75568040fa4132486c2e8597f7f1e5725e  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s10/core.rbf
+3349bbde9fa8977eb3ff66964cfaf9ebc9943e38179b5ea4617f94b007072999  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/arrival-s10/timing.json
+7bb80df48a54a046f3a4a7193db5ccc703a6a6cd73e52ff2ca77fc2a8c58c83c  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/isolated-s10/routed.json
+3038a88d78ecafad928f0330505ff61b9f71a76476d91b6ff30ea30a07633a08  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/isolated-s10/core.rbf
+ae9f001911170339ef33bbef71c4525e81a95b0b607fb3947bb8dec185a8635e  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/isolated-s10/timing.json
+a3c1131fdc152d683c0670202c30dd9f1e3f5acd9f9b564a6a44526d767547f0  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/both-s10/routed.json
+00af7ff9b355a45d53f8c38156d083d3c93a4a18ac9660e40ecad0971074b460  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/both-s10/core.rbf
+ff2e45bbb36ec8dac82ba0b0917c9ec3e3427e2dd24563321ab79ba8fc5888b6  /home/deano/tmp/nextpnr-236-e904cbfb/fresh/both-s10/timing.json

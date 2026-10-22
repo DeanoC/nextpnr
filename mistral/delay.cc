@@ -27,6 +27,21 @@ NEXTPNR_NAMESPACE_BEGIN
 
 namespace {
 
+constexpr delay_t block_input_table_delay = 175;
+
+bool boolean_lut_input(const CellInfo *cell, IdString port)
+{
+    const int width = cell->type == id_MISTRAL_ALUT6                  ? 6
+                      : cell->type == id_MISTRAL_ALUT5                ? 5
+                      : cell->type == id_MISTRAL_ALUT4                ? 4
+                      : cell->type == id_MISTRAL_ALUT3                ? 3
+                      : cell->type == id_MISTRAL_ALUT2                ? 2
+                      : cell->type.in(id_MISTRAL_BUF, id_MISTRAL_NOT) ? 1
+                                                                      : 0;
+    const std::array<IdString, 6> inputs{id_A, id_B, id_C, id_D, id_E, id_F};
+    return std::find(inputs.begin(), inputs.begin() + width, port) != inputs.begin() + width;
+}
+
 // Reference local-register envelope (ps): Quartus 17.0.2, 5CSEBA6U23I7,
 // io-registers SDR/DDR/OE fixtures, all four slow/fast temperature corners.
 // Normalize the data CELL delay against the internal clock CELL delay;
@@ -937,7 +952,10 @@ bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort
                 pin->second.bel_pins.size() == 1)
                 physical = pin->second.bel_pins.front();
             const bool l6 = cell->type == id_MISTRAL_ALUT6;
-            return get_lut_pin_delay(physical, l6, delay);
+            if (!get_lut_pin_delay(physical, l6, delay))
+                return false;
+            delay += get_lut_input_delay(cell, fromPort);
+            return true;
         }
     } else if (cell->type == id_MISTRAL_ALUT_ARITH) {
         if (toPort == id_CO) {
@@ -1041,7 +1059,7 @@ DelayQuad Arch::getPipDelayTable(PipId pip) const
     // had placeholder entries of 0 or 20 ps but simulate at 44-176 ps on
     // every design, so each arc through them was 50-150 ps optimistic.
     case CycloneV::rnode_type_t::GOUT:
-        return DelayQuad{175};
+        return DelayQuad{block_input_table_delay};
     case CycloneV::rnode_type_t::LD:
         return DelayQuad{105};
     case CycloneV::rnode_type_t::TCLK:
@@ -1084,6 +1102,37 @@ DelayQuad Arch::getPipDelayTable(PipId pip) const
     }
 }
 
+DelayQuad Arch::get_lut_input_delay(const CellInfo *cell, IdString port) const
+{
+    if (!boolean_lut_input(cell, port))
+        return DelayQuad(0);
+    // Use the existing GOUT table bound until a routed observation is
+    // available. Zero is the conservative early bound: an estimated mux
+    // must not manufacture hold margin before analogue signoff.
+    const DelayQuad estimate{0, block_input_table_delay};
+    if ((!analogue_cache_valid && !bitstream_configured) || cell->bel == BelId() || getBoundBelCell(cell->bel) != cell)
+        return estimate;
+    auto p = cell->ports.find(port);
+    if (p == cell->ports.end() || !p->second.net)
+        return estimate;
+    auto *net = p->second.net;
+    if (!net->users.count(p->second.user_idx))
+        return estimate;
+    const auto &user = net->users.at(p->second.user_idx);
+    if (user.cell != cell || user.port != port)
+        return estimate; // A planning copy can inherit another cell's index.
+    if (analogue_cache_valid) {
+        auto fnd = analogue_arc_cache.find(&user);
+        if (fnd != analogue_arc_cache.end() && fnd->second.ok)
+            return fnd->second.lut_input_delay;
+    } else if (bitstream_configured && !net->wires.empty()) {
+        DelayQuad route, input;
+        if (analogue_arc_delay(net, user, route, nullptr, &input))
+            return input;
+    }
+    return estimate;
+}
+
 bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay) const
 {
     // A cached observation stays valid while the arc's route is unchanged,
@@ -1094,21 +1143,31 @@ bool Arch::getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, Del
     if (analogue_cache_valid) {
         auto fnd = analogue_arc_cache.find(&sink);
         if (fnd != analogue_arc_cache.end()) {
-            delay = fnd->second.delay;
+            // The full observation is used for route-candidate comparison.
+            // STA charges its terminal LUT mux through getCellDelay instead.
+            delay = fnd->second.delay - fnd->second.lut_input_delay;
             return fnd->second.ok;
         }
     }
     if (!this->bitstream_configured)
         return false;
-    return analogue_arc_delay(net_info, sink, delay, nullptr);
+    DelayQuad input;
+    const bool ok = analogue_arc_delay(net_info, sink, delay, nullptr, &input);
+    if (ok)
+        delay -= input;
+    return ok;
 }
 
 bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay,
-                              std::vector<AnalogueHop> *hops) const
+                              std::vector<AnalogueHop> *hops, DelayQuad *lut_input_delay) const
 {
     WireId src_wire = getCtx()->getNetinfoSourceWire(net_info);
     WireId dst_wire = getCtx()->getNetinfoSinkWire(net_info, sink, 0);
     NPNR_ASSERT(src_wire != WireId());
+    if (lut_input_delay)
+        *lut_input_delay = DelayQuad(0);
+    const bool terminal_lut = boolean_lut_input(sink.cell, sink.port) && !dst_wire.is_nextpnr_created() &&
+                              dst_wire.node.t() == CycloneV::GOUT;
 
     bool inverted = false;
     mistral::AnalogSim::wave input_wave[2], output_wave[2];
@@ -1144,21 +1203,22 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         cursor = getPipSrcWire(pip);
     }
 
-    for (auto it = pips.rbegin(); it != pips.rend(); it++) {
-        PipId pip = *it;
-        auto src = getPipSrcWire(pip);
-        auto dst = getPipDstWire(pip);
+    for (size_t i = 0; i < pips.size() + size_t(terminal_lut); ++i) {
+        const bool terminal = i == pips.size();
+        PipId pip = terminal ? PipId() : pips[pips.size() - 1 - i];
+        auto src = terminal ? dst_wire : getPipSrcWire(pip);
+        auto dst = terminal ? WireId() : getPipDstWire(pip);
 
         // A dedicated GPIO -> FPLL edge represents the COMBOUT clock tap,
         // not a load on the GPIO's fabric DATAIN routing node. Mistral has
         // no analogue model for that tap; retain the estimated arc instead.
-        if (pll_ref_select.count(pip))
+        if (!terminal && pll_ref_select.count(pip))
             return false;
 
         // An unfinished hop is not a zero-delay observation. Retain completed
         // prefixes even when a later hop cannot be simulated.
         AnalogueHop hop{pip, 0, 0, 0};
-        if (hops)
+        if (hops && !terminal)
             hop.table = getPipDelayTable(pip).maxDelay();
 
         if (src.is_nextpnr_created()) {
@@ -1170,7 +1230,8 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         // A nextpnr-created destination (bel pin) never appears among the
         // circuit outputs; the nodes that drive one have no analogue circuit
         const CycloneV::rnode_index src_ri = cyclonev->rc2ri(src.node);
-        const CycloneV::rnode_index dst_ri = dst.is_nextpnr_created() ? 0xffffffff : cyclonev->rc2ri(dst.node);
+        const CycloneV::rnode_index dst_ri =
+                terminal || dst.is_nextpnr_created() ? 0xffffffff : cyclonev->rc2ri(dst.node);
 
         auto mode = cyclonev->rnode_timing_get_mode(src_ri);
         NPNR_ASSERT(mode != mistral::CycloneV::RTM_UNSUPPORTED);
@@ -1178,7 +1239,7 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         auto inverting = cyclonev->rnode_is_inverting(src_ri);
 
         if (mode == mistral::CycloneV::RTM_P2P) {
-            if (hops)
+            if (hops && !terminal)
                 hops->push_back(hop);
             if (inverting == mistral::CycloneV::INV_YES || inverting == mistral::CycloneV::INV_PROGRAMMABLE)
                 inverted = !inverted;
@@ -1186,7 +1247,7 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         }
 
         if (mode == mistral::CycloneV::RTM_NO_DELAY) {
-            if (hops)
+            if (hops && !terminal)
                 hops->push_back(hop);
             if (inverting)
                 inverted = !inverted;
@@ -1226,11 +1287,15 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
 
             output_delay_sum[edge].mi += output_delays[edge].mi;
             output_delay_sum[edge].mx += output_delays[edge].mx;
-            if (hops)
+            if (terminal && lut_input_delay) {
+                auto &d = edge ? lut_input_delay->fall : lut_input_delay->rise;
+                d = DelayPair(delay_t(output_delays[edge].mi * 1e12), delay_t(output_delays[edge].mx * 1e12));
+            }
+            if (hops && !terminal)
                 (edge ? hop.fall : hop.rise) = delay_t(output_delays[edge].mx * 1e12);
         }
 
-        if (hops)
+        if (hops && !terminal)
             hops->push_back(hop);
         if (inverting == mistral::CycloneV::INV_YES || inverting == mistral::CycloneV::INV_PROGRAMMABLE)
             inverted = !inverted;

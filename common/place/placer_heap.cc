@@ -997,6 +997,9 @@ class HeAPPlacer
     // the cut spreader sees there is scaled down so cells spread out of the
     // region before legalisation packs it.
     std::vector<float> cong_scale;
+    // Fast BELs of each (region, bucket) at each location, indexed
+    // x * (max_y + 1) + y. Built on first use by the congestion check.
+    dict<std::pair<IdString, BelBucketId>, std::vector<int>> region_bucket_bels;
 
     // HPWL underestimates the wiring of multi-pin nets; scale by the
     // expected number of bounding-box crossings (Cheng, "RISA", ICCAD 1994).
@@ -1690,13 +1693,18 @@ class HeAPPlacer
 
         int bels_at(int x, int y, int type)
         {
+            return std::max(0, scaled_bels_at(x, y, type) - fixed_occupancy.at(x).at(y).at(type));
+        }
+
+        int scaled_bels_at(int x, int y, int type)
+        {
             if (x >= int(fb.at(type)->size()) || y >= int(fb.at(type)->at(x).size()))
                 return 0;
             int bels = int(fb.at(type)->at(x).at(y).size());
             // Single hard blocks (RAM, DSP) are not worth spreading for
             if (use_congestion && bels >= 4)
                 bels = int(bels * p->congestion_scale(x, y) + 0.5f);
-            return std::max(0, bels - fixed_occupancy.at(x).at(y).at(type));
+            return bels;
         }
 
         bool is_cell_fixed(const CellInfo &cell) const
@@ -1795,13 +1803,62 @@ class HeAPPlacer
 
             // Congestion may only shrink capacity while every cell still
             // fits. Region-constrained cells can only spread within their own
-            // BEL sets, which this global capacity check cannot account for.
+            // BEL sets, so each such region must also hold its own cells.
             if (!p->cong_scale.empty()) {
                 std::vector<int> cells(buckets.size(), 0), scaled(buckets.size(), 0);
-                bool has_region_constrained_cells = false;
-                for (CellInfo *cell : p->solve_cells)
-                    if (cell->region != nullptr && cell->region->constr_bels)
-                        has_region_constrained_cells = true;
+                dict<IdString, std::vector<int>> region_cells;
+                dict<IdString, std::vector<std::vector<int>>> region_fixed_occupancy;
+                dict<IdString, Region *> constrained_regions;
+                for (auto &cell_loc : p->cell_locs) {
+                    const CellInfo &cell = *ctx->cells.at(cell_loc.first);
+                    if (is_cell_fixed(cell) || cell.belStrength > STRENGTH_STRONG)
+                        continue;
+                    if (cell.cluster != ClusterId() && is_cell_fixed(*ctx->getClusterRootCell(cell.cluster)))
+                        continue;
+                    if (cell.region == nullptr || !cell.region->constr_bels)
+                        continue;
+                    auto &counts = region_cells[cell.region->name];
+                    counts.resize(buckets.size(), 0);
+                    counts.at(cell_index(cell))++;
+                    constrained_regions[cell.region->name] = cell.region;
+                    auto fixed_occupancy_entry = region_fixed_occupancy.insert(cell.region->name);
+                    if (fixed_occupancy_entry.second)
+                        fixed_occupancy_entry.first->second.resize(
+                                buckets.size(), std::vector<int>((p->max_x + 1) * (p->max_y + 1), 0));
+                }
+
+                // Count fixed cluster members in each constrained region and
+                // bucket at the location where each occupant actually sits.
+                for (auto &cell_loc : p->cell_locs) {
+                    const CellInfo &cell = *ctx->cells.at(cell_loc.first);
+                    if (is_cell_fixed(cell) || cell.belStrength > STRENGTH_STRONG || cell.cluster == ClusterId() ||
+                        cell.bel == BelId() || !is_cell_fixed(*ctx->getClusterRootCell(cell.cluster)))
+                        continue;
+                    size_t t = cell_index(cell);
+                    Loc loc = ctx->getBelLocation(cell.bel);
+                    heap_congestion_detail::collect_fixed_region_occupancy(
+                            region_fixed_occupancy, region_cells, constrained_regions, t, loc.x, loc.y, p->max_y,
+                            cell.bel);
+                }
+
+                // Per-region checks cannot safely credit shared BELs to
+                // multiple cell groups. Fall back to unscaled spreading when
+                // active constrained regions overlap for the same bucket.
+                bool regions_overlap = false;
+                for (size_t t = 0; t < buckets.size() && !regions_overlap; t++) {
+                    std::vector<Region *> active_regions;
+                    for (auto &entry : region_cells)
+                        if (entry.second.at(t) != 0)
+                            active_regions.push_back(constrained_regions.at(entry.first));
+                    for (size_t i = 0; i < active_regions.size() && !regions_overlap; i++)
+                        for (size_t j = i + 1; j < active_regions.size(); j++)
+                            if (heap_congestion_detail::regions_overlap_bels(
+                                        active_regions.at(i)->bels, active_regions.at(j)->bels, *fb.at(int(t)))) {
+                                regions_overlap = true;
+                                break;
+                            }
+                }
+
                 for (int x = 0; x <= p->max_x; x++)
                     for (int y = 0; y <= p->max_y; y++)
                         for (size_t t = 0; t < buckets.size(); t++)
@@ -1812,10 +1869,59 @@ class HeAPPlacer
                         for (size_t t = 0; t < buckets.size(); t++)
                             scaled.at(t) += bels_at(x, y, t);
                 for (size_t t = 0; t < buckets.size(); t++)
-                    if (!heap_congestion_detail::scale_is_usable(has_region_constrained_cells, cells.at(t),
-                                                                  scaled.at(t), p->cfg.beta))
+                    if (!heap_congestion_detail::scale_is_usable(cells.at(t), scaled.at(t), p->cfg.beta))
                         use_congestion = false;
+                if (regions_overlap)
+                    use_congestion = false;
+                for (auto &entry : region_cells) {
+                    Region *region = constrained_regions.at(entry.first);
+                    for (BelBucketId bucket : buckets) {
+                        size_t t = type_index.at(bucket);
+                        if (!use_congestion || entry.second.at(t) == 0)
+                            continue;
+                        const auto &region_bels = region_bels_at(region, bucket, t);
+                        int region_scaled = 0;
+                        for (int x = 0; x <= p->max_x; x++)
+                            for (int y = 0; y <= p->max_y; y++) {
+                                int here = region_bels.at(x * (p->max_y + 1) + y);
+                                size_t location = x * (p->max_y + 1) + y;
+                                if (here != 0)
+                                    region_scaled += heap_congestion_detail::region_capacity(
+                                            scaled_bels_at(x, y, t), here, location_bels(x, y, t),
+                                            fixed_occupancy.at(x).at(y).at(t),
+                                            region_fixed_occupancy.at(entry.first).at(t).at(location));
+                            }
+                        if (!heap_congestion_detail::scale_is_usable(entry.second.at(t), region_scaled, p->cfg.beta))
+                            use_congestion = false;
+                    }
+                }
             }
+        }
+
+        int location_bels(int x, int y, int type)
+        {
+            if (x >= int(fb.at(type)->size()) || y >= int(fb.at(type)->at(x).size()))
+                return 0;
+            return int(fb.at(type)->at(x).at(y).size());
+        }
+
+        // Count each location's fast BELs of `bucket` inside `region`.
+        const std::vector<int> &region_bels_at(Region *region, BelBucketId bucket, int type)
+        {
+            auto key = std::make_pair(region->name, bucket);
+            auto found = p->region_bucket_bels.find(key);
+            if (found != p->region_bucket_bels.end())
+                return found->second;
+            std::vector<int> counts((p->max_x + 1) * (p->max_y + 1), 0);
+            for (int x = 0; x <= p->max_x; x++)
+                for (int y = 0; y <= p->max_y; y++) {
+                    if (location_bels(x, y, type) == 0)
+                        continue;
+                    for (BelId bel : fb.at(type)->at(x).at(y))
+                        if (region->bels.count(bel))
+                            counts.at(x * (p->max_y + 1) + y)++;
+                }
+            return p->region_bucket_bels.emplace(key, std::move(counts)).first->second;
         }
 
         void merge_regions(SpreaderRegion &merged, SpreaderRegion &mergee)
