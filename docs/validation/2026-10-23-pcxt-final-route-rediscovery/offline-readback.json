@@ -1,0 +1,110 @@
+{
+  "capture_bytes": 62020712,
+  "capture_sha256": "a5db6f8689b94fc6ef7ae1ce80eb40774ef803e2ad84c992fe58d2c8c75c16db",
+  "complete_dependency_members": {
+    "exit": 418
+  },
+  "independent_review_sha256": "110ee76bd47952b2b812f32ee3e2a9f7376d4a933a5cca741bd876b8ac931a89",
+  "manifest_sha256": "55cb335f318dfd59aaf35974582fad3812762ebe48de00737f04f73ae0268b09",
+  "members": 294,
+  "passed": true,
+  "portable_proof": {
+    "accounting": {
+      "cumulative_charge_seconds": "55746.72936571435947",
+      "pair_charge_seconds": "2258.6285270126536",
+      "records": 54
+    },
+    "all_four_artifacts": {
+      "diagnostic.rbf": {
+        "byte_equal": true,
+        "default_bytes": 3035987,
+        "default_sha256": "46ee1d67e4b40a0eb058bf58f35efab023dddc4237a52fc38059f61d2b60aef0",
+        "final32_bytes": 3035987,
+        "final32_sha256": "46ee1d67e4b40a0eb058bf58f35efab023dddc4237a52fc38059f61d2b60aef0"
+      },
+      "endpoints.json": {
+        "byte_equal": true,
+        "default_bytes": 23563201,
+        "default_sha256": "1f88bc8e6b7c7af8e3de306723696170ff82e073da4d5c60d18bcd181b1ad467",
+        "final32_bytes": 23563201,
+        "final32_sha256": "1f88bc8e6b7c7af8e3de306723696170ff82e073da4d5c60d18bcd181b1ad467"
+      },
+      "routed.json": {
+        "byte_equal": false,
+        "default_bytes": 38273244,
+        "default_sha256": "9f3cd3e06e947312f8f29e5e92b6b3503e4bbf3eb154312989d311994c1534a9",
+        "final32_bytes": 38273244,
+        "final32_sha256": "74002d0c1d50a7158a7cb0d26bfba05e3458c2be8cd2ddaf6592693d17c0f8d1"
+      },
+      "timing.json": {
+        "byte_equal": true,
+        "default_bytes": 23098895,
+        "default_sha256": "4762b55994e0305cbb59654021b33913c66d3789214b1d06b7f4a2f937b201f6",
+        "final32_bytes": 23098895,
+        "final32_sha256": "4762b55994e0305cbb59654021b33913c66d3789214b1d06b7f4a2f937b201f6"
+      }
+    },
+    "canonical_changed_trees": 0,
+    "charged_route_seconds": 0,
+    "complete_endpoint_rows": 17199,
+    "exact_original_proof_replays": [
+      {
+        "exact_replay": true,
+        "proof": "decision-ledger.json",
+        "sha256": "f8a349f4d75d1f67f2dffeaaae5d6644f667e042197318683135d57c4ed1072d"
+      },
+      {
+        "exact_replay": true,
+        "proof": "graph-proof.json",
+        "sha256": "b5d36ccb82f63a27ede9e5b49427f06fd5ce522194878efa07bdcb6f14c57801"
+      },
+      {
+        "exact_replay": true,
+        "proof": "native-selection-specs.json",
+        "sha256": "9f69289ff8f7a3f4fdfd264926a9ed4be58a195fddb1cd8c1c2534c9f681a91f"
+      },
+      {
+        "exact_replay": true,
+        "proof": "checker-tests.json",
+        "sha256": "4c0d999d075da25d26fa5400e1e0ba7640e002a3c0c6b1ea6a29c9a4f5ff4d15"
+      },
+      {
+        "exact_replay": true,
+        "proof": "native-topology-checks.json",
+        "sha256": "2e2e92b4a78f8b45a491bf3b853097d4962047c0b4e867ac3868753fdffb598f"
+      },
+      {
+        "exact_replay": true,
+        "proof": "checker-evolution.json",
+        "sha256": "4de4a3298a719dacd4f8caa0e9807aac8c6ba7fb81dfe20ae70bee12e97a02fe"
+      },
+      {
+        "exact_replay": true,
+        "proof": "topology-proof.json",
+        "sha256": "eac2a0eb28eaac5be533c6b74ae4053ed6b38d6b18944525f998d4603b17a664"
+      },
+      {
+        "exact_replay": true,
+        "proof": "route-comparison.json",
+        "sha256": "6343724e2b599e2d478408b5b572dc6d22a760ee24851bbe1058ee1b0bcad7d8"
+      }
+    ],
+    "host_admission_files": 111,
+    "independent_review_sha256": "110ee76bd47952b2b812f32ee3e2a9f7376d4a933a5cca741bd876b8ac931a89",
+    "native_execution_needed": false,
+    "native_margin_delta_counts": {
+      "hold": {
+        "unchanged": 17194
+      },
+      "setup": {
+        "unchanged": 17194
+      }
+    },
+    "native_snapshot_manifest_members": 401,
+    "passed": true,
+    "route_order_only_alias_changes": 15,
+    "scope": "Complete offline source/host receipt, original graph/ledger/timing/checker and committed accounting replay. No host tests, native reader/STA, GPU route or hardware execution; zero changed trees require no reader.",
+    "source_files": 34
+  },
+  "scope": "Fresh extraction and offline graph/truth/timing/native-topology proof replay; no native or GPU execution"
+}
