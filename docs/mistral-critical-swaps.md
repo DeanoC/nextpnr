@@ -105,3 +105,29 @@ Unconstrained external input paths also remain unsupported. In particular,
 constant-fed and IO-fed route-through buffers must not be conflated: a
 `MISTRAL_IO.O` source is not static. External launch requirements require actual
 board/interface constraints and supported IO timing, not invented clock tags.
+
+## Connected LUT pairs (experimental)
+
+`--critical-swap-pairs` selects atomic pairs instead of the single-LUT search.
+It requires an explicit positive `--critical-swap-budget` and inherits the
+placed-checkpoint, routed-guidance and unqualified-route restrictions above.
+Saved settings cannot enable it. Defaults and ordinary placement are unchanged.
+For an isolated full-route comparison, pass `--pairs` to `mistral/routed_swap.py`;
+only the candidate enables paired swaps, and retention checks are unchanged.
+
+The search selects up to eight distinct connected ordinary-LUT pairs from long
+reported hops. It considers a shared destination LAB near either source LAB,
+their midpoint, or the mean location of their external data neighbours. The
+radius is one tile. It ranks at most eight sites per cell per tile, including
+the displaced LUTs' complete data boundaries, then tests at most 256 pair
+geometries per source pair and retains up to 32 legal proposals (four per tile).
+The existing global limit of 128 geometry attempts per STA-budget unit applies.
+Candidates take turns across source pairs. A successful move restarts discovery.
+
+Both LUT moves and up to two displaced occupants form one transaction: legality
+is checked on the complete resulting placement, then the same full-design
+clock, endpoint, related-hold and 20 ps setup-gain guards apply. Rejection or an
+exception restores every participant. Source homes and target sites must be
+disjoint; protected or clustered cells are excluded. Registers, carry chains,
+netlist functions and connectivity remain unchanged. This can explore a compact
+placement that individual moves cannot reach, but predicts no routed gain.

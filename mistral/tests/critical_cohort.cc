@@ -279,6 +279,72 @@ TEST_F(CriticalCohort, SwapSearchImprovesNativeReportedCone)
     ctx->check();
 }
 
+TEST_F(CriticalCohort, PairSwapIsAtomicAndPreservesAllFourCells)
+{
+    auto *a = lut(30, 20, 0), *b = lut(24, 20, 6);
+    auto *c = lut(27, 20, 0), *d = lut(27, 20, 6);
+    auto ah = a->bel, bh = b->bel, ch = c->bel, dh = d->bel;
+    a->params[id_LUT] = Property(6, 4); b->params[id_LUT] = Property(9, 4);
+    Snapshot saved(ctx.get());
+    bool visited = false;
+    auto inspect = [&] {
+        visited = true;
+        EXPECT_EQ(a->bel, ch); EXPECT_EQ(b->bel, dh);
+        EXPECT_EQ(c->bel, ah); EXPECT_EQ(d->bel, bh);
+    };
+    EXPECT_FALSE(critical_cohort_pair_swap_trial(ctx.get(), a, ch, b, dh, [&] { inspect(); return false; }));
+    EXPECT_TRUE(visited); saved.check(ctx.get());
+    EXPECT_THROW(critical_cohort_pair_swap_trial(ctx.get(), a, ch, b, dh, [&]() -> bool {
+        inspect(); throw std::runtime_error("pair timing failure");
+    }), std::runtime_error);
+    saved.check(ctx.get());
+    EXPECT_TRUE(critical_cohort_pair_swap_trial(ctx.get(), a, ch, b, dh, [&] { inspect(); return true; }));
+    EXPECT_EQ(a->params.at(id_LUT), Property(6, 4)); EXPECT_EQ(b->params.at(id_LUT), Property(9, 4));
+    ctx->check();
+}
+
+TEST_F(CriticalCohort, PairSwapRejectsOverlapAndProtectedSecondGuest)
+{
+    auto *a = lut(30, 20, 0), *b = lut(24, 20, 6), *guest = lut(27, 20, 6);
+    auto reject = [] { ADD_FAILURE() << "ineligible pair was timed"; return true; };
+    Snapshot saved(ctx.get());
+    EXPECT_FALSE(critical_cohort_pair_swap_trial(ctx.get(), a, bel(27, 20, 0), b, bel(27, 20, 0), reject));
+    EXPECT_FALSE(critical_cohort_pair_swap_trial(ctx.get(), a, b->bel, b, a->bel, reject));
+    EXPECT_FALSE(critical_cohort_pair_swap_trial(ctx.get(), a, bel(27, 20, 0), a, bel(27, 20, 6), reject));
+    guest->attrs[ctx->id("keep")] = 1;
+    EXPECT_FALSE(critical_cohort_pair_swap_trial(ctx.get(), a, bel(27, 20, 0), b, guest->bel, reject));
+    guest->attrs.clear();
+    saved.check(ctx.get());
+}
+
+TEST_F(CriticalCohort, PairSearchImprovesNativeConnectedCone)
+{
+    auto *clk = clock("clk", 3000);
+    auto *launch = ff(clk, 30, 20, 8);
+    auto *a = lut(24, 3, 0), *b = lut(30, 3, 6);
+    a->disconnectPort(id_A); a->connectPort(id_A, launch->getPort(id_Q));
+    b->disconnectPort(id_A); b->connectPort(id_A, a->getPort(id_Q));
+    auto *capture = ff(clk, 30, 20, 14, b->getPort(id_Q));
+    ctx->assignArchInfo();
+    ctx->critical_cohort_report = guidance(b).dump();
+    TimingAnalyser before(ctx.get()); before.with_clock_skew = false;
+    critical_cohort_pin_preview(ctx.get(), [&] { critical_cohort_setup_timing(ctx.get(), before); });
+    auto ah = a->bel, bh = b->bel, lh = launch->bel, ch = capture->bel;
+    auto cells = ctx->cells.size(), nets = ctx->nets.size();
+    repair_critical_pair_swaps(ctx.get(), 16);
+    EXPECT_NE(a->bel, ah); EXPECT_NE(b->bel, bh);
+    EXPECT_EQ(launch->bel, lh); EXPECT_EQ(capture->bel, ch);
+    EXPECT_EQ(ctx->cells.size(), cells); EXPECT_EQ(ctx->nets.size(), nets);
+    TimingAnalyser after(ctx.get()); after.with_clock_skew = false;
+    critical_cohort_pin_preview(ctx.get(), [&] {
+        critical_cohort_setup_timing(ctx.get(), after);
+        EXPECT_GE(after.get_setup_slack({capture->name, id_DATAIN}),
+                  before.get_setup_slack({capture->name, id_DATAIN}) + 20);
+        EXPECT_TRUE(critical_cohort_timing_safe(ctx.get(), before, after, {{capture->name, id_DATAIN}}));
+    });
+    ctx->check();
+}
+
 TEST_F(CriticalCohort, EmptyDestinationMovesWholeCohort)
 {
     auto *a = lut(30, 20, 0), *b = lut(30, 20, 6);

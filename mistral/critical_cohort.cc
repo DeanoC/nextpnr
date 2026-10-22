@@ -719,38 +719,232 @@ bool swap_movable(Context *ctx, CellInfo *cell)
 }
 }
 
-bool critical_cohort_swap_trial(Context *ctx, CellInfo *cell, BelId target, const std::function<bool()> &accept)
+namespace {
+bool swap_trial(Context *ctx, const Placement &moves, const std::function<bool()> &accept)
 {
-    if (!swap_movable(ctx, cell) || target == BelId() || cell->bel == target)
-        return false;
-    auto *guest = ctx->getBoundBelCell(target);
-    if (guest && !swap_movable(ctx, guest))
-        return false;
-    BelId home = cell->bel;
-    auto compatible = [&](CellInfo *c, BelId b) {
-        if (!ctx->isValidBelForCellType(c->type, b) || !c->testRegion(b) || !ctx->fes_placement_allowed(b, c))
+    std::set<BelId> homes, targets;
+    for (const auto &move : moves) {
+        if (!swap_movable(ctx, move.first) || move.second == BelId() ||
+            !homes.insert(move.first->bel).second || !targets.insert(move.second).second)
             return false;
-        for (const auto &pin : c->pin_data)
+    }
+    // Disjoint exchanges only: cycles between source homes are not proposals.
+    for (auto target : targets)
+        if (homes.count(target)) return false;
+    Placement future = moves;
+    std::set<CellInfo *> participants;
+    std::set<uint32_t> labs;
+    for (const auto &move : moves) {
+        auto *guest = ctx->getBoundBelCell(move.second);
+        if (guest) {
+            if (!swap_movable(ctx, guest)) return false;
+            future.emplace_back(guest, move.first->bel);
+        }
+        labs.insert(ctx->bel_data(move.first->bel).lab_data.lab);
+        labs.insert(ctx->bel_data(move.second).lab_data.lab);
+    }
+    for (const auto &move : future) {
+        auto *cell = move.first;
+        auto target = move.second;
+        if (!ctx->isValidBelForCellType(cell->type, target) || !cell->testRegion(target) ||
+            !ctx->fes_placement_allowed(target, cell)) return false;
+        for (const auto &pin : cell->pin_data)
             for (IdString physical : pin.second.bel_pins)
-                if (ctx->getBelPinWire(b, physical) == WireId())
-                    return false;
-        return true;
-    };
-    if (!compatible(cell, target) || (guest && !compatible(guest, home)))
-        return false;
-    std::set<CellInfo *> participants{cell};
-    if (guest) participants.insert(guest);
+                if (ctx->getBelPinWire(target, physical) == WireId()) return false;
+        participants.insert(cell);
+    }
     Transaction transaction(ctx, participants);
-    auto strength = cell->belStrength;
-    auto guest_strength = guest ? guest->belStrength : STRENGTH_WEAK;
     transaction.unbind();
-    ctx->bindBel(target, cell, strength);
-    if (guest) ctx->bindBel(home, guest, guest_strength);
-    if (!legal_labs(ctx, {ctx->bel_data(home).lab_data.lab, ctx->bel_data(target).lab_data.lab}) || !accept())
-        return false;
+    for (const auto &move : future) {
+        auto saved = std::find_if(transaction.bindings.begin(), transaction.bindings.end(),
+                                  [&](const SavedBinding &b) { return b.cell == move.first; });
+        ctx->bindBel(move.second, move.first, saved->strength);
+    }
+    if (!legal_labs(ctx, labs) || !accept()) return false;
     ctx->check();
     transaction.commit();
     return true;
+}
+} // namespace
+
+bool critical_cohort_swap_trial(Context *ctx, CellInfo *cell, BelId target, const std::function<bool()> &accept)
+{
+    return swap_trial(ctx, {{cell, target}}, accept);
+}
+
+bool critical_cohort_pair_swap_trial(Context *ctx, CellInfo *a, BelId at, CellInfo *b, BelId bt,
+                                      const std::function<bool()> &accept)
+{
+    return swap_trial(ctx, {{a, at}, {b, bt}}, accept);
+}
+
+void repair_critical_pair_swaps(Context *ctx, int timing_budget)
+{
+    if (!timing_budget) return;
+    if (timing_budget < 0 || timing_budget > 64 || ctx->fes_any_slot_region_active)
+        log_error("Critical pair swaps require an ordinary placed design and a budget of 1..64.\n");
+    for (const auto &entry : ctx->nets)
+        if (!entry.second->wires.empty()) log_error("Critical pair swaps require an unrouted design.\n");
+    int timed = 0, attempted = 0, kept = 0;
+    const int max_attempts = timing_budget * 128;
+    while (timed < timing_budget && attempted < max_attempts) {
+        TimingAnalyser before(ctx);
+        before.with_clock_skew = false;
+        EndpointRows rows;
+        Guidance guidance;
+        critical_cohort_pin_preview(ctx, [&] {
+            critical_cohort_setup_timing(ctx, before);
+            rows = endpoint_rows(ctx, before);
+            guidance = routed_guidance(ctx, before);
+        });
+        if (before.have_loops || worst_slack(before) >= 0 || rows.empty()) break;
+        if (guidance.hops.empty()) log_error("Critical pair swaps require routed report guidance.\n");
+        auto hops = guidance.hops;
+        std::sort(hops.begin(), hops.end(), [](const Hop &a, const Hop &b) {
+            if (a.delay != b.delay) return a.delay > b.delay;
+            return std::tie(a.driver->name, a.sink->name) < std::tie(b.driver->name, b.sink->name);
+        });
+        struct Candidate { CellInfo *a, *b; BelId at, bt; int64_t cost; };
+        std::vector<std::vector<Candidate>> proposals;
+        std::set<std::pair<IdString, IdString>> seen;
+        for (const auto &hop : hops) {
+            auto *a = hop.driver, *b = hop.sink;
+            if (a == b || !swap_movable(ctx, a) || !swap_movable(ctx, b) ||
+                !seen.emplace(std::min(a->name, b->name), std::max(a->name, b->name)).second) continue;
+            auto ah = ctx->getBelLocation(a->bel), bh = ctx->getBelLocation(b->bel);
+            std::set<std::pair<int, int>> tiles;
+            std::vector<std::pair<int, int>> centers{{ah.x, ah.y}, {bh.x, bh.y},
+                                                     {(ah.x + bh.x) / 2, (ah.y + bh.y) / 2}};
+            std::set<CellInfo *> boundary;
+            auto neighbor = [&](CellInfo *cell) {
+                if (cell && cell != a && cell != b && cell->bel != BelId()) boundary.insert(cell);
+            };
+            for (auto *cell : {a, b}) for (const auto &port : cell->ports) {
+                auto *net = port.second.net;
+                if (!data_net(net)) continue;
+                if (port.second.type == PORT_IN) neighbor(net->driver.cell);
+                else for (const auto &user : net->users) neighbor(user.cell);
+            }
+            if (!boundary.empty()) {
+                int x = 0, y = 0;
+                for (auto *cell : boundary) { auto at = ctx->getBelLocation(cell->bel); x += at.x; y += at.y; }
+                centers.emplace_back(x / int(boundary.size()), y / int(boundary.size()));
+            }
+            for (auto center : centers)
+                for (int dx = -1; dx <= 1; ++dx) for (int dy = -1; dy <= 1; ++dy)
+                    if (std::abs(dx) + std::abs(dy) <= 1) tiles.emplace(center.first + dx, center.second + dy);
+            auto cost = [&](const Placement &moves) {
+                Placement future = moves;
+                std::set<CellInfo *> members;
+                for (const auto &move : moves) {
+                    members.insert(move.first);
+                    if (auto *guest = ctx->getBoundBelCell(move.second)) {
+                        members.insert(guest);
+                        future.emplace_back(guest, move.first->bel);
+                    }
+                }
+                Placement original;
+                for (auto *cell : members) original.emplace_back(cell, cell->bel);
+                return score(ctx, before, members, future, worst_slack(before) + 150) -
+                       score(ctx, before, members, original, worst_slack(before) + 150);
+            };
+            std::vector<Candidate> candidates;
+            for (auto tile : tiles) {
+                auto sites = [&](CellInfo *cell) {
+                    std::vector<std::pair<int64_t, BelId>> ranked;
+                    for (auto target : ctx->getBelsByTile(tile.first, tile.second)) {
+                        if (target == a->bel || target == b->bel || !ctx->isValidBelForCellType(cell->type, target)) continue;
+                        auto *guest = ctx->getBoundBelCell(target);
+                        if (guest && !swap_movable(ctx, guest)) continue;
+                        ranked.emplace_back(cost({{cell, target}}), target);
+                    }
+                    std::sort(ranked.begin(), ranked.end(), [&](const auto &x, const auto &y) {
+                        if (x.first != y.first) return x.first < y.first;
+                        return ctx->getBelLocation(x.second).z < ctx->getBelLocation(y.second).z;
+                    });
+                    if (ranked.size() > 8) ranked.resize(8);
+                    return ranked;
+                };
+                auto as = sites(a), bs = sites(b);
+                for (auto at : as) for (auto bt : bs)
+                    if (at.second != bt.second)
+                        candidates.push_back({a, b, at.second, bt.second, cost({{a, at.second}, {b, bt.second}})});
+            }
+            std::sort(candidates.begin(), candidates.end(), [&](const Candidate &a, const Candidate &b) {
+                auto x = ctx->getBelLocation(a.at), y = ctx->getBelLocation(b.at);
+                auto xz = ctx->getBelLocation(a.bt).z, yz = ctx->getBelLocation(b.bt).z;
+                return std::tie(a.cost, x.x, x.y, x.z, xz) < std::tie(b.cost, y.x, y.y, y.z, yz);
+            });
+            std::vector<Candidate> legal;
+            std::map<std::pair<int, int>, int> per_tile;
+            int checked = 0;
+            for (const auto &candidate : candidates) {
+                auto loc = ctx->getBelLocation(candidate.at);
+                if (per_tile[{loc.x, loc.y}] >= 4) continue;
+                if (checked++ == 256 || attempted >= max_attempts) break;
+                ++attempted;
+                bool valid = false;
+                critical_cohort_pair_swap_trial(ctx, a, candidate.at, b, candidate.bt, [&] { valid = true; return false; });
+                if (!valid) continue;
+                ++per_tile[{loc.x, loc.y}];
+                legal.push_back(candidate);
+                if (legal.size() == 32) break;
+            }
+            proposals.push_back(std::move(legal));
+            if (proposals.size() == 8) break;
+        }
+        bool improved = false;
+        for (int rank = 0; rank < 32 && !improved && timed < timing_budget && attempted < max_attempts; ++rank)
+            for (const auto &proposal : proposals) {
+                if (timed >= timing_budget || attempted >= max_attempts) break;
+                if (size_t(rank) >= proposal.size()) continue;
+                const auto &c = proposal[rank];
+                ++attempted;
+                bool accepted = critical_cohort_pair_swap_trial(ctx, c.a, c.at, c.b, c.bt, [&] {
+                    ++timed;
+                    TimingAnalyser after(ctx);
+                    after.with_clock_skew = false;
+                    bool safe = false;
+                    critical_cohort_pin_preview(ctx, [&] {
+                        critical_cohort_setup_timing(ctx, after);
+                        for (const auto &endpoint : guidance.endpoints) {
+                            if (after.get_setup_slack(endpoint) < before.get_setup_slack(endpoint) + 20) continue;
+                            auto checks = timing_guard(ctx, before, after, {endpoint}, &rows);
+                            log_info("Critical pair guards: gain=%d clocks=%d holds=%d endpoints=%d.\n",
+                                     int(checks.gain), int(checks.clocks), int(checks.holds), int(checks.endpoints));
+                            safe = checks.accepts();
+                            if (!checks.endpoints) {
+                                auto current = endpoint_rows(ctx, after);
+                                bool logged = false;
+                                for (const auto &entry : rows) {
+                                    auto next = current.find(entry.first);
+                                    if (next == current.end() || next->second.size() != entry.second.size()) continue;
+                                    for (size_t i = 0; i < entry.second.size(); ++i) {
+                                        const auto &old = entry.second[i], &now = next->second[i];
+                                        if (!old.setup_timed || !old.setup_margin || !now.setup_margin ||
+                                            *now.setup_margin >= std::min(delay_t(0), *old.setup_margin)) continue;
+                                        log_info("Critical pair blocked setup: %s.%s %ld->%ldps.\n",
+                                                 entry.first.cell.str(ctx).c_str(), entry.first.port.str(ctx).c_str(),
+                                                 long(*old.setup_margin), long(*now.setup_margin));
+                                        logged = true; break;
+                                    }
+                                    if (logged) break;
+                                }
+                            }
+                            break;
+                        }
+                        log_info("Critical pair trial %d: %s -> %s, %s -> %s worst=%ld->%ldps accepted=%d.\n",
+                                 timed, ctx->nameOf(c.a), ctx->nameOfBel(c.at), ctx->nameOf(c.b), ctx->nameOfBel(c.bt),
+                                 long(worst_slack(before)), long(worst_slack(after)), int(safe));
+                    });
+                    return safe;
+                });
+                if (accepted) { ++kept; improved = true; break; }
+            }
+        if (!improved) break;
+    }
+    log_info("Critical pair swaps: attempted=%d/%d timed=%d/%d kept=%d; predicted only, full routing required.\n",
+             attempted, max_attempts, timed, timing_budget, kept);
 }
 
 void repair_critical_swaps(Context *ctx, int timing_budget)

@@ -29,6 +29,18 @@ class CriticalCohortCli(unittest.TestCase):
                                    *([] if route else ["--no-route"]), *options], stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, text=True, timeout=60)
 
+    def test_pair_swaps_require_explicit_positive_budget(self):
+        for options in (["--critical-swap-pairs"], ["--critical-swap-pairs", "--critical-swap-budget", "0"]):
+            result = self.run_design(options)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--critical-swap-pairs requires a positive", result.stdout)
+        result = self.run_design(settings={"critical-swap-pairs": "1"})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn("Critical pair swaps:", result.stdout)
+        result = self.run_design(["--critical-swap-pairs", "--critical-swap-budget", "1"], route=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Routed swaps require isolated validation", result.stdout)
+
     def test_swap_budget_and_checkpoint_contract(self):
         for budget in (-1, 65):
             result = self.run_design(["--critical-swap-budget", str(budget)])
