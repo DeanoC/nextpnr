@@ -1,0 +1,344 @@
+{
+  "archive_sha256": "efe07d7bef237b5e4e6a70a58214d45b28b889a868f5631833799750c7e79fb1",
+  "archive_bytes": 70804231,
+  "member_count": 84,
+  "all_source_bytes_read_back_exactly": true,
+  "members": {
+    "ram-density-20261022/README.md": {
+      "size": 8278,
+      "sha256": "1f63235683e485009b31e274949061fe86500a6dd5155ce362b5d021aac60e3c"
+    },
+    "ram-density-20261022/analysis.json": {
+      "size": 7018858,
+      "sha256": "2bd75fdb984291b1b1c849d5b78b672cd5261803de3a1fe749149a59f0a460e0"
+    },
+    "ram-density-20261022/analyze-routes.py": {
+      "size": 4336,
+      "sha256": "ea0ff1fbc06587dd42cc829e67794df622ecb8df6486aea4a8c82db226c20988"
+    },
+    "ram-density-20261022/analyze.py": {
+      "size": 18546,
+      "sha256": "7e2868024d6303247c0bd75e29899b9429f2bbbd78a2f21bd904b9333b9aefe1"
+    },
+    "ram-density-20261022/beta090-all-endpoint-deltas.json": {
+      "size": 9323361,
+      "sha256": "f33e836745802fa5b1b78ec275edcb7ac9820968c4c6224edc6d031243d9f111"
+    },
+    "ram-density-20261022/beta090-physical-record-differences.json": {
+      "size": 49450,
+      "sha256": "0a5c8d2719c665f5f1b7cace2beaef2fd0ab4c96131a58efd46c0b4ce831906c"
+    },
+    "ram-density-20261022/capture-manifest.json": {
+      "size": 27338,
+      "sha256": "48379d42b2512ba65698e2ee6c2fff96b8adebdf94a936479b0612231f28e014"
+    },
+    "ram-density-20261022/check-route-graphs.log": {
+      "size": 206,
+      "sha256": "7262b02e1783d99b1209939f6010cf85ea09e690ef5ae6804cead11f0acc17d1"
+    },
+    "ram-density-20261022/check-route-graphs.py": {
+      "size": 1534,
+      "sha256": "aa38122ea3a460e88886e83855a9ee5975c2b8b35fc93839bb9d8ef5cdd4419d"
+    },
+    "ram-density-20261022/final-proof.json": {
+      "size": 12952,
+      "sha256": "52b15f504a7b7dfbd7516bdf1fdee082493fe7364b44aa5e82efacf171477d03"
+    },
+    "ram-density-20261022/final-proof.log": {
+      "size": 154,
+      "sha256": "71838778780b86e5773a573b5b582978aeb8618a40ef100726798baaeefcd2b7"
+    },
+    "ram-density-20261022/final-proof.py": {
+      "size": 13792,
+      "sha256": "3b36c92befeabb0c23dbc9d1cfc49bcd6320f4164e4cdc89f364231ea48275e5"
+    },
+    "ram-density-20261022/overflow075-all-endpoint-deltas.json": {
+      "size": 9322271,
+      "sha256": "0bde9e63ef3ecef759c6b8443efb5938ea03014e2a3f57397a177dcf8b9cd79a"
+    },
+    "ram-density-20261022/overflow075-physical-record-differences.json": {
+      "size": 67698,
+      "sha256": "1b8a9b532dfcc103b6dfc2b51f3e555185f31ea06c0e87c398ec8c14885e9f66"
+    },
+    "ram-density-20261022/overflow090-all-endpoint-deltas.json": {
+      "size": 9322446,
+      "sha256": "23d411dbbf6277227de524e543f981b3eae1ea6bfe70bf0fa54d6fb3a55e991a"
+    },
+    "ram-density-20261022/overflow090-physical-record-differences.json": {
+      "size": 52848,
+      "sha256": "4ffb7eb2623b28f4efbe4312d6657cacb2e5d7adb4129c98e533c14d83e08ad2"
+    },
+    "ram-density-20261022/package-capture.py": {
+      "size": 4012,
+      "sha256": "81de76dc581ddb2b72f9d90cc1c06c517467204d5a0a0251d5d79746122a2e90"
+    },
+    "ram-density-20261022/prepare-beta075/nextpnr.log": {
+      "size": 207003923,
+      "sha256": "67b22470ca69f6f457b9641fd12ecc3423a1b4136135cb33b26bad2037cb2771"
+    },
+    "ram-density-20261022/prepare-beta075/placed.json": {
+      "size": 28285096,
+      "sha256": "8b7acd96b31968a478304a67c9d14edc58625d079f4f05fe94b94ff68c3eb75f"
+    },
+    "ram-density-20261022/prepare-beta075/predicted-timing.json": {
+      "size": 22620039,
+      "sha256": "0e92d45c8fdbc834889cd11b4d666bca633b07fda9acc6de7017d278adc04e5d"
+    },
+    "ram-density-20261022/prepare-beta075/receipt.json": {
+      "size": 3688,
+      "sha256": "c4b34c42b7d789d96d90fd4b5f1495c630833b707b1c7ba31492ce7787cfc30d"
+    },
+    "ram-density-20261022/prepare-beta090/nextpnr.log": {
+      "size": 175048172,
+      "sha256": "e28a53cb62a9e017baa6141f9e4a3cebfd3facc4be2a8ca0d8d9e6d184946cc1"
+    },
+    "ram-density-20261022/prepare-beta090/placed.json": {
+      "size": 28285639,
+      "sha256": "20073157d477fa5f0214c0f04f6cabccf287444b987f925231ab45bfbe226a9e"
+    },
+    "ram-density-20261022/prepare-beta090/predicted-timing.json": {
+      "size": 23182968,
+      "sha256": "ae0917a0b9c18cfd0bd382cd59a67b888c0f4e869dc1fc9e8bde387b26cf7bb8"
+    },
+    "ram-density-20261022/prepare-beta090/receipt.json": {
+      "size": 3688,
+      "sha256": "495679b925fcd9b1a8c7e0c1f8f70f3d421acd06620a235b74ca93167ae6fd31"
+    },
+    "ram-density-20261022/prepare-overflow075/nextpnr.log": {
+      "size": 122910007,
+      "sha256": "1c1903205c7353626ba786fe902bd14a743e3aa2c8811762cb1648897e2243ce"
+    },
+    "ram-density-20261022/prepare-overflow075/placed.json": {
+      "size": 28285588,
+      "sha256": "d4eac89419614ff00ba3a14582267098a2a38a0482fe0358a3058fd6141f50fa"
+    },
+    "ram-density-20261022/prepare-overflow075/predicted-timing.json": {
+      "size": 21579861,
+      "sha256": "6ae598b450ec1c19a03352afdbfba8b09dfb6688b0e5e4bfd17e7bb6a858f2c2"
+    },
+    "ram-density-20261022/prepare-overflow075/receipt.json": {
+      "size": 4146,
+      "sha256": "4eca60923f47e5b6f48f910628bd510902b6bf17f601393e6d574048d0790dd1"
+    },
+    "ram-density-20261022/prepare-overflow090/nextpnr.log": {
+      "size": 157804539,
+      "sha256": "f6868cba90645fcd657daeb72bc16ad51c88b433a19738bde3829321005985e3"
+    },
+    "ram-density-20261022/prepare-overflow090/placed.json": {
+      "size": 28286525,
+      "sha256": "da6b9c7ca82e2f939ed3abca36973fcb996bac3b386e59ec267a3e47f37d5f29"
+    },
+    "ram-density-20261022/prepare-overflow090/predicted-timing.json": {
+      "size": 22096894,
+      "sha256": "ad170cc0854adf7b986d3a34f2a6abdc6971d5dc2e0af4b20b27683d5029ef03"
+    },
+    "ram-density-20261022/prepare-overflow090/receipt.json": {
+      "size": 4144,
+      "sha256": "b2a3b9761ba962afc629e9dd1fbe23031de3aad81e7e03a1bf5cc4af78dd0ed0"
+    },
+    "ram-density-20261022/prepare.log": {
+      "size": 118,
+      "sha256": "706134e5e5e0de0ea98990f3b3be897c2cae37348bb09c4d252584b93f8aa207"
+    },
+    "ram-density-20261022/route-analysis.json": {
+      "size": 18750,
+      "sha256": "a9f53d4db04850dd9cf4c880a8ebeb04466442948a5688f064e0c8697d82cc95"
+    },
+    "ram-density-20261022/route-beta075/nextpnr.log": {
+      "size": 74529,
+      "sha256": "e9dc6cdf5ab9b54bed27642975853440ad4ae7a69e2fb7c52728c5da3b668d64"
+    },
+    "ram-density-20261022/route-beta075/receipt.json": {
+      "size": 3839,
+      "sha256": "25ea4e164ad1a1186dd9ab1158b4e67d08147f64186a53f1c6ae7ac046c51f43"
+    },
+    "ram-density-20261022/route-beta090/diagnostic.rbf": {
+      "size": 3038880,
+      "sha256": "f234c408ee3cae7893d1fe2b350a800ceb4e9f5167aa0ba5f9e65fe4f43ee7a4"
+    },
+    "ram-density-20261022/route-beta090/endpoints.json": {
+      "size": 23564412,
+      "sha256": "b93e02d478dfe5d61ae6a9e8e908bc3e4c72ac669f97ba52110444dd8c114b76"
+    },
+    "ram-density-20261022/route-beta090/nextpnr.log": {
+      "size": 197460,
+      "sha256": "d3f145209a2c4d6f9b1a7e79cbabde045af97d7633a8d035e0403cdd96fb3ea9"
+    },
+    "ram-density-20261022/route-beta090/receipt.json": {
+      "size": 4191,
+      "sha256": "99327a6fc53779e1461de87f07deb2050a32c34ca459be2d6b9df5865d9d0236"
+    },
+    "ram-density-20261022/route-beta090/routed.json": {
+      "size": 38292437,
+      "sha256": "8eaf2e72e10912df45180dec8d1c04e937fc0dfecb703027d09a0d447002faa4"
+    },
+    "ram-density-20261022/route-beta090/timing.json": {
+      "size": 24548301,
+      "sha256": "d01bc2f838c757df71cf1adbe5ecc8b4b50a8543215d4a5ec32f65499edbeb3a"
+    },
+    "ram-density-20261022/route-graph-proof.json": {
+      "size": 29007827,
+      "sha256": "55359978866387326123e97e46d88f89f1361a11e8248e4c9307dab4e8c4aa42"
+    },
+    "ram-density-20261022/route-graph.py": {
+      "size": 16500,
+      "sha256": "9d4d64199039fc873631a158d08f3cdbcc73f58d8043ef512f0df4d69df9ac4d"
+    },
+    "ram-density-20261022/route-overflow075/diagnostic.rbf": {
+      "size": 3047777,
+      "sha256": "3c6a9ddf42dfa87c1f50f063f941f256ea5a48cbf0d7890b939f05fe7e8b4e9c"
+    },
+    "ram-density-20261022/route-overflow075/endpoints.json": {
+      "size": 23563352,
+      "sha256": "af544feeb0a451cb9de46439d3ba80c5ba52602e4ba58fe07c3edb4310de877b"
+    },
+    "ram-density-20261022/route-overflow075/nextpnr.log": {
+      "size": 151790,
+      "sha256": "8a7cb6e0ac834a20435c754aa6e3886697d42c9c19ae3c4b624601eb51c48295"
+    },
+    "ram-density-20261022/route-overflow075/receipt.json": {
+      "size": 4653,
+      "sha256": "7f34a17c959f0892907b979bdaefa26cc51797bd75baa20d9962249cc78d3f1f"
+    },
+    "ram-density-20261022/route-overflow075/routed.json": {
+      "size": 38363660,
+      "sha256": "88aa247b402e9748a42f3986b4128c40e2e50004ce562d531d6d9799b3352135"
+    },
+    "ram-density-20261022/route-overflow075/timing.json": {
+      "size": 20959446,
+      "sha256": "01f36a010a733c3259be7fbc997e41f89c4cc05272e5acdd6b02f243457211bf"
+    },
+    "ram-density-20261022/route-overflow090/diagnostic.rbf": {
+      "size": 3027220,
+      "sha256": "ed44ec38e3bc95484a36be289fcf4d705638f168f2d1dd276d0446441cbe17f8"
+    },
+    "ram-density-20261022/route-overflow090/endpoints.json": {
+      "size": 23563500,
+      "sha256": "6eb365bf303735aed7587a3f7b9b29d1ebf09a39f539d6dee7a0f578c00a8478"
+    },
+    "ram-density-20261022/route-overflow090/nextpnr.log": {
+      "size": 194608,
+      "sha256": "ed2f53bb9d6b230d5937b0ccc64cd4a646896afb3bac89306f8b91c2e45c14ef"
+    },
+    "ram-density-20261022/route-overflow090/receipt.json": {
+      "size": 4655,
+      "sha256": "9233a4e6f0623aa3f1099bffdec3e458cd3780e5a0582d9c977879bb57c63dd9"
+    },
+    "ram-density-20261022/route-overflow090/routed.json": {
+      "size": 38205261,
+      "sha256": "2f7a620a4729ca99545a0558b635f943d2bace0e7a6411c8ad799fa197a5a707"
+    },
+    "ram-density-20261022/route-overflow090/timing.json": {
+      "size": 21056767,
+      "sha256": "3c7e32abd4a76cc52924185d34b48e29ff6603e0966eb3958298f26f63950f37"
+    },
+    "ram-density-20261022/route.log": {
+      "size": 124,
+      "sha256": "18b762cae5f2b641bf8fd0e0dc7ba12bd738fb8c68ed65df44ed5f436e2d0eba"
+    },
+    "ram-density-20261022/run.py": {
+      "size": 2787,
+      "sha256": "ca7c4bc561daa0cb18bcf7e01e6c2c312ea363b5f2bd413d5ef576ac6eab466c"
+    },
+    "reduction-balanced-20261022/inputs/clocks.sdc": {
+      "size": 106,
+      "sha256": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041"
+    },
+    "reduction-balanced-20261022/inputs/constraints.qsf": {
+      "size": 6421,
+      "sha256": "5eff0d63083685f76041b438c36c18f38b19da98053427c7c2ee155dc3873e1d"
+    },
+    "reduction-balanced-20261022/inputs/manifest.json": {
+      "size": 1210,
+      "sha256": "a4845c6603444ad85bc2e30a20c2271a490bf8cd7e39946f2ecc9211dd26d96d"
+    },
+    "reduction-balanced-20261022/inputs/synth.json": {
+      "size": 20130500,
+      "sha256": "b4c44b2b66faaf8dd1019c6d8de119c55eecb49856158019ac8899a869de028b"
+    },
+    "reduction-balanced-20261022/proof-overflow17.json": {
+      "size": 7713,
+      "sha256": "fa60fa34955b32f6de6278cbeb63f4af32b03d7dcbea558834ccf582ba83f106"
+    },
+    "reduction-balanced-20261022/route-baseline/receipt.json": {
+      "size": 2933,
+      "sha256": "b38cb35744eb93d8eb7b2e80c212d68b10ffc14beed352260c8792023a3ffc2b"
+    },
+    "reduction-balanced-20261022/route-overflow17/receipt.json": {
+      "size": 3392,
+      "sha256": "cf7c9843d70a2fdaad11cde6e2b1a90d9479a32722117bd78c38496714cf77c3"
+    },
+    "spreader-correction-20261022/analysis.json": {
+      "size": 1338394,
+      "sha256": "6ee72d78f0047680f48b3e52fc81af7b4f6af52ffbe1e944b537f769ade8a719"
+    },
+    "spreader-correction-20261022/analysis.py": {
+      "size": 27455,
+      "sha256": "12bbfe928997b01f332b2a0dfe8a2802febe4e8623f0d973682b261c397d9cb7"
+    },
+    "spreader-correction-20261022/prepare-enabled/nextpnr.log": {
+      "size": 117202313,
+      "sha256": "f9a5cf1fdf1756b3bdb3d3e6ba03b1bbfe6c68bf111b8011bb6d0fb7db0371c7"
+    },
+    "spreader-correction-20261022/prepare-enabled/placed.json": {
+      "size": 28285596,
+      "sha256": "820bf509e8f14bed3553cb2c90cfc51bfc8ecfcbefaae538bd2346374b153bf9"
+    },
+    "spreader-correction-20261022/prepare-enabled/receipt.json": {
+      "size": 1190,
+      "sha256": "c6130d2a51b7f527b927ae1ab140c57a758ece192fa83c01daa8dde83a59dfa1"
+    },
+    "spreader-correction-20261022/route-enabled/diagnostic.rbf": {
+      "size": 3053312,
+      "sha256": "73635a24178425c9916977fcc0449b49df06a1b7b471c39eddf51d4d9968e90d"
+    },
+    "spreader-correction-20261022/route-enabled/endpoints.json": {
+      "size": 23563289,
+      "sha256": "32362b7a77d7df9fe7446e077b30f4240c1a08da3c087556f22e8463781ac76d"
+    },
+    "spreader-correction-20261022/route-enabled/nextpnr.log": {
+      "size": 149481,
+      "sha256": "b3aa50150068c920d4da5289e114c7f1d47cf6e30864fe9fcf8324472b6b51f4"
+    },
+    "spreader-correction-20261022/route-enabled/receipt.json": {
+      "size": 3036,
+      "sha256": "4ffe84cad9c05f5f41b6b408549a903b63c371094ed71fea6263e36dfdb4fa54"
+    },
+    "spreader-correction-20261022/route-enabled/routed.json": {
+      "size": 38038323,
+      "sha256": "2d392129cc41c98e6a955821a3cf786f30789f543dd8a311911f94e647deb109"
+    },
+    "spreader-correction-20261022/route-enabled/timing.json": {
+      "size": 22231718,
+      "sha256": "e51bcb288ddbbde6f5c86bd24dbdcdd7b5676f3ecc89c5cbd583374235ca2133"
+    },
+    "spreader-correction-20261022/route-overflow17/diagnostic.rbf": {
+      "size": 3075595,
+      "sha256": "75561077b5ab71d8eba932692c68463789e1778c9d909d2b3e3074c568c2655e"
+    },
+    "spreader-correction-20261022/route-overflow17/endpoints.json": {
+      "size": 23563718,
+      "sha256": "a285c639a2e8748c04225b75c7a25f306e78ae37eae60391b343e8e27e1457b8"
+    },
+    "spreader-correction-20261022/route-overflow17/nextpnr.log": {
+      "size": 138934,
+      "sha256": "4e14b3077c6e0863c4027237de8577b17070c73ddb7fd2365585b77c495d669b"
+    },
+    "spreader-correction-20261022/route-overflow17/receipt.json": {
+      "size": 3498,
+      "sha256": "efe2556140dd5fdc7ed906bb0c30a36e09cb96dc06007b62d006d0b1ca525b2b"
+    },
+    "spreader-correction-20261022/route-overflow17/routed.json": {
+      "size": 38122601,
+      "sha256": "a4171302696ddeeee7ac2a8e35c15eb0d02daa1848abc4634fc7bd89a5c0c507"
+    },
+    "spreader-correction-20261022/route-overflow17/timing.json": {
+      "size": 20305174,
+      "sha256": "4d8cc85d0b8715917add39104cdbcb857fbcb1b44826294a867ef9b8edc878c3"
+    },
+    "spreader-correction-20261022/source-identity.json": {
+      "size": 1031,
+      "sha256": "d9e52e67e15dd8d8d80b1a6430d8ea90f9ccd5294c9f9de4f1e2ecf7e6a45b38"
+    }
+  }
+}
