@@ -165,6 +165,16 @@ bool plan_heap_hard_blocks(Context *ctx, const PlacerHeapCfg &cfg, const TimingA
                 return p.fail("unknown incident anchor");
             int64_t weight;
             if (!p.weight(sink, pin, weight)) return false;
+            // Inspect the exact analyser state already used by this HeAP
+            // iteration. Logging neither reruns timing nor changes this cost.
+            if (ctx->debug)
+                log_info("HeAP hard-block cost edge: cell='%s' anchor='%s' sink='%s' pin='%s' "
+                         "window_weight=%lld fanout=%zu criticality=%.17g anchor_xy=(%.17g,%.17g) "
+                         "timing_weight=%.17g criticality_exponent=%.17g\n",
+                         ctx->nameOf(cell), ctx->nameOf(anchor), ctx->nameOf(sink), pin.c_str(ctx),
+                         static_cast<long long>(weight), size_t(sink->getPort(pin)->users.entries()),
+                         double(timing.get_criticality(CellPortKey(sink->name, pin))), loc->second.x, loc->second.y,
+                         double(cfg.timingWeight), double(cfg.criticalityExponent));
             edges.push_back({loc->second.x, loc->second.y, weight});
             return true;
         };
@@ -200,6 +210,9 @@ bool plan_heap_hard_blocks(Context *ctx, const PlacerHeapCfg &cfg, const TimingA
         }
         cost_work += edges.size() * bels.size();
         const auto &raw = locations.at(cell->name);
+        if (ctx->debug)
+            log_info("HeAP hard-block cost target: cell='%s' raw=(%.17g,%.17g) scale=(%d,%d)\n",
+                     ctx->nameOf(cell), raw.x, raw.y, cfg.hpwl_scale_x, cfg.hpwl_scale_y);
         std::vector<int64_t> row;
         for (auto bel : bels) {
             if (!cell->testRegion(bel) || !ctx->isValidBelForCellType(cell->type, bel)) { row.push_back(-1); continue; }
