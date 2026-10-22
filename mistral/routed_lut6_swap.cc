@@ -153,8 +153,8 @@ struct SavedNet {
 };
 }
 
-bool critical_lut6_swap_source_coverage(Context *ctx, TimingAnalyser &timing, CellInfo *target,
-                                       std::string *reason)
+static bool lut_source_coverage(Context *ctx, TimingAnalyser &timing, CellInfo *target,
+                                bool supported_target, const char *requirement, std::string *reason)
 {
     using Launch = std::pair<IdString, int>;
     using Launches = std::set<Launch>;
@@ -296,11 +296,26 @@ bool critical_lut6_swap_source_coverage(Context *ctx, TimingAnalyser &timing, Ce
         return true;
     };
     Launches launches;
-    const bool complete = target && target->type == id_MISTRAL_ALUT6 && !timing.setup_only && !timing.have_loops &&
+    const bool complete = target && supported_target && !timing.setup_only && !timing.have_loops &&
                           cone(cone, target->getPort(id_Q), 0, launches);
     if (reason) *reason = complete ? "complete bounded structural/native source launch coverage" :
-                                   (failure.empty() ? "requires current full native LUT6 timing" : failure);
+                                   (failure.empty() ? requirement : failure);
     return complete;
+}
+
+// Separate target scopes retain the original LUT6 admission boundary.
+bool critical_lut6_swap_source_coverage(Context *ctx, TimingAnalyser &timing, CellInfo *target,
+                                       std::string *reason)
+{
+    return lut_source_coverage(ctx,timing,target,target && target->type==id_MISTRAL_ALUT6,
+                               "requires current full native LUT6 timing",reason);
+}
+bool critical_lut_permutation_source_coverage(Context *ctx, TimingAnalyser &timing, CellInfo *target,
+                                             std::string *reason)
+{
+    return lut_source_coverage(ctx,timing,target,target && target->type.in(id_MISTRAL_ALUT2,id_MISTRAL_ALUT3,
+                               id_MISTRAL_ALUT4,id_MISTRAL_ALUT5),
+                               "requires current full native ALUT2..5 timing",reason);
 }
 
 bool critical_lut6_swap_output_coverage(Context *ctx,TimingAnalyser &timing,NetInfo *output,std::string *reason)

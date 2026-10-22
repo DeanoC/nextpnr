@@ -19,6 +19,13 @@ class TimingAnalyser;
 // Every structural source must match the complete native launch inventory.
 bool critical_lut6_swap_source_coverage(Context *ctx, TimingAnalyser &timing, CellInfo *target,
                                         std::string *reason = nullptr);
+// Separate ordinary ALUT2..5 scope; does not widen the LUT6 admission boundary.
+bool critical_lut_permutation_source_coverage(Context *ctx, TimingAnalyser &timing, CellInfo *target,
+                                             std::string *reason = nullptr);
+// Fixed-BEL logical transposition with native pin allocation and shared-tree rollback.
+bool critical_routed_lut_permutation_trial(Context *ctx, CellInfo *target, IdString first, IdString second,
+    int visit_budget, const std::function<bool()> &accept, std::string *reason = nullptr,
+    const std::function<void(unsigned)> &stage = {});
 // Every affected output branch needs complete native setup and hold coverage.
 bool critical_lut6_swap_output_coverage(Context *ctx, TimingAnalyser &timing, NetInfo *output,
                                          std::string *reason = nullptr);
