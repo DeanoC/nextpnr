@@ -1,0 +1,77 @@
+{
+  "capture_bytes": 57860139,
+  "capture_sha256": "26dea41e116f9ae89bba40c68e7caacaeb47f31a0c2673c8d7ce66371e1540d7",
+  "complete_dependency_members": {
+    "budget": 256,
+    "prior": 261
+  },
+  "independent_review_sha256": "8759aa670cd6abcc4a1bc0b16b0f9572f36b9681b8097efb77ce6bf3165aa11e",
+  "manifest_sha256": "d6bc751b8805bc7510917597ffabb862f44211675fd7aca793ea5ecc114f083b",
+  "members": 245,
+  "passed": true,
+  "portable_proof": {
+    "accepted_private_pairs": 0,
+    "all_four_final_artifacts_byte_equal_to_prior_and_each_other": true,
+    "charged_route_seconds": 0,
+    "complete_endpoint_rows": 17199,
+    "exact_replays": [
+      {
+        "exact_replay": true,
+        "proof": "decision-ledger.json",
+        "sha256": "753a4728225da22dc0d9dfa2009573ebc35327aa7c0e8aa90c4b16cbfd93dfe9"
+      },
+      {
+        "exact_replay": true,
+        "proof": "graph-proof.json",
+        "sha256": "1b2766e08fac022a5b5013d4bf847ec5cd8ddd190be833ef8c6a45d07ae4bbce"
+      },
+      {
+        "exact_replay": true,
+        "proof": "native-selection-specs.json",
+        "sha256": "68270e3c629af283fcb61bbee1864d4634c88e668359de0c409fd6f9f6e80e0f"
+      },
+      {
+        "exact_replay": true,
+        "proof": "checker-tests.json",
+        "sha256": "ea9d4dd88997cab1d450a9558817bf592e851debfc3ed4106dda7269ee1fa9d8"
+      },
+      {
+        "exact_replay": true,
+        "proof": "node-checks-proof.json",
+        "sha256": "0daf62fc70c78045f221f506552e549d13c7fc553a0feabc26754e0147da13c4"
+      },
+      {
+        "exact_replay": true,
+        "proof": "topology-proof.json",
+        "sha256": "1d75ba31a0d42e5d147577c3dbe6a046132be3bc86553ee2dff935b9054e44c9"
+      },
+      {
+        "exact_replay": true,
+        "proof": "route-comparison.json",
+        "sha256": "8b08877cab2a512065e6027899ffe3594095f60de05eea1497a9bb1aa94dc1dd"
+      }
+    ],
+    "historical_accounting_context": {
+      "cumulative_charge_seconds": "46816.44684049067957",
+      "journal_records": 46,
+      "scope": "Journal arithmetic and these two receipt hashes checked; other historical routes are context only."
+    },
+    "host_admission_files": 74,
+    "native_margin_delta_counts": {
+      "hold": {
+        "unchanged": 17194
+      },
+      "setup": {
+        "unchanged": 17194
+      }
+    },
+    "native_readback_needed": false,
+    "native_snapshot_manifest_members": 401,
+    "pair_route_charge_seconds_recorded_not_recharged": "1812.8799435989931",
+    "passed": true,
+    "scope": "Offline replay of complete saved graph, final timing and rollback proof. Native81/CLI9 are retained host receipts, not rerun. No native reader execution, GPU route, rejected-state timing reconstruction, emitted-RBF electrical proof or hardware acceptance.",
+    "source_commit": "f5c6b90df4b8a36a6a8f631998d52ef160c2044b",
+    "source_files": 29
+  },
+  "scope": "Fresh extraction and offline graph/truth/timing/native-topology proof replay; no native or GPU execution"
+}
