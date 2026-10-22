@@ -1,0 +1,33 @@
+{
+  "archive_sha256": "bf676bcf82c9de7484a645ce26fc0b34832066fa8d30458d7f384460628f800c",
+  "verified_outputs": {
+    "analysis.json": "32ea11f4f77889d5d62cfc1c2c6c04185908a128b0f244ca99d63cd175f0abe6",
+    "README.md": "8858fed7cdb354f4c62e95bbc1337987d17f8b3eaed11646620e19b61773b012",
+    "runs.jsonl": "aaeb12b798040bc1572db50db1b03e2a804056de4e5bebd89839f3b947585f0b",
+    "w1000-c2/complete-comparison.json": "f1d8630374a25547d08c3855e26ae34fa5c5af715d0731e00e8bfbb52c473113",
+    "w1000-c5/complete-comparison.json": "f9706f15e9b882cfb199bac143b277dfdf6595e6f6c7ef3952e39a45f62c5ad7",
+    "w2000-c2/complete-comparison.json": "391bd0f8eb92921162793307fe3f8c0e7c79ec561e0ddcc812dcd8ab396540a2",
+    "w300-c2/complete-comparison.json": "9cf0cb0b472e00138903ab6ae67473cfb7c0cc34da55e77f83a941a2872eabaf",
+    "w300-c5/complete-comparison.json": "7b3d7e2739ed83cd853fdccd32183c9e28fb6f10024c2d55e76e45d5ffd19823"
+  },
+  "all_outputs_byte_identical": true,
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "analyze.py",
+        "--archive-mode",
+        "--require-complete"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "python3",
+        "report.py"
+      ],
+      "returncode": 0
+    }
+  ],
+  "evidence": "Offline complete endpoint/contract/report replay from captured bytes; executable identity is receipt-bound and no new tool execution, route or hardware occurred."
+}
