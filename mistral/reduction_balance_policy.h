@@ -24,7 +24,7 @@ struct Reduction {
 };
 
 // Only accept irredundant conjunctions of seven to twelve literals in three LUTs,
-// sixteen literals in four LUTs, or twenty-four literals in seven LUTs.
+// thirteen to eighteen literals in four LUTs, or twenty-four literals in seven LUTs.
 // The first two reuse every cell; the last needs four leaves and its public root.
 // Each LUT must encode a unique input assignment for the output polarity needed
 // by its parent, checked using at most 64 rows per LUT. This deliberately
@@ -69,7 +69,8 @@ inline Reduction recognize(const std::vector<Node> &network, int root)
     // Two leaves cover at most twelve literals. Smaller functions fit one LUT;
     // larger functions need an extra leaf and cannot reuse this three-cell cone.
     const bool supported_size = network.size() == 3 ? literals.size() >= 7 && literals.size() <= 12 :
-                               literals.size() == (network.size() == 4 ? 16 : 24);
+                               network.size() == 4 ? literals.size() >= 13 && literals.size() <= 18 :
+                               literals.size() == 24;
     if (!supported_size)
         return result;
     for (const auto &entry : nodes) result.outputs.push_back(entry.first);

@@ -35,6 +35,28 @@ def design(exposed_child=False):
                                 "netnames": {"errors": {"bits": inputs}, "out": {"bits": [21]}}}}}
 
 
+def four_literal_design(count):
+    """Four serial LUTs with mixed literals and active-low private outputs."""
+    inputs = list(range(2, count + 2))
+    cells, offset, remaining = {}, 0, count
+    for stage, name in enumerate(("leaf_a", "leaf_b", "inner", "root")):
+        size = remaining // (4 - stage)
+        values = inputs[offset:offset + size]
+        row = sum(int((offset + i) % 3 != 1) << i for i in range(size))
+        if stage:
+            values += [63 + stage]  # previous private result must be zero
+        mask = 1 << row
+        if stage != 3:
+            mask ^= (1 << (1 << len(values))) - 1
+        cells[name] = lut(len(values), mask, values, 64 + stage)
+        offset += size
+        remaining -= size
+    return {"modules": {"top": {"attributes": {"top": 1}, "cells": cells,
+                                "ports": {"errors": {"direction": "input", "bits": inputs},
+                                          "out": {"direction": "output", "bits": [67]}},
+                                "netnames": {"errors": {"bits": inputs}, "out": {"bits": [67]}}}}}
+
+
 def add_eleven_cone(fixture):
     top = fixture["modules"]["top"]
     inputs = list(range(32, 43))
@@ -152,7 +174,8 @@ def public_output_cone(top, port_name, root_name):
 def cube_literals(top, root):
     """Symbolically flatten unique LUT assignments, enumerating at most 64 rows."""
     drivers = {bits[0]: name for name, cell in top["cells"].items()
-               for port, bits in cell["connections"].items() if port == "Q" and bits}
+               for port, bits in cell["connections"].items()
+               if cell["port_directions"][port] == "output" and len(bits) == 1}
     literals, visited = {}, set()
 
     def descend(bit, required):
@@ -180,10 +203,11 @@ def cube_literals(top, root):
 
 class ReductionBalanceCliTest(unittest.TestCase):
     def run_design(self, exposed_child=False, root="root", output_attribute=None, root_table=None,
-                   clock_net=None, step=None, mode=None, eleven=False, twentyfour=False, mutate=None):
+                   clock_net=None, step=None, mode=None, eleven=False, twentyfour=False, mutate=None,
+                   four_literals=None):
         with tempfile.TemporaryDirectory(prefix="reduction-balance-") as directory:
             folder = Path(directory)
-            fixture = design(exposed_child)
+            fixture = design(exposed_child) if four_literals is None else four_literal_design(four_literals)
             if eleven:
                 add_eleven_cone(fixture)
             if twentyfour:
@@ -228,6 +252,67 @@ class ReductionBalanceCliTest(unittest.TestCase):
                            "leaf_a": "MISTRAL_ALUT6", "leaf_b": "MISTRAL_ALUT4"}.items():
             self.assertEqual(cells[name]["type"], kind)
         self.assertEqual(int(cells["root"]["parameters"]["LUT"], 2), 0x80)
+
+    def test_four_cell_bounds_preserve_composition_and_other_cells(self):
+        widths = {13: (6, 5, 2), 14: (6, 6, 2), 15: (6, 6, 3),
+                  16: (6, 6, 4), 17: (6, 6, 5), 18: (6, 6, 6)}
+        for count in range(12, 20):
+            with self.subTest(count=count):
+                code, log, output = self.run_design(four_literals=count)
+                if count not in widths:
+                    self.assertNotEqual(code, 0, log)
+                    self.assertIn("not a safe four-LUT", log)
+                    self.assertIsNone(output)
+                    continue
+                self.assertEqual(code, 0, log)
+                baseline_code, baseline_log, baseline = self.run_design(root=None, four_literals=count)
+                self.assertEqual(baseline_code, 0, baseline_log)
+                before, after = baseline["modules"]["top"], output["modules"]["top"]
+                self.assertEqual(set(after["cells"]), set(before["cells"]))
+                self.assertEqual(cube_literals(after, "root"), cube_literals(before, "root"))
+                self.assertEqual(len(cube_literals(after, "root")), count)
+                self.assertEqual(after["cells"]["root"]["type"], "MISTRAL_ALUT3")
+                self.assertEqual(int(after["cells"]["root"]["parameters"]["LUT"], 2), 0x80)
+                for name, width in zip(("inner", "leaf_a", "leaf_b"), widths[count]):
+                    self.assertEqual(after["cells"][name]["type"], f"MISTRAL_ALUT{width}")
+                for name, cell in before["cells"].items():
+                    if name in ("inner", "leaf_a", "leaf_b", "root"):
+                        continue
+                    self.assertEqual(after["cells"][name]["type"], cell["type"])
+                    self.assertEqual(after["cells"][name]["parameters"], cell["parameters"])
+                    self.assertEqual(after["cells"][name].get("attributes"), cell.get("attributes"))
+                    self.assertEqual(named_connections(after, name), named_connections(before, name))
+                self.assertEqual(public_output_cone(after, "out", "root"),
+                                 public_output_cone(before, "out", "root"))
+
+    def test_new_four_cell_sizes_reject_aliases_protection_and_observable_intermediates(self):
+        def repeated(top):
+            top["cells"]["leaf_a"]["connections"]["B"] = list(top["cells"]["leaf_a"]["connections"]["A"])
+
+        def protected_cell(top):
+            top["cells"]["leaf_a"]["attributes"] = {"keep": 1}
+
+        def protected_input(top):
+            top["netnames"]["errors"]["attributes"] = {"dont_touch": 1}
+
+        def protected_output(top):
+            top["netnames"]["out"]["attributes"] = {"keep": 1}
+
+        def boundary(top):
+            top["ports"]["private_result"] = {"direction": "output", "bits": [64]}
+
+        def noncube(top):
+            root = top["cells"]["root"]
+            table = root["parameters"]["LUT"]
+            root["parameters"]["LUT"] = format(int(table, 2) | 1, f"0{len(table)}b")
+
+        for count in (13, 17, 18):
+            for mutate in (repeated, protected_cell, protected_input, protected_output, boundary, noncube):
+                with self.subTest(count=count, mutation=mutate.__name__):
+                    code, log, output = self.run_design(four_literals=count, mutate=mutate)
+                    self.assertNotEqual(code, 0, log)
+                    self.assertIn("not a safe four-LUT", log)
+                    self.assertIsNone(output)
 
     def test_eleven_literal_cone_and_repeatable_root_selection(self):
         for roots in (["eleven_root"], ["root", "eleven_root"], ["eleven_root", "root"]):

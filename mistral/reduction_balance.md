@@ -1,7 +1,8 @@
 # Bounded conjunction balancing diagnostics
 
 The opt-in `--balance-reduction-root NAME` recognizes three LUTs with seven to
-twelve distinct literals, four LUTs with sixteen, or seven LUTs with twenty-four.
+twelve distinct literals, four LUTs with thirteen to eighteen, or seven LUTs
+with twenty-four.
 Every LUT must have exactly one input assignment for the polarity required
 by its parent. Recognition examines at most 64 rows per LUT and propagates
 pin inversion; it rejects repeated inputs, reconvergence, cycles and general
@@ -13,6 +14,14 @@ literals, with the odd extra input assigned to the first leaf. The eleven-input
 form retains its six-plus-five partition. Functions with six or fewer literals
 fit one LUT; functions above twelve need more than two leaves. Both fall outside
 this three-cell rewrite.
+
+A four-LUT reduction reuses its three private intermediates as product leaves
+and its public root as a three-input product. The deterministic partition fills
+earlier leaves up to six inputs, reserving at least two inputs for each remaining
+leaf: 13 literals become 6+5+2, and 14 through 18 become 6+6+2 through 6+6+6.
+The existing sixteen-literal 6+6+4 partition is unchanged. This reduces the
+maximum logic depth to two LUTs without adding cells; it is not a routed timing
+guarantee. These four-cell cases remain pre-placement only.
 
 The 24-literal tree becomes four six-input product LUTs and a four-input root.
 Four original private intermediates are reused in deterministic name order;

@@ -172,8 +172,13 @@ void rewrite_reduction(Context *ctx, const ReductionBalancePlan &plan)
     const auto &old_slots = plan.slots;
     for (CellInfo *cell : cone) NPNR_ASSERT(cell->bel == BelId());
     const auto &children = plan.leaves;
+    // Fill earlier leaves up to six inputs while reserving at least two for
+    // each remaining leaf. This keeps the existing 16-literal 6+6+4 partition
+    // and avoids creating an unsupported one-input LUT at the lower bound.
+    const int four_middle = std::min(6, int(literals.size()) - 8);
     const std::vector<int> sizes = cone.size() == 3 ? std::vector<int>{int((literals.size() + 1) / 2), int(literals.size() / 2)} :
-                                  cone.size() == 4 ? std::vector<int>{6, 6, 4} : std::vector<int>{6, 6, 6, 6};
+                                  cone.size() == 4 ? std::vector<int>{6, four_middle, int(literals.size()) - 6 - four_middle} :
+                                                    std::vector<int>{6, 6, 6, 6};
     NPNR_ASSERT(children.size() == sizes.size());
     NPNR_ASSERT(plan.retired.size() == (cone.size() == 7 ? 2 : 0));
     NPNR_ASSERT(plan.retired_nets.size() == plan.retired.size());
@@ -233,7 +238,8 @@ void rewrite_reduction(Context *ctx, const ReductionBalancePlan &plan)
     if (cone.size() == 3)
         log_info("Balanced three-LUT reduction at '%s' into %d+%d inputs.\n", root->name.c_str(ctx), sizes[0], sizes[1]);
     else if (cone.size() == 4)
-        log_info("Balanced four-LUT reduction at '%s' into 6+6+4 inputs.\n", root->name.c_str(ctx));
+        log_info("Balanced four-LUT reduction at '%s' into %d+%d+%d inputs.\n",
+                 root->name.c_str(ctx), sizes[0], sizes[1], sizes[2]);
     else
         log_info("Balanced seven-LUT reduction at '%s' into 6+6+6+6 inputs; retired two private LUTs.\n",
                  root->name.c_str(ctx));
