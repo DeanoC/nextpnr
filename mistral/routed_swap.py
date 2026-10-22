@@ -320,7 +320,9 @@ def main():
         p.add_argument('--' + name, required=True, type=Path)
     p.add_argument('--device', required=True)
     p.add_argument('--budget', type=int, default=64)
-    p.add_argument('--pairs', action='store_true', help='try atomic connected LUT pairs in the candidate only')
+    mode = p.add_mutually_exclusive_group()
+    mode.add_argument('--pairs', action='store_true', help='try atomic connected LUT pairs in the candidate only')
+    mode.add_argument('--replicate', action='store_true', help='try exact LUT copies in the candidate only')
     p.add_argument('--seed', type=int, default=1)
     p.add_argument('--freq', type=float, default=100)
     p.add_argument('--router', choices=('gpu', 'router1', 'router2'), default='gpu')
@@ -371,6 +373,8 @@ def main():
                         str(inputs / 'guidance.json'), '--critical-swap-routed-trial']
             if a.pairs:
                 command.append('--critical-swap-pairs')
+            if a.replicate:
+                command.append('--critical-swap-replicate')
         receipt = {'command': command, 'binary_sha256': digest(inputs / 'compiler'),
                    'timeout': a.timeout, 'environment': {k: env[k] for k in
                    ('FES_GPU_LEASE_OWNER', 'GPU_LEASE_MAX_PER_OWNER', 'NEXTPNR_REQUIRE_GPU')}}

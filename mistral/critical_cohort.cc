@@ -419,7 +419,7 @@ PortRef guidance_sink(Context *ctx, const json11::Json::array &segments, size_t 
     return {ff->second.get(), id_DATAIN};
 }
 
-Guidance routed_guidance(Context *ctx, TimingAnalyser &timing)
+Guidance routed_guidance(Context *ctx, TimingAnalyser &timing, bool allow_exhausted = false)
 {
     Guidance result;
     if (ctx->critical_cohort_report.empty())
@@ -472,7 +472,7 @@ Guidance routed_guidance(Context *ctx, TimingAnalyser &timing)
             result.hops.push_back({driver->second.get(), sink.cell, delay_t(ps), sink.port});
         }
     }
-    if (result.hops.empty() || result.endpoints.empty())
+    if ((result.hops.empty() || result.endpoints.empty()) && !allow_exhausted)
         log_error("Critical cohort guidance has no matching hops on a failing clock.\n");
     log_info("Critical cohort: routed guidance has %zu hops and %zu setup endpoints.\n", result.hops.size(),
              result.endpoints.size());
@@ -945,6 +945,184 @@ void repair_critical_pair_swaps(Context *ctx, int timing_budget)
     }
     log_info("Critical pair swaps: attempted=%d/%d timed=%d/%d kept=%d; predicted only, full routing required.\n",
              attempted, max_attempts, timed, timing_budget, kept);
+}
+
+namespace {
+bool replicate_eligible(Context *ctx, CellInfo *source, CellInfo *sink, IdString port)
+{
+    if (!swap_movable(ctx, source) || !allowed(ctx, sink) || source == sink ||
+        !(swap_movable(ctx, sink) || (sink->type == id_MISTRAL_FF && sink->cluster == ClusterId() && port == id_DATAIN)) ||
+        !sink->ports.count(port) || sink->ports.at(port).type != PORT_IN ||
+        !source->params.count(id_LUT)) return false;
+    auto *net = source->getPort(id_Q);
+    if (!data_net(net) || net->driver.cell != source || net->driver.port != id_Q ||
+        net->users.entries() < 2 || sink->getPort(port) != net || source->get_pin_state(id_Q) != PIN_SIG) return false;
+    for (const auto &top : ctx->ports) {
+        if (top.second.net == net) return false;
+        for (const auto &input : source->ports)
+            if (input.second.type == PORT_IN && input.second.net && input.second.net == top.second.net) return false;
+    }
+    for (const auto &input : source->ports) {
+        if (input.first == id_Q) continue;
+        if (input.second.type != PORT_IN || !input.first.in(id_A, id_B, id_C, id_D, id_E, id_F)) return false;
+        auto state = source->get_pin_state(input.first);
+        if (state == PIN_0 || state == PIN_1) {
+            if (input.second.net) return false;
+        } else if ((state != PIN_SIG && state != PIN_INV) || !data_net(input.second.net) || input.second.net == net)
+            return false;
+    }
+    return true;
+}
+}
+
+bool critical_cohort_replicate_trial(Context *ctx, CellInfo *source, CellInfo *sink, IdString port, BelId target,
+                                      const std::function<bool(CellInfo *)> &accept)
+{
+    if (!replicate_eligible(ctx, source, sink, port) || target == BelId() || !ctx->checkBelAvail(target) ||
+        !ctx->isValidBelForCellType(source->type, target) || !ctx->fes_placement_allowed(target, source)) return false;
+    const std::string base = source->name.str(ctx) + "$fanout_copy";
+    IdString cname, nname;
+    for (size_t i = 0; i <= ctx->cells.size() + ctx->nets.size() + ctx->net_aliases.size(); ++i) {
+        cname = ctx->id(base + "$" + std::to_string(i)); nname = ctx->id(cname.str(ctx) + "$Q");
+        if (!ctx->cells.count(cname) && !ctx->nets.count(cname) && !ctx->net_aliases.count(cname) &&
+            !ctx->cells.count(nname) && !ctx->nets.count(nname) && !ctx->net_aliases.count(nname)) break;
+    }
+    auto old_port = sink->ports.at(port);
+    std::map<NetInfo *, indexed_store<PortRef>> users;
+    for (const auto &p : source->ports) if (p.second.net) users.emplace(p.second.net, p.second.net->users);
+    auto labs = ctx->labs;
+    auto *copy = ctx->createCell(cname, source->type);
+    auto *net = ctx->createNet(nname);
+    bool kept = false;
+    auto rollback = [&] {
+        if (kept) return;
+        if (copy->bel != BelId()) ctx->unbindBel(copy->bel);
+        sink->disconnectPort(port);
+        sink->ports.at(port) = old_port;
+        for (auto &p : copy->ports) copy->disconnectPort(p.first);
+        ctx->cells.erase(cname); ctx->nets.erase(nname); ctx->net_aliases.erase(nname);
+        for (auto &u : users) std::swap(u.first->users, u.second);
+        ctx->assignArchInfo();
+        ctx->labs = labs;
+        ctx->check();
+    };
+    try {
+        copy->params = source->params;
+        copy->pin_data = source->pin_data;
+        for (const auto &p : source->ports) {
+            if (p.first == id_Q) { copy->addOutput(id_Q); copy->connectPort(id_Q, net); }
+            else { copy->addInput(p.first); if (p.second.net) copy->connectPort(p.first, p.second.net); }
+        }
+        // Identical LUT type, mask, input nets and pin states are a complete
+        // combinational equivalence proof; no register or clock is duplicated.
+        sink->disconnectPort(port); sink->connectPort(port, net);
+        ctx->assignArchInfo();
+        ctx->bindBel(target, copy, STRENGTH_WEAK);
+        if (legal_labs(ctx, {ctx->bel_data(target).lab_data.lab, ctx->bel_data(sink->bel).lab_data.lab,
+                             ctx->bel_data(source->bel).lab_data.lab}) && accept(copy)) {
+            ctx->check(); kept = true;
+        }
+    } catch (...) { rollback(); throw; }
+    rollback();
+    return kept;
+}
+
+void repair_critical_replication(Context *ctx, int timing_budget)
+{
+    if (!timing_budget) return;
+    if (timing_budget < 0 || timing_budget > 64 || ctx->fes_any_slot_region_active)
+        log_error("Critical replication requires an ordinary placed design and a budget of 1..64.\n");
+    for (const auto &net : ctx->nets) if (!net.second->wires.empty())
+        log_error("Critical replication requires an unrouted design.\n");
+    int timed = 0, attempted = 0, kept = 0;
+    const int max_attempts = timing_budget * 128;
+    while (timed < timing_budget && attempted < max_attempts) {
+        TimingAnalyser before(ctx); before.with_clock_skew = false;
+        EndpointRows rows; Guidance guidance;
+        critical_cohort_pin_preview(ctx, [&] {
+            critical_cohort_setup_timing(ctx, before);
+            rows = endpoint_rows(ctx, before); guidance = routed_guidance(ctx, before, kept > 0);
+        });
+        if (before.have_loops || worst_slack(before) >= 0 || rows.empty()) break;
+        if (guidance.hops.empty()) {
+            if (kept) break; // All originally authenticated arcs were replaced by their equivalent copies.
+            log_error("Critical replication requires routed report guidance.\n");
+        }
+        auto hops = guidance.hops;
+        std::sort(hops.begin(), hops.end(), [](const Hop &a, const Hop &b) {
+            if (a.delay != b.delay) return a.delay > b.delay;
+            return std::tie(a.driver->name, a.sink->name, a.port) < std::tie(b.driver->name, b.sink->name, b.port);
+        });
+        struct Candidate { Hop hop; BelId target; int64_t cost; };
+        std::vector<std::vector<Candidate>> proposals;
+        std::set<std::tuple<IdString, IdString, IdString>> seen;
+        for (const auto &hop : hops) {
+            if (!replicate_eligible(ctx, hop.driver, hop.sink, hop.port) ||
+                !seen.emplace(hop.driver->name, hop.sink->name, hop.port).second) continue;
+            auto home = ctx->getBelLocation(hop.driver->bel), sink = ctx->getBelLocation(hop.sink->bel);
+            std::set<std::pair<int,int>> tiles;
+            for (auto center : {std::make_pair(sink.x, sink.y), std::make_pair((home.x + sink.x)/2, (home.y + sink.y)/2)})
+                for (int dx=-2; dx<=2; ++dx) for (int dy=-2; dy<=2; ++dy)
+                    if (std::abs(dx)+std::abs(dy)<=2) tiles.emplace(center.first+dx, center.second+dy);
+            std::vector<Candidate> candidates;
+            for (auto tile : tiles) for (auto target : ctx->getBelsByTile(tile.first, tile.second)) {
+                if (!ctx->checkBelAvail(target) || !ctx->isValidBelForCellType(hop.driver->type, target)) continue;
+                auto pins = ctx->getBelPinsForCellPin(hop.sink, hop.port);
+                if (pins.empty()) continue;
+                int64_t cost = ctx->predictDelay(target, id_COMBOUT, hop.sink->bel, pins.front());
+                for (const auto &p : hop.driver->ports) {
+                    if (p.second.type != PORT_IN || !data_net(p.second.net)) continue;
+                    auto src = p.second.net->driver;
+                    auto sp = ctx->getBelPinsForCellPin(src.cell, src.port);
+                    auto dp = ctx->getBelPinsForCellPin(hop.driver, p.first);
+                    if (!sp.empty() && !dp.empty()) cost += ctx->predictDelay(src.cell->bel, sp.front(), target, dp.front());
+                }
+                candidates.push_back({hop, target, cost});
+            }
+            std::sort(candidates.begin(), candidates.end(), [&](const Candidate &a, const Candidate &b) {
+                auto x=ctx->getBelLocation(a.target), y=ctx->getBelLocation(b.target);
+                return std::tie(a.cost,x.x,x.y,x.z)<std::tie(b.cost,y.x,y.y,y.z);
+            });
+            std::vector<Candidate> diverse;
+            std::map<std::pair<int,int>, int> per_tile;
+            for (const auto &c : candidates) {
+                auto loc=ctx->getBelLocation(c.target);
+                if (per_tile[{loc.x,loc.y}]++ >= 4) continue;
+                diverse.push_back(c); if (diverse.size()==32) break;
+            }
+            proposals.push_back(std::move(diverse)); if (proposals.size()==8) break;
+        }
+        bool improved=false;
+        for (int rank=0; rank<32 && !improved && timed<timing_budget && attempted<max_attempts; ++rank)
+            for (const auto &proposal : proposals) {
+                if (timed>=timing_budget || attempted>=max_attempts) break;
+                if (size_t(rank)>=proposal.size()) continue;
+                const auto &c=proposal[rank]; ++attempted;
+                bool accepted=critical_cohort_replicate_trial(ctx,c.hop.driver,c.hop.sink,c.hop.port,c.target,[&](CellInfo *) {
+                    ++timed;
+                    TimingAnalyser after(ctx); after.with_clock_skew=false;
+                    bool safe=false;
+                    critical_cohort_pin_preview(ctx,[&] {
+                        critical_cohort_setup_timing(ctx,after);
+                        for (const auto &endpoint:guidance.endpoints) {
+                            if (after.get_setup_slack(endpoint)<before.get_setup_slack(endpoint)+20) continue;
+                            auto checks=timing_guard(ctx,before,after,{endpoint},&rows);
+                            log_info("Critical replica guards: gain=%d clocks=%d holds=%d endpoints=%d.\n",
+                                     int(checks.gain),int(checks.clocks),int(checks.holds),int(checks.endpoints));
+                            safe=checks.accepts(); break;
+                        }
+                        log_info("Critical replica trial %d: %s -> %s.%s at %s worst=%ld->%ldps accepted=%d.\n",
+                                 timed,ctx->nameOf(c.hop.driver),ctx->nameOf(c.hop.sink),c.hop.port.str(ctx).c_str(),
+                                 ctx->nameOfBel(c.target),long(worst_slack(before)),long(worst_slack(after)),int(safe));
+                    });
+                    return safe;
+                });
+                if (accepted) { ++kept; improved=true; break; }
+            }
+        if (!improved) break;
+    }
+    log_info("Critical replication: attempted=%d/%d timed=%d/%d kept=%d; predicted only, full routing required.\n",
+             attempted,max_attempts,timed,timing_budget,kept);
 }
 
 void repair_critical_swaps(Context *ctx, int timing_budget)

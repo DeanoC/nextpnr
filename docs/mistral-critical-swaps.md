@@ -131,3 +131,33 @@ exception restores every participant. Source homes and target sites must be
 disjoint; protected or clustered cells are excluded. Registers, carry chains,
 netlist functions and connectivity remain unchanged. This can explore a compact
 placement that individual moves cannot reach, but predicts no routed gain.
+
+## Shared data LUT replication (experimental)
+
+`--critical-swap-replicate` selects exact-function replication instead of swaps.
+It requires a positive `--critical-swap-budget`, excludes `--critical-swap-pairs`,
+and inherits the placed-checkpoint, authenticated guidance and unqualified-route
+restrictions. Saved settings do not enable it. The isolated route driver accepts
+`--replicate` on its candidate only; routed retention checks are unchanged.
+
+The search selects up to eight shared ordinary-LUT data edges from authenticated
+failing-clock guidance. It ranks empty sites within radius two of the consumer
+or source/consumer midpoint, retains up to 32 proposals per edge (four per tile),
+and visits edges in rounds. STA and geometry limits remain the explicit budget
+and 128 times that budget. Registers, carries, protected cells and top-level
+boundary nets are excluded. Inputs must be connected ordinary data signals or
+explicit disconnected constants; input polarity is preserved.
+
+A trial copies the exact LUT type, parameters, input nets and pin states and
+redirects one eligible ordinary-LUT input or FF DATAIN. The original source,
+other consumers and all original placements remain. The copy's function is
+identical for every input combination. Full affected-LAB legality and the same
+native endpoint, clock, related-hold and setup-gain guards decide retention.
+Rejection and exceptions restore user slots, sink connection, net aliases and
+LAB state. Accepted copies restart discovery; consumed authenticated edges end
+the search cleanly. Malformed initial guidance still fails.
+
+This is a placement prediction. It does not model every routing consequence of
+extra input fanout and does not establish routed timing or physical acceptance.
+A complete paired route and the existing coverage/retention gates are required
+before adopting the result. No ordinary recipe or default enables replication.

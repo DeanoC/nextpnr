@@ -44,6 +44,9 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
 // Two disjoint LUT exchanges are legalized and accepted as one transaction.
 bool critical_cohort_pair_swap_trial(Context *ctx, CellInfo *a, BelId at, CellInfo *b, BelId bt,
                                       const std::function<bool()> &accept);
+bool critical_cohort_replicate_trial(Context *ctx, CellInfo *source, CellInfo *sink, IdString port, BelId target,
+                                      const std::function<bool(CellInfo *)> &accept);
+void repair_critical_replication(Context *ctx, int timing_budget);
 void repair_critical_pair_swaps(Context *ctx, int timing_budget);
 void repair_critical_swaps(Context *ctx, int timing_budget);
 void repair_critical_cohorts(Context *ctx, int timing_budget);

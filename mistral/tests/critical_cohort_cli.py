@@ -29,6 +29,17 @@ class CriticalCohortCli(unittest.TestCase):
                                    *([] if route else ["--no-route"]), *options], stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, text=True, timeout=60)
 
+    def test_replication_requires_explicit_exclusive_positive_budget(self):
+        for options in (["--critical-swap-replicate"],
+                        ["--critical-swap-replicate", "--critical-swap-budget", "0"],
+                        ["--critical-swap-replicate", "--critical-swap-budget", "1", "--critical-swap-pairs"]):
+            result = self.run_design(options)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--critical-swap-replicate requires", result.stdout)
+        result = self.run_design(settings={"critical-swap-replicate": "1"})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn("Critical replication:", result.stdout)
+
     def test_pair_swaps_require_explicit_positive_budget(self):
         for options in (["--critical-swap-pairs"], ["--critical-swap-pairs", "--critical-swap-budget", "0"]):
             result = self.run_design(options)

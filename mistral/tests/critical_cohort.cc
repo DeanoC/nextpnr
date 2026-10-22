@@ -345,6 +345,106 @@ TEST_F(CriticalCohort, PairSearchImprovesNativeConnectedCone)
     ctx->check();
 }
 
+
+TEST_F(CriticalCohort, ReplicaPreservesTruthTablePolarityConstantsAndOtherConsumer)
+{
+    auto *clk=clock("clk",20000);
+    auto *launch=ff(clk,30,20,8), *logic=lut(24,20,0);
+    logic->disconnectPort(id_A); logic->connectPort(id_A,launch->getPort(id_Q));
+    logic->disconnectPort(id_B); logic->pin_data[id_B].state=PIN_1;
+    logic->type=id_MISTRAL_ALUT6;
+    for (auto pin:{id_C,id_D,id_E,id_F}) { logic->addInput(pin); logic->connectPort(pin,launch->getPort(id_Q)); }
+    logic->pin_data[id_C].state=PIN_INV;
+    logic->params[id_LUT]=Property(int64_t(0x9669699669969669ULL),64);
+    ctx->assignArchInfo();
+    auto *local=ff(clk,24,20,14,logic->getPort(id_Q));
+    auto *remote=ff(clk,30,20,14,logic->getPort(id_Q));
+    auto *original=logic->getPort(id_Q);
+    ASSERT_TRUE(critical_cohort_replicate_trial(ctx.get(),logic,remote,id_DATAIN,bel(30,20,0),[&](CellInfo *copy) {
+        EXPECT_EQ(copy->type,logic->type);
+        EXPECT_EQ(copy->params,logic->params);
+        for (auto pin:{id_A,id_B,id_C,id_D,id_E,id_F}) {
+            EXPECT_EQ(copy->getPort(pin),logic->getPort(pin));
+            EXPECT_EQ(copy->get_pin_state(pin),logic->get_pin_state(pin));
+        }
+        auto evaluate=[&](CellInfo *cell,int values) {
+            int address=0,bit=0;
+            for (auto pin:{id_A,id_B,id_C,id_D,id_E,id_F}) {
+                auto state=cell->get_pin_state(pin);
+                bool value=state==PIN_1 || (state!=PIN_0 && (((values>>bit)&1) != (state==PIN_INV)));
+                address|=int(value)<<bit++;
+            }
+            return (cell->params.at(id_LUT).as_int64()>>address)&1;
+        };
+        for (int row=0;row<64;++row) EXPECT_EQ(evaluate(copy,row),evaluate(logic,row));
+        EXPECT_EQ(local->getPort(id_DATAIN),original);
+        EXPECT_EQ(remote->getPort(id_DATAIN),copy->getPort(id_Q));
+        return true;
+    }));
+    EXPECT_EQ(local->getPort(id_DATAIN),original);
+    EXPECT_NE(remote->getPort(id_DATAIN),original);
+    ctx->check();
+}
+
+TEST_F(CriticalCohort, ReplicaRollbackRestoresUserSlotsAliasesAndPlacement)
+{
+    auto *clk=clock("clk",20000);
+    auto *launch=ff(clk,30,20,8), *logic=lut(24,20,0);
+    logic->disconnectPort(id_A); logic->connectPort(id_A,launch->getPort(id_Q));
+    logic->disconnectPort(id_B); logic->pin_data[id_B].state=PIN_0;
+    logic->params[id_LUT]=Property(6,4);
+    ff(clk,24,20,14,logic->getPort(id_Q));
+    auto *remote=ff(clk,30,20,14,logic->getPort(id_Q));
+    Snapshot saved(ctx.get());
+    auto port=remote->ports.at(id_DATAIN);
+    auto nets=ctx->nets.size(), aliases=ctx->net_aliases.size();
+    auto inputs=launch->getPort(id_Q)->users.entries();
+    bool visited=false;
+    EXPECT_FALSE(critical_cohort_replicate_trial(ctx.get(),logic,remote,id_DATAIN,bel(30,20,0),[&](CellInfo *) {
+        visited=true; return false;
+    }));
+    EXPECT_TRUE(visited); saved.check(ctx.get());
+    EXPECT_EQ(remote->ports.at(id_DATAIN).net,port.net);
+    EXPECT_EQ(remote->ports.at(id_DATAIN).user_idx,port.user_idx);
+    EXPECT_EQ(launch->getPort(id_Q)->users.entries(),inputs);
+    EXPECT_EQ(ctx->nets.size(),nets); EXPECT_EQ(ctx->net_aliases.size(),aliases);
+    EXPECT_THROW(critical_cohort_replicate_trial(ctx.get(),logic,remote,id_DATAIN,bel(30,20,0),[](CellInfo *)->bool {
+        throw std::runtime_error("replication timing failed");
+    }),std::runtime_error);
+    saved.check(ctx.get());
+    logic->attrs[ctx->id("keep")]=1;
+    EXPECT_FALSE(critical_cohort_replicate_trial(ctx.get(),logic,remote,id_DATAIN,bel(30,20,0),[](CellInfo *) {
+        ADD_FAILURE()<<"protected source copied"; return true;
+    }));
+    logic->attrs.clear();
+    ctx->ports[ctx->id("boundary")].net=logic->getPort(id_Q);
+    EXPECT_FALSE(critical_cohort_replicate_trial(ctx.get(),logic,remote,id_DATAIN,bel(30,20,0),[](CellInfo *) {
+        ADD_FAILURE()<<"top boundary copied"; return true;
+    }));
+}
+
+TEST_F(CriticalCohort, ReplicaSearchImprovesNativeSharedDataPath)
+{
+    auto *clk=clock("clk",3000);
+    auto *launch=ff(clk,30,20,8), *logic=lut(24,3,0);
+    logic->disconnectPort(id_A); logic->connectPort(id_A,launch->getPort(id_Q));
+    logic->disconnectPort(id_B); logic->pin_data[id_B].state=PIN_0;
+    logic->params[id_LUT]=Property(6,4);
+    auto *capture=ff(clk,30,20,14,logic->getPort(id_Q));
+    auto *side=ff(clk,24,3,14,logic->getPort(id_Q));
+    ctx->assignArchInfo();
+    // The selected reported hop is the output's shared long connection.
+    auto report=route_through_guidance(logic).object_items();
+    ctx->critical_cohort_report=json11::Json(report).dump();
+    auto old=logic->getPort(id_Q); auto cells=ctx->cells.size();
+    repair_critical_replication(ctx.get(),16);
+    EXPECT_GT(ctx->cells.size(),cells);
+    EXPECT_NE(capture->getPort(id_DATAIN),old);
+    EXPECT_EQ(side->getPort(id_DATAIN),old);
+    EXPECT_EQ(logic->bel,bel(24,3,0));
+    ctx->check();
+}
+
 TEST_F(CriticalCohort, EmptyDestinationMovesWholeCohort)
 {
     auto *a = lut(30, 20, 0), *b = lut(30, 20, 6);

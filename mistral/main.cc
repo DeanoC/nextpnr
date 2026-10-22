@@ -92,6 +92,7 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
     specific.add_options()("routed-endpoints", po::value<std::string>(),
                            "write complete native endpoint inventory after full-route analogue signoff");
+    specific.add_options()("critical-swap-replicate", "try a private LUT copy for a shared data consumer (opt-in)");
     specific.add_options()("critical-swap-pairs", "try connected LUT pairs atomically instead of single LUT swaps (opt-in)");
     specific.add_options()("critical-swap-routed-trial",
                            "allow unqualified isolated swap trial (use mistral/routed_swap.py for retention)");
@@ -250,6 +251,9 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         !vm.count("no-route") && !vm.count("critical-swap-routed-trial"))
         log_error("Routed swaps require isolated validation with mistral/routed_swap.py; "
                   "--critical-swap-routed-trial emits an UNQUALIFIED diagnostic candidate.\n");
+    if (vm.count("critical-swap-replicate") &&
+        (vm.count("critical-swap-pairs") || !vm.count("critical-swap-budget") || vm["critical-swap-budget"].as<int>() <= 0))
+        log_error("--critical-swap-replicate requires a positive budget and excludes --critical-swap-pairs.\n");
     if (vm.count("critical-swap-pairs") &&
         (!vm.count("critical-swap-budget") || vm["critical-swap-budget"].as<int>() <= 0))
         log_error("--critical-swap-pairs requires a positive --critical-swap-budget.\n");
@@ -634,7 +638,8 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
                 !ctx->attrs.count(id_step) || ctx->attrs.at(id_step).as_string() != "place" ||
                 ctx->critical_cohort_report.empty())
                 log_error("Critical swaps require --no-pack --no-place, a placed checkpoint and --critical-cohort-report.\n");
-            if (vm.count("critical-swap-pairs")) repair_critical_pair_swaps(ctx, budget);
+            if (vm.count("critical-swap-replicate")) repair_critical_replication(ctx, budget);
+            else if (vm.count("critical-swap-pairs")) repair_critical_pair_swaps(ctx, budget);
             else repair_critical_swaps(ctx, budget);
             ctx->save_fes_pin_maps(false);
             ctx->archInfoToAttributes();
