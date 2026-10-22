@@ -37,7 +37,8 @@ bool critical_cohort_trial(Context *ctx, const std::vector<CellInfo *> &cohort, 
 bool critical_cohort_timing_safe(Context *ctx, TimingAnalyser &before, TimingAnalyser &after,
                                  const std::vector<CellPortKey> &focus = {});
 // Exchange two unconstrained ordinary LUTs (or move into an empty site).
-// Reuse the cohort transaction and affected-LAB legality; callback is inspection only.
+// Reuse the cohort transaction and affected-LAB legality. Routed callers must
+// restore non-placement state separately after rejection (see critical_routed_move_trial).
 bool critical_cohort_swap_trial(Context *ctx, CellInfo *cell, BelId target, const std::function<bool()> &accept);
 // Complete endpoint inventory, including explicit unsupported rows. Never intersect reports.
 json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timing, TimingAnalyser &unskewed);

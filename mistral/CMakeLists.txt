@@ -1,5 +1,6 @@
 set(SOURCES
     analogue.cc
+    routed_move.cc
     arch.cc
     archdefs.cc
     archdefs.h

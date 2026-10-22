@@ -92,6 +92,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
     specific.add_options()("routed-endpoints", po::value<std::string>(),
                            "write complete native endpoint inventory after full-route analogue signoff");
+    specific.add_options()("critical-move-route-budget", po::value<int>(),
+                           "post-route LUT move and incident reroute (0..16 trials, default 0)");
     specific.add_options()("critical-route-budget", po::value<int>(),
                            "post-route single-net repair with full-design guards (0..32 trials, default 0)");
     specific.add_options()("critical-swap-replicate", "try a private LUT copy for a shared data consumer (opt-in)");
@@ -178,6 +180,7 @@ void MistralCommandHandler::customBitstream(Context *ctx)
         std::string filename = vm["rbf"].as<std::string>();
         ctx->fes_validate_cram_routing();
         ctx->repair_critical_routes();
+        ctx->repair_critical_moves();
         ctx->build_bitstream();
         if (vm.count("routed-endpoints")) {
             TimingAnalyser timing(ctx), unskewed(ctx);
@@ -331,6 +334,16 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
                        !vm.count("router") || vm["router"].as<std::string>() != "gpu"))
             log_error("Critical route repair requires an ordinary full GPU route with --rbf.\n");
         ctx->critical_route_budget = budget;
+    }
+    ctx->critical_move_route_budget = 0;
+    if (vm.count("critical-move-route-budget")) {
+        int budget=vm["critical-move-route-budget"].as<int>();
+        if (budget<0 || budget>16) log_error("--critical-move-route-budget must be between 0 and 16.\n");
+        if (budget && (!vm.count("rbf") || vm.count("no-route") || vm.count("pack-only") ||
+                       vm.count("fes-scaffold") || vm.count("fes-cart") || ctx->critical_route_budget ||
+                       !vm.count("router") || vm["router"].as<std::string>()!="gpu"))
+            log_error("Critical move repair requires an ordinary full GPU route with --rbf and no critical-route-budget.\n");
+        ctx->critical_move_route_budget=budget;
     }
     ctx->critical_cohort_budget = 0;
     ctx->critical_cohort_report.clear();

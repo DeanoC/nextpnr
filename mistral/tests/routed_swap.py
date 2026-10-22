@@ -19,7 +19,7 @@ BINARY = sys.argv.pop(1)
 
 
 class GpuDispatch(unittest.TestCase):
-    def run_driver(self, recognised=True, grant=True, route_repair=False):
+    def run_driver(self, recognised=True, grant=True, route_repair=False, move_route=False):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root / 'arbitrary-build-name'
@@ -35,6 +35,9 @@ class GpuDispatch(unittest.TestCase):
                 self.assertIn(kwargs['gpu_label'], ('pcxt265-guard-baseline', 'pcxt265-guard-candidate'))
                 if kwargs['gpu_label'].endswith('baseline'):
                     self.assertNotIn('--critical-route-budget', command)
+                    self.assertNotIn('--critical-move-route-budget', command)
+                elif move_route:
+                    self.assertIn('--critical-move-route-budget', command)
                 elif route_repair:
                     self.assertIn('--critical-route-budget', command)
                 if grant:
@@ -43,12 +46,14 @@ class GpuDispatch(unittest.TestCase):
             module._run_command = mock.Mock(side_effect=dispatch)
             argv = ['routed_swap.py', '--device', 'test', '--output', str(output),
                     '--runner-root', str(root)]
-            if route_repair:
+            if move_route:
+                argv += ['--move-route', '--budget', '8']
+            elif route_repair:
                 argv += ['--route-repair', '--budget', '8']
             for flag in ('binary', 'json', 'qsf', 'sdc', 'guidance'):
                 argv += ['--' + flag, str(source)]
             def boundary(output, baseline, candidate):
-                if route_repair:
+                if route_repair or move_route:
                     candidate()
                 raise RuntimeError('comparison boundary')
             # Stop before artifact comparison: this fixture only exercises the real
@@ -64,8 +69,15 @@ class GpuDispatch(unittest.TestCase):
                     return
                 with self.assertRaisesRegex(RuntimeError, 'comparison boundary'):
                     guard.main()
-            self.assertEqual(module._run_command.call_count, 2 if route_repair else 1)
-            return json.loads((output / ('candidate' if route_repair else 'baseline') / 'receipt.json').read_text())
+            self.assertEqual(module._run_command.call_count, 2 if route_repair or move_route else 1)
+            return json.loads((output / ('candidate' if route_repair or move_route else 'baseline') / 'receipt.json').read_text())
+
+    def test_move_route_is_candidate_only_and_preserves_lease_dispatch(self):
+        receipt = self.run_driver(move_route=True)
+        self.assertIn('--critical-move-route-budget', receipt['command'])
+        self.assertNotIn('--critical-route-budget', receipt['command'])
+        self.assertNotIn('--critical-swap-budget', receipt['command'])
+        self.assertEqual(receipt['gpu_grants'], ['0'])
 
     def test_route_repair_is_candidate_only_and_preserves_lease_dispatch(self):
         receipt = self.run_driver(route_repair=True)

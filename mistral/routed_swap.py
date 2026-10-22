@@ -321,6 +321,7 @@ def main():
     p.add_argument('--device', required=True)
     p.add_argument('--budget', type=int, default=64)
     mode = p.add_mutually_exclusive_group()
+    mode.add_argument('--move-route', action='store_true', help='try post-route LUT moves with incident rerouting')
     mode.add_argument('--route-repair', action='store_true', help='try post-route data-net alternatives with full-design guards')
     mode.add_argument('--pairs', action='store_true', help='try atomic connected LUT pairs in the candidate only')
     mode.add_argument('--replicate', action='store_true', help='try exact LUT copies in the candidate only')
@@ -333,6 +334,8 @@ def main():
     a = p.parse_args()
     if not 1 <= a.budget <= 64 or not 0 < a.timeout <= 600 or a.route_budget < 2 * a.timeout:
         p.error('budget must be 1..64, timeout 0..600, route-budget >= twice timeout')
+    if a.move_route and (a.budget > 16 or a.router != 'gpu'):
+        p.error('move-route repair requires GPU routing and a budget of 1..16')
     if a.route_repair and (a.budget > 32 or a.router != 'gpu'):
         p.error('route repair requires GPU routing and a budget of 1..32')
     if a.router == 'gpu' and not a.runner_root:
@@ -373,7 +376,9 @@ def main():
         directory = output / name
         directory.mkdir()
         command = base.copy()
-        if name == 'candidate' and a.route_repair:
+        if name == 'candidate' and a.move_route:
+            command += ['--critical-move-route-budget', str(a.budget)]
+        elif name == 'candidate' and a.route_repair:
             command += ['--critical-route-budget', str(a.budget)]
         elif name == 'candidate':
             command += ['--critical-swap-budget', str(a.budget), '--critical-cohort-report',

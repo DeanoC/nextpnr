@@ -29,6 +29,25 @@ class CriticalCohortCli(unittest.TestCase):
                                    *([] if route else ["--no-route"]), *options], stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, text=True, timeout=60)
 
+    def test_move_route_is_bounded_explicit_and_exclusive(self):
+        for budget in (-1, 17):
+            result = self.run_design(["--critical-move-route-budget", str(budget)])
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("must be between 0 and 16", result.stdout)
+        for options in (["--critical-move-route-budget", "1"],
+                        ["--critical-move-route-budget", "1", "--rbf", "unused.rbf", "--router", "router2"]):
+            result = self.run_design(options)
+            self.assertNotEqual(result.returncode, 0)
+        result = self.run_design(["--critical-move-route-budget", "1", "--critical-route-budget", "1",
+                                  "--rbf", "unused.rbf", "--router", "gpu"], route=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Critical move repair requires", result.stdout)
+        for options, settings in ((["--critical-move-route-budget", "0"], None),
+                                  ([], {"critical-move-route-budget": "16"})):
+            result = self.run_design(options, settings=settings)
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertNotIn("Critical move trial", result.stdout)
+
     def test_routed_repair_requires_explicit_full_gpu_route(self):
         for budget in (-1, 33):
             result = self.run_design(["--critical-route-budget", str(budget)])

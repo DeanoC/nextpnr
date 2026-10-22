@@ -1744,3 +1744,52 @@ TEST(CriticalRouteRanking, MeasuresEverySinkAndTerminalDelay)
     EXPECT_FALSE(std::isfinite(critical_route_local_gain({{0, 500, 300}})));
     EXPECT_FALSE(std::isfinite(critical_route_local_gain({{-100, 500, std::numeric_limits<float>::infinity()}})));
 }
+
+TEST_F(CriticalCohort, RoutedMoveRestoresPlacementWiresMuxesAndExceptions)
+{
+    auto *driver=lut(24,3,0), *middle=lut(24,3,6), *sink=lut(24,3,12), *outside=lut(30,3,0);
+    for (auto *cell:{driver,middle,sink,outside}) {
+        cell->params[id_LUT]=Property(8,4);
+        cell->disconnectPort(id_A);cell->disconnectPort(id_B);
+        cell->pin_data[id_A].state=PIN_0;cell->pin_data[id_B].state=PIN_1;
+    }
+    middle->connectPort(id_A,driver->getPort(id_Q));middle->pin_data[id_A].state=PIN_INV;
+    sink->connectPort(id_A,middle->getPort(id_Q));sink->pin_data[id_A].state=PIN_SIG;
+    ctx->assignArchInfo();
+    int visits=500000;
+    for(auto *cell:{driver,middle,sink,outside}) ASSERT_TRUE(critical_local_route_net(ctx.get(),cell->getPort(id_Q),visits));
+    ctx->configure_bitstream();
+    auto home=middle->bel,target=bel(30,3,6);ASSERT_NE(target,BelId());
+    using Tree=std::map<WireId,std::pair<PipId,PlaceStrength>>;
+    auto tree=[](NetInfo *net){Tree t;for(const auto &w:net->wires)t[w.first]={w.second.pip,w.second.strength};return t;};
+    std::map<IdString,Tree> original;
+    for(const auto &n:ctx->nets)original[n.first]=tree(n.second.get());
+    std::vector<uint8_t> rbf;ctx->cyclonev->rbf_save(rbf);
+    auto unchanged=[&](){
+        EXPECT_EQ(middle->bel,home);EXPECT_EQ(middle->pin_data[id_A].state,PIN_INV);
+        for(const auto &n:ctx->nets)EXPECT_EQ(tree(n.second.get()),original.at(n.first));
+        std::vector<uint8_t> now;ctx->cyclonev->rbf_save(now);EXPECT_EQ(now,rbf);EXPECT_TRUE(ctx->analogue_cache_valid);
+    };
+    bool inspected=false;
+    EXPECT_FALSE(critical_routed_move_trial(ctx.get(),middle,target,500000,[&]{inspected=true;EXPECT_EQ(middle->bel,target);return false;}));
+    EXPECT_TRUE(inspected);unchanged();
+    EXPECT_THROW(critical_routed_move_trial(ctx.get(),middle,target,500000,[]()->bool{throw std::runtime_error("injected");}),std::runtime_error);
+    unchanged();
+    inspected=false;
+    EXPECT_FALSE(critical_routed_move_trial(ctx.get(),middle,target,0,[&]{inspected=true;return true;}));
+    EXPECT_FALSE(inspected);unchanged();
+    EXPECT_FALSE(critical_routed_move_trial(ctx.get(),middle,outside->bel,500000,[]{return true;}));unchanged();
+    middle->attrs[ctx->id("keep")]=Property(1);
+    EXPECT_FALSE(critical_routed_move_trial(ctx.get(),middle,target,500000,[]{return true;}));
+    middle->attrs.erase(ctx->id("keep"));unchanged();
+    EXPECT_TRUE(critical_routed_move_trial(ctx.get(),middle,target,500000,[]{return true;}));
+    EXPECT_EQ(middle->bel,target);EXPECT_EQ(middle->pin_data[id_A].state,PIN_INV);EXPECT_EQ(tree(outside->getPort(id_Q)),original.at(outside->getPort(id_Q)->name));
+    for(auto *net:{driver->getPort(id_Q),middle->getPort(id_Q)}) {
+        auto root=ctx->getNetinfoSourceWire(net);
+        for(const auto &u:net->users)for(auto w:ctx->getNetinfoSinkWires(net,u)) {
+            std::set<WireId> seen;
+            while(w!=root){ASSERT_TRUE(seen.insert(w).second);ASSERT_TRUE(net->wires.count(w));
+                auto pip=net->wires.at(w).pip;ASSERT_NE(pip,PipId());w=ctx->getPipSrcWire(pip);}
+        }
+    }
+}

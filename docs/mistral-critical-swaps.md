@@ -204,3 +204,32 @@ inventory. Ordinary data boundaries exclude clocks, globals, external IO,
 protected nets/cells, carry chains and control consumers. Search is diagnostic:
 unchanged unsupported rows stay unsupported. Full artifact retention still
 requires complete qualified coverage; this option never waives that gate.
+
+## Post-route LUT moves with incident rerouting
+
+`--critical-move-route-budget N` (0..16, default 0) enables an independent
+post-route experiment. It requires an ordinary full GPU route with `--rbf` and
+cannot be combined with `--critical-route-budget`. Loaded settings cannot enable
+it. The retention driver selects it with `--move-route --budget N`.
+
+The pass examines at most 32 failing ordinary LUTs, generating empty-site
+proposals around the current site and at most four connected neighbors. It
+retains at most four legal geometric proposals per cell, then visits cells in
+criticality order round-robin. A slack-weighted Manhattan estimate orders
+proposals only; it cannot authorize retention. Registers, carry cells, protected
+cells, clustered cells and occupied destination sites are not moved.
+
+Each transaction rips up only the moved LUT's incident data nets (at most seven,
+with at most 64 sinks per net), preserving all other bound routes as obstructions.
+A CPU reverse-Dijkstra search consumes at most 500,000 queue visits across the
+whole transaction, obeying architecture pip/wire availability and existing tree
+parents. There is no negotiated rip-up of other nets. Local route failure,
+exhaustion, rejected timing and exceptions restore placement, LAB state, original
+wire/pip strengths and physical mux/cache state together.
+
+Only fresh native timing can accept a move: the complete endpoint/contract
+inventory, all setup/related-hold margins including positive margins, all clock
+margins/Fmax and at least 20 ps gain on an already failing setup endpoint are
+required. Unsupported boundaries remain diagnostic and cannot pass the outer
+artifact-retention gate. The graph and cell functions are unchanged; accepted
+moves may change only the moved cell's placement and its incident data routes.
