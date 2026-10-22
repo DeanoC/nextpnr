@@ -183,7 +183,13 @@ analogue model measures every sink, including branch loading and terminal LUT
 input delay. The minimum predicted sink slack ranks candidates; only proposals
 with at least 20 ps worst-sink gain proceed. This is a conservative prefilter,
 not a timing proof: full endpoint and hold checks still decide retention.
-Ranking always restores the original physical tree. Original cell placement,
+One additional bounded generation feeds the largest measured per-pip delays
+from rejected proposals back into the search model. Exact wire/pip duplicates
+are skipped across generations. This permits at most eight native proposal
+measurements per selected net, with the original budget still limiting full
+STA trials. Learned costs never become timing evidence: the original fallback
+table is restored before evaluation and before final signoff. Ranking always
+restores the original physical tree. Original cell placement,
 functions and net connectivity stay fixed;
 other nets stay bound and obstruct candidate routing. A trial verifies a rooted,
 acyclic tree reaching every original sink before applying it. Rejection and

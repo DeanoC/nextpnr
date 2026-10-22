@@ -961,53 +961,74 @@ void Arch::repair_critical_routes()
         pip_delay_observed = observed; pip_type_calibration = calibration;
         pip_delay_calibrated = calibrated; pip_delay_prior = prior;
     };
-    std::unique_ptr<GpuCandidateRouter> router;
-    try {
-        compute_analogue_arcs(true);
-        GpuRouterCfg cfg(ctx); cfg.telemetry_path.clear();
-        router = std::make_unique<GpuCandidateRouter>(ctx, cfg);
-    } catch (...) { restore_table(); throw; }
+    auto learned = observed;
+    std::vector<std::vector<std::pair<float, GpuRouteTree>>> ranked(sinks.size());
+    std::vector<std::vector<std::vector<std::pair<WireId, PipId>>>> seen(sinks.size());
+    // One feedback generation: measured rejected-route hop costs steer the
+    // search away from optimistic unobserved wires. Observations are a search
+    // heuristic only; topology-dependent loads cannot become signoff timing.
+    for (int generation = 0; generation < 2; ++generation) {
+        std::unique_ptr<GpuCandidateRouter> router;
+        try {
+            pip_delay_observed = learned;
+            compute_analogue_arcs(true);
+            learned = pip_delay_observed;
+            GpuRouterCfg cfg(ctx); cfg.telemetry_path.clear();
+            router = std::make_unique<GpuCandidateRouter>(ctx, cfg);
+        } catch (...) { restore_table(); throw; }
+        restore_table();
+        auto proposals = router->candidates(sinks, 4, true);
+        router.reset(); // Release the GPU lease before native CPU evaluation.
+        log_info("Critical route generation %d: learned observations=%zu.\n", generation, learned.size());
+        for (size_t i = 0; i < sinks.size(); ++i) {
+            auto *ni = sinks[i].net;
+            std::vector<CriticalRouteSinkDelay> base;
+            bool known = true;
+            for (const auto &usr : ni->users) {
+                auto found = analogue_arc_cache.find(&usr);
+                if (found == analogue_arc_cache.end() || !found->second.ok) { known = false; break; }
+                base.push_back({float(before->get_setup_slack(CellPortKey(usr))),
+                                float(found->second.delay.maxDelay()), 0});
+            }
+            if (!known) continue;
+            for (auto &candidate : proposals[i]) {
+                auto identity = candidate.wires;
+                std::sort(identity.begin(), identity.end());
+                if (std::find(seen[i].begin(), seen[i].end(), identity) != seen[i].end()) continue;
+                seen[i].push_back(std::move(identity));
+                float gain = -std::numeric_limits<float>::infinity();
+                critical_route_trial(ctx, ni, candidate, [&]() {
+                    auto trial = base;
+                    size_t u = 0;
+                    for (const auto &usr : ni->users) {
+                        DelayQuad delay;
+                        std::vector<AnalogueHop> hops;
+                        if (!analogue_arc_delay(ni, usr, delay, &hops)) return false;
+                        trial.at(u++).after = float(delay.maxDelay());
+                        for (const auto &hop : hops) {
+                            auto &value = learned[hop.pip];
+                            value = std::max(value, std::max(hop.rise, hop.fall));
+                        }
+                    }
+                    gain = critical_route_local_gain(trial);
+                    return false; // Ranking always restores the original physical tree.
+                });
+                log_info("Critical route proposal: net %s variant %d native worst-sink gain %.3f ps.\n",
+                         ctx->nameOf(ni), candidate.variant, gain);
+                if (gain >= 20) ranked[i].emplace_back(gain, std::move(candidate));
+            }
+        }
+    }
+    // No learned costs escape the search, including for uncovered fallback arcs.
     restore_table();
-    auto candidates = router->candidates(sinks, 4, true);
-    router.reset(); // Release the GPU phase lease before CPU-only analogue trials.
-    // Score the complete native electrical tree, including each branch's load
-    // and terminal LUT stage. Never rank by the scalar target-arc delay alone.
-    // This is only proposal selection; full native endpoint guards still decide.
+    std::vector<std::vector<GpuRouteTree>> candidates(sinks.size());
     for (size_t i = 0; i < sinks.size(); ++i) {
-        auto *ni = sinks[i].net;
-        std::vector<CriticalRouteSinkDelay> base;
-        bool known = true;
-        for (const auto &usr : ni->users) {
-            auto found = analogue_arc_cache.find(&usr);
-            if (found == analogue_arc_cache.end() || !found->second.ok) { known = false; break; }
-            base.push_back({float(before->get_setup_slack(CellPortKey(usr))),
-                            float(found->second.delay.maxDelay()), 0});
-        }
-        std::vector<std::pair<float, GpuRouteTree>> scored;
-        if (known) for (auto &candidate : candidates[i]) {
-            float gain = -std::numeric_limits<float>::infinity();
-            critical_route_trial(ctx, ni, candidate, [&]() {
-                auto trial = base;
-                size_t u = 0;
-                for (const auto &usr : ni->users) {
-                    auto found = analogue_arc_cache.find(&usr);
-                    if (found == analogue_arc_cache.end() || !found->second.ok) return false;
-                    trial.at(u++).after = float(found->second.delay.maxDelay());
-                }
-                gain = critical_route_local_gain(trial);
-                return false; // Ranking must always restore the original physical tree.
-            });
-            log_info("Critical route proposal: net %s variant %d native worst-sink gain %.3f ps.\n",
-                     ctx->nameOf(ni), candidate.variant, gain);
-            if (gain >= 20) scored.emplace_back(gain, std::move(candidate));
-        }
-        std::stable_sort(scored.begin(), scored.end(), [](const auto &a, const auto &b) { return a.first > b.first; });
-        candidates[i].clear();
-        for (auto &entry : scored) candidates[i].push_back(std::move(entry.second));
+        std::stable_sort(ranked[i].begin(), ranked[i].end(), [](const auto &a, const auto &b) { return a.first > b.first; });
+        for (auto &entry : ranked[i]) candidates[i].push_back(std::move(entry.second));
     }
     int tried = 0, kept = 0;
     // Round-robin across failing nets: one net cannot consume the whole budget.
-    for (size_t rank = 0; rank < 4 && tried < critical_route_budget; ++rank)
+    for (size_t rank = 0; rank < 8 && tried < critical_route_budget; ++rank)
         for (size_t i = 0; i < sinks.size() && tried < critical_route_budget; ++i) {
             if (rank >= candidates[i].size()) continue;
             auto *ni = sinks[i].net;
