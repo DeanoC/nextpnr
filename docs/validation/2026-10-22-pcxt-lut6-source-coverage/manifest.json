@@ -1,0 +1,1974 @@
+{
+  "HOST-CAPTURE-RECIPE.md": {
+    "sha256": "8eb42462c0f89f00bf533c65d00d709887e9f90ddf7bc1a05e167a7069576bb8",
+    "size": 3486
+  },
+  "HOST-VALIDATION.md": {
+    "sha256": "d3d1f3e4efdda1344bf93fd8296d1f0fcb40c621ac3aad521642ea98708580f4",
+    "size": 2381
+  },
+  "README.md": {
+    "sha256": "10c620cf72a654fbfeba86a517350e7587f99feaa258923e11723d0d2d3e5fc5",
+    "size": 8448
+  },
+  "archive-mode.json": {
+    "sha256": "72b642bb83434914a039044643f4e6debb038ed61d8b0fbec9286054eea31bc7",
+    "size": 259060
+  },
+  "board-eligibility/README.md": {
+    "sha256": "983993ed52878096d7b4805df50f2605c127538fb375b9dfb9ab0f2cc6ebf800",
+    "size": 2244
+  },
+  "board-eligibility/build-plan.json": {
+    "sha256": "245fe1332984377c8baa8db90b38d3258b1131b07f1a664c8640072349eff9ab",
+    "size": 31287
+  },
+  "board-eligibility/build.log": {
+    "sha256": "ba3fcdca5f10a6739064ea0047b856e001b72c7151ae1dda37edbefe8ee149fc",
+    "size": 834
+  },
+  "board-eligibility/probe.cc": {
+    "sha256": "323e5a6283a1e75c12945a7ba4867f1c2495c98c31af6b5353b80c47ced5dfa2",
+    "size": 6521
+  },
+  "board-eligibility/probe.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "board-eligibility/receipt.json": {
+    "sha256": "888ab8c7855f014448b7abbd135375b7f302b640444e1a4b1ab8e49d57648f68",
+    "size": 16036
+  },
+  "board-eligibility/result.json": {
+    "sha256": "a8b4ed22593b1536d247fd2bc277ec35550c2b125c125119e0c2e75a82e8928f",
+    "size": 2093164
+  },
+  "board-eligibility/run.py": {
+    "sha256": "4317ccaf87a81fb1e433d60b78b4f83b620aea206ed59c75624f11332d36937e",
+    "size": 2956
+  },
+  "build-identity.json": {
+    "sha256": "d7230db812067d3688dfe6d043873310b2108f4c71ce84ed460930e6c4a24431",
+    "size": 345
+  },
+  "build.log": {
+    "sha256": "27fd248fff83354f8df336889e2841e98402e846c0598b01dcda0ff5f73cc172",
+    "size": 5592
+  },
+  "cli.log": {
+    "sha256": "201ba7d8e1c587da22c66fa95f582fc11242827e9114f67575ebd7483ed26648",
+    "size": 725
+  },
+  "cli.receipt.json": {
+    "sha256": "c3fd3c6463a565195225bd91f5d9a2b59482eabb10e5d8989773459d11b8d8c7",
+    "size": 457
+  },
+  "committed-source-verification.json": {
+    "sha256": "426f5e44549d46b6e395aa67b980e883cf7f6b2367fd77443a212624cc48fb60",
+    "size": 2784
+  },
+  "complete-source/docs/mistral-private-pair-decomposition.md": {
+    "sha256": "11e6367d127fe06b3f7fe3843b3e2a81fb7e32eba223ebae843ba7382ba12c2e",
+    "size": 5351
+  },
+  "complete-source/docs/mistral-routed-lut6-swap.md": {
+    "sha256": "a10f5b1b3d28353d8fbd36999241683fb0be9dc21427b8cfc535a587fc7353bd",
+    "size": 3537
+  },
+  "complete-source/mistral/CMakeLists.txt": {
+    "sha256": "a6bb00fc5c991b6713a15cee5db37d6fea238e473a85e25cca7709f2e2390d3f",
+    "size": 9212
+  },
+  "complete-source/mistral/analogue_repair.h": {
+    "sha256": "1be2832d9c8679746bb5f431596b5f6565102d68b402fc4c97fc60b60b6d714c",
+    "size": 5513
+  },
+  "complete-source/mistral/arch.h": {
+    "sha256": "d5bfdd304fc6a7f8b35dd799227de2f927f32fbf683d02a3bb0240e9bec76cb4",
+    "size": 42991
+  },
+  "complete-source/mistral/lab.cc": {
+    "sha256": "092f5df6a0b508f6ea6d245515df4adca430bc48b4302dfec1c87faf89df0fe6",
+    "size": 82217
+  },
+  "complete-source/mistral/main.cc": {
+    "sha256": "29d9562a9963df1510939f1fc651a451b1c665a8a2d6d90fd33266211397e444",
+    "size": 52497
+  },
+  "complete-source/mistral/private_pair_decomposition.cc": {
+    "sha256": "6858f770a4e0cb1ee068470bb1b33c6e48b5efc85b0be6a09fb8d09b86ff578f",
+    "size": 60096
+  },
+  "complete-source/mistral/private_pair_decomposition.h": {
+    "sha256": "1d36e04801ad23db79871d07c32c8b25cff92bbf16b5f5fba6f5fb472b222d85",
+    "size": 3643
+  },
+  "complete-source/mistral/private_pair_decomposition_native.h": {
+    "sha256": "888d419de51a5def5f7ebe6bcc46751060bad0291e2ccfbda6847b5afef58beb",
+    "size": 1948
+  },
+  "complete-source/mistral/routed_lut6_swap.cc": {
+    "sha256": "8c8276b46eef4c809d06e5f42dd4379155586170ac79e4ce044ae83aaee7b08c",
+    "size": 37656
+  },
+  "complete-source/mistral/routed_lut6_swap_policy.h": {
+    "sha256": "841a9c75498e0717c4a504e2700ef96fa9c59c20153195b6abf8af6552328b07",
+    "size": 638
+  },
+  "complete-source/mistral/routed_move.cc": {
+    "sha256": "2fc35f564fe36c23f332d0e7006f50fa8be645f40c41454ca5bb0db7a4921b73",
+    "size": 18721
+  },
+  "complete-source/mistral/tests/private_pair_decomposition.cc": {
+    "sha256": "779c0b622bcdf085291be4b8890f3a09d65390ec74534a2387bac244ec89fb26",
+    "size": 3931
+  },
+  "complete-source/mistral/tests/private_pair_decomposition_backend.cc": {
+    "sha256": "3872f716ed4309a7e105853d0604bda0b4349f193e42741dcb34cd078cc532ab",
+    "size": 35994
+  },
+  "complete-source/mistral/tests/route_through_cache.cc": {
+    "sha256": "c38824af45e4a9a8dc645457b6984dc1380ec4a7cad1319ab031ad23d02792a6",
+    "size": 9573
+  },
+  "complete-source/mistral/tests/routed_lut6_source_coverage.cc": {
+    "sha256": "2b3e5b36d2b713ffa1f324a4f24226c8952236bd5cf7cfee25838821488392c5",
+    "size": 9994
+  },
+  "complete-source/mistral/tests/routed_lut6_swap_backend.cc": {
+    "sha256": "d28cdbf8496db388f325c93c6cbbd195be92001af3424edcf24545676897cd95",
+    "size": 34913
+  },
+  "complete-source/mistral/tests/routed_lut6_swap_cli.py": {
+    "sha256": "64d9d918f7a9d0e882ee2f202d7353d282c97abb5aa2fc1ce684e51a7423588a",
+    "size": 3421
+  },
+  "complete-source/mistral/tests/routed_private_pair_backend.cc": {
+    "sha256": "102fed6a5f30d9a467609b52213fdb8298eb8779e22b1f4801e05f60eb561002",
+    "size": 36791
+  },
+  "complete-source/mistral/tests/routed_private_pair_cli.py": {
+    "sha256": "98a5e8e8ae4f2c824f2316f7c526ba9f0dc3d815141501b8ef3cebcc1f48e5f0",
+    "size": 3470
+  },
+  "control-proof.json": {
+    "sha256": "f332c395d9b9698482049d7943b7536678a520afdf138fae23f946b31c417d54",
+    "size": 709
+  },
+  "counterexample/README.md": {
+    "sha256": "f04a7df31340b8d39ddc5f669352f5341d20c3e2132a80babdc67307067c628d",
+    "size": 2153
+  },
+  "counterexample/build-plan.json": {
+    "sha256": "57f7dc04e70b852f691eb14e5eef77d136b4e9a200b2b9c9e05defbfdbf82ef9",
+    "size": 29927
+  },
+  "counterexample/build.log": {
+    "sha256": "ef6c105f393ac848d06c5ea50735e3ba3e4f84b550cb23b4783a3b1ddb5ec54f",
+    "size": 2019
+  },
+  "counterexample/parent-build-plan.json": {
+    "sha256": "06837bbc2a1251cab0cbb685777a345cd61b0ee9c9c1b8fa221d3e71b375c608",
+    "size": 30007
+  },
+  "counterexample/probe.cc": {
+    "sha256": "22562f913ff8cf280917f95dfb1ca90da5e86e57d41e58cbf79a174d99b329cc",
+    "size": 4813
+  },
+  "counterexample/probe.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "counterexample/receipt.json": {
+    "sha256": "fc61b2c850cb7116147f6eb6d8352a39dd2a48607fe8124859f96f3693cb4123",
+    "size": 3142
+  },
+  "counterexample/result.json": {
+    "sha256": "0a19c975aa92aced90e200dfedc5d3d1da971969d7871140a9a4c0393d7e86db",
+    "size": 2875
+  },
+  "external-inputs/3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041-clocks.sdc": {
+    "sha256": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041",
+    "size": 106
+  },
+  "external-inputs/5eff0d63083685f76041b438c36c18f38b19da98053427c7c2ee155dc3873e1d-constraints.qsf": {
+    "sha256": "5eff0d63083685f76041b438c36c18f38b19da98053427c7c2ee155dc3873e1d",
+    "size": 6421
+  },
+  "external-inputs/b4c44b2b66faaf8dd1019c6d8de119c55eecb49856158019ac8899a869de028b-synth.json": {
+    "sha256": "b4c44b2b66faaf8dd1019c6d8de119c55eecb49856158019ac8899a869de028b",
+    "size": 20130500
+  },
+  "final-analysis/README.md": {
+    "sha256": "10c620cf72a654fbfeba86a517350e7587f99feaa258923e11723d0d2d3e5fc5",
+    "size": 8448
+  },
+  "final-analysis/archive.py": {
+    "sha256": "c57b2bb126b9cb98abacb90615b1b93eba2f2338312253318ffd76bb55c26f95",
+    "size": 14063
+  },
+  "final-analysis/checker-origin.json": {
+    "sha256": "026249f23a594858d94dab2d9d34689edd2eea53f3dcdb949d71eb28b709827e",
+    "size": 1057
+  },
+  "final-analysis/checker-tests.json": {
+    "sha256": "d74fb76ebb68e4383e81fd80d5274fdeeabf35a7605683d036b62f00d0b744af",
+    "size": 16486
+  },
+  "final-analysis/compare_timing.py": {
+    "sha256": "d4d3509094321ce309665358057c84d9af5947a455bdfaa2bb82b318f006e180",
+    "size": 18229
+  },
+  "final-analysis/decision-ledger.json": {
+    "sha256": "36f330562618e2b0f15f1f21203d180c1defda1e895fa8c75ae22f748a6664d1",
+    "size": 33560
+  },
+  "final-analysis/graph-proof.json": {
+    "sha256": "946fffaa3c46d7dd468d37e98ac143ad73e9144a23239ee9aa7f860803e608a4",
+    "size": 25521
+  },
+  "final-analysis/graph-proof.log": {
+    "sha256": "df2a29405b2c97878c5ea9f311b48714ef196cac815925ef58f7e4a29d004cdb",
+    "size": 127
+  },
+  "final-analysis/prove_graph.py": {
+    "sha256": "cf50e43f2de2532fb47b24bef6fe9eee1816fae93424eab823d8ab4df709c1c4",
+    "size": 17268
+  },
+  "final-analysis/route-comparison.json": {
+    "sha256": "fffc8933614603dacfaf381d532286d8da8eeca8a4e357d071e8cbbcc2885917",
+    "size": 62883495
+  },
+  "final-analysis/route-comparison.log": {
+    "sha256": "d110b42cff7c550889190d10d8f29e3251e1aafce485c23ac01972408030bf16",
+    "size": 932
+  },
+  "final-analysis/source-control-proof.json": {
+    "sha256": "36487007f898ad44ca41e6741e902b5d8c3fd517a844d2ba4b5d5ee75d19eab5",
+    "size": 1572
+  },
+  "final-analysis/source-control-proof.log": {
+    "sha256": "76183f7ca885d604a64ef793b106c5d38be39f676c6ab8547cb2054881ca22c7",
+    "size": 1336
+  },
+  "final-analysis/summarize.py": {
+    "sha256": "9cb70275363c4090ff744a3ed0209d23a77819d2d0ffaca60403335128cd9442",
+    "size": 5565
+  },
+  "final-analysis/summary.json": {
+    "sha256": "1dbd7eeb9bb270e8b8d1a6fdcd4ec70f6a4d59b424ca727e3bbf1fc48d20836e",
+    "size": 11675
+  },
+  "final-analysis/support.py": {
+    "sha256": "f7e7e1bd779553ee038f24a33ae8934f586fd82326ce71f2510ffca21b80070a",
+    "size": 4987
+  },
+  "final-analysis/test_checks.py": {
+    "sha256": "328edc65f0c19f56eb2b5768d13ca672e517cc18315c9008f7eb7a02ba0ae120",
+    "size": 11828
+  },
+  "final-analysis/topology-proof.json": {
+    "sha256": "4d3dac603a6a21720b74cd377707fbe1d0e42793027cda1a995752c747feaa9f",
+    "size": 3245
+  },
+  "final-analysis/verify_sources.py": {
+    "sha256": "e36d2e2de4757d594a0cdd8320f2a72ef22096a0e63ca08b6c8ad1af1ddcaaf2",
+    "size": 12785
+  },
+  "final-analysis/verify_topology.py": {
+    "sha256": "fb8426ebf5cbdca53a84215f30e61c52fc6be4c284ea860a96296ec541f2585d",
+    "size": 11865
+  },
+  "final-validation.json": {
+    "sha256": "8d58d9bbae8c3c4026c2a3ca92c7021e1ef45dbac3b394bf91f2d8bcbb67663d",
+    "size": 10631
+  },
+  "freeze-host.py": {
+    "sha256": "ff0985742a1adff8f0c833a5f5fdbdc29b18d60a706e046e4bd68e26b5fdb78a",
+    "size": 3912
+  },
+  "freeze-validation.py": {
+    "sha256": "f6dedeb296a10da12207f5e89a6ee508ed6e9627fe775885e5586a9b9c889025",
+    "size": 5342
+  },
+  "independent-review/final-review.json": {
+    "sha256": "55da48dff5c3d5188957ae9624cd28c250f59d939cdb194e23aeb4cc03e0a041",
+    "size": 1292
+  },
+  "independent-review/origin-review.json": {
+    "sha256": "8f2d763d1a91b8db663aec1d344ee31a3b31071148d25db4942f0ef114dc1996",
+    "size": 2052
+  },
+  "independent-review/origin-review.py": {
+    "sha256": "ed5f9abf90826400840d6fde158dfe07ce7b9c8736396db98b11e22cccc1979b",
+    "size": 3239
+  },
+  "independent-review/probe.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "independent-review/readback-identity.json": {
+    "sha256": "f2c8418eee90773465fc7988b0878688ed0e5caa5c970f30b2241fdced6cbce0",
+    "size": 896
+  },
+  "independent-review/result.json": {
+    "sha256": "a8b4ed22593b1536d247fd2bc277ec35550c2b125c125119e0c2e75a82e8928f",
+    "size": 2093164
+  },
+  "independent-review/review.json": {
+    "sha256": "b3636a55872c9d2417c6974883af6b2ddd8745839b2b301b3a19705c1bfa5f5e",
+    "size": 862
+  },
+  "lut6-native.log": {
+    "sha256": "e1876fa2c551f72dddadd64870ea38b5e4528379675bde0b0fbb5212557789ac",
+    "size": 9137
+  },
+  "lut6-native.receipt.json": {
+    "sha256": "91940ad5b80e14afdf4bd7f3fb08805b12c672c82ba6bc12582ca68dee576873",
+    "size": 504
+  },
+  "native-topology/README.md": {
+    "sha256": "399a1c36a5158b2e7aa09b5af08f49447ce9069b92579990926c17032a89f5f1",
+    "size": 1595
+  },
+  "native-topology/build-commands.json": {
+    "sha256": "21beb7ea0da6110a7c01751ead027b0038ca3bacf69082e6a98233c3070fff9d",
+    "size": 23958
+  },
+  "native-topology/build-receipt.json": {
+    "sha256": "78fc9b451d659add1af1bdbf9dd579b12d1689fe91a97bdb1857427934363afe",
+    "size": 755
+  },
+  "native-topology/build.log": {
+    "sha256": "ef6c105f393ac848d06c5ea50735e3ba3e4f84b550cb23b4783a3b1ddb5ec54f",
+    "size": 2019
+  },
+  "native-topology/build.py": {
+    "sha256": "19a7e6fef09896abf290799363465e624c91bb2323c0171a48cef7e38385addb",
+    "size": 1918
+  },
+  "native-topology/default-selection.json": {
+    "sha256": "463da6f0ff988033fce142093969a4afee6f20dda66b2dbd56e4581f266dd805",
+    "size": 1178
+  },
+  "native-topology/default-topology.json": {
+    "sha256": "064a0eb824dbc38dc94c56347f4264d8b1322642a1ae2f142772e0892ab09319",
+    "size": 2830
+  },
+  "native-topology/default-topology.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "native-topology/freeze.py": {
+    "sha256": "cc2e2b5375ca75ddd1e702f52261199f8df842ee6ac2ff802aef5d3264f6d163",
+    "size": 2006
+  },
+  "native-topology/frozen-manifest.json": {
+    "sha256": "304bcf12935b884ea87adefb6270991c9403963ea89f71ea5215010826a5dce3",
+    "size": 144524
+  },
+  "native-topology/frozen/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/bdz-ph.h": {
+    "sha256": "b2a672c14d8b3dd666fbec7545be1facb983eb5799655f49f3df705f5cec8308",
+    "size": 865
+  },
+  "native-topology/frozen/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-blocktypes.ipp": {
+    "sha256": "52518fa18e43f9a2e9ed95b377b855315650f66a1d0a2995eaaf2124321fffd8",
+    "size": 880
+  },
+  "native-topology/frozen/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cv-rnodetypes.ipp": {
+    "sha256": "dbe5a1906837aca2d0f30dbb2feb49277f9fcb90d4fe0487c3154cebb5b80818",
+    "size": 1603
+  },
+  "native-topology/frozen/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/cyclonev.h": {
+    "sha256": "185c24e2b75385d8e62a7144f12488eb68f7d8159af0a8a603cc4a3de1749ee9",
+    "size": 46500
+  },
+  "native-topology/frozen/home/deano/fes/out/cache/misteross-toolchains/slots/9e819bbabb1dc62207303df581e20e34189d57e66f8bc1456d138afb7954c62a/src/mistral/libmistral/mistral-analogsim.h": {
+    "sha256": "f0ee5a6d99edada669307e3f83a3b3a286c0876c0b507d509d33e4645a498a6b",
+    "size": 6809
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/build-candidate/common/version.h": {
+    "sha256": "e00b1213a38a53aeeb7ddea57d54fe76adbefc1a5eae150af2b5eee522f22568",
+    "size": 101
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/build-candidate/mistral/tools/cv-bmuxtypes.ipp": {
+    "sha256": "6a91031d20a0102ad711af15e7e7c1cc06689eb5fdc26d13c7c7c42bd8df7e53",
+    "size": 40803
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/build-candidate/mistral/tools/cv-drivertypes.ipp": {
+    "sha256": "2789d432b46b4bd6c57fb6384d8987611b2fbcbed2a724a5d144568e9b23a29d",
+    "size": 972
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/build-candidate/mistral/tools/cv-porttypes.ipp": {
+    "sha256": "6eff42723c45e10912e0ae19f4b9c7317065214037941bc124b1619c99fc0d93",
+    "size": 20128
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/build-candidate/mistral/tools/cv-shapetypes.ipp": {
+    "sha256": "ef8abb5311dd9d979dd5035b3a85bd8c9b6035048740a7ed7a42c9f04ab6599c",
+    "size": 52
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/examples/canvas_typed/mainwindow.h": {
+    "sha256": "98ec09c1d9d27731546686d6324f72b6146bfc3ea3cb0342e0cb4df576277cc3",
+    "size": 4310
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/examples/canvas_typed/qtcanvas.h": {
+    "sha256": "da92a1d6747c9679c6a3af2d2d0adcaab86576816ea3e283611cff2273a31500",
+    "size": 19856
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/examples/canvas_variant/mainwindow.h": {
+    "sha256": "4e4718e1bb64f1cb9f76b72df5cc95a88bf4be4eab502515661d087b1961f108",
+    "size": 3817
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/examples/canvas_variant/qtcanvas.h": {
+    "sha256": "da92a1d6747c9679c6a3af2d2d0adcaab86576816ea3e283611cff2273a31500",
+    "size": 19856
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/examples/object_controller/objectcontroller.h": {
+    "sha256": "2fdf23c0028b430e2e65e65cb61eb13d36cdd9a6140377209b8c2cd911392223",
+    "size": 2516
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/src/qt5compat.h": {
+    "sha256": "cc83a2c2cdd5a8dd4d4a570ef7dae4ee280a7fbaceb37b4c583d7e8725d71a58",
+    "size": 266
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/src/qtbuttonpropertybrowser.h": {
+    "sha256": "7d04dcf022bba44dba8430f12fa798d496789db47ef1f79b5bff739a69fee5d6",
+    "size": 3147
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/src/qteditorfactory.h": {
+    "sha256": "76d3564155b3cefd9c8f7e5e5e66f25ff827ec2c9977714cdb4d402238f8fd57",
+    "size": 16020
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/src/qtgroupboxpropertybrowser.h": {
+    "sha256": "2ca0575bc701aa08796477c7754447935fd54309eacdebf377b8761e5c7cd72b",
+    "size": 2911
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/src/qtpropertybrowser.h": {
+    "sha256": "86f1b325ab7c4e2f38e07451ebe2f07df7ba07b1bd86b4808e7ac7455dc666e5",
+    "size": 11468
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/src/qtpropertybrowserutils_p.h": {
+    "sha256": "1a003e3910a1308497dd7c71a80afdbfe5db32a57d0f6271cf8fbdf0697be1c2",
+    "size": 4977
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/src/qtpropertymanager.h": {
+    "sha256": "e3656ff63101000173755ef7e788e9530cb21f947d4980022adc0d414d9b621b",
+    "size": 26818
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/src/qttreepropertybrowser.h": {
+    "sha256": "70fce5a04dbf94a777ec8b36b2ce51c3ebff566dd2c77f603b25f70154fb9e60",
+    "size": 5232
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/QtPropertyBrowser/src/qtvariantproperty.h": {
+    "sha256": "046108351990a613f90ae7d669e1d63d4b8b2e254af83369e967a23478879d00",
+    "size": 8751
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/example_allegro5/imconfig_allegro5.h": {
+    "sha256": "0c3bf7813a06eaf40c89653c66a322826eeab17032677c5f6e1fb7e52792f335",
+    "size": 556
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/example_apple_metal/Shared/AppDelegate.h": {
+    "sha256": "671089ca1906938cc5c2f22e04dda08d7e0b925bcb515b79141fece42d4ee3cb",
+    "size": 298
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/example_apple_metal/Shared/Renderer.h": {
+    "sha256": "e1ddc149dae7878093f7a30ccec2396d6846fe9cd95da7ba1dc16e078bfd3e12",
+    "size": 150
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/example_apple_metal/Shared/ViewController.h": {
+    "sha256": "43fe3d8a5b4efb11d2f2420a6710ca4c23487c362c3eb4b45f238f984e89ef49",
+    "size": 265
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_allegro5.h": {
+    "sha256": "0124cae45b9fa084fd02d3ad9dd9412c8a36b52811f82c923d065fb2b41398c3",
+    "size": 1583
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_dx10.h": {
+    "sha256": "39331cb4858b52bfbbc2c19bbcd43a5eedc73cc478dfc814dfb8779e653116b7",
+    "size": 1003
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_dx11.h": {
+    "sha256": "9a81e097f602929a78dd33a2ec90ce20cef023a8056bdfe247880a6e18d8a9d2",
+    "size": 1068
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_dx12.h": {
+    "sha256": "18a8093c750338ebc840514c9752cb00017f01e031b643c2e5f6a64d58977760",
+    "size": 1949
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_dx9.h": {
+    "sha256": "29013947c4cdc2d5f30deca4b529fa2b84a9b9e6c1d3de9b95be3ba4f73086cd",
+    "size": 997
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_freeglut.h": {
+    "sha256": "143fb497734dbc6d554bafe12acae666e935058cbcace806616d1127c54faa8d",
+    "size": 2004
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_glfw.h": {
+    "sha256": "d786df6d6d908904525481c6e090dab5908c677dbfa15a5e8c3356854455c774",
+    "size": 2113
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_marmalade.h": {
+    "sha256": "28b3fb603c207fbe79fd1ad997e8d0df45c65e491e50131609891e29ac892f27",
+    "size": 1467
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_metal.h": {
+    "sha256": "c5b775b7ab6bc599efcac38b1d455faade16a04cc6265c576e98574eeb79e4f9",
+    "size": 1378
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_opengl2.h": {
+    "sha256": "8d2e84ea72fa034c56d2ee6c10d436df0c648cba5f4afc86fb223cd14e230878",
+    "size": 1774
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_opengl3.h": {
+    "sha256": "86d3965a1fc1edf9784d82ab1fbfc0251d5d27cef8dc3a85ba96d5a330b08074",
+    "size": 2473
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_osx.h": {
+    "sha256": "3b34e8f509fa3b1f6c5030dfec12d504025575d88c1f1cd2ea9935e50ef8de96",
+    "size": 805
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_sdl.h": {
+    "sha256": "122e6e70fa908a388edd3202852d4e6c2f1480c74aa1b10362f92d4e499ca4fe",
+    "size": 1599
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_vulkan.h": {
+    "sha256": "7424c25e85c7c7c3f5cfadaf8438fc0781c38f7a0f11ffe54f2bfafaac317dd2",
+    "size": 5676
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/imgui_impl_win32.h": {
+    "sha256": "18a3e43adfe1bdb91d99c2f34e99bd1e54572a26755c1d3c8fd511ea3dabadca",
+    "size": 1263
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/libs/gl3w/GL/gl3w.h": {
+    "sha256": "b87116bed1f0ebcce8075bcb84b5aec1e2e5a2af900f1adeef60a6590d7efdb0",
+    "size": 64220
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/libs/gl3w/GL/glcorearb.h": {
+    "sha256": "c84951ca9d94d04b3cd80d6918a0f5c629323260d419def07d21f7c1e30cf5e7",
+    "size": 248234
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/libs/glfw/include/GLFW/glfw3.h": {
+    "sha256": "cccbda83db22f05a1b8a4d305b5da52499ea5b1a557516d55ecbcb33f70e96f3",
+    "size": 151427
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/libs/glfw/include/GLFW/glfw3native.h": {
+    "sha256": "5be3a60c397bb150a671a8932c4c9761b4a21d433e2349499de6dc97cdf55d81",
+    "size": 13617
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/examples/libs/usynergy/uSynergy.h": {
+    "sha256": "b1a63eec318d9ac91f370c5f67a5628e2e808ddd90bb8722832a62465677014a",
+    "size": 16644
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/imconfig.h": {
+    "sha256": "dcaf090c3fdec5edd0464da584c1378a9e2bd368041c17ff8a97c5615437fde3",
+    "size": 4907
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/imgui.h": {
+    "sha256": "beaafe08af40e14b73e046a782fe0c38da4354860f9f45a004b4b5de4d175173",
+    "size": 190863
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/imgui_internal.h": {
+    "sha256": "af6f058e4faf417f5238cad5d8771a4d6dcd74de46bbe2eb14718248de1fcd5f",
+    "size": 88804
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/imstb_rectpack.h": {
+    "sha256": "947b8678b701ea1a2220772b4fa1e40ef25b177f75012650538c2bff2cc6461d",
+    "size": 20014
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/imstb_textedit.h": {
+    "sha256": "b3e47e9fc2e85e3f90b381f23a3bd091df0913bf26f49aeb8735a70c4f46a368",
+    "size": 53192
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/imstb_truetype.h": {
+    "sha256": "d3a8a2306c1d680d1cf40013ccbd2bd47e469e6c5a6dd36a86e48118f65c9168",
+    "size": 189912
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/misc/cpp/imgui_stdlib.h": {
+    "sha256": "c36db911f66cdcaf63bdb9da5e481d453d919c9b0cb6495f1d674923a6a92014",
+    "size": 1018
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/imgui/misc/freetype/imgui_freetype.h": {
+    "sha256": "0448a34f65f450fbf8177775f37fa3c71bc958e96446502d94b5a891cf2fccb9",
+    "size": 2095
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/json11/json11.hpp": {
+    "sha256": "d3483048e71d6889b6e5b849bc1dd8dff18955ba667bb1254ee32d857603b4e8",
+    "size": 9268
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/oourafft/fftsg.h": {
+    "sha256": "f11251dee6a46aff18d9e25127a92d71911181f36bd6cebf286a4fa204338286",
+    "size": 727
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/attr.h": {
+    "sha256": "40f8c7ec17e12fc405c071e4ac36a4f2034e2cc95bd62b403b97e86e37682e9f",
+    "size": 24334
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/buffer_info.h": {
+    "sha256": "9bf544fe17d63ca97e2a0519cbd69541d3e0d71b68683681824bab217eda1a28",
+    "size": 7750
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/cast.h": {
+    "sha256": "8f952f1c504e137a3ef2407651c04dba657e76ff692d69f619fd6e87e7f3ee96",
+    "size": 71139
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/chrono.h": {
+    "sha256": "036de769e968aa7fb534a5400013ac26d1d4f55cfc95fbeb0080ae2e4fbba813",
+    "size": 8458
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/common.h": {
+    "sha256": "01383d06dd69c05f2a9cdb88d3ce9fa6b3380944ddad9764fe0d875c4d527fa0",
+    "size": 120
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/complex.h": {
+    "sha256": "01a0d9fab1262b8b456ae7be2bd3f9cb74f1c6769017a27067fe8b03391d2d02",
+    "size": 2096
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/detail/class.h": {
+    "sha256": "277c90c44a41f5c83af2b88cdd69d1e56f66cf1ada089c66810c87bce34f3d23",
+    "size": 28563
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/detail/common.h": {
+    "sha256": "b069904d0ad39950dbf8875daa8b86bd2a82a1d39fedda848793d516b249ce21",
+    "size": 53771
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/detail/cpp_conduit.h": {
+    "sha256": "05bc79ef6f17cefc822f681f5bb906eaf80396d4b9f95e60b6435014f15ebd78",
+    "size": 2589
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/detail/descr.h": {
+    "sha256": "9359efcadc75ce1321f0444bdb14bc5276f1722a397daede648aa74ec674a2b1",
+    "size": 5962
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/detail/init.h": {
+    "sha256": "c49fe7c8dc198758ff6b477c2bd7c2968674f8c21f8785ffbc78dae02170545d",
+    "size": 17858
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/detail/internals.h": {
+    "sha256": "346af2d9e3d778eb8a9d286e8c446c667a64d73b4403d873df787cda86ea35e8",
+    "size": 29064
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/detail/type_caster_base.h": {
+    "sha256": "08706cdf6052f2bd62218bac3b755427f3b07ac0b51fc4d32993bca8fb325526",
+    "size": 51280
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/detail/typeid.h": {
+    "sha256": "8f0e69afd9bbdaf903b25a13f2fc65f708f5ed52467047570f2ce2065b7cf49b",
+    "size": 1625
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/eigen.h": {
+    "sha256": "f87992035920c0243e18752decf1ed4c473ebf1ab0f71011a45f0f1d6262a76f",
+    "size": 316
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/eigen/common.h": {
+    "sha256": "7487aa98aec8cd6e4ae24da56ab3e703503ceb7ac3a77f14f586cd230888c989",
+    "size": 378
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/eigen/matrix.h": {
+    "sha256": "092f0da64648f18f2dcb4345402ec665c525339a3cff501bbf519b1a5b6c6e40",
+    "size": 32135
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/eigen/tensor.h": {
+    "sha256": "53bc0ce2f0a5683030582280ab09ac08f880d81deb02ccc84f7b55ff242eb14c",
+    "size": 18490
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/embed.h": {
+    "sha256": "c43fa8120e7a3da7538a0f5af0539c3206ec2fae236a27bb8701b7cba0d63c42",
+    "size": 13459
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/eval.h": {
+    "sha256": "eeb7be3b6128af5c83d10fca805907223283d7b7a3cc823af3b62cce5f7f29f1",
+    "size": 4731
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/functional.h": {
+    "sha256": "5d8d518f9ff1da76fd013d0ecc1f6c92de8e30e9fa925352913d2e06b44890ba",
+    "size": 5051
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/gil.h": {
+    "sha256": "20047fc3446ea6f152e5b2dfc3ae9957dd4e13d582d69d73b4e1526b11c6bd9a",
+    "size": 8517
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/gil_safe_call_once.h": {
+    "sha256": "b4fa09202ba60e309c7c5b05925b4318b8fb738d8d6e07614add04464ad218a4",
+    "size": 3876
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/iostream.h": {
+    "sha256": "2b9acf5e8098377db9af53e9b5c2422213e182d46d4c942332bedbbd420ec319",
+    "size": 8862
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/numpy.h": {
+    "sha256": "89a569ddba326f81a4560636be00576c568bc281cf6faae64a538ce38f9e154e",
+    "size": 84243
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/operators.h": {
+    "sha256": "db6e11a005dcbf595ae0d358f6b437683fc0782f12f592b1dc754ad4ef01e0c5",
+    "size": 9103
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/options.h": {
+    "sha256": "a97be69e3fbef5f652a79e8d61e7e70775b9575ee9a47958d52ae0a370cd069c",
+    "size": 2734
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/pybind11.h": {
+    "sha256": "31c5ae32f3b5e5ebee3b63cbad3146766959f57e507800a464bcf00104dd81fb",
+    "size": 129767
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/pytypes.h": {
+    "sha256": "7a1c32d2cf6e486901cac865da5f749dddb90f4328a7744d634f494d190750c1",
+    "size": 98953
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/stl.h": {
+    "sha256": "68c8b53820b0d996fe2112d2940b50109247b56b112622d3f5d283307493d487",
+    "size": 15532
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/stl/filesystem.h": {
+    "sha256": "ade7cb7b199d72a38ce908e8f50301ea1780e5b43b199acfe830af541bf44753",
+    "size": 4185
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/stl_bind.h": {
+    "sha256": "4c0dc0de0ba88e1a38196b1a3fc4907ea6e9845fc727adbe4a3d8cf3e0a7c550",
+    "size": 28472
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/type_caster_pyobject_ptr.h": {
+    "sha256": "1fba4a0584ef52589b88940470a99e024ca0490c280a4b88cae90d483995abe5",
+    "size": 1929
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/include/pybind11/typing.h": {
+    "sha256": "ae78d7c544cea7a10a2786f0182355e49a2bb6e9fe8017b30b9b38487fa8f18c",
+    "size": 3600
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/tests/constructor_stats.h": {
+    "sha256": "c74f271f35fcf5a55ef5aeea15832bc24bb00dc20fdd796ed6d5b004c31a875b",
+    "size": 11736
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/tests/local_bindings.h": {
+    "sha256": "01d7510bd7b816eaea18db308ab4aef431345c37b40d206739ecfc31624a1ce3",
+    "size": 2847
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/tests/object.h": {
+    "sha256": "29872aad3041fee0b468f8709f890a9bc0b5b77af9cec18cc0ffacc225353d1d",
+    "size": 5743
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/tests/pybind11_tests.h": {
+    "sha256": "8f3e450a0f474038f7bfe65621124d6cfe56fe032722ace8e0cd8d0c70dd7ba5",
+    "size": 2685
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/tests/test_cpp_conduit_traveler_bindings.h": {
+    "sha256": "bc5105fc7b1a982c2f583c26b07eaea95c8dfe2e35558c162c276298095fae8d",
+    "size": 1498
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/tests/test_cpp_conduit_traveler_types.h": {
+    "sha256": "a8bef47698b4a2201dea1046d70e0ffde02de3881c5e6aa7f185d603a611565c",
+    "size": 562
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/pybind11/tests/test_exceptions.h": {
+    "sha256": "b91aa61603d5a72955d59e018b557821aac0f97944a2d10423b5e411149490c3",
+    "size": 397
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/python-console/ColumnFormatter.h": {
+    "sha256": "8bc60b1d9b271bd58281d8323731c242d57897fd2f5e0f1b82d1a3cc74edff70",
+    "size": 2254
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/python-console/Console.h": {
+    "sha256": "556a3dac0f2efefa63a40f95aaa105e0979f4d45a5c44c5b5392681cf94426b6",
+    "size": 2317
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/python-console/Interpreter.h": {
+    "sha256": "a84567ee068def64fa570b637a4b6c6ad892a8b840cf01c42200283e1c48a10b",
+    "size": 3060
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/python-console/ParseHelper.h": {
+    "sha256": "65896924433bc4a28ce5364bf26b7306cdda165b95a4d219592d048a303ae567",
+    "size": 4673
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/python-console/ParseListener.h": {
+    "sha256": "f05dc20add3b2cad05db47851313bd91009df93c93dd4614333815aa17fde9ba",
+    "size": 1479
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/python-console/ParseMessage.h": {
+    "sha256": "6ae1ab4585b0cc69a4273ce23ed2e1780e24e37750bf33bfe2f203f23222b16d",
+    "size": 1449
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/python-console/Utils.h": {
+    "sha256": "06e658b06940811c4241d3c8215903100c0d0813e890d5c54f22e6347a508285",
+    "size": 792
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/python-console/modified/pyinterpreter.h": {
+    "sha256": "d779c7bad332b0605eec6b1df7b22e8fd7630c64117d9e258b40ec2423326155",
+    "size": 1577
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/python-console/modified/pyredirector.h": {
+    "sha256": "d78321d1b19caddc14af56a786e8af2d2f43403f2d5c4f64d9a653974e051a1f",
+    "size": 1279
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/qtimgui/ImGuiRenderer.h": {
+    "sha256": "9250051325903274962e57244a9f3f9d1d4db78b49cf5bbbfbcb8ceb836a8481",
+    "size": 1666
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/3rdparty/qtimgui/QtImGui.h": {
+    "sha256": "771ec253c685577b04dd8b8e1636f882a257575ac61484b5aa2c76a0f7c0541e",
+    "size": 184
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/arch_api.h": {
+    "sha256": "2b225a196d96438d1408fc4895ea9a7556e6262f42067b24686e2aab60b56ddf",
+    "size": 10843
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/arch_pybindings_shared.h": {
+    "sha256": "a48ff642a0b816d9ca4d123e4150bb5236af7f7706b68877961076e110dd5913",
+    "size": 13093
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/array2d.h": {
+    "sha256": "1351a510bab9743cbc9142c1677e044394d9f1abeae0a3dc9a9545f53e9ad57c",
+    "size": 4608
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/base_arch.h": {
+    "sha256": "9b19464ca828372a55387934cd41993a57c70952cb39e14b542f31f18f3a542e",
+    "size": 21321
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/base_clusterinfo.h": {
+    "sha256": "c80fe1da89f7cc20b84ef1cbe533819efa8c17339bd263c1b6c287bf538077e2",
+    "size": 1497
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/basectx.h": {
+    "sha256": "f220df67f201ed4d9c65f2e38b30c5ae31cb06084bf1e6c38715a74b2da64456",
+    "size": 8795
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/chain_utils.h": {
+    "sha256": "b7a47e9d887e63add6b92b2d5b60a923d9853aa186f49a50b294a6e37a233245",
+    "size": 2271
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/command.h": {
+    "sha256": "e1ff5a2988403e398ee53ffa0b4b05b21d9772450371098b4063f1c60ecb8943",
+    "size": 3495
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/command_settings.h": {
+    "sha256": "e9bf8a26a7deeeca527c3f8a398f72c7ca013c5c117118c24a8c00e7281184c1",
+    "size": 4526
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/context.h": {
+    "sha256": "5604f4b974bdbc7c6c2f037c67d03abf06a3e8b0cfe9d3b142f33f5d2510543e",
+    "size": 6026
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/design_utils.h": {
+    "sha256": "2fd651480ca8c59740e1692f4cd05a7f2fdd1fb7b4f7db6f38a285462c539cc9",
+    "size": 3218
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/deterministic_rng.h": {
+    "sha256": "00494ffe66c16d803911e8c0265b042bca9d8c7a21c25c08ac7150a8af117e10",
+    "size": 2750
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/embed.h": {
+    "sha256": "a4317e64e463061d33a11555a031cd4e7298c0d7a8ce0df5d1e6cfcfb2d13c0a",
+    "size": 1420
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/hashlib.h": {
+    "sha256": "b0e9878477d49bf24dde806d4f7b42f43f6137d1637da0415966215fc1af668e",
+    "size": 36038
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/idstring.h": {
+    "sha256": "ea95bf634ab5d9547efe11322fcd0239b3c2c4e6dcba992c52764c0fde4f47ec",
+    "size": 2366
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/idstringlist.h": {
+    "sha256": "fc6f79e64b0ec6c6ec5b3868607bca3ed45e74f35aa418bb4e0431eea468d283",
+    "size": 3108
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/indexed_store.h": {
+    "sha256": "4bb86547249b1e3000d911f78fb29f325bdf48851c8900cf4ecd06a71fe405e9",
+    "size": 9799
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/io_delay.h": {
+    "sha256": "233f66d21bc29e7ca587f55fa36f86ff146314cabd779cc872d548acd31fa1cd",
+    "size": 3075
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/log.h": {
+    "sha256": "bbfc632698a3f7f03e6f92c66f4f084d5a08bf8ad0ab47e2efb17dec694e7b5f",
+    "size": 3379
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/nextpnr.h": {
+    "sha256": "e62f84d6e8775cfa45c769a2fd40010a701fd597dffe82835b9882276fa4d1dc",
+    "size": 1098
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/nextpnr_assertions.h": {
+    "sha256": "ba417eec1377117dea31ae735aca997ba1b7990fa75ed3b4f8a5547589101381",
+    "size": 2229
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/nextpnr_base_types.h": {
+    "sha256": "67a95d1cff58f3e8312c9ff878a1e3fe1a45fa4e85984c067fe988a790dc4f7d",
+    "size": 3947
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/nextpnr_namespaces.h": {
+    "sha256": "bdbf217b6fbcf1b05fb55e3e45efde581be049e0fb5c3ee01d05a976045782fc",
+    "size": 2172
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/nextpnr_types.h": {
+    "sha256": "62f91ed979251e53b60820272ba49af7da82eb142fdd5eda166f0ac662ac9ff2",
+    "size": 17636
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/property.h": {
+    "sha256": "14c5a5f5ca8d2da5741a6e5d37782f3cb5a9ec55dc3f96dcb7071a8a0b163c61",
+    "size": 4099
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/pybindings.h": {
+    "sha256": "23661d3190ec4d7e35d831052b3e386ff605a152ec3a99a2321dc66385dbbb5d",
+    "size": 2979
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/pycontainers.h": {
+    "sha256": "a23e8c93fc13a4cb966dcaf94ccbe89e88ff79cd9d047aedfbee7a152bae8864",
+    "size": 20725
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/pywrappers.h": {
+    "sha256": "953631f55243a2a1f73a6b5c063c30b5b4fd6ca72d7ac1c3744e502ae6ccef54",
+    "size": 15968
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/relptr.h": {
+    "sha256": "4fe23853c93c61d2a26f404f59e71bd39f13596e1977a5c8713c681586e0eba3",
+    "size": 2279
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/sso_array.h": {
+    "sha256": "a1c28f442700129d1bec0c4802797db5ee699c98dd8d818c12ec5fe5cd416f5d",
+    "size": 3609
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/str_ring_buffer.h": {
+    "sha256": "c61df538c08718cd597aac56251b4b1fdb27bd368543d1d93a64cd32a6c843b8",
+    "size": 1496
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/timing.h": {
+    "sha256": "64340b4ae96d6bca51f52048273ba8d8dbe8e65c22c9ae0c8ebe6cef786b4c2e",
+    "size": 16544
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/kernel/util.h": {
+    "sha256": "1297f895389d0b059a578f38535e72594170c24344e7ec5b94dcce9255b3d301",
+    "size": 8126
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/detail_place_cfg.h": {
+    "sha256": "106e1b23735814ff008f165f3cece01b3687e86f6f6f67c04405ea70a5e01ace",
+    "size": 1132
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/detail_place_core.h": {
+    "sha256": "52e944e2f62cffa9cdbc686a813e331cec2140dbd818437a5a0d6fa46a27a7a9",
+    "size": 8420
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/fast_bels.h": {
+    "sha256": "ca319deef3808850bc713110fc9462ff89c2a3a83245bbdad98f04518f1a6025",
+    "size": 6055
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/heap_assignment.h": {
+    "sha256": "fccf782b89d315abe7b04c4cea3c4faaf6da7b7da12af73b79e10bef242af9ff",
+    "size": 2339
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/heap_congestion.h": {
+    "sha256": "6d9e1af87ce192694e0739808f39dd6cdaf9180fa9965229fd877017c6771aca",
+    "size": 3262
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/heap_control_set.h": {
+    "sha256": "05b3054eeaea7b675df746090422cdf14ca79f6c155403011c3d441880f3d24d",
+    "size": 849
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/heap_hard_block_cost.h": {
+    "sha256": "6d2aa214eda6482254d01c1a93717982155b436678344ed8e85335b1179a410a",
+    "size": 1263
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/heap_hard_blocks.h": {
+    "sha256": "12c9a7d361179ea08061cfc50096f659d839c4181b379e11e2a8e20060fbde77",
+    "size": 1085
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/heap_spread.h": {
+    "sha256": "a94d535e69e94ced768121adf1f8d12745e954b508a866c01da67158054716a6",
+    "size": 2115
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/parallel_refine.h": {
+    "sha256": "fc94f13a9e53b94f6992f2194c9ff15b4d2c150e90840bc9bc0a2b53399a0202",
+    "size": 1257
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/place_common.h": {
+    "sha256": "41d9758c0059f99aaa32000232f2988512018014d298a8aec7f7295322864f27",
+    "size": 1781
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/placer1.h": {
+    "sha256": "d78a1eb06ff455d7eda083be42dc19daab0116ec677980c6e39401f3479485b4",
+    "size": 1348
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/placer_heap.h": {
+    "sha256": "70db92fd27702f2801f75bfd8a4a5bf4ef1aa558f89b5a122bffc0bef1cd5518",
+    "size": 5007
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/placer_static.h": {
+    "sha256": "d722731365eae1f769b81f3ec41a69d9bc89a7c9db9474b9052f1b5db1159410",
+    "size": 3053
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/static_util.h": {
+    "sha256": "8ec69cd7870c13ed54b8a3a9abe4457a524c09708fe6af98f1f159bb5cd40e45",
+    "size": 4505
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/place/timing_opt.h": {
+    "sha256": "d4d66e46a9db2c18ee43ace97598f4697a41057bafe8eca4ac03f8017e76b9a1",
+    "size": 1296
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/route/gpu/congestion_plateau.h": {
+    "sha256": "64bf575528513fa1870a4a345c99d8a5d23e1093774b56c383bac685e64b8477",
+    "size": 1030
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/route/gpu/gpuroute_backend.h": {
+    "sha256": "912d7f9839d5b71e0e56060177f0a7312f1466467c76693d6332b300185f5712",
+    "size": 14537
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/route/gpu/gpuroute_compat.h": {
+    "sha256": "96624b3d3a0392505bc20cbbab0aa8fa0062f6283449deee13432de478656a64",
+    "size": 2425
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/route/gpu/gpuroute_lease.h": {
+    "sha256": "3e32e50e70aee31a428897db5fdeb5197cdd53829c0ed77564435da31ccbab43",
+    "size": 4275
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/route/gpu/gpuroute_telemetry.h": {
+    "sha256": "2175efb079429ceb7c36916a03cbb99f1af0e88c59dc18a6677404de6976514e",
+    "size": 2235
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/route/gpu/reserved_route_slack.h": {
+    "sha256": "cdb4c2f2f91c3d3743eea4152fca356ffe67b7d248802333bd5ffe76128f94b5",
+    "size": 4140
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/route/gpurouter.h": {
+    "sha256": "3a7f247bd75809749c9b2834eb7baded5df85769a4b9692ec47108ef53e8c429",
+    "size": 12496
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/route/router1.h": {
+    "sha256": "4c77436be088b7c6a53cb1f4cac299eb1abdb50934352eeb82fc569f7ecf9e89",
+    "size": 1707
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/route/router2.h": {
+    "sha256": "22594c766361a2c55ad7bbf1c7bf22e4fb4d9e75a522e2ffec238dc6f584dcca",
+    "size": 2496
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/route/router2_profile.h": {
+    "sha256": "78dfd105cd88e53fbf064e65a84998e697711a0f6b1e7a239f3bf62eadd0dd78",
+    "size": 12089
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/common/route/tests/router2_profile_win32_shim.h": {
+    "sha256": "b8e94a625c63d975372fc316223bf34c45e7658af8091401ea94a739933239e3",
+    "size": 8859
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ecp5/arch.h": {
+    "sha256": "d17f2bdc26f7b9c87b327dcf6006e9dedfea4cd4ecdaaa898bda6430d2a27e61",
+    "size": 34954
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ecp5/arch_pybindings.h": {
+    "sha256": "3812b58532c302e8aebdb96bfbd09761d52eca42a5149eb5930820cdc449d31d",
+    "size": 2771
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ecp5/archdefs.h": {
+    "sha256": "ff6c2224fa44baacabc64a836d4a308967d282a120974b9f61c52a1462c787b2",
+    "size": 6224
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ecp5/bitstream.h": {
+    "sha256": "869b9b2343ed7cf4083886793c3de42ccd3a9fc9e114f04390fdde9b9bfc21ed",
+    "size": 1092
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ecp5/cells.h": {
+    "sha256": "b241016180938b31277215f8f25a4dd0cfd21e9a4a80be783d60bfca213ecfa1",
+    "size": 3165
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ecp5/config.h": {
+    "sha256": "abddbe909ba1ca6555ac2e2d860fed443da9f0ee317e63f22ccbed4d512ce5d0",
+    "size": 4041
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ecp5/constids.inc": {
+    "sha256": "5a2b22c9cdf04deaffec3463111c4c661aa9b15c60a18087e9a4f59014d288ac",
+    "size": 23273
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ecp5/dcu_bitstream.h": {
+    "sha256": "e9b6c825ff17f044daca6b437aa343a999229c422cd0ec6e82ae6d60e0596dc6",
+    "size": 34986
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ecp5/gfx.h": {
+    "sha256": "4b4e43017446ff66d5f68d6978f6433024a301ba5abfefe41afbb1ef2e9cdc0f",
+    "size": 98381
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ecp5/globals.h": {
+    "sha256": "d916b3889f432abe450929fb75d12b51517c164aea678dac940523a4bed41fb8",
+    "size": 1001
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ecp5/iotypes.inc": {
+    "sha256": "00969468766ee7563d918544808e36c14c1c86a9d02a592d9a569308e37d4301",
+    "size": 430
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ecp5/pio.h": {
+    "sha256": "df5f1a8d22699bb2350efd3aeea704964342f8a3113112fcd7583ea8f1244d02",
+    "size": 1692
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/frontend/frontend_base.h": {
+    "sha256": "b86c0adf471aaf3c9482379624f9d79efd92b45634696e956da77734bd0fe9fc",
+    "size": 35732
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/frontend/json_frontend.h": {
+    "sha256": "ba971aaa8a03b11c08f72840532295bef200145559dbf872fc5e929cc428eae8",
+    "size": 1000
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/arch.h": {
+    "sha256": "11774d3a36154e062c4ed07a855198c04477844439354c29152e5109f499b6be",
+    "size": 16051
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/arch_pybindings.h": {
+    "sha256": "3e4e6f3f7e6c8fbbb290ebe3cb595e438572e9365bfa06b58e6666c5c8f350a9",
+    "size": 3087
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/archdefs.h": {
+    "sha256": "2a1571b25cd871ca71f2d553c48a03c1a843a7c2c91b8978b653eae9bb44d444",
+    "size": 3532
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/cells.h": {
+    "sha256": "fda4a4d018740bb8c31eb575587c0d7fad1246470685327e99f0ce12a809bce2",
+    "size": 2305
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct/example/constids.inc": {
+    "sha256": "5249da696e23a9770f1c9b6e04d322da4392b0671ebb9d28dc9541781c680299",
+    "size": 94
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct/fabulous/bel_timing.h": {
+    "sha256": "2c7f4f13ac58436a89ded2414c81ce5106162cd6a189cec6e7acb3dfcdee8109",
+    "size": 2703
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct/fabulous/constids.inc": {
+    "sha256": "fe79c6e7d330c82de5c4d00be635613f3d218441b3a9bafcaac5ac5e29c9765e",
+    "size": 1244
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct/fabulous/fab_cfg.h": {
+    "sha256": "bd249453eb14a7e32cfb6b13dc76400980ae597f134906dc6b6a1f3d13d57f54",
+    "size": 3743
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct/fabulous/fab_defs.h": {
+    "sha256": "cc6f9f3334757d7b2333104b867dae81b8e28a92b0909676319c78892cc9c316",
+    "size": 1309
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct/fabulous/fabric_parsing.h": {
+    "sha256": "2629f43477197b2d730bf778013499db1a4090700857dddbd3e10228445cdccd",
+    "size": 5543
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct/fabulous/fasm.h": {
+    "sha256": "23fa6bc0baa03e5496498b9b4e90c80a8e715e73dae5a0d823ec3804bfee3e37",
+    "size": 1200
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct/fabulous/pack.h": {
+    "sha256": "79b31717860aa01ce8ebf0a66c9334b455d7610fff5924fbf170d73c0e1962f8",
+    "size": 1062
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct/fabulous/pcf.h": {
+    "sha256": "7d66a8c6bc2a7378f1f1bcac16cb666ed0d6f057c0eb03c8d38fe8832e6cb229",
+    "size": 207
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct/fabulous/validity_check.h": {
+    "sha256": "61dc25ef06932624c0da233a0f29a0a81788aed90c68e252f0a1e564059668f4",
+    "size": 4615
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct_api.h": {
+    "sha256": "7d6c8646f692c3eff9cd3e7526096744a025736aae379e6b18226fb1df86c6cb",
+    "size": 4865
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct_constids.h": {
+    "sha256": "61a58c617f86928b7f2d1916efd1aa685ef48dbffbaf18da092370cba9d5fe97",
+    "size": 1902
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/generic/viaduct_helpers.h": {
+    "sha256": "6c75d307498a3158c822a1eec6e83abbe5b5d42dc22d1ceacaf55b1f66db60c7",
+    "size": 3458
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/application.h": {
+    "sha256": "369c25f7ac2ac4d3d902c3780d7aa46aace5763bb283568800493a099dc74775",
+    "size": 1298
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/basewindow.h": {
+    "sha256": "c85ff94396b9c9229341415047169595176d8faee1e6bb8820d2d2d168037b53",
+    "size": 3410
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/designwidget.h": {
+    "sha256": "7cadbf7a609baf3335b73a9e967e2bde4efebd85fe090e2a792524481ea0fc0a",
+    "size": 4383
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/ecp5/mainwindow.h": {
+    "sha256": "5c8cbb70b9c3257855bd6a7d60326c23bc347b1e5d7345aaf50814918e143766",
+    "size": 1536
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/fpga_interchange/mainwindow.h": {
+    "sha256": "9e866af57b25b7d856472df9e3197f3a6cf0487ddc38d679eeafa85d211cebbb",
+    "size": 1373
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/fpgaviewwidget.h": {
+    "sha256": "ba129d1fd0a0c6332487708311d9b535ba45a2106b859d3331749e1c44103e9a",
+    "size": 9488
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/generic/mainwindow.h": {
+    "sha256": "febd840cbcbd1b2a8a9e279d097120561d898a1e9b098ca0de66e32e467bedef",
+    "size": 1331
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/himbaechel/mainwindow.h": {
+    "sha256": "febd840cbcbd1b2a8a9e279d097120561d898a1e9b098ca0de66e32e467bedef",
+    "size": 1331
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/ice40/mainwindow.h": {
+    "sha256": "22097b2108f337b5e32296928140bd5ad9a2ac214bde57ae0e2f3677da53e53c",
+    "size": 1574
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/line_editor.h": {
+    "sha256": "1e1b1e7ed5c4972d8e3cd351a485d50f60a42cad059b39d34caa7b1bb6f2195f",
+    "size": 1691
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/lineshader.h": {
+    "sha256": "fb38f5848222f3d058718307514c7d958537b15e5a54bfb99bbd4c9c0b916715",
+    "size": 6344
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/machxo2/mainwindow.h": {
+    "sha256": "5c8cbb70b9c3257855bd6a7d60326c23bc347b1e5d7345aaf50814918e143766",
+    "size": 1536
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/mistral/mainwindow.h": {
+    "sha256": "e744c7774fde390308b04f96bbdf4711a8fb0202048e9a4a435b15db7f384775",
+    "size": 1408
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/nexus/mainwindow.h": {
+    "sha256": "e744c7774fde390308b04f96bbdf4711a8fb0202048e9a4a435b15db7f384775",
+    "size": 1408
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/pyconsole.h": {
+    "sha256": "b3a65bbe95cc746388634f60965dda690ced307be1851c00731b74d2d4702820",
+    "size": 1607
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/pythontab.h": {
+    "sha256": "fe9337783a0728835158c3b20830eb619f4920bcd9e786550a0c1577461a9b9e",
+    "size": 1765
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/quadtree.h": {
+    "sha256": "39e0672bf25935ce768a65bea7ba555a6c01b30442c1c45e264e5a09104ffdd4",
+    "size": 14953
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/treemodel.h": {
+    "sha256": "ec7ec8d36806a59d7f47f64c82191f3afa66e683178fd08ba32faebfef218aa9",
+    "size": 13845
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/gui/worker.h": {
+    "sha256": "735a1a7c18ac8598cc8ea47329dd453d47d64c15b37635f30ac572e476d46e3f",
+    "size": 2356
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/arch.h": {
+    "sha256": "4a5de393d75294b96161a7744640fd4e63208feef43beaed446cd81e3979d625",
+    "size": 32877
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/arch_pybindings.h": {
+    "sha256": "5f17cdf88c6851fcdf4a19dac692015f6992d157b48dbcf5e8bacfdbd05c028b",
+    "size": 2804
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/archdefs.h": {
+    "sha256": "c68f2ac6972b8b92f3a6ff037cf46a4ce4ec4b540b823314702fba15e1d45cee",
+    "size": 4428
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/chipdb.h": {
+    "sha256": "1c5f03f1bfbf7d2e3fba0accb706b6c15e200c9f381f60eaac2ac4014866db51",
+    "size": 6371
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/himbaechel_api.h": {
+    "sha256": "3d312148b6c0e18ac59b86b073b914d04f83f3861f22d8a191eb4303e6e240e9",
+    "size": 7888
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/himbaechel_constids.h": {
+    "sha256": "2980a23161ec0afd1ca75f1008dc80e4cc6c87b7d136f3c833982ff7b2058f56",
+    "size": 1925
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/himbaechel_gfxids.h": {
+    "sha256": "40b55ff7f1cec0772d1eae3615865d3f3de44a5f0d8f0551c7692018366a60d6",
+    "size": 1619
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/himbaechel_helpers.h": {
+    "sha256": "8599cbdc203405fcc0e149a745f4486f18a057f185da161ace99a58a98e884ee",
+    "size": 2967
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/example/constids.inc": {
+    "sha256": "da8ea0d0884444a887ae7874c8fa63f62ba50c28d35ce822669ef7c295770405",
+    "size": 330
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/example/gfxids.inc": {
+    "sha256": "8a909376cb25660b6966e82c0dc1cd5ef71f714c44a75f72d071fa1e131df593",
+    "size": 1079
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gatemate/config.h": {
+    "sha256": "30c670fd5fd556a8f3dbda463a82fcb22ca0c31f454768e779362cd7e514b255",
+    "size": 2496
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gatemate/constids.inc": {
+    "sha256": "b42237458d2cb8bb1d80f8b80256fdf9ee315c49fa67dfbed61ad73851a9722f",
+    "size": 57225
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gatemate/extra_data.h": {
+    "sha256": "65eeadb295c232f2c82e58c49d869d7b2212ef3901ecc054dab038bd13fbcff0",
+    "size": 3506
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gatemate/gatemate.h": {
+    "sha256": "acb4ed790add62e601a71a0cc1978d9bd90f211c9ee08c25813cf6ee921eb83a",
+    "size": 6900
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gatemate/gatemate_util.h": {
+    "sha256": "6339202f1589249d16825a6749413916d6e0ebd63f1625828d34ac36b049734c",
+    "size": 2709
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gatemate/gfxids.inc": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gatemate/pack.h": {
+    "sha256": "ba5fb2fa9afea6b7f7f2e454a32c6934533ee716fa7431ac4103b54bb384145e",
+    "size": 4760
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gatemate/tests/testing.h": {
+    "sha256": "852f560f530c8bbe8eee99e5ac417ff77898119fc25c76eb012b238763154634",
+    "size": 1415
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gowin/constids.inc": {
+    "sha256": "f28fcd898d7c0c16fc7a1867f5c4a1b286de4c67800b2d7e4050f657d7ce17aa",
+    "size": 14211
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gowin/cst.h": {
+    "sha256": "e82b1559d0a2f96c94d253fb1d86d468d9228551bbba37f674a7f3a5fc5ede67",
+    "size": 200
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gowin/globals.h": {
+    "sha256": "a18948c469dd061889647cae09e07b0d7e0ad0eae64c7cc3b66b8bcc2f96f4dc",
+    "size": 167
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gowin/gowin.h": {
+    "sha256": "9bba11bce40aa45b0d5af5795827231e095947c802435663f15e2454ffeed376",
+    "size": 11316
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gowin/gowin_utils.h": {
+    "sha256": "4a5a13e840e5886b3020bc9c2eb06bb85d7c87aa8f926de4d4e42bae255b84f8",
+    "size": 9658
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/gowin/pack.h": {
+    "sha256": "4bca4fc379150aabd097f58c6bf095032399d5daec16294a821c614cf7283868",
+    "size": 4545
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/ng-ultra/constids.inc": {
+    "sha256": "168780f16c1af21a00e8a9a725ac44f1241ba6f17e4990de961658bd2940098d",
+    "size": 71621
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/ng-ultra/extra_data.h": {
+    "sha256": "2236e694c0e4fe257c6daa48f9b9dd9d3595bfd0138321aece0381aa35dee604",
+    "size": 5517
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/ng-ultra/location_map.h": {
+    "sha256": "17843a6bea1cd1fbf680889ddfd357b4d325fb605c8fdd8cf3894d7223163328",
+    "size": 1397
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/ng-ultra/ng_ultra.h": {
+    "sha256": "6ad7c56aa4adf89da7ed4020eb6c3461f8238c55a039d44146621ba412563759",
+    "size": 4669
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/ng-ultra/pack.h": {
+    "sha256": "e9e2d1756a6718fe3cf509a7dba33d7e647d16eeb0c6e7f68e3e59fcad71de1f",
+    "size": 4212
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/xilinx/constids.inc": {
+    "sha256": "d979745f6c0000dbcc6cb6e13b0ab1b312217ea3ccdc60b50435aedc6c9a7cce",
+    "size": 9001
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/xilinx/extra_data.h": {
+    "sha256": "3e0f1e5215b0f170cc8865f818f9ba6279789d88dccc2db608970d3ef32d1091",
+    "size": 2067
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/xilinx/pack.h": {
+    "sha256": "16b7d969eeb8423d30e847b677cd090a72c7df4d285254ded7d917f91696e261",
+    "size": 7694
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/xilinx/pins.h": {
+    "sha256": "d6de0312ae1b6d9a6e7eb47554945a20348d904894665f2d02254576b9c7785b",
+    "size": 1350
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/himbaechel/uarch/xilinx/xilinx.h": {
+    "sha256": "64138e16467ba988ba016eecfcf2dc7a1d6ca6b03b47a372e6e6c1026b4b32f1",
+    "size": 6000
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ice40/arch.h": {
+    "sha256": "dac9ccc6cd16ba87a16b84fc8e43460a7558dc428ad9bf421da0675d06844de9",
+    "size": 25589
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ice40/arch_pybindings.h": {
+    "sha256": "04b989fbfe34dadfc77f0e2968316f738b9c8c0e3b358b54baccd2b2458ea114",
+    "size": 2872
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ice40/archdefs.h": {
+    "sha256": "bcfc3b6dbe76c89708a36f4d7c12c7934f8136a9f5279545a19d08abb9b93701",
+    "size": 4394
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ice40/bitstream.h": {
+    "sha256": "3f3c84d073ade16e11fcf512dd8f9752718de5b08b4dbf8a700cb603ca4464b7",
+    "size": 1168
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ice40/cells.h": {
+    "sha256": "758a7b13b031df02986566f311b49c7ee7d2936988ba26701d98c9dcb07c785a",
+    "size": 6078
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ice40/chains.h": {
+    "sha256": "7e0d496251acfefd4d13a324c7ebc1c8bc64ea217e52321ba2042582f92149f5",
+    "size": 1066
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ice40/constids.inc": {
+    "sha256": "c1fbcc4184932293d47472e436504d03c413d674511bf4eead395e91878d63ac",
+    "size": 6891
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ice40/gfx.h": {
+    "sha256": "bdeb3242d7b777301f11b55d37b52e9f392073f561d71712e8de2c0f0d27ac59",
+    "size": 19089
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/ice40/pcf.h": {
+    "sha256": "8bba6b9d7593beeaef9b2ea3ca59e9f2d34d30abac84c0e965c5c031ae36847c",
+    "size": 1172
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/json/jsonwrite.h": {
+    "sha256": "d5876acb376cc7a589f058278a01d306b07b17a75bcf1468863f5f7f942c79ef",
+    "size": 1092
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/machxo2/arch.h": {
+    "sha256": "e13d523d98241d117696731de70fc686e4b0e2614c595cd405395bd56e49995e",
+    "size": 34357
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/machxo2/arch_pybindings.h": {
+    "sha256": "3812b58532c302e8aebdb96bfbd09761d52eca42a5149eb5930820cdc449d31d",
+    "size": 2771
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/machxo2/archdefs.h": {
+    "sha256": "8a30f52b3a8590661d047a7bc140511f7e016241952c0b9f6a80e4fb03870110",
+    "size": 6225
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/machxo2/bitstream.h": {
+    "sha256": "07d33e5b79049b1babb0e53164ce5198d3da8c9b340e8bd091d8691725dcb51f",
+    "size": 1126
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/machxo2/cells.h": {
+    "sha256": "054c6d6f1fff4c268cf78af3a2349d1c7da28dfacedd8f618d6adbb366108d05",
+    "size": 2553
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/machxo2/config.h": {
+    "sha256": "d1e90fd5427d60a1a352fb3ee90edd97d6b2777af05d651bb6f5009a4468334e",
+    "size": 4146
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/machxo2/constids.inc": {
+    "sha256": "2060383fe36b066f0385c4a80858194c949504438130185ee1f050a105a7440b",
+    "size": 7465
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/machxo2/gfx.h": {
+    "sha256": "f0bebbc0c5926b2f35571144e5fe1708bba76490823ed0c73b2d46ac35eded50",
+    "size": 1599
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/machxo2/iotypes.inc": {
+    "sha256": "0820f082455990aa09df6cb8751813ba659ca9e25184f477ba362c0492f2e6ac",
+    "size": 427
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/machxo2/pio.h": {
+    "sha256": "7e9ad3ea268567108fb8d5c10e3979237ec8588a594e4bd19175da7966c0ec37",
+    "size": 1563
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/analogue_jobs.h": {
+    "sha256": "1db3c321175396d48e9e94426fdad6f3743ad40ea7ef397348b4a07ba5df6c52",
+    "size": 2013
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/analogue_repair.h": {
+    "sha256": "1be2832d9c8679746bb5f431596b5f6565102d68b402fc4c97fc60b60b6d714c",
+    "size": 5513
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/arch.h": {
+    "sha256": "d5bfdd304fc6a7f8b35dd799227de2f927f32fbf683d02a3bb0240e9bec76cb4",
+    "size": 42991
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/arch_pybindings.h": {
+    "sha256": "b4d96fcb9c4ec3147003dfa000ae83389f1670c55859df7a04deb3471db4ef4b",
+    "size": 3502
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/archdefs.h": {
+    "sha256": "f37bc7a9b3c6c6d1908af8036d9353164f8e35abc4a1044e11adaf0574d1ebf3",
+    "size": 7707
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/constids.inc": {
+    "sha256": "e43e40809f40251aff498bf510d8174bce011789194379119bdc493714047150",
+    "size": 2093
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/critical_cohort.h": {
+    "sha256": "bb99d8be836431cc92278a60a463eb3243f8330c6780bdf0d1de43661cceabae",
+    "size": 3722
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/critical_cohort_model.h": {
+    "sha256": "1b9977b3036f73bafd2d6e0db71d2032d656ef7da7f9d5d540641ad6adb338ec",
+    "size": 1042
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/decomposition_policy.h": {
+    "sha256": "e42f8ad55dd4559dfcd8340ae98c790974f02cd6fdf1113b1cafcc1a35f444f2",
+    "size": 13512
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/dsp.h": {
+    "sha256": "254a9be684895ef9e053cccf9bbc69a2a23ff1460060e04a4a1b25fd19bcb8dc",
+    "size": 4216
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/enable_replication_policy.h": {
+    "sha256": "0315f3f7e535401823da606085a6973fdd999a9e5a5cdd251f843863e8675087",
+    "size": 1509
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/local_remap_cut_policy.h": {
+    "sha256": "b7372c8622dcd8c04a3d87db992d6243d3d361aeb676b60c74c7437aad318711",
+    "size": 3932
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/local_remap_pin_policy.h": {
+    "sha256": "0e8571670c7d6bec1e777bc8d13f0af42eb587afacbd75774c55c81ed6bbbf7f",
+    "size": 2408
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/local_remap_policy.h": {
+    "sha256": "a2ac574f0c04d117aaa861847578c99a0fd7bc968a38201751d2bc2a6d4dc863",
+    "size": 2168
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/lut_driver_copy.h": {
+    "sha256": "96c44182a43ba3976f37dbde991a3da5a8783fd8c04ee2ba4281d616587308f7",
+    "size": 595
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/lut_pair_placement.h": {
+    "sha256": "9fa7eaefa75fa6ba359a0d69fe907c04e1b3fa0f55c9d6b153d4ed8c9556b105",
+    "size": 398
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/placed_reduction_policy.h": {
+    "sha256": "8e01723dedbfdf4605d0132ee512467aaf27e5edf617aa69eca504e0a350761c",
+    "size": 1460
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/placed_timeout_payload.inc": {
+    "sha256": "5242b68a6faa72fb52bfb9be20147578a118723113e226f5a46df811a8897bf8",
+    "size": 11739
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/placed_timeout_region.h": {
+    "sha256": "54cd6cb73e5acf9e271c2fbaa047f572eb69aac071eb77621430efd94df38bca",
+    "size": 894
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/pll_cell.h": {
+    "sha256": "a129a6f52e40f9f20b9909129bc08f1f89a588c3118da71a276ddf695c6c9822",
+    "size": 8107
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/pll_solver.h": {
+    "sha256": "dc59273fd2150d0a6f5e854dd41ace89fc36d1503b85729be9586f959ae83554",
+    "size": 22521
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/private_pair_decomposition.h": {
+    "sha256": "1d36e04801ad23db79871d07c32c8b25cff92bbf16b5f5fba6f5fb472b222d85",
+    "size": 3643
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/private_pair_decomposition_native.h": {
+    "sha256": "888d419de51a5def5f7ebe6bcc46751060bad0291e2ccfbda6847b5afef58beb",
+    "size": 1948
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/reduction_balance_plan.h": {
+    "sha256": "db3ece7e35c9939753b04a292444798bca1b1142f9fa078ccb4ab583d7338467",
+    "size": 1454
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/reduction_balance_policy.h": {
+    "sha256": "c25e451a3b490318c4610c625309fc71e3635a9f897bc1ab04f219d560830817",
+    "size": 3260
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/reduction_reassociate.h": {
+    "sha256": "94fe9a46d2fced01b7c6bc01f64b896e4532e2994ba3f5cb7b5bb51d09561e96",
+    "size": 7906
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/remap_clock_guard.h": {
+    "sha256": "d3f12369ecd5e998dbe4344118fe257194de36a857afe9a8a3b977ae5acf41da",
+    "size": 3862
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/remap_report.h": {
+    "sha256": "f92a025d639db576fdbfcc3f093838264347a53354faf80b89c4007c926b0446",
+    "size": 7218
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/retained_enable_policy.h": {
+    "sha256": "f45859826513a76dd1aec757638afa691dc42625cd413ccdd4f679ab568429e6",
+    "size": 766
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/mistral/routed_lut6_swap_policy.h": {
+    "sha256": "841a9c75498e0717c4a504e2700ef96fa9c59c20153195b6abf8af6552328b07",
+    "size": 638
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/nexus/arch.h": {
+    "sha256": "98759c8e8ae87a21b11c67c54ac87faa0dec44a134b3696b440923d3232861ee",
+    "size": 49323
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/nexus/arch_pybindings.h": {
+    "sha256": "2c277a77b8fbbe3104d48ab8b2eaad2cecfab6a2e7c262d86e71fc4a815b008e",
+    "size": 2824
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/nexus/archdefs.h": {
+    "sha256": "dc79648ce183fc0b1c80376d183f764c188eee118e49c8ef848f5d6b9e5f5a3c",
+    "size": 5326
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/nexus/bba_version.inc": {
+    "sha256": "a1fb50e6c86fae1679ef3351296fd6713411a08cf8dd1790a4fd05fae8688164",
+    "size": 3
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/nexus/constids.inc": {
+    "sha256": "42177b5b41be392019dcae370bf0cbf635f8a244c84e048c16416f1b69b5bbc4",
+    "size": 7220
+  },
+  "native-topology/frozen/home/deano/harnesses/pcxt-compiler-repair/nextpnr/rust/rust.h": {
+    "sha256": "c63a9fc3647081c8179539ab234a76794cb55c68e626b19e9ed47fdabbfe9277",
+    "size": 1034
+  },
+  "native-topology/initial-build-failed-api.log": {
+    "sha256": "eb894fe7ab440e3513add6a49090318a59bba881c88315d807d40cb02668252b",
+    "size": 1898
+  },
+  "native-topology/readback-receipt.json": {
+    "sha256": "a79c856fb9f021f1ffb24f1c2c658b00dec686e9607f3c6fcffcabb1221fd8f6",
+    "size": 2167
+  },
+  "native-topology/readback.py": {
+    "sha256": "154ad172a539f0c0322bf9b7aff73816e776574659b61afaca4b0ba0355eb7bc",
+    "size": 3864
+  },
+  "native-topology/reader-validation/missing_native_sink.json": {
+    "sha256": "1ef87b17392e47691cd62366eac5aa3c3b0cfa9cc94e905a2a4ed9e5a46db0dd",
+    "size": 32565992
+  },
+  "native-topology/reader-validation/missing_native_sink.log": {
+    "sha256": "c73fd2cce868f27ebf40408ef6af8124708b0264190d3697326f050eb50e8c2e",
+    "size": 41
+  },
+  "native-topology/reader-validation/missing_native_source.json": {
+    "sha256": "041533b17c95c0c43cf0bd9700f3805fc6335b21df5c3ef28c7aa489c1b8523b",
+    "size": 32566009
+  },
+  "native-topology/reader-validation/missing_native_source.log": {
+    "sha256": "321b00429917d7f6db122dae16cb9ff7ab16326b8dade66ea99665b7c91959b5",
+    "size": 37
+  },
+  "native-topology/reader-validation/original-positive-result.json": {
+    "sha256": "b86196b9fb7a02142575601ac760fd11d01459da9e50c971deb276472f6f2b15",
+    "size": 2949
+  },
+  "native-topology/reader-validation/original-positive.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "native-topology/reader-validation/receipt.json": {
+    "sha256": "9ddf41824783f784e80384786188552b40f0f8c236885829c230696851f9e9ab",
+    "size": 4279
+  },
+  "native-topology/reader-validation/selection.json": {
+    "sha256": "f9389b802583223ffc7708b81668aef05d20cf412b218ba02fd5ee420c16f732",
+    "size": 1074
+  },
+  "native-topology/reader-validation/wrong-user-selection.json": {
+    "sha256": "2c9914a44a5fc98f53dc86cdfb19da7b08f525771ccb4f685df993dcede255c1",
+    "size": 812
+  },
+  "native-topology/reader-validation/wrong_complete_user.log": {
+    "sha256": "1303d84915219c788091b0d214985ee11fbc31e3e7be2129cd8f654e35fcc0c8",
+    "size": 49
+  },
+  "native-topology/swap16-selection.json": {
+    "sha256": "4b95c9b153030ed667fa572fa279d721b26ac359a23f46fd0f6c2d2b6809b797",
+    "size": 1178
+  },
+  "native-topology/swap16-topology.json": {
+    "sha256": "812a1c5d74faeab8e97a0ab6a27ca6a989f4778b529440a00f1ef48ea5c1975a",
+    "size": 3052
+  },
+  "native-topology/swap16-topology.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "native-topology/test-reader.py": {
+    "sha256": "495e20e597535f5aa272ce58364a282da6f2534e1878454fcc45dae5248734ec",
+    "size": 3077
+  },
+  "native-topology/tree-reader.cc": {
+    "sha256": "d19277a7b48c69dfff3e01225c7d59037b51ba65b432038ac0305dcb2a5b7cad",
+    "size": 5419
+  },
+  "prepare-controls.py": {
+    "sha256": "53fbd048c991b4a6a2cc7d816cd98462b575afd20e097768586316763fa566a3",
+    "size": 3331
+  },
+  "prepare-default/nextpnr.log": {
+    "sha256": "d9d543df8f80c588aa2bddd9e95ce81448550b1b38245c5b71bbb95db72912e7",
+    "size": 209260563
+  },
+  "prepare-default/placed.json": {
+    "sha256": "150dd74532f6d91c1795a0603a53233c39c63a72ef2b47ba503991f3b262adc4",
+    "size": 28286380
+  },
+  "prepare-default/predicted-timing.json": {
+    "sha256": "24ab68f3f7d36844de857d00f1d776b2cb7f1fe1569b6ef38bdabad34ea2ff0e",
+    "size": 20443724
+  },
+  "prepare-default/receipt.json": {
+    "sha256": "0a7dd02afbba8cb2dd56ba6626e7b3e7a2fcbb6e50d961b95cfa97109aed612f",
+    "size": 3942
+  },
+  "prepare-zero/nextpnr.log": {
+    "sha256": "c2399b4ebc36ee1533121a474d842753bd847708a072ea7dc1a8d5bede198348",
+    "size": 209260563
+  },
+  "prepare-zero/placed.json": {
+    "sha256": "150dd74532f6d91c1795a0603a53233c39c63a72ef2b47ba503991f3b262adc4",
+    "size": 28286380
+  },
+  "prepare-zero/predicted-timing.json": {
+    "sha256": "24ab68f3f7d36844de857d00f1d776b2cb7f1fe1569b6ef38bdabad34ea2ff0e",
+    "size": 20443724
+  },
+  "prepare-zero/receipt.json": {
+    "sha256": "4f07e0b8d8b9bcad8ccc8b65ce7e83a0f772b18252dbef85f8a150cf678de838",
+    "size": 4033
+  },
+  "record-routes.py": {
+    "sha256": "27a42f3373c5100b6b76d53ec1d481f26a0aa7c07556f7459de36cf297fc5181",
+    "size": 2157
+  },
+  "reference-host-files.json": {
+    "sha256": "6b1f88a4767d4a545eaf4ca119dd6d4eb05d36bb5b22c48de99ce8e0264a610a",
+    "size": 266
+  },
+  "references/cache-host/final-validation.json": {
+    "sha256": "e60e7600e8dd3466b776d235ee9884fea048a8d14ddbc765583b6739911399dd",
+    "size": 11757
+  },
+  "references/cache-host/source-commit-check.json": {
+    "sha256": "2200ecfe7c35c1a0dc0410dd344f8f23deb88ea4d5fce02aedad870f7a977263",
+    "size": 2411
+  },
+  "references/cache-placed.json": {
+    "sha256": "7db82422b9819c2111cf5feb0b80c5e504cd946c98a257030be170560cb764ea",
+    "size": 28286380
+  },
+  "references/cache-predicted-timing.json": {
+    "sha256": "24ab68f3f7d36844de857d00f1d776b2cb7f1fe1569b6ef38bdabad34ea2ff0e",
+    "size": 20443724
+  },
+  "references/cache-source/docs/mistral-private-pair-decomposition.md": {
+    "sha256": "11e6367d127fe06b3f7fe3843b3e2a81fb7e32eba223ebae843ba7382ba12c2e",
+    "size": 5351
+  },
+  "references/cache-source/mistral/CMakeLists.txt": {
+    "sha256": "bc637c1ee1784fe97342317a3603f4009bcd3157ba1f6eab37d4d4ca29e4d970",
+    "size": 9175
+  },
+  "references/cache-source/mistral/analogue_repair.h": {
+    "sha256": "f090d00a274444b47078682165fdf4732b510d064c681c47c5894bde37e31a33",
+    "size": 5269
+  },
+  "references/cache-source/mistral/arch.h": {
+    "sha256": "d5bfdd304fc6a7f8b35dd799227de2f927f32fbf683d02a3bb0240e9bec76cb4",
+    "size": 42991
+  },
+  "references/cache-source/mistral/lab.cc": {
+    "sha256": "092f5df6a0b508f6ea6d245515df4adca430bc48b4302dfec1c87faf89df0fe6",
+    "size": 82217
+  },
+  "references/cache-source/mistral/main.cc": {
+    "sha256": "29d9562a9963df1510939f1fc651a451b1c665a8a2d6d90fd33266211397e444",
+    "size": 52497
+  },
+  "references/cache-source/mistral/private_pair_decomposition.cc": {
+    "sha256": "6858f770a4e0cb1ee068470bb1b33c6e48b5efc85b0be6a09fb8d09b86ff578f",
+    "size": 60096
+  },
+  "references/cache-source/mistral/private_pair_decomposition.h": {
+    "sha256": "1d36e04801ad23db79871d07c32c8b25cff92bbf16b5f5fba6f5fb472b222d85",
+    "size": 3643
+  },
+  "references/cache-source/mistral/private_pair_decomposition_native.h": {
+    "sha256": "888d419de51a5def5f7ebe6bcc46751060bad0291e2ccfbda6847b5afef58beb",
+    "size": 1948
+  },
+  "references/cache-source/mistral/routed_lut6_swap.cc": {
+    "sha256": "5610fdc7eefdcf3496f2d11aedd495586ed0e15111ecf2331e20f0072fe6b175",
+    "size": 26451
+  },
+  "references/cache-source/mistral/routed_lut6_swap_policy.h": {
+    "sha256": "841a9c75498e0717c4a504e2700ef96fa9c59c20153195b6abf8af6552328b07",
+    "size": 638
+  },
+  "references/cache-source/mistral/routed_move.cc": {
+    "sha256": "2fc35f564fe36c23f332d0e7006f50fa8be645f40c41454ca5bb0db7a4921b73",
+    "size": 18721
+  },
+  "references/cache-source/mistral/tests/private_pair_decomposition.cc": {
+    "sha256": "779c0b622bcdf085291be4b8890f3a09d65390ec74534a2387bac244ec89fb26",
+    "size": 3931
+  },
+  "references/cache-source/mistral/tests/private_pair_decomposition_backend.cc": {
+    "sha256": "3872f716ed4309a7e105853d0604bda0b4349f193e42741dcb34cd078cc532ab",
+    "size": 35994
+  },
+  "references/cache-source/mistral/tests/route_through_cache.cc": {
+    "sha256": "c38824af45e4a9a8dc645457b6984dc1380ec4a7cad1319ab031ad23d02792a6",
+    "size": 9573
+  },
+  "references/cache-source/mistral/tests/routed_lut6_swap_backend.cc": {
+    "sha256": "d28cdbf8496db388f325c93c6cbbd195be92001af3424edcf24545676897cd95",
+    "size": 34913
+  },
+  "references/cache-source/mistral/tests/routed_lut6_swap_cli.py": {
+    "sha256": "64d9d918f7a9d0e882ee2f202d7353d282c97abb5aa2fc1ce684e51a7423588a",
+    "size": 3421
+  },
+  "references/cache-source/mistral/tests/routed_private_pair_backend.cc": {
+    "sha256": "102fed6a5f30d9a467609b52213fdb8298eb8779e22b1f4801e05f60eb561002",
+    "size": 36791
+  },
+  "references/cache-source/mistral/tests/routed_private_pair_cli.py": {
+    "sha256": "98a5e8e8ae4f2c824f2316f7c526ba9f0dc3d815141501b8ef3cebcc1f48e5f0",
+    "size": 3470
+  },
+  "references/prior13/diagnostic.rbf": {
+    "sha256": "e544797ac9de105942db7bf481966e18ab1b92be945bb6fad4dd1e7cd8eb8ea0",
+    "size": 3035986
+  },
+  "references/prior13/endpoints.json": {
+    "sha256": "039516e98df316eaf3447a3b196838f20ea60aa67af5694ef5eb8529f7c243fd",
+    "size": 23563202
+  },
+  "references/prior13/nextpnr.log": {
+    "sha256": "d066f8bd3fee92629412d16dc9ac060e6ad2f68fc50c67b4876af832f068018c",
+    "size": 165268
+  },
+  "references/prior13/receipt.json": {
+    "sha256": "e6d3ab6177273624a6cdbf38c2a416e18862b951aa8a1d144ad88ac09b938357",
+    "size": 9638
+  },
+  "references/prior13/routed.json": {
+    "sha256": "d7f2c8b38d588d8f4dd32bd093f2a632783878d11fef3a3d300f06d0ebc0cbcc",
+    "size": 38273247
+  },
+  "references/prior13/timing.json": {
+    "sha256": "2df012e61f9f30f46556e72fe55b77209b51f30364587c2c37e43cf8494fd6c1",
+    "size": 23098732
+  },
+  "references/reader-original.json": {
+    "sha256": "4983b88846c96baa862d4834856bd631ccdc50a661a8e6929ab1714fe2ddbb8d",
+    "size": 38273247
+  },
+  "retained-source-proof.json": {
+    "sha256": "76d7799f462e73b8db43ff40902f2b1c08fa3812c7c67b06f41c37cc5eac4d25",
+    "size": 2096
+  },
+  "root-topology-readback/default.json": {
+    "sha256": "064a0eb824dbc38dc94c56347f4264d8b1322642a1ae2f142772e0892ab09319",
+    "size": 2830
+  },
+  "root-topology-readback/default.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "root-topology-readback/receipt.json": {
+    "sha256": "9422c46d59de18d344234e033fe539a6590ad8709029689848c170defd32d2cf",
+    "size": 1927
+  },
+  "root-topology-readback/swap16.json": {
+    "sha256": "812a1c5d74faeab8e97a0ab6a27ca6a989f4778b529440a00f1ef48ea5c1975a",
+    "size": 3052
+  },
+  "root-topology-readback/swap16.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "route-accounting.json": {
+    "sha256": "4df9308d9297ffc5d8d0570ad0d52530971935c2f064d91151f752c18d48ee31",
+    "size": 214
+  },
+  "route-default/diagnostic.rbf": {
+    "sha256": "e544797ac9de105942db7bf481966e18ab1b92be945bb6fad4dd1e7cd8eb8ea0",
+    "size": 3035986
+  },
+  "route-default/endpoints.json": {
+    "sha256": "039516e98df316eaf3447a3b196838f20ea60aa67af5694ef5eb8529f7c243fd",
+    "size": 23563202
+  },
+  "route-default/nextpnr.log": {
+    "sha256": "990e3eda262165f7d7b69dc691e68a527a27b3c35fd57d4162f02c5a8d3f0527",
+    "size": 165274
+  },
+  "route-default/receipt.json": {
+    "sha256": "a2049cedfe51a030f3819484eb55d2dbc2d389ceaf1af817077d95e20129e392",
+    "size": 19660
+  },
+  "route-default/routed.json": {
+    "sha256": "a0ca55d36d0372fb72e88604a5a5d89ca153ccca66f3b3f0f0fd997cc486aa72",
+    "size": 38273247
+  },
+  "route-default/timing.json": {
+    "sha256": "2df012e61f9f30f46556e72fe55b77209b51f30364587c2c37e43cf8494fd6c1",
+    "size": 23098732
+  },
+  "route-swap16/diagnostic.rbf": {
+    "sha256": "2c40bcefc725dd16bd593d2c9cf6083c3d4dc3a6b78af5754f7a4ddd10571fd0",
+    "size": 3035986
+  },
+  "route-swap16/endpoints.json": {
+    "sha256": "17f91309d8a5ff42f1cdbcefeb4272651a9cb19bc4c6a0765bbbca643f36bfaa",
+    "size": 23563197
+  },
+  "route-swap16/nextpnr.log": {
+    "sha256": "77580ad008845b2804d06ec10af7a3939fdf4f76bd6f46779927ce6ccc51017d",
+    "size": 174700
+  },
+  "route-swap16/receipt.json": {
+    "sha256": "45cd5511527d2821d5c5e55710b9c4086b5eee51425a3e4d06c11381cbbc2d18",
+    "size": 19748
+  },
+  "route-swap16/routed.json": {
+    "sha256": "06b5a360c57088a6c070c4227574f7f6f07bda7f58cd6341b2ac2d9ec8f5b1f5",
+    "size": 38273311
+  },
+  "route-swap16/timing.json": {
+    "sha256": "7abb8ff8f148707ede84050c3e8e7eea44947432f75b9be7246b796186697ab1",
+    "size": 23099527
+  },
+  "route.py": {
+    "sha256": "5fa9833999ed828376a935f00512a41cb53c1df8d9fb36acde77a3c78b9851ab",
+    "size": 5539
+  },
+  "source-identity.json": {
+    "sha256": "661a0d12c1ea664d1fe6f8666c79e53f3fc8e220c7c8b8b9f392d707693a0822",
+    "size": 985
+  },
+  "source-tests.log": {
+    "sha256": "068582b459c4d03c0d0549eb46da530302a765897d4c6e3b7cbd74b945d864f5",
+    "size": 1643
+  },
+  "source-tests.receipt.json": {
+    "sha256": "85ed17db31e2303fba2a1d2d0e963335bf1a94690576508b3e15dad130a8b290",
+    "size": 391
+  },
+  "source.patch": {
+    "sha256": "ffc1a0b3ba3c712a1e7c145bc40b889dbb017b3f3e569ddfd6c77eca74ad35ef",
+    "size": 18385
+  },
+  "source/docs/mistral-routed-lut6-swap.md": {
+    "sha256": "a10f5b1b3d28353d8fbd36999241683fb0be9dc21427b8cfc535a587fc7353bd",
+    "size": 3537
+  },
+  "source/mistral/CMakeLists.txt": {
+    "sha256": "a6bb00fc5c991b6713a15cee5db37d6fea238e473a85e25cca7709f2e2390d3f",
+    "size": 9212
+  },
+  "source/mistral/analogue_repair.h": {
+    "sha256": "1be2832d9c8679746bb5f431596b5f6565102d68b402fc4c97fc60b60b6d714c",
+    "size": 5513
+  },
+  "source/mistral/routed_lut6_swap.cc": {
+    "sha256": "8c8276b46eef4c809d06e5f42dd4379155586170ac79e4ce044ae83aaee7b08c",
+    "size": 37656
+  },
+  "source/mistral/tests/routed_lut6_source_coverage.cc": {
+    "sha256": "2b3e5b36d2b713ffa1f324a4f24226c8952236bd5cf7cfee25838821488392c5",
+    "size": 9994
+  },
+  "validate.py": {
+    "sha256": "6b19c938ad4b795d9df93a498c7f5b3f0b5ffbd3ff3b762d3ba09ef2b15e87e7",
+    "size": 2445
+  },
+  "validation-run.log": {
+    "sha256": "602cf90fdd76e655f8a199dfb0eef500e8713a52d12a663e4617a97107b38fbe",
+    "size": 2696
+  },
+  "validation.json": {
+    "sha256": "e1afe61d77f9c8c58b965542260703f218d6d5fec314cce58c584c4feccb831d",
+    "size": 1670
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "status": "pass",
+  "all_members_verified": 494,
+  "archive_sha256": "2b2240ddd347411dc22a695cb5db0e53544b873e75183acf299ebc230101c8f1",
+  "manifest_sha256": "b37d3f3fe7cfa10e9048e1810782b8cb80f3da5c0eb6b93980e537354c341707",
+  "checks": [
+    {
+      "script": "verify_sources.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "source-control-proof.json"
+      ]
+    },
+    {
+      "script": "test_checks.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "checker-tests.json"
+      ]
+    },
+    {
+      "script": "prove_graph.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "graph-proof.json",
+        "decision-ledger.json"
+      ]
+    },
+    {
+      "script": "compare_timing.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "route-comparison.json"
+      ]
+    },
+    {
+      "script": "summarize.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "summary.json"
+      ]
+    },
+    {
+      "script": "verify_topology.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "topology-proof.json"
+      ]
+    }
+  ],
+  "route_charge": 0,
+  "hardware": false
+}

@@ -1,0 +1,62 @@
+{
+  "all_mutated_checkpoint_payloads_retained": true,
+  "all_offline_checks": [
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "source-control-proof.json"
+      ],
+      "returncode": 0,
+      "script": "verify_sources.py"
+    },
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "checker-tests.json"
+      ],
+      "returncode": 0,
+      "script": "test_checks.py"
+    },
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "graph-proof.json",
+        "decision-ledger.json"
+      ],
+      "returncode": 0,
+      "script": "prove_graph.py"
+    },
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "route-comparison.json"
+      ],
+      "returncode": 0,
+      "script": "compare_timing.py"
+    },
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "summary.json"
+      ],
+      "returncode": 0,
+      "script": "summarize.py"
+    },
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "topology-proof.json"
+      ],
+      "returncode": 0,
+      "script": "verify_topology.py"
+    }
+  ],
+  "archive_bytes": 52961638,
+  "archive_sha256": "2b2240ddd347411dc22a695cb5db0e53544b873e75183acf299ebc230101c8f1",
+  "explicit_omitted_native_files": 88,
+  "manifest_sha256": "b37d3f3fe7cfa10e9048e1810782b8cb80f3da5c0eb6b93980e537354c341707",
+  "offline_extraction": "/tmp/pcxt-lut6-origin-offline-i88g0ald",
+  "scope": "Complete retained source/control/graph/timing/topology receipt verification without compiler/device-model execution; no reroute, native replay or hardware acceptance.",
+  "status": "pass",
+  "verified_members_including_manifest": 494
+}
