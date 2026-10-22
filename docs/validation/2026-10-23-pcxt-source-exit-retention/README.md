@@ -1,0 +1,13 @@
+# PC/XT source-exit retention: no additional gain
+
+The frozen `1ba2e289` source-exit option reached the intended CGA trials, then rejected all three on an individual setup regression. Both fresh final route bundles are byte-identical and retain the same two CGA/MDA permutations. Eight setup failures remain, worst −434 ps, with zero related hold failures, 105 unsupported obligations and `complete=false`.
+
+All 17,199 endpoint identities/windows/flags/metadata and 17,194 setup/hold margins are included. Each complete graph of 12,397 cells and 15,546 aliases is independently proved against the common CPU round-2 baseline. Both recorded native comparisons cover 10 complete trees, 18 stationary users and 65 retained wire tuples; all accepted LUT truth rows are retained. These are structural saved-tree proofs and emitted final timing, without new native execution, rejected-state STA reconstruction, RBF electrical equivalence, timing closure or hardware acceptance.
+
+Host admission retains 191 evidence bindings, 30 exact committed source files, 57 native tests and 8 CLI tests, default/zero controls, failed fixture attempts and isolated rollback probes. Those receipts are verified, not re-executed. Executables and the 401-member native snapshot payload are omitted with exact identities and explicit limits.
+
+The live checker and proof bytes remain unchanged because they are dependencies of the next campaign. The archive contains separate portable checker copies with exactly declared path-lookup adaptations in three files. Acceptance logic stays identical. Replay requires every substantive output to match the original proof; only declared adapted-script digest provenance may differ, and both original/adapted hashes are reported. The original independent 14-output review is retained, while a separate adapted review checks the same full inventories. No original-proof byte equality is claimed where an adapted checksum differs.
+
+The two routes cost 2603.1843361197972 seconds. The exact committed 52-receipt journal is retained at FES `826dbbe1c5b671f0c9facbdddb6692d1d4242bc4`, cumulative 53488.10083870170587 seconds, with an exact prior 50-receipt prefix. Historical routes are not rerun.
+
+Two explicit dependencies provide budget-32 controls and sources and the common CPU round-2 baseline graph. Every dependency member and selected payload mapping is hash-verified with no live-path fallback. Run `verify_capture.py CAPTURE.tar.gz EMPTY_OUTPUT CAP32.tar.gz COMBINED.tar.gz`; use scratch outside `/tmp`. Fresh extraction replays all complete graph, ledger, truth, native topology, endpoint and review checks without a GPU or native executable.

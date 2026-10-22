@@ -1,0 +1,138 @@
+{
+  "capture_bytes": 66023568,
+  "capture_sha256": "bb41b70758c9b2a2b09069ddcc7c3f5bde829a40f082dcf208310d1a5422f221",
+  "complete_dependency_members": {
+    "cap32": 284,
+    "combined": 100
+  },
+  "independent_review_sha256": "45516c79bd4c4febdb063ed202b46d3d2d68e1f022241a7c5b0919620649c030",
+  "manifest_sha256": "0efd2d120c74477492feb10db263b6070ba36ac0bf17861b8838eb8cc4e43d73",
+  "members": 418,
+  "passed": true,
+  "portable_proof": {
+    "accounting": {
+      "cumulative_charge_seconds": "53488.10083870170587",
+      "pair_charge_seconds": "2603.1843361197972",
+      "records": 52
+    },
+    "adapted_independent_review_sha256": "52d45ade63d7cb5aad6717a511998b2811773428b48dda515213c4e1a9bb80cf",
+    "all_four_pair_artifacts_byte_equal": true,
+    "both_native_comparisons": {
+      "retained_wire_tuples_each": 65,
+      "selected_nets_each": 10,
+      "stationary_users_each": 18
+    },
+    "charged_route_seconds": 0,
+    "complete_endpoint_rows": 17199,
+    "host_admission_files": 191,
+    "native_margin_delta_counts": {
+      "hold": {
+        "unchanged": 17194
+      },
+      "setup": {
+        "unchanged": 17194
+      }
+    },
+    "native_snapshot_manifest_members": 401,
+    "original_independent_review_sha256": "45516c79bd4c4febdb063ed202b46d3d2d68e1f022241a7c5b0919620649c030",
+    "passed": true,
+    "proof_replays": [
+      {
+        "adapted_sha256": "357777b8d92de358e50754700f1c2de230197179aa499c09e9338163f84c23b4",
+        "only_declared_digest_provenance_differs": [],
+        "original_sha256": "357777b8d92de358e50754700f1c2de230197179aa499c09e9338163f84c23b4",
+        "proof": "default-decision-ledger.json"
+      },
+      {
+        "adapted_sha256": "abeef124325ac69c32383955a4789a2243dc185cfc59a932eb17d4aa4da660ce",
+        "only_declared_digest_provenance_differs": [],
+        "original_sha256": "abeef124325ac69c32383955a4789a2243dc185cfc59a932eb17d4aa4da660ce",
+        "proof": "default-graph-proof.json"
+      },
+      {
+        "adapted_sha256": "625e000252070e777aea142cab3ce24a2ef76d048e2be84650e18917cfa16245",
+        "only_declared_digest_provenance_differs": [],
+        "original_sha256": "625e000252070e777aea142cab3ce24a2ef76d048e2be84650e18917cfa16245",
+        "proof": "default-common-timing-guards.json"
+      },
+      {
+        "adapted_sha256": "521259394c4e67e52a973a547ed45856bcf9c142acd99ef99503e883a8f08061",
+        "only_declared_digest_provenance_differs": [],
+        "original_sha256": "521259394c4e67e52a973a547ed45856bcf9c142acd99ef99503e883a8f08061",
+        "proof": "default-native-selection-specs.json"
+      },
+      {
+        "adapted_sha256": "9e398cf3d7dfa73edfb7b86469d82675695756e0fa5e8831fa435248efb14ce6",
+        "only_declared_digest_provenance_differs": [],
+        "original_sha256": "9e398cf3d7dfa73edfb7b86469d82675695756e0fa5e8831fa435248efb14ce6",
+        "proof": "retain-decision-ledger.json"
+      },
+      {
+        "adapted_sha256": "18d80e1aa7e164591e572d28b8ad6febf298cc17d5f854561ccc0213d3bb1843",
+        "only_declared_digest_provenance_differs": [],
+        "original_sha256": "18d80e1aa7e164591e572d28b8ad6febf298cc17d5f854561ccc0213d3bb1843",
+        "proof": "retain-graph-proof.json"
+      },
+      {
+        "adapted_sha256": "625e000252070e777aea142cab3ce24a2ef76d048e2be84650e18917cfa16245",
+        "only_declared_digest_provenance_differs": [],
+        "original_sha256": "625e000252070e777aea142cab3ce24a2ef76d048e2be84650e18917cfa16245",
+        "proof": "retain-common-timing-guards.json"
+      },
+      {
+        "adapted_sha256": "f49038c5b287fb167787b6ff7e89328179adf93425642e05ccd30a7da811ea52",
+        "only_declared_digest_provenance_differs": [],
+        "original_sha256": "f49038c5b287fb167787b6ff7e89328179adf93425642e05ccd30a7da811ea52",
+        "proof": "retain-native-selection-specs.json"
+      },
+      {
+        "adapted_sha256": "4f44c70ba4290582305a1e857d711109b339c684608aa342c68e557b7a7f2de3",
+        "only_declared_digest_provenance_differs": [
+          "checker_sha256"
+        ],
+        "original_sha256": "6b6f818de32b10c55aa6362ea2d002d01573415c5afcbffb08917e79213fbad7",
+        "proof": "graph-proof-summary.json"
+      },
+      {
+        "adapted_sha256": "568982e7a64b460ecf8757acb4a273877e25928c0eeb5324bd9a0881b6eafba3",
+        "only_declared_digest_provenance_differs": [
+          "checker_sha256",
+          "test_sha256"
+        ],
+        "original_sha256": "c4dc7db150a7a13b8f19aab2ff59c8b431e163bdf585bfef3fba72806fb34ffd",
+        "proof": "sequence-checks-proof.json"
+      },
+      {
+        "adapted_sha256": "884d88d3ebd25374a16d59ea2e2add4365f2df1062a29668c56238ac1ae31958",
+        "only_declared_digest_provenance_differs": [],
+        "original_sha256": "884d88d3ebd25374a16d59ea2e2add4365f2df1062a29668c56238ac1ae31958",
+        "proof": "native-port-identity-proof.json"
+      },
+      {
+        "adapted_sha256": "8ae2b9e788bb78810ed0b0e2db4cb2974fc0a6ffd49308e94fd8c274ceeb60e7",
+        "only_declared_digest_provenance_differs": [
+          "checker_sha256"
+        ],
+        "original_sha256": "6b351ca43ad54ed697f3d255756f4ed309d107b0f3a467b13cf96f3ec8cbac19",
+        "proof": "default-topology-proof.json"
+      },
+      {
+        "adapted_sha256": "1e2194c13674eb7b33da7f383d8541ada86df22fbfe887fb2e97d455497bf746",
+        "only_declared_digest_provenance_differs": [
+          "checker_sha256"
+        ],
+        "original_sha256": "350d46edbe78466865226e7c0756925bf03deedfba358091ff798405ba6a02ee",
+        "proof": "retain-topology-proof.json"
+      },
+      {
+        "adapted_sha256": "6b1f382a6f16bdb82e4528a88e77d28bc80a9ebeda91c7bb1042693c34d2645d",
+        "only_declared_digest_provenance_differs": [],
+        "original_sha256": "6b1f382a6f16bdb82e4528a88e77d28bc80a9ebeda91c7bb1042693c34d2645d",
+        "proof": "route-comparison.json"
+      }
+    ],
+    "scope": "Offline source/host receipt and complete saved graph/truth/native-tree/timing replay. Original live proof bytes remain immutable; separate portable copies differ only in declared path lookup/script-digest provenance. No host test, native helper/reader, GPU route, rejected-state STA or RBF electrical/hardware execution.",
+    "source_files": 30
+  },
+  "scope": "Fresh extraction and offline graph/truth/timing/native-topology proof replay; no native or GPU execution"
+}
