@@ -1,0 +1,77 @@
+{
+  "capture_bytes": 17525252,
+  "capture_sha256": "3333e2524c928aec6704c3fd8374b45208cc4964ff3598c5fdfac4604971d22b",
+  "complete_dependency_members": {
+    "budget": 256,
+    "rounds": 234
+  },
+  "independent_review_sha256": "c679ae95629cbd5d3c8a7cec859241badaef487ed40b7fda3609b17febb3c874",
+  "manifest_sha256": "f5eff173cb343846628bf26577534fb22c4f07b77737b869baa38153f85c7747",
+  "members": 100,
+  "passed": true,
+  "portable_proof": {
+    "all32_CGA_and8_MDA_truth_rows_equal": true,
+    "charged_route_seconds": 0,
+    "complete_endpoint_rows": 17199,
+    "exact_replays": [
+      {
+        "exact_replay": true,
+        "proof": "decision-ledger.json",
+        "sha256": "3ad930578ad2907d94760dd943485d8912ebf789738ef0dc4d9e389609d2d224"
+      },
+      {
+        "exact_replay": true,
+        "proof": "graph-proof.json",
+        "sha256": "bcfbe7577b7c3f159b376896f28f9b3420ddf4a1a2aa538f550268ea6d37952b"
+      },
+      {
+        "exact_replay": true,
+        "proof": "native-selection-specs.json",
+        "sha256": "b17b3faf09ec7d060738e8be01e688732ecfbb4b7e2899eeac5f39941585e469"
+      },
+      {
+        "exact_replay": true,
+        "proof": "checker-tests.json",
+        "sha256": "19a02c6424dfd01bf9480f1868bfd9a2ce7944a99ce26a9bd7c3f94721c6e5de"
+      },
+      {
+        "exact_replay": true,
+        "proof": "topology-proof.json",
+        "sha256": "47814c3b488677224357e7a19bea23ada5ade103f1eddfbab98b02e628432024"
+      },
+      {
+        "exact_replay": true,
+        "proof": "route-comparison.json",
+        "sha256": "9d4f13c74224ebe688b4e0570163e2475427bb9c7aec1112f22c51276fa7aac4"
+      }
+    ],
+    "historical_accounting_context": {
+      "cumulative_charge_seconds": "45003.56689689168647",
+      "journal_records": 44,
+      "scope": "Journal arithmetic and these two receipt hashes checked; other historical routes are context only."
+    },
+    "host_admission_files_in_verified_budget_dependency": 85,
+    "native_margin_delta_counts": {
+      "hold": {
+        "unchanged": 17194
+      },
+      "setup": {
+        "improved": 5,
+        "unchanged": 17189
+      }
+    },
+    "native_snapshot_manifest_members": 401,
+    "native_topology": {
+      "changed_physical_users": 4,
+      "retained_original_wire_tuples": 65,
+      "selected_nets": 10,
+      "stationary_users": 18
+    },
+    "pair_route_charge_seconds_recorded_not_recharged": "1744.7158295847476",
+    "passed": true,
+    "scope": "Offline replay of saved full graphs, final timing inventories and recorded native decoded trees. Complete dependency member hashes bind prior host/source evidence without duplicating it; prior host commands are not rerun. No native execution, GPU route, emitted-RBF mask proof, reload STA or hardware acceptance.",
+    "source_commit": "02ffa3aa6a74b71debbb23da24e5332b541cf742",
+    "source_files_in_verified_budget_dependency": 29
+  },
+  "scope": "Fresh extraction and offline graph/truth/timing/native-topology proof replay; no native or GPU execution"
+}
