@@ -104,6 +104,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "post-route LUT move and incident reroute (0..16 trials, default 0)");
     specific.add_options()("critical-lut6-swap-budget", po::value<int>(),
                            "post-route symmetric single-sink LUT6 input swaps (0..16 trials, default 0)");
+    specific.add_options()("critical-lut6-swap-rounds", po::value<int>(),
+                           "fresh post-route LUT6 discovery rounds (1..2, default 1; shared trial budget)");
     specific.add_options()("critical-private-pair-budget", po::value<int>(),
                            "post-route exact private ALUT3/ALUT5 decomposition (0..4 trials, default 0)");
     specific.add_options()("critical-lut-permute-budget", po::value<int>(),
@@ -393,6 +395,15 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
                        (vm.count("critical-move-route-budget") && vm["critical-move-route-budget"].as<int>() > 0)))
             log_error("Critical LUT6 swap requires a fresh ordinary full GPU route with --rbf, no forced timing and no move repair.\n");
         ctx->critical_lut6_swap_budget = budget;
+    }
+    ctx->critical_lut6_swap_rounds = 1;
+    if (vm.count("critical-lut6-swap-rounds")) {
+        const int rounds = vm["critical-lut6-swap-rounds"].as<int>();
+        if (rounds < 1 || rounds > 2)
+            log_error("--critical-lut6-swap-rounds must be between 1 and 2.\n");
+        if (rounds > 1 && ctx->critical_lut6_swap_budget <= 0)
+            log_error("--critical-lut6-swap-rounds 2 requires a positive LUT6 swap budget.\n");
+        ctx->critical_lut6_swap_rounds = rounds;
     }
     ctx->critical_private_pair_budget = 0;
     if (vm.count("critical-private-pair-budget")) {

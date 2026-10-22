@@ -534,130 +534,150 @@ void Arch::repair_critical_lut6_swaps()
 {
     if(!critical_lut6_swap_budget) return;
     Context *ctx=getCtx();
-    if(critical_lut6_swap_budget<0 || critical_lut6_swap_budget>16 || !ordinary_context(ctx))
-        log_error("Critical LUT6 swap requires an ordinary completed route and budget 1..16.\n");
+    if(critical_lut6_swap_budget<0 || critical_lut6_swap_budget>16 ||
+       critical_lut6_swap_rounds<1 || critical_lut6_swap_rounds>2 || !ordinary_context(ctx))
+        log_error("Critical LUT6 swap requires an ordinary completed route and budget 1..16 with rounds 1..2.\n");
     configure_bitstream();
     auto analyse=[&](bool skew) {auto t=std::make_unique<TimingAnalyser>(ctx);t->with_clock_skew=skew;t->setup(false,false,true);return t;};
     auto before=analyse(true),reference=analyse(false);
     if(before->have_loops || reference->have_loops) log_error("Critical LUT6 swap refuses timing loops.\n");
     auto inventory=critical_swap_live_endpoint_snapshot(ctx,*before,*reference);
-    size_t failing_rows=0;
-    for(const auto &endpoint:inventory["endpoints"].object_items()) for(const auto &row:endpoint.second.array_items())
-        if(row["setup_timed"].bool_value() && row["setup"].is_number() && row["setup"].number_value()<0) ++failing_rows;
-    // Every domain pair contributes at most the total failing row count. One
-    // additional slot includes its ordinary worst-path report without dropping
-    // another failing endpoint; the public native report API caps at 16384.
-    int count=int(std::max<size_t>(2,std::min<size_t>(16384,failing_rows+1)));
-    auto paths=before->get_report_setup_paths(count);
-    for(const auto &path:before->get_timing_result().clock_paths) paths.push_back(path.second);
-    for(const auto &path:before->get_timing_result().xclock_paths) paths.push_back(path);
-    if(failing_rows>=16384) log_info("Critical LUT6 discovery: native path bound truncates at 16384 per clock pair.\n");
-    struct Choice {CellInfo *cell;IdString first,second;int64_t slack;delay_t gain;};
-    std::map<std::tuple<std::string,int,int>,Choice> choices;
-    std::set<std::string> witnesses;
-    std::set<std::tuple<std::string,int,int>> considered;
-    std::map<CellInfo *,std::pair<bool,std::string>> coverage;
-    size_t lut6_arcs=0,filtered=0;
-    for(const auto &path:paths) {
-        if(path.segments.empty() || path.segments.back().type!=CriticalPath::Segment::Type::SETUP || path.max_delay<=0) continue;
-        int64_t total=0;bool finite=true;
-        for(const auto &segment:path.segments) {
-            if(!std::isfinite(double(segment.delay))) {finite=false;break;}
-            total+=int64_t(segment.delay);
-        }
-        const int64_t slack=int64_t(path.max_delay)-total;
-        if(!finite || slack>=0) continue;
-        const auto &endpoint=path.segments.back().to;
-        witnesses.insert(json11::Json(json11::Json::array{endpoint.first.str(ctx),endpoint.second.str(ctx),
-            path.clock_pair.start.clock.str(ctx),int(path.clock_pair.start.edge),path.clock_pair.end.clock.str(ctx),int(path.clock_pair.end.edge)}).dump());
-        for(const auto &segment:path.segments) {
-            if(segment.type!=CriticalPath::Segment::Type::LOGIC || segment.from.first!=segment.to.first || segment.to.second!=id_Q) continue;
-            auto found=ctx->cells.find(segment.from.first);
-            if(found==ctx->cells.end() || found->second->type!=id_MISTRAL_ALUT6) continue;
-            auto *cell=found->second.get();auto first=segment.from.second;
-            if(std::find(pins.begin(),pins.end(),first)==pins.end()) continue;
-            ++lut6_arcs;
-            for(auto second:pins) {
-                if(first==second) continue;
-                auto key=std::make_tuple(cell->name.str(ctx),std::min(first.index,second.index),std::max(first.index,second.index));
-                if(choices.count(key)) {choices.at(key).slack=std::min(choices.at(key).slack,slack);continue;}
-                if(!considered.insert(key).second)continue;
-                std::string reason;
-                if(!inspect(ctx,cell,first,second,reason)) {
-                    ++filtered;log_info("Critical LUT6 filter: cell=%s pins=%s/%s: %s.\n",ctx->nameOf(cell),first.c_str(ctx),second.c_str(ctx),reason.c_str());continue;
+    int tried=0,kept=0,completed_rounds=0;
+    size_t eligible=0;
+    for(int round=0;round<critical_lut6_swap_rounds && tried<critical_lut6_swap_budget;++round) {
+        const int kept_before=kept,tried_before=tried;
+        ++completed_rounds;
+        if(critical_lut6_swap_rounds>1)
+            log_info("Critical LUT6 round start: round=%d/%d tried=%d/%d kept=%d.\n",
+                     round+1,critical_lut6_swap_rounds,tried,critical_lut6_swap_budget,kept);
+        // Rediscover from the retained current analyses and complete inventory.
+        // No choices, coverage cache or changed-cell suppression survive a round.
+        size_t failing_rows=0;
+        for(const auto &endpoint:inventory["endpoints"].object_items()) for(const auto &row:endpoint.second.array_items())
+            if(row["setup_timed"].bool_value() && row["setup"].is_number() && row["setup"].number_value()<0) ++failing_rows;
+        // Every domain pair contributes at most the total failing row count. One
+        // additional slot includes its ordinary worst-path report without dropping
+        // another failing endpoint; the public native report API caps at 16384.
+        int count=int(std::max<size_t>(2,std::min<size_t>(16384,failing_rows+1)));
+        auto paths=before->get_report_setup_paths(count);
+        for(const auto &path:before->get_timing_result().clock_paths) paths.push_back(path.second);
+        for(const auto &path:before->get_timing_result().xclock_paths) paths.push_back(path);
+        if(failing_rows>=16384) log_info("Critical LUT6 discovery: native path bound truncates at 16384 per clock pair.\n");
+        struct Choice {CellInfo *cell;IdString first,second;int64_t slack;delay_t gain;};
+        std::map<std::tuple<std::string,int,int>,Choice> choices;
+        std::set<std::string> witnesses;
+        std::set<std::tuple<std::string,int,int>> considered;
+        std::map<CellInfo *,std::pair<bool,std::string>> coverage;
+        size_t lut6_arcs=0,filtered=0;
+        for(const auto &path:paths) {
+            if(path.segments.empty() || path.segments.back().type!=CriticalPath::Segment::Type::SETUP || path.max_delay<=0) continue;
+            int64_t total=0;bool finite=true;
+            for(const auto &segment:path.segments) {
+                if(!std::isfinite(double(segment.delay))) {finite=false;break;}
+                total+=int64_t(segment.delay);
+            }
+            const int64_t slack=int64_t(path.max_delay)-total;
+            if(!finite || slack>=0) continue;
+            const auto &endpoint=path.segments.back().to;
+            witnesses.insert(json11::Json(json11::Json::array{endpoint.first.str(ctx),endpoint.second.str(ctx),
+                path.clock_pair.start.clock.str(ctx),int(path.clock_pair.start.edge),path.clock_pair.end.clock.str(ctx),int(path.clock_pair.end.edge)}).dump());
+            for(const auto &segment:path.segments) {
+                if(segment.type!=CriticalPath::Segment::Type::LOGIC || segment.from.first!=segment.to.first || segment.to.second!=id_Q) continue;
+                auto found=ctx->cells.find(segment.from.first);
+                if(found==ctx->cells.end() || found->second->type!=id_MISTRAL_ALUT6) continue;
+                auto *cell=found->second.get();auto first=segment.from.second;
+                if(std::find(pins.begin(),pins.end(),first)==pins.end()) continue;
+                ++lut6_arcs;
+                for(auto second:pins) {
+                    if(first==second) continue;
+                    auto key=std::make_tuple(cell->name.str(ctx),std::min(first.index,second.index),std::max(first.index,second.index));
+                    if(choices.count(key)) {choices.at(key).slack=std::min(choices.at(key).slack,slack);continue;}
+                    if(!considered.insert(key).second)continue;
+                    std::string reason;
+                    if(!inspect(ctx,cell,first,second,reason)) {
+                        ++filtered;log_info("Critical LUT6 filter: cell=%s pins=%s/%s: %s.\n",ctx->nameOf(cell),first.c_str(ctx),second.c_str(ctx),reason.c_str());continue;
+                    }
+                    // Native terminal-input delay ranks partners only. The new
+                    // route changes slew/loading and must pass full fresh STA.
+                    if(!coverage.count(cell)) {
+                        bool complete=critical_lut6_swap_source_coverage(ctx,*before,cell,&reason) &&
+                                      critical_lut6_swap_source_coverage(ctx,*reference,cell,&reason) &&
+                                      critical_lut6_swap_output_coverage(ctx,*before,cell->getPort(id_Q),&reason) &&
+                                      critical_lut6_swap_output_coverage(ctx,*reference,cell->getPort(id_Q),&reason);
+                        coverage.emplace(cell,std::make_pair(complete,reason));
+                    }
+                    if(!coverage.at(cell).first) {
+                        ++filtered;log_info("Critical LUT6 filter: cell=%s pins=%s/%s: %s.\n",ctx->nameOf(cell),first.c_str(ctx),second.c_str(ctx),coverage.at(cell).second.c_str());continue;
+                    }
+                    delay_t gain=get_lut_input_delay(cell,first).maxDelay()-get_lut_input_delay(cell,second).maxDelay();
+                    choices.emplace(key,Choice{cell,first,second,slack,gain});
                 }
-                // Native terminal-input delay ranks partners only. The new
-                // route changes slew/loading and must pass full fresh STA.
-                if(!coverage.count(cell)) {
-                    bool complete=critical_lut6_swap_source_coverage(ctx,*before,cell,&reason) &&
-                                  critical_lut6_swap_source_coverage(ctx,*reference,cell,&reason) &&
-                                  critical_lut6_swap_output_coverage(ctx,*before,cell->getPort(id_Q),&reason) &&
-                                  critical_lut6_swap_output_coverage(ctx,*reference,cell->getPort(id_Q),&reason);
-                    coverage.emplace(cell,std::make_pair(complete,reason));
-                }
-                if(!coverage.at(cell).first) {
-                    ++filtered;log_info("Critical LUT6 filter: cell=%s pins=%s/%s: %s.\n",ctx->nameOf(cell),first.c_str(ctx),second.c_str(ctx),coverage.at(cell).second.c_str());continue;
-                }
-                delay_t gain=get_lut_input_delay(cell,first).maxDelay()-get_lut_input_delay(cell,second).maxDelay();
-                choices.emplace(key,Choice{cell,first,second,slack,gain});
             }
         }
-    }
-    std::map<std::string,std::vector<Choice>> grouped;
-    for(const auto &entry:choices)grouped[entry.second.cell->name.str(ctx)].push_back(entry.second);
-    struct CellChoices {std::string name;int64_t slack;std::vector<Choice> pairs;};
-    std::vector<CellChoices> ranked;
-    for(auto &group:grouped) {
-        int64_t slack=std::numeric_limits<int64_t>::max();
-        for(const auto &choice:group.second)slack=std::min(slack,choice.slack);
-        std::sort(group.second.begin(),group.second.end(),[&](const Choice &a,const Choice &b) {
-            if(a.gain!=b.gain)return a.gain>b.gain;
-            return std::make_pair(a.first.index,a.second.index)<std::make_pair(b.first.index,b.second.index);
-        });
-        ranked.push_back({group.first,slack,std::move(group.second)});
-    }
-    std::sort(ranked.begin(),ranked.end(),[](const CellChoices &a,const CellChoices &b) {
-        return std::tie(a.slack,a.name)<std::tie(b.slack,b.name);
-    });
-    log_info("Critical LUT6 discovery: negative endpoint rows=%zu native failing path witnesses=%zu LUT6 arcs=%zu filtered pairs=%zu eligible pairs=%zu cells=%zu.\n",
-             failing_rows,witnesses.size(),lut6_arcs,filtered,choices.size(),ranked.size());
-    int tried=0,kept=0;std::set<CellInfo *> changed;
-    // Give every discovered cell a first trial before its second partner.
-    for(size_t rank=0;rank<15 && tried<critical_lut6_swap_budget;++rank) for(const auto &group:ranked) {
-        if(rank>=group.pairs.size())continue;
-        const auto &choice=group.pairs[rank];
-        if(tried>=critical_lut6_swap_budget)break;
-        if(changed.count(choice.cell))continue;
-        std::string reason;
-        // Discovery is only a proposal. Recheck all origins and captures on
-        // the currently accepted native state before changing either tree.
-        if(!critical_lut6_swap_source_coverage(ctx,*before,choice.cell,&reason) ||
-           !critical_lut6_swap_source_coverage(ctx,*reference,choice.cell,&reason) ||
-           !critical_lut6_swap_output_coverage(ctx,*before,choice.cell->getPort(id_Q),&reason) ||
-           !critical_lut6_swap_output_coverage(ctx,*reference,choice.cell->getPort(id_Q),&reason)) {
-            log_info("Critical LUT6 current coverage: cell=%s: %s.\n",ctx->nameOf(choice.cell),reason.c_str());
-            continue;
+        std::map<std::string,std::vector<Choice>> grouped;
+        for(const auto &entry:choices)grouped[entry.second.cell->name.str(ctx)].push_back(entry.second);
+        struct CellChoices {std::string name;int64_t slack;std::vector<Choice> pairs;};
+        std::vector<CellChoices> ranked;
+        for(auto &group:grouped) {
+            int64_t slack=std::numeric_limits<int64_t>::max();
+            for(const auto &choice:group.second)slack=std::min(slack,choice.slack);
+            std::sort(group.second.begin(),group.second.end(),[&](const Choice &a,const Choice &b) {
+                if(a.gain!=b.gain)return a.gain>b.gain;
+                return std::make_pair(a.first.index,a.second.index)<std::make_pair(b.first.index,b.second.index);
+            });
+            ranked.push_back({group.first,slack,std::move(group.second)});
         }
-        ++tried;reason="native timing rejected";
-        std::unique_ptr<TimingAnalyser> after,next_reference;json11::Json next_inventory;
-        bool accepted=critical_routed_lut6_swap_trial(ctx,choice.cell,choice.first,choice.second,500000,[&]() {
-            after=analyse(true);next_reference=analyse(false);
-            if(after->have_loops || next_reference->have_loops) {reason="timing loop";return false;}
-            if(!critical_lut6_swap_source_coverage(ctx,*after,choice.cell,&reason) ||
-               !critical_lut6_swap_source_coverage(ctx,*next_reference,choice.cell,&reason) ||
-               !critical_lut6_swap_output_coverage(ctx,*after,choice.cell->getPort(id_Q),&reason) ||
-               !critical_lut6_swap_output_coverage(ctx,*next_reference,choice.cell->getPort(id_Q),&reason)) return false;
-            if(!private_pair_clock_safe(before->get_timing_result(),after->get_timing_result(),&reason) ||
-               !private_pair_clock_safe(reference->get_timing_result(),next_reference->get_timing_result(),&reason)) return false;
-            next_inventory=critical_swap_live_endpoint_snapshot(ctx,*after,*next_reference);
-            return critical_route_snapshot_safe(inventory,next_inventory,&reason);
-        },&reason,{});
-        log_info("Critical LUT6 trial %d: cell=%s pins=%s/%s prior-path-slack=%lldps native-pin-rank=%dps accepted=%d; %s.\n",
-                 tried,ctx->nameOf(choice.cell),choice.first.c_str(ctx),choice.second.c_str(ctx),
-                 static_cast<long long>(choice.slack),int(choice.gain),int(accepted),reason.c_str());
-        if(accepted) {before=std::move(after);reference=std::move(next_reference);inventory=std::move(next_inventory);changed.insert(choice.cell);++kept;}
+        std::sort(ranked.begin(),ranked.end(),[](const CellChoices &a,const CellChoices &b) {
+            return std::tie(a.slack,a.name)<std::tie(b.slack,b.name);
+        });
+        log_info("Critical LUT6 discovery: negative endpoint rows=%zu native failing path witnesses=%zu LUT6 arcs=%zu filtered pairs=%zu eligible pairs=%zu cells=%zu.\n",
+                 failing_rows,witnesses.size(),lut6_arcs,filtered,choices.size(),ranked.size());
+        eligible += choices.size();
+        std::set<CellInfo *> changed;
+        // Give every discovered cell a first trial before its second partner.
+        for(size_t rank=0;rank<15 && tried<critical_lut6_swap_budget;++rank) for(const auto &group:ranked) {
+            if(rank>=group.pairs.size())continue;
+            const auto &choice=group.pairs[rank];
+            if(tried>=critical_lut6_swap_budget)break;
+            if(changed.count(choice.cell))continue;
+            std::string reason;
+            // Discovery is only a proposal. Recheck all origins and captures on
+            // the currently accepted native state before changing either tree.
+            if(!critical_lut6_swap_source_coverage(ctx,*before,choice.cell,&reason) ||
+               !critical_lut6_swap_source_coverage(ctx,*reference,choice.cell,&reason) ||
+               !critical_lut6_swap_output_coverage(ctx,*before,choice.cell->getPort(id_Q),&reason) ||
+               !critical_lut6_swap_output_coverage(ctx,*reference,choice.cell->getPort(id_Q),&reason)) {
+                log_info("Critical LUT6 current coverage: cell=%s: %s.\n",ctx->nameOf(choice.cell),reason.c_str());
+                continue;
+            }
+            ++tried;reason="native timing rejected";
+            std::unique_ptr<TimingAnalyser> after,next_reference;json11::Json next_inventory;
+            bool accepted=critical_routed_lut6_swap_trial(ctx,choice.cell,choice.first,choice.second,500000,[&]() {
+                after=analyse(true);next_reference=analyse(false);
+                if(after->have_loops || next_reference->have_loops) {reason="timing loop";return false;}
+                if(!critical_lut6_swap_source_coverage(ctx,*after,choice.cell,&reason) ||
+                   !critical_lut6_swap_source_coverage(ctx,*next_reference,choice.cell,&reason) ||
+                   !critical_lut6_swap_output_coverage(ctx,*after,choice.cell->getPort(id_Q),&reason) ||
+                   !critical_lut6_swap_output_coverage(ctx,*next_reference,choice.cell->getPort(id_Q),&reason)) return false;
+                if(!private_pair_clock_safe(before->get_timing_result(),after->get_timing_result(),&reason) ||
+                   !private_pair_clock_safe(reference->get_timing_result(),next_reference->get_timing_result(),&reason)) return false;
+                next_inventory=critical_swap_live_endpoint_snapshot(ctx,*after,*next_reference);
+                return critical_route_snapshot_safe(inventory,next_inventory,&reason);
+            },&reason,{});
+            log_info("Critical LUT6 trial %d: cell=%s pins=%s/%s prior-path-slack=%lldps native-pin-rank=%dps accepted=%d; %s.\n",
+                     tried,ctx->nameOf(choice.cell),choice.first.c_str(ctx),choice.second.c_str(ctx),
+                     static_cast<long long>(choice.slack),int(choice.gain),int(accepted),reason.c_str());
+            if(accepted) {before=std::move(after);reference=std::move(next_reference);inventory=std::move(next_inventory);changed.insert(choice.cell);++kept;}
+        }
+        if(critical_lut6_swap_rounds>1)
+            log_info("Critical LUT6 round complete: round=%d tried=%d kept=%d.\n",
+                     round+1,tried-tried_before,kept-kept_before);
+        if(kept==kept_before) break;
     }
+    if(critical_lut6_swap_rounds>1)
+        log_info("Critical LUT6 rounds: completed=%d/%d shared-trials=%d/%d.\n",
+                 completed_rounds,critical_lut6_swap_rounds,tried,critical_lut6_swap_budget);
     log_info("Critical LUT6 swap: tried=%d/%d kept=%d eligible=%zu; unchanged unsupported coverage is not qualification.\n",
-             tried,critical_lut6_swap_budget,kept,choices.size());
+             tried,critical_lut6_swap_budget,kept,eligible);
 }
 NEXTPNR_NAMESPACE_END

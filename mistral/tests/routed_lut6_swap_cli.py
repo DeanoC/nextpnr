@@ -36,6 +36,22 @@ class RoutedLut6SwapCli(unittest.TestCase):
         self.assertEqual(before.returncode,0,before.stdout);self.assertEqual(after.returncode,0,after.stdout)
         self.assertEqual(a,b);self.assertNotIn('Critical LUT6 discovery',after.stdout)
 
+    def test_explicit_one_round_preserves_disabled_bytes(self):
+        before,a=self.run_case(['--critical-lut6-swap-budget','0'])
+        after,b=self.run_case(['--critical-lut6-swap-budget','0','--critical-lut6-swap-rounds','1'])
+        self.assertEqual(before.returncode,0,before.stdout);self.assertEqual(after.returncode,0,after.stdout)
+        self.assertEqual(a,b);self.assertNotIn('Critical LUT6 round',after.stdout)
+
+    def test_round_bounds(self):
+        for rounds in ('0','3'):
+            result,output=self.run_case(['--critical-lut6-swap-rounds',rounds])
+            self.assertNotEqual(result.returncode,0);self.assertIn('must be between 1 and 2',result.stdout);self.assertIsNone(output)
+
+    def test_second_round_requires_enabled_trials(self):
+        for budget in ([],['--critical-lut6-swap-budget','0']):
+            result,output=self.run_case(budget+['--critical-lut6-swap-rounds','2'])
+            self.assertNotEqual(result.returncode,0);self.assertIn('requires a positive LUT6 swap budget',result.stdout);self.assertIsNone(output)
+
     def test_budget_bounds(self):
         for budget in ('-1','17'):
             result,output=self.run_case(['--critical-lut6-swap-budget',budget])
@@ -58,7 +74,7 @@ class RoutedLut6SwapCli(unittest.TestCase):
         self.rejected(base,settings={'timing/allowFail':'1'},no_route=False)
 
     def test_saved_setting_never_enables(self):
-        result,output=self.run_case(settings={'critical-lut6-swap-budget':'16'})
+        result,output=self.run_case(settings={'critical-lut6-swap-budget':'16','critical-lut6-swap-rounds':'2'})
         self.assertEqual(result.returncode,0,result.stdout);self.assertIsNotNone(output)
         self.assertNotIn('Critical LUT6 discovery',result.stdout)
 

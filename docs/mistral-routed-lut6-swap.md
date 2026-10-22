@@ -52,3 +52,25 @@ cones reject. This catches an omitted upstream origin even when another branch
 provides valid endpoint timing rows. Full source and downstream coverage is
 rechecked before every trial and after actual rerouting, both with and without
 clock skew. Existing complete endpoint, clock, setup and hold guards remain.
+
+## Optional fresh second discovery
+
+`--critical-lut6-swap-rounds 2` enables at most one additional discovery round,
+requiring a positive swap budget. The default is one round. The existing
+`--critical-lut6-swap-budget` remains the total trial cap across both rounds,
+with its maximum of 16 unchanged. A second round starts only if the first
+retained a swap and trial budget remains.
+
+Each round discovers the current failing endpoints and critical input arcs from
+the retained skewed and reference analyses and complete endpoint inventory.
+Proposal lists, coverage caches and the per-cell accepted-swap set are rebuilt;
+a previously changed cell can therefore be considered on its new critical
+input. Every trial still checks current source/capture coverage, exact local
+legality and rollback, all setup/hold and clock guards, and the required 20 ps
+setup gain. A rejected trial does not advance the retained analysis. There is
+no clock reduction, additional timing exemption or enlarged routing budget.
+
+Explicit second-round logs retain each discovery and its trial/retention counts;
+the final eligible count sums proposals across the executed rounds. Default
+one-round logs and ordering are unchanged. Saved settings do not enable a
+second round. A full same-source paired route must establish any actual gain.

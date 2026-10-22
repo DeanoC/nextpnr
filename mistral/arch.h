@@ -604,6 +604,7 @@ struct Arch : BaseArch<ArchRanges>
     int critical_route_budget = 0; // CLI-only, full native timing trials after ordinary routing.
     void repair_critical_routes();
     int critical_lut6_swap_budget = 0; // Explicit CLI only; symmetric post-route input swaps.
+    int critical_lut6_swap_rounds = 1; // Explicit opt-in second discovery; one shared trial budget.
     void repair_critical_lut6_swaps();
     int critical_private_pair_budget = 0; // Explicit CLI only; bounded live two-LUT decomposition.
     void repair_critical_private_pairs();
