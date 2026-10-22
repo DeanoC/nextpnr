@@ -318,6 +318,19 @@ bool critical_lut_permutation_source_coverage(Context *ctx, TimingAnalyser &timi
                                "requires current full native ALUT2..5 timing",reason);
 }
 
+// A separate final-route scope reuses the same bounded structural/native walker.
+// It admits only the ordinary Q drivers already accepted by the route selector.
+bool critical_final_route_source_coverage(Context *ctx, TimingAnalyser &timing, NetInfo *net,
+                                          std::string *reason)
+{
+    auto *driver = net ? net->driver.cell : nullptr;
+    const bool supported = driver && net->driver.port == id_Q && driver->getPort(id_Q) == net &&
+        driver->type.in(id_MISTRAL_FF,id_MISTRAL_ALUT2,id_MISTRAL_ALUT3,id_MISTRAL_ALUT4,
+                        id_MISTRAL_ALUT5,id_MISTRAL_ALUT6);
+    return lut_source_coverage(ctx,timing,driver,supported,
+                               "requires current full native ordinary-Q route timing",reason);
+}
+
 namespace {
 bool output_coverage(Context *ctx, TimingAnalyser &timing, NetInfo *output, bool allow_unobserved_arithmetic,
                      std::string *reason)

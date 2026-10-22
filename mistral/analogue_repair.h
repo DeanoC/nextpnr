@@ -40,6 +40,9 @@ bool critical_routed_lut6_swap_trial(Context *ctx, CellInfo *cell, IdString firs
 bool critical_routed_move_trial(Context *ctx, CellInfo *cell, BelId target, int visit_budget,
                                 const std::function<bool()> &accept, std::string *reason = nullptr);
 
+// Final route rediscovery only: retain the existing LUT wrapper scopes.
+bool critical_final_route_source_coverage(Context *ctx, TimingAnalyser &timing, NetInfo *net,
+                                          std::string *reason = nullptr);
 // Restore the net, physical mux state and analogue cache on rejection or exception.
 bool critical_route_trial(Context *ctx, NetInfo *net, const GpuRouteTree &candidate,
                           const std::function<bool()> &accept);

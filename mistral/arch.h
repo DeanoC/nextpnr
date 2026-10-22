@@ -602,7 +602,8 @@ struct Arch : BaseArch<ArchRanges>
     void compute_analogue_arcs(bool observe);
     bool analogue_repair();
     int critical_route_budget = 0; // CLI-only, full native timing trials after ordinary routing.
-    void repair_critical_routes();
+    int critical_final_route_budget = 0; // CLI-only final discovery after LUT repairs.
+    void repair_critical_routes(bool final_after_lut = false);
     int critical_lut6_swap_budget = 0; // Explicit CLI only; symmetric post-route input swaps.
     int critical_lut6_swap_rounds = 1; // Explicit opt-in second discovery; one shared trial budget.
     void repair_critical_lut6_swaps();

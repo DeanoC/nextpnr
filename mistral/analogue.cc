@@ -53,6 +53,7 @@
 #include "gpurouter.h"
 #include "log.h"
 #include "nextpnr.h"
+#include "private_pair_decomposition_native.h"
 #include "timing.h"
 #include "util.h"
 
@@ -892,28 +893,62 @@ bool critical_route_trial(Context *ctx, NetInfo *ni, const GpuRouteTree &candida
     return false;
 }
 
-void Arch::repair_critical_routes()
+void Arch::repair_critical_routes(bool final_after_lut)
 {
-    if (!critical_route_budget) return;
+    const int budget = final_after_lut ? critical_final_route_budget : critical_route_budget;
+    if (!budget) return;
     Context *ctx = getCtx();
-    if (critical_route_budget < 0 || critical_route_budget > 32 || fes_any_slot_region_active ||
+    if (final_after_lut && (fes_fence_active || fes_has_reserved_rect || fes_has_cram_region ||
+        !fes_frozen_cells.empty() || !fes_frozen_pips.empty() || ctx->force ||
+        (ctx->settings.count(ctx->id("timing/allowFail")) && ctx->setting<bool>("timing/allowFail")) ||
+        critical_move_route_budget || (!critical_lut6_swap_budget && !critical_private_pair_budget && !critical_lut_permute_budget)))
+        log_error("Final critical route rediscovery requires ordinary completed LUT repairs and unforced timing.\n");
+    if (budget < 0 || budget > 32 || fes_any_slot_region_active ||
         !ctx->attrs.count(id_step) || ctx->attrs.at(id_step).as_string() != "route")
         log_error("Critical route repair requires an ordinary completed route and budget 1..32.\n");
     configure_bitstream();
-    auto analyse = [&]() {
+    auto analyse = [&](bool skew = true) {
         auto t = std::make_unique<TimingAnalyser>(ctx);
-        t->with_clock_skew = true;
+        t->with_clock_skew = skew;
         t->setup(false, false, true);
         return t;
     };
-    auto snapshot = [&](TimingAnalyser &t) {
+    auto snapshot = [&](TimingAnalyser &t, TimingAnalyser *reference = nullptr) {
+        if (final_after_lut) {
+            NPNR_ASSERT(reference != nullptr);
+            return critical_swap_live_endpoint_snapshot(ctx,t,*reference);
+        }
         TimingAnalyser unskewed(ctx);
         unskewed.setup(false, false, true);
         return critical_swap_endpoint_snapshot(ctx, t, unskewed);
     };
     auto before = analyse();
-    if (before->have_loops) log_error("Critical route repair refuses timing loops.\n");
-    auto inventory = snapshot(*before);
+    auto reference = final_after_lut ? analyse(false) : nullptr;
+    if (before->have_loops || (reference && reference->have_loops)) log_error("Critical route repair refuses timing loops.\n");
+    auto inventory = snapshot(*before,reference.get());
+    if (final_after_lut) {
+        std::string reason;
+        if (!private_pair_clock_safe(before->get_timing_result(),before->get_timing_result(),&reason) ||
+            !private_pair_clock_safe(reference->get_timing_result(),reference->get_timing_result(),&reason))
+            log_error("Final critical route rediscovery lacks complete native clocks: %s.\n",reason.c_str());
+        log_info("Final critical route rediscovery: fresh skew/reference timing and live inventory; budget=%d.\n",budget);
+    }
+    auto covered = [&](NetInfo *net, TimingAnalyser &skewed, TimingAnalyser &plain, std::string &reason) {
+        return critical_final_route_source_coverage(ctx,skewed,net,&reason) &&
+               critical_final_route_source_coverage(ctx,plain,net,&reason) &&
+               critical_lut6_swap_output_coverage(ctx,skewed,net,&reason) &&
+               critical_lut6_swap_output_coverage(ctx,plain,net,&reason);
+    };
+    auto excluded = [&](NetInfo *net, const char *reason) {
+        if (!final_after_lut) return;
+        for (const auto &user : net->users) if (user.cell) {
+            const float slack=before->get_setup_slack(CellPortKey(user));
+            if (std::isfinite(slack) && slack<0 && slack!=std::numeric_limits<float>::lowest()) {
+                log_info("Final critical route filter: net %s: %s.\n",ctx->nameOf(net),reason);
+                break;
+            }
+        }
+    };
     struct Item { NetInfo *net; store_index<PortRef> user; float slack; };
     std::vector<Item> items;
     auto ordinary = [&](CellInfo *c) {
@@ -925,14 +960,26 @@ void Arch::repair_critical_routes()
     for (const auto &entry : nets) {
         auto *ni = entry.second.get();
         if (ni->is_global || ni->clkconstr || ni->wires.empty() || !ordinary(ni->driver.cell) ||
-            ni->driver.port != id_Q || !ni->users.entries() || ni->users.entries() > 64) continue;
+            ni->driver.port != id_Q || !ni->users.entries() || ni->users.entries() > 64) {
+            excluded(ni,"ordinary routed Q-driver/global/clock/user-count boundary"); continue;
+        }
         bool allowed = true;
         for (const auto &port : ctx->ports) if (port.second.net == ni) allowed = false;
         for (const auto &w : ni->wires) if (w.second.strength > STRENGTH_STRONG) allowed = false;
         for (const auto &usr : ni->users)
             if (!ordinary(usr.cell) || (usr.cell->type == id_MISTRAL_FF ? usr.port != id_DATAIN :
                 !usr.port.in(id_A,id_B,id_C,id_D,id_E,id_F))) allowed = false;
-        if (!allowed) continue;
+        if (!allowed) { excluded(ni,"ordinary complete-user/public/protected-route boundary"); continue; }
+        if (final_after_lut) {
+            bool failing=false;
+            for (const auto &usr : ni->users) {
+                const float slack=before->get_setup_slack(CellPortKey(usr));
+                failing |= std::isfinite(slack) && slack<0 && slack!=std::numeric_limits<float>::lowest();
+            }
+            if (!failing) continue;
+            std::string reason;
+            if (!covered(ni,*before,*reference,reason)) { excluded(ni,reason.c_str()); continue; }
+        }
         for (auto usr : ni->users.enumerate()) {
             const float slack = before->get_setup_slack(CellPortKey(usr.value));
             if (std::isfinite(slack) && slack < 0 && slack != std::numeric_limits<float>::lowest())
@@ -948,9 +995,22 @@ void Arch::repair_critical_routes()
     pool<IdString> selected;
     for (const auto &it : items) if (selected.insert(it.net->name).second) {
         sinks.push_back({it.net,it.user});
-        if (sinks.size() == size_t(critical_route_budget)) break;
+        if (final_after_lut)
+            log_info("Final critical route selected %zu: net %s sink %s.%s slack %.3f ps.\n",sinks.size(),
+                     ctx->nameOf(it.net),ctx->nameOf(it.net->users.at(it.user).cell),
+                     it.net->users.at(it.user).port.c_str(ctx),it.slack);
+        if (sinks.size() == size_t(budget)) break;
     }
-    if (sinks.empty()) { log_info("Critical route repair: no eligible failing data nets.\n"); return; }
+    if (final_after_lut) {
+        pool<IdString> listed;
+        for (const auto &item : items)
+            if (listed.insert(item.net->name).second && !selected.count(item.net->name))
+                log_info("Final critical route filter: net %s: selected-net budget exhausted.\n",ctx->nameOf(item.net));
+        log_info("Final critical route shortlist: failing ordinary sink rows=%zu selected nets=%zu.\n",items.size(),sinks.size());
+    }
+    if (sinks.empty()) {
+        log_info("%s route repair: no eligible failing data nets.\n",final_after_lut?"Final critical":"Critical"); return;
+    }
     // Calibrate only the search's flattened delay table. Trial STA always uses
     // the exact same fallback table as the initial full-route baseline.
     const auto observed = pip_delay_observed;
@@ -979,7 +1039,7 @@ void Arch::repair_critical_routes()
         restore_table();
         auto proposals = router->candidates(sinks, 4, true);
         router.reset(); // Release the GPU lease before native CPU evaluation.
-        log_info("Critical route generation %d: learned observations=%zu.\n", generation, learned.size());
+        log_info("%s route generation %d: learned observations=%zu.\n",final_after_lut?"Final critical":"Critical",generation,learned.size());
         for (size_t i = 0; i < sinks.size(); ++i) {
             auto *ni = sinks[i].net;
             std::vector<CriticalRouteSinkDelay> base;
@@ -990,7 +1050,9 @@ void Arch::repair_critical_routes()
                 base.push_back({float(before->get_setup_slack(CellPortKey(usr))),
                                 float(found->second.delay.maxDelay()), 0});
             }
-            if (!known) continue;
+            if (!known) { excluded(ni,"one or more sinks lack a characterized native analogue cache entry"); continue; }
+            if (final_after_lut)
+                log_info("Final critical route candidates: generation %d net %s proposals=%zu.\n",generation,ctx->nameOf(ni),proposals[i].size());
             for (auto &candidate : proposals[i]) {
                 auto identity = candidate.wires;
                 std::sort(identity.begin(), identity.end());
@@ -1013,8 +1075,8 @@ void Arch::repair_critical_routes()
                     gain = critical_route_local_gain(trial);
                     return false; // Ranking always restores the original physical tree.
                 });
-                log_info("Critical route proposal: net %s variant %d native worst-sink gain %.3f ps.\n",
-                         ctx->nameOf(ni), candidate.variant, gain);
+                log_info("%s route proposal: net %s variant %d native worst-sink gain %.3f ps.\n",
+                         final_after_lut?"Final critical":"Critical",ctx->nameOf(ni),candidate.variant,gain);
                 if (gain >= 20) ranked[i].emplace_back(gain, std::move(candidate));
             }
         }
@@ -1028,17 +1090,28 @@ void Arch::repair_critical_routes()
     }
     int tried = 0, kept = 0;
     // Round-robin across failing nets: one net cannot consume the whole budget.
-    for (size_t rank = 0; rank < 8 && tried < critical_route_budget; ++rank)
-        for (size_t i = 0; i < sinks.size() && tried < critical_route_budget; ++i) {
+    for (size_t rank = 0; rank < 8 && tried < budget; ++rank)
+        for (size_t i = 0; i < sinks.size() && tried < budget; ++i) {
             if (rank >= candidates[i].size()) continue;
             auto *ni = sinks[i].net;
-            ++tried;
-            std::unique_ptr<TimingAnalyser> after;
-            json11::Json next_inventory;
             std::string rejection = "route topology or binding rejected";
+            if (final_after_lut && !covered(ni,*before,*reference,rejection)) {
+                excluded(ni,rejection.c_str()); continue;
+            }
+            ++tried;
+            std::unique_ptr<TimingAnalyser> after,next_reference;
+            json11::Json next_inventory;
             bool accepted = critical_route_trial(ctx, ni, candidates[i][rank], [&]() {
                 after = analyse();
                 if (after->have_loops) { rejection="timing loop"; return false; }
+                if (final_after_lut) {
+                    next_reference=analyse(false);
+                    if (next_reference->have_loops) { rejection="reference timing loop"; return false; }
+                    if (!covered(ni,*after,*next_reference,rejection) ||
+                        !private_pair_clock_safe(before->get_timing_result(),after->get_timing_result(),&rejection) ||
+                        !private_pair_clock_safe(reference->get_timing_result(),next_reference->get_timing_result(),&rejection))
+                        return false;
+                }
                 const auto &a = before->get_timing_result(), &b = after->get_timing_result();
                 auto nonregressing = [&](const auto &old, const auto &now, const char *label) {
                     if (old.size() != now.size()) { rejection=std::string(label)+" clock coverage changed"; return false; }
@@ -1057,21 +1130,23 @@ void Arch::repair_critical_routes()
                     auto found=b.clock_fmax.find(clock.first);
                     if (found==b.clock_fmax.end() || !std::isfinite(found->second.achieved) || found->second.achieved<clock.second.achieved) { rejection="clock Fmax regression: "+clock.first.str(ctx); return false; }
                 }
-                next_inventory = snapshot(*after);
+                next_inventory = snapshot(*after,next_reference.get());
                 return critical_route_snapshot_safe(inventory, next_inventory, &rejection);
             });
-            log_info("Critical route trial %d: net %s variant %d accepted=%d.\n", tried, ctx->nameOf(ni),
-                     candidates[i][rank].variant, int(accepted));
-            log_info("    Critical route decision: %s.\n", rejection.c_str());
+            if (final_after_lut && accepted) rejection="complete native inventory and both-frame clock guards passed";
+            log_info("%s route trial %d: net %s variant %d accepted=%d.\n",final_after_lut?"Final critical":"Critical",tried,ctx->nameOf(ni),
+                     candidates[i][rank].variant,int(accepted));
+            log_info("    %s route decision: %s.\n",final_after_lut?"Final critical":"Critical",rejection.c_str());
             if (accepted) {
                 before=std::move(after); inventory=std::move(next_inventory); ++kept;
+                if (final_after_lut) reference=std::move(next_reference);
                 // Remaining proposals were generated from the old tree. Do not
                 // undo this accepted change by trying an old variant of it.
                 candidates[i].clear();
             }
         }
-    log_info("Critical route repair: tried=%d/%d kept=%d; unchanged unsupported coverage is not qualification.\n",
-             tried, critical_route_budget, kept);
+    log_info("%s route repair: tried=%d/%d kept=%d; unchanged unsupported coverage is not qualification.\n",
+             final_after_lut?"Final critical":"Critical",tried,budget,kept);
 }
 
 NEXTPNR_NAMESPACE_END
