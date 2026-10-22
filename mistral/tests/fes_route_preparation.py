@@ -171,6 +171,35 @@ endmodule
     cells=load('boundary-routed.json')['cells']
     assert sum(name.endswith('$ROUTETHRU') for name in cells)==1
     assert 'LAB inputs need at least 1 LABs' in (out/'boundary-reload.log').read_text()
+    # Two user-locked fabric-fed flip-flops in one reserved half (--mistral-ff4):
+    # the placement preview and routing preparation agree that FF0 keeps the
+    # half's LUT as its route-through and FF1 takes the E/F input.
+    ff4 = out / 'ff4.v'
+    ff4.write_text('''module top(input clk, a, b, output qa, qb);
+(* BEL="MISTRAL_FF.24.1.20" *) MISTRAL_FF ffa (
+ .CLK(clk), .DATAIN(a), .Q(qa), .ACLR(1'b1), .ENA(1'b1),
+ .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
+(* BEL="MISTRAL_FF.24.1.21" *) MISTRAL_FF ffb (
+ .CLK(clk), .DATAIN(b), .Q(qb), .ACLR(1'b1), .ENA(1'b1),
+ .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
+endmodule
+''')
+    run([args.yosys.resolve(), '-p', f'read_verilog {ff4}; synth_intel_alm -nolutram -nodsp -top top; '
+         f'write_json {out / "ff4-synth.json"}'], 'ff4-synth')
+    ff4_qsf = out / 'ff4.qsf'
+    ff4_qsf.write_text('set_location_assignment PIN_V11 -to clk\n'
+                       'set_location_assignment PIN_Y13 -to a\n'
+                       'set_location_assignment PIN_AD19 -to b\n'
+                       'set_location_assignment PIN_W15 -to qa\n'
+                       'set_location_assignment PIN_AA24 -to qb\n'
+                       'set_global_assignment -name FES_RESERVED_RECT "24 1 24 1"\n')
+    run(base + ['--mistral-ff4', '--json', out / 'ff4-synth.json', '--qsf', ff4_qsf,
+                '--write', out / 'ff4-routed.json'], 'ff4-route')
+    cells = load('ff4-routed.json')['cells']
+    assert [name for name in sorted(cells) if name.endswith('$ROUTETHRU')] == ['ffa$ROUTETHRU'], sorted(cells)
+    assert cells['ffa$ROUTETHRU']['attributes']['NEXTPNR_BEL'] == 'MISTRAL_COMB.24.1.18'
+    pinmap = json.loads(bytes.fromhex(cells['ffa$ROUTETHRU']['attributes']['FES_PINMAP_V1']))
+    assert pinmap['pins']['A'] in ([0, p] for p in ('C', 'E0', 'F0')), pinmap
     print('FES reservation checkpoint and route preparation passed')
 
 
