@@ -1,0 +1,127 @@
+{
+  "prior_capture": "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/docs/validation/2026-10-22-pcxt-add-operand0/capture.tar.gz",
+  "prior_capture_sha256": "52004db16988c99fb4abc13e257126ae8049178a224a5210a9c7ae53cd51a4b7",
+  "prior_manifest_sha256": "30d4dbb7f9cbdadcc7e73f040cc9c4d7d7fcc8b6decc14fa8bb6c99234bfb175",
+  "prior_capture_commit": "a63f27f1",
+  "metadata_followup_commit": "ffbc638c",
+  "required_sibling_directory": "add-op0-20261022",
+  "reused_members_verified": {
+    "comparison.json": {
+      "sha256": "3de8b0a45ded1bee6dbb68000286b0c48875d021d9e3d62336a3dedd151c434b",
+      "size": 5688350
+    },
+    "committed-source-review.json": {
+      "sha256": "df745651fcbedffcd7dfc925dc3b068767b33be11e1232c86cf0e2ed7a53995a",
+      "size": 7736
+    },
+    "source-change.patch": {
+      "sha256": "58a5b1674efa6903e4daae4f432145e624ef57d3c108e56be402904c0ecd470d",
+      "size": 36212
+    },
+    "overflow-audit.json": {
+      "sha256": "ac4e2ec89a83fc436f20af86f971f6095e11df830ec094998188760be6fb98ca",
+      "size": 306781
+    },
+    "overflow-native-proof.json": {
+      "sha256": "fc7f4193cee0a38b20bf797bce9f9005bdaa2ba726f9902278b0ce84c1387f6f",
+      "size": 3742
+    },
+    "overflow-selection-proof.json": {
+      "sha256": "5133c4c3b1f4227afd9e009fa80e0e23d239861a6478d6e5ce4959c368afdd32",
+      "size": 64443
+    },
+    "mapped-proof.json": {
+      "sha256": "9cb8175ba1182c2a84285d30dd0fafcd762c6509351c87d99dee85a3069f4c45",
+      "size": 57068
+    },
+    "selector-proof.json": {
+      "sha256": "ff9ba1f4a42d38357eeeb8dd170f5de1f4b826965471cc77b71c65dde272ac2e",
+      "size": 257494
+    },
+    "cpu-generated-ff-proof.json": {
+      "sha256": "061ab9e45b1c3052a9d273c43aa27cf8de63b48b7559a92930db01f6da0b3905",
+      "size": 1514
+    },
+    "baseline/source.tar.gz": {
+      "sha256": "2d93a341b4dfd6cec0662bd560bb6b7635c9ec75c3646bd0c8ccacaac4440a38",
+      "size": 21015451
+    },
+    "baseline/snapshot.json": {
+      "sha256": "07784af6bcd129f8145f021df407d3353cb0c1ade0fe7ec31a3b4714ab724c20",
+      "size": 246625
+    },
+    "baseline/inputs.json": {
+      "sha256": "a9845d516137cba84d2c3f4cc9720dd6d4303cc8df757fa0df38af76de1a06e6",
+      "size": 43679
+    },
+    "baseline/receipt.json": {
+      "sha256": "c1a2475dedb58f037aa0ad713e7526b6f75d71924f65e13aafaeb497414451e6",
+      "size": 2104
+    },
+    "baseline/synthesis/synth.json": {
+      "sha256": "1d31765e5de8286905e64d0313b14f1783d77d2b4653e9fd2a6791d4ae82b3d2",
+      "size": 20586168
+    },
+    "baseline/synthesis/constraints.qsf": {
+      "sha256": "5eff0d63083685f76041b438c36c18f38b19da98053427c7c2ee155dc3873e1d",
+      "size": 6421
+    },
+    "baseline/synthesis/clocks.sdc": {
+      "sha256": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041",
+      "size": 106
+    },
+    "route-baseline/receipt.json": {
+      "sha256": "25954e90aadbb7ab5581ddfd901ed93c8743c69b826e698e9a3f6cf213cb8f11",
+      "size": 6913
+    },
+    "route-baseline/endpoints.json": {
+      "sha256": "d1ad6c544188d30cc1834a28a05b65d5380135c382ee1d7f00facdfc3334b125",
+      "size": 23569585
+    },
+    "route-baseline/timing.json": {
+      "sha256": "c5f62514c4624181f683ef1fd7513404f2aeae9edc2de631886d596ee672adf8",
+      "size": 20283215
+    },
+    "candidate/source.tar.gz": {
+      "sha256": "2adf0fad3fb4be309ae95765bd78f078ff98e9455cdc46369ba09aa35d99ffa4",
+      "size": 21020303
+    },
+    "candidate/snapshot.json": {
+      "sha256": "062e04d83629f30a419d20d8e4459c04c1ef68987c74fed58f28bb1d8b87afbe",
+      "size": 247025
+    },
+    "candidate/inputs.json": {
+      "sha256": "7f2c5eb1982393934a5c99ab098897720901a866930a8cd7b495aaafaf033edb",
+      "size": 43913
+    },
+    "candidate/receipt.json": {
+      "sha256": "820d7d1814b74d1800e7b8931524bef73b6c51856b73c4e584e3cbf8a4571655",
+      "size": 2105
+    },
+    "candidate/synthesis/synth.json": {
+      "sha256": "a3d34339b65b213fcc4b59a44fd03efc8c7e17caba7ce175dda671ce842c2bf6",
+      "size": 20617368
+    },
+    "candidate/synthesis/constraints.qsf": {
+      "sha256": "5eff0d63083685f76041b438c36c18f38b19da98053427c7c2ee155dc3873e1d",
+      "size": 6421
+    },
+    "candidate/synthesis/clocks.sdc": {
+      "sha256": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041",
+      "size": 106
+    },
+    "route-candidate/receipt.json": {
+      "sha256": "cb75e579ac7194772f35cbdce1e1270b3b13b9d1123d3c575b4a3d8ca7744261",
+      "size": 6922
+    },
+    "route-candidate/endpoints.json": {
+      "sha256": "eefcdec582bdaa848081b1f24afc663b5b79a88e01135b5fa1bffd4d4eb893ff",
+      "size": 23643387
+    },
+    "route-candidate/timing.json": {
+      "sha256": "e29f5a6be6b754738a10088c6fc2ad74b3ae621260aaf87e5b8a7ab392c924f2",
+      "size": 21921678
+    }
+  },
+  "scope": "Immutable prior source/inputs/raw semantic proofs and bare reference reports are intentionally reused; no unfinished balanced artifacts enter the prior archive."
+}

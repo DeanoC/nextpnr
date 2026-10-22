@@ -1,0 +1,7 @@
+{
+  "archive": "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/docs/validation/2026-10-22-pcxt-add-operand0-balanced/capture.tar.gz",
+  "sha256": "f51fdea5fdaf636ee1d4475828533151913b44898546259e06a1911bc1297e55",
+  "verified_members": 60,
+  "bytes": 15519834,
+  "destination_readback": true
+}
