@@ -217,6 +217,26 @@ void Arch::repair_critical_moves()
         bool accepted=critical_routed_move_trial(ctx,choice.cell,choice.target,500000,[&]() {
             after=analyse();if(after->have_loops){reason="timing loop";return false;}
             const auto &a=before->get_timing_result(),&b=after->get_timing_result();
+            // Diagnostic only: report every clock before the unchanged acceptance
+            // guard, including positive hold margins and missing/new coverage.
+            auto report_margins=[&](const char *kind,const auto &old,const auto &now) {
+                std::set<IdString> clocks;
+                for(const auto &row:old) clocks.insert(row.first);
+                for(const auto &row:now) clocks.insert(row.first);
+                for(auto clock:clocks) {
+                    auto x=old.find(clock),y=now.find(clock);
+                    if(x==old.end()||y==now.end()) {
+                        log_info("Critical move margin %d: %s clock %s coverage before=%d after=%d.\n",
+                                 tried,kind,clock.c_str(ctx),int(x!=old.end()),int(y!=now.end()));
+                        continue;
+                    }
+                    log_info("Critical move margin %d: %s clock %s before=%.6f ns after=%.6f ns delta=%.6f ns.\n",
+                             tried,kind,clock.c_str(ctx),ctx->getDelayNS(x->second),ctx->getDelayNS(y->second),
+                             ctx->getDelayNS(y->second-x->second));
+                }
+            };
+            report_margins("setup",a.clock_setup_slack,b.clock_setup_slack);
+            report_margins("hold",a.clock_hold_slack,b.clock_hold_slack);
             auto nonregressing=[&](const auto &old,const auto &now) {
                 if(old.size()!=now.size())return false;
                 for(const auto &row:old){auto f=now.find(row.first);if(f==now.end()||!std::isfinite(double(f->second))||f->second<row.second)return false;}return true;};
