@@ -695,3 +695,115 @@ TEST_F(TimingReportPathsTest, SdcFalsePathClearsEndpointHoldRelation)
         EXPECT_FALSE(rows.front().hold_margin.has_value());
     }
 }
+
+TEST_F(TimingReportPathsTest, HeuristicWindowsPermitSetupOnlyWithoutWeakeningStrictExporter)
+{
+    TimingAnalyser full(ctx.get()); full.setup();
+    TimingAnalyser hints(ctx.get()); hints.setup_only = true; hints.setup();
+    for (auto *cell : {rising.front(), falling.front()}) {
+        auto port = CellPortKey(cell->name, id_DATAIN);
+        std::vector<EndpointClockPairTiming> native;
+        std::vector<TimingAnalyser::SetupWindowHint> rows;
+        ASSERT_TRUE(full.get_endpoint_clock_pair_timings(port, native));
+        ASSERT_TRUE(hints.get_setup_window_hints(port, rows));
+        ASSERT_EQ(rows.size(), native.size());
+        EXPECT_EQ(rows[0].window, native[0].setup_window);
+        EXPECT_EQ(rows[0].window.value(), cell == rising.front() ? 10000 : 3000);
+        EXPECT_FALSE(hints.get_endpoint_clock_pair_timings(port, native));
+        EXPECT_TRUE(native.empty());
+    }
+    std::vector<TimingAnalyser::SetupWindowHint> rows;
+    // The same output's propagated required tags retain both capture edges.
+    ASSERT_TRUE(hints.get_setup_window_hints(CellPortKey(launch->name, id_Q), rows));
+    ASSERT_EQ(rows.size(), 2u);
+    std::set<delay_t> windows;
+    for (const auto &row : rows) windows.insert(row.window.value());
+    EXPECT_EQ(windows, (std::set<delay_t>{3000, 10000}));
+}
+
+TEST_F(TimingReportPathsTest, HeuristicWindowsPreservePhaseMulticycleAndCuts)
+{
+    clock->clkconstr->phase_group = ctx->id("hint_phase_group");
+    auto *phase = other_clock("hint_phase");
+    phase->clkconstr->phase_shift = 2500;
+    auto *endpoint = rising.front();
+    endpoint->disconnectPort(id_CLK); endpoint->connectPort(id_CLK, phase);
+    ctx->assignArchInfo();
+    auto check = [&](delay_t expected, bool cut) {
+        TimingAnalyser hints(ctx.get()); hints.setup_only = true; hints.setup();
+        TimingAnalyser full(ctx.get()); full.setup();
+        std::vector<TimingAnalyser::SetupWindowHint> rows;
+        std::vector<EndpointClockPairTiming> native;
+        const auto key = CellPortKey(endpoint->name, id_DATAIN);
+        ASSERT_TRUE(hints.get_setup_window_hints(key, rows));
+        ASSERT_TRUE(full.get_endpoint_clock_pair_timings(key, native));
+        ASSERT_EQ(rows.size(), 1u); ASSERT_EQ(native.size(), 1u);
+        EXPECT_EQ(rows[0].window, native[0].setup_window); EXPECT_EQ(rows[0].cut, cut);
+        if (!cut) EXPECT_EQ(rows[0].window.value(), expected); else EXPECT_FALSE(rows[0].window.has_value());
+    };
+    check(2500, false);
+    phase->clkconstr->phase_shift = -2500;
+    check(7500, false);
+    std::istringstream multi("set_multicycle_path 3 -setup -from [get_clocks {report_clock}] -to [get_clocks {hint_phase}]\n");
+    ctx->read_sdc(multi);
+    check(27500, false);
+    std::istringstream cut("set_false_path -from [get_clocks {report_clock}] -to [get_clocks {hint_phase}]\n");
+    ctx->read_sdc(cut);
+    check(0, true);
+}
+
+TEST_F(TimingReportPathsTest, HeuristicWindowsRejectUnknownAndChangedAnalysisState)
+{
+    auto key = CellPortKey(rising.front()->name, id_DATAIN);
+    std::vector<TimingAnalyser::SetupWindowHint> rows;
+    TimingAnalyser not_run(ctx.get());
+    EXPECT_FALSE(not_run.get_setup_window_hints(key, rows)); EXPECT_TRUE(rows.empty());
+    TimingAnalyser hints(ctx.get()); hints.setup_only = true; hints.setup();
+    ASSERT_TRUE(hints.get_setup_window_hints(key, rows));
+    hints.setup_only = false;
+    EXPECT_FALSE(hints.get_setup_window_hints(key, rows)); EXPECT_TRUE(rows.empty());
+    hints.setup_only = true; hints.have_loops = true;
+    EXPECT_FALSE(hints.get_setup_window_hints(key, rows)); EXPECT_TRUE(rows.empty());
+    hints.have_loops = false;
+    clock->clkconstr->high = DelayPair(3000, 2000);
+    EXPECT_FALSE(hints.get_setup_window_hints(key, rows)); EXPECT_TRUE(rows.empty());
+    clock->clkconstr->high = DelayPair(3000);
+    clock->clkconstr->low = DelayPair(7000, 6000);
+    EXPECT_FALSE(hints.get_setup_window_hints(key, rows)); EXPECT_TRUE(rows.empty());
+    clock->clkconstr->low = DelayPair(7000);
+    ASSERT_TRUE(hints.get_setup_window_hints(key, rows));
+    clock->clkconstr.reset();
+    TimingAnalyser unknown(ctx.get()); unknown.setup_only = true; unknown.setup();
+    EXPECT_FALSE(unknown.get_setup_window_hints(key, rows)); EXPECT_TRUE(rows.empty());
+}
+
+TEST_F(TimingReportPathsTest, HeuristicWindowsRetainEveryLaunchAndClockGroupCut)
+{
+    clock->clkconstr->phase_group = ctx->id("hint_mixed_group");
+    auto *second_clock = other_clock("hint_second_clock"); second_clock->clkconstr->phase_shift = 2500;
+    auto *second = other_launch(second_clock);
+    auto *endpoint = rising.front();
+    auto *logic = cone.at(endpoint->name);
+    logic->disconnectPort(id_B); logic->connectPort(id_B, second->getPort(id_Q));
+    ctx->assignArchInfo();
+    const auto port = CellPortKey(endpoint->name, id_DATAIN);
+    TimingAnalyser hints(ctx.get()); hints.setup_only = true; hints.setup();
+    std::vector<TimingAnalyser::SetupWindowHint> rows;
+    ASSERT_TRUE(hints.get_setup_window_hints(port, rows)); ASSERT_EQ(rows.size(), 2u);
+    std::set<delay_t> windows; for (const auto &row : rows) windows.insert(row.window.value());
+    EXPECT_EQ(windows, (std::set<delay_t>{7500, 10000}));
+    // A stale phase snapshot must not silently return the old window.
+    second_clock->clkconstr->phase_shift = 1000;
+    EXPECT_FALSE(hints.get_setup_window_hints(port, rows)); EXPECT_TRUE(rows.empty());
+    second_clock->clkconstr->phase_shift = 2500;
+    std::istringstream groups("set_clock_groups -asynchronous -group [get_clocks {report_clock}] -group [get_clocks {hint_second_clock}]\n");
+    ctx->read_sdc(groups);
+    TimingAnalyser cut(ctx.get()); cut.setup_only = true; cut.setup();
+    ASSERT_TRUE(cut.get_setup_window_hints(port, rows)); ASSERT_EQ(rows.size(), 2u);
+    size_t cut_count = 0, timed_count = 0;
+    for (const auto &row : rows) {
+        if (row.launch.clock == second_clock->name) { EXPECT_TRUE(row.cut); EXPECT_FALSE(row.window); ++cut_count; }
+        else { EXPECT_FALSE(row.cut); ASSERT_TRUE(row.window); EXPECT_EQ(row.window.value(), 10000); ++timed_count; }
+    }
+    EXPECT_EQ(cut_count, 1u); EXPECT_EQ(timed_count, 1u);
+}

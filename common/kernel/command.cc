@@ -97,6 +97,7 @@ std::set<std::string> dedicated_command_setting_keys(const po::variables_map &vm
     add("placer-heap-cell-placement-timeout", "placerHeap/cellPlacementTimeout");
     add("placer-heap-no-ctrl-set", "placerHeap/noCtrlSet");
     add("placer-heap-correct-spread", "placerHeap/correctSpread");
+    add("placer-heap-hard-block-windows", "placerHeap/hardBlockWindows");
     add("parallel-refine", "placerHeap/parallelRefine");
     add("router2-heatmap", "router2/heatmap");
     add("router2-profile", "router2/profilePath");
@@ -472,6 +473,9 @@ po::options_description CommandHandler::getGeneralOptions()
     general.add_options()("placer-heap-correct-spread",
                           "correct partition-local coordinates and bucket accounting in HeAP spreading (default: off)");
 
+    general.add_options()("placer-heap-hard-block-windows",
+                          "assign supported sparse hard blocks using native setup windows (default: off)");
+
     general.add_options()("static-dump-density", "write density csv files during placer-static flow");
 
 #if !defined(NPNR_DISABLE_THREADS)
@@ -626,6 +630,8 @@ void CommandHandler::setupContext(Context *ctx)
     if (vm.count("placer-heap-no-ctrl-set"))
         ctx->settings[ctx->id("placerHeap/noCtrlSet")] = true;
 
+    if (vm.count("placer-heap-hard-block-windows"))
+        ctx->settings[ctx->id("placerHeap/hardBlockWindows")] = true;
     if (vm.count("placer-heap-correct-spread"))
         ctx->settings[ctx->id("placerHeap/correctSpread")] = true;
 

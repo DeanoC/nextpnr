@@ -34,6 +34,7 @@
 #include "placer_heap.h"
 #include "heap_congestion.h"
 #include "heap_spread.h"
+#include "heap_hard_blocks.h"
 #include <Eigen/Core>
 #include <Eigen/IterativeLinearSolvers>
 #include <boost/optional.hpp>
@@ -266,7 +267,11 @@ class HeAPPlacer
                     }
                 }
 
-                // Run the spreader
+                if (cfg.hardBlockWindows)
+                    prepare_hard_blocks();
+
+                // Run the ordinary spreader even for the proposed bucket, so
+                // native rejection can restore its exact fallback coordinates.
                 for (const auto &group : cfg.cellGroups)
                     CutSpreader(this, group).run();
 
@@ -287,6 +292,8 @@ class HeAPPlacer
                                  loc.y);
                     }
                 }
+                if (cfg.hardBlockWindows)
+                    apply_hard_block_targets();
                 legalise_placement_strict();
                 update_all_chains();
 
@@ -1173,6 +1180,57 @@ class HeAPPlacer
         }
     };
 
+    std::vector<HeapHardBlockAssignment> hard_block_assignment;
+    dict<IdString, CellLocation> hard_block_fallback;
+
+    void prepare_hard_blocks()
+    {
+        hard_block_assignment.clear();
+        hard_block_fallback.clear();
+        dict<IdString, HeapHardBlockLocation> locations;
+        pool<IdString> solved;
+        for (auto *cell : solve_cells) solved.insert(cell->name);
+        for (const auto &entry : cell_locs) {
+            const auto &loc = entry.second;
+            const bool movable = solved.count(entry.first) && !loc.locked;
+            // Locked cells and macro children have no independent solved raw coordinates.
+            locations[entry.first] = {movable ? loc.rawx : double(loc.x),
+                                      movable ? loc.rawy : double(loc.y), movable};
+        }
+        std::string reason;
+        if (!plan_heap_hard_blocks(ctx, cfg, tmg, locations, hard_block_assignment, reason))
+            log_info("HeAP hard-block windows: ordinary placement fallback (%s).\n", reason.c_str());
+    }
+
+    void apply_hard_block_targets()
+    {
+        for (const auto &entry : hard_block_assignment) {
+            auto &loc = cell_locs.at(entry.cell->name);
+            hard_block_fallback[entry.cell->name] = loc;
+            auto target = ctx->getBelLocation(entry.bel);
+            loc.x = target.x; loc.y = target.y;
+            loc.rawx = target.x; loc.rawy = target.y;
+        }
+    }
+
+    void bind_hard_block_targets()
+    {
+        if (hard_block_assignment.empty()) return;
+        std::string reason;
+        if (!bind_heap_hard_blocks(ctx, cfg, hard_block_assignment, reason)) {
+            for (const auto &entry : hard_block_fallback) cell_locs.at(entry.first) = entry.second;
+            log_info("HeAP hard-block windows: native fallback (%s).\n", reason.c_str());
+        } else {
+            log_info("HeAP hard-block windows: native assignment accepted for %zu cells.\n", hard_block_assignment.size());
+            if (ctx->debug)
+                for (const auto &entry : hard_block_assignment)
+                    log_info("HeAP hard-block assignment: iter=%d cell='%s' bel='%s' strength=WEAK\n",
+                             iter + 1, ctx->nameOf(entry.cell), ctx->nameOfBel(entry.bel));
+        }
+        hard_block_assignment.clear();
+        hard_block_fallback.clear();
+    }
+
     class StrictLegaliser
     {
       public:
@@ -1192,6 +1250,9 @@ class HeAPPlacer
                     ctx->unbindBel(ci->bel);
                 }
             }
+
+            if (p->cfg.hardBlockWindows)
+                p->bind_hard_block_targets();
 
             // At the moment we don't follow the full HeAP algorithm using cuts for legalisation, instead using
             // the simple greedy largest-macro-first approach.
@@ -2455,11 +2516,13 @@ PlacerHeapCfg::PlacerHeapCfg(Context *ctx)
     // Do not intern an absent key or write a default setting: either changes
     // the legacy checkpoint/IdString ordering even when the option is off.
     correctSpread = false;
+    hardBlockWindows = false;
     for (const auto &setting : ctx->settings) {
         if (setting.first.str(ctx) == "placerHeap/correctSpread") {
             correctSpread = ctx->setting<bool>("placerHeap/correctSpread");
-            break;
         }
+        if (setting.first.str(ctx) == "placerHeap/hardBlockWindows")
+            hardBlockWindows = ctx->setting<bool>("placerHeap/hardBlockWindows");
     }
 
     congestionDriven = ctx->setting<bool>("placerHeap/congestion", false);

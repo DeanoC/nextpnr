@@ -56,6 +56,13 @@ struct PlacerHeapCfg
     // during cut spreading; leave the legacy placement trajectory unchanged otherwise.
     bool correctSpread;
 
+    // Native-window assignment is explicitly enabled and architecture-declared.
+    bool hardBlockWindows = false;
+    BelBucketId hardBlockBucket = BelBucketId();
+    std::function<bool(const CellInfo *, IdString)> hardBlockStaticInput;
+    std::function<bool(const CellInfo *)> hardBlockCellEligible;
+
+
     // Scale down spreading capacity where the RUDY routing-demand estimate
     // exceeds congestionTarget, by at most congestionMinScale.
     bool congestionDriven;

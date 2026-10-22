@@ -161,6 +161,17 @@ struct TimingAnalyser
     // This does not change the legacy Fmax, path or hold results.
     std::vector<CriticalPath> get_report_setup_paths(int count);
 
+    // Placement hints only: complete native domain-pair windows at a real data
+    // port, including propagated return capture domains. Valid after setup-only
+    // STA. No path extrema, setup/hold margins or signoff coverage are implied.
+    struct SetupWindowHint {
+        ClockDomainKey launch, capture;
+        bool cut = false;
+        std::optional<delay_t> window; // empty for a known untimed pair
+        SetupWindowHint(ClockDomainKey launch, ClockDomainKey capture) : launch(launch), capture(capture) {}
+    };
+    bool get_setup_window_hints(CellPortKey port, std::vector<SetupWindowHint> &rows) const;
+
     // Complete, stable clock-pair coverage after full STA, or false with no
     // rows for loops, unknown clocks, incomplete tags or unconstrained launches.
     // Opt-in allow_external_launch supports explicit unregistered IO delays into

@@ -998,6 +998,24 @@ bool Arch::place()
 
     if (placer == "heap") {
         PlacerHeapCfg cfg(getCtx());
+        if (cfg.hardBlockWindows) {
+            if (fes_any_slot_region_active || fes_fence_active || fes_has_reserved_rect ||
+                !fes_frozen_cells.empty() || !fes_frozen_pips.empty())
+                log_error("Hard-block window assignment requires ordinary full-design HeAP placement.\n");
+            cfg.hardBlockBucket = id_MISTRAL_M10K;
+            cfg.hardBlockCellEligible = [](const CellInfo *cell) {
+                return cell->type == id_MISTRAL_M10K && cell->constr_children.empty() &&
+                       cell->constr_x == 0 && cell->constr_y == 0 && cell->constr_z == 0 && !cell->constr_abs_z;
+            };
+            cfg.hardBlockStaticInput = [](const CellInfo *cell, IdString port) {
+                auto state = cell->get_pin_state(port);
+                if (state == PIN_0 || state == PIN_1) return true;
+                auto *net = cell->getPort(port);
+                return net && net->driver.cell && net->driver.cell->type == id_MISTRAL_CONST &&
+                       net->driver.port == id_Q && net->driver.cell->params.count(id_LUT) &&
+                       net->driver.cell->params.at(id_LUT).is_fully_def();
+            };
+        }
         cfg.ioBufTypes.insert(id_MISTRAL_IO);
         cfg.ioBufTypes.insert(id_MISTRAL_IB);
         cfg.ioBufTypes.insert(id_MISTRAL_OB);

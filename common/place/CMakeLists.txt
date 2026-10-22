@@ -10,6 +10,9 @@ target_sources(nextpnr_place PUBLIC
     heap_congestion.h
     heap_control_set.h
     heap_spread.h
+    heap_assignment.h
+    heap_hard_blocks.h
+    heap_hard_blocks.cc
     parallel_refine.cc
     parallel_refine.h
     place_common.cc
@@ -26,6 +29,11 @@ target_sources(nextpnr_place PUBLIC
 )
 
 if (BUILD_TESTS)
+    add_executable(nextpnr-heap-assignment-test tests/heap_assignment.cc)
+    target_include_directories(nextpnr-heap-assignment-test PRIVATE .)
+    target_link_libraries(nextpnr-heap-assignment-test PRIVATE gtest_main)
+    set_property(TARGET nextpnr-heap-assignment-test PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+    add_test(NAME nextpnr-heap-assignment-test COMMAND nextpnr-heap-assignment-test)
     add_executable(nextpnr-heap-control-set-test
         tests/heap_control_set.cc
         ../kernel/log.cc

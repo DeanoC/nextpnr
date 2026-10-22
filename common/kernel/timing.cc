@@ -1256,6 +1256,69 @@ std::vector<CriticalPath> TimingAnalyser::get_report_setup_paths(int count)
     return paths;
 }
 
+bool TimingAnalyser::get_setup_window_hints(CellPortKey port, std::vector<SetupWindowHint> &rows) const
+{
+    rows.clear();
+    auto found = ports.find(port);
+    auto owner = ctx->cells.find(port.cell);
+    if (!analysis_complete || have_loops || setup_only != analysed_setup_only ||
+        with_clock_skew != analysed_clock_skew || found == ports.end() || owner == ctx->cells.end() ||
+        found->second.timing_port || !owner->second->ports.count(port.port) ||
+        !owner->second->getPort(port.port))
+        return false;
+    const auto &data = found->second;
+    if (data.arrival.empty() || data.required.empty() ||
+        data.domain_pairs.size() != data.arrival.size() * data.required.size())
+        return false;
+    auto finite = [](delay_t value) {
+        return std::isfinite(double(value)) && value != std::numeric_limits<delay_t>::lowest() &&
+               value != std::numeric_limits<delay_t>::max();
+    };
+    auto valid_clock = [&](domain_id_t id) {
+        if (id < 0 || size_t(id) >= domains.size()) return false;
+        const auto &key = domains.at(id).key;
+        auto net = ctx->nets.find(key.clock);
+        if (key.is_async() || (key.edge != RISING_EDGE && key.edge != FALLING_EDGE) ||
+            net == ctx->nets.end() || !net->second->clkconstr) return false;
+        const auto &c = *net->second->clkconstr;
+        return finite(c.period.minDelay()) && finite(c.period.maxDelay()) && c.period.minDelay() > 0 &&
+               c.period.maxDelay() >= c.period.minDelay() && finite(c.high.minDelay()) &&
+               finite(c.high.maxDelay()) && finite(c.low.minDelay()) && finite(c.low.maxDelay()) &&
+               c.high.minDelay() > 0 && c.low.minDelay() > 0 &&
+               c.high.maxDelay() >= c.high.minDelay() && c.low.maxDelay() >= c.low.minDelay() &&
+               finite(c.phase_shift);
+    };
+    std::vector<SetupWindowHint> complete;
+    for (const auto &arrival : data.arrival) {
+        if (!valid_clock(arrival.first) || !finite(arrival.second.value.maxDelay())) return false;
+        for (const auto &required : data.required) {
+            if (!valid_clock(required.first) || !finite(required.second.value.minDelay())) return false;
+            auto pair = pair_to_id.find(ClockDomainPairKey(arrival.first, required.first));
+            if (pair == pair_to_id.end() || pair->second < 0 || size_t(pair->second) >= domain_pairs.size() ||
+                !data.domain_pairs.count(pair->second)) return false;
+            const auto &dp = domain_pairs.at(pair->second);
+            SetupWindowHint hint(domains.at(arrival.first).key, domains.at(required.first).key);
+            hint.cut = ctx->sdc_clock_false(hint.launch.clock, hint.capture.clock);
+            if (dp.timed != timed_clocks(ctx, hint.launch.clock, hint.capture.clock)) return false;
+            if (dp.timed) {
+                const auto window = dp.period.minDelay();
+                if (!finite(window) || window <= 0 ||
+                    window != clock_interval(ctx, hint.launch.clock, hint.capture.clock,
+                                             hint.launch.edge, hint.capture.edge) +
+                                      multicycle_extra(ctx, hint.launch.clock, hint.capture.clock)) return false;
+                hint.window = window;
+            }
+            complete.push_back(hint);
+        }
+    }
+    std::sort(complete.begin(), complete.end(), [&](const SetupWindowHint &a, const SetupWindowHint &b) {
+        return std::make_tuple(a.launch.clock.str(ctx), int(a.launch.edge), a.capture.clock.str(ctx), int(a.capture.edge)) <
+               std::make_tuple(b.launch.clock.str(ctx), int(b.launch.edge), b.capture.clock.str(ctx), int(b.capture.edge));
+    });
+    rows.swap(complete);
+    return !rows.empty();
+}
+
 bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
                                                     std::vector<EndpointClockPairTiming> &rows,
                                                     bool allow_external_launch, bool allow_external_capture,
