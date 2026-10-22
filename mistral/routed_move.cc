@@ -22,6 +22,39 @@ bool protected_cell(Context *ctx, CellInfo *c)
         if (c->attrs.count(ctx->id(a))) return true;
     return false;
 }
+// Pin assignments are frozen after route. All COMB BELs expose every ALM
+// input name, so mere pin existence does not validate a change of LUT half.
+bool fixed_pin_target(Context *ctx, CellInfo *cell, BelId target)
+{
+    if(!ordinary_lut(cell) || cell->bel==BelId() || target==BelId() ||
+       !ctx->isValidBelForCellType(cell->type,target)) return false;
+    int half=ctx->bel_data(cell->bel).lab_data.idx;
+    if(ctx->bel_data(target).lab_data.idx!=half) return false;
+    for(const auto &port:cell->ports) {
+        if(port.second.type!=PORT_IN || !port.second.net) continue;
+        auto pin=cell->pin_data.find(port.first);
+        if(pin==cell->pin_data.end()) return false;
+        if(pin->second.state!=PIN_SIG && pin->second.state!=PIN_INV) continue;
+        if(pin->second.bel_pins.empty()) return false;
+        for(auto physical:pin->second.bel_pins) {
+            bool allowed=physical.in(id_A,id_B) || physical==(half?id_E1:id_E0) ||
+                         physical==(half?id_F1:id_F0) ||
+                         (cell->type==id_MISTRAL_ALUT6 ? physical.in(id_C,id_D) : physical==(half?id_D:id_C));
+            if(!allowed || ctx->getBelPinWire(target,physical)==WireId()) return false;
+        }
+    }
+    return true;
+}
+void refresh_modes(Context *ctx, BelId bel)
+{
+    const auto &location=ctx->bel_data(bel).lab_data;
+    auto &alm=ctx->labs.at(location.lab).alms.at(location.alm);
+    alm.l6_mode=false;alm.carry_mode=false;
+    for(auto slot:alm.lut_bels) if(auto *cell=ctx->getBoundBelCell(slot)) {
+        alm.l6_mode|=cell->type==id_MISTRAL_ALUT6;
+        alm.carry_mode|=cell->combInfo.is_carry;
+    }
+}
 bool footprint(Context *ctx, CellInfo *cell, std::vector<NetInfo *> &nets)
 {
     if (!ordinary_lut(cell) || protected_cell(ctx, cell) || cell->cluster != ClusterId() ||
@@ -48,7 +81,37 @@ bool footprint(Context *ctx, CellInfo *cell, std::vector<NetInfo *> &nets)
     for (auto name : names) nets.push_back(ctx->nets.at(name).get());
     return true;
 }
-struct SavedNet { NetInfo *net; std::vector<std::tuple<WireId,PipId,PlaceStrength>> wires; };
+struct SavedNet {
+    NetInfo *net;
+    std::vector<std::tuple<WireId,PipId,PlaceStrength>> wires;
+    std::set<WireId> stationary;
+    WireId root;
+};
+// Retain the complete original source-to-sink paths of every stationary user.
+// The moved driver's output has a new source and must be routed afresh.
+bool stationary_paths(Context *ctx, CellInfo *moved, SavedNet &saved)
+{
+    auto *net=saved.net;
+    if(net->driver.cell==moved) return true;
+    saved.root=ctx->getNetinfoSourceWire(net);
+    auto root=net->wires.find(saved.root);
+    if(root==net->wires.end() || root->second.pip!=PipId()) return false;
+    saved.stationary.insert(saved.root);
+    for(const auto &user:net->users) {
+        if(user.cell==moved) continue;
+        for(auto wire:ctx->getNetinfoSinkWires(net,user)) {
+            std::set<WireId> seen;
+            while(wire!=saved.root) {
+                auto at=net->wires.find(wire);
+                if(!seen.insert(wire).second || at==net->wires.end() || at->second.pip==PipId() ||
+                   ctx->getPipDstWire(at->second.pip)!=wire) return false;
+                saved.stationary.insert(wire);
+                wire=ctx->getPipSrcWire(at->second.pip);
+            }
+        }
+    }
+    return true;
+}
 }
 
 // Bounded reverse Dijkstra. Every foreign wire stays an obstruction; no rip-up
@@ -56,8 +119,13 @@ struct SavedNet { NetInfo *net; std::vector<std::tuple<WireId,PipId,PlaceStrengt
 bool critical_local_route_net(Context *ctx, NetInfo *net, int &visits)
 {
     auto root = ctx->getNetinfoSourceWire(net);
-    if (root == WireId() || !ctx->checkWireAvail(root)) return false;
-    ctx->bindWire(root, net, STRENGTH_WEAK);
+    if (root == WireId()) return false;
+    if (net->wires.count(root)) {
+        if (ctx->getBoundWireNet(root)!=net || net->wires.at(root).pip!=PipId()) return false;
+    } else {
+        if (!net->wires.empty() || !ctx->checkWireAvail(root)) return false;
+        ctx->bindWire(root, net, STRENGTH_WEAK);
+    }
     std::vector<WireId> sinks;
     for (const auto &user : net->users)
         for (auto wire : ctx->getNetinfoSinkWires(net, user)) sinks.push_back(wire);
@@ -112,13 +180,16 @@ bool critical_routed_move_trial(Context *ctx, CellInfo *cell, BelId target, int 
     std::vector<NetInfo *> nets;
     if (target==BelId() || ctx->getBoundBelCell(target) || !footprint(ctx,cell,nets))
         return fail("ineligible LUT, destination or incident data nets");
+    if(!fixed_pin_target(ctx,cell,target)) return fail("destination incompatible with fixed physical LUT pins");
+    auto home=cell->bel;
     bool legal=false;
     critical_cohort_swap_trial(ctx,cell,target,[&] {legal=true;return false;});
     if (!legal) return fail("placement legality rejected");
     std::vector<SavedNet> saved;
     for (auto *net:nets) {
-        saved.push_back({net,{}});
+        saved.push_back({net,{},{},WireId()});
         for (const auto &w:net->wires) saved.back().wires.emplace_back(w.first,w.second.pip,w.second.strength);
+        if(!stationary_paths(ctx,cell,saved.back())) return fail("malformed stationary sink route");
     }
     auto restore=[&]() {
         for (const auto &n:saved) ctx->ripupNet(n.net->name);
@@ -131,6 +202,18 @@ bool critical_routed_move_trial(Context *ctx, CellInfo *cell, BelId target, int 
     try {
         for (auto *net:nets) ctx->ripupNet(net->name);
         bool kept=critical_cohort_swap_trial(ctx,cell,target,[&]() {
+            refresh_modes(ctx,home);refresh_modes(ctx,target);
+            for(const auto &n:saved) {
+                if(n.stationary.empty()) continue;
+                if(ctx->getNetinfoSourceWire(n.net)!=n.root) return fail("stationary source wire changed");
+                for(const auto &user:n.net->users) if(user.cell!=cell)
+                    for(auto wire:ctx->getNetinfoSinkWires(n.net,user))
+                        if(!n.stationary.count(wire)) return fail("stationary sink wire changed");
+                for(const auto &w:n.wires) if(n.stationary.count(std::get<0>(w)) && std::get<1>(w)==PipId())
+                    ctx->bindWire(std::get<0>(w),n.net,std::get<2>(w));
+                for(const auto &w:n.wires) if(n.stationary.count(std::get<0>(w)) && std::get<1>(w)!=PipId())
+                    ctx->bindPip(std::get<1>(w),n.net,std::get<2>(w));
+            }
             for (auto *net:nets) if (!critical_local_route_net(ctx,net,visit_budget))
                 return fail("incident-net routing failed or exhausted node budget");
             ctx->configure_bitstream();
@@ -195,7 +278,7 @@ void Arch::repair_critical_moves()
             int x=anchor.x+dx,y=anchor.y+dy;
             if(x<0||y<0||x>=ctx->getGridDimX()||y>=ctx->getGridDimY())continue;
             for(auto target:ctx->getBelsByTile(x,y)) {
-                if(!visited.insert(target).second || ctx->getBoundBelCell(target) || !ctx->isValidBelForCellType(c->type,target))continue;
+                if(!visited.insert(target).second || ctx->getBoundBelCell(target) || !fixed_pin_target(ctx,c,target))continue;
                 double gain=original-cost(target);if(gain>0) local.push_back({c,target,entry.first,gain});
             }
         }

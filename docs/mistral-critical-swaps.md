@@ -219,8 +219,14 @@ criticality order round-robin. A slack-weighted Manhattan estimate orders
 proposals only; it cannot authorize retention. Registers, carry cells, protected
 cells, clustered cells and occupied destination sites are not moved.
 
-Each transaction rips up only the moved LUT's incident data nets (at most seven,
+Each transaction changes only the moved LUT's incident data nets (at most seven,
 with at most 64 sinks per net), preserving all other bound routes as obstructions.
+Input nets retain the original root and every stationary sink's complete path,
+including original pip bindings and strengths; only the moved sinks' exclusive
+branches are pruned and reconnected. A moved driver's output is routed afresh.
+Fixed pin maps require the same ALM half and valid half-specific inputs. Source
+and destination ALM modes are refreshed from their occupants inside the placement
+transaction, without remapping stationary cells.
 A CPU reverse-Dijkstra search consumes at most 500,000 queue visits across the
 whole transaction, obeying architecture pip/wire availability and existing tree
 parents. There is no negotiated rip-up of other nets. Local route failure,

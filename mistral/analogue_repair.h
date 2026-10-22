@@ -12,7 +12,8 @@
 
 NEXTPNR_NAMESPACE_BEGIN
 
-// Local router consumes a shared node budget and leaves partial routing on failure.
+// Local router extends an empty net or a rooted partial tree, preserving its parents.
+// Consumes a shared node budget and leaves partial routing on failure.
 bool critical_local_route_net(Context *ctx, NetInfo *net, int &visits);
 // Empty-site LUT move: restore placement, incident routes and physical state together.
 bool critical_routed_move_trial(Context *ctx, CellInfo *cell, BelId target, int visit_budget,

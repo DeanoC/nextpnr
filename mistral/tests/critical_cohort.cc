@@ -1755,6 +1755,8 @@ TEST_F(CriticalCohort, RoutedMoveRestoresPlacementWiresMuxesAndExceptions)
     }
     middle->connectPort(id_A,driver->getPort(id_Q));middle->pin_data[id_A].state=PIN_INV;
     sink->connectPort(id_A,middle->getPort(id_Q));sink->pin_data[id_A].state=PIN_SIG;
+    // A remote stationary consumer shares the moved LUT's inverted input net.
+    outside->connectPort(id_A,driver->getPort(id_Q));outside->pin_data[id_A].state=PIN_SIG;
     ctx->assignArchInfo();
     int visits=500000;
     for(auto *cell:{driver,middle,sink,outside}) ASSERT_TRUE(critical_local_route_net(ctx.get(),cell->getPort(id_Q),visits));
@@ -1764,6 +1766,28 @@ TEST_F(CriticalCohort, RoutedMoveRestoresPlacementWiresMuxesAndExceptions)
     auto tree=[](NetInfo *net){Tree t;for(const auto &w:net->wires)t[w.first]={w.second.pip,w.second.strength};return t;};
     std::map<IdString,Tree> original;
     for(const auto &n:ctx->nets)original[n.first]=tree(n.second.get());
+    Tree stationary;
+    auto *input=driver->getPort(id_Q);
+    auto root=ctx->getNetinfoSourceWire(input);
+    for(auto wire:ctx->getNetinfoSinkWires(input,PortRef{outside,id_A})) {
+        std::set<WireId> seen;
+        while(true) {
+            ASSERT_TRUE(seen.insert(wire).second);
+            ASSERT_TRUE(input->wires.count(wire));
+            stationary[wire]={input->wires.at(wire).pip,input->wires.at(wire).strength};
+            if(wire==root) break;
+            ASSERT_NE(input->wires.at(wire).pip,PipId());
+            wire=ctx->getPipSrcWire(input->wires.at(wire).pip);
+        }
+    }
+    ASSERT_GT(stationary.size(),1u);
+    auto stationary_unchanged=[&]() {
+        auto now=tree(input);
+        for(const auto &wire:stationary) {
+            ASSERT_TRUE(now.count(wire.first));
+            EXPECT_EQ(now.at(wire.first),wire.second);
+        }
+    };
     std::vector<uint8_t> rbf;ctx->cyclonev->rbf_save(rbf);
     auto unchanged=[&](){
         EXPECT_EQ(middle->bel,home);EXPECT_EQ(middle->pin_data[id_A].state,PIN_INV);
@@ -1771,7 +1795,7 @@ TEST_F(CriticalCohort, RoutedMoveRestoresPlacementWiresMuxesAndExceptions)
         std::vector<uint8_t> now;ctx->cyclonev->rbf_save(now);EXPECT_EQ(now,rbf);EXPECT_TRUE(ctx->analogue_cache_valid);
     };
     bool inspected=false;
-    EXPECT_FALSE(critical_routed_move_trial(ctx.get(),middle,target,500000,[&]{inspected=true;EXPECT_EQ(middle->bel,target);return false;}));
+    EXPECT_FALSE(critical_routed_move_trial(ctx.get(),middle,target,500000,[&]{inspected=true;EXPECT_EQ(middle->bel,target);stationary_unchanged();return false;}));
     EXPECT_TRUE(inspected);unchanged();
     EXPECT_THROW(critical_routed_move_trial(ctx.get(),middle,target,500000,[]()->bool{throw std::runtime_error("injected");}),std::runtime_error);
     unchanged();
@@ -1782,7 +1806,8 @@ TEST_F(CriticalCohort, RoutedMoveRestoresPlacementWiresMuxesAndExceptions)
     middle->attrs[ctx->id("keep")]=Property(1);
     EXPECT_FALSE(critical_routed_move_trial(ctx.get(),middle,target,500000,[]{return true;}));
     middle->attrs.erase(ctx->id("keep"));unchanged();
-    EXPECT_TRUE(critical_routed_move_trial(ctx.get(),middle,target,500000,[]{return true;}));
+    EXPECT_TRUE(critical_routed_move_trial(ctx.get(),middle,target,500000,[&]{stationary_unchanged();return true;}));
+    stationary_unchanged();
     EXPECT_EQ(middle->bel,target);EXPECT_EQ(middle->pin_data[id_A].state,PIN_INV);EXPECT_EQ(tree(outside->getPort(id_Q)),original.at(outside->getPort(id_Q)->name));
     for(auto *net:{driver->getPort(id_Q),middle->getPort(id_Q)}) {
         auto root=ctx->getNetinfoSourceWire(net);
@@ -1792,4 +1817,45 @@ TEST_F(CriticalCohort, RoutedMoveRestoresPlacementWiresMuxesAndExceptions)
                 auto pip=net->wires.at(w).pip;ASSERT_NE(pip,PipId());w=ctx->getPipSrcWire(pip);}
         }
     }
+}
+
+TEST_F(CriticalCohort, RoutedMoveKeepsPhysicalHalfAndRefreshesLut6Mode)
+{
+    auto *middle=lut(24,3,0),*sink=lut(24,3,42);
+    middle->type=id_MISTRAL_ALUT6;
+    middle->params[id_LUT]=Property(int64_t(0x6996966996696996ULL),64);
+    std::vector<CellInfo *> drivers;
+    int z=6;
+    for(auto pin:{id_A,id_B,id_C,id_D,id_E,id_F}) {
+        auto *driver=lut(24,3,z);z+=6;drivers.push_back(driver);
+        driver->params[id_LUT]=Property(8,4);
+        driver->disconnectPort(id_A);driver->disconnectPort(id_B);
+        driver->pin_data[id_A].state=PIN_0;driver->pin_data[id_B].state=PIN_1;
+        if(!middle->ports.count(pin))middle->addInput(pin);else middle->disconnectPort(pin);
+        middle->connectPort(pin,driver->getPort(id_Q));middle->pin_data[pin].state=PIN_SIG;
+    }
+    sink->params[id_LUT]=Property(8,4);sink->disconnectPort(id_A);sink->disconnectPort(id_B);
+    sink->connectPort(id_A,middle->getPort(id_Q));sink->pin_data[id_A].state=PIN_SIG;sink->pin_data[id_B].state=PIN_1;
+    ctx->assignArchInfo();
+    auto home=middle->bel,target=bel(24,3,48),wrong_half=bel(24,3,49);
+    auto h=ctx->bel_data(home).lab_data,t=ctx->bel_data(target).lab_data;
+    ctx->assign_alm_lut_inputs(h.lab,h.alm);
+    int visits=500000;
+    for(auto *d:drivers)ASSERT_TRUE(critical_local_route_net(ctx.get(),d->getPort(id_Q),visits));
+    ASSERT_TRUE(critical_local_route_net(ctx.get(),middle->getPort(id_Q),visits));
+    ASSERT_TRUE(critical_local_route_net(ctx.get(),sink->getPort(id_Q),visits));
+    ctx->configure_bitstream();
+    ASSERT_TRUE(ctx->labs[h.lab].alms[h.alm].l6_mode);
+    ASSERT_FALSE(ctx->labs[t.lab].alms[t.alm].l6_mode);
+    auto mask=ctx->compute_lut_mask(h.lab,h.alm);
+    std::vector<uint8_t> original;ctx->cyclonev->rbf_save(original);
+    bool called=false;std::string reason;
+    EXPECT_FALSE(critical_routed_move_trial(ctx.get(),middle,wrong_half,500000,[&]{called=true;return true;},&reason));
+    EXPECT_FALSE(called);EXPECT_EQ(reason,"destination incompatible with fixed physical LUT pins");
+    auto modes=[&](){EXPECT_FALSE(ctx->labs[h.lab].alms[h.alm].l6_mode);
+        EXPECT_TRUE(ctx->labs[t.lab].alms[t.alm].l6_mode);EXPECT_EQ(ctx->compute_lut_mask(t.lab,t.alm),mask);};
+    EXPECT_FALSE(critical_routed_move_trial(ctx.get(),middle,target,500000,[&]{called=true;modes();return false;}));
+    ASSERT_TRUE(called);EXPECT_TRUE(ctx->labs[h.lab].alms[h.alm].l6_mode);EXPECT_FALSE(ctx->labs[t.lab].alms[t.alm].l6_mode);
+    std::vector<uint8_t> restored;ctx->cyclonev->rbf_save(restored);EXPECT_EQ(original,restored);
+    EXPECT_TRUE(critical_routed_move_trial(ctx.get(),middle,target,500000,[&]{modes();return true;}));modes();
 }
