@@ -1532,6 +1532,10 @@ void Arch::reassign_alm_inputs(uint32_t lab, uint8_t alm)
         ff->disconnectPort(id_DATAIN);
         rt_lut->connectPort(id_A, datain);
         rt_lut->connectPorts(id_Q, ff, id_DATAIN);
+        // Binding the helper recounts this ALM. The FF now reads local COMBOUT,
+        // so refresh its data cache before legality/counting can charge the old
+        // fabric DATAIN a second time.
+        assign_ff_info(ff);
         // F is the fastest half-specific input. E is the fallback when the
         // other half's direct-data flip-flop needs this F.
         rt_lut->pin_data[id_A].bel_pins.push_back(rt_pin[i]);
