@@ -71,14 +71,14 @@ RouteParams parameters()
     p.expand_k = 1; p.expand_div = 0;
     return p;
 }
-Result run_with_backend(std::unique_ptr<Backend> backend, Graph &graph, RouteParams p,
-                        const std::vector<int32_t> &seeds, const std::vector<float> &delays,
-                        const std::vector<float> &loads, const std::vector<ArcDesc> &arcs, int path_cap = 128,
-                        int bits = 10, bool bounded = false, bool large = true)
+Result run_with_backend(Backend &backend, Graph &graph, RouteParams p, const std::vector<int32_t> &seeds,
+                        const std::vector<float> &delays, const std::vector<float> &loads,
+                        const std::vector<ArcDesc> &arcs, int path_cap = 128, int bits = 10,
+                        bool bounded = false, bool large = true)
 {
     std::string error;
     const auto data = graph.data();
-    if (!backend->init(data, 1, bits, 1, bits + 1, error))
+    if (!backend.init(data, 1, bits, 1, bits + 1, error))
         throw std::runtime_error(error);
     TaskDesc t;
     t.net = 7; t.tree_cnt = int(seeds.size()); t.arc_cnt = int(arcs.size());
@@ -86,8 +86,15 @@ Result run_with_backend(std::unique_ptr<Backend> backend, Graph &graph, RoutePar
     t.bb_x0 = 0; t.bb_y0 = 0; t.bb_x1 = 3; t.bb_y1 = 3;
     p.use_bb = bounded;
     Result result;
-    backend->route(p, {t}, arcs, seeds, delays, loads, {}, large, result.arcs, result.paths);
+    backend.route(p, {t}, arcs, seeds, delays, loads, {}, large, result.arcs, result.paths);
     return result;
+}
+Result run_with_backend(std::unique_ptr<Backend> backend, Graph &graph, RouteParams p,
+                        const std::vector<int32_t> &seeds, const std::vector<float> &delays,
+                        const std::vector<float> &loads, const std::vector<ArcDesc> &arcs, int path_cap = 128,
+                        int bits = 10, bool bounded = false, bool large = true)
+{
+    return run_with_backend(*backend, graph, p, seeds, delays, loads, arcs, path_cap, bits, bounded, large);
 }
 Result run(Graph &graph, RouteParams p, const std::vector<int32_t> &seeds, const std::vector<float> &delays,
            const std::vector<float> &loads, const std::vector<ArcDesc> &arcs, int path_cap = 128,
@@ -383,6 +390,9 @@ TEST(GpuApproximateSearch, CorpusMatchesCpuOnDevice)
     std::string skip_reason;
     if (!device_tests_enabled(skip_reason))
         GTEST_SKIP() << skip_reason;
+    std::string error;
+    auto backend = create_device_backend(-1, error);
+    ASSERT_NE(backend, nullptr) << error;
     int compared = 0, index = 0;
     for_each_corpus_case([&](Graph &graph, RouteParams p, const std::vector<int32_t> &seeds,
                              const std::vector<float> &delays, const std::vector<float> &loads,
@@ -390,11 +400,8 @@ TEST(GpuApproximateSearch, CorpusMatchesCpuOnDevice)
         const int case_index = index++;
         if (p.exact)
             return;
-        std::string error;
-        auto backend = create_device_backend(-1, error);
-        ASSERT_NE(backend, nullptr) << error;
-        const auto device = run_with_backend(std::move(backend), graph, p, seeds, delays, loads, arcs, path_cap, bits,
-                                             bounded, large);
+        const auto device = run_with_backend(*backend, graph, p, seeds, delays, loads, arcs, path_cap, bits, bounded,
+                                             large);
         const auto cpu = run(graph, p, seeds, delays, loads, arcs, path_cap, bits, bounded, large);
         if (any_overflow(device) || any_overflow(cpu))
             return;

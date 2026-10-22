@@ -174,15 +174,17 @@ struct Lane
     }
     void alloc(id<MTLDevice> dev, int nslots, int bits)
     {
+        const int new_cap = 1 << bits;
+        const size_t entries = (size_t)nslots * new_cap;
+        keys.ensure(dev, entries);
+        vals.ensure(dev, entries);
+        sdelay.ensure(dev, entries);
+        sload.ensure(dev, entries);
+        piles.ensure(dev, (size_t)nslots * NPILES * (size_t)new_cap);
+        cand_par.ensure(dev, entries);
+        best.ensure(dev, (size_t)nslots);
         slots = nslots;
-        cap = 1 << bits;
-        keys.alloc(dev, (size_t)slots * cap);
-        vals.alloc(dev, (size_t)slots * cap);
-        sdelay.alloc(dev, (size_t)slots * cap);
-        sload.alloc(dev, (size_t)slots * cap);
-        piles.alloc(dev, (size_t)slots * NPILES * (size_t)cap);
-        cand_par.alloc(dev, (size_t)slots * cap);
-        best.alloc(dev, (size_t)slots);
+        cap = new_cap;
     }
     template <typename F> void for_each_buffer(F f) const
     {
@@ -217,7 +219,8 @@ class MetalBackend : public Backend
                 char registry_id[32];
                 std::snprintf(registry_id, sizeof(registry_id), "%016" PRIx64, (uint64_t)[dev_ registryID]);
                 name_ = std::string("metal:") + registry_id + ":" + device_name_;
-                build_pipeline();
+                if (route_pso_ == nil || queue_ == nil)
+                    build_pipeline();
 
                 n_wires_ = graph.n_wires;
                 out_off_.upload(dev_, graph.out_off, (size_t)graph.n_wires + 1);
