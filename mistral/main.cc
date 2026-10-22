@@ -104,6 +104,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "post-route LUT move and incident reroute (0..16 trials, default 0)");
     specific.add_options()("critical-lut6-swap-budget", po::value<int>(),
                            "post-route symmetric single-sink LUT6 input swaps (0..16 trials, default 0)");
+    specific.add_options()("critical-private-pair-budget", po::value<int>(),
+                           "post-route exact private ALUT3/ALUT5 decomposition (0..4 trials, default 0)");
     specific.add_options()("critical-route-budget", po::value<int>(),
                            "post-route single-net repair with full-design guards (0..32 trials, default 0)");
     specific.add_options()("critical-swap-replicate", "try a private LUT copy for a shared data consumer (opt-in)");
@@ -194,6 +196,7 @@ void MistralCommandHandler::customBitstream(Context *ctx)
         ctx->repair_critical_routes();
         ctx->repair_critical_moves();
         ctx->repair_critical_lut6_swaps();
+        ctx->repair_critical_private_pairs();
         ctx->build_bitstream();
         // Post-route repairs happen after Arch::route cached JSON attributes.
         // Publish the final live trees, BELs and physical pin/LAB state.
@@ -385,6 +388,20 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
                        (vm.count("critical-move-route-budget") && vm["critical-move-route-budget"].as<int>() > 0)))
             log_error("Critical LUT6 swap requires a fresh ordinary full GPU route with --rbf, no forced timing and no move repair.\n");
         ctx->critical_lut6_swap_budget = budget;
+    }
+    ctx->critical_private_pair_budget = 0;
+    if (vm.count("critical-private-pair-budget")) {
+        const int budget = vm["critical-private-pair-budget"].as<int>();
+        if (budget < 0 || budget > 4)
+            log_error("--critical-private-pair-budget must be between 0 and 4.\n");
+        if (budget && (!vm.count("rbf") || vm.count("no-route") || vm.count("no-pack") || vm.count("no-place") ||
+                       vm.count("pack-only") || vm.count("fes-scaffold") || vm.count("fes-cart") || vm.count("fes-cram-region") ||
+                       (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != "") ||
+                       !vm.count("router") || vm["router"].as<std::string>() != "gpu" || ctx->force ||
+                       (ctx->settings.count(ctx->id("timing/allowFail")) && ctx->setting<bool>("timing/allowFail")) ||
+                       (vm.count("critical-move-route-budget") && vm["critical-move-route-budget"].as<int>() > 0)))
+            log_error("Critical private pair requires a fresh ordinary full GPU route with --rbf, no forced timing and no move repair.\n");
+        ctx->critical_private_pair_budget = budget;
     }
     ctx->critical_move_route_budget = 0;
     if (vm.count("critical-move-route-budget")) {

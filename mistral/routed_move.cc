@@ -338,7 +338,7 @@ void Arch::repair_critical_moves()
 // Explicit zero and absent options preserve the original serialized bytes.
 void Arch::refresh_post_route_repair_checkpoint()
 {
-    if (!critical_route_budget && !critical_move_route_budget && !critical_lut6_swap_budget) return;
+    if (!critical_route_budget && !critical_move_route_budget && !critical_lut6_swap_budget && !critical_private_pair_budget) return;
     save_fes_pin_maps();
     archInfoToAttributes();
 }

@@ -605,6 +605,8 @@ struct Arch : BaseArch<ArchRanges>
     void repair_critical_routes();
     int critical_lut6_swap_budget = 0; // Explicit CLI only; symmetric post-route input swaps.
     void repair_critical_lut6_swaps();
+    int critical_private_pair_budget = 0; // Explicit CLI only; bounded live two-LUT decomposition.
+    void repair_critical_private_pairs();
     int critical_move_route_budget = 0; // CLI-only, bounded post-route LUT moves.
     void repair_critical_moves();
     void refresh_post_route_repair_checkpoint();

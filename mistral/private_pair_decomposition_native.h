@@ -17,5 +17,15 @@ bool private_pair_common_arrivals(Context *ctx, TimingAnalyser &timing,
 bool private_pair_output_coverage(Context *ctx, TimingAnalyser &timing, NetInfo *output,
                                   std::string *reason = nullptr);
 bool private_pair_clock_safe(const TimingResult &before, const TimingResult &after, std::string *reason = nullptr);
+// Separate routed entry points. No caller may bypass the ordinary-unrouted trial guard.
+bool critical_routed_private_pair_candidates(Context *ctx, CellInfo *producer,
+    std::vector<private_pair_decomposition::Candidate> &candidates, std::vector<NetInfo *> &ordered_signals,
+    std::string *reason = nullptr);
+bool critical_routed_private_pair_common_launch(Context *ctx, TimingAnalyser &timing,
+    const std::vector<NetInfo *> &signals, std::string *reason = nullptr);
+bool critical_routed_private_pair_trial(Context *ctx, CellInfo *producer,
+    const private_pair_decomposition::Candidate &candidate, int visit_budget,
+    const std::function<bool()> &accept, std::string *reason = nullptr,
+    const std::function<void(unsigned)> &stage = {});
 NEXTPNR_NAMESPACE_END
 #endif

@@ -40,3 +40,45 @@ introduced. Unchanged unsupported coverage remains unsupported.
 This is an opt-in compiler experiment. A listed or selected placement is not
 routed timing, a production seal, or hardware acceptance. Qualification requires
 the complete fresh routed artifact and its existing acceptance gates.
+# Separate live routed diagnostic
+
+`--critical-private-pair-budget N` (0..4, default 0) enables a separate bounded
+post-route trial. It requires a fresh ordinary full GPU route with `--rbf`,
+without reload/partial/frozen execution, forced timing, or move repair. Explicit
+single-net route repair and LUT6 swaps may precede it. Saved settings never
+enable the pass. The existing placed private-pair API remains strictly unrouted.
+
+Discovery uses actual negative native path witnesses, capped at 16384 paths per
+clock pair and 64 producer candidates. It considers exact private ALUT3→ALUT5
+seven-input decompositions, diversifies partitions before complementary
+encodings, and ranks using promotion of witnessed two-level inputs and native
+source arrivals. These ranks propose trials; they are not candidate STA.
+
+Both ALMs must have ordinary ALUT2..5 occupants. Ordinary logic in LAB and MLAB
+tiles is supported; LUTRAM, LUT6 and carry occupants are rejected. Cohabiting
+FFs must use their local COMBOUT for DATAIN and have no SDATA. Direct native
+FF/M10K sources need one characterized common launch clock and complete native
+relationships. Protected, clustered, reserved, global and public boundaries
+remain ineligible.
+
+Each transaction proves all 128 input combinations and preserves the eight
+original indexed net-user slots. It changes only the two LUT masks/ports/states
+and their native ALM input assignment, without unbinding BELs, inserting helpers
+or reassigning controls. Native mate masks/maps, FF state and every configuration
+field in both affected LABs except the two changed LUT masks must remain exact.
+Actual changed sink sets determine which external nets need routing. Every old
+source-to-stationary-user path and its strengths is retained; a shared bounded
+500000-node local search extends those rooted trees without foreign rip-up.
+
+Every external branch and the consumer output requires complete bounded native
+LUT/BUF/arithmetic-to-FF/M10K setup/hold coverage. Fresh analyses with and without
+clock skew, all-clock guards and the complete endpoint/contract guard require no
+setup or hold regression, including positive margins, and at least one failing
+setup endpoint gaining 20 ps. Changed clock metrics and exact rejection reasons
+are logged. Rejection or exception restores ports, masks, indexed stores, native
+architecture state, route parents/strengths and configuration/timing caches.
+
+The final checkpoint refresh includes this pass. Unchanged unsupported rows
+remain unsupported; an accepted local trial is not whole-board, IO or hardware
+qualification. The no-option and explicit-zero paths do not run discovery,
+mutation or checkpoint refresh for this feature.
