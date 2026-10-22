@@ -39,3 +39,16 @@ Final JSON materializes the live repaired routes after bitstream construction.
 This remains a diagnostic compiler option. Unchanged unsupported coverage does
 not become qualification. Production timing and exact-artifact hardware gates
 remain separate from a successful native trial or full route.
+
+Upstream source coverage is structural as well as native. Every LUT6 input is
+walked through supported LUT/buffer/arithmetic arcs to characterized FF/M10K
+launches, with a depth limit of 64 and a work limit of 4096 net/user visits.
+Every live source and combinational input must have exactly the structural
+clock/edge inventory reported by native setup-window hints. Missing clocks,
+undriven or public branches, unsupported/asynchronous origins, cut relationships,
+malformed identities and cycles reject. Only explicit native PIN0/PIN1 or exact
+MISTRAL_CONST identities count as constants; other launch-free combinational
+cones reject. This catches an omitted upstream origin even when another branch
+provides valid endpoint timing rows. Full source and downstream coverage is
+rechecked before every trial and after actual rerouting, both with and without
+clock skew. Existing complete endpoint, clock, setup and hold guards remain.

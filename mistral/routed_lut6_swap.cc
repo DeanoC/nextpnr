@@ -153,6 +153,156 @@ struct SavedNet {
 };
 }
 
+bool critical_lut6_swap_source_coverage(Context *ctx, TimingAnalyser &timing, CellInfo *target,
+                                       std::string *reason)
+{
+    using Launch = std::pair<IdString, int>;
+    using Launches = std::set<Launch>;
+    using Relationship = std::tuple<IdString, int, IdString, int>;
+    std::map<NetInfo *, Launches> done;
+    std::set<NetInfo *> visiting;
+    size_t work = 0;
+    std::string failure;
+    auto fail = [&](const char *text) { failure = text; return false; };
+    auto finite = [](delay_t value) {
+        return std::isfinite(double(value)) && value != std::numeric_limits<delay_t>::lowest() &&
+               value != std::numeric_limits<delay_t>::max();
+    };
+    auto hints_match = [&](CellPortKey port, const Launches &expected) {
+        std::vector<TimingAnalyser::SetupWindowHint> rows;
+        if (expected.empty() || !timing.get_setup_window_hints(port, rows) || rows.empty())
+            return fail("source cone lacks complete native launch relationships");
+        Launches actual;
+        std::set<Relationship> pairs;
+        for (const auto &row : rows) {
+            if (row.cut || !row.window || !finite(*row.window) || *row.window <= 0 ||
+                !pairs.emplace(row.launch.clock, int(row.launch.edge), row.capture.clock, int(row.capture.edge)).second)
+                return fail("source cone has cut, untimed or duplicate native relationships");
+            actual.emplace(row.launch.clock, int(row.launch.edge));
+        }
+        return actual == expected || fail("structural and native source launch inventories differ");
+    };
+    auto constant = [&](NetInfo *net, int *value) {
+        auto *cell = net->driver.cell;
+        if (!cell || cell->type != id_MISTRAL_CONST || net->driver.port != id_Q ||
+            cell->ports.size() != 1 || cell->getPort(id_Q) != net || !cell->params.count(id_LUT)) return false;
+        const auto &mask = cell->params.at(id_LUT);
+        if (mask.is_string || !mask.is_fully_def() || mask.size() == 0 || mask.size() > 64 ||
+            (mask.as_int64() != 0 && mask.as_int64() != 1)) return false;
+        *value = int(mask.as_int64());
+        return true;
+    };
+    auto cone = [&](auto &&self, NetInfo *net, unsigned depth, Launches &result) -> bool {
+        if (!net || depth > 64 || ++work > 4096) return fail("source cone exceeds depth/work bound");
+        if (visiting.count(net)) return fail("source cone contains a cycle");
+        if (done.count(net)) { result = done.at(net); return true; }
+        if (net->is_global || net->clkconstr || !net->driver.cell)
+            return fail("source cone has a global, clock or undriven data net");
+        auto stored = ctx->nets.find(net->name);
+        if (stored == ctx->nets.end() || stored->second.get() != net)
+            return fail("source net identity is not in the live context");
+        for (const auto &port : ctx->ports) if (port.second.net == net)
+            return fail("source cone reaches a public boundary");
+        auto *cell = net->driver.cell;
+        auto owner = ctx->cells.find(cell->name);
+        auto output = cell->ports.find(net->driver.port);
+        if (owner == ctx->cells.end() || owner->second.get() != cell || output == cell->ports.end() ||
+            output->second.name != net->driver.port || output->second.type != PORT_OUT || output->second.net != net ||
+            cell->get_pin_state(net->driver.port) != PIN_SIG)
+            return fail("source cone has a malformed output identity or state");
+        for (const auto &user : net->users) {
+            if (++work > 4096) return fail("source cone exceeds depth/work bound");
+            if (!user.cell) return fail("source cone has a missing user");
+            auto owner = ctx->cells.find(user.cell->name);
+            auto pin = user.cell->ports.find(user.port);
+            if (owner == ctx->cells.end() || owner->second.get() != user.cell || pin == user.cell->ports.end() ||
+                pin->second.name != user.port || pin->second.type != PORT_IN || pin->second.net != net ||
+                !net->users.count(pin->second.user_idx) || &net->users.at(pin->second.user_idx) != &user)
+                return fail("source cone has a malformed indexed user identity");
+        }
+        int value = 0;
+        if (constant(net, &value)) { done.emplace(net, Launches{}); result.clear(); return true; }
+        visiting.insert(net);
+        int clocks = 0;
+        const auto kind = ctx->getPortTimingClass(cell, net->driver.port, clocks);
+        Launches launches;
+        if (cell->type.in(id_MISTRAL_FF, id_MISTRAL_M10K) && kind == TMG_REGISTER_OUTPUT && clocks > 0) {
+            for (int i = 0; i < clocks; ++i) {
+                const auto info = ctx->getPortClockingInfo(cell, net->driver.port, i);
+                auto clock_port = cell->ports.find(info.clock_port);
+                auto *clock = cell->getPort(info.clock_port);
+                const auto clock_state = cell->get_pin_state(info.clock_port);
+                if (!clock || (clock_state != PIN_SIG && clock_state != PIN_INV) ||
+                    clock_port == cell->ports.end() || clock_port->second.name != info.clock_port ||
+                    clock_port->second.type != PORT_IN || !clock->users.count(clock_port->second.user_idx) ||
+                    clock->users.at(clock_port->second.user_idx).cell != cell ||
+                    clock->users.at(clock_port->second.user_idx).port != info.clock_port ||
+                    !ctx->nets.count(clock->name) || ctx->nets.at(clock->name).get() != clock || !clock->clkconstr ||
+                    (info.edge != RISING_EDGE && info.edge != FALLING_EDGE) ||
+                    !finite(info.clockToQ.minDelay()) || !finite(info.clockToQ.maxDelay()) ||
+                    info.clockToQ.minDelay() > info.clockToQ.maxDelay() ||
+                    !launches.emplace(clock->name, int(info.edge)).second)
+                    return fail("source register has a missing or uncharacterized native clock");
+            }
+            for (const auto &pin : cell->ports) if (pin.second.type == PORT_IN) {
+                DelayQuad delay;
+                if (ctx->getCellDelay(cell, pin.first, net->driver.port, delay))
+                    return fail("source register has a hybrid combinational output");
+            }
+        } else {
+            const int width = cell->type == id_MISTRAL_ALUT6 ? 6 : cell->type == id_MISTRAL_ALUT5 ? 5 :
+                              cell->type == id_MISTRAL_ALUT4 ? 4 : cell->type == id_MISTRAL_ALUT3 ? 3 :
+                              cell->type == id_MISTRAL_ALUT2 ? 2 : cell->type == id_MISTRAL_BUF ? 1 : 0;
+            const bool arithmetic = cell->type == id_MISTRAL_ALUT_ARITH;
+            if ((!width && !arithmetic) || kind != TMG_COMB_OUTPUT ||
+                (arithmetic ? !net->driver.port.in(id_SO, id_CO) : net->driver.port != id_Q))
+                return fail("source cone reaches an unsupported or asynchronous origin");
+            const std::vector<IdString> inputs = arithmetic ? std::vector<IdString>{id_A,id_B,id_C,id_D0,id_D1,id_CI} :
+                                                             std::vector<IdString>(pins.begin(), pins.begin() + width);
+            for (const auto &pin : cell->ports) {
+                if (pin.second.type == PORT_IN && std::find(inputs.begin(), inputs.end(), pin.first) == inputs.end())
+                    return fail("source combinational cell has an unknown input");
+            }
+            for (auto input : inputs) {
+                DelayQuad delay;
+                if (!ctx->getCellDelay(cell, input, net->driver.port, delay) ||
+                    !finite(delay.minDelay()) || !finite(delay.maxDelay()) || delay.minDelay() > delay.maxDelay())
+                    return fail("source cone has an uncharacterized combinational arc");
+                const auto state = cell->get_pin_state(input);
+                auto pin = cell->ports.find(input);
+                auto *source = cell->getPort(input);
+                if (pin != cell->ports.end() && (pin->second.name != input || pin->second.type != PORT_IN))
+                    return fail("source combinational input direction is invalid");
+                if (state == PIN_0 || state == PIN_1) {
+                    if (source && (!constant(source, &value) || value != int(state == PIN_1)))
+                        return fail("explicit source constant has a conflicting live net");
+                    if (!source) continue;
+                } else if (state != PIN_SIG && state != PIN_INV) {
+                    return fail("source combinational input state is unsupported");
+                }
+                if (!source || pin == cell->ports.end() || !source->users.count(pin->second.user_idx) ||
+                    source->users.at(pin->second.user_idx).cell != cell || source->users.at(pin->second.user_idx).port != input)
+                    return fail("source combinational input is missing or malformed");
+                Launches incoming;
+                if (!self(self, source, depth + 1, incoming)) return false;
+                if (!incoming.empty() && !hints_match(CellPortKey(cell->name, input), incoming)) return false;
+                launches.insert(incoming.begin(), incoming.end());
+            }
+        }
+        if (!hints_match(CellPortKey(net->driver), launches)) return false;
+        visiting.erase(net);
+        done.emplace(net, launches);
+        result = std::move(launches);
+        return true;
+    };
+    Launches launches;
+    const bool complete = target && target->type == id_MISTRAL_ALUT6 && !timing.setup_only && !timing.have_loops &&
+                          cone(cone, target->getPort(id_Q), 0, launches);
+    if (reason) *reason = complete ? "complete bounded structural/native source launch coverage" :
+                                   (failure.empty() ? "requires current full native LUT6 timing" : failure);
+    return complete;
+}
+
 bool critical_lut6_swap_output_coverage(Context *ctx,TimingAnalyser &timing,NetInfo *output,std::string *reason)
 {
     using ClockPairIdentity=std::tuple<IdString,int,IdString,int>;
@@ -356,7 +506,9 @@ void Arch::repair_critical_lut6_swaps()
                 // Native terminal-input delay ranks partners only. The new
                 // route changes slew/loading and must pass full fresh STA.
                 if(!coverage.count(cell)) {
-                    bool complete=critical_lut6_swap_output_coverage(ctx,*before,cell->getPort(id_Q),&reason) &&
+                    bool complete=critical_lut6_swap_source_coverage(ctx,*before,cell,&reason) &&
+                                  critical_lut6_swap_source_coverage(ctx,*reference,cell,&reason) &&
+                                  critical_lut6_swap_output_coverage(ctx,*before,cell->getPort(id_Q),&reason) &&
                                   critical_lut6_swap_output_coverage(ctx,*reference,cell->getPort(id_Q),&reason);
                     coverage.emplace(cell,std::make_pair(complete,reason));
                 }
@@ -393,11 +545,25 @@ void Arch::repair_critical_lut6_swaps()
         const auto &choice=group.pairs[rank];
         if(tried>=critical_lut6_swap_budget)break;
         if(changed.count(choice.cell))continue;
-        ++tried;std::string reason="native timing rejected";
+        std::string reason;
+        // Discovery is only a proposal. Recheck all origins and captures on
+        // the currently accepted native state before changing either tree.
+        if(!critical_lut6_swap_source_coverage(ctx,*before,choice.cell,&reason) ||
+           !critical_lut6_swap_source_coverage(ctx,*reference,choice.cell,&reason) ||
+           !critical_lut6_swap_output_coverage(ctx,*before,choice.cell->getPort(id_Q),&reason) ||
+           !critical_lut6_swap_output_coverage(ctx,*reference,choice.cell->getPort(id_Q),&reason)) {
+            log_info("Critical LUT6 current coverage: cell=%s: %s.\n",ctx->nameOf(choice.cell),reason.c_str());
+            continue;
+        }
+        ++tried;reason="native timing rejected";
         std::unique_ptr<TimingAnalyser> after,next_reference;json11::Json next_inventory;
         bool accepted=critical_routed_lut6_swap_trial(ctx,choice.cell,choice.first,choice.second,500000,[&]() {
             after=analyse(true);next_reference=analyse(false);
             if(after->have_loops || next_reference->have_loops) {reason="timing loop";return false;}
+            if(!critical_lut6_swap_source_coverage(ctx,*after,choice.cell,&reason) ||
+               !critical_lut6_swap_source_coverage(ctx,*next_reference,choice.cell,&reason) ||
+               !critical_lut6_swap_output_coverage(ctx,*after,choice.cell->getPort(id_Q),&reason) ||
+               !critical_lut6_swap_output_coverage(ctx,*next_reference,choice.cell->getPort(id_Q),&reason)) return false;
             if(!private_pair_clock_safe(before->get_timing_result(),after->get_timing_result(),&reason) ||
                !private_pair_clock_safe(reference->get_timing_result(),next_reference->get_timing_result(),&reason)) return false;
             next_inventory=critical_swap_live_endpoint_snapshot(ctx,*after,*next_reference);

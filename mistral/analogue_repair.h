@@ -16,6 +16,9 @@ NEXTPNR_NAMESPACE_BEGIN
 // Consumes a shared node budget and leaves partial routing on failure.
 bool critical_local_route_net(Context *ctx, NetInfo *net, int &visits);
 class TimingAnalyser;
+// Every structural source must match the complete native launch inventory.
+bool critical_lut6_swap_source_coverage(Context *ctx, TimingAnalyser &timing, CellInfo *target,
+                                        std::string *reason = nullptr);
 // Every affected output branch needs complete native setup and hold coverage.
 bool critical_lut6_swap_output_coverage(Context *ctx, TimingAnalyser &timing, NetInfo *output,
                                          std::string *reason = nullptr);
