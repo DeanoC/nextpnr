@@ -1,0 +1,127 @@
+{
+  "capture_bytes": 50316238,
+  "capture_sha256": "f5528953a89346e18cd10c1bc30afcf9e7d0b3f7da63d3628b04e8a7f5d6c855",
+  "complete_dependency_members": {
+    "cpu": 494,
+    "host": 173
+  },
+  "independent_review_sha256": "405b7197655af89f259db235e4582ec340a4428268e4535dcf84187b4fafee7e",
+  "manifest_sha256": "fd8aa884406761b2bc1c42ae282355a09cf929c92dcc6d85ab6dbe178cfb6196",
+  "members": 261,
+  "passed": true,
+  "portable_proof": {
+    "all32_truth_rows_equal": true,
+    "charged_route_seconds": 0,
+    "complete_endpoint_rows": 17199,
+    "exact_replays": [
+      {
+        "exact_replay": true,
+        "proof": "decision-ledger.json",
+        "sha256": "ad6d473032483c8071b896866955151f61f81b3ff8cb8d0e6e09bd8258caf545"
+      },
+      {
+        "exact_replay": true,
+        "proof": "graph-proof.json",
+        "sha256": "513bae383558e1c4ada22efc932c06035ea2f8ffb3bb9a1d6c2bb0b09b4fa54e"
+      },
+      {
+        "exact_replay": true,
+        "proof": "native-selection-specs.json",
+        "sha256": "fc1a8fa5f3ff6cf6697d345b159e3936013db2e153e87136715d7e4bb0ab60b6"
+      },
+      {
+        "exact_replay": true,
+        "proof": "checker-tests.json",
+        "sha256": "6b93752cb2df6a77e033d1a1fbe62b5254bd59dbf3232fec4e66a2188567258e"
+      },
+      {
+        "exact_replay": true,
+        "proof": "topology-proof.json",
+        "sha256": "38d60fc0eecaede3ad7a034a743bd6edc1b8fac4b171fe1c597c4d9434b1cab5"
+      },
+      {
+        "exact_replay": true,
+        "proof": "route-comparison.json",
+        "sha256": "cc8f6a419a0c33e26b2460c367af95891f776ec972e4a8695184ea6788654181"
+      }
+    ],
+    "host_admission_files": 131,
+    "native_margin_delta_counts": {
+      "hold": {
+        "unchanged": 17194
+      },
+      "setup": {
+        "improved": 1,
+        "unchanged": 17193
+      }
+    },
+    "native_snapshot_manifest_members": 401,
+    "native_topology": {
+      "changed_physical_users": 2,
+      "retained_original_wire_tuples": 46,
+      "selected_nets": 6,
+      "stationary_users": 16
+    },
+    "pair_route_charge_seconds_recorded_not_recharged": "1784.2650994360447",
+    "passed": true,
+    "scope": "Offline proof replay of complete saved artifacts/native decoded trees and recorded host receipts. No native execution, GPU route, emitted-RBF mask proof, reload STA or hardware acceptance.",
+    "source_commit": "186637013e17461a72cd1d2cd17ca5ef174ed06f",
+    "source_files": 29
+  },
+  "private_proof": {
+    "RBF_timing_endpoints_bytes_exact": true,
+    "canonical_route_trees_exact": true,
+    "charged_route_seconds": 0,
+    "complete_endpoint_rows": 17199,
+    "exact_replays": [
+      {
+        "exact_replay": true,
+        "proof": "decision-ledger.json",
+        "sha256": "de0c79818dcaa59d41cebf6fdff9c00782432cf0222f326ee5d708f8a024ed91"
+      },
+      {
+        "exact_replay": true,
+        "proof": "graph-proof.json",
+        "sha256": "e28fa389b6520dfba28498cfa4d4e2d9571369ae3b76158cd111019b8e1e2a98"
+      },
+      {
+        "exact_replay": true,
+        "proof": "native-selection-specs.json",
+        "sha256": "b001dafdcd3509c84f6d38d17edb1eba93442839ec05a65ab1e27ef6511e7016"
+      },
+      {
+        "exact_replay": true,
+        "proof": "checker-tests.json",
+        "sha256": "2ba249a252a3a138c21a43ce9008464ff89c9ac2ed7b12e07a55fbadb94c8281"
+      },
+      {
+        "exact_replay": true,
+        "proof": "topology-proof.json",
+        "sha256": "9567bf3ed1314d2514e58416e0571a2f33974731a63fb05d7afcad85fb50b544"
+      },
+      {
+        "exact_replay": true,
+        "proof": "route-comparison.json",
+        "sha256": "25bc81f86052933982bb0551cd4cc100388668d7a38f190b07891c5e1c312eb9"
+      }
+    ],
+    "historical_accounting_context": {
+      "cumulative_charge_seconds": "40240.35303711146057",
+      "journal_records": 38,
+      "scope": "Arithmetic and these three receipt hashes checked; other historical route payloads are not included or reread."
+    },
+    "native_margin_delta_counts": {
+      "hold": {
+        "unchanged": 17194
+      },
+      "setup": {
+        "unchanged": 17194
+      }
+    },
+    "pair_charge_seconds_recorded_not_additive_to_other_pair": "1483.9064048551955",
+    "passed": true,
+    "routed_json_bytes_exact": false,
+    "scope": "Recorded rejected private4 trial; graph/aliases/settings and canonical routes unchanged. Six serialization-order-only route attributes remain explicit. No new native execution or route."
+  },
+  "scope": "Fresh extraction and offline graph/truth/timing/native-topology proof replay; no native or GPU execution"
+}
