@@ -1,0 +1,274 @@
+{
+  "archive_sha256": "89f47c9787f697f228ae0eff2503665983e9ccb5b85ddd451b12fca14787b19c",
+  "archive_bytes": 6088644,
+  "verified_members": 53,
+  "complete_candidate_and_final_route_rbf_reports_included": true,
+  "all_members_read_back_and_sha256_verified": true,
+  "members": [
+    {
+      "member": "ram-decode-20261022/README.md",
+      "sha256": "a40516539d3c1a7d0dac013df82e9fdcb9375a66db66905aa8bd63111b2c25a2",
+      "bytes": 11614
+    },
+    {
+      "member": "ram-decode-20261022/apply.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "member": "ram-decode-20261022/build_helper.py",
+      "sha256": "9f59a08f4dcc3558b11d114bfe786928f59b2dd64bd5951127f547cf58a0e171",
+      "bytes": 2412
+    },
+    {
+      "member": "ram-decode-20261022/build_routed_verifier.py",
+      "sha256": "a5fc05fb4115908a4e37e1380d9ae6ae76cc727866ad3ea459134b73dfd8be30",
+      "bytes": 2440
+    },
+    {
+      "member": "ram-decode-20261022/candidate-placed.json",
+      "sha256": "dfaabdb773f788258dda3aa834899d840b7afad0837e8ad530bb371e7f84c95f",
+      "bytes": 28286226
+    },
+    {
+      "member": "ram-decode-20261022/checkpoint-proof.json",
+      "sha256": "cfd183ea24462518b7afd4c76a91368149aec24208140894b931a98ef98102a2",
+      "bytes": 18230
+    },
+    {
+      "member": "ram-decode-20261022/final-checks.log",
+      "sha256": "b6451063f186c9e7008ab9c780800db5f7d392df951dbb8a1154e2ec29922bc7",
+      "bytes": 61
+    },
+    {
+      "member": "ram-decode-20261022/final-reload-proof.json",
+      "sha256": "b68c07977f1d785c8a8560215631a879812e84b627010ccbaa37a4e11c6cd8ee",
+      "bytes": 274
+    },
+    {
+      "member": "ram-decode-20261022/final-reload.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "member": "ram-decode-20261022/finalize.log",
+      "sha256": "c806d677948b986514ef537c0822e4ada4c126d2cbf28eea873bc39e5a522d00",
+      "bytes": 264
+    },
+    {
+      "member": "ram-decode-20261022/finalize_checkpoint.py",
+      "sha256": "7b0e92067391d06fc082e592a69e6fc4010fc9e9f3d478782796ce3a4af887fd",
+      "bytes": 6640
+    },
+    {
+      "member": "ram-decode-20261022/frozen-object-manifest.json",
+      "sha256": "6400fd454f5b673b5d24b43223bc5bb5ac9e2ef29105dd10c8a94be47f31ca01",
+      "bytes": 39918
+    },
+    {
+      "member": "ram-decode-20261022/geometry-and-fanouts.json",
+      "sha256": "8b818fe979e30502f184a914fd793d5f4aaf4915733e37b35b7844f57b21bad3",
+      "bytes": 676524
+    },
+    {
+      "member": "ram-decode-20261022/helper-build-commands.json",
+      "sha256": "94874292e33c4dca7b689cb262fd1f9a14353dce8bd034916e45a4a9492c99ae",
+      "bytes": 16922
+    },
+    {
+      "member": "ram-decode-20261022/identities.json",
+      "sha256": "81b573a9ac34321f1124c6bf60646537e206cf2a63ea89915aa7c9a2a1d4edae",
+      "bytes": 3455
+    },
+    {
+      "member": "ram-decode-20261022/inputs/clocks.sdc",
+      "sha256": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041",
+      "bytes": 106
+    },
+    {
+      "member": "ram-decode-20261022/inputs/constraints.qsf",
+      "sha256": "5eff0d63083685f76041b438c36c18f38b19da98053427c7c2ee155dc3873e1d",
+      "bytes": 6421
+    },
+    {
+      "member": "ram-decode-20261022/manifest.json",
+      "sha256": "4526fefd022b414a3fef508aab555f23ea57dd41802513fa35163ac9e5805568",
+      "bytes": 15161
+    },
+    {
+      "member": "ram-decode-20261022/native-proof.json",
+      "sha256": "9f71cee0e220f8ec205127a0c1c688b6c896e7d266b7ae735d3ea8b16590c53d",
+      "bytes": 6296
+    },
+    {
+      "member": "ram-decode-20261022/native-sites-capacity.json",
+      "sha256": "fe878a11463f1e7ef72ead7cadf7ea92c65909925f1cd651ef0f4d81a44eb0d6",
+      "bytes": 174033
+    },
+    {
+      "member": "ram-decode-20261022/native_ram_decode.cc",
+      "sha256": "df6bb25e4bfa98497c920f0043c0af94fdbf62b5023e3a6313cf22060e6fb8f3",
+      "bytes": 20658
+    },
+    {
+      "member": "ram-decode-20261022/original-link-command.txt",
+      "sha256": "cd4942b0bfff6e868f60118b4a5a3ed6cd69207d1ecd3e18d7657820881fd9a5",
+      "bytes": 5666
+    },
+    {
+      "member": "ram-decode-20261022/package_complete.py",
+      "sha256": "193fa47a2f2a30a9c141d3bb79e6dbaa39573a8350f3545c4afbda9f660da3c2",
+      "bytes": 3189
+    },
+    {
+      "member": "ram-decode-20261022/package_evidence.py",
+      "sha256": "e3f58e646736dcb71ab23def9b651a89df08fc8258b44fb40d223c69b6c8addd",
+      "bytes": 3916
+    },
+    {
+      "member": "ram-decode-20261022/placed-baseline.json",
+      "sha256": "dd992c2069be351ceaef1582e58ad53a3eae5af632796334412d1bb9abd4a9cc",
+      "bytes": 27233523
+    },
+    {
+      "member": "ram-decode-20261022/placed-candidate.json",
+      "sha256": "98f06d5e6f452533a34f570c01eb3af8aee2a5a42af76d30f09beea7a4392511",
+      "bytes": 27233520
+    },
+    {
+      "member": "ram-decode-20261022/plan.json",
+      "sha256": "af6614505a344ca92c3737bf6e445936d24dd78aa071e6b645edea0ceb100601",
+      "bytes": 6708
+    },
+    {
+      "member": "ram-decode-20261022/prepare_plan.py",
+      "sha256": "fb5d9bc5d0fa7f09b23b0690304f208a9bd3e767e334382e40f25d4248d15349",
+      "bytes": 7872
+    },
+    {
+      "member": "ram-decode-20261022/proof-routed-clocks.json",
+      "sha256": "b31ba873c7754061111362d63ff7ae24f76452a1ec1e4eae817554a17ca485a0",
+      "bytes": 45919
+    },
+    {
+      "member": "ram-decode-20261022/proof-routed-selftest.json",
+      "sha256": "21f331cfbe8d6347fd6e858c4bc26a9a541262d4fafde92086ecc1d3a4ef5086",
+      "bytes": 2167
+    },
+    {
+      "member": "ram-decode-20261022/proof-routed.json",
+      "sha256": "54c2b39eda5c39750b838b35ea109e2dbeb831e0893dd514bf2fea6c5bb1f378",
+      "bytes": 5533
+    },
+    {
+      "member": "ram-decode-20261022/prove-routed.py",
+      "sha256": "0bc9111c6f0f4b7fb551c7f983806ba2c398bd4a001921cda6370183272f84c9",
+      "bytes": 27015
+    },
+    {
+      "member": "ram-decode-20261022/reference-baseline-receipt.json",
+      "sha256": "535154d1bce58cf636c4b95494509cfac0dcc99d9634a98e746987e97067afd6",
+      "bytes": 2581
+    },
+    {
+      "member": "ram-decode-20261022/rejected-capacity-apply.log",
+      "sha256": "4ffe898b7e9197d4372af79a08fd84eb274261ea81a66a112184e1c78fa83c0f",
+      "bytes": 43
+    },
+    {
+      "member": "ram-decode-20261022/rejected-capacity-plan.json",
+      "sha256": "413e47ba78de7e62e3f7327a01e6d3a3d8e02b319dc75a43bc0223f20cf80143",
+      "bytes": 6663
+    },
+    {
+      "member": "ram-decode-20261022/rejected-placement-scaffold-reload.log",
+      "sha256": "4c36925dcc2f5c8e69cd778ec8bb5a369c28a5a2cb1725a29cb155d3ab43c2d2",
+      "bytes": 54
+    },
+    {
+      "member": "ram-decode-20261022/rejection-tests.json",
+      "sha256": "17da1229716d6a45464788bc6c80819e9fc3fc7692c9f8711b2cb793aad2e6a4",
+      "bytes": 1165
+    },
+    {
+      "member": "ram-decode-20261022/rejection-tests.log",
+      "sha256": "6473740b0d04b82ae4877ce2f6cddfd8afe73b4091768fde231d6f4e8b0070cf",
+      "bytes": 997
+    },
+    {
+      "member": "ram-decode-20261022/result-summary.json",
+      "sha256": "e41bfe4e603a2c1a5c4534810dd491a3516d8c35fef0c1467943efed954ad73f",
+      "bytes": 12003
+    },
+    {
+      "member": "ram-decode-20261022/route-native-mask-proof.json",
+      "sha256": "192021146cf4c0b67e8a48e9d7043492f81399d5e1577dc430c9599b7f914af3",
+      "bytes": 332
+    },
+    {
+      "member": "ram-decode-20261022/route-native-mask-receipt.json",
+      "sha256": "22a1b17852c0c6e3fbab95e7beb148f92283b426d7fc0adc5fcdd35b1159f554",
+      "bytes": 1021
+    },
+    {
+      "member": "ram-decode-20261022/route-native-mask.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "member": "ram-decode-20261022/route.py",
+      "sha256": "17a63407ecedc4975b9cfb0d63f4f118ffb03247f897eece77716d676cc120c7",
+      "bytes": 1808
+    },
+    {
+      "member": "ram-decode-20261022/route/diagnostic.rbf",
+      "sha256": "679efbef0446e581f8fa39d91e492ff7bc1c9cdc389c1405076465f0529352ec",
+      "bytes": 3084768
+    },
+    {
+      "member": "ram-decode-20261022/route/endpoints.json",
+      "sha256": "8db37fdb3557882b216219976a588f15da6029a0b683e6de8ba08decc6d00886",
+      "bytes": 23558103
+    },
+    {
+      "member": "ram-decode-20261022/route/nextpnr.log",
+      "sha256": "fc786ff78ef1a311e5f939da1dfb2169d3c537fe526cf97f78d232623ce78281",
+      "bytes": 122127
+    },
+    {
+      "member": "ram-decode-20261022/route/receipt.json",
+      "sha256": "f31aeceb01ba710d9cb805a25a9f76ab0abeb1a9e5b994acac65835c500cd2a4",
+      "bytes": 2953
+    },
+    {
+      "member": "ram-decode-20261022/route/routed.json",
+      "sha256": "118f70d85f2ee232f2e691da8beccda0e30ae906d0268dc7f285bc6d3374aeba",
+      "bytes": 37439668
+    },
+    {
+      "member": "ram-decode-20261022/route/timing.json",
+      "sha256": "e1a927a6cdc2867d1f093a39d84ccd3eda80825f0044418d3b0a9cb0e7bc2ab8",
+      "bytes": 20374060
+    },
+    {
+      "member": "ram-decode-20261022/routed-verifier-build-commands.json",
+      "sha256": "44c349e525b9722994f3ce4e165e2c56c1e0952609fc6f992ac4ea88c0fbdbf5",
+      "bytes": 16930
+    },
+    {
+      "member": "ram-decode-20261022/run_final_checks.py",
+      "sha256": "b9a9a8801b09e89c399ca70f165915504de48e076f1ef5a74c8ef0b0c97d7b54",
+      "bytes": 1668
+    },
+    {
+      "member": "ram-decode-20261022/test_rejections.py",
+      "sha256": "eb88a7d2866f36e34a4d78b9277eebe398bfca275849bd13bf8934101d3b6ea0",
+      "bytes": 2406
+    },
+    {
+      "member": "ram-decode-20261022/verify_routed_masks.cc",
+      "sha256": "032c092177a19b11480766a09da16f761bad000d10ccb6e03cb839f463740cc8",
+      "bytes": 8541
+    }
+  ]
+}
