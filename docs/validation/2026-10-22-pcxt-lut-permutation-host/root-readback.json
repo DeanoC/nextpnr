@@ -1,0 +1,29 @@
+{
+  "status": "pass",
+  "all_members_verified": 105,
+  "archive_sha256": "3a9da14c90439588794b1c301df1357a28c15718ea8c729723fb7130e6c8d130",
+  "manifest_sha256": "4d413aa1c00d2159cc47aec74c19c44015bd06b2d1d8ac3bb760884ca0b5f149",
+  "checks": [
+    {
+      "script": "final-analysis/hydrate.py",
+      "returncode": 0,
+      "outputs_byte_identical": []
+    },
+    {
+      "script": "final-analysis/verify_host.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "final-analysis/host-proof.json"
+      ]
+    },
+    {
+      "script": "dependency/frontier/final-analysis/verify_frontiers.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "dependency/frontier/final-analysis/frontier-proof.json"
+      ]
+    }
+  ],
+  "route_charge": 0,
+  "hardware": false
+}

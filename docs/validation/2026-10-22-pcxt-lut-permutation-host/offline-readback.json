@@ -1,0 +1,49 @@
+{
+  "archive_bytes": 26863329,
+  "archive_sha256": "3a9da14c90439588794b1c301df1357a28c15718ea8c729723fb7130e6c8d130",
+  "checks": [
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [],
+      "returncode": 0,
+      "script": "final-analysis/hydrate.py"
+    },
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "final-analysis/host-proof.json"
+      ],
+      "returncode": 0,
+      "script": "final-analysis/verify_host.py"
+    },
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "dependency/frontier/final-analysis/frontier-proof.json"
+      ],
+      "returncode": 0,
+      "script": "dependency/frontier/final-analysis/verify_frontiers.py"
+    }
+  ],
+  "dependencies": {
+    "cpu": {
+      "archive_bytes": 52961638,
+      "archive_sha256": "2b2240ddd347411dc22a695cb5db0e53544b873e75183acf299ebc230101c8f1",
+      "manifest_sha256": "b37d3f3fe7cfa10e9048e1810782b8cb80f3da5c0eb6b93980e537354c341707",
+      "members": 494,
+      "retained_directory": "dependency/frontier/dependency/cpu"
+    },
+    "frontier": {
+      "archive_bytes": 7061135,
+      "archive_sha256": "4c82c3d307ad1148abc7dfffdd1d1c0efac58dcb93b419cfac3f9fb02cafba91",
+      "manifest_sha256": "e65bf2caa985766367df5ba2e811084d87767506831a2c764d17d5f111794f86",
+      "members": 308,
+      "retained_directory": "dependency/frontier"
+    }
+  },
+  "manifest_sha256": "4d413aa1c00d2159cc47aec74c19c44015bd06b2d1d8ac3bb760884ca0b5f149",
+  "offline_extraction": "/tmp/pcxt-permutation-host-offline-ek2lo8xi",
+  "scope": "Frozen host-only source/test receipt and full placement-control verification; actual target excluded, no route admitted, no native execution or hardware acceptance.",
+  "status": "pass",
+  "verified_members_including_manifest": 105
+}
