@@ -1,0 +1,7 @@
+{
+  "renewed_allowance_seconds": 21600,
+  "previous_charge_seconds": 5914.379490000196,
+  "new_charge_seconds": 639.6656480319798,
+  "remaining_seconds": 15045.954861967824,
+  "accounting": "full wall time, including all failed attempts; CPU-reference diagnostics only"
+}
