@@ -255,6 +255,16 @@ class HeAPPlacer
 
                 update_all_chains();
 
+                if (ctx->debug) {
+                    for (auto cell : solve_cells) {
+                        const auto &loc = cell_locs.at(cell->name);
+                        log_info("HeAP target: stage=solved iter=%d cell='%s' type='%s' raw=(%.9g,%.9g) "
+                                 "target=(%d,%d)\n",
+                                 iter + 1, ctx->nameOf(cell), cell->type.c_str(ctx), loc.rawx, loc.rawy, loc.x,
+                                 loc.y);
+                    }
+                }
+
                 // Run the spreader
                 for (const auto &group : cfg.cellGroups)
                     CutSpreader(this, group).run();
@@ -267,6 +277,15 @@ class HeAPPlacer
                 // Run strict legalisation to find a valid bel for all cells
                 update_all_chains();
                 spread_hpwl = total_hpwl();
+                if (ctx->debug) {
+                    for (auto cell : solve_cells) {
+                        const auto &loc = cell_locs.at(cell->name);
+                        log_info("HeAP target: stage=spread iter=%d cell='%s' type='%s' raw=(%.9g,%.9g) "
+                                 "target=(%d,%d)\n",
+                                 iter + 1, ctx->nameOf(cell), cell->type.c_str(ctx), loc.rawx, loc.rawy, loc.x,
+                                 loc.y);
+                    }
+                }
                 legalise_placement_strict();
                 update_all_chains();
 
@@ -1200,11 +1219,23 @@ class HeAPPlacer
                 if (ctx->verbose)
                     ci_startt = std::chrono::high_resolution_clock::now();
 
-                if (ctx->debug)
-                    log_info("   Legalising %s (%s) priority=%d\n", top.second.c_str(ctx), ci->type.c_str(ctx),
-                             top.first);
+                if (ctx->debug) {
+                    const auto &loc = p->cell_locs.at(ci->name);
+                    log_info("HeAP target: stage=dispatch iter=%d dispatch=%d cell='%s' type='%s' "
+                             "raw=(%.9g,%.9g) target=(%d,%d) priority=%d\n",
+                             p->iter + 1, total_iters_noreset + 1, ctx->nameOf(ci), ci->type.c_str(ctx), loc.rawx,
+                             loc.rawy, loc.x, loc.y, top.first);
+                }
 
                 legalise_cell(ci);
+
+                if (ctx->debug) {
+                    const auto &loc = p->cell_locs.at(ci->name);
+                    log_info("HeAP target: stage=bound iter=%d dispatch=%d cell='%s' type='%s' "
+                             "raw=(%.9g,%.9g) target=(%d,%d) priority=%d bel='%s'\n",
+                             p->iter + 1, total_iters_noreset, ctx->nameOf(ci), ci->type.c_str(ctx), loc.rawx,
+                             loc.rawy, loc.x, loc.y, top.first, ctx->nameOfBel(ci->bel));
+                }
 
                 if (ctx->verbose) {
                     auto ci_endt = std::chrono::high_resolution_clock::now();
