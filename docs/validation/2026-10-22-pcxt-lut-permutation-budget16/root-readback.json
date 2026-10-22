@@ -1,0 +1,16 @@
+{
+  "capture_bytes": 62639029,
+  "capture_sha256": "ab43d849cef04528dad1353c33e4a6bf440feffe39500d3a0509085c065a0b9e",
+  "complete_dependency_members": {
+    "prior": 261,
+    "rounds": 234
+  },
+  "independent_review_sha256": "7be6073109572e87ef8851ae94ac8a5de2ada58c933d1e731ade67ad2161ded6",
+  "manifest_sha256": "6faa1c641cb9362226b54bb3d786241760ef55a9ddccb91c2a988279536ca138",
+  "members": 256,
+  "passed": true,
+  "portable_proof_sha256": "a373b3f5e4d141f8cbe0fb4604cdea9beb2a4abb958c8aae9c9be412b9c09cc5",
+  "route_charge_seconds": 0,
+  "verification": "Root executed the published verifier in a fresh task-disk extraction; exit0 and complete member, dependency and proof replay passed",
+  "verifier_sha256": "ea5d22c05856c342ef14e43d5be79263c81371ca225dd9a67b4fe9c70b6e85df"
+}

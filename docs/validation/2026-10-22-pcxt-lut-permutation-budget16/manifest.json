@@ -1,0 +1,1022 @@
+{
+  "CAPTURE-README.md": {
+    "sha256": "1d7a91d909036c5a81b2093806eb541f0ea732f44f7f241411dd1ed00691e132",
+    "size": 5502
+  },
+  "accounting-42.json": {
+    "sha256": "e96da8dcc540dd8a051e8cc9603f4f11addf2480d7d8856d2388e9df053d2d78",
+    "size": 381
+  },
+  "accounting-42/continued-runs.jsonl": {
+    "sha256": "58e49ede9db3690e9d9afeb88ef991064abc537294b1cdd95f6dd73cf05407ea",
+    "size": 612434
+  },
+  "accounting-42/summary.json": {
+    "sha256": "b4b3e189e96c7299d23c1627e11c307c47eacce6d55f9fc685d61134982293c5",
+    "size": 441
+  },
+  "archive-mode.json": {
+    "sha256": "12ee2de6a5c30703af83880f421584101b1ef9012cb4e795dbc51f08040c188a",
+    "size": 28014
+  },
+  "before/docs/mistral-routed-lut-permutation.md": {
+    "sha256": "0cfeec87b8edd89c1e499118d08bed70fa4b046eacdb7c3f92e477a33a4738df",
+    "size": 3883
+  },
+  "before/mistral/main.cc": {
+    "sha256": "67f7b8fa18ea38eb60603475be90e798005d88fb451a75a02567a52b8ed4c9c4",
+    "size": 55108
+  },
+  "before/mistral/routed_lut_permutation.cc": {
+    "sha256": "1b0bcab46db229b46bab563761e21021d326481aa96ee836de36905e040ec18e",
+    "size": 37318
+  },
+  "before/mistral/tests/routed_lut_permutation_cli.py": {
+    "sha256": "90488cacbbf10453abe14348171b4a77ba2a4f065a9b1aac53f324e66995dd95",
+    "size": 3482
+  },
+  "build_archive.py": {
+    "sha256": "bc241f781cbb3cb51f3a6d78f4f8d35055035e88098241372346d767abd8c500",
+    "size": 1193
+  },
+  "capture-initial-replay-error.log": {
+    "sha256": "fe7269c176f8f90fe54300ef87520fd1dec46b58b34b3c505a1484dec55e4085",
+    "size": 360
+  },
+  "capture-initial-replay.py": {
+    "sha256": "983ee6460ac0f1ad7dbd1a26f307caf43256f06bfd566dd1ed2fc5b1daa4d73d",
+    "size": 9058
+  },
+  "committed-source-verification.json": {
+    "sha256": "045409d8460f7d7d6e08ff29458294c7c74d37d1ed152de9a4669a2fed8d889f",
+    "size": 4060
+  },
+  "complete-source/docs/mistral-private-pair-decomposition.md": {
+    "sha256": "11e6367d127fe06b3f7fe3843b3e2a81fb7e32eba223ebae843ba7382ba12c2e",
+    "size": 5351
+  },
+  "complete-source/docs/mistral-routed-lut-permutation.md": {
+    "sha256": "6f5453b47098c3cbcc348ab32f6a168c4f826c3047bb094c401ace13ddc02a7a",
+    "size": 4051
+  },
+  "complete-source/docs/mistral-routed-lut6-swap.md": {
+    "sha256": "05f830c1e2b8b2f2098c3d33c1b025e2f8c3d287af1fc7b4af710ff5b59ebf8c",
+    "size": 4852
+  },
+  "complete-source/docs/mistral-unobserved-arithmetic-coverage.md": {
+    "sha256": "380991fa5ee7b113c91bf5e032b7cf3f14a52654eddd374c9124e50f401a2a83",
+    "size": 2605
+  },
+  "complete-source/mistral/CMakeLists.txt": {
+    "sha256": "3fef03f4f35c417c975965d2d5922e99cdc5611993a07d5926cb3236d0cad5e6",
+    "size": 9792
+  },
+  "complete-source/mistral/analogue_repair.h": {
+    "sha256": "dadc62b0a29c1eac98e4402e54d4a83aac4922ee971feba7fc482223593470a2",
+    "size": 6400
+  },
+  "complete-source/mistral/arch.h": {
+    "sha256": "852e5746310455322b6b6065fa6f378887827f2f6a4b38df40c686f47f0289b2",
+    "size": 43348
+  },
+  "complete-source/mistral/lab.cc": {
+    "sha256": "092f5df6a0b508f6ea6d245515df4adca430bc48b4302dfec1c87faf89df0fe6",
+    "size": 82217
+  },
+  "complete-source/mistral/main.cc": {
+    "sha256": "66320b94871f110f932b1d32da35ba85b7d61bd9d5b14c9aab80aad51c4f499f",
+    "size": 55111
+  },
+  "complete-source/mistral/private_pair_decomposition.cc": {
+    "sha256": "b32b2324e601753dccca5908246c54aa7f302292bb71580b766ddaf3cf61c470",
+    "size": 60232
+  },
+  "complete-source/mistral/private_pair_decomposition.h": {
+    "sha256": "1d36e04801ad23db79871d07c32c8b25cff92bbf16b5f5fba6f5fb472b222d85",
+    "size": 3643
+  },
+  "complete-source/mistral/private_pair_decomposition_native.h": {
+    "sha256": "888d419de51a5def5f7ebe6bcc46751060bad0291e2ccfbda6847b5afef58beb",
+    "size": 1948
+  },
+  "complete-source/mistral/routed_lut6_swap.cc": {
+    "sha256": "ec5ed940e11d77e6cbd67f3e1cf0e1dbb2a102a7b0014a97ac50422bbcf411f3",
+    "size": 44100
+  },
+  "complete-source/mistral/routed_lut6_swap_policy.h": {
+    "sha256": "841a9c75498e0717c4a504e2700ef96fa9c59c20153195b6abf8af6552328b07",
+    "size": 638
+  },
+  "complete-source/mistral/routed_lut_permutation.cc": {
+    "sha256": "771f5e3ff6280d70ab9c6f857e75a0815d7470e27489746877ec75b8cafefa8b",
+    "size": 37320
+  },
+  "complete-source/mistral/routed_lut_permutation_policy.h": {
+    "sha256": "ac2d80a39f3b49f114e553702c1dcf630b0d84481c8bcdd6ea49b57e356032ed",
+    "size": 840
+  },
+  "complete-source/mistral/routed_move.cc": {
+    "sha256": "9cca83ee0042d9947e98a276a6a04af05b38cb914318b6b67cffca06cab0cca4",
+    "size": 18753
+  },
+  "complete-source/mistral/tests/private_pair_decomposition.cc": {
+    "sha256": "779c0b622bcdf085291be4b8890f3a09d65390ec74534a2387bac244ec89fb26",
+    "size": 3931
+  },
+  "complete-source/mistral/tests/private_pair_decomposition_backend.cc": {
+    "sha256": "3872f716ed4309a7e105853d0604bda0b4349f193e42741dcb34cd078cc532ab",
+    "size": 35994
+  },
+  "complete-source/mistral/tests/route_through_cache.cc": {
+    "sha256": "c38824af45e4a9a8dc645457b6984dc1380ec4a7cad1319ab031ad23d02792a6",
+    "size": 9573
+  },
+  "complete-source/mistral/tests/routed_lut6_source_coverage.cc": {
+    "sha256": "2b3e5b36d2b713ffa1f324a4f24226c8952236bd5cf7cfee25838821488392c5",
+    "size": 9994
+  },
+  "complete-source/mistral/tests/routed_lut6_swap_backend.cc": {
+    "sha256": "d28cdbf8496db388f325c93c6cbbd195be92001af3424edcf24545676897cd95",
+    "size": 34913
+  },
+  "complete-source/mistral/tests/routed_lut6_swap_cli.py": {
+    "sha256": "7a657c56034f019c6247832135910d84e3e25d5391cf5f5e7264030678874ce8",
+    "size": 4514
+  },
+  "complete-source/mistral/tests/routed_lut_permutation_backend.cc": {
+    "sha256": "600a187a7adb5b8e643e941a03c13c4e36ac85cdd7881ab68480666ea3965603",
+    "size": 43902
+  },
+  "complete-source/mistral/tests/routed_lut_permutation_cli.py": {
+    "sha256": "c63d9d9ced39b6ac9bb02c1ed662590b74feaa10ddc2f4fb69380b7884db77b0",
+    "size": 3587
+  },
+  "complete-source/mistral/tests/routed_private_pair_backend.cc": {
+    "sha256": "102fed6a5f30d9a467609b52213fdb8298eb8779e22b1f4801e05f60eb561002",
+    "size": 36791
+  },
+  "complete-source/mistral/tests/routed_private_pair_cli.py": {
+    "sha256": "98a5e8e8ae4f2c824f2316f7c526ba9f0dc3d815141501b8ef3cebcc1f48e5f0",
+    "size": 3470
+  },
+  "complete-source/mistral/tests/unobserved_arithmetic_cli.py": {
+    "sha256": "2676d4984e21f14e1498ac84256dc33c8b28adaea2e13c37106c3233479851af",
+    "size": 4754
+  },
+  "complete-source/mistral/tests/unobserved_arithmetic_coverage.cc": {
+    "sha256": "fbb4e22f4c0676e9b6f868069f2264a057e59e06ea63c25a01f781b5005022d3",
+    "size": 11640
+  },
+  "control-proof.json": {
+    "sha256": "baa200e5dda1aff9b942b57a51fe302863349ca2730c329fecd194f286c23ec4",
+    "size": 709
+  },
+  "dependencies/prior-manifest.json": {
+    "sha256": "fd8aa884406761b2bc1c42ae282355a09cf929c92dcc6d85ab6dbe178cfb6196",
+    "size": 40719
+  },
+  "dependencies/rounds-manifest.json": {
+    "sha256": "33c7d3b1077fccad8da58b87eed6526589527b03b5cb4bbbfd94aaed0446619b",
+    "size": 37228
+  },
+  "external-inputs/3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041-clocks.sdc": {
+    "sha256": "3ba280ad420fee63a546a7c5cda15fc6c480de58cad398c67af2e62d1e296041",
+    "size": 106
+  },
+  "external-inputs/5eff0d63083685f76041b438c36c18f38b19da98053427c7c2ee155dc3873e1d-constraints.qsf": {
+    "sha256": "5eff0d63083685f76041b438c36c18f38b19da98053427c7c2ee155dc3873e1d",
+    "size": 6421
+  },
+  "external-inputs/b4c44b2b66faaf8dd1019c6d8de119c55eecb49856158019ac8899a869de028b-synth.json": {
+    "sha256": "b4c44b2b66faaf8dd1019c6d8de119c55eecb49856158019ac8899a869de028b",
+    "size": 20130500
+  },
+  "final-analysis/budget-checks-proof.json": {
+    "sha256": "2844bc977f05ffa932795cb5f7404fde76709bb644fd4faa6e7c42c500eebd51",
+    "size": 1948
+  },
+  "final-analysis/checker-origin.json": {
+    "sha256": "c8df38533cf3a35970ff67cc1e3657d4009f922af4d80d542e41103d8047f6a2",
+    "size": 1931
+  },
+  "final-analysis/checker-tests.json": {
+    "sha256": "37a1d8ea798601eb31d268d8bfde5d9de741ae2671a3cbfa636016fcda5274da",
+    "size": 5689
+  },
+  "final-analysis/compare_timing.py": {
+    "sha256": "ba41ddbcf333e7307ecbf297afb43b84d34760d850bf11e20051d06af9639811",
+    "size": 18413
+  },
+  "final-analysis/decision-ledger.json": {
+    "sha256": "4975acd275487f7513db96b17bc7b45aa8695e2019465b40ce50e9052843aa55",
+    "size": 88818
+  },
+  "final-analysis/graph-proof.json": {
+    "sha256": "927ef7ca4f1241753a78b5a04fdf39562dd1abbf0a9c57d8e6e675fb1669cf87",
+    "size": 79338
+  },
+  "final-analysis/independent-review/replay.log": {
+    "sha256": "7e87d17b521cf1790f2c2366a8380f71ca2ac80aefacb78eb65845fd5ca31a1e",
+    "size": 1343
+  },
+  "final-analysis/independent-review/review.json": {
+    "sha256": "7be6073109572e87ef8851ae94ac8a5de2ada58c933d1e731ade67ad2161ded6",
+    "size": 9638
+  },
+  "final-analysis/independent-review/review.py": {
+    "sha256": "893db34213eaf0af34fee644be4bbb80b5b978a6a9be5a1e972ad119b6cabc19",
+    "size": 5221
+  },
+  "final-analysis/independent-review/route-comparison.json": {
+    "sha256": "b61ff338feb41cabcdd08f2db2d5341abb9f15162a379093ae9e9419d03017fb",
+    "size": 62402688
+  },
+  "final-analysis/independent-review/run.log": {
+    "sha256": "d10c8dbf002ab11c9b1aec003d01213c8dc12290dd9c5a157227a350da170139",
+    "size": 122
+  },
+  "final-analysis/indexed-port-resolution-origin.json": {
+    "sha256": "3481df25dfe01b070bb8eb34d0f126da435f8aaa3b89dafe5d74d3266a7e24a5",
+    "size": 629
+  },
+  "final-analysis/indexed-resolver-review.json": {
+    "sha256": "f0eaa556425c3938482207455ce112c54fa0a8ec7caccf149037bebc56c4eabd",
+    "size": 5883
+  },
+  "final-analysis/initial-indexed-port-rejection.json": {
+    "sha256": "7dd8aa51cdf88f042d653fedf928ebed955420dde223391855c5b7e5ae8c64f9",
+    "size": 3435
+  },
+  "final-analysis/native-port-identity-proof.json": {
+    "sha256": "982e346bd1e9b16a09831ed0dc07cc05a6ebc3f524ba906e08ad387e20070215",
+    "size": 2240
+  },
+  "final-analysis/native-selection-specs.json": {
+    "sha256": "55d0060bfb82c77e9aa0ba23d51bac669ca8553e99028408203c1572588f6e44",
+    "size": 9055
+  },
+  "final-analysis/native_port_identity.py": {
+    "sha256": "8a0a7ddfcb5202f13bb40824c30e7d1a01e63a3160d2241660651316297ecd64",
+    "size": 1404
+  },
+  "final-analysis/permutation_graph_core.py": {
+    "sha256": "36960b80169d3e5243b78e5d0ec6a579214b7ad7b3ae730cd095464bfc46de30",
+    "size": 23372
+  },
+  "final-analysis/pinned-frontend_base.h": {
+    "sha256": "b86c0adf471aaf3c9482379624f9d79efd92b45634696e956da77734bd0fe9fc",
+    "size": 35732
+  },
+  "final-analysis/prove_graph.py": {
+    "sha256": "9d15b73fc8f75fa0d27511f9ffcc8fe3567bd1d93be7d90667b170eda5a45b9a",
+    "size": 2765
+  },
+  "final-analysis/route-comparison.json": {
+    "sha256": "b61ff338feb41cabcdd08f2db2d5341abb9f15162a379093ae9e9419d03017fb",
+    "size": 62402688
+  },
+  "final-analysis/scalar-checker-before-indexed-resolution/budget-checks-proof.json": {
+    "sha256": "e3c50c1b81e2189b9e02e8915314ee012a40336d514716bc27c04e09ab7584fc",
+    "size": 1948
+  },
+  "final-analysis/scalar-checker-before-indexed-resolution/checker-origin.json": {
+    "sha256": "035b79b1f32b4ab28cad1d82cada5b0090b6bbdfeee03217fc2b31455f86d6d9",
+    "size": 1263
+  },
+  "final-analysis/scalar-checker-before-indexed-resolution/permutation_graph_core.py": {
+    "sha256": "8d0db045c3e6d98f8b7d28e0e50b257a44a1194aae0cf106ad4c3d6893d6a26d",
+    "size": 23576
+  },
+  "final-analysis/scalar-checker-before-indexed-resolution/prove_graph.py": {
+    "sha256": "1593c4190e6e375c9a9afa0f0e6620bb7ac94c098d9b7d8d25703dfd084c990a",
+    "size": 2701
+  },
+  "final-analysis/support.py": {
+    "sha256": "a6f9ab299da30d6951c5ad4cb9c93e5297d94dc0e98513cabb8887b26aa62250",
+    "size": 5163
+  },
+  "final-analysis/test_budget_checks.py": {
+    "sha256": "6670654c4942c74ec5be9f99886fc13208199bf3ac7c95c37e83810aab6af2c5",
+    "size": 2756
+  },
+  "final-analysis/test_graph_checks.py": {
+    "sha256": "9f71f1097619b4bff2c69cd262b24cf13997b0de948e2335a4f0ce843be7018f",
+    "size": 14191
+  },
+  "final-analysis/test_native_port_identity.py": {
+    "sha256": "c2f57f45f9a572738b9bdbdb35915eb0852b24a1a5593d947165eb478be2663b",
+    "size": 2972
+  },
+  "final-analysis/topology-proof.json": {
+    "sha256": "25ad33acef659e79a7c7da32f2ab2dce47128eb91ac19310c9263212694a607d",
+    "size": 6045
+  },
+  "final-analysis/verify_topology.py": {
+    "sha256": "7a9b746bd47974cc450b92daa879c5fbe04c3274fd6e170ebd5efe0006bb8a27",
+    "size": 9994
+  },
+  "final-validation.json": {
+    "sha256": "135036d3f77623b44eaecc50dc66c66e2236ee0821561fdd64907fc2da6b9814",
+    "size": 15591
+  },
+  "freeze-validation.py": {
+    "sha256": "15a3342f996fcffeb5ee67352153003b2c551bce63780aac7a5e9519edb298d2",
+    "size": 8528
+  },
+  "independent-script-review.json": {
+    "sha256": "f83022c7ddddccc4079090e3de47c3f52cd8cf466f714b3553f747a6342deecc",
+    "size": 2638
+  },
+  "independent-source-review.json": {
+    "sha256": "5806e89469090a7d3d3f3ee01920d76e6d8faf20e1d67e3ed0c5dfae6e952891",
+    "size": 2193
+  },
+  "native-topology/architecture-compatibility.json": {
+    "sha256": "de884358c6e11d4bbae1cc6de4a2b9dbc227cc01969b8229e765e98ef7a36cf0",
+    "size": 71416
+  },
+  "native-topology/build-commands.json": {
+    "sha256": "9a244af3ecbfd1aa979a10c07f8c0320bd2c1f75c0e6269f2de8890bc01884ee",
+    "size": 26520
+  },
+  "native-topology/build-receipt.json": {
+    "sha256": "2233aad486c1e6565a767988a75b78be7fa1849725d7dd596e660f9bf85fb0d1",
+    "size": 856
+  },
+  "native-topology/build.log": {
+    "sha256": "ef6c105f393ac848d06c5ea50735e3ba3e4f84b550cb23b4783a3b1ddb5ec54f",
+    "size": 2019
+  },
+  "native-topology/committed-source-verification.json": {
+    "sha256": "eae2affebf62c5d7251c6645eaaed7b4fb20ff0a636cbb8d4c931c835dbd1b6a",
+    "size": 33936
+  },
+  "native-topology/frozen-manifest.json": {
+    "sha256": "9505ab011b866e8b513dc1db628181d02a46613d2bb3b13e0f347fb191381b4a",
+    "size": 160224
+  },
+  "native-topology/independent-reader-review.json": {
+    "sha256": "367aca7477084f9660d05828ca164afa7c25cb440cc0c9fecf7c8968b97bf6e9",
+    "size": 1200
+  },
+  "native-topology/lut6-prefix-proof.json": {
+    "sha256": "cabe6278f549ba0bed41241ae4ed4b0f4f80db9a9729b56c20c35873a042f1bf",
+    "size": 854
+  },
+  "native-topology/paired-readback/budget16-selection.json": {
+    "sha256": "11e0a87ccd8ff4f402b630158ae20f6c430ba19e31158cf4224ed87577d2aa31",
+    "size": 3466
+  },
+  "native-topology/paired-readback/budget16-topology.json": {
+    "sha256": "fffcc8ef720696ee97cd811bb135b7ce7cdfaf7c09d182c73f8cda33483cbb7f",
+    "size": 9584
+  },
+  "native-topology/paired-readback/budget16.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "native-topology/paired-readback/budget4-selection.json": {
+    "sha256": "342569dfda2d155a817f6ef2c9cdf7ef42fe54a03e46c23260decba6547331e5",
+    "size": 3466
+  },
+  "native-topology/paired-readback/budget4-topology.json": {
+    "sha256": "8b46e4df30bd43d3d13e50beea82000ce019862afba1e8663182b71f3f376195",
+    "size": 9590
+  },
+  "native-topology/paired-readback/budget4.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "native-topology/paired-readback/receipt.json": {
+    "sha256": "87519cad4c4a2715a25a891ca8aaff79c273b0820a0c93bece537fc69292bb01",
+    "size": 3046
+  },
+  "native-topology/prepare.log": {
+    "sha256": "b7568d3443ee43082ff00dc455fa2b2d6d88d18652d5318f5170e46e83409a79",
+    "size": 65
+  },
+  "native-topology/prepare.py": {
+    "sha256": "9ad36a405fbb54d9b33c6b32b7069d0ab9331829185d7ef45deecd6cde72613f",
+    "size": 5503
+  },
+  "native-topology/readback.log": {
+    "sha256": "f0aa79c0e052ea936a6fe718899688c916a2bee1f07fd8751e662fd5354a7537",
+    "size": 76
+  },
+  "native-topology/readback.py": {
+    "sha256": "ecb997dd6c6c62ef08d40afe3931520898afbf02bd659ba355ddeab423dce1af",
+    "size": 3710
+  },
+  "native-topology/root-readback/budget16-topology.json": {
+    "sha256": "fffcc8ef720696ee97cd811bb135b7ce7cdfaf7c09d182c73f8cda33483cbb7f",
+    "size": 9584
+  },
+  "native-topology/root-readback/budget16.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "native-topology/root-readback/budget4-topology.json": {
+    "sha256": "8b46e4df30bd43d3d13e50beea82000ce019862afba1e8663182b71f3f376195",
+    "size": 9590
+  },
+  "native-topology/root-readback/budget4.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "native-topology/root-readback/receipt.json": {
+    "sha256": "07bb16b93bb879fc5522d1e72d01daf45f34c704463c71dec0b3f9acd0ca8289",
+    "size": 2317
+  },
+  "native-topology/tree-reader.cc": {
+    "sha256": "58274c2a6d16bd237ff20d64094f4f854a3b18fd8091fb9bddc9cbbd0f66909f",
+    "size": 7072
+  },
+  "omitted-payloads.json": {
+    "sha256": "309b55fbf742f39a58fd96bf3a62b21616c248372dff9629c5efda51f50f9fd3",
+    "size": 1016
+  },
+  "prepare-controls.log": {
+    "sha256": "75e24cb205510477d2122e867320a3f082c7f99a7c46b099b540ded2cc168ea7",
+    "size": 55
+  },
+  "prepare-controls.py": {
+    "sha256": "9067a06ff4e20f4efcc9f0a5d213b91bfc46a280e71668e1f371b4611f83864b",
+    "size": 3307
+  },
+  "prepare-default/nextpnr.log": {
+    "sha256": "08dca2c8bcfafb6349bbc59aec1cfbc81424af2a6631ebd36cab7b0cdc80c4af",
+    "size": 209260564
+  },
+  "prepare-default/placed.json": {
+    "sha256": "432bf63c4bfdf193d2c67dde23e3269b9d362efb719d735527759dc3b058d03c",
+    "size": 28286380
+  },
+  "prepare-default/predicted-timing.json": {
+    "sha256": "24ab68f3f7d36844de857d00f1d776b2cb7f1fe1569b6ef38bdabad34ea2ff0e",
+    "size": 20443724
+  },
+  "prepare-default/receipt.json": {
+    "sha256": "5a4f839bb4923ff06418360f6f943272602e01149800b809e09295a23c1adcd6",
+    "size": 4263
+  },
+  "prepare-zero/nextpnr.log": {
+    "sha256": "52782f7a14390f5b3e54b4b92e8c5777f02953c3e53b3e9353f10d6bf6322a8b",
+    "size": 209260564
+  },
+  "prepare-zero/placed.json": {
+    "sha256": "432bf63c4bfdf193d2c67dde23e3269b9d362efb719d735527759dc3b058d03c",
+    "size": 28286380
+  },
+  "prepare-zero/predicted-timing.json": {
+    "sha256": "24ab68f3f7d36844de857d00f1d776b2cb7f1fe1569b6ef38bdabad34ea2ff0e",
+    "size": 20443724
+  },
+  "prepare-zero/receipt.json": {
+    "sha256": "1ca4c950a4090634a73c2eefe4ac196587b26c7b3ae92fcf5e1f5d1f3baa2261",
+    "size": 4309
+  },
+  "prepare.py": {
+    "sha256": "087733d9cee5d1da76715f659abf8ac3705e59222633045f47f3f8c40ec9051c",
+    "size": 7149
+  },
+  "production.patch": {
+    "sha256": "9297a736438fc6fdd73eb0b359bf7d6c890ae729cb0ef5489474bcd5930b8e9c",
+    "size": 5265
+  },
+  "record-runs.py": {
+    "sha256": "e07e523c9f9d3ec709441121cc62ea2f8a69853f0751206d7aebe3bbb1fc93a1",
+    "size": 2296
+  },
+  "references/prior-cpu/diagnostic.rbf": {
+    "sha256": "720e2cfa833308fc5a7170873a6120d1fd7fee9f41366002535ec0ea744ee2cc",
+    "size": 3035988
+  },
+  "references/prior-cpu/endpoints.json": {
+    "sha256": "6e507b0eaf406c7c11e155ac06a143d3bddd04a58b6dabdcff4ac00c08d7001d",
+    "size": 23563197
+  },
+  "references/prior-cpu/nextpnr.log": {
+    "sha256": "74b3915b1f0fdd5874e77c652ba76b81c01533c2ffb56ccaf95f769bcff27311",
+    "size": 179382
+  },
+  "references/prior-cpu/receipt.json": {
+    "sha256": "5ca3603dbdcfd5e1be8e0b434d4f528498c4e3565698233e0fd85b205a7a685b",
+    "size": 33325
+  },
+  "references/prior-cpu/routed.json": {
+    "sha256": "bf0d0f967da685b05239544887d1773e65240ad5d73ed1c62e19e1103e47f894",
+    "size": 38273311
+  },
+  "references/prior-cpu/timing.json": {
+    "sha256": "68790d0db8c299d0ea3012ef0c90a95617d6162d6c5f236cbaa9a88004c7870f",
+    "size": 23099527
+  },
+  "references/prior-evidence/CAPTURE-README.md": {
+    "sha256": "3a3e116c1b02c190844d2a5de4bbbbcd801ba7aa9acb60d19db510cb277512e3",
+    "size": 3624
+  },
+  "references/prior-evidence/archive-mode.json": {
+    "sha256": "4298e556c93bba6eb43d5d24f34dfe5bd22d2d25d5a66139bfaf1deea614823a",
+    "size": 46984
+  },
+  "references/prior-evidence/committed-source-verification.json": {
+    "sha256": "1228d314888201be3ff0acf234060dee5cdff8fb8b99277c3260d55a5d143787",
+    "size": 3954
+  },
+  "references/prior-evidence/final-validation.json": {
+    "sha256": "b9c15eaddbf4fd3c9c21e8ecf7b80d82b5a816e6140968cdcbefc3c84bfbdc32",
+    "size": 22524
+  },
+  "references/prior-prepare/nextpnr.log": {
+    "sha256": "e066bfd4380312f606e36bff8bfaf60bd2cbadfc08dcdbb87067dbb212950997",
+    "size": 209260565
+  },
+  "references/prior-prepare/placed.json": {
+    "sha256": "432bf63c4bfdf193d2c67dde23e3269b9d362efb719d735527759dc3b058d03c",
+    "size": 28286380
+  },
+  "references/prior-prepare/predicted-timing.json": {
+    "sha256": "24ab68f3f7d36844de857d00f1d776b2cb7f1fe1569b6ef38bdabad34ea2ff0e",
+    "size": 20443724
+  },
+  "references/prior-prepare/receipt.json": {
+    "sha256": "80c7d7b5f37e5780627de38e0f862035c99f0338c5d5cdcf1ad5bea637d1a0c9",
+    "size": 3906
+  },
+  "references/prior-source/docs/mistral-private-pair-decomposition.md": {
+    "sha256": "11e6367d127fe06b3f7fe3843b3e2a81fb7e32eba223ebae843ba7382ba12c2e",
+    "size": 5351
+  },
+  "references/prior-source/docs/mistral-routed-lut-permutation.md": {
+    "sha256": "0cfeec87b8edd89c1e499118d08bed70fa4b046eacdb7c3f92e477a33a4738df",
+    "size": 3883
+  },
+  "references/prior-source/docs/mistral-routed-lut6-swap.md": {
+    "sha256": "a10f5b1b3d28353d8fbd36999241683fb0be9dc21427b8cfc535a587fc7353bd",
+    "size": 3537
+  },
+  "references/prior-source/docs/mistral-unobserved-arithmetic-coverage.md": {
+    "sha256": "380991fa5ee7b113c91bf5e032b7cf3f14a52654eddd374c9124e50f401a2a83",
+    "size": 2605
+  },
+  "references/prior-source/mistral/CMakeLists.txt": {
+    "sha256": "3fef03f4f35c417c975965d2d5922e99cdc5611993a07d5926cb3236d0cad5e6",
+    "size": 9792
+  },
+  "references/prior-source/mistral/analogue_repair.h": {
+    "sha256": "dadc62b0a29c1eac98e4402e54d4a83aac4922ee971feba7fc482223593470a2",
+    "size": 6400
+  },
+  "references/prior-source/mistral/arch.h": {
+    "sha256": "913854cd2dfd97614c5bcc36795968bd2c0b87d068dacd1e29c5d9e859f4a16c",
+    "size": 43247
+  },
+  "references/prior-source/mistral/lab.cc": {
+    "sha256": "092f5df6a0b508f6ea6d245515df4adca430bc48b4302dfec1c87faf89df0fe6",
+    "size": 82217
+  },
+  "references/prior-source/mistral/main.cc": {
+    "sha256": "6837b9ffe0243ed92fd425400a69788321fd678cfdbdc784e495a6781915700c",
+    "size": 54433
+  },
+  "references/prior-source/mistral/private_pair_decomposition.cc": {
+    "sha256": "b32b2324e601753dccca5908246c54aa7f302292bb71580b766ddaf3cf61c470",
+    "size": 60232
+  },
+  "references/prior-source/mistral/private_pair_decomposition.h": {
+    "sha256": "1d36e04801ad23db79871d07c32c8b25cff92bbf16b5f5fba6f5fb472b222d85",
+    "size": 3643
+  },
+  "references/prior-source/mistral/private_pair_decomposition_native.h": {
+    "sha256": "888d419de51a5def5f7ebe6bcc46751060bad0291e2ccfbda6847b5afef58beb",
+    "size": 1948
+  },
+  "references/prior-source/mistral/routed_lut6_swap.cc": {
+    "sha256": "263853414d54fe00093fa7b3de093778d5af7d021445261f89b0c74286ffafff",
+    "size": 42464
+  },
+  "references/prior-source/mistral/routed_lut6_swap_policy.h": {
+    "sha256": "841a9c75498e0717c4a504e2700ef96fa9c59c20153195b6abf8af6552328b07",
+    "size": 638
+  },
+  "references/prior-source/mistral/routed_lut_permutation.cc": {
+    "sha256": "1b0bcab46db229b46bab563761e21021d326481aa96ee836de36905e040ec18e",
+    "size": 37318
+  },
+  "references/prior-source/mistral/routed_lut_permutation_policy.h": {
+    "sha256": "ac2d80a39f3b49f114e553702c1dcf630b0d84481c8bcdd6ea49b57e356032ed",
+    "size": 840
+  },
+  "references/prior-source/mistral/routed_move.cc": {
+    "sha256": "9cca83ee0042d9947e98a276a6a04af05b38cb914318b6b67cffca06cab0cca4",
+    "size": 18753
+  },
+  "references/prior-source/mistral/tests/private_pair_decomposition.cc": {
+    "sha256": "779c0b622bcdf085291be4b8890f3a09d65390ec74534a2387bac244ec89fb26",
+    "size": 3931
+  },
+  "references/prior-source/mistral/tests/private_pair_decomposition_backend.cc": {
+    "sha256": "3872f716ed4309a7e105853d0604bda0b4349f193e42741dcb34cd078cc532ab",
+    "size": 35994
+  },
+  "references/prior-source/mistral/tests/route_through_cache.cc": {
+    "sha256": "c38824af45e4a9a8dc645457b6984dc1380ec4a7cad1319ab031ad23d02792a6",
+    "size": 9573
+  },
+  "references/prior-source/mistral/tests/routed_lut6_source_coverage.cc": {
+    "sha256": "2b3e5b36d2b713ffa1f324a4f24226c8952236bd5cf7cfee25838821488392c5",
+    "size": 9994
+  },
+  "references/prior-source/mistral/tests/routed_lut6_swap_backend.cc": {
+    "sha256": "d28cdbf8496db388f325c93c6cbbd195be92001af3424edcf24545676897cd95",
+    "size": 34913
+  },
+  "references/prior-source/mistral/tests/routed_lut6_swap_cli.py": {
+    "sha256": "64d9d918f7a9d0e882ee2f202d7353d282c97abb5aa2fc1ce684e51a7423588a",
+    "size": 3421
+  },
+  "references/prior-source/mistral/tests/routed_lut_permutation_backend.cc": {
+    "sha256": "600a187a7adb5b8e643e941a03c13c4e36ac85cdd7881ab68480666ea3965603",
+    "size": 43902
+  },
+  "references/prior-source/mistral/tests/routed_lut_permutation_cli.py": {
+    "sha256": "90488cacbbf10453abe14348171b4a77ba2a4f065a9b1aac53f324e66995dd95",
+    "size": 3482
+  },
+  "references/prior-source/mistral/tests/routed_private_pair_backend.cc": {
+    "sha256": "102fed6a5f30d9a467609b52213fdb8298eb8779e22b1f4801e05f60eb561002",
+    "size": 36791
+  },
+  "references/prior-source/mistral/tests/routed_private_pair_cli.py": {
+    "sha256": "98a5e8e8ae4f2c824f2316f7c526ba9f0dc3d815141501b8ef3cebcc1f48e5f0",
+    "size": 3470
+  },
+  "references/prior-source/mistral/tests/unobserved_arithmetic_cli.py": {
+    "sha256": "2676d4984e21f14e1498ac84256dc33c8b28adaea2e13c37106c3233479851af",
+    "size": 4754
+  },
+  "references/prior-source/mistral/tests/unobserved_arithmetic_coverage.cc": {
+    "sha256": "fbb4e22f4c0676e9b6f868069f2264a057e59e06ea63c25a01f781b5005022d3",
+    "size": 11640
+  },
+  "references/rounds-evidence/CAPTURE-README.md": {
+    "sha256": "677e96c00fbc5d2cd7f67204052ae90514e73a18fc82ecde47768f5235c5eabb",
+    "size": 4499
+  },
+  "references/rounds-evidence/archive-mode.json": {
+    "sha256": "7fbf529352537ebf0bac4c2bece6831c0989b3404e3c3c0d4b02d181ab23ec81",
+    "size": 30031
+  },
+  "references/rounds-evidence/committed-source-verification.json": {
+    "sha256": "8074b3ed26fcbe2d2bb8843b0c5113bef980e5d52413211cdbb422d0da7a5e16",
+    "size": 4167
+  },
+  "references/rounds-evidence/final-validation.json": {
+    "sha256": "9ac0361a7ea27b0c4eeabd10cdc409cb809816d05e677aef8b8bc614d526e9c5",
+    "size": 13301
+  },
+  "references/rounds-source/docs/mistral-private-pair-decomposition.md": {
+    "sha256": "11e6367d127fe06b3f7fe3843b3e2a81fb7e32eba223ebae843ba7382ba12c2e",
+    "size": 5351
+  },
+  "references/rounds-source/docs/mistral-routed-lut-permutation.md": {
+    "sha256": "0cfeec87b8edd89c1e499118d08bed70fa4b046eacdb7c3f92e477a33a4738df",
+    "size": 3883
+  },
+  "references/rounds-source/docs/mistral-routed-lut6-swap.md": {
+    "sha256": "05f830c1e2b8b2f2098c3d33c1b025e2f8c3d287af1fc7b4af710ff5b59ebf8c",
+    "size": 4852
+  },
+  "references/rounds-source/docs/mistral-unobserved-arithmetic-coverage.md": {
+    "sha256": "380991fa5ee7b113c91bf5e032b7cf3f14a52654eddd374c9124e50f401a2a83",
+    "size": 2605
+  },
+  "references/rounds-source/mistral/CMakeLists.txt": {
+    "sha256": "3fef03f4f35c417c975965d2d5922e99cdc5611993a07d5926cb3236d0cad5e6",
+    "size": 9792
+  },
+  "references/rounds-source/mistral/analogue_repair.h": {
+    "sha256": "dadc62b0a29c1eac98e4402e54d4a83aac4922ee971feba7fc482223593470a2",
+    "size": 6400
+  },
+  "references/rounds-source/mistral/arch.h": {
+    "sha256": "852e5746310455322b6b6065fa6f378887827f2f6a4b38df40c686f47f0289b2",
+    "size": 43348
+  },
+  "references/rounds-source/mistral/lab.cc": {
+    "sha256": "092f5df6a0b508f6ea6d245515df4adca430bc48b4302dfec1c87faf89df0fe6",
+    "size": 82217
+  },
+  "references/rounds-source/mistral/main.cc": {
+    "sha256": "67f7b8fa18ea38eb60603475be90e798005d88fb451a75a02567a52b8ed4c9c4",
+    "size": 55108
+  },
+  "references/rounds-source/mistral/private_pair_decomposition.cc": {
+    "sha256": "b32b2324e601753dccca5908246c54aa7f302292bb71580b766ddaf3cf61c470",
+    "size": 60232
+  },
+  "references/rounds-source/mistral/private_pair_decomposition.h": {
+    "sha256": "1d36e04801ad23db79871d07c32c8b25cff92bbf16b5f5fba6f5fb472b222d85",
+    "size": 3643
+  },
+  "references/rounds-source/mistral/private_pair_decomposition_native.h": {
+    "sha256": "888d419de51a5def5f7ebe6bcc46751060bad0291e2ccfbda6847b5afef58beb",
+    "size": 1948
+  },
+  "references/rounds-source/mistral/routed_lut6_swap.cc": {
+    "sha256": "ec5ed940e11d77e6cbd67f3e1cf0e1dbb2a102a7b0014a97ac50422bbcf411f3",
+    "size": 44100
+  },
+  "references/rounds-source/mistral/routed_lut6_swap_policy.h": {
+    "sha256": "841a9c75498e0717c4a504e2700ef96fa9c59c20153195b6abf8af6552328b07",
+    "size": 638
+  },
+  "references/rounds-source/mistral/routed_lut_permutation.cc": {
+    "sha256": "1b0bcab46db229b46bab563761e21021d326481aa96ee836de36905e040ec18e",
+    "size": 37318
+  },
+  "references/rounds-source/mistral/routed_lut_permutation_policy.h": {
+    "sha256": "ac2d80a39f3b49f114e553702c1dcf630b0d84481c8bcdd6ea49b57e356032ed",
+    "size": 840
+  },
+  "references/rounds-source/mistral/routed_move.cc": {
+    "sha256": "9cca83ee0042d9947e98a276a6a04af05b38cb914318b6b67cffca06cab0cca4",
+    "size": 18753
+  },
+  "references/rounds-source/mistral/tests/private_pair_decomposition.cc": {
+    "sha256": "779c0b622bcdf085291be4b8890f3a09d65390ec74534a2387bac244ec89fb26",
+    "size": 3931
+  },
+  "references/rounds-source/mistral/tests/private_pair_decomposition_backend.cc": {
+    "sha256": "3872f716ed4309a7e105853d0604bda0b4349f193e42741dcb34cd078cc532ab",
+    "size": 35994
+  },
+  "references/rounds-source/mistral/tests/route_through_cache.cc": {
+    "sha256": "c38824af45e4a9a8dc645457b6984dc1380ec4a7cad1319ab031ad23d02792a6",
+    "size": 9573
+  },
+  "references/rounds-source/mistral/tests/routed_lut6_source_coverage.cc": {
+    "sha256": "2b3e5b36d2b713ffa1f324a4f24226c8952236bd5cf7cfee25838821488392c5",
+    "size": 9994
+  },
+  "references/rounds-source/mistral/tests/routed_lut6_swap_backend.cc": {
+    "sha256": "d28cdbf8496db388f325c93c6cbbd195be92001af3424edcf24545676897cd95",
+    "size": 34913
+  },
+  "references/rounds-source/mistral/tests/routed_lut6_swap_cli.py": {
+    "sha256": "7a657c56034f019c6247832135910d84e3e25d5391cf5f5e7264030678874ce8",
+    "size": 4514
+  },
+  "references/rounds-source/mistral/tests/routed_lut_permutation_backend.cc": {
+    "sha256": "600a187a7adb5b8e643e941a03c13c4e36ac85cdd7881ab68480666ea3965603",
+    "size": 43902
+  },
+  "references/rounds-source/mistral/tests/routed_lut_permutation_cli.py": {
+    "sha256": "90488cacbbf10453abe14348171b4a77ba2a4f065a9b1aac53f324e66995dd95",
+    "size": 3482
+  },
+  "references/rounds-source/mistral/tests/routed_private_pair_backend.cc": {
+    "sha256": "102fed6a5f30d9a467609b52213fdb8298eb8779e22b1f4801e05f60eb561002",
+    "size": 36791
+  },
+  "references/rounds-source/mistral/tests/routed_private_pair_cli.py": {
+    "sha256": "98a5e8e8ae4f2c824f2316f7c526ba9f0dc3d815141501b8ef3cebcc1f48e5f0",
+    "size": 3470
+  },
+  "references/rounds-source/mistral/tests/unobserved_arithmetic_cli.py": {
+    "sha256": "2676d4984e21f14e1498ac84256dc33c8b28adaea2e13c37106c3233479851af",
+    "size": 4754
+  },
+  "references/rounds-source/mistral/tests/unobserved_arithmetic_coverage.cc": {
+    "sha256": "fbb4e22f4c0676e9b6f868069f2264a057e59e06ea63c25a01f781b5005022d3",
+    "size": 11640
+  },
+  "references/unobserved-arith-coverage-20261022/route-permutation4/nextpnr.log": {
+    "sha256": "74b3915b1f0fdd5874e77c652ba76b81c01533c2ffb56ccaf95f769bcff27311",
+    "size": 179382
+  },
+  "replay-proof.json": {
+    "sha256": "a373b3f5e4d141f8cbe0fb4604cdea9beb2a4abb958c8aae9c9be412b9c09cc5",
+    "size": 2444
+  },
+  "replay.py": {
+    "sha256": "e995c6969c0c5ff7199974ce750c44b0a6ecb5ba8bbb6fa288bcdd8f81226917",
+    "size": 9140
+  },
+  "replay_review.py": {
+    "sha256": "bb9e4a966e753dd02e19edc56fd4079ad0074af8169881e3a18d117efd6110fb",
+    "size": 877
+  },
+  "retained-source-proof.json": {
+    "sha256": "9994e67e05bfa738dcbf757d43596b7b64400b01a0dd66a62b4cbf8cb222fdbb",
+    "size": 3199
+  },
+  "route-budget16/diagnostic.rbf": {
+    "sha256": "3e39a680575b7b123a1d3ead6ade3f7b60871ba594f5db350a362841ec02b2a1",
+    "size": 3035986
+  },
+  "route-budget16/endpoints.json": {
+    "sha256": "3fe793ce4d9e71ecdbd4929e6ed1b48b2554595ddc1296682d39ae6908a31818",
+    "size": 23563197
+  },
+  "route-budget16/nextpnr.log": {
+    "sha256": "fbf4d60781bec28033cf7b2eb6aefe54a8611e2c3c89bc808a6f7444e8c0ef85",
+    "size": 186054
+  },
+  "route-budget16/receipt.json": {
+    "sha256": "0cf1ac7980d1044d8a6d4dfd258a68f797964f668ebe27e0315241ab06f00302",
+    "size": 26545
+  },
+  "route-budget16/routed.json": {
+    "sha256": "450186c3eeddd9c69a78584e939fba7fe54f072b755c9cbaf682305d6c797250",
+    "size": 38273308
+  },
+  "route-budget16/timing.json": {
+    "sha256": "2935248ed21558d2c266f9c59b0a1cb3c69af376f24a293d386a0a2dee5e31b1",
+    "size": 23099723
+  },
+  "route-budget4/diagnostic.rbf": {
+    "sha256": "720e2cfa833308fc5a7170873a6120d1fd7fee9f41366002535ec0ea744ee2cc",
+    "size": 3035988
+  },
+  "route-budget4/endpoints.json": {
+    "sha256": "6e507b0eaf406c7c11e155ac06a143d3bddd04a58b6dabdcff4ac00c08d7001d",
+    "size": 23563197
+  },
+  "route-budget4/nextpnr.log": {
+    "sha256": "1d6464bbdfaf3b9871565a78838fa7e252c5b79dbee96ca66c1b4343a1c18fed",
+    "size": 179401
+  },
+  "route-budget4/receipt.json": {
+    "sha256": "f571a146ab7ba51f55dfe495f059047f5bf8f7fb56415c90b9627bb813058f5d",
+    "size": 26541
+  },
+  "route-budget4/routed.json": {
+    "sha256": "bf0d0f967da685b05239544887d1773e65240ad5d73ed1c62e19e1103e47f894",
+    "size": 38273311
+  },
+  "route-budget4/timing.json": {
+    "sha256": "68790d0db8c299d0ea3012ef0c90a95617d6162d6c5f236cbaa9a88004c7870f",
+    "size": 23099527
+  },
+  "route.py": {
+    "sha256": "c27f8e9fd14fd96feda4b6ecac8fc39fb95875c0fc988a427dca2356a5a196b9",
+    "size": 4758
+  },
+  "source-identity.json": {
+    "sha256": "e8fef0cbe14aad0c8947f3068884da30c598ea8ab45df84e2e0b22f5ad71fa57",
+    "size": 1101
+  },
+  "source-validation/build-identity.json": {
+    "sha256": "7018497933b6b4e197505acd82ca581214917df9d76a8a2ba3082e3b586f8cbd",
+    "size": 528
+  },
+  "source-validation/build-run.log": {
+    "sha256": "0a39a5478500b02dceeee0efb671a1eeb67e8c4c20cac468bb7de70da6f0eab7",
+    "size": 514
+  },
+  "source-validation/build.log": {
+    "sha256": "c692f5712f96dbc5035289bc40db984f040d8d2e7e83481189156061cefd72bc",
+    "size": 3184
+  },
+  "source-validation/build.py": {
+    "sha256": "1e5d7960b755e0f2498af8104b7fb152381a80ae1ad083c481bc6f88cace759b",
+    "size": 2143
+  },
+  "source-validation/build.receipt.json": {
+    "sha256": "e6ea6916519a30eb117f38987d9c985eb220d47ed35373f19e8a0466497662d7",
+    "size": 365
+  },
+  "source-validation/native-link-audit/_ninja_log.gz": {
+    "sha256": "8d23040f94298695030ae562ed30621ca5b4b2dc70bf436ea770d41753f9b0f0",
+    "size": 17478
+  },
+  "source-validation/native-link-audit/all-orchestration-references.txt": {
+    "sha256": "5ef673fbc07a68d9b34db8b7b2e64a13f34bfd9a4ac090dbd0ec8d8b664ffdc7",
+    "size": 217
+  },
+  "source-validation/native-link-audit/audit.py": {
+    "sha256": "4af946022fefabaf1947af1546102add3ae317735b05ad8eee81324b4dc512ae",
+    "size": 4685
+  },
+  "source-validation/native-link-audit/build_ninja.gz": {
+    "sha256": "7191d3dd747eab5f489adf63cd90694e87b42be60ae67e37782d04c3b7a634b9",
+    "size": 25117
+  },
+  "source-validation/native-link-audit/callsite-proof.json": {
+    "sha256": "0ae0af71f483ec81cb2ea732be421c372ec811fd67c652704672b4db03f2efd3",
+    "size": 1186
+  },
+  "source-validation/native-link-audit/mistral-CMakeLists.txt": {
+    "sha256": "3fef03f4f35c417c975965d2d5922e99cdc5611993a07d5926cb3236d0cad5e6",
+    "size": 9792
+  },
+  "source-validation/native-link-audit/object-build-commands.stderr.gz": {
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "size": 20
+  },
+  "source-validation/native-link-audit/object-build-commands.stdout.gz": {
+    "sha256": "6785b1e2a6acb557054a9b61ccf80332fbb20ca788454dbf70fec73d998bc3bd",
+    "size": 1656
+  },
+  "source-validation/native-link-audit/object-symbols.stderr.gz": {
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "size": 20
+  },
+  "source-validation/native-link-audit/object-symbols.stdout.gz": {
+    "sha256": "3e83e97af21c6a5f5690fc32f5c6d9ae9db74220991698675a28bb61376f15ac",
+    "size": 12702
+  },
+  "source-validation/native-link-audit/production-symbols.stderr.gz": {
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "size": 20
+  },
+  "source-validation/native-link-audit/production-symbols.stdout.gz": {
+    "sha256": "6bb7cc1bf0ccb266989b84fa85ab79694286f9d2ba2dab3f45e9bb756f299612",
+    "size": 136635
+  },
+  "source-validation/native-link-audit/result.json": {
+    "sha256": "8cad81cdc37c469979c09c58f8309e9de80303082557fe4b0f325bfdda0561f4",
+    "size": 20150
+  },
+  "source-validation/native-link-audit/routed_lut_permutation.test-object.o": {
+    "sha256": "e078891594795be3bcfcd1727a34986c25ec784817408a9158c09d0f81db97a9",
+    "size": 10205144
+  },
+  "source-validation/native-link-audit/test-build-commands.stderr.gz": {
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "size": 20
+  },
+  "source-validation/native-link-audit/test-build-commands.stdout.gz": {
+    "sha256": "84476fc316848745d0d567d2cf46079d02eb01a54beb10c5c85f7c6eddc2ab3e",
+    "size": 8444
+  },
+  "source-validation/native-link-audit/test-link-command.txt": {
+    "sha256": "cb7ae3d62d86a86f50b6de326f116da963c4391c8a1417e60195834d77505b22",
+    "size": 9594
+  },
+  "source-validation/native-link-audit/test-symbols.stderr.gz": {
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "size": 20
+  },
+  "source-validation/native-link-audit/test-symbols.stdout.gz": {
+    "sha256": "85a070775b2a4d02335a1a287fb136db1c999b5d7cdb473d0400931168331fa1",
+    "size": 334067
+  },
+  "source-validation/permutation-cli.log": {
+    "sha256": "6b0f6b42273234088770ac633bbf3646edb0f9572da41cc11d732dfb0faf76af",
+    "size": 762
+  },
+  "source-validation/permutation-cli.receipt.json": {
+    "sha256": "2ecacdcf187faeab8ab75c9008864febaed3ccd69d3ea89423dca627e7debf4e",
+    "size": 537
+  },
+  "source-validation/permutation-native.log": {
+    "sha256": "a674dcfb19dda5aa4c9ede271fdaa5a682f17c16c0f88ebe81e0bd2fd6e39fee",
+    "size": 12383
+  },
+  "source-validation/permutation-native.receipt.json": {
+    "sha256": "a257b5338fd5bbed5c63d44125e8d79ffb9d26dc0c8dbf8b036c6585c79e81d4",
+    "size": 525
+  },
+  "source-validation/validate.py": {
+    "sha256": "05fe7235a404a0ec622e901d2d2e8cceec98a6bc06ec4b823aa026625171bf83",
+    "size": 2536
+  },
+  "source-validation/validation-run.log": {
+    "sha256": "a4d07680f7b47c43ef5851a428de6fce668c8cc115435da89fd4269c54ba0966",
+    "size": 2143
+  },
+  "source-validation/validation.json": {
+    "sha256": "1ac57819ff259fa3b75051a354b0a49bcc83d401a4d78d2f07a7e687d2bb4803",
+    "size": 1359
+  },
+  "source/docs/mistral-routed-lut-permutation.md": {
+    "sha256": "6f5453b47098c3cbcc348ab32f6a168c4f826c3047bb094c401ace13ddc02a7a",
+    "size": 4051
+  },
+  "source/mistral/main.cc": {
+    "sha256": "66320b94871f110f932b1d32da35ba85b7d61bd9d5b14c9aab80aad51c4f499f",
+    "size": 55111
+  },
+  "source/mistral/routed_lut_permutation.cc": {
+    "sha256": "771f5e3ff6280d70ab9c6f857e75a0815d7470e27489746877ec75b8cafefa8b",
+    "size": 37320
+  },
+  "source/mistral/tests/routed_lut_permutation_cli.py": {
+    "sha256": "c63d9d9ced39b6ac9bb02c1ed662590b74feaa10ddc2f4fb69380b7884db77b0",
+    "size": 3587
+  },
+  "unchanged-transaction-coverage-proof.json": {
+    "sha256": "9de7ac0923aae85f0dbf6cacdbb5c3cf31ea66c9b56e0408eb53db1b3bf3b846",
+    "size": 1438
+  },
+  "verify-and-commit.py": {
+    "sha256": "136fcbb0b29bd49775efd268d46fca8daea7c4de6bfd2c714266b94eb4e58b39",
+    "size": 4378
+  },
+  "verify_capture.py": {
+    "sha256": "ea5d22c05856c342ef14e43d5be79263c81371ca225dd9a67b4fe9c70b6e85df",
+    "size": 3886
+  }
+}

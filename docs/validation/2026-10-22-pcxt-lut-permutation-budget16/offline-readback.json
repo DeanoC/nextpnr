@@ -1,0 +1,87 @@
+{
+  "capture_bytes": 62639029,
+  "capture_sha256": "ab43d849cef04528dad1353c33e4a6bf440feffe39500d3a0509085c065a0b9e",
+  "complete_dependency_members": {
+    "prior": 261,
+    "rounds": 234
+  },
+  "independent_review_sha256": "7be6073109572e87ef8851ae94ac8a5de2ada58c933d1e731ade67ad2161ded6",
+  "manifest_sha256": "6faa1c641cb9362226b54bb3d786241760ef55a9ddccb91c2a988279536ca138",
+  "members": 256,
+  "passed": true,
+  "portable_proof": {
+    "all8_truth_rows_equal": true,
+    "charged_route_seconds": 0,
+    "complete_endpoint_rows": 17199,
+    "exact_replays": [
+      {
+        "exact_replay": true,
+        "proof": "decision-ledger.json",
+        "sha256": "4975acd275487f7513db96b17bc7b45aa8695e2019465b40ce50e9052843aa55"
+      },
+      {
+        "exact_replay": true,
+        "proof": "graph-proof.json",
+        "sha256": "927ef7ca4f1241753a78b5a04fdf39562dd1abbf0a9c57d8e6e675fb1669cf87"
+      },
+      {
+        "exact_replay": true,
+        "proof": "native-selection-specs.json",
+        "sha256": "55d0060bfb82c77e9aa0ba23d51bac669ca8553e99028408203c1572588f6e44"
+      },
+      {
+        "exact_replay": true,
+        "proof": "checker-tests.json",
+        "sha256": "37a1d8ea798601eb31d268d8bfde5d9de741ae2671a3cbfa636016fcda5274da"
+      },
+      {
+        "exact_replay": true,
+        "proof": "budget-checks-proof.json",
+        "sha256": "2844bc977f05ffa932795cb5f7404fde76709bb644fd4faa6e7c42c500eebd51"
+      },
+      {
+        "exact_replay": true,
+        "proof": "native-port-identity-proof.json",
+        "sha256": "982e346bd1e9b16a09831ed0dc07cc05a6ebc3f524ba906e08ad387e20070215"
+      },
+      {
+        "exact_replay": true,
+        "proof": "topology-proof.json",
+        "sha256": "25ad33acef659e79a7c7da32f2ab2dce47128eb91ac19310c9263212694a607d"
+      },
+      {
+        "exact_replay": true,
+        "proof": "route-comparison.json",
+        "sha256": "b61ff338feb41cabcdd08f2db2d5341abb9f15162a379093ae9e9419d03017fb"
+      }
+    ],
+    "historical_accounting_context": {
+      "cumulative_charge_seconds": "43258.85106730693887",
+      "journal_records": 42,
+      "scope": "Journal arithmetic and these two receipt hashes checked; other historical routes are context only."
+    },
+    "host_admission_files": 85,
+    "native_margin_delta_counts": {
+      "hold": {
+        "unchanged": 17194
+      },
+      "setup": {
+        "improved": 4,
+        "unchanged": 17190
+      }
+    },
+    "native_snapshot_manifest_members": 401,
+    "native_topology": {
+      "changed_physical_users": 2,
+      "retained_original_wire_tuples": 19,
+      "selected_nets": 4,
+      "stationary_users": 2
+    },
+    "pair_route_charge_seconds_recorded_not_recharged": "1614.1102461572736",
+    "passed": true,
+    "scope": "Offline replay of saved full graphs, final timing inventories and recorded native decoded trees. No native execution, GPU route, emitted-RBF mask proof, reload STA or hardware acceptance.",
+    "source_commit": "02ffa3aa6a74b71debbb23da24e5332b541cf742",
+    "source_files": 29
+  },
+  "scope": "Fresh extraction and offline graph/truth/timing/native-topology proof replay; no native or GPU execution"
+}
