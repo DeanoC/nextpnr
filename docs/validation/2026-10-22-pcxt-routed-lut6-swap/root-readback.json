@@ -1,0 +1,46 @@
+{
+  "status": "pass",
+  "all_members_verified": 103,
+  "archive_sha256": "1b9642742873e2c6d4c14aba4d234fdddea2bd9e0b3f1b1ee030cbfd5230d4f6",
+  "manifest_sha256": "d4b994340dce22038f924df1fd1d511f72812e26ec7358961afc29ee38751c87",
+  "checks": [
+    {
+      "script": "verify_sources.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "source-control-proof.json"
+      ]
+    },
+    {
+      "script": "test_checks.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "checker-tests.json"
+      ]
+    },
+    {
+      "script": "prove_graph.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "graph-proof.json",
+        "decision-ledger.json"
+      ]
+    },
+    {
+      "script": "compare_timing.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "route-comparison.json"
+      ]
+    },
+    {
+      "script": "summarize.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "summary.json"
+      ]
+    }
+  ],
+  "route_charge": 0,
+  "hardware": false
+}

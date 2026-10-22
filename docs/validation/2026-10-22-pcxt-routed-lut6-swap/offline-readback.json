@@ -1,0 +1,52 @@
+{
+  "all_offline_checks": [
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "source-control-proof.json"
+      ],
+      "returncode": 0,
+      "script": "verify_sources.py"
+    },
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "checker-tests.json"
+      ],
+      "returncode": 0,
+      "script": "test_checks.py"
+    },
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "graph-proof.json",
+        "decision-ledger.json"
+      ],
+      "returncode": 0,
+      "script": "prove_graph.py"
+    },
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "route-comparison.json"
+      ],
+      "returncode": 0,
+      "script": "compare_timing.py"
+    },
+    {
+      "all_proof_bytes_identical": true,
+      "outputs": [
+        "summary.json"
+      ],
+      "returncode": 0,
+      "script": "summarize.py"
+    }
+  ],
+  "archive_bytes": 55985746,
+  "archive_sha256": "1b9642742873e2c6d4c14aba4d234fdddea2bd9e0b3f1b1ee030cbfd5230d4f6",
+  "manifest_sha256": "d4b994340dce22038f924df1fd1d511f72812e26ec7358961afc29ee38751c87",
+  "offline_extraction": "/tmp/pcxt-lut6-swap-offline-ex7nywsu",
+  "scope": "Complete retained source/control/graph/timing proof replay without the compiler executable; no reroute or hardware acceptance.",
+  "status": "pass",
+  "verified_members_including_manifest": 103
+}
