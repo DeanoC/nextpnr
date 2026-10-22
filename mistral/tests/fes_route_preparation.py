@@ -15,7 +15,7 @@ def main():
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=True)
     source = out / 'top.v'
-    source.write_text('''module top(input clk, a, output q_static, q_cart, q_zero);
+    source.write_text('''module top(input clk, a, output q_static, q_cart, q_zero, q_locked, q_mlab);
 (* BEL="MISTRAL_FF.24.1.2" *) MISTRAL_FF static_ff (
  .CLK(clk), .DATAIN(a), .Q(q_static), .ACLR(1'b1), .ENA(1'b1),
  .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
@@ -25,9 +25,15 @@ def main():
 (* BEL="MISTRAL_FF.24.1.8" *) MISTRAL_FF zero_ff (
  .CLK(clk), .DATAIN(1'b0), .Q(q_zero), .ACLR(1'b1), .ENA(1'b1),
  .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
+(* BEL="MISTRAL_FF.24.1.14" *) MISTRAL_FF locked_ff (
+ .CLK(clk), .DATAIN(a), .Q(q_locked), .ACLR(1'b1), .ENA(1'b1),
+ .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
+(* BEL="MISTRAL_FF.28.1.58" *) MISTRAL_FF mlab_ff (
+ .CLK(clk), .DATAIN(a), .Q(q_mlab), .ACLR(1'b1), .ENA(1'b1),
+ .SCLR(1'b0), .SLOAD(1'b0), .SDATA(1'b0));
 endmodule
 ''')
-    declarations = [('BEL', 'MISTRAL_COMB.24.1.0'), ('RECT', '24 1 25 1'),
+    declarations = [('BEL', 'MISTRAL_COMB.24.1.0'), ('RECT', '24 1 25 1'), ('RECT', 'mlab 28 1 28 1'),
                     ('RECT', 's1 33 1 33 1'), ('RECT', 's2 34 1 34 1'),
                     ('RECT', 's3 35 1 35 1'), ('GROUP', 'inner s1 s2'),
                     ('GROUP', 'outer inner s3')]
@@ -35,7 +41,9 @@ endmodule
             'set_location_assignment PIN_Y13 -to a\n'
             'set_location_assignment PIN_W15 -to q_static\n'
             'set_location_assignment PIN_AA24 -to q_cart\n'
-            'set_location_assignment PIN_E11 -to q_zero\n')
+            'set_location_assignment PIN_E11 -to q_zero\n'
+            'set_location_assignment PIN_AD19 -to q_locked\n'
+            'set_location_assignment PIN_AD12 -to q_mlab\n')
     text = pins + ''.join(f'set_global_assignment -name FES_RESERVED_{kind if kind != "GROUP" else "RECT_GROUP"} "{spec}"\n'
                           for kind, spec in declarations)
     qsf = out / 'pins.qsf'
@@ -69,7 +77,18 @@ endmodule
     routed = load('routed.json')
     assert routed['settings'][key] == expected
     assert 'static_ff$ROUTETHRU' not in routed['cells']
-    assert 'zero_ff$ROUTETHRU' not in routed['cells']
+    # A user-locked FF inside a reserved rect keeps its own ALM's LUT for the
+    # data route-through, including a tied-off one; static_ff's LUT is
+    # reserved by FES_RESERVED_BEL.
+    # Each is a plain buffer on an input dedicated to its own ALM half.
+    for name, bel, half in (('locked_ff', 'MISTRAL_COMB.24.1.12', 0), ('zero_ff', 'MISTRAL_COMB.24.1.6', 0),
+                            ('mlab_ff', 'MISTRAL_MCOMB.28.1.55', 1)):
+        helper = routed['cells'][name + '$ROUTETHRU']
+        assert helper['attributes']['NEXTPNR_BEL'] == bel, (name, helper['attributes']['NEXTPNR_BEL'])
+        assert 'FES_SLOT' not in helper['attributes']
+        pinmap = json.loads(bytes.fromhex(helper['attributes']['FES_PINMAP_V1']))
+        assert pinmap['count'] == 2 and pinmap['pins']['Q'] == [0, 'COMBOUT'], (name, pinmap)
+        assert pinmap['pins']['A'] in ([0, p] for p in (('C', 'E0', 'F0'), ('D', 'E1', 'F1'))[half]), (name, pinmap)
     helper = routed['cells']['cart_ff$ROUTETHRU']
     assert helper['attributes']['NEXTPNR_BEL'] in ('MISTRAL_COMB.25.1.0', 'MISTRAL_MCOMB.25.1.0')
     assert helper['attributes']['FES_SLOT'] == 'cart'
