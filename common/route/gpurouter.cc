@@ -77,9 +77,10 @@ inline double secs_since(Clock::time_point t) { return std::chrono::duration<dou
 // pips: the tile-major numbering and the CSR adjacency. Costs, reservations
 // and bound state are rebuilt by every router. One run of the flow sets up
 // several routers on the same Context (the main route, then a candidate
-// router and a re-route per analogue round), so the last topology is kept
-// and reused when the Context still enumerates the same wires with the same
-// pip counts.
+// router and a re-route per analogue round), so the last topology is kept.
+// The Context pointer is only a candidate key: cache reuse also validates the
+// wire metadata and every ordered destination, so a recycled Context address
+// or a live topology edit cannot reuse stale edges.
 struct GraphTopology
 {
     Context *ctx = nullptr;
@@ -353,11 +354,24 @@ struct GpuRouter
         std::shared_ptr<const GraphTopology> topo = cached_topology(ctx);
         bool reused = false;
         if (topo) {
-            // Same wires in the same enumeration order?
+            // Same wires, enumeration order and tile-major sort metadata?
             size_t i = 0;
             bool same = true;
             for (auto w : ctx->getWires()) {
                 if (i >= topo->enum_order.size() || topo->enum_order[i] != w) {
+                    same = false;
+                    break;
+                }
+                auto idx = topo->wire_to_idx.find(w);
+                if (idx == topo->wire_to_idx.end()) {
+                    same = false;
+                    break;
+                }
+                size_t wire_idx = size_t(idx->second);
+                BoundingBox b = ctx->getRouteBoundingBox(w, w);
+                int16_t x = int16_t((b.x0 + b.x1) / 2), y = int16_t((b.y0 + b.y1) / 2);
+                uint8_t lng = uint8_t(b.x0 != b.x1 || b.y0 != b.y1);
+                if (topo->wx[wire_idx] != x || topo->wy[wire_idx] != y || topo->wlong[wire_idx] != lng) {
                     same = false;
                     break;
                 }
@@ -366,22 +380,32 @@ struct GpuRouter
             reused = same && i == topo->enum_order.size();
         }
         if (reused) {
-            // Same pip counts per wire? Counting is a parallel pass over const
-            // Arch queries; the numbering below needs it anyway.
-            std::vector<int32_t> counts(topo->idx_to_wire.size() + 1, 0);
+            // Matching counts are insufficient: a recycled Context can have
+            // the same wire IDs and pip counts with different destinations.
+            // Compare each ordered destination against the cached CSR edges.
+            std::vector<uint8_t> same_adjacency(topo->idx_to_wire.size(), 0);
             parallel_chunks(topo->idx_to_wire.size(), [&](size_t b, size_t e) {
                 for (size_t i = b; i < e; i++) {
-                    int32_t cnt = 0;
+                    int32_t edge = topo->out_off[i];
+                    const int32_t edge_end = topo->out_off[i + 1];
+                    bool same = true;
                     for (auto pip : ctx->getPipsDownhill(topo->idx_to_wire[i])) {
-                        (void)pip;
-                        cnt++;
+                        if (edge >= edge_end || size_t(edge) >= topo->out_dst.size()) {
+                            same = false;
+                            break;
+                        }
+                        auto dst = topo->wire_to_idx.find(ctx->getPipDstWire(pip));
+                        if (dst == topo->wire_to_idx.end() || topo->out_dst[size_t(edge)] != dst->second) {
+                            same = false;
+                            break;
+                        }
+                        edge++;
                     }
-                    counts[i + 1] = cnt;
+                    same_adjacency[i] = same && edge == edge_end;
                 }
             });
-            for (size_t i = 0; i < topo->idx_to_wire.size(); i++)
-                counts[i + 1] += counts[i];
-            reused = counts == topo->out_off;
+            reused = std::all_of(same_adjacency.begin(), same_adjacency.end(),
+                                 [](uint8_t same) { return same != 0; });
         }
         if (!reused)
             topo = build_topology();
