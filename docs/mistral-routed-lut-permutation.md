@@ -1,6 +1,6 @@
 # Experimental live ordinary-LUT input permutation
 
-`--critical-lut-permute-budget N` (0..4, default 0) enables a separate bounded
+`--critical-lut-permute-budget N` (0..16, default 0) enables a separate bounded
 post-route diagnostic for ordinary ALUT2..5 cells. It requires a fresh full GPU
 route with `--rbf`, without reloaded, partial, frozen, CRAM, forced-timing or move
 execution. Explicit single-net route repair, LUT6 swaps and private-pair repair
@@ -12,7 +12,9 @@ clock pair and 64 cell witnesses. Each proposal exchanges a witnessed logical
 input with another input and transposes the complete LUT table. Current native
 terminal-arc delay ranks proposals, with deterministic cell/pin ordering and
 round-robin cell groups. Ranking is not candidate timing. A cell is retained at
-most once, and at most four trials run.
+most once, and at most sixteen trials run. Increasing the explicit budget
+continues the same deterministic proposal order; every trial retains the same
+coverage, physical-state and timing acceptance checks.
 
 The transaction keeps the BEL fixed and changes only one LUT's input bindings,
 input inversion states, table and native input allocation. All 4..32 raw input

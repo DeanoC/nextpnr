@@ -492,8 +492,8 @@ void Arch::repair_critical_lut_permutations()
 {
     if (!critical_lut_permute_budget) return;
     Context *ctx=getCtx();
-    if (critical_lut_permute_budget<0 || critical_lut_permute_budget>4 || !ordinary_context(ctx))
-        log_error("Critical LUT permutation requires an ordinary completed route and budget 1..4.\n");
+    if (critical_lut_permute_budget<0 || critical_lut_permute_budget>16 || !ordinary_context(ctx))
+        log_error("Critical LUT permutation requires an ordinary completed route and budget 1..16.\n");
     configure_bitstream();
     auto analyse=[&](bool skew) {auto t=std::make_unique<TimingAnalyser>(ctx);t->with_clock_skew=skew;t->setup(false,false,true);return t;};
     auto before=analyse(true),reference=analyse(false);
