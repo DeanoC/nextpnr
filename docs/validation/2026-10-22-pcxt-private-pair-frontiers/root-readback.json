@@ -1,0 +1,36 @@
+{
+  "status": "pass",
+  "all_members_verified": 308,
+  "archive_sha256": "4c82c3d307ad1148abc7dfffdd1d1c0efac58dcb93b419cfac3f9fb02cafba91",
+  "manifest_sha256": "e65bf2caa985766367df5ba2e811084d87767506831a2c764d17d5f111794f86",
+  "checks": [
+    {
+      "script": "hydrate.py",
+      "returncode": 0,
+      "outputs_byte_identical": []
+    },
+    {
+      "script": "prove_no_trial.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "no-trial-proof.json"
+      ]
+    },
+    {
+      "script": "compare_timing.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "route-comparison.json"
+      ]
+    },
+    {
+      "script": "verify_frontiers.py",
+      "returncode": 0,
+      "outputs_byte_identical": [
+        "frontier-proof.json"
+      ]
+    }
+  ],
+  "route_charge": 0,
+  "hardware": false
+}
