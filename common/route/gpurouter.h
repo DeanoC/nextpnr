@@ -152,6 +152,7 @@ struct GpuRouterCfg
     // Frontier entries expanded per parallel step: at least expand_k and at
     // least frontier_size / expand_div (expand_k = 1, expand_div = 0 is A*)
     int expand_k, expand_div;
+    int block_threads;      // device threads per net (256, 512 or 1024); does not change results
     // Bounding-box-disjoint batches per iteration before nets are allowed
     // to be routed concurrently with overlapping boxes
     int max_batches;

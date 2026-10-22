@@ -3,12 +3,13 @@
 `--router gpu` is a connection-based negotiated-congestion router whose
 shortest-path searches run on a GPU, followed by a timing-repair phase that
 re-routes the worst-slack connections at pure delay. It is built on ROCm/HIP
-or CUDA and falls back to a sequential host implementation of the same
-algorithm when nextpnr is built without a device backend or no GPU is
-present, or the selected GPU fails to initialize. The host backend is a scalar
-transcription of the kernel (same
-K-best steps, cost expressions, tie-breaking and per-lane capacity limits),
-so a machine without a GPU produces the same routing as one with a GPU.
+or CUDA and falls back to a host implementation of the same algorithm
+when nextpnr is built without a device backend or no GPU is present, or the
+selected GPU fails to initialize. The host backend is a scalar transcription
+of the kernel (same K-best steps, cost expressions, tie-breaking and
+per-lane capacity limits) that routes the independent nets of a batch on
+the host's threads (`--threads`), so a machine without a GPU produces the
+same routing as one with a GPU, whatever its core count.
 Set `NEXTPNR_REQUIRE_GPU=1` or pass `--gpu-required` to fail instead of using
 that CPU fallback. A successful device initialization logs its selected index
 and device name.
@@ -105,6 +106,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `archRetryLimit` | 8 | maximum re-routing attempts after architecture binding rejects a route, independent of `maxIter`; 0 fails immediately. Normal logs name up to eight rejected wires/pips and their nets per binding pass; the final error lists the rejected nets |
 | `tmgRipupPatience` | 8 | iterations without progress before `--tmg-ripup` gives up |
 | `expandK`, `expandDiv` | 256, 0 | frontier entries expanded per step |
+| `blockThreads` | 1024 | device threads per net (256, 512 or 1024). The search does not depend on it (see Determinism); more threads hide more memory latency when only a few blocks are running, which is most of a negotiation tail and all of timing repair |
 | `smallSlots`, `smallBits`, `largeSlots`, `largeBits` | 384, 16, 0, 22 | device scratch: concurrent nets and log2 table size per lane. A search that outgrows the small table is retried in the large lane; `largeSlots=0` gives that lane as many slots (4 to 32) as three quarters of the free device memory holds, at 235 MB per slot with `largeBits=22`. If later route-buffer allocation fails, the automatic lane releases its scratch, retries those allocations, then tries the original slot count down to one and keeps the largest lane that fits |
 | `maxBatches` | 12 | batch slots per iteration; the first `maxBatches - 1` are bounding-box-disjoint and the last is the overlap-tolerant overflow bucket |
 | `maxIter` | 2000 | negotiation iteration limit |
@@ -233,6 +235,11 @@ with no legal route fails as unroutable instead of repeating one rejected pip.
    per-wire occupancy, history and reservation, as router2 does. Pre-routed
    arcs are detected and kept; wires only one net can ever use are reserved
    for it (router2's `find_all_reserved_wires`).
+   The numbering and adjacency of step 1 depend only on the Arch's wires and
+   pips, so the last ones built are kept and reused by every later router of
+   the run (candidate routers, analogue re-routes) after a check that the
+   Context still enumerates the same wires with the same pip counts; only
+   the per-pip costs, fences and bound state are rebuilt.
 4. **Negotiation.** Each iteration rips up every arc that is unrouted, shares
    an overused wire (unless it was frozen by timing repair, below), or
    (with `--tmg-ripup`) fails slack, and collects the
@@ -460,11 +467,14 @@ with no legal route fails as unroutable instead of repeating one rejected pip.
 One thread block (256 threads) routes one net; the arcs of a net are routed
 in sequence so later arcs can attach to earlier ones. Per arc:
 
-1. A private open-addressing hash table `wire → (g, parent edge)` is
-   cleared. Keys use double hashing; the value is one 64-bit word so it can
-   be updated with `atomicMin`. The parent is the CSR index of the pip, not
-   just the wire it comes from, so architectures with several pips between
-   one pair of wires bind the pip the search actually chose.
+1. The search starts from an empty private open-addressing hash table
+   `wire → (g, parent edge)`. Keys use double hashing; the value is one
+   64-bit word so it can be updated with `atomicMin`. The parent is the CSR
+   index of the pip, not just the wire it comes from, so architectures with
+   several pips between one pair of wires bind the pip the search actually
+   chose. The slots an arc claims are listed as it goes, and only those are
+   cleared when the arc is done (the whole table after a failed search), so
+   a small search does not pay for the 2^16 or 2^22 entries of its lane.
 2. The tree wires are inserted as seeds with `g = crit·upstream delay`
    (scaled by `seedDelayWeight`/`seedDelayFloor`) and pushed onto the
    frontier pile.
@@ -479,7 +489,9 @@ in sequence so later arcs can attach to earlier ones. Per arc:
    below the best sink cost, or the frontier is empty.
 4. Thread 0 walks the parent chain back to the first tree wire and writes
    `(wire, parent, edge, upstream delay)` entries to the task's output region;
-   later arcs of the same task use them as additional seeds.
+   later arcs of the same task use them as additional seeds. The parent of
+   an edge comes from a per-edge source-wire array rather than a binary
+   search over the row offsets, so each hop is one dependent load.
 
 The per-wire cost is router2's: `base · hist(w) · present(w) + bias`, with
 `hist` and `present` scaled by the arc's criticality weight
@@ -514,10 +526,11 @@ and an overflow only moves the arc to the large lane.
 
 ## Memory
 
-Per concurrent net the small lane uses about `2^16 · 56 B` ≈ 3.7 MB and the
-large lane `2^22 · 56 B` ≈ 235 MB (defaults 384 and 4 concurrent nets, about
-2.3 GB in total), plus the graph (about 230 MB for Cyclone V). All of it is
-allocated once per run.
+Per concurrent net the small lane uses about `2^16 · 60 B` ≈ 3.9 MB and the
+large lane `2^22 · 60 B` ≈ 252 MB (defaults 384 and 4 concurrent nets, about
+2.5 GB in total), plus the graph (about 340 MB for Cyclone V, of which
+108 MB is the per-edge source-wire array). All of it is allocated once per
+run.
 
 ## Validation
 
@@ -583,15 +596,37 @@ the analogue model except this one (router1 with rip-up 49.64 MHz, router2
 then router1 47.71 MHz, GPU router 59.36 MHz), while on another all pass.
 
 The host backend (`--gpu-cpu`) produces the identical routing (checked
-net by net on the M10K fixture and by Fmax on the ZX81 fixtures) in about
-3.5 times the router time of the GPU (ZX81 17.7 s against 4.8 s), still
-faster than router1 there. The K-best stepping itself matters for quality:
+net by net on the M10K fixture, by Fmax on the ZX81 fixtures, and by the
+iteration-by-iteration negotiation log on the C64). On a 16-core host it
+routes FES Pong in 2.1 s of router time against 2.2 s on an RTX 3070, and
+the FES C64 in 201 s against 72 s; the per-net searches of the tail and
+the repair run at about the same speed on either side, the GPU wins on
+the large batches. The K-best stepping itself matters for quality:
 an earlier exact-A* host backend that only matched the cost model routed
 the same synthesis to 49.9 MHz under Mistral's analogue model where the
 K-best search reaches 59.4 MHz, because the two prefer different equal-cost
 paths and the analogue model punishes heavily loaded trunks. On these
 fixtures the device is far from busy: the negotiation tail and the
 one-net-at-a-time repair run a handful of blocks.
+
+### Search speed
+
+Router time on an RTX 3070 (CUDA), 16-core host, FES fixtures as of
+2026-10-22, seed 1, same routing before and after (identical checksums,
+expansion counts and negotiation logs). "Before" is `3fea4f9f`; "after"
+adds the threaded open-addressing host backend, the touched-slot table
+clear, the per-edge source-wire array, the packed per-wire record, the
+reused graph topology and 1024 threads per net.
+
+| Design | before, GPU | after, GPU | after, host backend |
+| --- | --- | --- | --- |
+| FES Pong | 3.19 s | 2.22 s | 2.1 s (was 27.2 s) |
+| FES ColecoVision shell | 15.06 s | 9.46 s | |
+| FES C64 (main route) | 175.9 s | 71.9 s | 200.7 s |
+
+The block size is what moved the C64: its negotiation tail and timing
+repair run tens of blocks on 46 SMs, where 256 threads per block leave the
+memory latency of the random per-wire loads exposed (`blockThreads`).
 
 ### Analogue signoff with candidate selection
 
@@ -677,14 +712,20 @@ analysis itself, rather than a search-cost approximation, remains open.
 - The tail of the negotiation (a few nets fighting over a few wires) and
   the one-net-at-a-time repair leave most of the GPU idle. `cpuLaneNets`
   routes such tiny batches on the host backend instead, with identical
-  results now that the host backend mirrors the kernel, but the scalar
-  K-best steps are slower than a one-block launch on these fixtures (ZX81
-  6.2 s against 4.8 s), so it is off by default.
+  results. With the threaded host backend a one-net repair launch costs
+  about the same on either side (Pong: 338 launches, 0.52 s on the host
+  against 0.69 s on an RTX 3070 at 256 threads), so the option is still off
+  by default; it is also never created in required-GPU mode
+  (`NEXTPNR_REQUIRE_GPU=1`, which `gpu-run` sets).
 - A route whose new wires do not fit the task's path output region comes
   back as `ARC_PATH_FULL` and is retried with the region scaled up eight
   times per attempt, bounded by the wire count.
-- The graph is flattened on every run. Caching the CSR on disk keyed by the
-  device would remove most of the fixed setup cost for small designs.
+- The wire numbering and CSR adjacency are kept in memory and reused by the
+  next router set up on the same Context (the candidate routers and
+  re-routes of the analogue rounds) when the Arch still enumerates the same
+  wires with the same pip counts; per-pip costs, fences and bound state are
+  rebuilt every time. Caching the whole CSR on disk keyed by the device
+  would also remove the first flattening for small designs.
 - The full re-route round is a lottery: it explores, but often lands
   3-6 ns below the state it started from, and the nets it hurts mostly
   cannot get their old wires back. The candidate passes plateau after two
