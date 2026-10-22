@@ -2045,51 +2045,63 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
         {"io_constraints", io_constraints}, {"output_contracts", output_contracts}, {"unsupported", unsupported}, {"static_endpoints", static_endpoints},
         {"clocks", clocks}, {"endpoints", endpoints}};
 }
-bool critical_route_snapshot_safe(const json11::Json &before, const json11::Json &after)
+bool critical_route_snapshot_safe(const json11::Json &before, const json11::Json &after, std::string *reason)
 {
+    auto fail = [&](const std::string &why) { if (reason) *reason = why; return false; };
     if (!before.is_object() || !after.is_object() || before["schema"].int_value() != 7 ||
-        !before["endpoints"].is_object() || before["endpoints"].object_items().empty()) return false;
+        !before["endpoints"].is_object() || before["endpoints"].object_items().empty()) return fail("invalid native inventory");
     for (const char *key : {"clocks", "static_endpoints", "constant_outputs", "reset_contracts",
                            "forwarded_clocks", "unregistered_contracts", "output_contracts",
                            "registered_contracts", "primitive_clocks", "unsupported_details"})
-        if (!before[key].is_object()) return false;
+        if (!before[key].is_object()) return fail("invalid native inventory");
     for (const char *key : {"physical_obligations", "io_constraints", "unsupported"})
-        if (!before[key].is_array()) return false;
-    if (!before["complete"].is_bool() || before["clocks"].object_items().empty()) return false;
+        if (!before[key].is_array()) return fail("invalid native inventory");
+    if (!before["complete"].is_bool() || before["clocks"].object_items().empty()) return fail("invalid native inventory");
     auto a = before.object_items(), b = after.object_items();
     a.erase("endpoints"); b.erase("endpoints");
     // Includes primitive clock routes/margins and all physical/unsupported contracts.
-    if (a != b) return false;
+    if (a != b) {
+        for (const auto &field : a) {
+            auto found = b.find(field.first);
+            if (found == b.end() || found->second != field.second) return fail("contract changed: " + field.first);
+        }
+        return fail("contract fields changed");
+    }
     const auto &old_rows = before["endpoints"].object_items(), &new_rows = after["endpoints"].object_items();
-    if (old_rows.size() != new_rows.size()) return false;
+    if (old_rows.size() != new_rows.size()) return fail("invalid native inventory");
     bool gain = false;
     for (const auto &endpoint : old_rows) {
         auto found = new_rows.find(endpoint.first);
-        if (found == new_rows.end() || !endpoint.second.is_array() || !found->second.is_array()) return false;
+        if (found == new_rows.end() || !endpoint.second.is_array() || !found->second.is_array()) return fail("invalid native inventory");
         const auto &old = endpoint.second.array_items(), &now = found->second.array_items();
-        if (old.empty() || old.size() != now.size()) return false;
+        if (old.empty() || old.size() != now.size()) return fail("invalid native inventory");
         for (size_t i = 0; i < old.size(); ++i) {
             auto x = old[i].object_items(), y = now[i].object_items();
             for (const char *key : {"setup", "hold", "min_path", "max_path"}) { x.erase(key); y.erase(key); }
-            if (x != y || !old[i]["setup_timed"].is_bool() || !old[i]["hold_related"].is_bool()) return false;
+            if (x != y || !old[i]["setup_timed"].is_bool() || !old[i]["hold_related"].is_bool()) return fail("invalid native inventory");
             for (const char *key : {"min_path", "max_path"})
                 if (!old[i][key].is_number() || !now[i][key].is_number() ||
-                    !std::isfinite(old[i][key].number_value()) || !std::isfinite(now[i][key].number_value())) return false;
+                    !std::isfinite(old[i][key].number_value()) || !std::isfinite(now[i][key].number_value())) return fail("invalid native inventory");
             for (const auto &field : {std::make_pair("setup", "setup_timed"), std::make_pair("hold", "hold_related")}) {
                 if (!old[i][field.second].bool_value()) {
-                    if (old[i][field.first] != now[i][field.first]) return false;
+                    if (old[i][field.first] != now[i][field.first]) return fail("invalid native inventory");
                     continue;
                 }
                 const auto &o = old[i][field.first], &n = now[i][field.first];
                 if (!o.is_number() || !n.is_number() || !std::isfinite(o.number_value()) ||
-                    !std::isfinite(n.number_value()) || n.number_value() < o.number_value()) return false;
+                    !std::isfinite(n.number_value())) return fail("invalid endpoint margin");
+                if (n.number_value() < o.number_value())
+                    return fail(std::string(field.first) + " regression " + endpoint.first + " " +
+                                std::to_string(o.number_value()) + "->" + std::to_string(n.number_value()) + " ps");
                 if (field.first == std::string("setup") && o.number_value() < 0 && n.number_value() >= o.number_value() + 20) gain = true;
             }
             if (!old[i]["setup_timed"].bool_value() &&
                 (now[i]["max_path"].number_value() > old[i]["max_path"].number_value() ||
-                 now[i]["min_path"].number_value() < old[i]["min_path"].number_value())) return false;
+                 now[i]["min_path"].number_value() < old[i]["min_path"].number_value())) return fail("invalid native inventory");
         }
     }
-    return gain;
+    if (!gain) return fail("no failing setup endpoint gains at least 20 ps");
+    if (reason) *reason = "native margins preserved with failing setup gain";
+    return true;
 }
 NEXTPNR_NAMESPACE_END

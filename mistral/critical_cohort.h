@@ -48,7 +48,8 @@ bool critical_cohort_replicate_trial(Context *ctx, CellInfo *source, CellInfo *s
                                       const std::function<bool(CellInfo *)> &accept);
 // Diagnostic search guard: preserve every native contract and every positive margin.
 // Unchanged unsupported boundaries are retained, never promoted to qualification.
-bool critical_route_snapshot_safe(const json11::Json &before, const json11::Json &after);
+bool critical_route_snapshot_safe(const json11::Json &before, const json11::Json &after,
+                                  std::string *reason = nullptr);
 void repair_critical_replication(Context *ctx, int timing_budget);
 void repair_critical_pair_swaps(Context *ctx, int timing_budget);
 void repair_critical_swaps(Context *ctx, int timing_budget);

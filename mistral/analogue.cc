@@ -979,29 +979,34 @@ void Arch::repair_critical_routes()
             ++tried;
             std::unique_ptr<TimingAnalyser> after;
             json11::Json next_inventory;
+            std::string rejection = "route topology or binding rejected";
             bool accepted = critical_route_trial(ctx, ni, candidates[i][rank], [&]() {
                 after = analyse();
-                if (after->have_loops) return false;
+                if (after->have_loops) { rejection="timing loop"; return false; }
                 const auto &a = before->get_timing_result(), &b = after->get_timing_result();
-                auto nonregressing = [](const auto &old, const auto &now) {
-                    if (old.size() != now.size()) return false;
+                auto nonregressing = [&](const auto &old, const auto &now, const char *label) {
+                    if (old.size() != now.size()) { rejection=std::string(label)+" clock coverage changed"; return false; }
                     for (const auto &row : old) {
                         auto n = now.find(row.first);
-                        if (n == now.end() || !std::isfinite(double(n->second)) || n->second < row.second) return false;
+                        if (n == now.end() || !std::isfinite(double(n->second)) || n->second < row.second) {
+                            rejection=std::string(label)+" clock regression: "+row.first.str(ctx);
+                            return false;
+                        }
                     }
                     return true;
                 };
-                if (!nonregressing(a.clock_setup_slack,b.clock_setup_slack) ||
-                    !nonregressing(a.clock_hold_slack,b.clock_hold_slack) || a.clock_fmax.size()!=b.clock_fmax.size()) return false;
+                if (!nonregressing(a.clock_setup_slack,b.clock_setup_slack,"setup") ||
+                    !nonregressing(a.clock_hold_slack,b.clock_hold_slack,"hold") || a.clock_fmax.size()!=b.clock_fmax.size()) return false;
                 for (const auto &clock : a.clock_fmax) {
                     auto found=b.clock_fmax.find(clock.first);
-                    if (found==b.clock_fmax.end() || !std::isfinite(found->second.achieved) || found->second.achieved<clock.second.achieved) return false;
+                    if (found==b.clock_fmax.end() || !std::isfinite(found->second.achieved) || found->second.achieved<clock.second.achieved) { rejection="clock Fmax regression: "+clock.first.str(ctx); return false; }
                 }
                 next_inventory = snapshot(*after);
-                return critical_route_snapshot_safe(inventory, next_inventory);
+                return critical_route_snapshot_safe(inventory, next_inventory, &rejection);
             });
             log_info("Critical route trial %d: net %s variant %d accepted=%d.\n", tried, ctx->nameOf(ni),
                      candidates[i][rank].variant, int(accepted));
+            log_info("    Critical route decision: %s.\n", rejection.c_str());
             if (accepted) {
                 before=std::move(after); inventory=std::move(next_inventory); ++kept;
                 // Remaining proposals were generated from the old tree. Do not

@@ -1461,7 +1461,11 @@ TEST_F(CriticalCohort, RouteGuardPreservesPositiveMarginsAndCoverage)
         return critical_swap_endpoint_snapshot(ctx.get(),t,u);
     };
     const J before=snapshot(500,800), good=snapshot(500,600);
-    EXPECT_TRUE(critical_route_snapshot_safe(before,good));
+    std::string reason;
+    EXPECT_TRUE(critical_route_snapshot_safe(before,good,&reason));
+    EXPECT_EQ(reason,"native margins preserved with failing setup gain");
+    EXPECT_FALSE(critical_route_snapshot_safe(before,snapshot(499,600),&reason));
+    EXPECT_NE(reason.find("hold regression"),std::string::npos);
     EXPECT_FALSE(critical_route_snapshot_safe(before,before));
     EXPECT_FALSE(critical_route_snapshot_safe(before,snapshot(499,600))); // positive hold margin loss
     EXPECT_FALSE(critical_route_snapshot_safe(before,snapshot(500,801)));
