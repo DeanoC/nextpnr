@@ -19,6 +19,8 @@
  *  ("near/far" delta-stepping with an A* heuristic) per connection.
  *
  *  Included by gpuroute_hip.hip (ROCm / HIP) and gpuroute_cuda.cu (CUDA).
+ *  gpuroute_metal.metal is a port of this kernel to Metal; a change here must
+ *  be made there too.
  *
  *  Algorithm outline (per block, per arc of the task):
  *    1. Clear a private open-addressing hash table  wire -> (g, parent edge).
