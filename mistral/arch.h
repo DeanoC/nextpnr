@@ -669,6 +669,9 @@ struct Arch : BaseArch<ArchRanges>
     std::string decomposition_remap_report; // Explicit CLI only; never a serialized setting.
     int decomposition_remap_selection = -1;
     bool remap_decomposed_critical(const std::string &report, int selection);
+    std::string private_pair_report; // Explicit CLI only; never a serialized setting.
+    int private_pair_selection = -1;
+    bool remap_private_pair_critical(const std::string &report, int selection);
     std::string lut_pair_report; // Explicit CLI only; never a serialized setting.
     int lut_pair_selection = -1;
     bool lut_pair_compose_copy = false; // Explicit CLI only; default relocation remains unchanged.

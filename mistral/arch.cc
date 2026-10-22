@@ -1084,7 +1084,7 @@ bool Arch::place()
             // --force otherwise bypasses a false placement result and routes
             // a graph whose requested remap stages were never executed.
             if (!local_remap_plan.empty() || !local_remap_post_plan.empty() || !comb_remap_plan.empty() ||
-                !decomposition_remap_report.empty() || !lut_pair_report.empty() || !lut_driver_copy_report.empty() ||
+                !decomposition_remap_report.empty() || !private_pair_report.empty() || !lut_pair_report.empty() || !lut_driver_copy_report.empty() ||
                 capture_pipeline_budget || critical_cohort_budget)
                 log_error("Remap plans require successful placement; routing was not started.\n");
             return false;
@@ -1121,6 +1121,9 @@ bool Arch::place()
         !remap_decomposed_critical(decomposition_remap_report,decomposition_remap_selection) &&
         decomposition_remap_selection >= 0)
         log_error("Requested decomposition candidate was not qualified; routing was not started.\n");
+    if (!private_pair_report.empty() &&
+        !remap_private_pair_critical(private_pair_report,private_pair_selection) && private_pair_selection >= 0)
+        log_error("Requested private-pair candidate was not qualified; routing was not started.\n");
     if (!local_remap_post_plan.empty()) execute_local_remap_plan(true);
     if (!lut_pair_report.empty() && !remap_lut_pair_critical(lut_pair_report,lut_pair_selection) &&
         lut_pair_selection >= 0)

@@ -150,6 +150,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("remap-comb-plan", po::value<std::string>(), "JSON plan of staged internal LUT-cut remaps (1..8 steps)");
     specific.add_options()("remap-decompose-critical", po::value<std::string>(), "prior timing report for bounded seven-input control decomposition");
     specific.add_options()("remap-decompose-candidate", po::value<int>(), "qualified decomposition candidate index (default: list only)");
+    specific.add_options()("remap-private-pair-critical", po::value<std::string>(), "prior timing report for exact private ALUT3-to-ALUT5 disjoint decomposition");
+    specific.add_options()("remap-private-pair-candidate", po::value<int>(), "qualified private-pair candidate index (default: list only)");
     specific.add_options()("remap-lut-pair-critical", po::value<std::string>(), "prior timing report for joint placement of two consecutive LUTs");
     specific.add_options()("remap-lut-pair-candidate", po::value<int>(), "qualified LUT-pair-placement candidate index (default: list only)");
     specific.add_options()("remap-lut-pair-compose-copy", "compose a LUT pair into one isolated copy for a whole same-LAB enable cohort");
@@ -599,6 +601,31 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         if (ctx->decomposition_remap_selection < -1) log_error("Invalid control decomposition candidate index.\n");
         if (ctx->decomposition_remap_selection < 0 && (!vm.count("no-route") || vm.count("rbf")))
             log_error("Control decomposition listing requires --no-route and no --rbf.\n");
+    }
+    ctx->private_pair_report.clear();
+    ctx->private_pair_selection = -1;
+    if (vm.count("remap-private-pair-candidate") && !vm.count("remap-private-pair-critical"))
+        log_error("--remap-private-pair-candidate requires --remap-private-pair-critical.\n");
+    if (vm.count("remap-private-pair-critical")) {
+        if (ctx->capture_pipeline_budget)
+            log_error("Private pair decomposition cannot combine with another placement rewrite.\n");
+        if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") || vm.count("fes-cart") ||
+            vm.count("fes-scaffold") || (ctx->settings.count(id_placer) && ctx->settings.at(id_placer).as_string() != "heap") ||
+            (vm.count("placer") && vm["placer"].as<std::string>() != "heap") ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != ""))
+            log_error("Private pair decomposition requires fresh ordinary HeAP placement.\n");
+        for (const char *option : {"remap-critical","remap-plan","remap-post-plan","remap-comb-critical",
+                "remap-comb-plan","remap-decompose-critical","remap-lut-pair-critical","remap-lut-driver-critical",
+                "critical-cohort-budget","critical-swap-budget","replicate-enables"})
+            if (vm.count(option)) log_error("Private pair decomposition cannot combine with another placement rewrite.\n");
+        auto in = open_ifstream_and_log_error(vm["remap-private-pair-critical"].as<std::string>(), "private pair timing report");
+        ctx->private_pair_report.assign(std::istreambuf_iterator<char>(in),std::istreambuf_iterator<char>());
+        std::string error; auto report = json11::Json::parse(ctx->private_pair_report,error);
+        if (!error.empty() || !report["critical_paths"].is_array()) log_error("Invalid private pair timing report.\n");
+        if (vm.count("remap-private-pair-candidate")) ctx->private_pair_selection = vm["remap-private-pair-candidate"].as<int>();
+        if (ctx->private_pair_selection < -1) log_error("Invalid private pair candidate index.\n");
+        if (ctx->private_pair_selection < 0 && (!vm.count("no-route") || vm.count("rbf")))
+            log_error("Private pair listing requires --no-route and no --rbf.\n");
     }
     if (vm.count("remap-post-plan")) {
         load_local_plan("remap-post-plan", true);
