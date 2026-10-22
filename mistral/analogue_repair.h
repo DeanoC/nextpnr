@@ -3,6 +3,7 @@
 #define MISTRAL_ANALOGUE_REPAIR_H
 
 #include <utility>
+#include <memory>
 #include <cmath>
 #include <limits>
 #include <vector>
@@ -43,6 +44,14 @@ bool critical_routed_move_trial(Context *ctx, CellInfo *cell, BelId target, int 
 // Final route rediscovery only: retain the existing LUT wrapper scopes.
 bool critical_final_route_source_coverage(Context *ctx, TimingAnalyser &timing, NetInfo *net,
                                           std::string *reason = nullptr);
+// Read-only native helper admission and fixed helper-LAB/private-Q preservation.
+// These functions do not broaden source or downstream timing coverage.
+bool critical_final_route_buffer_users(Context *ctx, NetInfo *net, std::string *reason = nullptr);
+struct CriticalFinalRouteBufferState;
+std::shared_ptr<const CriticalFinalRouteBufferState>
+critical_final_route_buffer_snapshot(Context *ctx, NetInfo *net, std::string *reason = nullptr);
+bool critical_final_route_buffer_unchanged(Context *ctx, const CriticalFinalRouteBufferState &state,
+                                           std::string *reason = nullptr);
 // Restore the net, physical mux state and analogue cache on rejection or exception.
 bool critical_route_trial(Context *ctx, NetInfo *net, const GpuRouteTree &candidate,
                           const std::function<bool()> &accept);

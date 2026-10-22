@@ -39,3 +39,34 @@ rows remain unsupported. The saved-path screen motivates an experiment; it
 does not establish native eligibility, available route alternatives or timing
 gain. A fresh paired route and complete artifact/endpoint/clock/topology proof
 remain necessary.
+
+## Optional native buffer users
+
+`--critical-final-route-buf-users` is a separate default-false option requiring
+a positive explicit final-route budget. It changes only the final pass's user
+boundary: ordinary FF/ALUT Q roots and both complete timing coverage helpers
+remain unchanged. It does not enable the unused-arithmetic policy. Saved
+settings cannot enable it; absent flag performs no helper scan or snapshot.
+
+An admitted BUF must be the actual fixed transparent native A/Q shape, with
+one E/F half-private input, COMBOUT output and a private routed Q connected only
+to the same ALM half's FF.DATAIN. No name suffix is trusted. Native pins,
+control caches, local FF data selection, reciprocal users and all cell-port
+references are checked without modification. Dynamic SLOAD, SDATA, protected,
+public, global, clock, constant, locked or malformed boundaries reject.
+Reverse-port scans stop after one million entries; trees stop at 4096 wires.
+
+Before any proposal measurement, read-only snapshots cover every affected
+helper LAB occupant, native pin/cache/LAB field, complete configured masks and
+selectors, and the exact private Q trees/strengths. After restored measurement
+and before/after each full trial these boundaries must match. Only the original
+candidate input net's tree may change. Native source-exit or mate-selector
+changes reject. The existing net transaction restores routing, configured
+muxes and analogue cache after false or exception; it does not claim to undo
+arbitrary logical cell corruption. Snapshot mutation tests are detection-only.
+
+No pin allocation, BEL binding, helper insertion or control-set recalculation
+is performed by this option. The original candidate generations, ranking,
+transaction and complete setup/hold/clock acceptance remain unchanged. Host
+eligibility is not evidence of timing gain; enabled/disabled paired full-route
+artifact and native endpoint proofs remain mandatory before retaining a recipe.

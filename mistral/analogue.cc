@@ -933,7 +933,14 @@ void Arch::repair_critical_routes(bool final_after_lut)
             log_error("Final critical route rediscovery lacks complete native clocks: %s.\n",reason.c_str());
         log_info("Final critical route rediscovery: fresh skew/reference timing and live inventory; budget=%d.\n",budget);
     }
+    const bool allow_buffer_users = final_after_lut && critical_final_route_buf_users;
+    auto has_buffer_users = [&](NetInfo *net) {
+        if (!allow_buffer_users) return false;
+        for (const auto &user : net->users) if (user.cell && user.cell->type == id_MISTRAL_BUF) return true;
+        return false;
+    };
     auto covered = [&](NetInfo *net, TimingAnalyser &skewed, TimingAnalyser &plain, std::string &reason) {
+        if (has_buffer_users(net) && !critical_final_route_buffer_users(ctx,net,&reason)) return false;
         return critical_final_route_source_coverage(ctx,skewed,net,&reason) &&
                critical_final_route_source_coverage(ctx,plain,net,&reason) &&
                critical_lut6_swap_output_coverage(ctx,skewed,net,&reason) &&
@@ -966,9 +973,19 @@ void Arch::repair_critical_routes(bool final_after_lut)
         bool allowed = true;
         for (const auto &port : ctx->ports) if (port.second.net == ni) allowed = false;
         for (const auto &w : ni->wires) if (w.second.strength > STRENGTH_STRONG) allowed = false;
-        for (const auto &usr : ni->users)
+        bool needs_buffer_check = false;
+        for (const auto &usr : ni->users) {
             if (!ordinary(usr.cell) || (usr.cell->type == id_MISTRAL_FF ? usr.port != id_DATAIN :
-                !usr.port.in(id_A,id_B,id_C,id_D,id_E,id_F))) allowed = false;
+                !usr.port.in(id_A,id_B,id_C,id_D,id_E,id_F))) {
+                if (allow_buffer_users && usr.cell && usr.cell->type == id_MISTRAL_BUF && usr.port == id_A)
+                    needs_buffer_check = true;
+                else allowed = false;
+            }
+        }
+        if (allowed && needs_buffer_check) {
+            std::string reason;
+            if (!critical_final_route_buffer_users(ctx,ni,&reason)) { excluded(ni,reason.c_str()); continue; }
+        }
         if (!allowed) { excluded(ni,"ordinary complete-user/public/protected-route boundary"); continue; }
         if (final_after_lut) {
             bool failing=false;
@@ -1010,6 +1027,14 @@ void Arch::repair_critical_routes(bool final_after_lut)
     }
     if (sinks.empty()) {
         log_info("%s route repair: no eligible failing data nets.\n",final_after_lut?"Final critical":"Critical"); return;
+    }
+    // Acquire every helper boundary before candidate generation or measurement can configure muxes.
+    std::vector<std::shared_ptr<const CriticalFinalRouteBufferState>> helper_measurement_states;
+    if (allow_buffer_users) for (const auto &sink : sinks) if (has_buffer_users(sink.net)) {
+        std::string reason;
+        auto state = critical_final_route_buffer_snapshot(ctx,sink.net,&reason);
+        if (!state) log_error("Final route helper preflight failed: %s.\n",reason.c_str());
+        helper_measurement_states.push_back(std::move(state));
     }
     // Calibrate only the search's flattened delay table. Trial STA always uses
     // the exact same fallback table as the initial full-route baseline.
@@ -1083,6 +1108,11 @@ void Arch::repair_critical_routes(bool final_after_lut)
     }
     // No learned costs escape the search, including for uncovered fallback arcs.
     restore_table();
+    for (const auto &state : helper_measurement_states) {
+        std::string reason;
+        if (!critical_final_route_buffer_unchanged(ctx,*state,&reason))
+            log_error("Final route helper measurement rollback failed: %s.\n",reason.c_str());
+    }
     std::vector<std::vector<GpuRouteTree>> candidates(sinks.size());
     for (size_t i = 0; i < sinks.size(); ++i) {
         std::stable_sort(ranked[i].begin(), ranked[i].end(), [](const auto &a, const auto &b) { return a.first > b.first; });
@@ -1098,10 +1128,16 @@ void Arch::repair_critical_routes(bool final_after_lut)
             if (final_after_lut && !covered(ni,*before,*reference,rejection)) {
                 excluded(ni,rejection.c_str()); continue;
             }
+            std::shared_ptr<const CriticalFinalRouteBufferState> helper_state;
+            if (has_buffer_users(ni)) {
+                helper_state=critical_final_route_buffer_snapshot(ctx,ni,&rejection);
+                if (!helper_state) { excluded(ni,rejection.c_str()); continue; }
+            }
             ++tried;
             std::unique_ptr<TimingAnalyser> after,next_reference;
             json11::Json next_inventory;
             bool accepted = critical_route_trial(ctx, ni, candidates[i][rank], [&]() {
+                if (helper_state && !critical_final_route_buffer_unchanged(ctx,*helper_state,&rejection)) return false;
                 after = analyse();
                 if (after->have_loops) { rejection="timing loop"; return false; }
                 if (final_after_lut) {
@@ -1133,6 +1169,11 @@ void Arch::repair_critical_routes(bool final_after_lut)
                 next_inventory = snapshot(*after,next_reference.get());
                 return critical_route_snapshot_safe(inventory, next_inventory, &rejection);
             });
+            if (helper_state) {
+                std::string reason;
+                if (!critical_final_route_buffer_unchanged(ctx,*helper_state,&reason))
+                    log_error("Final route helper trial restoration failed: %s.\n",reason.c_str());
+            }
             if (final_after_lut && accepted) rejection="complete native inventory and both-frame clock guards passed";
             log_info("%s route trial %d: net %s variant %d accepted=%d.\n",final_after_lut?"Final critical":"Critical",tried,ctx->nameOf(ni),
                      candidates[i][rank].variant,int(accepted));

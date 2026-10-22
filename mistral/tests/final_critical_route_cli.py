@@ -79,6 +79,23 @@ class FinalCriticalRouteCli(unittest.TestCase):
         self.rejected(base + ['--critical-move-route-budget', '1'], no_route=False)
         self.rejected(base, settings={'timing/allowFail': '1'}, no_route=False)
 
+    def test_buffer_users_requires_positive_explicit_final_budget(self):
+        for options in ([], ['--critical-final-route-budget', '0']):
+            result, output = self.run_case(['--critical-final-route-buf-users'] + options)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('requires a positive explicit final-route budget', result.stdout)
+            self.assertIsNone(output)
+
+    def test_buffer_users_keeps_fresh_gpu_gate(self):
+        self.rejected(['--critical-final-route-buf-users', '--critical-final-route-budget', '1',
+                       '--critical-lut6-swap-budget', '1'])
+
+    def test_buffer_saved_setting_cannot_enable(self):
+        result, output = self.run_case(settings={'critical-final-route-buf-users': '1'})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIsNotNone(output)
+        self.assertNotIn('Final route helper', result.stdout)
+
     def test_saved_settings_do_not_enable(self):
         result, output = self.run_case(settings={'critical-final-route-budget': '32'})
         self.assertEqual(result.returncode, 0, result.stdout)

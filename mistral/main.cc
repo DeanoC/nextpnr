@@ -118,6 +118,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "allow proved unobserved arithmetic leaves in private-pair/permutation coverage (opt-in)");
     specific.add_options()("critical-final-route-budget", po::value<int>(),
                            "fresh route rediscovery after LUT repairs (0..32 trials, default 0)");
+    specific.add_options()("critical-final-route-buf-users",
+                           "admit fixed native transparent BUF.A users in final route repair (opt-in)");
     specific.add_options()("critical-route-budget", po::value<int>(),
                            "post-route single-net repair with full-design guards (0..32 trials, default 0)");
     specific.add_options()("critical-swap-replicate", "try a private LUT copy for a shared data consumer (opt-in)");
@@ -389,6 +391,10 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             log_error("Critical route repair requires an ordinary full GPU route with --rbf.\n");
         ctx->critical_route_budget = budget;
     }
+    ctx->critical_final_route_buf_users = vm.count("critical-final-route-buf-users") != 0;
+    if (ctx->critical_final_route_buf_users &&
+        (!vm.count("critical-final-route-budget") || vm["critical-final-route-budget"].as<int>() <= 0))
+        log_error("--critical-final-route-buf-users requires a positive explicit final-route budget.\n");
     ctx->critical_final_route_budget = 0;
     if (vm.count("critical-final-route-budget")) {
         const int budget = vm["critical-final-route-budget"].as<int>();

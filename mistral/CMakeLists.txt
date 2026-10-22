@@ -1,5 +1,6 @@
 set(SOURCES
     analogue.cc
+    final_route_buffer.cc
     routed_move.cc
     routed_lut_permutation.cc
     routed_lut_permutation_policy.h
@@ -60,7 +61,7 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/final_route_source_coverage.cc tests/source_exit_retention_backend.cc tests/unobserved_arithmetic_coverage.cc tests/routed_lut_permutation_backend.cc tests/routed_lut6_source_coverage.cc tests/route_through_cache.cc tests/routed_private_pair_backend.cc tests/routed_lut6_swap_backend.cc tests/routed_lut6_swap_policy.cc tests/private_pair_decomposition_backend.cc tests/private_pair_decomposition.cc tests/post_route_checkpoint.cc tests/heap_hard_blocks.cc tests/routed_move_physical.cc tests/reduction_reassociate.cc tests/gpu_backend_selection.cc tests/analogue_jobs.cc tests/critical_cohort.cc tests/analogue_budget.cc tests/analogue_improve.cc tests/bel_id.cc tests/completed_observations.cc tests/lab_pinmap.cc tests/lab_ff4.cc tests/fes_cram.cc tests/fes_boundary.cc tests/fes_narrow_pin.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/reduction_reassociate_backend.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/io_delay.cc tests/m10k_timing.cc
+    TEST_SOURCES tests/final_route_buffer.cc tests/final_route_source_coverage.cc tests/source_exit_retention_backend.cc tests/unobserved_arithmetic_coverage.cc tests/routed_lut_permutation_backend.cc tests/routed_lut6_source_coverage.cc tests/route_through_cache.cc tests/routed_private_pair_backend.cc tests/routed_lut6_swap_backend.cc tests/routed_lut6_swap_policy.cc tests/private_pair_decomposition_backend.cc tests/private_pair_decomposition.cc tests/post_route_checkpoint.cc tests/heap_hard_blocks.cc tests/routed_move_physical.cc tests/reduction_reassociate.cc tests/gpu_backend_selection.cc tests/analogue_jobs.cc tests/critical_cohort.cc tests/analogue_budget.cc tests/analogue_improve.cc tests/bel_id.cc tests/completed_observations.cc tests/lab_pinmap.cc tests/lab_ff4.cc tests/fes_cram.cc tests/fes_boundary.cc tests/fes_narrow_pin.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/reduction_reassociate_backend.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/io_delay.cc tests/m10k_timing.cc
     tests/parked_reviews.cc tests/lut_input_delay.cc
     MAIN_SOURCE  main.cc
 )
