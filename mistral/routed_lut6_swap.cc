@@ -318,7 +318,9 @@ bool critical_lut_permutation_source_coverage(Context *ctx, TimingAnalyser &timi
                                "requires current full native ALUT2..5 timing",reason);
 }
 
-bool critical_lut6_swap_output_coverage(Context *ctx,TimingAnalyser &timing,NetInfo *output,std::string *reason)
+namespace {
+bool output_coverage(Context *ctx, TimingAnalyser &timing, NetInfo *output, bool allow_unobserved_arithmetic,
+                     std::string *reason)
 {
     using ClockPairIdentity=std::tuple<IdString,int,IdString,int>;
     auto identity=[](const auto &row) {return ClockPairIdentity(row.launch.clock,int(row.launch.edge),row.capture.clock,int(row.capture.edge));};
@@ -326,10 +328,53 @@ bool critical_lut6_swap_output_coverage(Context *ctx,TimingAnalyser &timing,NetI
     std::set<NetInfo *> visiting,done;size_t work=0;
     std::string failure;
     auto fail=[&](const char *text) {failure=text;return false;};
-    auto cone=[&](auto &&self,NetInfo *net,unsigned depth)->bool {
+    // Only the optional path scans reverse references, lazily and once per walk.
+    // Its independent bound admits large designs without spending the cone budget.
+    bool references_scanned=false;
+    std::map<NetInfo *,size_t> references;
+    size_t captures=0;
+    auto unobserved_arithmetic=[&](NetInfo *net,bool validated_arithmetic_arc) {
+        if(!validated_arithmetic_arc || net->users.entries() || !net->wires.empty() ||
+           net->is_global || net->clkconstr || net->region || net->constant_value!=IdString() ||
+           protected_attrs(ctx,net->attrs))
+            return fail("unused arithmetic output has an observed or protected boundary");
+        auto stored=ctx->nets.find(net->name);
+        auto *cell=net->driver.cell;
+        if(stored==ctx->nets.end() || stored->second.get()!=net || !cell)
+            return fail("unused arithmetic output is not a live net identity");
+        auto owner=ctx->cells.find(cell->name);
+        auto port=cell->ports.find(net->driver.port);
+        if(owner==ctx->cells.end() || owner->second.get()!=cell || cell->type!=id_MISTRAL_ALUT_ARITH ||
+           cell->isPseudo() || cell->region || protected_attrs(ctx,cell->attrs) ||
+           !net->driver.port.in(id_SO,id_CO) || port==cell->ports.end() ||
+           port->second.name!=net->driver.port || port->second.type!=PORT_OUT || port->second.net!=net ||
+           cell->get_pin_state(net->driver.port)!=PIN_SIG)
+            return fail("unused arithmetic output has a malformed native driver identity");
+        int clocks=0;
+        if(ctx->getPortTimingClass(cell,net->driver.port,clocks)!=TMG_COMB_OUTPUT || clocks)
+            return fail("unused arithmetic output is not a native combinational output");
+        for(const auto &entry:ctx->ports) if(entry.second.net==net)
+            return fail("unused arithmetic output reaches a public port");
+        if(!references_scanned) {
+            size_t scanned=0;
+            for(const auto &entry:ctx->cells) for(const auto &port:entry.second->ports) {
+                if(++scanned>(1u<<20)) return fail("unused arithmetic reverse-reference scan exceeds bound");
+                if(port.second.net) ++references[port.second.net];
+            }
+            references_scanned=true;
+        }
+        if(references[net]!=1)
+            return fail("unused arithmetic output has an omitted or duplicate live port reference");
+        return true;
+    };
+    auto cone=[&](auto &&self,NetInfo *net,unsigned depth,bool validated_arithmetic_arc)->bool {
         if(!net || depth>64 || ++work>4096) return fail("output cone exceeds depth/work bound");
         if(visiting.count(net))return fail("output cone contains a cycle");
         if(done.count(net))return true;
+        if(allow_unobserved_arithmetic && !net->users.entries()) {
+            if(!unobserved_arithmetic(net,validated_arithmetic_arc)) return false;
+            done.insert(net);return true;
+        }
         if(net->is_global || net->clkconstr || !net->driver.cell || !net->users.entries())
             return fail("output cone has an untimed or unused boundary");
         for(const auto &port:ctx->ports) if(port.second.net==net) return fail("output cone reaches a public port");
@@ -348,6 +393,14 @@ bool critical_lut6_swap_output_coverage(Context *ctx,TimingAnalyser &timing,NetI
                     return fail("output cone has an unknown LUT/buffer input");
                 if(arithmetic && !user.port.in(id_A,id_B,id_C,id_D0,id_D1,id_CI))
                     return fail("output cone has an unknown carry input");
+                if(allow_unobserved_arithmetic && arithmetic) {
+                    // A malformed output direction must not hide a connected sibling
+                    // before the optional leaf predicate can inspect its identity.
+                    for(const auto &port:cell->ports) if(port.first.in(id_SO,id_CO) && port.second.net &&
+                       (port.second.name!=port.first || port.second.type!=PORT_OUT ||
+                        port.second.net->driver.cell!=cell || port.second.net->driver.port!=port.first))
+                        return fail("arithmetic output cone has a malformed connected sibling");
+                }
                 bool followed=false;
                 for(const auto &port:cell->ports) if(port.second.type==PORT_OUT && port.second.net) {
                     if(arithmetic?!port.first.in(id_SO,id_CO):port.first!=id_Q)
@@ -358,7 +411,7 @@ bool critical_lut6_swap_output_coverage(Context *ctx,TimingAnalyser &timing,NetI
                         return fail("output cone has an uncharacterized combinational arc");
                     if(port.second.net->driver.cell!=cell || port.second.net->driver.port!=port.first)
                         return fail("output cone has a malformed output driver");
-                    if(!self(self,port.second.net,depth+1))return false;
+                    if(!self(self,port.second.net,depth+1,arithmetic))return false;
                     followed=true;
                 }
                 if(!followed)return fail("output cone has no modeled capture branch");
@@ -388,13 +441,28 @@ bool critical_lut6_swap_output_coverage(Context *ctx,TimingAnalyser &timing,NetI
                     DelayQuad delay;
                     if(ctx->getCellDelay(cell,user.port,port.first,delay))return fail("output capture has a hybrid combinational branch");
                 }
+                ++captures;
             } else return fail("output cone reaches an unsupported primitive or capture");
         }
         visiting.erase(net);done.insert(net);return true;
     };
-    const bool complete=cone(cone,output,0);
+    bool complete=cone(cone,output,0,false);
+    if(complete && allow_unobserved_arithmetic && !captures)
+        complete=fail("output cone has no actual fully timed register capture");
     if(reason)*reason=complete?"complete bounded native output setup/hold cone":failure;
     return complete;
+}
+} // namespace
+
+bool critical_lut6_swap_output_coverage(Context *ctx,TimingAnalyser &timing,NetInfo *output,std::string *reason)
+{
+    return output_coverage(ctx,timing,output,false,reason);
+}
+
+bool critical_output_coverage_with_unobserved_arithmetic(Context *ctx,TimingAnalyser &timing,NetInfo *output,
+                                                        std::string *reason)
+{
+    return output_coverage(ctx,timing,output,true,reason);
 }
 
 bool critical_routed_lut6_swap_trial(Context *ctx,CellInfo *cell,IdString first,IdString second,int visit_budget,

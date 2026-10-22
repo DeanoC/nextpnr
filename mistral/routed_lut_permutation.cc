@@ -534,8 +534,10 @@ void Arch::repair_critical_lut_permutations()
     std::vector<Group> groups;
     auto coverage=[&](const View &view,TimingAnalyser &timing,std::string &why) {
         if (!critical_lut_permutation_source_coverage(ctx,timing,view.target,&why)) return false;
-        for (auto *net : view.signals) if (!critical_lut6_swap_output_coverage(ctx,timing,net,&why)) return false;
-        return critical_lut6_swap_output_coverage(ctx,timing,view.output,&why);
+        auto output_coverage = ctx->critical_unobserved_arith_outputs
+            ? critical_output_coverage_with_unobserved_arithmetic : critical_lut6_swap_output_coverage;
+        for (auto *net : view.signals) if (!output_coverage(ctx,timing,net,&why)) return false;
+        return output_coverage(ctx,timing,view.output,&why);
     };
     for (const auto &entry : witnessed) {
         View view;std::string why;

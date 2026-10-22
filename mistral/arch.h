@@ -607,6 +607,7 @@ struct Arch : BaseArch<ArchRanges>
     void repair_critical_lut6_swaps();
     int critical_private_pair_budget = 0; // Explicit CLI only; bounded live two-LUT decomposition.
     void repair_critical_private_pairs();
+    bool critical_unobserved_arith_outputs = false; // Explicit optional capture coverage, never LUT6 admission.
     int critical_lut_permute_budget = 0; // Explicit CLI only; fixed-BEL ALUT2..5 transpositions.
     void repair_critical_lut_permutations();
     int critical_move_route_budget = 0; // CLI-only, bounded post-route LUT moves.

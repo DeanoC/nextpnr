@@ -884,8 +884,10 @@ void Arch::repair_critical_private_pairs()
     std::vector<Group> groups;
     auto coverage=[&](const PairView &view,TimingAnalyser &timing,std::string &why) {
         if (!critical_routed_private_pair_common_launch(ctx,timing,view.signals,&why)) return false;
-        for (auto *net : view.signals) if (!critical_lut6_swap_output_coverage(ctx,timing,net,&why)) return false;
-        return critical_lut6_swap_output_coverage(ctx,timing,view.consumer->getPort(id_Q),&why);
+        auto output_coverage = ctx->critical_unobserved_arith_outputs
+            ? critical_output_coverage_with_unobserved_arithmetic : critical_lut6_swap_output_coverage;
+        for (auto *net : view.signals) if (!output_coverage(ctx,timing,net,&why)) return false;
+        return output_coverage(ctx,timing,view.consumer->getPort(id_Q),&why);
     };
     for (const auto &entry : witnessed) {
         PairView view;std::string why;

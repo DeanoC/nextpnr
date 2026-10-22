@@ -29,6 +29,9 @@ bool critical_routed_lut_permutation_trial(Context *ctx, CellInfo *target, IdStr
 // Every affected output branch needs complete native setup and hold coverage.
 bool critical_lut6_swap_output_coverage(Context *ctx, TimingAnalyser &timing, NetInfo *output,
                                          std::string *reason = nullptr);
+// Explicit optional coverage for proven unobserved SO/CO leaves; never an empty root.
+bool critical_output_coverage_with_unobserved_arithmetic(Context *ctx, TimingAnalyser &timing, NetInfo *output,
+                                                        std::string *reason = nullptr);
 // Symmetric single-sink LUT6 input swap with atomic two-net rollback.
 bool critical_routed_lut6_swap_trial(Context *ctx, CellInfo *cell, IdString first, IdString second, int visit_budget,
                                     const std::function<bool()> &accept, std::string *reason = nullptr,

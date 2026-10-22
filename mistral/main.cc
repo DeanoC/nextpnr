@@ -108,6 +108,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "post-route exact private ALUT3/ALUT5 decomposition (0..4 trials, default 0)");
     specific.add_options()("critical-lut-permute-budget", po::value<int>(),
                            "post-route fixed-BEL ALUT2..5 input permutations (0..4 trials, default 0)");
+    specific.add_options()("critical-unobserved-arith-outputs",
+                           "allow proved unobserved arithmetic leaves in private-pair/permutation coverage (opt-in)");
     specific.add_options()("critical-route-budget", po::value<int>(),
                            "post-route single-net repair with full-design guards (0..32 trials, default 0)");
     specific.add_options()("critical-swap-replicate", "try a private LUT copy for a shared data consumer (opt-in)");
@@ -420,6 +422,10 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             log_error("Critical LUT permutation requires a fresh ordinary full GPU route with --rbf, no forced timing and no move repair.\n");
         ctx->critical_lut_permute_budget = budget;
     }
+    ctx->critical_unobserved_arith_outputs = vm.count("critical-unobserved-arith-outputs") != 0;
+    if (ctx->critical_unobserved_arith_outputs &&
+        ctx->critical_private_pair_budget <= 0 && ctx->critical_lut_permute_budget <= 0)
+        log_error("--critical-unobserved-arith-outputs requires a positive private-pair or LUT-permutation budget.\n");
     ctx->critical_move_route_budget = 0;
     if (vm.count("critical-move-route-budget")) {
         int budget=vm["critical-move-route-budget"].as<int>();
