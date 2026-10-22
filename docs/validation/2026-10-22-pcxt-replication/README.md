@@ -69,3 +69,9 @@ member was read back and verified. Raw receipts and logs remain unchanged.
 `routes/comparison.json` explicitly annotates the unleased execution and
 missing candidate final timing. The experiment used compiler source c8d4a1d3;
 the subsequent Python runner fix does not change that binary's identity.
+
+## Subsequent leased comparisons
+
+After the user's budget reset, complete three-copy and four-copy leased
+comparisons both failed retention. See [the leased follow-up](leased.md) for
+final timing, new failures, CPU-reference cross-checks and the renewed ledger.
