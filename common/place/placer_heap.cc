@@ -33,6 +33,7 @@
 
 #include "placer_heap.h"
 #include "heap_congestion.h"
+#include "heap_spread.h"
 #include <Eigen/Core>
 #include <Eigen/IterativeLinearSolvers>
 #include <boost/optional.hpp>
@@ -2324,11 +2325,20 @@ class HeAPPlacer
                 pivot--;
             }
             while (pivot < int(cut_cells.size()) - 1 && is_part_overutil(true)) {
-                auto &move_cell = cut_cells.at(pivot + 1);
-                int size = p->chain_size.count(move_cell->name) ? p->chain_size.at(move_cell->name) : 1;
-                left_cells_v.at(cell_index(*cut_cells.at(pivot))) += size;
-                right_cells_v.at(cell_index(*cut_cells.at(pivot))) -= size;
-                pivot++;
+                if (p->cfg.correctSpread) {
+                    heap_spread_detail::move_right_cell_to_left(
+                            cut_cells, pivot, left_cells_v, right_cells_v,
+                            [&](const CellInfo *cell) { return cell_index(*cell); },
+                            [&](const CellInfo *cell) {
+                                return p->chain_size.count(cell->name) ? p->chain_size.at(cell->name) : 1;
+                            });
+                } else {
+                    auto &move_cell = cut_cells.at(pivot + 1);
+                    int size = p->chain_size.count(move_cell->name) ? p->chain_size.at(move_cell->name) : 1;
+                    left_cells_v.at(cell_index(*cut_cells.at(pivot))) += size;
+                    right_cells_v.at(cell_index(*cut_cells.at(pivot))) -= size;
+                    pivot++;
+                }
             }
 
             // Split regions into bins, and then spread cells by linear interpolation within those bins
@@ -2338,7 +2348,10 @@ class HeAPPlacer
                     for (int i = cells_start; i < cells_end; i++) {
                         auto &pos = dir ? p->cell_locs.at(cut_cells.at(i)->name).rawy
                                         : p->cell_locs.at(cut_cells.at(i)->name).rawx;
-                        pos = area_l + i * ((area_r - area_l) / N);
+                        if (p->cfg.correctSpread)
+                            pos = heap_spread_detail::small_partition_position(i, cells_start, cells_end, area_l, area_r);
+                        else
+                            pos = area_l + i * ((area_r - area_l) / N);
                     }
                     return;
                 }
@@ -2438,6 +2451,16 @@ PlacerHeapCfg::PlacerHeapCfg(Context *ctx)
     chainRipup = false;
 
     cellRipupLimit = ctx->setting<int>("placerHeap/cellRipupLimit", 0);
+
+    // Do not intern an absent key or write a default setting: either changes
+    // the legacy checkpoint/IdString ordering even when the option is off.
+    correctSpread = false;
+    for (const auto &setting : ctx->settings) {
+        if (setting.first.str(ctx) == "placerHeap/correctSpread") {
+            correctSpread = ctx->setting<bool>("placerHeap/correctSpread");
+            break;
+        }
+    }
 
     congestionDriven = ctx->setting<bool>("placerHeap/congestion", false);
     congestionTarget = ctx->setting<float>("placerHeap/congestionTarget", 100);

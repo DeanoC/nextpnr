@@ -52,6 +52,10 @@ struct PlacerHeapCfg
     // for a very long time before the global attempt limit reports anything.
     int cellRipupLimit;
 
+    // Opt in to partition-local coordinates and matching per-bucket counts
+    // during cut spreading; leave the legacy placement trajectory unchanged otherwise.
+    bool correctSpread;
+
     // Scale down spreading capacity where the RUDY routing-demand estimate
     // exceeds congestionTarget, by at most congestionMinScale.
     bool congestionDriven;

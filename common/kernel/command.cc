@@ -96,6 +96,7 @@ std::set<std::string> dedicated_command_setting_keys(const po::variables_map &vm
     add("placer-heap-timingweight", "placerHeap/timingWeight");
     add("placer-heap-cell-placement-timeout", "placerHeap/cellPlacementTimeout");
     add("placer-heap-no-ctrl-set", "placerHeap/noCtrlSet");
+    add("placer-heap-correct-spread", "placerHeap/correctSpread");
     add("parallel-refine", "placerHeap/parallelRefine");
     add("router2-heatmap", "router2/heatmap");
     add("router2-profile", "router2/profilePath");
@@ -468,6 +469,8 @@ po::options_description CommandHandler::getGeneralOptions()
                           "N, default: 8, 0 for no timeout)");
 
     general.add_options()("placer-heap-no-ctrl-set", "disable control set awareness in placer heap");
+    general.add_options()("placer-heap-correct-spread",
+                          "correct partition-local coordinates and bucket accounting in HeAP spreading (default: off)");
 
     general.add_options()("static-dump-density", "write density csv files during placer-static flow");
 
@@ -622,6 +625,9 @@ void CommandHandler::setupContext(Context *ctx)
 
     if (vm.count("placer-heap-no-ctrl-set"))
         ctx->settings[ctx->id("placerHeap/noCtrlSet")] = true;
+
+    if (vm.count("placer-heap-correct-spread"))
+        ctx->settings[ctx->id("placerHeap/correctSpread")] = true;
 
     if (vm.count("parallel-refine"))
         ctx->settings[ctx->id("placerHeap/parallelRefine")] = true;
