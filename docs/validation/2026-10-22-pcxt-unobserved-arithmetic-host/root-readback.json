@@ -1,0 +1,18 @@
+{
+  "command": [
+    "/usr/bin/python3",
+    "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/docs/validation/2026-10-22-pcxt-unobserved-arithmetic-host/verify_capture.py",
+    "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/docs/validation/2026-10-22-pcxt-unobserved-arithmetic-host/capture.tar.gz",
+    "/home/deano/harnesses/worktrees/fes/silver-delta/out/dev/pcxt-board/out/unobserved-arith-coverage-20261022/final-host-capture/root-fresh-extraction",
+    "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/docs/validation/2026-10-22-pcxt-lut-permutation-host/capture.tar.gz",
+    "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/docs/validation/2026-10-22-pcxt-private-pair-frontiers/capture.tar.gz",
+    "/home/deano/harnesses/pcxt-compiler-repair/nextpnr/docs/validation/2026-10-22-pcxt-lut6-source-coverage/capture.tar.gz"
+  ],
+  "returncode": 0,
+  "elapsed_seconds": 39.14554128376767,
+  "script_sha256": "7fb39209d95909b1d4e9f92c6dddc8c026881752a1e9c8e22741e08237721a6b",
+  "verifier_sha256": "da8c7e7a2b6f969937c3e0a82961c87567517deccf1b806c403dd75ab26a2fc1",
+  "archive_sha256": "bb96052b78d487b127e105a326be221c7c6e5e1b0082d68a2418b89af0c4cce1",
+  "log_sha256": "3f1405389b629cf0fa7eb8ea3a11739190ded37cd4eea5d4c6fb17d55510dd64",
+  "evidence": "Independent root fresh-extraction offline replay; zero route charge, no native rerun or hardware."
+}

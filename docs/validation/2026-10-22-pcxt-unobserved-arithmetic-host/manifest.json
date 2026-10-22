@@ -1,0 +1,690 @@
+{
+  "README.md": {
+    "sha256": "131c56ec872873ef241a0fc4dda560194214a5775c49e8883eff5f23f8f31236",
+    "size": 4075
+  },
+  "archive-mode.json": {
+    "sha256": "83f8c9c2795870fb8dc3b6b93e469010357308f9cd9ba39e338874dd240d5b24",
+    "size": 8403
+  },
+  "build_archive.py": {
+    "sha256": "becf9960691d0f5971a3e9976c4442cab100d8e1e4b47968ab4eb404bc0296f3",
+    "size": 1147
+  },
+  "dependencies/cpu-archive-mode.json": {
+    "sha256": "72b642bb83434914a039044643f4e6debb038ed61d8b0fbec9286054eea31bc7",
+    "size": 259060
+  },
+  "dependencies/cpu-manifest.json": {
+    "sha256": "b37d3f3fe7cfa10e9048e1810782b8cb80f3da5c0eb6b93980e537354c341707",
+    "size": 94981
+  },
+  "dependencies/frontier-archive-mode.json": {
+    "sha256": "d196dc8c53ab771f6100febcd823e1c934626f0e8224fd76c504e2fcc4adae0a",
+    "size": 357041
+  },
+  "dependencies/frontier-manifest.json": {
+    "sha256": "e65bf2caa985766367df5ba2e811084d87767506831a2c764d17d5f111794f86",
+    "size": 64495
+  },
+  "dependencies/prior-archive-mode.json": {
+    "sha256": "5a80f0f29a3d2b4705f15af62c835ffa1f49416d06b950a074bf42f2e2ab7e08",
+    "size": 367539
+  },
+  "dependencies/prior-manifest.json": {
+    "sha256": "4d413aa1c00d2159cc47aec74c19c44015bd06b2d1d8ac3bb760884ca0b5f149",
+    "size": 15371
+  },
+  "evidence/cga-frontier-audit-20261022/README.md": {
+    "sha256": "fb4ec0d34ceba1fb90647cc6b4c3d58255accee1e89f927e250dd077a5dbf27d",
+    "size": 2387
+  },
+  "evidence/cga-frontier-audit-20261022/analysis.json": {
+    "sha256": "6543c9f0b098c4b102a1393a6b557a45a591ce138d5d62fbe20e3464fad4291e",
+    "size": 90175
+  },
+  "evidence/cga-frontier-audit-20261022/analyze.py": {
+    "sha256": "827705ee7071ffff70083f2a8a77c064e90082413af8d238920a6f24ae6f4acf",
+    "size": 4966
+  },
+  "evidence/cga-frontier-audit-20261022/native-receipt.json": {
+    "sha256": "d9b59ed484df345688cef6b4da365b70a29136f0073b41addf7a7ec0c2f833aa",
+    "size": 25964
+  },
+  "evidence/cga-frontier-audit-20261022/native-result.json": {
+    "sha256": "4789134de1b799e0c5a05fabe351661b00c7efe18e8dc41a22aeebaa5fee13b2",
+    "size": 91585
+  },
+  "evidence/cga-frontier-audit-20261022/probe.cc": {
+    "sha256": "24fec90b0a5262bab19e97b5f168c4ab323cc12f36ec1538b49f441d86e971bf",
+    "size": 3834
+  },
+  "evidence/cga-frontier-audit-20261022/run-probe.py": {
+    "sha256": "b964eee42d82d78f954463beea767f58a20bdf092815b1f7792c6ed29603d705",
+    "size": 1747
+  },
+  "evidence/mda-frontier-audit-20261022/README.md": {
+    "sha256": "acfe432152a8c0af27d8aff3b86bcedf3d0e364953d52a5e9eb59859e6286098",
+    "size": 3656
+  },
+  "evidence/mda-frontier-audit-20261022/analysis.json": {
+    "sha256": "8093e98b4a853d346fac46098a4e0dac61276c5a394fc0a82d0923ced9a47637",
+    "size": 218439
+  },
+  "evidence/mda-frontier-audit-20261022/analyze.py": {
+    "sha256": "ca7a1254a5359f9c90602f8aed0c9682d6763e04d2b52fcaeb401a308d1300ef",
+    "size": 5323
+  },
+  "evidence/mda-frontier-audit-20261022/native-receipt.json": {
+    "sha256": "60956b43046ae0cf972faeff0455f619c851b9763ab88f109d224da350aab04a",
+    "size": 25977
+  },
+  "evidence/mda-frontier-audit-20261022/native-result.json": {
+    "sha256": "4de216d71c5e1af802c544c3f09000fdb5671edd5be31eff979d86997fea0470",
+    "size": 200902
+  },
+  "evidence/mda-frontier-audit-20261022/probe.cc": {
+    "sha256": "64aafe0852950aa1bcf6d943a17126b73f1bb1bfd01a141a5f5c63ec908b7f65",
+    "size": 4169
+  },
+  "evidence/mda-frontier-audit-20261022/run-probe.py": {
+    "sha256": "0a67562498f13c9addd16dc64596f28bd5d26c311f5d18813d38f4fc6e1cbf00",
+    "size": 1754
+  },
+  "evidence/routed-lut-permutation-20261022/committed-source-verification.json": {
+    "sha256": "06f76560fb6b99ca95631defa1e7a001ab851e51a86e5a8485ab8709f752b15a",
+    "size": 3375
+  },
+  "evidence/routed-lut-permutation-20261022/final-validation.json": {
+    "sha256": "f57472babbd03cbaf141cc3f7aed9403bc8ecee8a6908b71e528682a1de74de6",
+    "size": 15689
+  },
+  "evidence/routed-lut-permutation-20261022/prepare-default/placed.json": {
+    "sha256": "c4ee86a618ff25b0aa58ad53f0be94a0ffb83f9b873c80eb1694810bf21cb6fc",
+    "size": 28286380
+  },
+  "evidence/routed-lut-permutation-20261022/prepare-default/predicted-timing.json": {
+    "sha256": "24ab68f3f7d36844de857d00f1d776b2cb7f1fe1569b6ef38bdabad34ea2ff0e",
+    "size": 20443724
+  },
+  "evidence/routed-lut-permutation-20261022/prepare-default/receipt.json": {
+    "sha256": "20b976c6e7899680c0b85baf3aeda1f890a5183166f7d90fb81366be6abaa29f",
+    "size": 4886
+  },
+  "evidence/unobserved-arith-coverage-20261022/README.md": {
+    "sha256": "651c3395793fdd5c6a9c26ae39fd3b48d3ca3e2e4601b2c97849109389ebd689",
+    "size": 3107
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/README.md": {
+    "sha256": "454a52309da967e95b41a1f476c781e32ab13a5a86b6656fb5ba2be53b7ae3a6",
+    "size": 2446
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/build-plan.json": {
+    "sha256": "31f1dd1a927ff13848db2926a66b4ee042273b462404a91c2764030ed86e7ec0",
+    "size": 32406
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/build.log": {
+    "sha256": "84937809c62be7471d77c45fb976dc538b80505f3ea1e0477a2a1e3f2d31b98c",
+    "size": 1673
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/check.py": {
+    "sha256": "9e904d317cf5a6679164269165de4f9146c3da9dc0cf085fbe299b763d2a25bf",
+    "size": 4797
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/checker-evolution/clock-contract-check.patch": {
+    "sha256": "f731b12e0bbcaa9821a15e34c3a0ba6054a30e253bc68c7f192517786d49cc2b",
+    "size": 3002
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/checker-evolution/original-check.py": {
+    "sha256": "c9b3c19e13fc01f33dec380855625d2d705dfccbefa7ee93dcd4b3b0da661ac2",
+    "size": 4047
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/checker-evolution/patch-receipt.json": {
+    "sha256": "d3623f3c18e1e3db5af206e0f69639f9105e8e68e48e3d34948a1edf8a0f76bb",
+    "size": 263
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/checker-evolution/revision.json": {
+    "sha256": "e9fb749101075261a9f4f8eb93338523941145692acb3f90e24c20661c97f26e",
+    "size": 975
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/initial-link-attempt/build-plan.json": {
+    "sha256": "49424125cb5fcc867b732db773ff3c58b6452602d22baa2f34d4fd3e9e8f2f8f",
+    "size": 32481
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/initial-link-attempt/build.log": {
+    "sha256": "7514703edbf03f634a5afd6765ea1aadd4bf5126a6de8b503212213a64277cc3",
+    "size": 1826
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/initial-link-attempt/probe.cc": {
+    "sha256": "eebc69c79b7e877482d887c49ffd91db73de72ce4c4fb0dd845fd64b26182197",
+    "size": 11829
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/initial-link-attempt/receipt.json": {
+    "sha256": "d6dd15938149327da138ba551cf83792a8e40afd1076147ac9386ce1c772c69c",
+    "size": 15527
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/initial-link-attempt/run.py": {
+    "sha256": "80c377783009d6dedd7041b8ce021e1ec89982eeb6a9ad8210036d438e1a2d34",
+    "size": 3582
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/probe.cc": {
+    "sha256": "eebc69c79b7e877482d887c49ffd91db73de72ce4c4fb0dd845fd64b26182197",
+    "size": 11829
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/probe.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/proof.json": {
+    "sha256": "ac44281289404dd064060472ad8c7fd868f30f8206cfa0f4b4d23364f899e482",
+    "size": 3227
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/receipt.json": {
+    "sha256": "37149099dc45380ea70780b1cb2c96e143b8ed8319080875ad7dbee54340cd71",
+    "size": 16294
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/result.json": {
+    "sha256": "7cbfe572a3bc1f027c899aaa8de5defa5424e6eddf1c8c05a24ff26514fd3c58",
+    "size": 188276
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/root-native-replay/checker.log": {
+    "sha256": "bc24706900164396a544aee7267b26f206ff6364aae075c4a009fed1e9c09001",
+    "size": 65
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/root-native-replay/probe.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/root-native-replay/receipt.json": {
+    "sha256": "fc15a4f5f7cd101e0804d01290d893097912ac427a5150a72a38c4f55c068da4",
+    "size": 1189
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/root-native-replay/result.json": {
+    "sha256": "7cbfe572a3bc1f027c899aaa8de5defa5424e6eddf1c8c05a24ff26514fd3c58",
+    "size": 188276
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/root-replay.py": {
+    "sha256": "85cbd435b71a29115e40751b546a939bc491bb7a8aaa7f32b9b97cc122907f58",
+    "size": 2059
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/root-replay/blocked-preflight.json": {
+    "sha256": "d082b9d2f59e0c389f576d0e0a5296faae87dad7a8ae7b41510f18b3f60e78d1",
+    "size": 312
+  },
+  "evidence/unobserved-arith-coverage-20261022/board-eligibility/run.py": {
+    "sha256": "8d8f6404126604628a31f75c1e85ba9a57fb2831f5f0d827005e6624f24c9656",
+    "size": 3629
+  },
+  "evidence/unobserved-arith-coverage-20261022/committed-source-verification.json": {
+    "sha256": "1228d314888201be3ff0acf234060dee5cdff8fb8b99277c3260d55a5d143787",
+    "size": 3954
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/docs/mistral-private-pair-decomposition.md": {
+    "sha256": "11e6367d127fe06b3f7fe3843b3e2a81fb7e32eba223ebae843ba7382ba12c2e",
+    "size": 5351
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/docs/mistral-routed-lut-permutation.md": {
+    "sha256": "0cfeec87b8edd89c1e499118d08bed70fa4b046eacdb7c3f92e477a33a4738df",
+    "size": 3883
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/docs/mistral-routed-lut6-swap.md": {
+    "sha256": "a10f5b1b3d28353d8fbd36999241683fb0be9dc21427b8cfc535a587fc7353bd",
+    "size": 3537
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/docs/mistral-unobserved-arithmetic-coverage.md": {
+    "sha256": "380991fa5ee7b113c91bf5e032b7cf3f14a52654eddd374c9124e50f401a2a83",
+    "size": 2605
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/CMakeLists.txt": {
+    "sha256": "3fef03f4f35c417c975965d2d5922e99cdc5611993a07d5926cb3236d0cad5e6",
+    "size": 9792
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/analogue_repair.h": {
+    "sha256": "dadc62b0a29c1eac98e4402e54d4a83aac4922ee971feba7fc482223593470a2",
+    "size": 6400
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/arch.h": {
+    "sha256": "913854cd2dfd97614c5bcc36795968bd2c0b87d068dacd1e29c5d9e859f4a16c",
+    "size": 43247
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/lab.cc": {
+    "sha256": "092f5df6a0b508f6ea6d245515df4adca430bc48b4302dfec1c87faf89df0fe6",
+    "size": 82217
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/main.cc": {
+    "sha256": "6837b9ffe0243ed92fd425400a69788321fd678cfdbdc784e495a6781915700c",
+    "size": 54433
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/private_pair_decomposition.cc": {
+    "sha256": "b32b2324e601753dccca5908246c54aa7f302292bb71580b766ddaf3cf61c470",
+    "size": 60232
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/private_pair_decomposition.h": {
+    "sha256": "1d36e04801ad23db79871d07c32c8b25cff92bbf16b5f5fba6f5fb472b222d85",
+    "size": 3643
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/private_pair_decomposition_native.h": {
+    "sha256": "888d419de51a5def5f7ebe6bcc46751060bad0291e2ccfbda6847b5afef58beb",
+    "size": 1948
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/routed_lut6_swap.cc": {
+    "sha256": "263853414d54fe00093fa7b3de093778d5af7d021445261f89b0c74286ffafff",
+    "size": 42464
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/routed_lut6_swap_policy.h": {
+    "sha256": "841a9c75498e0717c4a504e2700ef96fa9c59c20153195b6abf8af6552328b07",
+    "size": 638
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/routed_lut_permutation.cc": {
+    "sha256": "1b0bcab46db229b46bab563761e21021d326481aa96ee836de36905e040ec18e",
+    "size": 37318
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/routed_lut_permutation_policy.h": {
+    "sha256": "ac2d80a39f3b49f114e553702c1dcf630b0d84481c8bcdd6ea49b57e356032ed",
+    "size": 840
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/routed_move.cc": {
+    "sha256": "9cca83ee0042d9947e98a276a6a04af05b38cb914318b6b67cffca06cab0cca4",
+    "size": 18753
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/tests/private_pair_decomposition.cc": {
+    "sha256": "779c0b622bcdf085291be4b8890f3a09d65390ec74534a2387bac244ec89fb26",
+    "size": 3931
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/tests/private_pair_decomposition_backend.cc": {
+    "sha256": "3872f716ed4309a7e105853d0604bda0b4349f193e42741dcb34cd078cc532ab",
+    "size": 35994
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/tests/route_through_cache.cc": {
+    "sha256": "c38824af45e4a9a8dc645457b6984dc1380ec4a7cad1319ab031ad23d02792a6",
+    "size": 9573
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/tests/routed_lut6_source_coverage.cc": {
+    "sha256": "2b3e5b36d2b713ffa1f324a4f24226c8952236bd5cf7cfee25838821488392c5",
+    "size": 9994
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/tests/routed_lut6_swap_backend.cc": {
+    "sha256": "d28cdbf8496db388f325c93c6cbbd195be92001af3424edcf24545676897cd95",
+    "size": 34913
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/tests/routed_lut6_swap_cli.py": {
+    "sha256": "64d9d918f7a9d0e882ee2f202d7353d282c97abb5aa2fc1ce684e51a7423588a",
+    "size": 3421
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/tests/routed_lut_permutation_backend.cc": {
+    "sha256": "600a187a7adb5b8e643e941a03c13c4e36ac85cdd7881ab68480666ea3965603",
+    "size": 43902
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/tests/routed_lut_permutation_cli.py": {
+    "sha256": "90488cacbbf10453abe14348171b4a77ba2a4f065a9b1aac53f324e66995dd95",
+    "size": 3482
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/tests/routed_private_pair_backend.cc": {
+    "sha256": "102fed6a5f30d9a467609b52213fdb8298eb8779e22b1f4801e05f60eb561002",
+    "size": 36791
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/tests/routed_private_pair_cli.py": {
+    "sha256": "98a5e8e8ae4f2c824f2316f7c526ba9f0dc3d815141501b8ef3cebcc1f48e5f0",
+    "size": 3470
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/tests/unobserved_arithmetic_cli.py": {
+    "sha256": "2676d4984e21f14e1498ac84256dc33c8b28adaea2e13c37106c3233479851af",
+    "size": 4754
+  },
+  "evidence/unobserved-arith-coverage-20261022/complete-source/mistral/tests/unobserved_arithmetic_coverage.cc": {
+    "sha256": "fbb4e22f4c0676e9b6f868069f2264a057e59e06ea63c25a01f781b5005022d3",
+    "size": 11640
+  },
+  "evidence/unobserved-arith-coverage-20261022/control-proof.json": {
+    "sha256": "9d5de009afdd9ff2e94b5bdb3cec201a0272db158699fc3fc5b16219c074bbd9",
+    "size": 709
+  },
+  "evidence/unobserved-arith-coverage-20261022/final-validation.json": {
+    "sha256": "b9c15eaddbf4fd3c9c21e8ecf7b80d82b5a816e6140968cdcbefc3c84bfbdc32",
+    "size": 22524
+  },
+  "evidence/unobserved-arith-coverage-20261022/freeze-validation.py": {
+    "sha256": "03c6ad75275409404fc4c9351d9c92d55c8f51be5e9ea6b7cfa4bd0c8cf581ab",
+    "size": 9765
+  },
+  "evidence/unobserved-arith-coverage-20261022/independent-host-review.json": {
+    "sha256": "7ca469cbabb3ecc523ed25b58081d04198c1278d4e3f72a3f974a98ce1d7a98d",
+    "size": 3609
+  },
+  "evidence/unobserved-arith-coverage-20261022/independent-host-review/board-check-replay.py": {
+    "sha256": "7dd2915ebf7f4cc682df4a13dc5fa81139c93abfaa592a64f13a6afbc0387b0e",
+    "size": 5329
+  },
+  "evidence/unobserved-arith-coverage-20261022/independent-host-review/board-proof-replay.json": {
+    "sha256": "ac44281289404dd064060472ad8c7fd868f30f8206cfa0f4b4d23364f899e482",
+    "size": 3227
+  },
+  "evidence/unobserved-arith-coverage-20261022/independent-host-review/board-replay.json": {
+    "sha256": "7cbfe572a3bc1f027c899aaa8de5defa5424e6eddf1c8c05a24ff26514fd3c58",
+    "size": 188276
+  },
+  "evidence/unobserved-arith-coverage-20261022/independent-host-review/board-replay.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "evidence/unobserved-arith-coverage-20261022/independent-host-review/review.py": {
+    "sha256": "00e656a238ccf5456834c1f0e726d49754df7695c7d9e295d5b86254ee4c55f2",
+    "size": 6523
+  },
+  "evidence/unobserved-arith-coverage-20261022/installed-source-review.json": {
+    "sha256": "00315b2991956a8ff5644b4aa543d78643e43b99acbd7665583a696bea7ed82d",
+    "size": 3163
+  },
+  "evidence/unobserved-arith-coverage-20261022/native-topology/frozen-manifest.json": {
+    "sha256": "9505ab011b866e8b513dc1db628181d02a46613d2bb3b13e0f347fb191381b4a",
+    "size": 160224
+  },
+  "evidence/unobserved-arith-coverage-20261022/prepare-controls.py": {
+    "sha256": "3d7f07822d42c607276bd3e3e236d962f098c8e5824c880c7f9d1c3530c47051",
+    "size": 3429
+  },
+  "evidence/unobserved-arith-coverage-20261022/prepare-default/nextpnr.log": {
+    "sha256": "3a55172d212f597e17cf59dff3a8c6b0ea825bbaa8665448f88f8a4a3e626e87",
+    "size": 209260563
+  },
+  "evidence/unobserved-arith-coverage-20261022/prepare-default/placed.json": {
+    "sha256": "432bf63c4bfdf193d2c67dde23e3269b9d362efb719d735527759dc3b058d03c",
+    "size": 28286380
+  },
+  "evidence/unobserved-arith-coverage-20261022/prepare-default/predicted-timing.json": {
+    "sha256": "24ab68f3f7d36844de857d00f1d776b2cb7f1fe1569b6ef38bdabad34ea2ff0e",
+    "size": 20443724
+  },
+  "evidence/unobserved-arith-coverage-20261022/prepare-default/receipt.json": {
+    "sha256": "2a01a382245c0bd949b052567aeb60efa3ab33146e999b3958f43b5292484118",
+    "size": 4746
+  },
+  "evidence/unobserved-arith-coverage-20261022/prepare-zero/nextpnr.log": {
+    "sha256": "3d7797a5fc6b4c950e182067b06a4ac083b3e27fd3ccba150ca27f8b21ecd635",
+    "size": 209260563
+  },
+  "evidence/unobserved-arith-coverage-20261022/prepare-zero/placed.json": {
+    "sha256": "432bf63c4bfdf193d2c67dde23e3269b9d362efb719d735527759dc3b058d03c",
+    "size": 28286380
+  },
+  "evidence/unobserved-arith-coverage-20261022/prepare-zero/predicted-timing.json": {
+    "sha256": "24ab68f3f7d36844de857d00f1d776b2cb7f1fe1569b6ef38bdabad34ea2ff0e",
+    "size": 20443724
+  },
+  "evidence/unobserved-arith-coverage-20261022/prepare-zero/receipt.json": {
+    "sha256": "01d044b2d7a78ccf1a7173862457593a845a43d33941664a9270e03788e79f0c",
+    "size": 4883
+  },
+  "evidence/unobserved-arith-coverage-20261022/prove-strict-lut6-retention.py": {
+    "sha256": "5c2ea8c96415a0678c7676a11d935063057ae4e3984ede7dddb5b90e6804d246",
+    "size": 2226
+  },
+  "evidence/unobserved-arith-coverage-20261022/retained-source-proof.json": {
+    "sha256": "f7e58db0d672d157a7881c9161881f7a5648aef8314e755fa78d08ddf4a4a385",
+    "size": 2496
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-identity.json": {
+    "sha256": "51ab53ee8e5eb9d8663bc52a37c827da4ec3dcff252528cf12e4378fbb5ab0a5",
+    "size": 1651
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/__pycache__/build.cpython-313.pyc": {
+    "sha256": "48447eb407780e1f915d2d34168cc5bae75eb5ad57b015f134bfa8bd636f8df9",
+    "size": 4144
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/__pycache__/validate.cpython-313.pyc": {
+    "sha256": "05e4a821ac5b7be6bbe2d0169424324eca1dc36dbcd3b6cac7e80a4391278c88",
+    "size": 6941
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/build-run.log": {
+    "sha256": "b0013b7cb91d31b6198a98cbc3ef4671c8531d61d6f03a288114629630e333d4",
+    "size": 554
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/build.log": {
+    "sha256": "2b1762861d1f7ef9e4eda298ada981d927bd631987dde284295be0d579b8298c",
+    "size": 38048
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/build.py": {
+    "sha256": "a43a98ff31b7bc04433b91ad2c2bf763fdd6e0f14e913c13419a8f2dcbaab007",
+    "size": 2200
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/build.receipt.json": {
+    "sha256": "1b667ea98b63ff6a31020fff73478b66e35da4f01ef95b50ef3aa0d7bffa3373",
+    "size": 338
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/__pycache__/build.cpython-313.pyc": {
+    "sha256": "bb28ab9a0ddf59aea8a26ba40dbcd4f2784be37650c7461cc9c3e81436d9c072",
+    "size": 4170
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/__pycache__/validate.cpython-313.pyc": {
+    "sha256": "96c48d833dd5ce56cf436ad1984643838b6ec10f5b12fde18e5573710cde8984",
+    "size": 6971
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/build-identity.json": {
+    "sha256": "28f57200be6c4de4621af98f05983f53085943fe9c7f3a686c8ef9c461293ccd",
+    "size": 345
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/build-run.log": {
+    "sha256": "6d3dab7848442e0c4e627173d21c7c28ce673bf61a8ebc649fbe4aebb0416b6d",
+    "size": 335
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/build.log": {
+    "sha256": "7008ccd34869540a8efb415758d1d1a016cd73039ef2ba8396161859e7b06f2a",
+    "size": 47903
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/build.py": {
+    "sha256": "c58ea80d4a0eb56eeb0d69a12841e1d8b6dbbd95ea42f7f6b9d195bc04e1d02b",
+    "size": 2188
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/build.receipt.json": {
+    "sha256": "26a1999cb6eaa57b739e1932abf6740bc2c5212c73fecf816ccd63562a523929",
+    "size": 337
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/compile-correction.json": {
+    "sha256": "fceeb7ae1d431af304ab2f4e6684f6317dcae8afff57c4d33c047dd1401094c7",
+    "size": 404
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/compile-correction.patch": {
+    "sha256": "68e9dbf66f0d95c3be14da780f1fd1b4443fc390098aceb3156d4c90e81ec096",
+    "size": 938
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/lut6-cli.log": {
+    "sha256": "cb0626094ffad2b68480ed9954407ca3ef8e9841bfacbc76341581ddf652f128",
+    "size": 725
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/lut6-cli.receipt.json": {
+    "sha256": "653301db1772fe0b1c33172098b626d292dc414525a776daecb0832063a165fa",
+    "size": 524
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/lut6-native.log": {
+    "sha256": "b98b471149886f266183d9d49c4ce866798e40daa9f7c07a20a442c6d05a1a1f",
+    "size": 9132
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/lut6-native.receipt.json": {
+    "sha256": "b503a5c37bfa1cb083da23f9fc1afb13c8819aaf0cafd130a408002273b66701",
+    "size": 567
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/permutation-cli.log": {
+    "sha256": "d9096f1ae9722f889bc6f2c0004fd2f81d90968453f84bbe8ec0d9b8a7aef80d",
+    "size": 761
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/permutation-cli.receipt.json": {
+    "sha256": "0619d660c8a76593c9b01d9fd1f1354e3ae4ce37f76a1e3dc5a87ee42b8f67a7",
+    "size": 537
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/permutation-native.log": {
+    "sha256": "4a6dd5c1fb5967176e0953c25a070d387e4cdc93a1d2e5afee70e1dceef49918",
+    "size": 12309
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/permutation-native.receipt.json": {
+    "sha256": "09f57698cdfe897c6ee27a06e203cc62ea5f9c52acce27e2db04decc7ce0acee",
+    "size": 456
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/private-pair-cli.log": {
+    "sha256": "4a1c3551c3ecb5bee4c0451a4e1dca520593863ea47d203a79d3cd5e07b8b668",
+    "size": 743
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/private-pair-cli.receipt.json": {
+    "sha256": "0b23a1b4674e02344aa8d29801d3881d479ec3a7cb15677d246b08b31f5cab67",
+    "size": 536
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/private-pair-native.log": {
+    "sha256": "fe66a460cd7d75aa3394ac61af2d412832f7a040a549f7f857e77632f9255e43",
+    "size": 19231
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/private-pair-native.receipt.json": {
+    "sha256": "dff41c20975d078245408eadd5c59f842e7723d5d5da6ddf7658953af87369a9",
+    "size": 447
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source-coverage.log": {
+    "sha256": "a8d122f74d15f820808bf5c9c70f9f55168fd1a0c19d7f1f22370582fed0838d",
+    "size": 1643
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source-coverage.receipt.json": {
+    "sha256": "f1e724586729658f3fdaa373c1761e6416a7486ee2611af99d6a9652c10c5738",
+    "size": 456
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source-identity.json": {
+    "sha256": "7b156892a6062a1a3900a3c6536cbbed7ebfc61a3b92d4b15752c7f4a0176fa2",
+    "size": 1651
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source/docs/mistral-unobserved-arithmetic-coverage.md": {
+    "sha256": "380991fa5ee7b113c91bf5e032b7cf3f14a52654eddd374c9124e50f401a2a83",
+    "size": 2605
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source/mistral/CMakeLists.txt": {
+    "sha256": "3fef03f4f35c417c975965d2d5922e99cdc5611993a07d5926cb3236d0cad5e6",
+    "size": 9792
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source/mistral/analogue_repair.h": {
+    "sha256": "dadc62b0a29c1eac98e4402e54d4a83aac4922ee971feba7fc482223593470a2",
+    "size": 6400
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source/mistral/arch.h": {
+    "sha256": "913854cd2dfd97614c5bcc36795968bd2c0b87d068dacd1e29c5d9e859f4a16c",
+    "size": 43247
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source/mistral/main.cc": {
+    "sha256": "6837b9ffe0243ed92fd425400a69788321fd678cfdbdc784e495a6781915700c",
+    "size": 54433
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source/mistral/private_pair_decomposition.cc": {
+    "sha256": "b32b2324e601753dccca5908246c54aa7f302292bb71580b766ddaf3cf61c470",
+    "size": 60232
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source/mistral/routed_lut6_swap.cc": {
+    "sha256": "263853414d54fe00093fa7b3de093778d5af7d021445261f89b0c74286ffafff",
+    "size": 42464
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source/mistral/routed_lut_permutation.cc": {
+    "sha256": "1b0bcab46db229b46bab563761e21021d326481aa96ee836de36905e040ec18e",
+    "size": 37318
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source/mistral/tests/unobserved_arithmetic_cli.py": {
+    "sha256": "2676d4984e21f14e1498ac84256dc33c8b28adaea2e13c37106c3233479851af",
+    "size": 4754
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/source/mistral/tests/unobserved_arithmetic_coverage.cc": {
+    "sha256": "fbb4e22f4c0676e9b6f868069f2264a057e59e06ea63c25a01f781b5005022d3",
+    "size": 11640
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/unobserved-arithmetic.log": {
+    "sha256": "3c84bae3699458eeca00094013390129a793f81f11ce39f99dd3ab622e1d2994",
+    "size": 3516
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/unobserved-arithmetic.receipt.json": {
+    "sha256": "85f8eb6a11c044a55bbe3bf14849c9720c54cc895afe8a8acb2839f3063b74f5",
+    "size": 468
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/unobserved-cli.log": {
+    "sha256": "937346483d997b061d0a3f9c848ba9b1a9141eee2b2dfb02a7c85b4b6f0274fe",
+    "size": 866
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/unobserved-cli.receipt.json": {
+    "sha256": "b29237601439b2029139aa8d0602f54b1d8909dde1b490bfdc1047717bd20870",
+    "size": 536
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/validate.py": {
+    "sha256": "c7f7f8b63a3e2bffd6f82267c62a92f301e4c757fb049117faa6e6275feb9e13",
+    "size": 3075
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/validation-run.log": {
+    "sha256": "eb637055497e4387c720f00c20c1698e38a67bce0cd57106f57302a79ba73f0e",
+    "size": 8584
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/final-host/validation.json": {
+    "sha256": "f5bb6e6fdba68e599b539c0099fdf0df674978106047401b7e6fbc6373e6b0fe",
+    "size": 5247
+  },
+  "evidence/unobserved-arith-coverage-20261022/source-validation/validate.py": {
+    "sha256": "e7a97c07dd3eeaeb678b1b7b77c697a16552dbcb25172f94e922f97df919ab6b",
+    "size": 3075
+  },
+  "evidence/unobserved-arith-coverage-20261022/source/docs/mistral-unobserved-arithmetic-coverage.md": {
+    "sha256": "380991fa5ee7b113c91bf5e032b7cf3f14a52654eddd374c9124e50f401a2a83",
+    "size": 2605
+  },
+  "evidence/unobserved-arith-coverage-20261022/source/mistral/CMakeLists.txt": {
+    "sha256": "3fef03f4f35c417c975965d2d5922e99cdc5611993a07d5926cb3236d0cad5e6",
+    "size": 9792
+  },
+  "evidence/unobserved-arith-coverage-20261022/source/mistral/analogue_repair.h": {
+    "sha256": "dadc62b0a29c1eac98e4402e54d4a83aac4922ee971feba7fc482223593470a2",
+    "size": 6400
+  },
+  "evidence/unobserved-arith-coverage-20261022/source/mistral/arch.h": {
+    "sha256": "913854cd2dfd97614c5bcc36795968bd2c0b87d068dacd1e29c5d9e859f4a16c",
+    "size": 43247
+  },
+  "evidence/unobserved-arith-coverage-20261022/source/mistral/main.cc": {
+    "sha256": "6837b9ffe0243ed92fd425400a69788321fd678cfdbdc784e495a6781915700c",
+    "size": 54433
+  },
+  "evidence/unobserved-arith-coverage-20261022/source/mistral/private_pair_decomposition.cc": {
+    "sha256": "b32b2324e601753dccca5908246c54aa7f302292bb71580b766ddaf3cf61c470",
+    "size": 60232
+  },
+  "evidence/unobserved-arith-coverage-20261022/source/mistral/routed_lut6_swap.cc": {
+    "sha256": "263853414d54fe00093fa7b3de093778d5af7d021445261f89b0c74286ffafff",
+    "size": 42464
+  },
+  "evidence/unobserved-arith-coverage-20261022/source/mistral/routed_lut_permutation.cc": {
+    "sha256": "1b0bcab46db229b46bab563761e21021d326481aa96ee836de36905e040ec18e",
+    "size": 37318
+  },
+  "evidence/unobserved-arith-coverage-20261022/source/mistral/tests/unobserved_arithmetic_cli.py": {
+    "sha256": "2676d4984e21f14e1498ac84256dc33c8b28adaea2e13c37106c3233479851af",
+    "size": 4754
+  },
+  "evidence/unobserved-arith-coverage-20261022/source/mistral/tests/unobserved_arithmetic_coverage.cc": {
+    "sha256": "48b2e4dec1c76feeb7796184bf1fd1219cb438549d5bfccc402d1c7121aa44c0",
+    "size": 11633
+  },
+  "evidence/unobserved-arith-coverage-20261022/strict-lut6-retention/prior-routed_lut6_swap.cc": {
+    "sha256": "ccbf7df9f3177804256c1d973b7604c22f5b6b1dd551166db7182a4a8816ee43",
+    "size": 38484
+  },
+  "evidence/unobserved-arith-coverage-20261022/strict-lut6-retention/proof.json": {
+    "sha256": "19a479256fc76d3c5bbb46f95c9606f26da9049524682aa243f45f91533db475",
+    "size": 1068
+  },
+  "evidence/unobserved-arith-coverage-20261022/verify-and-commit.py": {
+    "sha256": "fc535639f2ca01b06d576ee725d945f3d19f0fb57dbe887ef65b7ce9bef739d3",
+    "size": 4229
+  },
+  "host-proof.json": {
+    "sha256": "26a1bf35edff556bfa55b8b1fc2d65b61b9696e51fb240ed01556a80fe57827f",
+    "size": 20116
+  },
+  "prepare.py": {
+    "sha256": "4d0a7b4b577f0bfdf66bbc4a56889ecc4bc4d6fc0b2aa1e25eb2fe2cb941f933",
+    "size": 5203
+  },
+  "verify_capture.py": {
+    "sha256": "da8c7e7a2b6f969937c3e0a82961c87567517deccf1b806c403dd75ab26a2fc1",
+    "size": 3312
+  },
+  "verify_host.py": {
+    "sha256": "b91c731f1681aacea845f7c2f648ab6673bbe72d6fbae099bc8ecadf927f2a3b",
+    "size": 7746
+  }
+}
