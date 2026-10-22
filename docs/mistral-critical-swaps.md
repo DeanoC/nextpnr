@@ -245,3 +245,32 @@ trial number, setup/hold kind, native launch-clock identity, before/after margin
 and delta in nanoseconds. Missing or newly appearing clocks are reported as
 coverage changes. These rows are diagnostic observations; logging does not change
 acceptance, and a positive hold margin may still reject a move if it regresses.
+
+## Verified two-LUT factor reassociation
+
+`--reassociate-producer CELL --reassociate-input A..F` is an explicit diagnostic
+rewrite on a completely unrouted placed JSON, with `--no-pack --no-place`. It
+cannot combine with other critical repair passes or frozen/scaffold modes and
+cannot be enabled by saved settings. The named producer must be an ordinary
+3..6-input LUT whose output is used only by one ordinary LUT consumer and is not
+externally observable. Protected cells/nets and placement relationships are
+rejected.
+
+If one cofactor of the selected producer input is constant, the pass may move
+that literal factor into a spare consumer input (or reuse an existing alias).
+The producer shrinks by one input and the consumer implements the original
+composition. Before mutation, every assignment of the distinct external inputs
+is checked, including aliases and pin inversions (at most 2,048 assignments).
+The Context path currently requires connected nonconstant inputs. The public
+consumer output/net stays intact; the producer's internal output function may
+change. Ordinary graph equality is therefore insufficient evidence: retain the
+exact two-cell function proof alongside routed reports.
+
+The pass preserves existing user-slot identities where possible, checks all
+affected LABs, and tries an empty whole ALM within two tiles if the expanded
+consumer is illegal at its original site. It reassigns affected ALM input pins
+before routing; rejection or exceptions restore cells, net user slots, physical
+pin state and complete LAB state. This is Boolean/placement validation only.
+A successful rewrite authorizes a diagnostic full route, never timing or
+hardware acceptance. Final native setup/hold coverage, clock constraints and
+all production qualification gates still apply.

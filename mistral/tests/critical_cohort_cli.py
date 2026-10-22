@@ -29,6 +29,31 @@ class CriticalCohortCli(unittest.TestCase):
                                    *([] if route else ["--no-route"]), *options], stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, text=True, timeout=60)
 
+    def test_reassociation_requires_explicit_placed_checkpoint(self):
+        result = subprocess.run([BINARY, "--device", "5CSEBA6U23I7", "--reassociate-producer", "missing"],
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=60)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Reassociation requires --json", result.stdout)
+        for options in (["--reassociate-producer", "missing"], ["--reassociate-input", "A"]):
+            result = self.run_design(options)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("requires both --reassociate-producer", result.stdout)
+        base = ["--reassociate-producer", "missing", "--reassociate-input", "A"]
+        result = self.run_design(base[:-1] + ["G"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("must be one logical pin A..F", result.stdout)
+        for options, step in ((base, None), (base + ["--no-pack", "--no-place"], "route"),
+                              (base + ["--no-pack", "--no-place", "--critical-swap-budget", "1"], "place")):
+            result = self.run_design(options, step=step)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Reassociation requires --no-pack --no-place", result.stdout)
+        result = self.run_design(base + ["--no-pack", "--no-place"], step="place")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Requested factor reassociation rejected", result.stdout)
+        result = self.run_design(settings={"reassociate-producer": "missing", "reassociate-input": "A"})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn("Reassociated producer", result.stdout)
+
     def test_move_route_is_bounded_explicit_and_exclusive(self):
         for budget in (-1, 17):
             result = self.run_design(["--critical-move-route-budget", str(budget)])

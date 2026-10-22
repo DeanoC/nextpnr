@@ -39,6 +39,10 @@
 
 USING_NEXTPNR_NAMESPACE
 
+NEXTPNR_NAMESPACE_BEGIN
+bool reassociate_producer(Context *, const std::string &, IdString, std::string *);
+NEXTPNR_NAMESPACE_END
+
 namespace {
 // json11 keeps the last duplicate key. Plans instead reject ambiguous options,
 // including escaped spellings of the same key, after ordinary syntax validation.
@@ -92,6 +96,10 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
     specific.add_options()("routed-endpoints", po::value<std::string>(),
                            "write complete native endpoint inventory after full-route analogue signoff");
+    specific.add_options()("reassociate-producer", po::value<std::string>(),
+                           "diagnostic exact two-LUT factor reassociation from an unrouted placed checkpoint");
+    specific.add_options()("reassociate-input", po::value<std::string>(),
+                           "producer logical input A..F to promote to its exclusive LUT consumer");
     specific.add_options()("critical-move-route-budget", po::value<int>(),
                            "post-route LUT move and incident reroute (0..16 trials, default 0)");
     specific.add_options()("critical-route-budget", po::value<int>(),
@@ -224,6 +232,8 @@ void MistralCommandHandler::customBitstream(Context *ctx)
 
 std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, Property> &values)
 {
+    if ((vm.count("reassociate-producer") || vm.count("reassociate-input")) && !vm.count("json"))
+        log_error("Reassociation requires --json with an unrouted placed checkpoint.\n");
     ArchArgs chipArgs;
     if (!vm.count("device")) {
         log_error("device must be specified on the command line (e.g. --device 5CSEBA6U23I7)\n");
@@ -247,6 +257,25 @@ std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, 
 
 void MistralCommandHandler::customAfterLoad(Context *ctx)
 {
+    // No saved setting enables this rewrite. Selection is solely explicit CLI.
+    const bool reassociate = vm.count("reassociate-producer") || vm.count("reassociate-input");
+    if (reassociate) {
+        if (!vm.count("reassociate-producer") || !vm.count("reassociate-input") ||
+            vm["reassociate-producer"].as<std::string>().empty())
+            log_error("Reassociation requires both --reassociate-producer CELL and --reassociate-input A..F.\n");
+        const auto input = vm["reassociate-input"].as<std::string>();
+        if (input.size() != 1 || input[0] < 'A' || input[0] > 'F')
+            log_error("--reassociate-input must be one logical pin A..F.\n");
+        if (!vm.count("no-pack") || !vm.count("no-place") || vm.count("pack-only") ||
+            vm.count("fes-cart") || vm.count("fes-scaffold") || vm.count("fes-cram-region") ||
+            (vm.count("critical-swap-budget") && vm["critical-swap-budget"].as<int>() > 0) ||
+            (vm.count("critical-cohort-budget") && vm["critical-cohort-budget"].as<int>() > 0) ||
+            (vm.count("critical-move-route-budget") && vm["critical-move-route-budget"].as<int>() > 0) ||
+            (vm.count("critical-route-budget") && vm["critical-route-budget"].as<int>() > 0) ||
+            !ctx->attrs.count(id_step) || ctx->attrs.at(id_step).as_string() != "place")
+            log_error("Reassociation requires --no-pack --no-place and a placed checkpoint, "
+                      "without other critical repairs or frozen/scaffold modes.\n");
+    }
     if (vm.count("routed-endpoints") &&
         (ctx->force || (ctx->settings.count(ctx->id("timing/allowFail")) &&
                         ctx->setting<bool>("timing/allowFail"))))
@@ -671,6 +700,15 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             ctx->save_fes_pin_maps(false);
             ctx->archInfoToAttributes();
         }
+    }
+    if (reassociate) {
+        const IdString pins[] = {id_A, id_B, id_C, id_D, id_E, id_F};
+        const auto input = vm["reassociate-input"].as<std::string>();
+        std::string reason;
+        if (!reassociate_producer(ctx, vm["reassociate-producer"].as<std::string>(), pins[input[0] - 'A'], &reason))
+            log_error("Requested factor reassociation rejected: %s.\n", reason.c_str());
+        ctx->save_fes_pin_maps(false);
+        ctx->archInfoToAttributes();
     }
 }
 
