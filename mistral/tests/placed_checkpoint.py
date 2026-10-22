@@ -128,6 +128,20 @@ endmodule
 
     corrupt('incomplete', incomplete, 'Incomplete frozen pin map')
 
+    def drop_folded_constant(c, p):
+        connections = c.get('connections', {})
+        for name, data in p['pins'].items():
+            if data[0] not in (1, 2):
+                continue
+            if connections.get(name) not in (None, []):
+                continue
+            del p['pins'][name]
+            p['count'] = len(p['pins'])
+            return
+        raise AssertionError('arithmetic has no disconnected folded constant')
+
+    corrupt('folded-constant', drop_folded_constant, 'Incomplete frozen pin map')
+
     def unknown_version(c, p):
         c['attributes']['FES_PINMAP_V2'] = c['attributes'].pop('FES_PINMAP_V1')
 
@@ -149,7 +163,8 @@ endmodule
     assert 'Placed checkpoint has no pin-state snapshot' in legacy_log, legacy_log
     assert 'partially annotated' not in legacy_log, legacy_log
     print('PASS: placed folded inversions/constants survive routing; identical frozen replay; '
-          'malformed snapshots rejected; partial annotation rejected; legacy checkpoint warned')
+          'malformed snapshots rejected, including a removed disconnected constant; '
+          'partial annotation rejected; legacy checkpoint warned')
 
 
 if __name__ == '__main__':
