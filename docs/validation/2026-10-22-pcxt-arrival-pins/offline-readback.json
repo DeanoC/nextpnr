@@ -1,0 +1,29 @@
+{
+  "archive_sha256": "c8a15f29a80374030e484908af2fcfa90511babe475aabfcd9feac09b653561d",
+  "offline_directory": "/tmp/pcxt-arrival-offline-20261022",
+  "checks": [
+    {
+      "script": "prove-prepared-pair.py",
+      "returncode": 0,
+      "output": "prepared-pair-proof.json",
+      "output_sha256": "d8040f01ec211dcb086489477b751939418fec9000d0ada2d166ae8bf43a7060",
+      "exact_archived_output_reproduced": true
+    },
+    {
+      "script": "prove-routed.py",
+      "returncode": 0,
+      "output": "routed-proof.json",
+      "output_sha256": "4477ba23528de93b4e420422bd0514d91ed86bed5e94a849b52fc9d3d128463c",
+      "exact_archived_output_reproduced": true
+    },
+    {
+      "script": "audit-complete.py",
+      "returncode": 0,
+      "output": "complete-comparison.json",
+      "output_sha256": "9a7ca126f5080f00a81e87eb8db3f9f0144338b8e5633834b932414c3d16fee0",
+      "exact_archived_output_reproduced": true
+    }
+  ],
+  "no_binary_or_external_input_access_required": true,
+  "evidence": "All three proof scripts replayed from extracted archive and reproduced exact JSON output bytes; no compilation or routing."
+}
