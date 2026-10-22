@@ -1,0 +1,17 @@
+{
+  "status": "complete_accounting",
+  "cases": {
+    "default": {
+      "tried": 3,
+      "budget": 32,
+      "kept": 3,
+      "line": 1731
+    },
+    "selected-0": {
+      "tried": 2,
+      "budget": 32,
+      "kept": 2,
+      "line": 1788
+    }
+  }
+}

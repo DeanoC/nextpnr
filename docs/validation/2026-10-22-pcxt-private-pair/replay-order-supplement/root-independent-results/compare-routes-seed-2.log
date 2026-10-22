@@ -1,0 +1,51 @@
+{
+  "status": "complete_comparison",
+  "runs": {
+    "default": {
+      "returncode": 1,
+      "rows": 17199,
+      "setup": {
+        "checked": 17194,
+        "failures": 13,
+        "minimum_ps": -434
+      },
+      "hold": {
+        "checked": 17194,
+        "failures": 0,
+        "minimum_ps": 822
+      },
+      "unsupported_count": 105
+    },
+    "selected-0": {
+      "returncode": 1,
+      "rows": 17199,
+      "setup": {
+        "checked": 17194,
+        "failures": 82,
+        "minimum_ps": -829
+      },
+      "hold": {
+        "checked": 17194,
+        "failures": 0,
+        "minimum_ps": 822
+      },
+      "unsupported_count": 105
+    }
+  },
+  "identities_equal": true,
+  "windows_flags_equal": true,
+  "all_metadata_equal": true,
+  "delta_counts": {
+    "setup": {
+      "unchanged": 3321,
+      "regressed": 6835,
+      "improved": 7038
+    },
+    "hold": {
+      "unchanged": 5308,
+      "improved": 6077,
+      "regressed": 5809
+    }
+  },
+  "pair_charge_seconds": "1868.4189431816340"
+}

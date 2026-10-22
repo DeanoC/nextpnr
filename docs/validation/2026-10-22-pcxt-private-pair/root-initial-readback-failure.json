@@ -1,0 +1,9 @@
+{
+  "status": "failed_replay_equality",
+  "archive_members_verified": 121,
+  "graph_proof_byte_identical": true,
+  "extraction": "/tmp/pcxt-mda-root-readback-c6liwesu",
+  "mismatch_script": "compare-routes.py",
+  "difference_count": 0,
+  "differences": []
+}

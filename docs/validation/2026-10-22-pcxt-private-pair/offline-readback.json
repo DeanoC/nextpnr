@@ -1,0 +1,26 @@
+{
+  "status": "pass",
+  "archive_sha256": "18c8074b7fedba429cabec99d2a337a64b827506a12a0f7d2b06d1d43ae7b237",
+  "bytes": 91304284,
+  "verified_members": 121,
+  "manifest_sha256": "0ef043d10bcae67c8d94dce8ec28acec43c95f6540fd233006d379d52128214b",
+  "offline_extraction": "/tmp/pcxt-private-pair-offline-6j92r8yk",
+  "offline_checks": [
+    {
+      "script": "prove-graphs.py",
+      "returncode": 0,
+      "proof_byte_identical": true
+    },
+    {
+      "script": "compare-routes.py",
+      "returncode": 0,
+      "proof_byte_identical": true
+    },
+    {
+      "script": "repair-decisions.py",
+      "returncode": 0,
+      "proof_byte_identical": true
+    }
+  ],
+  "offline_scope": "Re-evaluates complete captured graph functions/helpers and all emitted final timing records; it does not reconstruct or rerun the omitted compiler."
+}

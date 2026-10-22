@@ -1,0 +1,21 @@
+{
+  "status": "pass",
+  "original_cells": [
+    10448,
+    10448
+  ],
+  "final_cells": [
+    12397,
+    12397
+  ],
+  "helper_counts": [
+    1949,
+    1949
+  ],
+  "physical_pinmap_changes": [
+    5361,
+    5357
+  ],
+  "negative_mutations": 9,
+  "physical_acceptance": false
+}
