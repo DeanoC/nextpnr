@@ -69,6 +69,12 @@ field in both affected LABs except the two changed LUT masks must remain exact.
 Actual changed sink sets determine which external nets need routing. Every old
 source-to-stationary-user path and its strengths is retained; a shared bounded
 500000-node local search extends those rooted trees without foreign rip-up.
+`--critical-private-pair-route-nodes N` explicitly changes this shared per-trial
+allowance to 1..2000000 nodes and requires a positive private-pair trial budget.
+The absent option and explicit 500000 use the same search/order; saved settings
+never configure this allowance. This option does not alter other repair passes,
+the maximum four trials, eligibility, or any setup/hold/coverage acceptance gate.
+A larger allowance permits more search; it does not establish a timing gain.
 
 Every external branch and the consumer output requires complete bounded native
 LUT/BUF/arithmetic-to-FF/M10K setup/hold coverage. Fresh analyses with and without

@@ -387,6 +387,31 @@ TEST_P(RoutedPrivatePairBackend, RejectionAcceptThrowAndEveryObservedStageRestor
     }
     EXPECT_FALSE(trial([]{return true;},{},0));before.expect_exact(ctx.get());
 }
+TEST_P(RoutedPrivatePairBackend, LocalNodeBudgetsKeepDefaultTrialExactAndBoundsRollback)
+{
+    Snapshot before(ctx.get());
+    EXPECT_EQ(ctx->critical_private_pair_route_nodes,500000);
+    for (int nodes : {-1,0,2000001}) {
+        bool touched=false,accepted=false;
+        EXPECT_FALSE(trial([&]{accepted=true;return true;},[&](unsigned){touched=true;},nodes));
+        EXPECT_FALSE(touched);EXPECT_FALSE(accepted);
+        EXPECT_EQ(reason,"local route node budget must be 1..2000000");before.expect_exact(ctx.get());
+    }
+    bool accepted=false;
+    EXPECT_FALSE(trial([&]{accepted=true;return true;},{},1));
+    EXPECT_FALSE(accepted);before.expect_exact(ctx.get());
+    std::unique_ptr<Snapshot> default_trial;std::vector<unsigned> default_stages;
+    EXPECT_FALSE(trial([&]{default_trial=std::make_unique<Snapshot>(ctx.get());return false;},
+                       [&](unsigned stage){default_stages.push_back(stage);}));
+    ASSERT_NE(default_trial,nullptr);ASSERT_FALSE(default_stages.empty());EXPECT_EQ(default_stages.back(),21u);
+    before.expect_exact(ctx.get());
+    for (int nodes : {500000,2000000}) {
+        bool inspected=false;std::vector<unsigned> stages;
+        EXPECT_FALSE(trial([&]{inspected=true;default_trial->expect_exact(ctx.get());return false;},
+                           [&](unsigned stage){stages.push_back(stage);},nodes));
+        EXPECT_TRUE(inspected);EXPECT_EQ(stages,default_stages);before.expect_exact(ctx.get());
+    }
+}
 TEST_P(RoutedPrivatePairBackend, OriginalUnroutedGuardAndProtectedMalformedCandidatesFailClosed)
 {
     Snapshot original_state(ctx.get());

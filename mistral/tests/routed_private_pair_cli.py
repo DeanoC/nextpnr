@@ -41,6 +41,21 @@ class RoutedPrivatePairCli(unittest.TestCase):
             result,output=self.run_case(['--critical-private-pair-budget',budget])
             self.assertNotEqual(result.returncode,0);self.assertIn('must be between 0 and 4',result.stdout);self.assertIsNone(output)
 
+    def test_local_node_bounds(self):
+        for nodes in ('-1','0','2000001','2147483647'):
+            result,output=self.run_case(['--critical-private-pair-route-nodes',nodes])
+            self.assertNotEqual(result.returncode,0);self.assertIn('must be between 1 and 2000000',result.stdout);self.assertIsNone(output)
+
+    def test_local_nodes_require_positive_private_budget(self):
+        for nodes in ('1','500000','2000000'):
+            for options in ([],['--critical-private-pair-budget','0']):
+                result,output=self.run_case(['--critical-private-pair-route-nodes',nodes]+options)
+                self.assertNotEqual(result.returncode,0);self.assertIn('requires a positive private-pair budget',result.stdout);self.assertIsNone(output)
+
+    def test_valid_local_nodes_preserve_fresh_route_guard(self):
+        for nodes in ('1','500000','2000000'):
+            self.rejected(['--critical-private-pair-budget','1','--critical-private-pair-route-nodes',nodes])
+
     def test_missing_full_gpu_route_rejects(self):
         for options in ([],['--rbf','test.rbf'],['--router','router2','--rbf','test.rbf']):
             self.rejected(['--critical-private-pair-budget','1']+options)
@@ -58,7 +73,7 @@ class RoutedPrivatePairCli(unittest.TestCase):
         self.rejected(base,settings={'timing/allowFail':'1'},no_route=False)
 
     def test_saved_setting_never_enables(self):
-        result,output=self.run_case(settings={'critical-private-pair-budget':'4'})
+        result,output=self.run_case(settings={'critical-private-pair-budget':'4','critical-private-pair-route-nodes':'2000000'})
         self.assertEqual(result.returncode,0,result.stdout);self.assertIsNotNone(output)
         self.assertNotIn('Critical private pair discovery',result.stdout)
 

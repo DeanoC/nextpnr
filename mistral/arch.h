@@ -607,6 +607,7 @@ struct Arch : BaseArch<ArchRanges>
     int critical_lut6_swap_rounds = 1; // Explicit opt-in second discovery; one shared trial budget.
     void repair_critical_lut6_swaps();
     int critical_private_pair_budget = 0; // Explicit CLI only; bounded live two-LUT decomposition.
+    int critical_private_pair_route_nodes = 500000; // Explicit CLI only; shared across one trial's changed nets.
     void repair_critical_private_pairs();
     bool critical_unobserved_arith_outputs = false; // Explicit optional capture coverage, never LUT6 admission.
     int critical_lut_permute_budget = 0; // Explicit CLI only; fixed-BEL ALUT2..5 transpositions.

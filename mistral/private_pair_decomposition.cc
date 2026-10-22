@@ -751,7 +751,7 @@ bool critical_routed_private_pair_trial(Context *ctx, CellInfo *producer, const 
 {
     PairView view; std::string why;
     auto fail=[&](const char *text) { if(reason)*reason=text; return false; };
-    if (visit_budget<=0 || visit_budget>500000) return fail("local route node budget must be 1..500000");
+    if (visit_budget<=0 || visit_budget>2000000) return fail("local route node budget must be 1..2000000");
     if (!inspect_routed_pair(ctx,producer,view,why)) { if(reason)*reason=why; return false; }
     if (candidate.network.producer.pins.size()!=3 || candidate.network.consumer.pins.size()!=5 ||
         !reduction_reassociate::equivalent(view.function,candidate.network)) return fail("candidate is not equivalent");
@@ -835,6 +835,10 @@ void Arch::repair_critical_private_pairs()
     Context *ctx=getCtx();
     if (critical_private_pair_budget<0 || critical_private_pair_budget>4 || !routed_pair_context(ctx))
         log_error("Critical private pair requires an ordinary completed route and budget 1..4.\n");
+    if (critical_private_pair_route_nodes<1 || critical_private_pair_route_nodes>2000000)
+        log_error("Critical private pair local route node budget must be 1..2000000.\n");
+    if (critical_private_pair_route_nodes!=500000)
+        log_info("Critical private pair local search node budget: %d per trial.\n",critical_private_pair_route_nodes);
     configure_bitstream();
     auto analyse=[&](bool skew) {auto t=std::make_unique<TimingAnalyser>(ctx);t->with_clock_skew=skew;t->setup(false,false,true);return t;};
     auto before=analyse(true),reference=analyse(false);
@@ -953,7 +957,7 @@ void Arch::repair_critical_private_pairs()
             log_info("Critical private pair current eligibility: producer=%s: %s.\n",group.name.c_str(),reason.c_str());continue;
         }
         ++tried;std::unique_ptr<TimingAnalyser> after,next_reference;json11::Json next_inventory;
-        bool accepted=critical_routed_private_pair_trial(ctx,choice.producer,choice.candidate,500000,[&]() {
+        bool accepted=critical_routed_private_pair_trial(ctx,choice.producer,choice.candidate,critical_private_pair_route_nodes,[&]() {
             after=analyse(true);next_reference=analyse(false);
             if(after->have_loops || next_reference->have_loops) {reason="timing loop";return false;}
             clock_deltas("with-skew",before->get_timing_result(),after->get_timing_result());

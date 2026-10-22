@@ -108,6 +108,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "fresh post-route LUT6 discovery rounds (1..2, default 1; shared trial budget)");
     specific.add_options()("critical-private-pair-budget", po::value<int>(),
                            "post-route exact private ALUT3/ALUT5 decomposition (0..4 trials, default 0)");
+    specific.add_options()("critical-private-pair-route-nodes", po::value<int>(),
+                           "local search nodes shared by each private-pair trial (1..2000000, default 500000)");
     specific.add_options()("critical-lut-permute-budget", po::value<int>(),
                            "post-route fixed-BEL ALUT2..5 input permutations (0..16 trials, default 0)");
     specific.add_options()("critical-unobserved-arith-outputs",
@@ -404,6 +406,15 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         if (rounds > 1 && ctx->critical_lut6_swap_budget <= 0)
             log_error("--critical-lut6-swap-rounds 2 requires a positive LUT6 swap budget.\n");
         ctx->critical_lut6_swap_rounds = rounds;
+    }
+    ctx->critical_private_pair_route_nodes = 500000;
+    if (vm.count("critical-private-pair-route-nodes")) {
+        const int nodes = vm["critical-private-pair-route-nodes"].as<int>();
+        if (nodes < 1 || nodes > 2000000)
+            log_error("--critical-private-pair-route-nodes must be between 1 and 2000000.\n");
+        if (!vm.count("critical-private-pair-budget") || vm["critical-private-pair-budget"].as<int>() <= 0)
+            log_error("--critical-private-pair-route-nodes requires a positive private-pair budget.\n");
+        ctx->critical_private_pair_route_nodes = nodes;
     }
     ctx->critical_private_pair_budget = 0;
     if (vm.count("critical-private-pair-budget")) {
