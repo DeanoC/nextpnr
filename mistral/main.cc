@@ -111,7 +111,7 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("critical-private-pair-route-nodes", po::value<int>(),
                            "local search nodes shared by each private-pair trial (1..2000000, default 500000)");
     specific.add_options()("critical-lut-permute-budget", po::value<int>(),
-                           "post-route fixed-BEL ALUT2..5 input permutations (0..16 trials, default 0)");
+                           "post-route fixed-BEL ALUT2..5 input permutations (0..32 trials, default 0)");
     specific.add_options()("critical-unobserved-arith-outputs",
                            "allow proved unobserved arithmetic leaves in private-pair/permutation coverage (opt-in)");
     specific.add_options()("critical-route-budget", po::value<int>(),
@@ -433,8 +433,8 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     ctx->critical_lut_permute_budget = 0;
     if (vm.count("critical-lut-permute-budget")) {
         const int budget = vm["critical-lut-permute-budget"].as<int>();
-        if (budget < 0 || budget > 16)
-            log_error("--critical-lut-permute-budget must be between 0 and 16.\n");
+        if (budget < 0 || budget > 32)
+            log_error("--critical-lut-permute-budget must be between 0 and 32.\n");
         if (budget && (!vm.count("rbf") || vm.count("no-route") || vm.count("no-pack") || vm.count("no-place") ||
                        vm.count("pack-only") || vm.count("fes-scaffold") || vm.count("fes-cart") || vm.count("fes-cram-region") ||
                        (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != "") ||

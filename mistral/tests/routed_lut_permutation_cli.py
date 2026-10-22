@@ -37,14 +37,14 @@ class RoutedLutPermutationCli(unittest.TestCase):
         self.assertEqual(a,b);self.assertNotIn('Critical LUT permutation discovery',after.stdout)
 
     def test_budget_bounds(self):
-        for budget in ('-1','17'):
+        for budget in ('-1','33'):
             result,output=self.run_case(['--critical-lut-permute-budget',budget])
-            self.assertNotEqual(result.returncode,0);self.assertIn('must be between 0 and 16',result.stdout);self.assertIsNone(output)
+            self.assertNotEqual(result.returncode,0);self.assertIn('must be between 0 and 32',result.stdout);self.assertIsNone(output)
 
     def test_missing_full_gpu_route_rejects(self):
         for options in ([],['--rbf','test.rbf'],['--router','router2','--rbf','test.rbf']):
             self.rejected(['--critical-lut-permute-budget','1']+options)
-        for budget in ('5','16'):
+        for budget in ('5','16','17','32'):
             self.rejected(['--critical-lut-permute-budget',budget])
 
     def test_reload_and_partial_execution_reject(self):
@@ -60,7 +60,7 @@ class RoutedLutPermutationCli(unittest.TestCase):
         self.rejected(base,settings={'timing/allowFail':'1'},no_route=False)
 
     def test_saved_setting_never_enables(self):
-        result,output=self.run_case(settings={'critical-lut-permute-budget':'16'})
+        result,output=self.run_case(settings={'critical-lut-permute-budget':'32'})
         self.assertEqual(result.returncode,0,result.stdout);self.assertIsNotNone(output)
         self.assertNotIn('Critical LUT permutation discovery',result.stdout)
 
