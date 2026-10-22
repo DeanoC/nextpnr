@@ -334,11 +334,19 @@ bool private_pair_output_coverage(Context *ctx, TimingAnalyser &timing, NetInfo 
             if (width && kind == TMG_COMB_INPUT) {
                 if (!self(self, user.cell->getPort(id_Q), depth + 1)) return false;
             } else if (user.cell->type.in(id_MISTRAL_FF, id_MISTRAL_M10K) && kind == TMG_REGISTER_INPUT && clocks > 0) {
+                // The legacy FF class approximates ACLR synchronously; it is
+                // not a characterized asynchronous recovery/removal boundary.
+                if (user.cell->type == id_MISTRAL_FF && user.port == id_ACLR) return false;
                 std::vector<TimingAnalyser::SetupWindowHint> hints;
                 std::vector<EndpointClockPairTiming> rows;
                 if (!timing.get_setup_window_hints(CellPortKey(user), hints) ||
                     !timing.get_endpoint_clock_pair_timings(CellPortKey(user), rows) || rows.empty()) return false;
                 for (const auto &hint : hints) if (hint.cut || !hint.window || *hint.window <= 0) return false;
+                for (const auto &row : rows) {
+                    if (!row.setup_timed || !row.hold_related || !row.setup_window || *row.setup_window <= 0 ||
+                        !row.setup_margin || !row.hold_margin || !std::isfinite(double(*row.setup_window)) ||
+                        !std::isfinite(double(*row.setup_margin)) || !std::isfinite(double(*row.hold_margin))) return false;
+                }
                 // These are ordinary register boundaries, not hybrid DSP arcs.
                 for (const auto &port : user.cell->ports) {
                     DelayQuad delay;

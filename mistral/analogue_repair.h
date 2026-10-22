@@ -15,6 +15,14 @@ NEXTPNR_NAMESPACE_BEGIN
 // Local router extends an empty net or a rooted partial tree, preserving its parents.
 // Consumes a shared node budget and leaves partial routing on failure.
 bool critical_local_route_net(Context *ctx, NetInfo *net, int &visits);
+class TimingAnalyser;
+// Every affected output branch needs complete native setup and hold coverage.
+bool critical_lut6_swap_output_coverage(Context *ctx, TimingAnalyser &timing, NetInfo *output,
+                                         std::string *reason = nullptr);
+// Symmetric single-sink LUT6 input swap with atomic two-net rollback.
+bool critical_routed_lut6_swap_trial(Context *ctx, CellInfo *cell, IdString first, IdString second, int visit_budget,
+                                    const std::function<bool()> &accept, std::string *reason = nullptr,
+                                    const std::function<void(unsigned)> &stage = {});
 // Empty-site LUT move: restore placement, incident routes and physical state together.
 bool critical_routed_move_trial(Context *ctx, CellInfo *cell, BelId target, int visit_budget,
                                 const std::function<bool()> &accept, std::string *reason = nullptr);

@@ -415,13 +415,21 @@ TEST_P(PrivatePairBackend, CompleteMultiCaptureCoverageRejectsHiddenUnsupportedA
 {
     auto *phase=clock_net("phase_capture",2500);
     uint32_t other_lab=0;while(other_lab==lab||other_lab==source_lab)++other_lab;
-    ff("second_capture",consumer->getPort(id_Q),ctx->labs[other_lab].alms[7].ff_bels[0],phase);
+    auto *second_capture=ff("second_capture",consumer->getPort(id_Q),ctx->labs[other_lab].alms[7].ff_bels[0],phase);
     ctx->assignArchInfo();TimingAnalyser t(ctx.get());t.setup(false,false,true);
     TimingAnalyser setup_only(ctx.get());setup_only.setup_only=true;setup_only.setup();
     EXPECT_FALSE(private_pair_output_coverage(ctx.get(),setup_only,consumer->getPort(id_Q),&reason));
     std::vector<TimingAnalyser::SetupWindowHint> hints;ASSERT_TRUE(t.get_setup_window_hints({consumer->name,id_Q},hints));
     std::set<delay_t> windows;for(const auto &h:hints){ASSERT_TRUE(h.window);windows.insert(*h.window);}EXPECT_EQ(windows,(std::set<delay_t>{2500,10000}));
     ASSERT_TRUE(private_pair_output_coverage(ctx.get(),t,consumer->getPort(id_Q),&reason))<<reason;
+    // Preserve synchronous capture coverage while adding an asynchronous
+    // observer that the historical native class misleadingly calls registered.
+    second_capture->connectPort(id_ACLR,consumer->getPort(id_Q));second_capture->pin_data[id_ACLR].state=PIN_SIG;
+    ctx->assignArchInfo();int clear_clocks=0;ASSERT_EQ(ctx->getPortTimingClass(second_capture,id_ACLR,clear_clocks),TMG_REGISTER_INPUT);
+    TimingAnalyser reset_branch(ctx.get());reset_branch.setup(false,false,true);
+    EXPECT_FALSE(private_pair_output_coverage(ctx.get(),reset_branch,consumer->getPort(id_Q),&reason));
+    second_capture->disconnectPort(id_ACLR);second_capture->pin_data[id_ACLR].state=PIN_1;ctx->assignArchInfo();
+    TimingAnalyser restored(ctx.get());restored.setup(false,false,true);ASSERT_TRUE(private_pair_output_coverage(ctx.get(),restored,consumer->getPort(id_Q),&reason))<<reason;
     auto *hidden=ctx->createCell(ctx->id("hidden_unsupported"),id_MISTRAL_OB);hidden->addInput(id_I);hidden->connectPort(id_I,consumer->getPort(id_Q));
     ctx->assignArchInfo();TimingAnalyser bad(ctx.get());bad.setup(false,false,true);
     ASSERT_TRUE(bad.get_setup_window_hints({consumer->name,id_Q},hints));
