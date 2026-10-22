@@ -368,6 +368,44 @@ struct Transaction {
         ctx->configure_bitstream();
         dirty=false;
     }
+    // Keep only original direct COMBOUT exit edges that encode protected-LAB
+    // output selectors. No new wire, PIP, strength or route ordering is chosen.
+    bool retain_source_exits(Net &saved, std::string &reason)
+    {
+        using CV = mistral::CycloneV;
+        auto fail = [&](const char *text) { reason=text; return false; };
+        auto *driver=saved.net->driver.cell;
+        if (!(width_of(driver) || driver->type.in(id_MISTRAL_ALUT6,id_MISTRAL_BUF,id_MISTRAL_ALUT_ARITH)))
+            return true;
+        const auto where=alm_of(ctx,driver);
+        if (!view.labs.count(where.first)) return true;
+        const auto &lab=ctx->labs.at(where.first);
+        const auto &alm=lab.alms.at(where.second);
+        const unsigned half=ctx->bel_data(driver->bel).lab_data.idx;
+        if (half>1) return fail("invalid source-exit ALM half");
+        const auto root=ctx->getNetinfoSourceWire(saved.net);
+        if (root!=alm.comb_out.at(half)) return true; // e.g. an arithmetic carry output
+        const std::array<CV::port_type_t,6> ports{CV::FFT0,CV::FFT1,CV::FFT1L,CV::FFB0,CV::FFB1,CV::FFB1L};
+        const std::array<CV::bmux_type_t,6> muxes{CV::TDFF0,CV::TDFF1,CV::TDFF1L,CV::BDFF0,CV::BDFF1,CV::BDFF1L};
+        const auto type=lab.is_mlab?CV::MLAB:CV::LAB;
+        const auto pos=driver->bel.pos;
+        for (unsigned i=3*half;i<3*half+3;++i) {
+            const auto exit=ctx->get_port(type,pos.x(),pos.y(),where.second,ports[i]);
+            auto old=saved.route.find(exit);
+            if (old==saved.route.end()) continue;
+            const auto pip=old->second.first;
+            if (pip==PipId() || ctx->getPipSrcWire(pip)!=root || ctx->getPipDstWire(pip)!=exit ||
+                old->second.second>STRENGTH_STRONG || ctx->getBoundWireNet(exit)!=saved.net ||
+                ctx->getBoundPipNet(pip)!=saved.net)
+                return fail("original source-exit PIP/wire ownership or strength changed");
+            CV::bmux_setting_t setting;
+            if (!ctx->cyclonev->bmux_get(type,pos,muxes[i],where.second,setting) ||
+                setting.type!=CV::MT_MUX || setting.s!=CV::NLUT)
+                return fail("original source-exit native selector is not NLUT");
+            saved.retained.insert(exit);
+        }
+        return true;
+    }
     bool valid(bool configured, std::string &reason)
     {
         auto fail=[&](const char *text) { reason=text; return false; };
@@ -411,7 +449,7 @@ struct Transaction {
 
 bool critical_routed_lut_permutation_trial(Context *ctx, CellInfo *target, IdString first, IdString second,
     int visit_budget, const std::function<bool()> &accept, std::string *reason,
-    const std::function<void(unsigned)> &stage)
+    const std::function<void(unsigned)> &stage, bool keep_source_exits)
 {
     View view; std::string why;
     auto fail=[&](const char *text) { if(reason)*reason=text; return false; };
@@ -422,6 +460,10 @@ bool critical_routed_lut_permutation_trial(Context *ctx, CellInfo *target, IdStr
     auto mask=routed_lut_permutation_policy::transpose(view.mask,view.width,unsigned(a-pins.begin()),unsigned(b-pins.begin()));
     if (!mask) return fail("invalid ordinary LUT transposition");
     Transaction tx(ctx,view);
+    if (keep_source_exits) for (auto &saved : tx.nets) {
+        if (saved.net==view.output) continue;
+        if (!tx.retain_source_exits(saved,why)) { if(reason)*reason=why; return false; }
+    }
     auto reject=[&](const std::string &text) { tx.restore(); if(reason)*reason=text; return false; };
     try {
         tx.dirty=true;
@@ -602,7 +644,7 @@ void Arch::repair_critical_lut_permutations()
                !private_pair_clock_safe(reference->get_timing_result(),next_reference->get_timing_result(),&reason))return false;
             next_inventory=critical_swap_live_endpoint_snapshot(ctx,*after,*next_reference);
             return critical_route_snapshot_safe(inventory,next_inventory,&reason);
-        },&reason,{});
+        },&reason,{},critical_lut_permute_retain_source_exits);
         log_info("Critical LUT permutation trial %d: cell=%s pins=%s/%s prior-slack=%lldps native-arc-rank=%dps accepted=%d; %s.\n",tried,group.name.c_str(),choice.first.c_str(ctx),choice.second.c_str(ctx),static_cast<long long>(choice.slack),int(choice.arc_gain),int(accepted),reason.c_str());
         if(accepted){before=std::move(after);reference=std::move(next_reference);inventory=std::move(next_inventory);changed.insert(choice.cell);++kept;}
     }

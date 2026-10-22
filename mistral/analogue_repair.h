@@ -25,7 +25,7 @@ bool critical_lut_permutation_source_coverage(Context *ctx, TimingAnalyser &timi
 // Fixed-BEL logical transposition with native pin allocation and shared-tree rollback.
 bool critical_routed_lut_permutation_trial(Context *ctx, CellInfo *target, IdString first, IdString second,
     int visit_budget, const std::function<bool()> &accept, std::string *reason = nullptr,
-    const std::function<void(unsigned)> &stage = {});
+    const std::function<void(unsigned)> &stage = {}, bool keep_source_exits = false);
 // Every affected output branch needs complete native setup and hold coverage.
 bool critical_lut6_swap_output_coverage(Context *ctx, TimingAnalyser &timing, NetInfo *output,
                                          std::string *reason = nullptr);

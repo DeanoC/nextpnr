@@ -58,3 +58,14 @@ logged. Final checkpoint serialization refreshes the actual retained state.
 Default and explicit-zero execution do not discover, mutate or refresh for this
 feature. Structural proof and an accepted local trial are not whole-board,
 external-IO or hardware qualification; unchanged unsupported rows stay unsupported.
+
+`--critical-lut-permute-retain-source-exits` is a separate default-false option
+requiring a positive explicit permutation budget. For changed input nets whose
+ordinary combinational driver is in the protected target LAB, it retains only
+original directly rooted COMBOUT-to-output-mux exit wires/PIPs at their original
+strength. Native source/exit identity, ownership and NLUT configuration must
+match. No new or unrelated resource is reserved. This prevents pruning a retired
+branch exit from resetting a protected output selector. The exact configuration
+comparison and every setup/hold/clock/coverage acceptance check remain unchanged.
+The retained exit can add load relative to pruning; a full native timing rejection
+remains possible. Saved settings do not enable this option.

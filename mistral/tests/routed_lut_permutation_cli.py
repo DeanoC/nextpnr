@@ -59,6 +59,18 @@ class RoutedLutPermutationCli(unittest.TestCase):
         self.rejected(base+['--force'],no_route=False)
         self.rejected(base,settings={'timing/allowFail':'1'},no_route=False)
 
+    def test_source_exit_retention_requires_positive_budget(self):
+        for options in ([],['--critical-lut-permute-budget','0'],['--critical-private-pair-budget','0']):
+            result,output=self.run_case(['--critical-lut-permute-retain-source-exits']+options)
+            self.assertNotEqual(result.returncode,0);self.assertIsNone(output)
+            self.assertIn('requires a positive LUT-permutation budget',result.stdout)
+        self.rejected(['--critical-lut-permute-budget','1','--critical-lut-permute-retain-source-exits'])
+
+    def test_saved_source_exit_setting_never_enables(self):
+        result,output=self.run_case(settings={'critical-lut-permute-retain-source-exits':'1'})
+        self.assertEqual(result.returncode,0,result.stdout);self.assertIsNotNone(output)
+        self.assertNotIn('Critical LUT permutation discovery',result.stdout)
+
     def test_saved_setting_never_enables(self):
         result,output=self.run_case(settings={'critical-lut-permute-budget':'32'})
         self.assertEqual(result.returncode,0,result.stdout);self.assertIsNotNone(output)

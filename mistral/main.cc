@@ -112,6 +112,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "local search nodes shared by each private-pair trial (1..2000000, default 500000)");
     specific.add_options()("critical-lut-permute-budget", po::value<int>(),
                            "post-route fixed-BEL ALUT2..5 input permutations (0..32 trials, default 0)");
+    specific.add_options()("critical-lut-permute-retain-source-exits",
+                           "retain original protected-LAB COMB output exits during LUT permutations (opt-in)");
     specific.add_options()("critical-unobserved-arith-outputs",
                            "allow proved unobserved arithmetic leaves in private-pair/permutation coverage (opt-in)");
     specific.add_options()("critical-route-budget", po::value<int>(),
@@ -444,6 +446,9 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             log_error("Critical LUT permutation requires a fresh ordinary full GPU route with --rbf, no forced timing and no move repair.\n");
         ctx->critical_lut_permute_budget = budget;
     }
+    ctx->critical_lut_permute_retain_source_exits = vm.count("critical-lut-permute-retain-source-exits") != 0;
+    if (ctx->critical_lut_permute_retain_source_exits && ctx->critical_lut_permute_budget <= 0)
+        log_error("--critical-lut-permute-retain-source-exits requires a positive LUT-permutation budget.\n");
     ctx->critical_unobserved_arith_outputs = vm.count("critical-unobserved-arith-outputs") != 0;
     if (ctx->critical_unobserved_arith_outputs &&
         ctx->critical_private_pair_budget <= 0 && ctx->critical_lut_permute_budget <= 0)
