@@ -73,6 +73,40 @@ inline double secs_since(Clock::time_point t) { return std::chrono::duration<dou
     }
 }
 
+// The part of the flattened graph that depends only on the Arch's wires and
+// pips: the tile-major numbering and the CSR adjacency. Costs, reservations
+// and bound state are rebuilt by every router. One run of the flow sets up
+// several routers on the same Context (the main route, then a candidate
+// router and a re-route per analogue round), so the last topology is kept
+// and reused when the Context still enumerates the same wires with the same
+// pip counts.
+struct GraphTopology
+{
+    Context *ctx = nullptr;
+    std::vector<WireId> enum_order; // ctx->getWires() order, for validation
+    std::vector<WireId> idx_to_wire;
+    dict<WireId, int32_t> wire_to_idx;
+    std::vector<int16_t> wx, wy;
+    std::vector<uint8_t> wlong;
+    std::vector<int32_t> out_off, out_dst;
+};
+std::mutex topology_mutex;
+std::shared_ptr<const GraphTopology> topology_cache;
+
+std::shared_ptr<const GraphTopology> cached_topology(Context *ctx)
+{
+    std::lock_guard<std::mutex> lock(topology_mutex);
+    if (topology_cache && topology_cache->ctx == ctx)
+        return topology_cache;
+    return nullptr;
+}
+
+void store_topology(std::shared_ptr<const GraphTopology> topo)
+{
+    std::lock_guard<std::mutex> lock(topology_mutex);
+    topology_cache = std::move(topo);
+}
+
 struct GpuRouter
 {
     Context *ctx;
@@ -235,9 +269,10 @@ struct GpuRouter
         }
     }
 
-    void setup_graph()
+    std::shared_ptr<const GraphTopology> build_topology()
     {
-        auto t0 = Clock::now();
+        auto topo = std::make_shared<GraphTopology>();
+        topo->ctx = ctx;
         struct Tmp
         {
             WireId w;
@@ -249,6 +284,7 @@ struct GpuRouter
             BoundingBox b = ctx->getRouteBoundingBox(w, w);
             tmp.push_back(Tmp{w, int16_t((b.x0 + b.x1) / 2), int16_t((b.y0 + b.y1) / 2),
                               uint8_t(b.x0 != b.x1 || b.y0 != b.y1)});
+            topo->enum_order.push_back(w);
         }
         // Tile-major numbering keeps the wires of a region close in memory;
         // ties are broken by the wire's own hash rather than the order the
@@ -263,22 +299,26 @@ struct GpuRouter
             return a.w.hash() < b.w.hash();
         });
         const size_t n = tmp.size();
-        idx_to_wire.resize(n);
-        wx.resize(n);
-        wy.resize(n);
-        wlong.resize(n);
+        topo->idx_to_wire.resize(n);
+        topo->wx.resize(n);
+        topo->wy.resize(n);
+        topo->wlong.resize(n);
         for (size_t i = 0; i < n; i++) {
-            idx_to_wire[i] = tmp[i].w;
-            wx[i] = tmp[i].x;
-            wy[i] = tmp[i].y;
-            wlong[i] = tmp[i].lng;
-            wire_to_idx[tmp[i].w] = int32_t(i);
+            topo->idx_to_wire[i] = tmp[i].w;
+            topo->wx[i] = tmp[i].x;
+            topo->wy[i] = tmp[i].y;
+            topo->wlong[i] = tmp[i].lng;
+            topo->wire_to_idx[tmp[i].w] = int32_t(i);
         }
         tmp.clear();
         tmp.shrink_to_fit();
 
         // CSR adjacency. Counting and filling are independent per wire and
         // only use const Arch queries, so they run on several threads.
+        auto &out_off = topo->out_off;
+        auto &out_dst = topo->out_dst;
+        const auto &idx_to_wire = topo->idx_to_wire;
+        const auto &wire_to_idx = topo->wire_to_idx;
         out_off.assign(n + 1, 0);
         parallel_chunks(n, [&](size_t b, size_t e) {
             for (size_t i = b; i < e; i++) {
@@ -292,8 +332,73 @@ struct GpuRouter
         });
         for (size_t i = 0; i < n; i++)
             out_off[i + 1] += out_off[i];
+        out_dst.resize(out_off[n]);
+        parallel_chunks(n, [&](size_t b, size_t e) {
+            for (size_t i = b; i < e; i++) {
+                int32_t k = out_off[i];
+                for (auto pip : ctx->getPipsDownhill(idx_to_wire[i])) {
+                    auto fnd = wire_to_idx.find(ctx->getPipDstWire(pip));
+                    NPNR_ASSERT(fnd != wire_to_idx.end());
+                    out_dst[k++] = fnd->second;
+                }
+            }
+        });
+        store_topology(topo);
+        return topo;
+    }
+
+    void setup_graph()
+    {
+        auto t0 = Clock::now();
+        std::shared_ptr<const GraphTopology> topo = cached_topology(ctx);
+        bool reused = false;
+        if (topo) {
+            // Same wires in the same enumeration order?
+            size_t i = 0;
+            bool same = true;
+            for (auto w : ctx->getWires()) {
+                if (i >= topo->enum_order.size() || topo->enum_order[i] != w) {
+                    same = false;
+                    break;
+                }
+                i++;
+            }
+            reused = same && i == topo->enum_order.size();
+        }
+        if (reused) {
+            // Same pip counts per wire? Counting is a parallel pass over const
+            // Arch queries; the numbering below needs it anyway.
+            std::vector<int32_t> counts(topo->idx_to_wire.size() + 1, 0);
+            parallel_chunks(topo->idx_to_wire.size(), [&](size_t b, size_t e) {
+                for (size_t i = b; i < e; i++) {
+                    int32_t cnt = 0;
+                    for (auto pip : ctx->getPipsDownhill(topo->idx_to_wire[i])) {
+                        (void)pip;
+                        cnt++;
+                    }
+                    counts[i + 1] = cnt;
+                }
+            });
+            for (size_t i = 0; i < topo->idx_to_wire.size(); i++)
+                counts[i + 1] += counts[i];
+            reused = counts == topo->out_off;
+        }
+        if (!reused)
+            topo = build_topology();
+        idx_to_wire = topo->idx_to_wire;
+        wire_to_idx = topo->wire_to_idx;
+        wx = topo->wx;
+        wy = topo->wy;
+        wlong = topo->wlong;
+        out_off = topo->out_off;
+        out_dst = topo->out_dst;
+        const size_t n = idx_to_wire.size();
         const int64_t m = out_off[n];
-        out_dst.resize(m);
+
+        // Per-pip attributes: these depend on delays (recalibrated between
+        // analogue rounds), bound state and fences, so every router rebuilds
+        // them. Independent per wire and only const Arch queries, so they run
+        // on several threads.
         edge_cost.resize(m);
         edge_region.resize(m);
         edge_outside_halo.resize(m);
@@ -302,8 +407,7 @@ struct GpuRouter
             for (size_t i = b; i < e; i++) {
                 int32_t k = out_off[i];
                 for (auto pip : ctx->getPipsDownhill(idx_to_wire[i])) {
-                    WireId dst = ctx->getPipDstWire(pip);
-                    out_dst[k] = widx(dst);
+                    WireId dst = idx_to_wire[out_dst[k]];
                     float c = ctx->getDelayNS(ctx->getPipDelay(pip).maxDelay() + ctx->getWireDelay(dst).maxDelay() + eps);
                     if (!ctx->checkPipAvail(pip) && ctx->getBoundPipNet(pip) == nullptr)
                         c = -1.0f; // blocked by an architecture rule
@@ -352,7 +456,8 @@ struct GpuRouter
             // negotiated like everything else, because reserving it left
             // the ripped nets with hard conflicts on local lines.
         }
-        log_info("    flattened %zu wires and %lld pips in %.2fs\n", n, (long long)m, secs_since(t0));
+        log_info("    flattened %zu wires and %lld pips in %.2fs%s\n", n, (long long)m, secs_since(t0),
+                 reused ? " (numbering and adjacency reused)" : "");
     }
 
     void setup_nets()
@@ -915,6 +1020,26 @@ struct GpuRouter
     int shared_branch_sinks = 0;
     double gpu_time = 0.0;
     int64_t last_arcs = 0, last_expanded = 0;
+    // --gpu-perf: launches and backend seconds by batch size (tasks), on
+    // the primary backend and on the CPU lane. Buckets: 1, 2-4, 5-16,
+    // 17-64, 65-256, 257+ tasks.
+    static constexpr int LAUNCH_BUCKETS = 6;
+    int64_t launch_count[2][LAUNCH_BUCKETS] = {};
+    double launch_secs[2][LAUNCH_BUCKETS] = {};
+    static int launch_bucket(size_t ntasks)
+    {
+        if (ntasks <= 1)
+            return 0;
+        if (ntasks <= 4)
+            return 1;
+        if (ntasks <= 16)
+            return 2;
+        if (ntasks <= 64)
+            return 3;
+        if (ntasks <= 256)
+            return 4;
+        return 5;
+    }
 
     void flush_state()
     {
@@ -976,6 +1101,7 @@ struct GpuRouter
         p.ignore_soft = ignore_soft ? 1 : 0;
         p.ignore_hist = repair_cong ? 1 : 0;
         p.max_probe = 512;
+        p.block_threads = cfg.block_threads;
         return p;
     }
 
@@ -1115,10 +1241,17 @@ struct GpuRouter
         std::vector<gpuroute::PathEntry> paths;
         cfg.check_stop();
         auto t0 = Clock::now();
-        backend_for(tasks.size())->route(make_params(use_bb), tds, ads, seeds, seed_delay, seed_load, shell_tiles,
-                                         large_lane, results, paths);
+        gpuroute::Backend *be = backend_for(tasks.size());
+        be->route(make_params(use_bb), tds, ads, seeds, seed_delay, seed_load, shell_tiles, large_lane, results,
+                  paths);
         cfg.check_stop();
-        gpu_time += secs_since(t0);
+        const double launch_secs_now = secs_since(t0);
+        gpu_time += launch_secs_now;
+        if (cfg.perf_profile) {
+            const int lane = be == backend.get() ? 0 : 1;
+            launch_count[lane][launch_bucket(tasks.size())]++;
+            launch_secs[lane][launch_bucket(tasks.size())] += launch_secs_now;
+        }
         if (verify_backend && repair_mode && !repair_cong && !candidate_mode && use_bb) {
             // The first arc of each task as plain Dijkstra on the same costs,
             // state and box (large-lane table so it cannot overflow). Only
@@ -3100,6 +3233,11 @@ struct GpuRouter
         if (verify_backend &&
             !verify_backend->init(gd, cfg.small_slots, cfg.small_bits, cfg.large_slots, cfg.large_bits, err))
             log_error("GPU router verification backend initialisation failed: %s\n", err.c_str());
+        backend->set_threads(num_threads());
+        if (cpu_backend)
+            cpu_backend->set_threads(num_threads());
+        if (verify_backend)
+            verify_backend->set_threads(num_threads());
         log_info("    backend %s ready in %.2fs (estimate %.3f ns/x, %.3f ns/y)\n", backend->name(), secs_since(tup),
                  est_x, est_y);
         // The backend snapshot already contains the setup-time state
@@ -3573,6 +3711,21 @@ struct GpuRouter
             log_info("    CPU lane: %lld batches, %lld arcs, %lld wires expanded, %.2fs\n", (long long)cs.launches,
                      (long long)cs.arcs_routed, (long long)cs.wires_expanded, cs.route_seconds);
         }
+        if (cfg.perf_profile) {
+            static const char *bucket_names[LAUNCH_BUCKETS] = {"1", "2-4", "5-16", "17-64", "65-256", "257+"};
+            for (int lane = 0; lane < 2; lane++) {
+                if (lane == 1 && !cpu_backend)
+                    break;
+                std::string line;
+                for (int b = 0; b < LAUNCH_BUCKETS; b++) {
+                    char buf[96];
+                    snprintf(buf, sizeof(buf), "%s%s nets: %lld launches %.3fs", b ? "; " : "", bucket_names[b],
+                             (long long)launch_count[lane][b], launch_secs[lane][b]);
+                    line += buf;
+                }
+                log_info("    %s launches by batch size: %s\n", lane == 0 ? "backend" : "CPU lane", line.c_str());
+            }
+        }
         if (verify_backend)
             log_info("    repair search check: %lld exact searches run, %lld bounded pure-delay searches (first arc of "
                      "a repair task) compared with exact Dijkstra in %.1fs: %lld (%.1f%%) longer than the "
@@ -3695,6 +3848,7 @@ GpuRouterCfg::GpuRouterCfg(Context *ctx)
     pip_adder = ctx->setting<float>("gpurouter/pipAdder", 0.0f);
     tmg_ripup_patience = ctx->setting<int>("gpurouter/tmgRipupPatience", 8);
     expand_k = ctx->setting<int>("gpurouter/expandK", 256);
+    block_threads = ctx->setting<int>("gpurouter/blockThreads", 1024);
     candidate_expand_k = ctx->setting<int>("gpurouter/candidateExpandK", expand_k);
     expand_div = ctx->setting<int>("gpurouter/expandDiv", 0);
     max_batches = ctx->setting<int>("gpurouter/maxBatches", 12);

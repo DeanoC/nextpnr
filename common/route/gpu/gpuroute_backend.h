@@ -121,6 +121,7 @@ struct RouteParams
     int ignore_soft = 0;   // treat other nets' soft reservations as free (repair displacement)
     int ignore_hist = 0;   // drop history cost (peer-group present-congestion only)
     int max_probe = 512;   // hash table probe limit
+    int block_threads = 256; // device threads per net: 256, 512 or 1024 (results do not depend on it)
     int exact = 0;         // CPU backend only: expand exactly the lowest-f entry per step (plain
                            // Dijkstra/A*, a reference for the K-best search); the device ignores it
 };
@@ -231,6 +232,10 @@ class Backend
                        const std::vector<float> &seed_delay, const std::vector<float> &seed_load,
                        const std::vector<int32_t> &shell_tiles, bool large_lane, std::vector<ArcResult> &results,
                        std::vector<PathEntry> &paths) = 0;
+
+    // Host threads a backend may use for the independent tasks of a batch.
+    // Device backends ignore it.
+    virtual void set_threads(int /*threads*/) {}
 
     virtual const char *name() const = 0;
     // Device backends report the selected runtime index and the hardware name
