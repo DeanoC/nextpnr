@@ -45,7 +45,10 @@ Use `python3 mistral/routed_swap.py --help` for an isolated paired run. It copie
 one compiler binary, placed checkpoint, QSF, SDC and guidance report into a new
 output directory, then runs baseline and candidate from the same inputs with
 full routing and final analogue STA. The driver supports the FES phase-lease
-runner for GPU routes; it never holds a lease during CPU work. The default bound
+runner for GPU routes; it never holds a lease during CPU work. The copied
+executable keeps the `nextpnr-mistral` name required by that runner. Dispatch
+fails before launch if the runner does not recognise the GPU command, and a
+completed GPU route must have lease-grant evidence in its log. The default bound
 is two 600-second invocations, charging all elapsed time including lease waits.
 No seed search, clock relaxation or `--timing-allow-fail` is used.
 

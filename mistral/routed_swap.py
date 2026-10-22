@@ -341,11 +341,11 @@ def main():
     output.mkdir(parents=True, exist_ok=False)
     inputs = output / 'inputs'
     inputs.mkdir()
-    sources = {'compiler': a.binary, 'placed.json': a.json, 'constraints.qsf': a.qsf,
+    sources = {'nextpnr-mistral': a.binary, 'placed.json': a.json, 'constraints.qsf': a.qsf,
                'clocks.sdc': a.sdc, 'guidance.json': a.guidance}
     for name, source in sources.items():
         shutil.copy2(source, inputs / name)
-        (inputs / name).chmod(0o555 if name == 'compiler' else 0o444)
+        (inputs / name).chmod(0o555 if name == 'nextpnr-mistral' else 0o444)
     write_json(output / 'inputs.json', {name: {'source': str(source.resolve()), 'sha256': digest(inputs / name)}
                                       for name, source in sources.items()})
     env = dict(os.environ, FES_GPU_LEASE_OWNER='pcxt-agent', GPU_LEASE_MAX_PER_OWNER='2', NEXTPNR_REQUIRE_GPU='1')
@@ -353,14 +353,16 @@ def main():
     if a.router == 'gpu':
         root = a.runner_root.resolve()
         sys.path[:0] = [str(root), str(root / 'scripts')]
-        from fes_build_common import _run_command
+        from fes_build_common import _run_command, _is_gpu_nextpnr, granted_gpu_ids
         runner = _run_command
-    base = [str(inputs / 'compiler'), '--device', a.device, '--json', str(inputs / 'placed.json'),
+    base = [str(inputs / 'nextpnr-mistral'), '--device', a.device, '--json', str(inputs / 'placed.json'),
             '--qsf', str(inputs / 'constraints.qsf'), '--sdc', str(inputs / 'clocks.sdc'),
             '--seed', str(a.seed), '--freq', str(a.freq), '--router', a.router,
             '--placer-heap-timingweight', '2000', '--placer-heap-critexp', '5', '--no-pack', '--no-place',
             '--rbf', 'diagnostic.rbf', '--compress-rbf', '--write', 'routed.json', '--report', 'timing.json',
             '--detailed-timing-report', '--timing-report-paths', '1024', '--routed-endpoints', 'endpoints.json']
+    if a.router == 'gpu' and not _is_gpu_nextpnr(base):
+        p.error('FES runner does not recognise this GPU command; refusing unleased dispatch')
     charged = 0.0
 
     def run(name):
@@ -375,7 +377,7 @@ def main():
                 command.append('--critical-swap-pairs')
             if a.replicate:
                 command.append('--critical-swap-replicate')
-        receipt = {'command': command, 'binary_sha256': digest(inputs / 'compiler'),
+        receipt = {'command': command, 'binary_sha256': digest(inputs / 'nextpnr-mistral'),
                    'timeout': a.timeout, 'environment': {k: env[k] for k in
                    ('FES_GPU_LEASE_OWNER', 'GPU_LEASE_MAX_PER_OWNER', 'NEXTPNR_REQUIRE_GPU')}}
         start = time.monotonic()
@@ -386,7 +388,11 @@ def main():
                 options = {'gpu_label': 'pcxt265-guard-' + name} if a.router == 'gpu' else {}
                 result = runner(command, cwd=directory, env=env, stdout=log, stderr=subprocess.STDOUT,
                                 timeout=a.timeout, **options)
-                receipt['returncode'] = result.returncode
+            if a.router == 'gpu':
+                receipt['gpu_grants'] = granted_gpu_ids((directory / 'nextpnr.log').read_text())
+                if not receipt['gpu_grants']:
+                    raise ValueError('GPU route has no lease grant evidence')
+            receipt['returncode'] = result.returncode
         except Exception as error:
             receipt['exception'] = str(error)
         finally:
