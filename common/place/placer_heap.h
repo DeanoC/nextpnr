@@ -58,6 +58,7 @@ struct PlacerHeapCfg
 
     // Native-window assignment is explicitly enabled and architecture-declared.
     bool hardBlockWindows = false;
+    bool hardBlockTiming = false;
     BelBucketId hardBlockBucket = BelBucketId();
     std::function<bool(const CellInfo *, IdString)> hardBlockStaticInput;
     std::function<bool(const CellInfo *)> hardBlockCellEligible;

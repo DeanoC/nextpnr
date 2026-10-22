@@ -1,5 +1,6 @@
 #include "heap_hard_blocks.h"
 #include "heap_assignment.h"
+#include "heap_hard_block_cost.h"
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -123,6 +124,9 @@ bool plan_heap_hard_blocks(Context *ctx, const PlacerHeapCfg &cfg, const TimingA
                           std::vector<HeapHardBlockAssignment> &assignment, std::string &reason)
 {
     assignment.clear(); reason.clear();
+    if (cfg.hardBlockTiming && !cfg.hardBlockWindows) {
+        reason = "timing weighting requires window assignment"; return false;
+    }
     if (!cfg.hardBlockWindows || cfg.hardBlockBucket == BelBucketId() || !cfg.hardBlockStaticInput || !cfg.hardBlockCellEligible) {
         reason = "architecture has not declared an independent hard-block bucket"; return false;
     }
@@ -156,7 +160,7 @@ bool plan_heap_hard_blocks(Context *ctx, const PlacerHeapCfg &cfg, const TimingA
     std::vector<std::vector<int64_t>> costs;
     size_t inputs = 0, outputs = 0, constants = 0, cost_work = 0;
     for (auto *cell : cells) {
-        struct Edge { double x, y; int64_t weight; };
+        struct Edge { double x, y, weight; };
         std::vector<Edge> edges;
         auto edge = [&](CellInfo *anchor, CellInfo *sink, IdString pin) {
             if (!anchor || selected.count(anchor->name)) return p.fail("direct movable hard-block interaction");
@@ -175,7 +179,16 @@ bool plan_heap_hard_blocks(Context *ctx, const PlacerHeapCfg &cfg, const TimingA
                          static_cast<long long>(weight), size_t(sink->getPort(pin)->users.entries()),
                          double(timing.get_criticality(CellPortKey(sink->name, pin))), loc->second.x, loc->second.y,
                          double(cfg.timingWeight), double(cfg.criticalityExponent));
-            edges.push_back({loc->second.x, loc->second.y, weight});
+            double effective_weight = double(weight);
+            if (cfg.hardBlockTiming &&
+                !heap_hard_block_detail::timing_weight(weight, sink->getPort(pin)->users.entries(),
+                                                       timing.get_criticality(CellPortKey(sink->name, pin)),
+                                                       cfg.timingWeight, cfg.criticalityExponent, effective_weight))
+                return p.fail("invalid native timing/fanout weight");
+            if (ctx->debug && cfg.hardBlockTiming)
+                log_info("HeAP hard-block timing cost: cell='%s' sink='%s' pin='%s' weight=%.17g\n",
+                         ctx->nameOf(cell), ctx->nameOf(sink), pin.c_str(ctx), effective_weight);
+            edges.push_back({loc->second.x, loc->second.y, effective_weight});
             return true;
         };
         for (const auto &port : cell->ports) {

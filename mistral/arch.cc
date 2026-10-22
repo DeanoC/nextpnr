@@ -996,6 +996,10 @@ bool Arch::place()
     if (enable_replication_budget && (placer != "heap" || fes_any_slot_region_active))
         log_error("Enable replication requires ordinary full-design HeAP placement.\n");
 
+    for (const auto &setting : getCtx()->settings)
+        if (setting.first.str(getCtx()) == "placerHeap/hardBlockTiming" &&
+            getCtx()->setting<bool>("placerHeap/hardBlockTiming") && placer != "heap")
+            log_error("Hard-block timing weighting requires HeAP placement.\n");
     if (placer == "heap") {
         PlacerHeapCfg cfg(getCtx());
         if (cfg.hardBlockWindows) {

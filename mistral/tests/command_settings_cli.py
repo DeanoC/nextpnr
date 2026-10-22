@@ -68,3 +68,22 @@ with tempfile.TemporaryDirectory(prefix="nextpnr-gpu-required-") as temporary:
     required = settings.get("gpurouter/required")
     if not isinstance(required, str) or set(required) - {"0", "1"} or "1" not in required:
         raise SystemExit(f"checkpoint settings overrode --gpu-required: {required!r}")
+
+for flag, key in (("--placer-heap-hard-block-windows", "placerHeap/hardBlockWindows"),
+                  ("--placer-heap-hard-block-timing", "placerHeap/hardBlockTiming")):
+    conflict = run(flag, "--set", key + "=0")
+    output = conflict.stdout + conflict.stderr
+    if conflict.returncode == 0 or key not in output or "dedicated command-line option" not in output:
+        raise SystemExit(f"hard-block setting conflict was not clearly rejected:\n{output}")
+
+with tempfile.TemporaryDirectory(prefix="nextpnr-hard-block-timing-") as temporary:
+    checkpoint = Path(temporary) / "checkpoint.json"
+    checkpoint.write_text(json.dumps({"modules": {"top": {"attributes": {"top": "1"}, "ports": {},
+                                                          "cells": {}, "netnames": {}, "settings": {}}}}))
+    for option in (("--placer-heap-hard-block-timing",), ("--set", "placerHeap/hardBlockTiming=1")):
+        output_path = Path(temporary) / "rejected.json"
+        rejected = run("--device", "5CSEBA6U23I7", "--json", str(checkpoint), "--no-pack", "--no-route",
+                       "--write", str(output_path), *option)
+        output = rejected.stdout + rejected.stderr
+        if rejected.returncode == 0 or "requires hard-block window assignment" not in output or output_path.exists():
+            raise SystemExit(f"timing without window assignment was not rejected:\n{output}")

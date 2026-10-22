@@ -11,6 +11,7 @@ target_sources(nextpnr_place PUBLIC
     heap_control_set.h
     heap_spread.h
     heap_assignment.h
+    heap_hard_block_cost.h
     heap_hard_blocks.h
     heap_hard_blocks.cc
     parallel_refine.cc

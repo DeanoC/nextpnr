@@ -2517,13 +2517,18 @@ PlacerHeapCfg::PlacerHeapCfg(Context *ctx)
     // the legacy checkpoint/IdString ordering even when the option is off.
     correctSpread = false;
     hardBlockWindows = false;
+    hardBlockTiming = false;
     for (const auto &setting : ctx->settings) {
         if (setting.first.str(ctx) == "placerHeap/correctSpread") {
             correctSpread = ctx->setting<bool>("placerHeap/correctSpread");
         }
         if (setting.first.str(ctx) == "placerHeap/hardBlockWindows")
             hardBlockWindows = ctx->setting<bool>("placerHeap/hardBlockWindows");
+        if (setting.first.str(ctx) == "placerHeap/hardBlockTiming")
+            hardBlockTiming = ctx->setting<bool>("placerHeap/hardBlockTiming");
     }
+    if (hardBlockTiming && !hardBlockWindows)
+        log_error("Hard-block timing weighting requires hard-block window assignment.\n");
 
     congestionDriven = ctx->setting<bool>("placerHeap/congestion", false);
     congestionTarget = ctx->setting<float>("placerHeap/congestionTarget", 100);

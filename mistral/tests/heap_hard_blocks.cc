@@ -147,30 +147,33 @@ TEST_F(HeapHardBlocksTest, NativeTransactionRollsBackEveryPostBindLegalityFailur
     auto *second = memory("second_memory");
     auto *third = memory("third_memory");
     std::vector<CellInfo *> cells{ram, second, third};
-    std::vector<BelId> bels;
-    for (auto bel : ctx->getBels()) if (ctx->getBelBucketForBel(bel) == id_MISTRAL_M10K) bels.push_back(bel);
-    ASSERT_GE(bels.size(), cells.size());
-    std::vector<HeapHardBlockAssignment> assignment;
-    for (size_t i = 0; i < cells.size(); ++i) assignment.push_back({cells[i], bels[i]});
-    std::string reason;
-    for (size_t rejected = 0; rejected < cells.size(); ++rejected) {
-        ctx->fes_bel_region[bels[rejected]] = ctx->id("reserved_test_region");
-        EXPECT_FALSE(bind_heap_hard_blocks(ctx.get(), *cfg, assignment, reason));
-        EXPECT_EQ(reason, "native assignment legality");
-        for (size_t i = 0; i < cells.size(); ++i) {
-            EXPECT_EQ(cells[i]->bel, BelId()); EXPECT_EQ(cells[i]->belStrength, STRENGTH_NONE);
-            EXPECT_TRUE(ctx->checkBelAvail(bels[i]));
+    for (bool weighted : {false, true}) {
+        cfg->hardBlockTiming = weighted;
+        std::vector<BelId> bels;
+        for (auto bel : ctx->getBels()) if (ctx->getBelBucketForBel(bel) == id_MISTRAL_M10K) bels.push_back(bel);
+        ASSERT_GE(bels.size(), cells.size());
+        std::vector<HeapHardBlockAssignment> assignment;
+        for (size_t i = 0; i < cells.size(); ++i) assignment.push_back({cells[i], bels[i]});
+        std::string reason;
+        for (size_t rejected = 0; rejected < cells.size(); ++rejected) {
+            ctx->fes_bel_region[bels[rejected]] = ctx->id("reserved_test_region");
+            EXPECT_FALSE(bind_heap_hard_blocks(ctx.get(), *cfg, assignment, reason));
+            EXPECT_EQ(reason, "native assignment legality");
+            for (size_t i = 0; i < cells.size(); ++i) {
+                EXPECT_EQ(cells[i]->bel, BelId()); EXPECT_EQ(cells[i]->belStrength, STRENGTH_NONE);
+                EXPECT_TRUE(ctx->checkBelAvail(bels[i]));
+            }
+            ctx->fes_bel_region.clear();
         }
-        ctx->fes_bel_region.clear();
+        ASSERT_TRUE(bind_heap_hard_blocks(ctx.get(), *cfg, assignment, reason)) << reason;
+        for (size_t i = 0; i < cells.size(); ++i) {
+            EXPECT_EQ(cells[i]->bel, bels[i]); EXPECT_EQ(cells[i]->belStrength, STRENGTH_WEAK);
+            EXPECT_TRUE(ctx->isBelLocationValid(bels[i])); ctx->unbindBel(bels[i]);
+        }
+        assignment[1].bel = assignment[0].bel;
+        EXPECT_FALSE(bind_heap_hard_blocks(ctx.get(), *cfg, assignment, reason));
+        for (auto *cell : cells) EXPECT_EQ(cell->bel, BelId());
     }
-    ASSERT_TRUE(bind_heap_hard_blocks(ctx.get(), *cfg, assignment, reason)) << reason;
-    for (size_t i = 0; i < cells.size(); ++i) {
-        EXPECT_EQ(cells[i]->bel, bels[i]); EXPECT_EQ(cells[i]->belStrength, STRENGTH_WEAK);
-        EXPECT_TRUE(ctx->isBelLocationValid(bels[i])); ctx->unbindBel(bels[i]);
-    }
-    assignment[1].bel = assignment[0].bel;
-    EXPECT_FALSE(bind_heap_hard_blocks(ctx.get(), *cfg, assignment, reason));
-    for (auto *cell : cells) EXPECT_EQ(cell->bel, BelId());
 }
 
 TEST_F(HeapHardBlocksTest, DeepNativeConeFallsBackBeforeRecursionBecomesUnbounded)
@@ -209,4 +212,49 @@ TEST_F(HeapHardBlocksTest, RejectsRegisteredBoundaryWithAdditionalNativeCombinat
     ram->disconnectPort(ctx->id("B1ADDR[0]")); ram->connectPort(ctx->id("B1ADDR[0]"), dsp->getPort(y));
     capture->disconnectPort(id_DATAIN); capture->connectPort(id_DATAIN, ram->getPort(id_B1DATA));
     EXPECT_FALSE(plan(result, reason)); EXPECT_TRUE(result.empty());
+}
+
+TEST_F(HeapHardBlocksTest, TimingCostNormalizesFanoutWithoutChangingLegacyWindows)
+{
+    cfg->timingWeight = 0; cfg->criticalityExponent = 2;
+    for (int i = 0; i < 8; ++i) {
+        auto *extra = ff("shared_launch_" + std::to_string(i), clock);
+        extra->connectPort(id_DATAIN, launch->getPort(id_Q));
+    }
+    std::vector<HeapHardBlockAssignment> legacy, weighted, repeat; std::string reason;
+    ASSERT_TRUE(plan(legacy, reason)) << reason;
+    EXPECT_EQ(ctx->getBelLocation(legacy.at(0).bel).x, 14);
+    cfg->hardBlockTiming = true;
+    ASSERT_TRUE(plan(weighted, reason)) << reason;
+    EXPECT_EQ(ctx->getBelLocation(weighted.at(0).bel).x, 41);
+    ASSERT_TRUE(plan(repeat, reason)); EXPECT_EQ(weighted.at(0).bel, repeat.at(0).bel);
+    cfg->hardBlockTiming = false;
+    ASSERT_TRUE(plan(repeat, reason)); EXPECT_EQ(legacy.at(0).bel, repeat.at(0).bel);
+}
+TEST_F(HeapHardBlocksTest, TimingCostRejectsDependencyAndInvalidWeightsForWholeBucket)
+{
+    cfg->hardBlockTiming = true; cfg->criticalityExponent = 2;
+    std::vector<HeapHardBlockAssignment> result; std::string reason;
+    cfg->hardBlockWindows = false;
+    EXPECT_FALSE(plan(result, reason)); EXPECT_TRUE(result.empty());
+    EXPECT_EQ(reason, "timing weighting requires window assignment");
+    cfg->hardBlockWindows = true;
+    auto *second = memory("second_memory"); locations[second->name] = {26, 31, true};
+    for (float invalid : {-1.0f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::max()}) {
+        cfg->timingWeight = invalid;
+        EXPECT_FALSE(plan(result, reason)); EXPECT_TRUE(result.empty());
+        EXPECT_EQ(reason, "invalid native timing/fanout weight");
+        EXPECT_EQ(ram->bel, BelId()); EXPECT_EQ(second->bel, BelId());
+        EXPECT_EQ(ram->belStrength, STRENGTH_NONE); EXPECT_EQ(second->belStrength, STRENGTH_NONE);
+    }
+}
+TEST_F(HeapHardBlocksTest, TimingSettingRequiresWindowsAndDoesNotCreateAbsentKey)
+{
+    for (const auto &setting : ctx->settings) EXPECT_NE(setting.first.str(ctx.get()), "placerHeap/hardBlockTiming");
+    ctx->settings[ctx->id("placerHeap/hardBlockTiming")] = true;
+    EXPECT_THROW(PlacerHeapCfg(ctx.get()), log_execution_error_exception);
+    ctx->settings[ctx->id("placerHeap/hardBlockWindows")] = true;
+    PlacerHeapCfg enabled(ctx.get()); EXPECT_TRUE(enabled.hardBlockTiming); EXPECT_TRUE(enabled.hardBlockWindows);
+    ctx->settings[ctx->id("placerHeap/hardBlockTiming")] = false;
+    PlacerHeapCfg disabled(ctx.get()); EXPECT_FALSE(disabled.hardBlockTiming); EXPECT_TRUE(disabled.hardBlockWindows);
 }
