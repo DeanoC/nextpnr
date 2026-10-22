@@ -1,0 +1,10 @@
+{
+  "archive_sha256": "121dd4407e48945bd49ed19a9bfdfee791d05d6483ae8548f5ec5b119d2e6caa",
+  "archive_bytes": 26222840,
+  "members": 85,
+  "manifest_sha256": "d2568017ed49ad1538942745ecbc33bb933f0c0d41a7c8df1b446408216bd09d",
+  "fresh_readback_pass": true,
+  "offline_result_bytes_identical": true,
+  "route_charge": 0,
+  "hardware": false
+}

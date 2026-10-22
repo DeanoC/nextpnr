@@ -1,0 +1,1 @@
+{"cache_fixed_passed": 8, "cache_old_failed": 8, "cli_passed": [6, 6], "controls_exact": true, "enabled_lut6_route_admission": false, "full_board_cache_fix_exact": true, "hardware": false, "lut6_native_passed": 33, "private_pair_native_passed": 77, "route_charge": 0, "source_files": 19, "status": "pass", "verified_members": 84}
