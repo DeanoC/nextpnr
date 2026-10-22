@@ -1,0 +1,76 @@
+{
+  "capture_bytes": 60211220,
+  "capture_sha256": "86105f2089992e257032b32b10c818b14e59c74a72bca14ba871c5cad890f5a8",
+  "complete_dependency_members": {
+    "prior": 261
+  },
+  "independent_review_sha256": "617d2efab288f79d63ac2e3779fb1be8cf0323dd17b31d1a82d865923cd122d1",
+  "manifest_sha256": "33c7d3b1077fccad8da58b87eed6526589527b03b5cb4bbbfd94aaed0446619b",
+  "members": 234,
+  "passed": true,
+  "portable_proof": {
+    "all64_truth_rows_equal": true,
+    "charged_route_seconds": 0,
+    "complete_endpoint_rows": 17199,
+    "exact_replays": [
+      {
+        "exact_replay": true,
+        "proof": "decision-ledger.json",
+        "sha256": "071d7112f9a670d4f4638cdc1e66d314bdacc99b07f6a6ee94f4ff52c779aff7"
+      },
+      {
+        "exact_replay": true,
+        "proof": "graph-proof.json",
+        "sha256": "2b29ee524ddc3f90cfae54b95126182a1f012551d78ad2a1fe4ae6825b1679d2"
+      },
+      {
+        "exact_replay": true,
+        "proof": "checks-proof.json",
+        "sha256": "916331e5e193334abb62463a88085dfbd2506ba98c6f9329e19c052ebc87b787"
+      },
+      {
+        "exact_replay": true,
+        "proof": "topology-proof.json",
+        "sha256": "d4b0ec612aaa60b783e1495496f40305b0ae320219bbd8913c5649e5242bbc33"
+      },
+      {
+        "exact_replay": true,
+        "proof": "native-selection-specs.json",
+        "sha256": "b3bbf1cd7c7d4d6c3224a0a520efa7d10f76a18fb898ed2392f06f9494fef7fe"
+      },
+      {
+        "exact_replay": true,
+        "proof": "route-comparison.json",
+        "sha256": "044001d3fa3421c94f375c2d70175244edd888461e6239a04f6bcd89e425d0a1"
+      }
+    ],
+    "historical_accounting_context": {
+      "cumulative_charge_seconds": "41644.74082114966527",
+      "journal_records": 40,
+      "scope": "Journal arithmetic and these two receipt hashes checked; other historical routes are context only."
+    },
+    "host_admission_files": 70,
+    "native_margin_delta_counts": {
+      "hold": {
+        "unchanged": 17194
+      },
+      "setup": {
+        "improved": 16,
+        "unchanged": 17178
+      }
+    },
+    "native_snapshot_manifest_members": 401,
+    "native_topology": {
+      "changed_physical_users": 2,
+      "retained_original_wire_tuples": 30,
+      "selected_nets": 7,
+      "stationary_users": 6
+    },
+    "pair_route_charge_seconds_recorded_not_recharged": "1404.3877840382047",
+    "passed": true,
+    "scope": "Offline replay of saved full graphs, final timing inventories and recorded native decoded trees. No native execution, GPU route, emitted-RBF mask proof, reload STA or hardware acceptance.",
+    "source_commit": "5d566b0d0b93cbcb3773e4a2bd6094bbccd80353",
+    "source_files": 29
+  },
+  "scope": "Fresh extraction and offline graph/truth/timing/native-topology proof replay; no native or GPU execution"
+}
