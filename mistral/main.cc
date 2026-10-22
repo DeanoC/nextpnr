@@ -92,6 +92,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
     specific.add_options()("routed-endpoints", po::value<std::string>(),
                            "write complete native endpoint inventory after full-route analogue signoff");
+    specific.add_options()("critical-route-budget", po::value<int>(),
+                           "post-route single-net repair with full-design guards (0..32 trials, default 0)");
     specific.add_options()("critical-swap-replicate", "try a private LUT copy for a shared data consumer (opt-in)");
     specific.add_options()("critical-swap-pairs", "try connected LUT pairs atomically instead of single LUT swaps (opt-in)");
     specific.add_options()("critical-swap-routed-trial",
@@ -175,6 +177,7 @@ void MistralCommandHandler::customBitstream(Context *ctx)
     if (vm.count("rbf")) {
         std::string filename = vm["rbf"].as<std::string>();
         ctx->fes_validate_cram_routing();
+        ctx->repair_critical_routes();
         ctx->build_bitstream();
         if (vm.count("routed-endpoints")) {
             TimingAnalyser timing(ctx), unskewed(ctx);
@@ -318,6 +321,17 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
          vm.count("pack-only") || vm.count("fes-cart") || vm.count("fes-scaffold") ||
          (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != "")))
         log_error("Critical cohort route model export requires a fresh ordinary full route with --rbf.\n");
+    ctx->critical_route_budget = 0;
+    if (vm.count("critical-route-budget")) {
+        const int budget = vm["critical-route-budget"].as<int>();
+        if (budget < 0 || budget > 32)
+            log_error("--critical-route-budget must be between 0 and 32.\n");
+        if (budget && (!vm.count("rbf") || vm.count("no-route") || vm.count("pack-only") ||
+                       vm.count("fes-scaffold") || vm.count("fes-cart") ||
+                       !vm.count("router") || vm["router"].as<std::string>() != "gpu"))
+            log_error("Critical route repair requires an ordinary full GPU route with --rbf.\n");
+        ctx->critical_route_budget = budget;
+    }
     ctx->critical_cohort_budget = 0;
     ctx->critical_cohort_report.clear();
     if (vm.count("critical-cohort-budget")) {

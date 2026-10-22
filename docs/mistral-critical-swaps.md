@@ -164,3 +164,28 @@ This is a placement prediction. It does not model every routing consequence of
 extra input fanout and does not establish routed timing or physical acceptance.
 A complete paired route and the existing coverage/retention gates are required
 before adopting the result. No ordinary recipe or default enables replication.
+
+## Post-route data-net repair
+
+`--critical-route-budget N` (0..32, default 0) enables a separate post-route
+experiment. It requires an ordinary complete GPU route with `--rbf`; it cannot
+be enabled by loaded checkpoint settings. The retention driver selects it with
+`--route-repair --budget N`, exclusively from placement swaps/pairs/replication.
+Both processes first execute the same ordinary routing recipe. Only the
+candidate then attempts the new pass, avoiding checkpoint-reload timing drift.
+
+The pass proposes up to four alternate trees per selected failing ordinary
+data net. Original cell placement, functions and net connectivity stay fixed;
+other nets stay bound and obstruct candidate routing. A trial verifies a rooted,
+acyclic tree reaching every original sink before applying it. Rejection and
+exceptions restore the net's original wires/strengths, physical mux state and
+analogue cache. GPU candidate generation releases its lease before CPU STA.
+
+Each trial uses fresh full-design analogue setup/hold analysis with the original
+fallback timing table. It must improve an already failing setup endpoint by at
+least 20 ps, preserve every other setup and related-hold margin (including
+positive margins), all clock margins/Fmax and the full endpoint/interface
+inventory. Ordinary data boundaries exclude clocks, globals, external IO,
+protected nets/cells, carry chains and control consumers. Search is diagnostic:
+unchanged unsupported rows stay unsupported. Full artifact retention still
+requires complete qualified coverage; this option never waives that gate.

@@ -601,6 +601,8 @@ struct Arch : BaseArch<ArchRanges>
     bool analogue_cache_valid = false;
     void compute_analogue_arcs(bool observe);
     bool analogue_repair();
+    int critical_route_budget = 0; // CLI-only, full native timing trials after ordinary routing.
+    void repair_critical_routes();
     // Analogue-scored route selection: several GPU candidate routes per sink
     // with less than `limit` slack, evaluated with the analogue model, best
     // one kept. To repair, a net scores by its worst sink slack; to improve

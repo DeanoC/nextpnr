@@ -1,5 +1,7 @@
 /* Real LAB geometry, cluster closure and transactional rollback. SPDX-License-Identifier: ISC */
 #include "critical_cohort.h"
+#include "analogue_repair.h"
+#include "cyclonev.h"
 #include <memory>
 #include <fstream>
 #include <cstdlib>
@@ -1446,6 +1448,73 @@ TEST_F(CriticalCohort, CalibratedRepairImprovesOneOfTwoTiedMemoryAddressInputs)
 
 // Export real native STA fixtures for the isolated retention integration test.
 // Route delays are controlled; these are not analogue hardware qualification.
+TEST_F(CriticalCohort, RouteGuardPreservesPositiveMarginsAndCoverage)
+{
+    using J=json11::Json;
+    auto *clk=clock("clk",1500); auto *logic=timing_cone(clk);
+    auto sink=CellPortKey(*logic->getPort(id_Q)->users.begin());
+    auto snapshot=[&](int early,int late) {
+        TimingAnalyser t(ctx.get()),u(ctx.get()); t.with_clock_skew=true;
+        t.setup(false,false,true);u.setup(false,false,true);
+        for(auto *a:{&t,&u}) { a->set_route_delay({logic->name,id_A},DelayPair(500));
+            a->set_route_delay(sink,DelayPair(early,late));a->run(false,false,false,true); }
+        return critical_swap_endpoint_snapshot(ctx.get(),t,u);
+    };
+    const J before=snapshot(500,800), good=snapshot(500,600);
+    EXPECT_TRUE(critical_route_snapshot_safe(before,good));
+    EXPECT_FALSE(critical_route_snapshot_safe(before,before));
+    EXPECT_FALSE(critical_route_snapshot_safe(before,snapshot(499,600))); // positive hold margin loss
+    EXPECT_FALSE(critical_route_snapshot_safe(before,snapshot(500,801)));
+    EXPECT_FALSE(critical_route_snapshot_safe(before,snapshot(500,790))); // gain below 20 ps
+    auto mutate=[&](const char *field,J value) { auto x=good.object_items();x[field]=value;return J(x); };
+    EXPECT_FALSE(critical_route_snapshot_safe(before,mutate("unsupported",J::array{"lost"})));
+    EXPECT_FALSE(critical_route_snapshot_safe(before,mutate("endpoints",J::object{})));
+    EXPECT_FALSE(critical_route_snapshot_safe(before,mutate("primitive_clocks",J::object{{"fake",1}})));
+    // Equal gaps permit a diagnostic trial, never a fabricated complete flag.
+    auto a=before.object_items(),b=good.object_items();
+    a["complete"]=b["complete"]=false;
+    a["unsupported"]=b["unsupported"]=J::array{"known gap"};
+    EXPECT_TRUE(critical_route_snapshot_safe(a,b));
+    b["complete"]=true;EXPECT_FALSE(critical_route_snapshot_safe(a,b));
+}
+
+TEST_F(CriticalCohort, RouteTransactionRestoresBindingsMuxesAndExceptions)
+{
+    auto *driver=lut(24,3,0);driver->params[id_LUT]=Property(8,4);
+    driver->disconnectPort(id_A);driver->disconnectPort(id_B);
+    driver->pin_data[id_A].state=PIN_0;driver->pin_data[id_B].state=PIN_1;
+    auto *net=driver->getPort(id_Q);
+    auto root=ctx->getNetinfoSourceWire(net);
+    ASSERT_NE(root,WireId());ctx->bindWire(root,net,STRENGTH_STRONG);
+    GpuRouteTree candidate;candidate.wires.push_back({root,PipId()});
+    for(auto pip:ctx->getPipsDownhill(root)) {
+        if(ctx->checkPipAvailForNet(pip,net)&&ctx->checkWireAvail(ctx->getPipDstWire(pip))) {
+            candidate.wires.push_back({ctx->getPipDstWire(pip),pip});break;
+        }
+    }
+    ASSERT_EQ(candidate.wires.size(),2u);
+    ctx->configure_bitstream();
+    std::vector<uint8_t> before;ctx->cyclonev->rbf_save(before);
+    auto unchanged=[&]() {
+        EXPECT_EQ(net->wires.size(),1u);EXPECT_TRUE(net->wires.count(root));
+        EXPECT_EQ(net->wires.at(root).strength,STRENGTH_STRONG);
+        EXPECT_TRUE(ctx->checkWireAvail(candidate.wires[1].first));
+        std::vector<uint8_t> after;ctx->cyclonev->rbf_save(after);EXPECT_EQ(before,after);
+        EXPECT_TRUE(ctx->analogue_cache_valid);
+    };
+    bool inspected=false;
+    EXPECT_FALSE(critical_route_trial(ctx.get(),net,candidate,[&] {inspected=true;return false;}));
+    EXPECT_TRUE(inspected);unchanged();
+    EXPECT_THROW(critical_route_trial(ctx.get(),net,candidate,[]()->bool {throw std::runtime_error("injected");}),std::runtime_error);
+    unchanged();
+    auto invalid=candidate;invalid.wires.erase(invalid.wires.begin());
+    EXPECT_FALSE(critical_route_trial(ctx.get(),net,invalid,[]{return true;}));unchanged();
+    EXPECT_TRUE(critical_route_trial(ctx.get(),net,candidate,[]{return true;}));
+    EXPECT_EQ(net->wires.size(),2u);
+    GpuRouteTree original;original.wires.push_back({root,PipId()});
+    EXPECT_TRUE(critical_route_trial(ctx.get(),net,original,[]{return true;}));unchanged();
+}
+
 TEST_F(CriticalCohort, RoutedInventoryUsesNativeSetupHoldAndFailsClosed)
 {
     using J = json11::Json;

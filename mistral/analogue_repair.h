@@ -9,6 +9,10 @@
 
 NEXTPNR_NAMESPACE_BEGIN
 
+// Restore the net, physical mux state and analogue cache on rejection or exception.
+bool critical_route_trial(Context *ctx, NetInfo *net, const GpuRouteTree &candidate,
+                          const std::function<bool()> &accept);
+
 template <typename Route> bool try_analogue_repair_reroute(int round, Route &&route)
 {
     try {

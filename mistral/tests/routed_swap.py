@@ -19,7 +19,7 @@ BINARY = sys.argv.pop(1)
 
 
 class GpuDispatch(unittest.TestCase):
-    def run_driver(self, recognised=True, grant=True):
+    def run_driver(self, recognised=True, grant=True, route_repair=False):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root / 'arbitrary-build-name'
@@ -32,21 +32,31 @@ class GpuDispatch(unittest.TestCase):
                 self.assertEqual(Path(command[0]).name, 'nextpnr-mistral')
                 self.assertEqual(Path(command[0]).read_text(), source.read_text())
                 self.assertEqual(command[command.index('--router') + 1], 'gpu')
-                self.assertEqual(kwargs['gpu_label'], 'pcxt265-guard-baseline')
+                self.assertIn(kwargs['gpu_label'], ('pcxt265-guard-baseline', 'pcxt265-guard-candidate'))
+                if kwargs['gpu_label'].endswith('baseline'):
+                    self.assertNotIn('--critical-route-budget', command)
+                elif route_repair:
+                    self.assertIn('--critical-route-budget', command)
                 if grant:
                     kwargs['stdout'].write('FES-GPU-GRANT 0\n')
                 return subprocess.CompletedProcess(command, 0)
             module._run_command = mock.Mock(side_effect=dispatch)
             argv = ['routed_swap.py', '--device', 'test', '--output', str(output),
                     '--runner-root', str(root)]
+            if route_repair:
+                argv += ['--route-repair', '--budget', '8']
             for flag in ('binary', 'json', 'qsf', 'sdc', 'guidance'):
                 argv += ['--' + flag, str(source)]
+            def boundary(output, baseline, candidate):
+                if route_repair:
+                    candidate()
+                raise RuntimeError('comparison boundary')
             # Stop before artifact comparison: this fixture only exercises the real
             # driver's copy, dispatch, receipt and lease-evidence boundary.
             with mock.patch.dict(sys.modules, fes_build_common=module), \
                  mock.patch.object(sys, 'argv', argv), mock.patch.object(sys, 'path', sys.path.copy()), \
                  mock.patch.dict(os.environ, {}, clear=True), \
-                 mock.patch.object(guard, 'guarded_candidate', side_effect=RuntimeError('comparison boundary')):
+                 mock.patch.object(guard, 'guarded_candidate', side_effect=boundary):
                 if not recognised:
                     with self.assertRaises(SystemExit):
                         guard.main()
@@ -54,8 +64,15 @@ class GpuDispatch(unittest.TestCase):
                     return
                 with self.assertRaisesRegex(RuntimeError, 'comparison boundary'):
                     guard.main()
-            module._run_command.assert_called_once()
-            return json.loads((output / 'baseline/receipt.json').read_text())
+            self.assertEqual(module._run_command.call_count, 2 if route_repair else 1)
+            return json.loads((output / ('candidate' if route_repair else 'baseline') / 'receipt.json').read_text())
+
+    def test_route_repair_is_candidate_only_and_preserves_lease_dispatch(self):
+        receipt = self.run_driver(route_repair=True)
+        self.assertIn('--critical-route-budget', receipt['command'])
+        self.assertNotIn('--critical-swap-budget', receipt['command'])
+        self.assertNotIn('--critical-swap-routed-trial', receipt['command'])
+        self.assertEqual(receipt['gpu_grants'], ['0'])
 
     def test_copied_binary_preserves_runner_dispatch_identity(self):
         receipt = self.run_driver()

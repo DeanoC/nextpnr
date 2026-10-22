@@ -29,6 +29,20 @@ class CriticalCohortCli(unittest.TestCase):
                                    *([] if route else ["--no-route"]), *options], stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, text=True, timeout=60)
 
+    def test_routed_repair_requires_explicit_full_gpu_route(self):
+        for budget in (-1, 33):
+            result = self.run_design(["--critical-route-budget", str(budget)])
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--critical-route-budget must be between 0 and 32", result.stdout)
+        for options in (["--critical-route-budget", "1"],
+                        ["--critical-route-budget", "1", "--rbf", "unused.rbf", "--router", "router2"]):
+            result = self.run_design(options)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Critical route repair requires an ordinary full GPU route", result.stdout)
+        result = self.run_design(settings={"critical-route-budget": "32"})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn("Critical route trial", result.stdout)
+
     def test_replication_requires_explicit_exclusive_positive_budget(self):
         for options in (["--critical-swap-replicate"],
                         ["--critical-swap-replicate", "--critical-swap-budget", "0"],

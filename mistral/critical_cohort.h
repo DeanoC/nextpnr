@@ -46,6 +46,9 @@ bool critical_cohort_pair_swap_trial(Context *ctx, CellInfo *a, BelId at, CellIn
                                       const std::function<bool()> &accept);
 bool critical_cohort_replicate_trial(Context *ctx, CellInfo *source, CellInfo *sink, IdString port, BelId target,
                                       const std::function<bool(CellInfo *)> &accept);
+// Diagnostic search guard: preserve every native contract and every positive margin.
+// Unchanged unsupported boundaries are retained, never promoted to qualification.
+bool critical_route_snapshot_safe(const json11::Json &before, const json11::Json &after);
 void repair_critical_replication(Context *ctx, int timing_budget);
 void repair_critical_pair_swaps(Context *ctx, int timing_budget);
 void repair_critical_swaps(Context *ctx, int timing_budget);

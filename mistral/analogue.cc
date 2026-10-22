@@ -49,6 +49,7 @@
 
 #include "analogue_jobs.h"
 #include "analogue_repair.h"
+#include "critical_cohort.h"
 #include "gpurouter.h"
 #include "log.h"
 #include "nextpnr.h"
@@ -838,6 +839,178 @@ bool Arch::analogue_repair()
         result = true;
     }
     return result;
+}
+
+bool critical_route_trial(Context *ctx, NetInfo *ni, const GpuRouteTree &candidate,
+                          const std::function<bool()> &accept)
+{
+    if (!ni || ni->is_global || ni->clkconstr || ni->wires.empty() || !ni->driver.cell) return false;
+    const auto old = snapshot_net(ni);
+    dict<WireId, PlaceStrength> strengths;
+    for (const auto &e : old) {
+        if (e.strength > STRENGTH_STRONG) return false;
+        strengths[e.wire] = e.strength;
+    }
+    const WireId root = ctx->getNetinfoSourceWire(ni);
+    dict<WireId, PipId> tree;
+    for (const auto &e : candidate.wires) {
+        if (tree.count(e.first) || (e.second == PipId() ? e.first != root : ctx->getPipDstWire(e.second) != e.first))
+            return false;
+        tree[e.first] = e.second;
+    }
+    if (!tree.count(root) || tree.at(root) != PipId()) return false;
+    // Every proposed wire must connect to the original driver without cycles.
+    for (const auto &entry : tree) {
+        pool<WireId> seen;
+        WireId w = entry.first;
+        while (w != root) {
+            if (!seen.insert(w).second || !tree.count(w) || tree.at(w) == PipId()) return false;
+            w = ctx->getPipSrcWire(tree.at(w));
+        }
+    }
+    for (const auto &usr : ni->users)
+        for (WireId sink : ctx->getNetinfoSinkWires(ni, usr))
+            if (!tree.count(sink)) return false;
+    std::vector<SavedRouting::Entry> entries;
+    for (const auto &e : candidate.wires)
+        entries.push_back({e.first, e.second, strengths.count(e.first) ? strengths.at(e.first) : STRENGTH_WEAK});
+    auto restore = [&]() {
+        NPNR_ASSERT(bind_net(ctx, ni, old));
+        // Rebuild physical mux state as well as the per-sink analogue cache.
+        ctx->configure_bitstream();
+    };
+    try {
+        if (bind_net(ctx, ni, entries)) {
+            ctx->configure_bitstream();
+            if (accept()) return true;
+        }
+    } catch (...) {
+        restore();
+        throw;
+    }
+    restore();
+    return false;
+}
+
+void Arch::repair_critical_routes()
+{
+    if (!critical_route_budget) return;
+    Context *ctx = getCtx();
+    if (critical_route_budget < 0 || critical_route_budget > 32 || fes_any_slot_region_active ||
+        !ctx->attrs.count(id_step) || ctx->attrs.at(id_step).as_string() != "route")
+        log_error("Critical route repair requires an ordinary completed route and budget 1..32.\n");
+    configure_bitstream();
+    auto analyse = [&]() {
+        auto t = std::make_unique<TimingAnalyser>(ctx);
+        t->with_clock_skew = true;
+        t->setup(false, false, true);
+        return t;
+    };
+    auto snapshot = [&](TimingAnalyser &t) {
+        TimingAnalyser unskewed(ctx);
+        unskewed.setup(false, false, true);
+        return critical_swap_endpoint_snapshot(ctx, t, unskewed);
+    };
+    auto before = analyse();
+    if (before->have_loops) log_error("Critical route repair refuses timing loops.\n");
+    auto inventory = snapshot(*before);
+    struct Item { NetInfo *net; store_index<PortRef> user; float slack; };
+    std::vector<Item> items;
+    auto ordinary = [&](CellInfo *c) {
+        if (!c || c->isPseudo() || c->region || c->cluster != ClusterId() || c->bel == BelId()) return false;
+        for (const char *a : {"keep", "dont_touch", "FES_SLOT"}) if (c->attrs.count(id(a))) return false;
+        return c->type.in(id_MISTRAL_FF, id_MISTRAL_ALUT2, id_MISTRAL_ALUT3, id_MISTRAL_ALUT4,
+                          id_MISTRAL_ALUT5, id_MISTRAL_ALUT6);
+    };
+    for (const auto &entry : nets) {
+        auto *ni = entry.second.get();
+        if (ni->is_global || ni->clkconstr || ni->wires.empty() || !ordinary(ni->driver.cell) ||
+            ni->driver.port != id_Q || !ni->users.entries() || ni->users.entries() > 64) continue;
+        bool allowed = true;
+        for (const auto &port : ctx->ports) if (port.second.net == ni) allowed = false;
+        for (const auto &w : ni->wires) if (w.second.strength > STRENGTH_STRONG) allowed = false;
+        for (const auto &usr : ni->users)
+            if (!ordinary(usr.cell) || (usr.cell->type == id_MISTRAL_FF ? usr.port != id_DATAIN :
+                !usr.port.in(id_A,id_B,id_C,id_D,id_E,id_F))) allowed = false;
+        if (!allowed) continue;
+        for (auto usr : ni->users.enumerate()) {
+            const float slack = before->get_setup_slack(CellPortKey(usr.value));
+            if (std::isfinite(slack) && slack < 0 && slack != std::numeric_limits<float>::lowest())
+                items.push_back({ni, usr.index, slack});
+        }
+    }
+    std::sort(items.begin(), items.end(), [&](const Item &a, const Item &b) {
+        if (a.slack != b.slack) return a.slack < b.slack;
+        if (a.net->name != b.net->name) return a.net->name.str(ctx) < b.net->name.str(ctx);
+        return a.user.idx() < b.user.idx();
+    });
+    std::vector<GpuCandidateRouter::Sink> sinks;
+    pool<IdString> selected;
+    for (const auto &it : items) if (selected.insert(it.net->name).second) {
+        sinks.push_back({it.net,it.user});
+        if (sinks.size() == size_t(critical_route_budget)) break;
+    }
+    if (sinks.empty()) { log_info("Critical route repair: no eligible failing data nets.\n"); return; }
+    // Calibrate only the search's flattened delay table. Trial STA always uses
+    // the exact same fallback table as the initial full-route baseline.
+    const auto observed = pip_delay_observed;
+    const auto calibration = pip_type_calibration;
+    const bool calibrated = pip_delay_calibrated;
+    const float prior = pip_delay_prior;
+    auto restore_table = [&]() {
+        pip_delay_observed = observed; pip_type_calibration = calibration;
+        pip_delay_calibrated = calibrated; pip_delay_prior = prior;
+    };
+    std::unique_ptr<GpuCandidateRouter> router;
+    try {
+        compute_analogue_arcs(true);
+        GpuRouterCfg cfg(ctx); cfg.telemetry_path.clear();
+        router = std::make_unique<GpuCandidateRouter>(ctx, cfg);
+    } catch (...) { restore_table(); throw; }
+    restore_table();
+    auto candidates = router->candidates(sinks, 4);
+    router.reset(); // Release the GPU phase lease before CPU-only analogue trials.
+    int tried = 0, kept = 0;
+    // Round-robin across failing nets: one net cannot consume the whole budget.
+    for (size_t rank = 0; rank < 4 && tried < critical_route_budget; ++rank)
+        for (size_t i = 0; i < sinks.size() && tried < critical_route_budget; ++i) {
+            if (rank >= candidates[i].size()) continue;
+            auto *ni = sinks[i].net;
+            ++tried;
+            std::unique_ptr<TimingAnalyser> after;
+            json11::Json next_inventory;
+            bool accepted = critical_route_trial(ctx, ni, candidates[i][rank], [&]() {
+                after = analyse();
+                if (after->have_loops) return false;
+                const auto &a = before->get_timing_result(), &b = after->get_timing_result();
+                auto nonregressing = [](const auto &old, const auto &now) {
+                    if (old.size() != now.size()) return false;
+                    for (const auto &row : old) {
+                        auto n = now.find(row.first);
+                        if (n == now.end() || !std::isfinite(double(n->second)) || n->second < row.second) return false;
+                    }
+                    return true;
+                };
+                if (!nonregressing(a.clock_setup_slack,b.clock_setup_slack) ||
+                    !nonregressing(a.clock_hold_slack,b.clock_hold_slack) || a.clock_fmax.size()!=b.clock_fmax.size()) return false;
+                for (const auto &clock : a.clock_fmax) {
+                    auto found=b.clock_fmax.find(clock.first);
+                    if (found==b.clock_fmax.end() || !std::isfinite(found->second.achieved) || found->second.achieved<clock.second.achieved) return false;
+                }
+                next_inventory = snapshot(*after);
+                return critical_route_snapshot_safe(inventory, next_inventory);
+            });
+            log_info("Critical route trial %d: net %s variant %d accepted=%d.\n", tried, ctx->nameOf(ni),
+                     candidates[i][rank].variant, int(accepted));
+            if (accepted) {
+                before=std::move(after); inventory=std::move(next_inventory); ++kept;
+                // Remaining proposals were generated from the old tree. Do not
+                // undo this accepted change by trying an old variant of it.
+                candidates[i].clear();
+            }
+        }
+    log_info("Critical route repair: tried=%d/%d kept=%d; unchanged unsupported coverage is not qualification.\n",
+             tried, critical_route_budget, kept);
 }
 
 NEXTPNR_NAMESPACE_END

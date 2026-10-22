@@ -2045,4 +2045,51 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
         {"io_constraints", io_constraints}, {"output_contracts", output_contracts}, {"unsupported", unsupported}, {"static_endpoints", static_endpoints},
         {"clocks", clocks}, {"endpoints", endpoints}};
 }
+bool critical_route_snapshot_safe(const json11::Json &before, const json11::Json &after)
+{
+    if (!before.is_object() || !after.is_object() || before["schema"].int_value() != 7 ||
+        !before["endpoints"].is_object() || before["endpoints"].object_items().empty()) return false;
+    for (const char *key : {"clocks", "static_endpoints", "constant_outputs", "reset_contracts",
+                           "forwarded_clocks", "unregistered_contracts", "output_contracts",
+                           "registered_contracts", "primitive_clocks", "unsupported_details"})
+        if (!before[key].is_object()) return false;
+    for (const char *key : {"physical_obligations", "io_constraints", "unsupported"})
+        if (!before[key].is_array()) return false;
+    if (!before["complete"].is_bool() || before["clocks"].object_items().empty()) return false;
+    auto a = before.object_items(), b = after.object_items();
+    a.erase("endpoints"); b.erase("endpoints");
+    // Includes primitive clock routes/margins and all physical/unsupported contracts.
+    if (a != b) return false;
+    const auto &old_rows = before["endpoints"].object_items(), &new_rows = after["endpoints"].object_items();
+    if (old_rows.size() != new_rows.size()) return false;
+    bool gain = false;
+    for (const auto &endpoint : old_rows) {
+        auto found = new_rows.find(endpoint.first);
+        if (found == new_rows.end() || !endpoint.second.is_array() || !found->second.is_array()) return false;
+        const auto &old = endpoint.second.array_items(), &now = found->second.array_items();
+        if (old.empty() || old.size() != now.size()) return false;
+        for (size_t i = 0; i < old.size(); ++i) {
+            auto x = old[i].object_items(), y = now[i].object_items();
+            for (const char *key : {"setup", "hold", "min_path", "max_path"}) { x.erase(key); y.erase(key); }
+            if (x != y || !old[i]["setup_timed"].is_bool() || !old[i]["hold_related"].is_bool()) return false;
+            for (const char *key : {"min_path", "max_path"})
+                if (!old[i][key].is_number() || !now[i][key].is_number() ||
+                    !std::isfinite(old[i][key].number_value()) || !std::isfinite(now[i][key].number_value())) return false;
+            for (const auto &field : {std::make_pair("setup", "setup_timed"), std::make_pair("hold", "hold_related")}) {
+                if (!old[i][field.second].bool_value()) {
+                    if (old[i][field.first] != now[i][field.first]) return false;
+                    continue;
+                }
+                const auto &o = old[i][field.first], &n = now[i][field.first];
+                if (!o.is_number() || !n.is_number() || !std::isfinite(o.number_value()) ||
+                    !std::isfinite(n.number_value()) || n.number_value() < o.number_value()) return false;
+                if (field.first == std::string("setup") && o.number_value() < 0 && n.number_value() >= o.number_value() + 20) gain = true;
+            }
+            if (!old[i]["setup_timed"].bool_value() &&
+                (now[i]["max_path"].number_value() > old[i]["max_path"].number_value() ||
+                 now[i]["min_path"].number_value() < old[i]["min_path"].number_value())) return false;
+        }
+    }
+    return gain;
+}
 NEXTPNR_NAMESPACE_END
