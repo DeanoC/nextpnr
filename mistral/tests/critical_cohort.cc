@@ -1731,3 +1731,16 @@ TEST(ExternalEndpointDiagnostic, PlacedCheckpointSyntheticInputConstraints)
     out << json11::Json(cases).dump() << "\n";
     ASSERT_TRUE(bool(out));
 }
+
+TEST(CriticalRouteRanking, MeasuresEverySinkAndTerminalDelay)
+{
+    // Improving the nominated sink cannot conceal a shared-branch regression.
+    EXPECT_FLOAT_EQ(critical_route_local_gain({{-100, 500, 400}, {-90, 300, 500}}), -190);
+    EXPECT_FLOAT_EQ(critical_route_local_gain({{-100, 500, 450}, {100, 300, 320}}), 50);
+    // The supplied native delay includes terminal LUT delay; route-only gain
+    // is not sufficient when that terminal stage becomes slower.
+    EXPECT_FLOAT_EQ(critical_route_local_gain({{-100, 500 + 100, 450 + 200}}), -50);
+    EXPECT_FALSE(std::isfinite(critical_route_local_gain({})));
+    EXPECT_FALSE(std::isfinite(critical_route_local_gain({{0, 500, 300}})));
+    EXPECT_FALSE(std::isfinite(critical_route_local_gain({{-100, 500, std::numeric_limits<float>::infinity()}})));
+}

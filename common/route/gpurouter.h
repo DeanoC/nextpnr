@@ -225,6 +225,8 @@ class GpuCandidateRouter
         NetInfo *net;
         store_index<PortRef> user;
     };
+    // reserve_whole_tree reserves two slots for whole-tree alternatives on
+    // multi-sink nets; ordinary callers retain the original candidate order.
     // For each sink, up to `count` distinct trees that re-route it at pure
     // delay, in this order: 0 attaches anywhere on the existing tree (the
     // router's own choice), 1 routes from the source only, then ones
@@ -239,7 +241,7 @@ class GpuCandidateRouter
     // out. The nets' routing in the Arch is left unchanged; candidates of
     // different nets may compete for the same free wire, which the caller
     // sees when it binds them.
-    std::vector<std::vector<GpuRouteTree>> candidates(const std::vector<Sink> &sinks, int count);
+    std::vector<std::vector<GpuRouteTree>> candidates(const std::vector<Sink> &sinks, int count, bool reserve_whole_tree = false);
     // The caller rebound `net` in the Arch; reload its tree from there.
     void resync(NetInfo *net);
 

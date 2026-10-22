@@ -3,6 +3,9 @@
 #define MISTRAL_ANALOGUE_REPAIR_H
 
 #include <utility>
+#include <cmath>
+#include <limits>
+#include <vector>
 
 #include "gpurouter.h"
 #include "log.h"
@@ -12,6 +15,25 @@ NEXTPNR_NAMESPACE_BEGIN
 // Restore the net, physical mux state and analogue cache on rejection or exception.
 bool critical_route_trial(Context *ctx, NetInfo *net, const GpuRouteTree &candidate,
                           const std::function<bool()> &accept);
+
+// Ranking only: native arc delay includes the terminal LUT input stage.
+// Full-design timing and hold checks remain mandatory before retention.
+struct CriticalRouteSinkDelay { float slack, before, after; };
+inline float critical_route_local_gain(const std::vector<CriticalRouteSinkDelay> &sinks)
+{
+    float before = std::numeric_limits<float>::infinity();
+    float after = before;
+    for (const auto &sink : sinks) {
+        if (!std::isfinite(sink.slack) || !std::isfinite(sink.before) || !std::isfinite(sink.after) ||
+            sink.slack == std::numeric_limits<float>::lowest() ||
+            sink.slack == std::numeric_limits<float>::max())
+            return -std::numeric_limits<float>::infinity();
+        before = std::min(before, sink.slack);
+        after = std::min(after, sink.slack + sink.before - sink.after);
+    }
+    if (sinks.empty() || before >= 0) return -std::numeric_limits<float>::infinity();
+    return after - before;
+}
 
 template <typename Route> bool try_analogue_repair_reroute(int round, Route &&route)
 {

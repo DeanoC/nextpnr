@@ -3181,7 +3181,7 @@ struct GpuRouter
         std::vector<GpuRouteTree> out;
     };
 
-    std::vector<std::vector<GpuRouteTree>> route_candidates(const std::vector<std::pair<int, int>> &sinks, int count)
+    std::vector<std::vector<GpuRouteTree>> route_candidates(const std::vector<std::pair<int, int>> &sinks, int count, bool reserve_whole_tree)
     {
         cfg.check_stop();
         std::vector<CandidateJob> jobs(sinks.size());
@@ -3246,7 +3246,8 @@ struct GpuRouter
                 job.routing = false;
                 if (!job.active)
                     continue;
-                if (int(job.out.size()) >= count) {
+                if (int(job.out.size()) >= (reserve_whole_tree && nets_by_udata.at(job.net)->users.entries() > 1
+                                                   ? std::max(0, count - 2) : count)) {
                     job.active = false;
                     active--;
                     continue;
@@ -3649,12 +3650,12 @@ GpuCandidateRouter::GpuCandidateRouter(Context *ctx, const GpuRouterCfg &cfg) : 
 
 GpuCandidateRouter::~GpuCandidateRouter() {}
 
-std::vector<std::vector<GpuRouteTree>> GpuCandidateRouter::candidates(const std::vector<Sink> &sinks, int count)
+std::vector<std::vector<GpuRouteTree>> GpuCandidateRouter::candidates(const std::vector<Sink> &sinks, int count, bool reserve_whole_tree)
 {
     std::vector<std::pair<int, int>> idx;
     for (auto &s : sinks)
         idx.emplace_back(s.net->udata, s.user.idx());
-    return impl->rt.route_candidates(idx, count);
+    return impl->rt.route_candidates(idx, count, reserve_whole_tree);
 }
 
 void GpuCandidateRouter::resync(NetInfo *net) { impl->rt.reload_net_from_arch(net->udata); }

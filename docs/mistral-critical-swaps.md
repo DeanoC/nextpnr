@@ -175,7 +175,16 @@ Both processes first execute the same ordinary routing recipe. Only the
 candidate then attempts the new pass, avoiding checkpoint-reload timing drift.
 
 The pass proposes up to four alternate trees per selected failing ordinary
-data net. Original cell placement, functions and net connectivity stay fixed;
+data net. For multi-sink nets, two of the four slots are reserved for whole-tree
+alternatives, so single-sink diversity cannot exhaust them. This reservation is
+explicit at this call site; ordinary candidate-router callers keep their policy.
+Before full-design trials, each proposal is temporarily bound and the native
+analogue model measures every sink, including branch loading and terminal LUT
+input delay. The minimum predicted sink slack ranks candidates; only proposals
+with at least 20 ps worst-sink gain proceed. This is a conservative prefilter,
+not a timing proof: full endpoint and hold checks still decide retention.
+Ranking always restores the original physical tree. Original cell placement,
+functions and net connectivity stay fixed;
 other nets stay bound and obstruct candidate routing. A trial verifies a rooted,
 acyclic tree reaching every original sink before applying it. Rejection and
 exceptions restore the net's original wires/strengths, physical mux state and
