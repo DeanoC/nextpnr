@@ -2045,6 +2045,31 @@ json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timin
         {"io_constraints", io_constraints}, {"output_contracts", output_contracts}, {"unsupported", unsupported}, {"static_endpoints", static_endpoints},
         {"clocks", clocks}, {"endpoints", endpoints}};
 }
+json11::Json critical_swap_live_endpoint_snapshot(Context *ctx, TimingAnalyser &timing, TimingAnalyser &unskewed)
+{
+    struct RestoreAttributes {
+        Context *ctx;
+        decltype(Context::attrs) design;
+        std::vector<std::pair<CellInfo *, decltype(CellInfo::attrs)>> cells;
+        std::vector<std::pair<NetInfo *, decltype(NetInfo::attrs)>> nets;
+        explicit RestoreAttributes(Context *ctx) : ctx(ctx), design(ctx->attrs)
+        {
+            cells.reserve(ctx->cells.size()); nets.reserve(ctx->nets.size());
+            for (const auto &entry : ctx->cells) cells.emplace_back(entry.second.get(), entry.second->attrs);
+            for (const auto &entry : ctx->nets) nets.emplace_back(entry.second.get(), entry.second->attrs);
+        }
+        ~RestoreAttributes()
+        {
+            ctx->attrs = std::move(design);
+            for (auto &entry : cells) entry.first->attrs = std::move(entry.second);
+            for (auto &entry : nets) entry.first->attrs = std::move(entry.second);
+        }
+    } restore(ctx);
+    ctx->save_fes_pin_maps();
+    ctx->archInfoToAttributes();
+    return critical_swap_endpoint_snapshot(ctx, timing, unskewed);
+}
+
 bool critical_route_snapshot_safe(const json11::Json &before, const json11::Json &after, std::string *reason)
 {
     auto fail = [&](const std::string &why) { if (reason) *reason = why; return false; };

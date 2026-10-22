@@ -190,6 +190,9 @@ void MistralCommandHandler::customBitstream(Context *ctx)
         ctx->repair_critical_routes();
         ctx->repair_critical_moves();
         ctx->build_bitstream();
+        // Post-route repairs happen after Arch::route cached JSON attributes.
+        // Publish the final live trees, BELs and physical pin/LAB state.
+        ctx->refresh_post_route_repair_checkpoint();
         if (vm.count("routed-endpoints")) {
             TimingAnalyser timing(ctx), unskewed(ctx);
             timing.with_clock_skew = true;

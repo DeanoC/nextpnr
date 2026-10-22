@@ -605,6 +605,7 @@ struct Arch : BaseArch<ArchRanges>
     void repair_critical_routes();
     int critical_move_route_budget = 0; // CLI-only, bounded post-route LUT moves.
     void repair_critical_moves();
+    void refresh_post_route_repair_checkpoint();
     // Analogue-scored route selection: several GPU candidate routes per sink
     // with less than `limit` slack, evaluated with the analogue model, best
     // one kept. To repair, a net scores by its worst sink slack; to improve

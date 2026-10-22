@@ -235,7 +235,7 @@ void Arch::repair_critical_moves()
         log_error("Critical move repair requires an ordinary completed route and budget 1..16.\n");
     configure_bitstream();
     auto analyse=[&]() {auto t=std::make_unique<TimingAnalyser>(ctx);t->with_clock_skew=true;t->setup(false,false,true);return t;};
-    auto snapshot=[&](TimingAnalyser &t) {TimingAnalyser u(ctx);u.setup(false,false,true);return critical_swap_endpoint_snapshot(ctx,t,u);};
+    auto snapshot=[&](TimingAnalyser &t) {TimingAnalyser u(ctx);u.setup(false,false,true);return critical_swap_live_endpoint_snapshot(ctx,t,u);};
     auto before=analyse();
     if (before->have_loops) log_error("Critical move repair refuses timing loops.\n");
     auto inventory=snapshot(*before);
@@ -334,5 +334,12 @@ void Arch::repair_critical_moves()
         if(accepted){before=std::move(after);inventory=std::move(next_inventory);++kept;list.clear();}
     }
     log_info("Critical move repair: cells=%zu tried=%d/%d kept=%d; unchanged unsupported coverage is not qualification.\n",cells.size(),tried,critical_move_route_budget,kept);
+}
+// Explicit zero and absent options preserve the original serialized bytes.
+void Arch::refresh_post_route_repair_checkpoint()
+{
+    if (!critical_route_budget && !critical_move_route_budget) return;
+    save_fes_pin_maps();
+    archInfoToAttributes();
 }
 NEXTPNR_NAMESPACE_END

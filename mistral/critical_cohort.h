@@ -42,6 +42,9 @@ bool critical_cohort_timing_safe(Context *ctx, TimingAnalyser &before, TimingAna
 bool critical_cohort_swap_trial(Context *ctx, CellInfo *cell, BelId target, const std::function<bool()> &accept);
 // Complete endpoint inventory, including explicit unsupported rows. Never intersect reports.
 json11::Json critical_swap_endpoint_snapshot(Context *ctx, TimingAnalyser &timing, TimingAnalyser &unskewed);
+// Post-route move guards must inspect live physical attributes, not the earlier
+// route checkpoint. Materialization is temporary and exception-safe.
+json11::Json critical_swap_live_endpoint_snapshot(Context *ctx, TimingAnalyser &timing, TimingAnalyser &unskewed);
 // Two disjoint LUT exchanges are legalized and accepted as one transaction.
 bool critical_cohort_pair_swap_trial(Context *ctx, CellInfo *a, BelId at, CellInfo *b, BelId bt,
                                       const std::function<bool()> &accept);
