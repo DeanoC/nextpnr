@@ -157,3 +157,10 @@ target_link_libraries(nextpnr-${family}-core INTERFACE
     mistral
     ${LIBLZMA_LIBRARIES}
 )
+
+# The Cyclone V coordinate constructors take narrow integer types, and the
+# arch builds them from ints in braced initialisers. GCC warns about that
+# narrowing; clang (as on macOS) makes it an error unless told to warn too.
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(nextpnr-${family}-core INTERFACE -Wno-error=c++11-narrowing)
+endif()
