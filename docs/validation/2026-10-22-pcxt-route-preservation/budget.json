@@ -1,0 +1,13 @@
+{
+  "allowance_seconds": 21600,
+  "prior_charged_seconds": 2703.5423228791915,
+  "new_charges_seconds": {
+    "leased_pair": 1376.0791495419107,
+    "cpu8": 345.64213653979823,
+    "cpu32": 600.0857176627032,
+    "diagnostic-cpu8": 307.53192176669836
+  },
+  "total_charged_seconds": 5332.881248390302,
+  "remaining_seconds": 16267.118751609698,
+  "accounting": "full wall time including queue waits and overlapping CPU diagnostics; no reused baseline charged twice"
+}
