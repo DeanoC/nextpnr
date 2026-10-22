@@ -36,6 +36,16 @@
 
 #include "gpuroute_backend.h"
 
+// No fused multiply-add, as the device kernels are built: the cost
+// expressions must round each step to reach the device's bit-identical
+// values. Without this, clang (and GCC in its default GNU mode) contracts
+// them on hosts with FMA instructions, such as arm64.
+#if defined(__clang__)
+#pragma clang fp contract(off)
+#elif defined(__GNUC__)
+#pragma GCC optimize("fp-contract=off")
+#endif
+
 namespace gpuroute {
 
 namespace {
