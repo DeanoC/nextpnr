@@ -233,3 +233,9 @@ margins/Fmax and at least 20 ps gain on an already failing setup endpoint are
 required. Unsupported boundaries remain diagnostic and cannot pass the outer
 artifact-retention gate. The graph and cell functions are unchanged; accepted
 moves may change only the moved cell's placement and its incident data routes.
+
+Every routable move logs `Critical move margin` rows before the acceptance guard:
+trial number, setup/hold kind, native launch-clock identity, before/after margin
+and delta in nanoseconds. Missing or newly appearing clocks are reported as
+coverage changes. These rows are diagnostic observations; logging does not change
+acceptance, and a positive hold margin may still reject a move if it regresses.

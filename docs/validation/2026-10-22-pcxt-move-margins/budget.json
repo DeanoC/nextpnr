@@ -1,0 +1,7 @@
+{
+  "renewed_allowance_seconds": 21600,
+  "previous_charged_seconds": 7136.573538022581,
+  "new_charge_seconds": 457.8531684949994,
+  "remaining_seconds": 14005.57329348242,
+  "accounting": "full wall time including every route attempt; CPU-reference diagnostics only"
+}
