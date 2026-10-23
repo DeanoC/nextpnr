@@ -58,6 +58,8 @@ add_nextpnr_architecture(${family}
 
 if (BUILD_TESTS)
     find_program(MISTRAL_CHECKPOINT_YOSYS yosys)
+    add_test(NAME nextpnr-${family}-shell-pip-keepout
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../common/route/tests/mistral_pip_rejection.py)
     add_test(NAME nextpnr-${family}-pad-clock
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/pad_clock.py)
     add_test(NAME nextpnr-${family}-sdrin-path-coverage
