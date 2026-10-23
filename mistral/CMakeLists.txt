@@ -62,6 +62,12 @@ if (BUILD_TESTS)
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/pad_clock.py)
     add_test(NAME nextpnr-${family}-sdrin-path-coverage
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ramtest-io/path_coverage.py --self-check)
+    add_test(NAME nextpnr-${family}-sdram-constraint-coverage
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ramtest-io/constraint_coverage.py --self-check)
+    add_test(NAME nextpnr-${family}-ramtest-normal-build
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ramtest-io/normal_build.py --self-check)
+    add_test(NAME nextpnr-${family}-ramtest-legacy-screen
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ramtest-io/legacy_screen.py --self-check)
     add_test(NAME nextpnr-${family}-critical-cohort-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/critical_cohort_cli.py
                 $<TARGET_FILE:nextpnr-${family}> -v)

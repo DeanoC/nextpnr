@@ -37,7 +37,11 @@ pad expects one rising `rise` channel. `path_coverage.py --self-check` audits
 a synthetic MISTRAL_SDRIN checkpoint and timing report, with no design files:
 the rising channel is covered, and a mismatched register clock or endpoint is
 reported. Unsupported unregistered pad directions fail this audit rather than
-receiving an implied pad model.
+receiving an implied pad model. `constraint_coverage.py --self-check` checks
+width-32 VCC LUTs (`0…01` and `1…1`) and a checkpoint whose only module is not
+named `top`. `normal_build.py --self-check` checks that the criticality
+exponent is left at the architecture default and that fanout 0 is rejected.
+`legacy_screen.py --self-check` checks that a bad ERR row raises `ValueError`.
 
 Coverage succeeds even when checked slacks are negative. Its separate
 `all_channel_slacks_nonnegative` field does not certify the whole design,

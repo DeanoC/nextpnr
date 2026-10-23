@@ -12,6 +12,33 @@ import math
 from pathlib import Path
 
 
+def lut_is_hard_constant(value):
+    """True for a MISTRAL_CONST LUT of 0, 1 or 32 ones.
+
+    nextpnr writes the VCC driver as Property(1), width 32. That serialises as
+    31 zeros and a one. A mask of 32 ones also ties high. Any other mask is a
+    function, not a tie.
+    """
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return value in (0, 1)
+    if isinstance(value, str) and value and all(char in '01' for char in value):
+        return int(value, 2) in (0, 1) or value == '1' * 32
+    return False
+
+
+def design_module(document):
+    modules = document.get('modules') if isinstance(document, dict) else None
+    if not isinstance(modules, dict) or not modules:
+        raise ValueError('Checkpoint has no modules')
+    if 'top' in modules:
+        return modules['top']
+    if len(modules) == 1:
+        return next(iter(modules.values()))
+    raise ValueError('Checkpoint has multiple modules and no top: ' + ', '.join(sorted(modules)))
+
+
 def inventory(module):
     cells = module['cells']
     drivers = {}
@@ -32,7 +59,7 @@ def inventory(module):
             return True
         sources = drivers.get(bit, [])
         return (len(sources) == 1 and sources[0][1]['type'] == 'MISTRAL_CONST' and
-                sources[0][1].get('parameters', {}).get('LUT') in ('0'*32, '1'*32))
+                lut_is_hard_constant(sources[0][1].get('parameters', {}).get('LUT')))
 
     saved = json.loads(module.get('settings', {}).get('timing/io_delays', '[]'))
     if not isinstance(saved, list):
@@ -90,12 +117,70 @@ def inventory(module):
                                   'controller capture/consumption cycle', 'hardware acceptance'])
 
 
+def self_check():
+    # The packer's constant drivers and comb LUTs output on Q.
+    def const(lut, net):
+        return {'type': 'MISTRAL_CONST', 'port_directions': {'Q': 'output'},
+                'connections': {'Q': [net]}, 'parameters': {'LUT': lut}}
+
+    def ob(net, pad):
+        return {'type': 'MISTRAL_OB', 'port_directions': {'I': 'input', 'PAD': 'output'},
+                'connections': {'I': [net], 'PAD': [pad]}}
+
+    # Property(1) of width 32 serialises MSB-first as 31 zeros and a one.
+    vcc = '0' * 31 + '1'
+    module = {
+        'ports': {
+            'SDRAM_CKE': {'direction': 'output', 'bits': ['pad_cke']},
+            'SDRAM_DQMH': {'direction': 'output', 'bits': ['pad_dqmh']},
+            'SDRAM_WE': {'direction': 'output', 'bits': ['pad_we']},
+            'SDRAM_DQ': {'direction': 'output', 'bits': ['pad_dq']},
+        },
+        'cells': {
+            'tie_high': const(vcc, 'high'),
+            'tie_ones': const('1' * 32, 'ones'),
+            'tie_low': const('0' * 32, 'low'),
+            'cke_ob': ob('high', 'pad_cke'),
+            'dqmh_ob': ob('ones', 'pad_dqmh'),
+            'we_ob': ob('low', 'pad_we'),
+            'dq_ob': ob('dq_net', 'pad_dq'),
+            'dq_fn': {'type': 'MISTRAL_ALUT2', 'port_directions': {'Q': 'output'},
+                      'connections': {'Q': ['dq_net']}, 'parameters': {'LUT': '1' * 32}},
+        },
+        'settings': {'timing/io_delays': '[]'},
+    }
+    high = inventory(module)
+    exempt = {row['port']: row['exempt_structural_constant'] for row in high['ports']}
+    assert exempt == {'SDRAM_CKE': True, 'SDRAM_DQMH': True, 'SDRAM_WE': True, 'SDRAM_DQ': False}, exempt
+    assert high['missing'] == [{'port': 'SDRAM_DQ', 'direction': 'output'}], high['missing']
+    assert lut_is_hard_constant(1) and lut_is_hard_constant(0)
+    assert lut_is_hard_constant('1' * 32)
+    assert not lut_is_hard_constant('1' * 31 + '0')
+    assert not lut_is_hard_constant(True)
+    named = design_module({'modules': {'core': module}})
+    assert named is module
+    try:
+        design_module({'modules': {'a': module, 'b': module}})
+    except ValueError as error:
+        assert 'no top' in str(error), error
+    else:
+        raise AssertionError('multiple modules were accepted')
+    print('PASS: tied-high LUTs 0..01 and 1..1 are exempt; a LUT function and a missing delay are not')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--checkpoint', type=Path, required=True)
-    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--self-check', action='store_true',
+                        help='Check tied-high LUT recognition and module selection, then exit')
+    parser.add_argument('--checkpoint', type=Path)
+    parser.add_argument('--output', type=Path)
     args = parser.parse_args()
-    result = inventory(json.loads(args.checkpoint.read_text())['modules']['top'])
+    if args.self_check:
+        self_check()
+        return
+    if not args.checkpoint or not args.output:
+        parser.error('--checkpoint and --output are required')
+    result = inventory(design_module(json.loads(args.checkpoint.read_text())))
     result['checkpoint_sha256'] = hashlib.sha256(args.checkpoint.read_bytes()).hexdigest()
     result['script_sha256'] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     args.output.write_text(json.dumps(result, indent=2)+'\n')

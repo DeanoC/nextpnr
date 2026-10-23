@@ -5,13 +5,17 @@ No frozen placement, routing, PLL migrations, route selection or RTL changes.
 Retain unsuccessful compiler results as diagnostics; never label them signoff.
 """
 import argparse
+import contextlib
 import hashlib
+import io
 import json
 import math
 from pathlib import Path
 import re
 import subprocess
 import time
+
+from constraint_coverage import design_module
 
 
 def sha(path):
@@ -22,16 +26,18 @@ def load(path):
     return json.loads(path.read_text())
 
 
-def main():
+def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--source-root', type=Path, required=True)
-    parser.add_argument('--nextpnr', type=Path, required=True)
-    parser.add_argument('--output', type=Path, required=True, help='New output directory')
+    parser.add_argument('--self-check', action='store_true',
+                        help='Check default placer flags and fanout rejection, then exit')
+    parser.add_argument('--source-root', type=Path)
+    parser.add_argument('--nextpnr', type=Path)
+    parser.add_argument('--output', type=Path, help='New output directory')
     parser.add_argument('--seed', type=int, default=2)
     parser.add_argument('--placer-timing-weight', type=int, default=10,
                         help='HeAP timing weight; default matches the compiler default')
-    parser.add_argument('--placer-criticality-exponent', type=int, default=7,
-                        help='HeAP criticality exponent; default matches the Mistral architecture default')
+    parser.add_argument('--placer-criticality-exponent', type=int,
+                        help='HeAP criticality exponent; omit to keep the architecture default')
     parser.add_argument('--router', choices=['gpu', 'router2'], default='gpu')
     parser.add_argument('--gpu-cpu', action='store_true', help='Use the GPU router CPU reference backend')
     parser.add_argument('--setup-margin-ps', type=float, default=0,
@@ -42,20 +48,80 @@ def main():
                         help='Override the analogue candidate net fanout limit (architecture default 64)')
     parser.add_argument('--timeout-seconds', type=int, default=1200,
                         help='Compiler time limit; timed-out runs retain an incomplete receipt')
-    args = parser.parse_args()
-    if args.placer_timing_weight < 0 or args.placer_criticality_exponent <= 0:
+    return parser
+
+
+def validate_options(parser, args):
+    if args.placer_timing_weight < 0 or (
+            args.placer_criticality_exponent is not None and args.placer_criticality_exponent <= 0):
         parser.error('Placer timing weight must be nonnegative and criticality exponent positive')
     if not math.isfinite(args.setup_margin_ps) or args.setup_margin_ps < 0:
         parser.error('--setup-margin-ps must be finite and nonnegative')
     if args.analogue_rounds is not None and args.analogue_rounds < 0:
         parser.error('--analogue-rounds must be nonnegative')
-    if args.analogue_candidate_fanout is not None and args.analogue_candidate_fanout < 0:
-        parser.error('--analogue-candidate-fanout must be nonnegative')
+    # Zero is not "the default". The router treats fanout 0 as "no net is a candidate".
+    if args.analogue_candidate_fanout is not None and args.analogue_candidate_fanout < 1:
+        parser.error('--analogue-candidate-fanout must be positive')
     if args.timeout_seconds <= 0:
         parser.error('--timeout-seconds must be positive')
     if args.router != 'gpu' and (args.setup_margin_ps or args.analogue_rounds is not None or
                                  args.analogue_candidate_fanout is not None):
         parser.error('Analogue repair options require --router gpu')
+
+
+def compiler_argv(executable, out, args):
+    command = [str(executable), '--device', '5CSEBA6U23I7', '--json', str(out/'synth.json'),
+               '--qsf', str(out/'pins.qsf'), '--sdc', str(out/'address.sdc'), '--freq', '74.25',
+               '--router', args.router, '--seed', str(args.seed), '--compress-rbf',
+               '--placer-heap-timingweight', str(args.placer_timing_weight)]
+    if args.placer_criticality_exponent is not None:
+        command += ['--placer-heap-critexp', str(args.placer_criticality_exponent)]
+    command += ['--write', str(out/'final.json'), '--report', str(out/'timing.json'),
+                '--detailed-timing-report', '--timing-report-paths', '128', '--rbf', str(out/'core.rbf')]
+    if args.gpu_cpu:
+        if args.router != 'gpu':
+            raise ValueError('--gpu-cpu requires --router gpu')
+        command.append('--gpu-cpu')
+    if args.setup_margin_ps:
+        command += ['--gpu-opt', f'analogueSlack={args.setup_margin_ps:g}',
+                    '--gpu-opt', f'analogueRipSlack={max(300, args.setup_margin_ps):g}']
+    if args.analogue_rounds is not None:
+        command += ['--gpu-opt', f'analogueRounds={args.analogue_rounds}']
+    if args.analogue_candidate_fanout is not None:
+        command += ['--gpu-opt', f'analogueCandidateFanout={args.analogue_candidate_fanout}']
+    return command
+
+
+def self_check():
+    parser = build_parser()
+    args = parser.parse_args(['--source-root', 'src', '--nextpnr', 'pnr', '--output', 'out'])
+    validate_options(parser, args)
+    argv = compiler_argv(Path('pnr'), Path('out'), args)
+    assert '--placer-heap-critexp' not in argv, argv
+    args.placer_criticality_exponent = 5
+    argv = compiler_argv(Path('pnr'), Path('out'), args)
+    assert argv[argv.index('--placer-heap-critexp') + 1] == '5', argv
+    rejected = parser.parse_args(['--source-root', 'src', '--nextpnr', 'pnr', '--output', 'out',
+                                  '--analogue-candidate-fanout', '0'])
+    with contextlib.redirect_stderr(io.StringIO()):
+        try:
+            validate_options(parser, rejected)
+        except SystemExit as error:
+            assert error.code != 0
+        else:
+            raise AssertionError('fanout 0 was accepted')
+    print('PASS: criticality exponent stays at the architecture default; fanout 0 is rejected')
+
+
+def main():
+    parser = build_parser()
+    args = parser.parse_args()
+    if args.self_check:
+        self_check()
+        return
+    if not args.source_root or not args.nextpnr or not args.output:
+        parser.error('--source-root, --nextpnr and --output are required')
+    validate_options(parser, args)
     here = Path(__file__).resolve().parent
     root = args.source_root.resolve()
     source = root/'build/fes-ramtest-100/synth.json'
@@ -66,7 +132,7 @@ def main():
     build_inputs = load(root/'build/fes-ramtest-100/build-inputs.json')
     if sha(qsf) != build_inputs['source_inputs']['cores/fes-ramtest/constraints.qsf']:
         raise ValueError('Pin constraints differ from the original synthesis provenance')
-    module = load(source)['modules']['top']
+    module = design_module(load(source))
     for section in ('cells', 'netnames'):
         for name, item in module[section].items():
             if any(key in item.get('attributes', {}) for key in ('ROUTING', 'NEXTPNR_BEL', 'FES_PINMAP_V1')):
@@ -81,24 +147,7 @@ def main():
     (out/'address.sdc').write_bytes((here/'address-target.sdc').read_bytes())
     executable = args.nextpnr.resolve()
     executable_sha = sha(executable)
-    command = [str(executable), '--device', '5CSEBA6U23I7', '--json', str(out/'synth.json'),
-               '--qsf', str(out/'pins.qsf'), '--sdc', str(out/'address.sdc'), '--freq', '74.25',
-               '--router', args.router, '--seed', str(args.seed), '--compress-rbf',
-               '--placer-heap-timingweight', str(args.placer_timing_weight),
-               '--placer-heap-critexp', str(args.placer_criticality_exponent),
-               '--write', str(out/'final.json'), '--report', str(out/'timing.json'),
-               '--detailed-timing-report', '--timing-report-paths', '128', '--rbf', str(out/'core.rbf')]
-    if args.gpu_cpu:
-        if args.router != 'gpu':
-            raise ValueError('--gpu-cpu requires --router gpu')
-        command.append('--gpu-cpu')
-    if args.setup_margin_ps:
-        command += ['--gpu-opt', f'analogueSlack={args.setup_margin_ps:g}',
-                    '--gpu-opt', f'analogueRipSlack={max(300, args.setup_margin_ps):g}']
-    if args.analogue_rounds is not None:
-        command += ['--gpu-opt', f'analogueRounds={args.analogue_rounds}']
-    if args.analogue_candidate_fanout is not None:
-        command += ['--gpu-opt', f'analogueCandidateFanout={args.analogue_candidate_fanout}']
+    command = compiler_argv(executable, out, args)
     (out/'command.json').write_text(json.dumps(command, indent=2)+'\n')
     started = time.monotonic()
     try:
@@ -122,7 +171,7 @@ def main():
         raise SystemExit(124)
     elapsed = time.monotonic()-started
     report = load(out/'timing.json')
-    final = load(out/'final.json')['modules']['top']
+    final = design_module(load(out/'final.json'))
     if not report['timing_summary']['final_analogue_model']:
         raise ValueError('Final analogue timing is required')
     if sum(c['type'] == 'MISTRAL_FF' and bool(re.fullmatch(r'dq_buf\[\d+\]\.dq_sample_MISTRAL_FF_Q', n))
