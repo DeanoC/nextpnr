@@ -79,6 +79,26 @@ class FinalCriticalMoveCli(unittest.TestCase):
         self.rejected(base + ['--critical-move-route-budget', '1'], no_route=False)
         self.rejected(base, settings={'timing/allowFail': '1'}, no_route=False)
 
+    def test_rediscovery_requires_positive_final_budget(self):
+        for options in ([], ['--critical-final-move-budget', '0']):
+            result, output = self.run_case(['--critical-final-move-rediscover'] + options)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('requires a positive --critical-final-move-budget', result.stdout)
+            self.assertIsNone(output)
+
+    def test_rediscovery_keeps_fresh_route_admission(self):
+        base = ['--critical-final-move-rediscover', '--critical-final-move-budget', '16',
+                '--critical-lut-permute-budget', '1', '--router', 'gpu', '--rbf', 'test.rbf']
+        self.rejected(base)
+        self.rejected(base, step='route', no_route=False)
+        self.rejected(base + ['--force'], no_route=False)
+
+    def test_saved_rediscovery_setting_does_not_enable(self):
+        result, output = self.run_case(settings={'critical-final-move-rediscover': '1'})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIsNotNone(output)
+        self.assertNotIn('Final critical move discovery pass=', result.stdout)
+
     def test_saved_settings_do_not_enable(self):
         result, output = self.run_case(settings={'critical-final-move-budget': '16'})
         self.assertEqual(result.returncode, 0, result.stdout)

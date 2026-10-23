@@ -63,3 +63,18 @@ Focused fixtures must cover LAB/MLAB and both halves, occupied stationary mates 
 Retain existing move/router fixtures and default/explicit-zero CPU-only byte controls against the frozen binary. Full-route admission requires reviewed frozen source, binary and host proof; the later matched default/final-move pair alone determines whether this helps. No current result is timing or hardware qualification.
 
 The subsequent full-board move16 diagnostic kept no moves: four actual CGA trials hit the stationary-mate-mask check while vacating a sole-LUT ALM. Logging-only native replay established the canonical empty defaults and direct incident input-source COMBOUT exit changes. The bounded exceptions above address these observed native writer transitions. They inherit no timing gain or hardware acceptance; source review, native regression and a new matched whole-route comparison remain separate gates.
+
+## Optional bounded rediscovery
+
+`--critical-final-move-rediscover` is a runtime-only, default-false flag requiring
+positive `--critical-final-move-budget` and its unchanged fresh full GPU route
+admission. After the first pass finishes, a second discovery runs only if a move
+was retained and the original trial budget has capacity. There are at most two
+discoveries and at most the original 16 trials total; budget is never reset.
+
+The second discovery rebuilds both timing frames and the endpoint inventory from
+the retained placement, then repeats the same eligibility, geometry, legality,
+caps, ordering and transaction. Every coverage and timing guard remains in force,
+including positive setup/hold margins. Enabled runs log discovery pass, cell and
+candidate counts, remaining budget and discovery time. Disabled runs perform no
+extra analysis or discovery and emit no additional log records.

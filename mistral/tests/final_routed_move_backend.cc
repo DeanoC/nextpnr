@@ -8,6 +8,11 @@
 #include "gtest/gtest.h"
 #include "nextpnr.h"
 #include "timing.h"
+#include "log.h"
+#include <sstream>
+#include <cstdio>
+#include <cmath>
+#include <limits>
 #include <algorithm>
 #include <array>
 #include <cstdlib>
@@ -644,4 +649,175 @@ TEST_P(FinalRoutedMove, BoundInternalObserversPreventEmptyException)
 }
 
 INSTANTIATE_TEST_SUITE_P(LabAndMlabBothHalves,FinalRoutedMove,::testing::Combine(::testing::Bool(),::testing::Values(0,1)));
+
+// Real native orchestration tests: no mocked timing or acceptance callback.
+// Construction and acceptance remain unverified until the isolated full build.
+class FinalMoveRediscovery : public FinalRoutedMove {
+ protected:
+    BelId initial;
+    CellInfo *capture=nullptr;
+    void SetUp() override {}
+    void build_orchestration(int period) {
+        inputs.clear();stationary.clear();reason.clear();
+        ArchArgs args;args.device="5CSEBA6U23I7";ctx=std::make_unique<Context>(args);
+        ctx->settings[ctx->id("target_freq")]=1e8;
+        ctx->createNet(ctx->id("$PACKER_GND_NET"));ctx->createNet(ctx->id("$PACKER_VCC_NET"));
+        std::vector<std::pair<int,uint32_t>> sites;
+        for(uint32_t i=0;i<ctx->labs.size();++i)if(ctx->labs[i].is_mlab==std::get<0>(GetParam())) {
+            auto loc=ctx->getBelLocation(ctx->labs[i].alms[0].lut_bels[0]);
+            sites.emplace_back(std::abs(loc.x-24)+std::abs(loc.y-3),i);
+        }
+        std::sort(sites.begin(),sites.end());ASSERT_FALSE(sites.empty());source_lab=sites.front().second;
+        auto near=ctx->getBelLocation(ctx->labs[source_lab].alms[0].lut_bels[half()]);
+        std::vector<std::pair<int,uint32_t>> far;
+        for(const auto &site:sites) {
+            auto loc=ctx->getBelLocation(ctx->labs[site.second].alms[0].lut_bels[half()]);
+            int distance=std::abs(loc.x-near.x)+std::abs(loc.y-near.y);
+            if(distance>=8)far.emplace_back(distance,site.second);
+        }
+        std::sort(far.begin(),far.end());ASSERT_FALSE(far.empty());lab=far.front().second;
+        inputs.resize(10,nullptr);
+        auto *clock=lut("clock",2,8,{},ctx->labs[source_lab].alms[9].lut_bels[0]);inputs[9]=clock->getPort(id_Q);
+        inputs[9]->clkconstr=std::make_unique<ClockConstraint>();
+        inputs[9]->clkconstr->period=DelayPair(period);
+        inputs[9]->clkconstr->high=inputs[9]->clkconstr->low=DelayPair(period/2);
+        for(int i=0;i<4;++i) {
+            auto *stimulus=lut("stimulus"+std::to_string(i),2,8,{},ctx->labs[source_lab].alms[i].lut_bels[0]);
+            inputs[i]=ff("launch"+std::to_string(i),stimulus,ctx->labs[source_lab].alms[i].ff_bels[0])->getPort(id_Q);
+        }
+        moved=lut("zz_moved",3,0xd2,{inputs[0],inputs[1],inputs[2]},home());initial=moved->bel;
+        // Keep the source LAB natively occupied after vacating the moved ALM.
+        // Otherwise write_labs skips write_ff_routing and resets shared ACLR0.
+        auto *source_anchor=lut("source_lab_anchor",2,8,{},ctx->labs[lab].alms[9].lut_bels[0]);
+        ASSERT_EQ(source_anchor->getPort(id_Q)->users.entries(),0);
+        ASSERT_NE(ctx->bel_data(source_anchor->bel).lab_data.alm,ctx->bel_data(initial).lab_data.alm);
+        // Explicit native capture LUT prevents an automatic BUF user. Its
+        // independent nearby FF input preserves an unchanged short hold path.
+        auto *capture_lut=lut("capture_lut",2,8,{moved->getPort(id_Q),inputs[3]},
+                              ctx->labs[source_lab].alms[7].lut_bels[0]);
+        capture=ff("capture",capture_lut,ctx->labs[source_lab].alms[7].ff_bels[0]);
+        ctx->assignArchInfo();ctx->lab_pre_route();
+        ASSERT_EQ(moved->getPort(id_Q)->users.entries(),1);
+        const auto &capture_user=*moved->getPort(id_Q)->users.begin();
+        ASSERT_EQ(capture_user.cell,capture_lut);ASSERT_EQ(capture_user.port,id_A);
+        ASSERT_EQ(capture_lut->type,id_MISTRAL_ALUT2);
+        ASSERT_EQ(capture->ffInfo.datain,capture_lut->getPort(id_Q));
+        ASSERT_EQ(ctx->bel_data(capture_lut->bel).lab_data.lab,ctx->bel_data(capture->bel).lab_data.lab);
+        ASSERT_EQ(ctx->bel_data(capture_lut->bel).lab_data.alm,ctx->bel_data(capture->bel).lab_data.alm);
+        ASSERT_EQ(capture_lut->getPort(id_B),inputs[3]);
+        ASSERT_EQ(inputs[3]->driver.cell->type,id_MISTRAL_FF);
+        for(const auto &c:ctx->cells)ASSERT_TRUE(ctx->isBelLocationValid(c.second->bel))<<ctx->nameOf(c.second.get());
+        int visits=5000000;ASSERT_TRUE(critical_local_route_net(ctx.get(),inputs[9],visits));
+        for(const auto &n:ctx->nets)if(n.second->driver.cell)
+            ASSERT_TRUE(critical_local_route_net(ctx.get(),n.second.get(),visits))<<ctx->nameOf(n.second.get());
+        for(const char *key:{"keep","dont_touch","BEL","FES_SLOT"})ctx->id(key);
+        ctx->attrs[id_step]=std::string("route");ctx->configure_bitstream();ctx->check();
+        ASSERT_TRUE(ctx->analogue_cache_valid);coverage();
+    }
+    void require_negative_capture() {
+        for(bool skew:{false,true}) {
+            TimingAnalyser timing(ctx.get());timing.with_clock_skew=skew;timing.setup(false,false,true);
+            ASSERT_FALSE(timing.have_loops);
+            auto slack=timing.get_setup_slack(CellPortKey(PortRef{capture,id_DATAIN}));
+            ASSERT_TRUE(std::isfinite(slack));
+            ASSERT_NE(slack,std::numeric_limits<float>::lowest());
+            ASSERT_LT(slack,0)<<"Synthetic 100ps constraint must create a measured negative capture path";
+        }
+    }
+    std::string diagnose_footprint() {
+        std::ostringstream out;unsigned failures=0;std::set<IdString> names;
+        auto reject=[&](const std::string &why){++failures;out<<"fixture footprint exclusion: "<<why<<"\n";};
+        auto ordinary=[](CellInfo *c){return c && c->type.in(id_MISTRAL_ALUT2,id_MISTRAL_ALUT3,id_MISTRAL_ALUT4,id_MISTRAL_ALUT5,id_MISTRAL_ALUT6);};
+        auto protection=[&](CellInfo *c,const std::string &where) {
+            if(!c){reject(where+" null cell");return;}
+            if(c->isPseudo())reject(where+" pseudo");if(c->region)reject(where+" region");
+            for(const char *key:{"keep","dont_touch","BEL","FES_SLOT"})if(c->attrs.count(ctx->id(key)))reject(where+" attribute "+key);
+        };
+        if(!ordinary(moved))reject("selected type");protection(moved,"selected");
+        if(moved->cluster!=ClusterId())reject("selected clustered");
+        if(moved->bel==BelId())reject("selected unbound");
+        if(moved->belStrength>STRENGTH_WEAK)reject("selected BEL strength="+std::to_string(int(moved->belStrength)));
+        TimingAnalyser timing(ctx.get());timing.with_clock_skew=true;timing.setup(false,false,true);
+        for(const auto &port:moved->ports) {
+            auto pin=moved->pin_data.find(port.first);
+            if(pin!=moved->pin_data.end() && pin->second.state!=PIN_SIG && pin->second.state!=PIN_INV) {
+                out<<"fixture footprint skipped pin "<<port.first.str(ctx.get())<<" state="<<int(pin->second.state)<<"\n";continue;
+            }
+            auto *net=port.second.net;if(!net)continue;
+            std::string name=net->name.str(ctx.get());names.insert(net->name);
+            if(net->is_global)reject(name+" global");if(net->clkconstr)reject(name+" clock constraint");
+            if(net->wires.empty())reject(name+" unrouted");if(net->users.entries()>64)reject(name+" users>64");
+            protection(net->driver.cell,name+" driver");
+            if(net->driver.cell && !(ordinary(net->driver.cell)||net->driver.cell->type.in(id_MISTRAL_FF,id_MISTRAL_ALUT_ARITH)))reject(name+" driver type="+net->driver.cell->type.str(ctx.get()));
+            for(const auto &pub:ctx->ports)if(pub.second.net==net)reject(name+" public port");
+            for(const auto &wire:net->wires)if(wire.second.strength>STRENGTH_STRONG){reject(name+" route strength="+std::to_string(int(wire.second.strength)));break;}
+            for(const auto &u:net->users) {
+                protection(u.cell,name+" user");
+                if(u.cell && !(ordinary(u.cell)?u.port.in(id_A,id_B,id_C,id_D,id_E,id_F):u.cell->type==id_MISTRAL_FF&&u.port==id_DATAIN))reject(name+" user type/port="+u.cell->type.str(ctx.get())+"/"+u.port.str(ctx.get()));
+                if(u.cell)out<<"fixture incident slack "<<name<<" -> "<<u.cell->name.str(ctx.get())<<"/"<<u.port.str(ctx.get())<<" = "<<timing.get_setup_slack(CellPortKey(u))<<"\n";
+            }
+        }
+        if(names.empty()||names.size()>7)reject("incident net count="+std::to_string(names.size()));
+        out<<"fixture footprint exclusions="<<failures<<" incident="<<names.size()<<"\n";return out.str();
+    }
+    std::string run_orchestration(int budget) {
+        ctx->critical_final_move_budget=budget;ctx->critical_final_move_rediscover=true;
+        std::string output=diagnose_footprint();
+        struct CaptureLog {
+            log_write_type prior;
+            explicit CaptureLog(std::string &text):prior(log_write_function) {
+                log_write_function=[&text](std::string message){text+=message;};
+            }
+            ~CaptureLog(){log_write_function=prior;}
+        } log(output);
+        ctx->repair_final_critical_moves();return output;
+    }
+    void check_log(const std::string &text,int discoveries,int budget,bool require_accept) {
+        std::istringstream stream(text);std::string line,last_retained_target;int passes=0,trials=0,accepted=0;bool fresh_origin=false;
+        while(std::getline(stream,line)) {
+            int pass=0,trial=0;
+            if(line.find("discovery origin pass=2 cell=zz_moved bel=")!=std::string::npos) {
+                ASSERT_FALSE(last_retained_target.empty())<<text;
+                EXPECT_NE(line.find("bel="+last_retained_target+"."),std::string::npos)<<line;
+                fresh_origin=true;
+            }
+            if(std::sscanf(line.c_str(),"Info: Final critical move discovery pass=%d",&pass)==1 ||
+               std::sscanf(line.c_str(),"Final critical move discovery pass=%d",&pass)==1) {
+                EXPECT_EQ(pass,++passes);
+            }
+            if(std::sscanf(line.c_str(),"Info: Final critical move trial %d:",&trial)==1 ||
+               std::sscanf(line.c_str(),"Final critical move trial %d:",&trial)==1) {
+                EXPECT_EQ(trial,++trials);if(line.find("accepted=1;")!=std::string::npos) {
+                    ++accepted;auto begin=line.find(" target "),end=line.find(" accepted=");
+                    ASSERT_NE(begin,std::string::npos);ASSERT_NE(end,std::string::npos);
+                    last_retained_target=line.substr(begin+8,end-begin-8);
+                }
+            }
+        }
+        EXPECT_EQ(passes,discoveries)<<text;EXPECT_LE(trials,budget)<<text;
+        if(discoveries==2)EXPECT_TRUE(fresh_origin)<<text;
+        if(require_accept){EXPECT_GT(accepted,0)<<text;EXPECT_NE(moved->bel,initial)<<text;}
+        else {EXPECT_EQ(accepted,0)<<text;EXPECT_EQ(moved->bel,initial)<<text;}
+    }
+};
+TEST_P(FinalMoveRediscovery, NonnegativeContextDiscoversOnlyOnce)
+{
+    build_orchestration(10000);ASSERT_FALSE(HasFatalFailure());
+    auto log=run_orchestration(16);check_log(log,1,16,false);
+}
+TEST_P(FinalMoveRediscovery, RealRetentionExhaustingBudgetDoesNotRediscover)
+{
+    // Synthetic constraint stress only; this is not 100MHz qualification.
+    build_orchestration(100);ASSERT_FALSE(HasFatalFailure());
+    require_negative_capture();ASSERT_FALSE(HasFatalFailure());
+    auto log=run_orchestration(1);check_log(log,1,1,true);coverage();
+}
+TEST_P(FinalMoveRediscovery, RealRetentionWithBudgetRediscoversExactlyOnce)
+{
+    // Synthetic constraint stress only; this is not 100MHz qualification.
+    build_orchestration(100);ASSERT_FALSE(HasFatalFailure());
+    require_negative_capture();ASSERT_FALSE(HasFatalFailure());
+    auto log=run_orchestration(16);check_log(log,2,16,true);coverage();
+}
+INSTANTIATE_TEST_SUITE_P(LabAndMlabBothHalves,FinalMoveRediscovery,::testing::Combine(::testing::Bool(),::testing::Values(0,1)));
 } // namespace

@@ -7,6 +7,7 @@
 #include <tuple>
 #include <algorithm>
 #include <cmath>
+#include <chrono>
 #include <map>
 #include <queue>
 #include <set>
@@ -1055,6 +1056,16 @@ void Arch::repair_final_critical_moves()
     if(before->have_loops || reference->have_loops)log_error("Final critical move refuses timing loops.\n");
     auto inventory=critical_swap_live_endpoint_snapshot(ctx,*before,*reference);
     struct Choice {CellInfo *cell;BelId target;float slack;double gain;};
+    int tried=0,kept=0;size_t last_cell_count=0;
+    for(int pass=0;pass<(critical_final_move_rediscover?2:1);++pass) {
+        if(pass) {
+            if(!kept || tried>=critical_final_move_budget)break;
+            before=analyse(true);reference=analyse(false);
+            if(before->have_loops || reference->have_loops)log_error("Final critical move rediscovery refuses timing loops.\n");
+            inventory=critical_swap_live_endpoint_snapshot(ctx,*before,*reference);
+        }
+        std::chrono::steady_clock::time_point discovery_started;
+        if(critical_final_move_rediscover)discovery_started=std::chrono::steady_clock::now();
     std::vector<std::pair<float,CellInfo *>> cells;
     for (const auto &entry:ctx->cells) {
         auto *c=entry.second.get();std::vector<NetInfo *> nets;
@@ -1081,6 +1092,7 @@ void Arch::repair_final_critical_moves()
     std::vector<std::vector<Choice>> choices;
     for(const auto &entry:cells) {
         auto *c=entry.second;std::vector<Loc> anchors{ctx->getBelLocation(c->bel)};
+        if(critical_final_move_rediscover)log_info("Final critical move discovery origin pass=%d cell=%s bel=%s.\n",pass+1,ctx->nameOf(c),ctx->nameOfBel(c->bel));
         struct Edge {Loc point;double weight;};std::vector<Edge> edges;
         auto add=[&](CellInfo *other,const PortRef &sink) {
             if(!other || other==c || other->bel==BelId()) return;
@@ -1117,7 +1129,13 @@ void Arch::repair_final_critical_moves()
         }
         choices.push_back(std::move(legal));
     }
-    int tried=0,kept=0;
+    last_cell_count=cells.size();
+    if(critical_final_move_rediscover) {
+        size_t candidates=0;for(const auto &list:choices)candidates+=list.size();
+        const double seconds=std::chrono::duration<double>(std::chrono::steady_clock::now()-discovery_started).count();
+        log_info("Final critical move discovery pass=%d cells=%zu candidates=%zu remaining=%d seconds=%.6f.\n",
+                 pass+1,cells.size(),candidates,critical_final_move_budget-tried,seconds);
+    }
     for(size_t rank=0;rank<4 && tried<critical_final_move_budget;++rank)for(auto &list:choices) {
         if(tried>=critical_final_move_budget)break;
         if(rank>=list.size())continue;
@@ -1154,7 +1172,8 @@ void Arch::repair_final_critical_moves()
         log_info("Final critical move trial %d: cell %s target %s accepted=%d; %s.\n",tried,ctx->nameOf(choice.cell),ctx->nameOfBel(choice.target),int(accepted),reason.c_str());
         if(accepted){before=std::move(after);reference=std::move(after_reference);inventory=std::move(next_inventory);++kept;list.clear();}
     }
-    log_info("Final critical move repair: cells=%zu tried=%d/%d kept=%d; unchanged unsupported coverage is not qualification.\n",cells.size(),tried,critical_final_move_budget,kept);
+    }
+    log_info("Final critical move repair: cells=%zu tried=%d/%d kept=%d; unchanged unsupported coverage is not qualification.\n",last_cell_count,tried,critical_final_move_budget,kept);
 }
 
 // Explicit zero and absent options preserve the original serialized bytes.

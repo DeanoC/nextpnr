@@ -618,6 +618,7 @@ struct Arch : BaseArch<ArchRanges>
     int critical_move_route_budget = 0; // CLI-only, bounded post-route LUT moves.
     void repair_critical_moves();
     int critical_final_move_budget = 0; // Separate CLI-only ordinary final moves.
+    bool critical_final_move_rediscover = false; // CLI-only second discovery, shared trial budget.
     void repair_final_critical_moves();
     void refresh_post_route_repair_checkpoint();
     // Analogue-scored route selection: several GPU candidate routes per sink

@@ -118,6 +118,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "allow proved unobserved arithmetic leaves in private-pair/permutation coverage (opt-in)");
     specific.add_options()("critical-final-move-budget", po::value<int>(),
                            "Diagnostic final ordinary-LUT moves after repairs (0..16, default 0)");
+    specific.add_options()("critical-final-move-rediscover",
+                           "rediscover final moves once after retention, sharing the original trial budget (opt-in)");
     specific.add_options()("critical-final-route-budget", po::value<int>(),
                            "fresh route rediscovery after LUT repairs (0..32 trials, default 0)");
     specific.add_options()("critical-final-route-buf-users",
@@ -438,6 +440,9 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             log_error("Final critical move requires a fresh ordinary full GPU route with --rbf, no forced timing and no legacy move repair.\n");
         ctx->critical_final_move_budget = budget;
     }
+    ctx->critical_final_move_rediscover = vm.count("critical-final-move-rediscover") != 0;
+    if (ctx->critical_final_move_rediscover && !ctx->critical_final_move_budget)
+        log_error("--critical-final-move-rediscover requires a positive --critical-final-move-budget.\n");
     ctx->critical_lut6_swap_budget = 0;
     if (vm.count("critical-lut6-swap-budget")) {
         const int budget = vm["critical-lut6-swap-budget"].as<int>();
