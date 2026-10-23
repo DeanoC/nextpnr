@@ -184,6 +184,7 @@ TEST(GpuRouterTopologyCache, RecycledContextWithChangedDestinationRebuildsGraph)
     SinglePipDesign first = make_single_pip_design(*ctx, true);
     GpuRouterCfg first_cfg(ctx);
     first_cfg.cpu_backend = true;
+    first_cfg.gpu_required = false;
     ASSERT_TRUE(gpurouter(ctx, first_cfg));
     ASSERT_EQ(first.net->wires.at(first.destination).pip, first.pip);
 
@@ -194,6 +195,7 @@ TEST(GpuRouterTopologyCache, RecycledContextWithChangedDestinationRebuildsGraph)
     SinglePipDesign second = make_single_pip_design(*ctx, false);
     GpuRouterCfg second_cfg(ctx);
     second_cfg.cpu_backend = true;
+    second_cfg.gpu_required = false;
     ASSERT_TRUE(gpurouter(ctx, second_cfg));
     EXPECT_EQ(second.net->wires.at(second.destination).pip, second.pip);
 }
