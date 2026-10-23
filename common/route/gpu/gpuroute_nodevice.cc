@@ -29,7 +29,7 @@ std::string describe_devices() { return ""; }
 
 std::unique_ptr<Backend> create_device_backend(int /*device*/, std::string &error)
 {
-    error = "nextpnr was built without a GPU device backend (configure with -DGPU_ROUTER=HIP or CUDA)";
+    error = "nextpnr was built without a GPU device backend (configure with -DGPU_ROUTER=HIP, CUDA or METAL)";
     return nullptr;
 }
 

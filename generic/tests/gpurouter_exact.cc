@@ -71,14 +71,14 @@ RouteParams parameters()
     p.expand_k = 1; p.expand_div = 0;
     return p;
 }
-Result run_with_backend(std::unique_ptr<Backend> backend, Graph &graph, RouteParams p,
-                        const std::vector<int32_t> &seeds, const std::vector<float> &delays,
-                        const std::vector<float> &loads, const std::vector<ArcDesc> &arcs, int path_cap = 128,
-                        int bits = 10, bool bounded = false, bool large = true)
+Result run_with_backend(Backend &backend, Graph &graph, RouteParams p, const std::vector<int32_t> &seeds,
+                        const std::vector<float> &delays, const std::vector<float> &loads,
+                        const std::vector<ArcDesc> &arcs, int path_cap = 128, int bits = 10,
+                        bool bounded = false, bool large = true)
 {
     std::string error;
     const auto data = graph.data();
-    if (!backend->init(data, 1, bits, 1, bits + 1, error))
+    if (!backend.init(data, 1, bits, 1, bits + 1, error))
         throw std::runtime_error(error);
     TaskDesc t;
     t.net = 7; t.tree_cnt = int(seeds.size()); t.arc_cnt = int(arcs.size());
@@ -86,8 +86,15 @@ Result run_with_backend(std::unique_ptr<Backend> backend, Graph &graph, RoutePar
     t.bb_x0 = 0; t.bb_y0 = 0; t.bb_x1 = 3; t.bb_y1 = 3;
     p.use_bb = bounded;
     Result result;
-    backend->route(p, {t}, arcs, seeds, delays, loads, {}, large, result.arcs, result.paths);
+    backend.route(p, {t}, arcs, seeds, delays, loads, {}, large, result.arcs, result.paths);
     return result;
+}
+Result run_with_backend(std::unique_ptr<Backend> backend, Graph &graph, RouteParams p,
+                        const std::vector<int32_t> &seeds, const std::vector<float> &delays,
+                        const std::vector<float> &loads, const std::vector<ArcDesc> &arcs, int path_cap = 128,
+                        int bits = 10, bool bounded = false, bool large = true)
+{
+    return run_with_backend(*backend, graph, p, seeds, delays, loads, arcs, path_cap, bits, bounded, large);
 }
 Result run(Graph &graph, RouteParams p, const std::vector<int32_t> &seeds, const std::vector<float> &delays,
            const std::vector<float> &loads, const std::vector<ArcDesc> &arcs, int path_cap = 128,
@@ -159,9 +166,10 @@ std::string sha256(const std::string &message)
         out << std::hex << std::setw(8) << std::setfill('0') << v;
     return out.str();
 }
-std::vector<std::string> corpus()
+// Calls case_fn(graph, params, seeds, delays, loads, arcs, path_cap, bits,
+// bounded, large) for each of the 2560 corpus cases, in order.
+template <typename CaseFn> void for_each_corpus_case(CaseFn case_fn)
 {
-    std::vector<std::string> result;
     uint32_t random = 0x51eedu;
     auto next = [&]() { random = random * 1664525u + 1013904223u; return random; };
     for (int example = 0; example < 160; ++example) {
@@ -198,11 +206,19 @@ std::vector<std::string> corpus()
             const std::vector<float> delays = {0, setting % 2 ? -1.0f : 0.5f, 9, -1, 0.25f};
             const std::vector<float> loads = {2, 0, 0, 0, 1};
             const std::vector<ArcDesc> arcs = {{n - 1, setting % 2 ? 0.0f : 0.5f, 1}, {n - 2, 0.25f, 0.5f}};
-            result.push_back(serialize(run(graph, p, seeds, delays, loads, arcs,
-                                          setting % 5 == 0 ? 1 : 2 * n, setting % 4 == 0 ? 3 : 10,
-                                          setting % 2, setting % 3 != 1)));
+            case_fn(graph, p, seeds, delays, loads, arcs, setting % 5 == 0 ? 1 : 2 * n, setting % 4 == 0 ? 3 : 10,
+                    setting % 2 != 0, setting % 3 != 1);
         }
     }
+}
+std::vector<std::string> corpus()
+{
+    std::vector<std::string> result;
+    for_each_corpus_case([&](Graph &graph, const RouteParams &p, const std::vector<int32_t> &seeds,
+                             const std::vector<float> &delays, const std::vector<float> &loads,
+                             const std::vector<ArcDesc> &arcs, int path_cap, int bits, bool bounded, bool large) {
+        result.push_back(serialize(run(graph, p, seeds, delays, loads, arcs, path_cap, bits, bounded, large)));
+    });
     return result;
 }
 
@@ -340,6 +356,169 @@ TEST(GpuApproximateSearch, SinkReachedByEarlierArcAddsNoPathOnDevice)
     const auto device = run_with_backend(std::move(backend), graph, p, {0}, {0}, {0}, shared_sink_arcs);
     expect_shared_sink_routes(device);
     EXPECT_EQ(returned_routes(device), returned_routes(run(graph, p, {0}, {0}, {0}, shared_sink_arcs)));
+}
+
+// True when the device tests may run: under a gpu-run lease (see above) with
+// a device backend and a device. Otherwise skip_reason says why not.
+bool device_tests_enabled(std::string &skip_reason)
+{
+    const char *leased = std::getenv("FES_GPU_IDS");
+    if (leased == nullptr || *leased == '\0') {
+        skip_reason = "needs a gpu-run GPU lease (no FES_GPU_IDS)";
+        return false;
+    }
+    if (!device_backend_available()) {
+        skip_reason = "GPU device backend or GPU device unavailable";
+        return false;
+    }
+    return true;
+}
+
+bool any_overflow(const Result &result)
+{
+    return std::any_of(result.arcs.begin(), result.arcs.end(),
+                       [](const ArcResult &arc) { return arc.status == ARC_OVERFLOW; });
+}
+
+TEST(GpuApproximateSearch, CorpusMatchesCpuOnDevice)
+{
+    // The K-best corpus cases (the device ignores exact) must route as the
+    // CPU reference does, bit for bit. A case where either backend overflows
+    // is skipped: the CPU emulates only the load factor limit, not the
+    // device's pile and probe limits, and the router retries those arcs in
+    // the large lane.
+    std::string skip_reason;
+    if (!device_tests_enabled(skip_reason))
+        GTEST_SKIP() << skip_reason;
+    std::string error;
+    auto backend = create_device_backend(-1, error);
+    ASSERT_NE(backend, nullptr) << error;
+    int compared = 0, index = 0;
+    for_each_corpus_case([&](Graph &graph, RouteParams p, const std::vector<int32_t> &seeds,
+                             const std::vector<float> &delays, const std::vector<float> &loads,
+                             const std::vector<ArcDesc> &arcs, int path_cap, int bits, bool bounded, bool large) {
+        const int case_index = index++;
+        if (p.exact)
+            return;
+        const auto device = run_with_backend(*backend, graph, p, seeds, delays, loads, arcs, path_cap, bits, bounded,
+                                             large);
+        const auto cpu = run(graph, p, seeds, delays, loads, arcs, path_cap, bits, bounded, large);
+        if (any_overflow(device) || any_overflow(cpu))
+            return;
+        compared++;
+        EXPECT_EQ(returned_routes(device), returned_routes(cpu)) << "corpus case " << case_index;
+    });
+    // 640 K-best cases; the small (8-entry) tables overflow in a quarter
+    EXPECT_GE(compared, 400);
+}
+
+TEST(GpuApproximateSearch, ManyNetLaunchMatchesCpuOnDevice)
+{
+    // A 64x64 grid with long hops and congestion, 48 nets of 4 sinks each
+    // routed in one launch: many threadgroups at once, many threads per
+    // step, and real contention on the hash table and frontier. Costs are
+    // not dyadic, so every rounding step of the cost expressions counts.
+    std::string skip_reason;
+    if (!device_tests_enabled(skip_reason))
+        GTEST_SKIP() << skip_reason;
+    constexpr int side = 64, n = side * side, nets = 48, sinks = 4, path_cap = 2048;
+    uint32_t random = 0xc0ffeeu;
+    auto next = [&]() {
+        random = random * 1664525u + 1013904223u;
+        return random >> 8;
+    };
+    Graph graph(n);
+    for (int w = 0; w < n; ++w) {
+        graph.x[w] = int16_t(w % side);
+        graph.y[w] = int16_t(w / side);
+        const int x = w % side, y = w / side;
+        auto cost = [&]() { return 0.05f + float(next() % 37) * 0.013f; };
+        if (x + 1 < side)
+            graph.edge(w, w + 1, cost());
+        if (x > 0)
+            graph.edge(w, w - 1, cost());
+        if (y + 1 < side)
+            graph.edge(w, w + side, cost());
+        if (y > 0)
+            graph.edge(w, w - side, cost());
+        const int hop = int(next() % n);
+        graph.edge(w, hop, 0.3f + float(next() % 11) * 0.07f);
+        graph.occupancy[w] = int(next() % 3);
+        graph.history[w] = 1.0f + float(next() % 9) * 0.1f;
+        if (w % 97 == 0)
+            graph.flags[w] = WIRE_UNAVAILABLE;
+        if (w % 89 == 0)
+            graph.reservations[w] = int(next() % nets) | (w % 2 ? RESERVED_SOFT : 0);
+    }
+    const auto data = graph.data();
+    std::vector<TaskDesc> tasks;
+    std::vector<ArcDesc> arcs;
+    std::vector<int32_t> seeds;
+    std::vector<float> delays, loads;
+    for (int t = 0; t < nets; ++t) {
+        TaskDesc task;
+        task.net = t;
+        task.tree_off = int(seeds.size());
+        task.tree_cnt = 1 + t % 3;
+        for (int i = 0; i < task.tree_cnt; ++i) {
+            seeds.push_back(int32_t(next() % n));
+            delays.push_back(float(i) * 0.37f);
+            loads.push_back(float(i % 2));
+        }
+        task.arc_off = int(arcs.size());
+        task.arc_cnt = sinks;
+        for (int i = 0; i < sinks; ++i)
+            arcs.push_back(ArcDesc{int32_t(next() % n), 0.05f + float(next() % 19) * 0.05f, float(next() % 11) * 0.1f});
+        task.path_off = t * path_cap;
+        task.path_cap = path_cap;
+        task.cx = side / 2;
+        task.cy = side / 2;
+        task.hpwl = 1 + t;
+        task.fanout = sinks;
+        task.bb_x0 = 0;
+        task.bb_y0 = 0;
+        task.bb_x1 = side - 1;
+        task.bb_y1 = side - 1;
+        tasks.push_back(task);
+    }
+    struct Config
+    {
+        int expand_k, expand_div;
+        float load_penalty;
+        bool large;
+    };
+    for (const Config &config : {Config{256, 0, 0.0f, false}, Config{16, 4, 0.3f, true}}) {
+        SCOPED_TRACE(config.expand_k);
+        RouteParams p;
+        p.expand_k = config.expand_k;
+        p.expand_div = config.expand_div;
+        p.load_penalty = config.load_penalty;
+        p.pip_adder = 0.01f;
+        p.seed_delay_floor = 0.2f;
+        std::vector<Result> results;
+        std::string error;
+        for (bool device : {true, false}) {
+            std::unique_ptr<Backend> backend = device ? create_device_backend(-1, error) : create_cpu_backend();
+            ASSERT_NE(backend, nullptr) << error;
+            ASSERT_TRUE(backend->init(data, 12, 14, 4, 15, error)) << error;
+            Result result;
+            backend->route(p, tasks, arcs, seeds, delays, loads, {}, config.large, result.arcs, result.paths);
+            results.push_back(std::move(result));
+        }
+        int routed = 0;
+        for (const auto &arc : results[1].arcs)
+            routed += arc.status == ARC_OK && arc.path_len > 0;
+        EXPECT_FALSE(any_overflow(results[0]));
+        EXPECT_FALSE(any_overflow(results[1]));
+        EXPECT_GT(routed, nets * sinks / 2);
+        // Arc by arc, so a mismatch names the first arc that differs
+        std::istringstream device_routes(returned_routes(results[0])), cpu_routes(returned_routes(results[1]));
+        std::string device_arc, cpu_arc;
+        for (int arc = 0; std::getline(cpu_routes, cpu_arc, '|'); ++arc) {
+            ASSERT_TRUE(std::getline(device_routes, device_arc, '|'));
+            ASSERT_EQ(device_arc, cpu_arc) << "net " << arc / sinks << " arc " << arc % sinks;
+        }
+    }
 }
 
 TEST(GpuExactSearch, EqualCostFrontierChoosesLowerWireThenSinkEdge)

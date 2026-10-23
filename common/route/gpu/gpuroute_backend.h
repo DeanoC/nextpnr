@@ -19,7 +19,9 @@
  *
  *  This header is deliberately free of nextpnr types so that the device code
  *  (HIP for ROCm, or CUDA) can be compiled by the vendor compiler without
- *  pulling in the nextpnr headers. The host side of the router
+ *  pulling in the nextpnr headers. The Metal kernel (gpuroute_metal.metal)
+ *  declares its own copies of the structs below, which gpuroute_metal.mm
+ *  checks by size and offset. The host side of the router
  *  (common/route/gpurouter.cc) flattens the Arch routing graph into the plain
  *  arrays described by GraphData, and describes each batch of work as a list
  *  of tasks (one per net) with a list of arcs (one per sink) each.

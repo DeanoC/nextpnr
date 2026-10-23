@@ -19,6 +19,8 @@
  *  ("near/far" delta-stepping with an A* heuristic) per connection.
  *
  *  Included by gpuroute_hip.hip (ROCm / HIP) and gpuroute_cuda.cu (CUDA).
+ *  gpuroute_metal.metal is a port of this kernel to Metal; a change here must
+ *  be made there too.
  *
  *  Algorithm outline (per block, per arc of the task):
  *    1. Start from an empty private open-addressing hash table
@@ -764,18 +766,21 @@ struct Lane
     }
     void alloc(int nslots, int bits)
     {
+        const int new_cap = 1 << bits;
+        const size_t entries = (size_t)nslots * new_cap;
+        keys.ensure(entries);
+        vals.ensure(entries);
+        sdelay.ensure(entries);
+        sload.ensure(entries);
+        piles.ensure((size_t)nslots * NPILES * (size_t)new_cap);
+        cand_par.ensure(entries);
+        touched.ensure(entries);
         slots = nslots;
-        cap = 1 << bits;
-        keys.alloc((size_t)slots * cap);
-        vals.alloc((size_t)slots * cap);
-        sdelay.alloc((size_t)slots * cap);
-        sload.alloc((size_t)slots * cap);
-        piles.alloc((size_t)slots * NPILES * (size_t)cap);
-        cand_par.alloc((size_t)slots * cap);
-        touched.alloc((size_t)slots * cap);
-        // Every table starts empty; each arc leaves its table empty again
-        GPU_CHECK(hipMemset(keys.ptr, 0xFF, (size_t)slots * cap * sizeof(uint32_t)));
-        GPU_CHECK(hipMemset(vals.ptr, 0xFF, (size_t)slots * cap * sizeof(unsigned long long)));
+        cap = new_cap;
+        // Every table starts empty; each arc leaves its table empty again.
+        // Clear a reused buffer too: only the tables it last held are empty.
+        GPU_CHECK(hipMemset(keys.ptr, 0xFF, entries * sizeof(uint32_t)));
+        GPU_CHECK(hipMemset(vals.ptr, 0xFF, entries * sizeof(unsigned long long)));
     }
     void release()
     {
