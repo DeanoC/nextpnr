@@ -5,9 +5,9 @@ shortest-path searches run on a GPU, followed by a timing-repair phase that
 re-routes the worst-slack connections at pure delay. It is built on ROCm/HIP,
 CUDA or Metal (Apple silicon) and falls back to a host implementation of the
 same algorithm when nextpnr is built without a device backend or no GPU is
-present, or the selected GPU fails to initialize. The host backend is a scalar transcription
-of the kernel (same K-best steps, cost expressions, tie-breaking and
-per-lane capacity limits) that routes the independent nets of a batch on
+present, or the selected GPU fails to initialize. The host backend is a scalar
+transcription of the kernel (same K-best steps, cost expressions, tie-breaking
+and per-lane capacity limits) that routes the independent nets of a batch on
 the host's threads (`--threads`), so a machine without a GPU produces the
 same routing as one with a GPU, whatever its core count.
 Set `NEXTPNR_REQUIRE_GPU=1` or pass `--gpu-required` to fail instead of using
@@ -57,7 +57,9 @@ no value, so the port applies each step's candidates in two passes (the
 minimum, then the re-queue of the improved wires); this queues the same live
 frontier, without the stale duplicates the HIP/CUDA kernel can add, so only
 the point at which a frontier pile overflows can differ, and an overflow is
-retried in the large lane either way. The host code
+retried in the large lane either way. `blockThreads` selects one of three
+pipelines built from the same source; a device that cannot run 512 or 1024
+threads per threadgroup uses the largest size it can. The host code
 (`gpuroute_metal.mm`) keeps every buffer in shared memory and in a residency
 set, so uploads are copies and wire state updates are written in place.
 `--gpu-device` and a lease grant index the list of Metal devices; an Apple

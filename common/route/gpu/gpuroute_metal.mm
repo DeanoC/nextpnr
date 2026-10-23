@@ -196,7 +196,8 @@ struct Lane
         best.ensure(dev, (size_t)nslots);
         slots = nslots;
         cap = new_cap;
-        // Every table starts empty; each arc leaves its table empty again
+        // Every table starts empty; each arc leaves its table empty again.
+        // Clear a reused buffer too: only the tables it last held are empty.
         std::memset(keys.ptr(), 0xFF, entries * sizeof(uint32_t));
         std::memset(vals.ptr(), 0xFF, entries * sizeof(uint64_t));
     }

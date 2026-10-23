@@ -777,7 +777,8 @@ struct Lane
         touched.ensure(entries);
         slots = nslots;
         cap = new_cap;
-        // Every table starts empty; each arc leaves its table empty again
+        // Every table starts empty; each arc leaves its table empty again.
+        // Clear a reused buffer too: only the tables it last held are empty.
         GPU_CHECK(hipMemset(keys.ptr, 0xFF, entries * sizeof(uint32_t)));
         GPU_CHECK(hipMemset(vals.ptr, 0xFF, entries * sizeof(unsigned long long)));
     }
