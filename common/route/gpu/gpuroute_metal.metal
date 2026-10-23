@@ -30,6 +30,12 @@
  *  wire, with the final g), and none of the stale ones it may add when
  *  candidates for one wire land in decreasing order.
  *
+ *  Not yet ported are the HIP/CUDA speed-ups of #281, which leave the search
+ *  unchanged: clearing only the table slots an arc claimed, the per-edge
+ *  source-wire array, the packed per-wire record, f kept between the passes
+ *  of a step, and 512 or 1024 threads per net. This kernel runs 256 threads
+ *  per net whatever RouteParams::block_threads says.
+ *
  *  Wire state updates need no kernel: the buffers live in memory shared with
  *  the CPU, and the host writes them between launches.
  *
@@ -67,7 +73,7 @@ struct RouteParams
 {
     float est_x, est_y, est_weight, curr_cong_weight, bias_factor;
     float seed_delay_weight, seed_delay_floor, load_penalty, pip_adder;
-    int expand_k, expand_div, use_bb, ignore_soft, ignore_hist, max_probe, exact;
+    int expand_k, expand_div, use_bb, ignore_soft, ignore_hist, max_probe, block_threads, exact;
 };
 
 struct TaskDesc

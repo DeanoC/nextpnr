@@ -45,6 +45,8 @@ namespace gpuroute {
 
 namespace {
 
+// Threads per net, whatever RouteParams::block_threads asks for: the search
+// does not depend on the thread count
 constexpr int BLOCK = 256;
 constexpr int NPILES = 4;
 
@@ -56,7 +58,7 @@ struct LaunchArgs
     int32_t ntasks;
     int32_t cap;
 };
-static_assert(sizeof(RouteParams) == 64 && offsetof(RouteParams, exact) == 60, "RouteParams layout");
+static_assert(sizeof(RouteParams) == 68 && offsetof(RouteParams, exact) == 64, "RouteParams layout");
 static_assert(sizeof(TaskDesc) == 68 && offsetof(TaskDesc, bb_x0) == 44 && offsetof(TaskDesc, shell_cnt) == 64,
               "TaskDesc layout");
 static_assert(sizeof(ArcDesc) == 12, "ArcDesc layout");

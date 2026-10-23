@@ -57,7 +57,10 @@ no value, so the port applies each step's candidates in two passes (the
 minimum, then the re-queue of the improved wires); this queues the same live
 frontier, without the stale duplicates the HIP/CUDA kernel can add, so only
 the point at which a frontier pile overflows can differ, and an overflow is
-retried in the large lane either way. The host code
+retried in the large lane either way. The port does not yet have the
+HIP/CUDA kernel's touched-slot table clear, per-edge source-wire array or
+packed per-wire record (see Search speed; none of them changes the search),
+and runs 256 threads per net whatever `blockThreads` says. The host code
 (`gpuroute_metal.mm`) keeps every buffer in shared memory and in a residency
 set, so uploads are copies and wire state updates are written in place.
 `--gpu-device` and a lease grant index the list of Metal devices; an Apple
