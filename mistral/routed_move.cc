@@ -2,6 +2,9 @@
 #include "analogue_repair.h"
 #include "critical_cohort.h"
 #include "timing.h"
+#include "private_pair_decomposition_native.h"
+#include <array>
+#include <tuple>
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -335,10 +338,664 @@ void Arch::repair_critical_moves()
     }
     log_info("Critical move repair: cells=%zu tried=%d/%d kept=%d; unchanged unsupported coverage is not qualification.\n",cells.size(),tried,critical_move_route_budget,kept);
 }
+namespace {
+using FMConfigKey = std::tuple<int,int,int,int>;
+using FMConfigValue = std::tuple<int,bool,uint32_t,std::vector<uint8_t>>;
+using FMConfig = std::map<FMConfigKey,FMConfigValue>;
+using FMAlm = std::pair<uint32_t,uint8_t>;
+using FMCV = mistral::CycloneV;
+const std::array<IdString,6> fm_pins{id_A,id_B,id_C,id_D,id_E,id_F};
+const std::array<unsigned,64> fm_mlab_bits{
+    0,1,4,5,8,9,12,13,29,28,25,24,21,20,17,16,
+    2,3,6,7,10,11,14,15,31,30,27,26,23,22,19,18,
+    32,33,36,37,40,41,44,45,61,60,57,56,53,52,49,48,
+    34,35,38,39,42,43,46,47,63,62,59,58,55,54,51,50};
+bool fm_fail(std::string *reason,const char *message)
+{if(reason)*reason=message;return false;}
+FMAlm fm_alm(Context *ctx,BelId bel)
+{const auto &b=ctx->bel_data(bel).lab_data;return {b.lab,b.alm};}
+FMConfig fm_config(Context *ctx)
+{
+    FMConfig result;
+    for(const auto &s:ctx->cyclonev->bmux_get())if(s.btype==FMCV::LAB || s.btype==FMCV::MLAB)
+        result.emplace(FMConfigKey{int(s.btype),s.pos.v,int(s.mux),s.midx},FMConfigValue{s.type,s.def,s.s,s.r});
+    return result;
+}
+FMConfigKey fm_mask_key(Context *ctx,BelId bel)
+{const auto &b=ctx->bel_data(bel).lab_data;return {ctx->labs.at(b.lab).is_mlab?FMCV::MLAB:FMCV::LAB,bel.pos.v,FMCV::LUT_MASK,b.alm};}
+bool fm_mask(const FMConfig &config,const FMConfigKey &key,uint64_t &mask)
+{
+    auto it=config.find(key);if(it==config.end() || std::get<0>(it->second)!=FMCV::MT_RAM || std::get<3>(it->second).size()!=8)return false;
+    mask=0;for(unsigned i=0;i<8;++i)mask|=uint64_t(std::get<3>(it->second)[i])<<(8*i);return true;
+}
+unsigned fm_index(Context *ctx,BelId bel,unsigned address)
+{return ctx->labs.at(ctx->bel_data(bel).lab_data.lab).is_mlab?fm_mlab_bits.at(address):address;}
+bool fm_physical_value(bool l6,unsigned row,IdString pin,bool &value)
+{
+    if(pin==id_A)value=(row>>0)&1;
+    else if(pin==id_B)value=(row>>1)&1;
+    else if(pin==id_C)value=(row>>(l6&&row>=32?3:2))&1;
+    else if(pin==id_D)value=(row>>(l6&&row<32?3:2))&1;
+    else if(pin.in(id_E0,id_E1))value=(row>>(l6?5:3))&1;
+    else if(pin.in(id_F0,id_F1))value=(row>>4)&1;
+    else return false;
+    return true;
+}
+unsigned fm_width(CellInfo *cell)
+{return cell->type==id_MISTRAL_ALUT2?2:cell->type==id_MISTRAL_ALUT3?3:cell->type==id_MISTRAL_ALUT4?4:cell->type==id_MISTRAL_ALUT5?5:cell->type==id_MISTRAL_ALUT6?6:0;}
+// Evaluate actual configured bits for every raw-net assignment, with correlated
+// aliases and PIN_INV represented once. Physical input is !raw, independently
+// of PIN_INV; the configured LUT mask already contains the logical inversion.
+bool fm_truth(Context *ctx,CellInfo *cell,BelId bel,uint64_t mask,std::string *reason)
+{
+    const unsigned width=fm_width(cell),half=ctx->bel_data(bel).lab_data.idx;
+    if(!width || !cell->params.count(id_LUT) || cell->params.at(id_LUT).is_string ||
+       !cell->params.at(id_LUT).is_fully_def() || cell->params.at(id_LUT).size()!=(1u<<width))
+        return fm_fail(reason,"ordinary LUT function must be fully defined at its exact width");
+    const bool l6=width==6;std::vector<NetInfo *> signals;
+    for(unsigned i=0;i<width;++i) {
+        auto p=cell->pin_data.find(fm_pins[i]);if(p==cell->pin_data.end())return fm_fail(reason,"missing LUT pin state");
+        if(p->second.state==PIN_0 || p->second.state==PIN_1)continue;
+        auto *net=cell->getPort(fm_pins[i]);
+        if(!net || (p->second.state!=PIN_SIG && p->second.state!=PIN_INV) || p->second.bel_pins.size()!=1)
+            return fm_fail(reason,"invalid ordinary LUT physical input");
+        if(std::find(signals.begin(),signals.end(),net)==signals.end())signals.push_back(net);
+    }
+    const uint64_t lut=uint64_t(cell->params.at(id_LUT).as_int64());
+    for(unsigned raw=0;raw<(1u<<signals.size());++raw) {
+        unsigned logical=0;std::map<IdString,bool> physical;
+        for(unsigned i=0;i<width;++i) {
+            const auto &p=cell->pin_data.at(fm_pins[i]);bool value=false;
+            if(p.state==PIN_1)value=true;
+            else if(p.state!=PIN_0) {
+                auto at=std::find(signals.begin(),signals.end(),cell->getPort(fm_pins[i]));
+                bool input=(raw>>(at-signals.begin()))&1;value=input^(p.state==PIN_INV);
+                auto inserted=physical.emplace(p.bel_pins.front(),!input);
+                if(!inserted.second && inserted.first->second!=!input)return fm_fail(reason,"unrepresentable shared physical input");
+            }
+            logical|=unsigned(value)<<i;
+        }
+        bool found=false;
+        for(unsigned row=0;row<(l6?64:32);++row) {
+            bool match=true;
+            for(const auto &p:physical) {bool value=false;if(!fm_physical_value(l6,row,p.first,value))return fm_fail(reason,"unknown physical LUT pin");if(value!=p.second){match=false;break;}}
+            if(!match)continue;found=true;
+            unsigned index=fm_index(ctx,bel,row+(l6?0:32*half));
+            if(((mask>>index)&1)!=(1^((lut>>logical)&1)))return fm_fail(reason,"configured moved LUT truth mismatch");
+        }
+        if(!found)return fm_fail(reason,"raw input assignment has no native LUT address");
+    }
+    return true;
+}
+bool fm_no_local_consumer(Context *ctx,CellInfo *cell,BelId source,std::string *reason)
+{
+    const auto &where=ctx->bel_data(source).lab_data;const auto &alm=ctx->labs.at(where.lab).alms.at(where.alm);
+    auto *q=cell->getPort(id_Q);if(!q)return fm_fail(reason,"missing moved LUT Q");
+    for(unsigned i=0;i<4;++i)if(auto *ff=ctx->getBoundBelCell(alm.ff_bels[i])) {
+        if(i/2==where.idx && (ff->getPort(id_DATAIN)==q || ff->getPort(id_SDATA)==q ||
+            ctx->wires_connected(alm.comb_out[where.idx],alm.ff_in[i])))
+            return fm_fail(reason,"vacated half has a stationary local COMBOUT consumer");
+    }
+    return true;
+}
+bool fm_context(Context *ctx)
+{
+    return ctx && ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string()=="route" && ctx->bitstream_configured &&
+        ctx->analogue_cache_valid && !ctx->fes_any_slot_region_active && !ctx->fes_fence_active && !ctx->fes_has_reserved_rect &&
+        !ctx->fes_has_cram_region && ctx->fes_frozen_cells.empty() && ctx->fes_frozen_pips.empty();
+}
+bool fm_native_legal(Context *ctx)
+{
+    for(const auto &lab:ctx->labs)for(const auto &alm:lab.alms) {
+        for(auto bel:alm.lut_bels)if(ctx->getBoundBelCell(bel) && !ctx->isBelLocationValid(bel))return false;
+        for(auto bel:alm.ff_bels)if(ctx->getBoundBelCell(bel) && !ctx->isBelLocationValid(bel))return false;
+    }
+    return true;
+}
+#define FM_CHECK(condition) do { if (!(condition)) { if(reason)*reason="final move state mismatch: " #condition; return false; } } while (0)
+struct FinalMoveSnapshot {
+    struct Cell {
+        CellInfo *identity;
+        IdString type;
+        BelId bel;
+        PlaceStrength strength;
+        ClusterId cluster;
+        Region *region; PseudoCell *pseudo; IdString hierpath;
+        decltype(CellInfo::attrs) attrs;
+        decltype(CellInfo::params) params;
+        decltype(CellInfo::ports) ports;
+        ArchCellInfo architecture;
+    };
+    struct Net {
+        NetInfo *identity;
+        Region *region; IdString constant, hierpath; bool global; ClockConstraint *clock;
+        PortRef driver;
+        indexed_store<PortRef> users;
+        decltype(NetInfo::attrs) attrs;
+        std::vector<IdString> aliases;
+        std::map<WireId, std::pair<PipId, PlaceStrength>> wires;
+    };
+    std::map<IdString, Cell> cells;
+    std::map<IdString, Net> nets;
+    std::vector<IdString> cell_order, net_order;
+    std::vector<LABInfo> labs;
+    decltype(Context::net_aliases) aliases;
+    decltype(Context::attrs) attrs;
+    std::vector<uint8_t> rbf;
+    decltype(Context::settings) settings; size_t id_count, cache_size;
+    bool configured, cache_valid;
+    decltype(Context::ports) public_ports;
+    bool calibrated; float delay_prior; decltype(Context::pip_delay_observed) observed;
+    decltype(Context::pip_type_calibration) calibration;
+    using ClockValue=std::tuple<delay_t,delay_t,delay_t,delay_t,delay_t,delay_t,IdString,delay_t>;
+    std::map<IdString,ClockValue> clocks;
+    static std::map<IdString,ClockValue> clock_values(Context *ctx) {
+        std::map<IdString,ClockValue> result;
+        for(const auto &entry:ctx->nets)if(auto *c=entry.second->clkconstr.get())
+            result.emplace(entry.first,ClockValue{c->high.minDelay(),c->high.maxDelay(),c->low.minDelay(),c->low.maxDelay(),c->period.minDelay(),c->period.maxDelay(),c->phase_group,c->phase_shift});
+        return result;
+    }
+    using ArcKey = std::tuple<IdString, IdString, IdString>;
+    using ArcValue = std::tuple<bool, std::array<delay_t,4>, std::array<delay_t,4>>;
+    std::map<ArcKey, ArcValue> arcs;
+    static std::array<delay_t,4> quad(const DelayQuad &q)
+    { return {q.minRiseDelay(), q.maxRiseDelay(), q.minFallDelay(), q.maxFallDelay()}; }
+    static std::map<ArcKey, ArcValue> cache(Context *ctx)
+    {
+        std::map<ArcKey, ArcValue> result;
+        for (const auto &entry : ctx->nets) for (const auto &user : entry.second->users) {
+            auto it=ctx->analogue_arc_cache.find(&user);
+            if(it!=ctx->analogue_arc_cache.end()) result[{entry.first,user.cell->name,user.port}]={it->second.ok,quad(it->second.delay),quad(it->second.lut_input_delay)};
+        }
+        return result;
+    }
+    explicit FinalMoveSnapshot(Context *ctx) : labs(ctx->labs), aliases(ctx->net_aliases), attrs(ctx->attrs), settings(ctx->settings), id_count(ctx->idstring_idx_to_str->size()), cache_size(ctx->analogue_arc_cache.size()), configured(ctx->bitstream_configured), cache_valid(ctx->analogue_cache_valid), public_ports(ctx->ports), calibrated(ctx->pip_delay_calibrated), delay_prior(ctx->pip_delay_prior), observed(ctx->pip_delay_observed), calibration(ctx->pip_type_calibration), clocks(clock_values(ctx)), arcs(cache(ctx))
+    {
+        ctx->cyclonev->rbf_save(rbf);
+        for (const auto &entry : ctx->cells) {
+            auto *cell = entry.second.get();
+            cell_order.push_back(entry.first);
+            cells.emplace(entry.first, Cell{cell, cell->type, cell->bel, cell->belStrength, cell->cluster, cell->region, cell->pseudo_cell.get(), cell->hierpath, cell->attrs, cell->params,
+                                            cell->ports, *static_cast<ArchCellInfo *>(cell)});
+        }
+        for (const auto &entry : ctx->nets) {
+            auto *net = entry.second.get();
+            net_order.push_back(entry.first);
+            Net saved{net, net->region, net->constant_value, net->hierpath, net->is_global, net->clkconstr.get(), net->driver, net->users, net->attrs, net->aliases, {}};
+            for (const auto &wire : net->wires) saved.wires[wire.first]={wire.second.pip,wire.second.strength};
+            nets.emplace(entry.first, std::move(saved));
+        }
+    }
+    bool matches(Context *ctx, std::string *reason, CellInfo *moved = nullptr, BelId target = BelId(),
+                 const std::set<NetInfo *> &changed_routes = {}, const std::vector<LABInfo> *expected_labs = nullptr) const
+    {
+        FM_CHECK(ctx->pip_delay_calibrated==calibrated && ctx->pip_delay_prior==delay_prior && ctx->pip_delay_observed==observed);
+        for(size_t i=0;i<calibration.size();++i) {
+            const auto &a=calibration[i],&b=ctx->pip_type_calibration[i];
+            FM_CHECK(a.table_ps==b.table_ps && a.analogue_ps==b.analogue_ps && a.hops==b.hops);
+        }
+        FM_CHECK(clock_values(ctx)==clocks); FM_CHECK(ctx->ports.size()==public_ports.size());
+        for(const auto &p:public_ports) {
+            auto q=ctx->ports.find(p.first);FM_CHECK(q!=ctx->ports.end());
+            FM_CHECK(q->second.name==p.second.name && q->second.net==p.second.net && q->second.type==p.second.type && q->second.user_idx==p.second.user_idx);
+        }
+        FM_CHECK((ctx->settings) == ( settings)); FM_CHECK((ctx->idstring_idx_to_str->size()) == ( id_count));
+        FM_CHECK((ctx->bitstream_configured) == ( configured)); FM_CHECK((ctx->analogue_cache_valid) == ( cache_valid));
+        FM_CHECK((ctx->analogue_arc_cache.size()) == ( cache_size));
+        FM_CHECK((ctx->net_aliases) == ( aliases));
+        FM_CHECK((ctx->attrs) == ( attrs));
+
+        if (changed_routes.empty()) {
+            std::vector<uint8_t> now;ctx->cyclonev->rbf_save(now);FM_CHECK((now) == (rbf));FM_CHECK((cache(ctx)) == (arcs));
+        } else {
+            auto unchanged_arcs=cache(ctx),old_arcs=arcs;
+            for(auto *net:changed_routes) {
+                for(auto it=unchanged_arcs.begin();it!=unchanged_arcs.end();)if(std::get<0>(it->first)==net->name)it=unchanged_arcs.erase(it);else ++it;
+                for(auto it=old_arcs.begin();it!=old_arcs.end();)if(std::get<0>(it->first)==net->name)it=old_arcs.erase(it);else ++it;
+            }
+            FM_CHECK((unchanged_arcs) == (old_arcs));
+        }
+        FM_CHECK((ctx->cells.size()) == ( cells.size()));
+        FM_CHECK((ctx->nets.size()) == ( nets.size()));
+        std::vector<IdString> current_cells, current_nets;
+        for (const auto &entry : ctx->cells) current_cells.push_back(entry.first);
+        for (const auto &entry : ctx->nets) current_nets.push_back(entry.first);
+        FM_CHECK((current_cells) == ( cell_order));
+        FM_CHECK((current_nets) == ( net_order));
+        for (const auto &entry : cells) {
+            auto *cell = ctx->cells.at(entry.first).get();
+            const auto &old = entry.second;
+
+            FM_CHECK((cell) == ( old.identity)); FM_CHECK(cell->name==entry.first);
+            FM_CHECK((cell->type) == ( old.type));
+            FM_CHECK((cell->bel) == ( cell == moved ? target : old.bel));
+            FM_CHECK((cell->region) == ( old.region)); FM_CHECK((cell->pseudo_cell.get()) == ( old.pseudo)); FM_CHECK((cell->hierpath) == ( old.hierpath));
+            FM_CHECK((cell->belStrength) == ( old.strength));
+            if (cell->bel != BelId()) { FM_CHECK((ctx->getBoundBelCell(cell->bel)) == ( cell)); }
+            if(cell==moved) { FM_CHECK((ctx->getBoundBelCell(old.bel)) == ( nullptr)); }
+            FM_CHECK((cell->attrs) == ( old.attrs));
+            FM_CHECK((cell->params) == ( old.params));
+            FM_CHECK((cell->ports.size()) == ( old.ports.size()));
+            for (const auto &p : old.ports) {
+                FM_CHECK(cell->ports.count(p.first));
+                const auto &now = cell->ports.at(p.first);
+                FM_CHECK((now.name) == ( p.second.name));
+                FM_CHECK((now.type) == ( p.second.type));
+                FM_CHECK((now.net) == ( p.second.net));
+                FM_CHECK((now.user_idx) == ( p.second.user_idx));
+            }
+            const auto &arch = old.architecture;
+            FM_CHECK((cell->pin_data.size()) == ( arch.pin_data.size()));
+            for (const auto &pin : arch.pin_data) {
+                FM_CHECK(cell->pin_data.count(pin.first));
+                FM_CHECK((cell->pin_data.at(pin.first).state) == ( pin.second.state));
+                FM_CHECK((cell->pin_data.at(pin.first).bel_pins) == ( pin.second.bel_pins));
+            }
+            FM_CHECK((cell->cluster) == ( old.cluster));
+            FM_CHECK((cell->constr_x) == ( arch.constr_x));
+            FM_CHECK((cell->constr_y) == ( arch.constr_y));
+            FM_CHECK((cell->constr_z) == ( arch.constr_z));
+            FM_CHECK((cell->constr_abs_z) == ( arch.constr_abs_z));
+            FM_CHECK((cell->constr_children) == ( arch.constr_children));
+            if (ctx->is_comb_cell(cell->type)) {
+                FM_CHECK(cell->combInfo.lut_input_count==arch.combInfo.lut_input_count);
+                FM_CHECK(cell->combInfo.lut_input_count>=0 && cell->combInfo.lut_input_count<=int(cell->combInfo.lut_in.size()));
+                for (int i = 0; i < cell->combInfo.lut_input_count; ++i)
+                    FM_CHECK((cell->combInfo.lut_in[i]) == ( arch.combInfo.lut_in[i]));
+                FM_CHECK((cell->combInfo.comb_out) == ( arch.combInfo.comb_out));
+                FM_CHECK((cell->combInfo.lut_input_count) == ( arch.combInfo.lut_input_count));
+                FM_CHECK((cell->combInfo.used_lut_input_count) == ( arch.combInfo.used_lut_input_count));
+                FM_CHECK((cell->combInfo.lut_bits_count) == ( arch.combInfo.lut_bits_count));
+                FM_CHECK((cell->combInfo.chain_shared_input_count) == ( arch.combInfo.chain_shared_input_count));
+                FM_CHECK((cell->combInfo.is_carry) == ( arch.combInfo.is_carry));
+                FM_CHECK((cell->combInfo.is_shared) == ( arch.combInfo.is_shared));
+                FM_CHECK((cell->combInfo.is_extended) == ( arch.combInfo.is_extended));
+                FM_CHECK((cell->combInfo.carry_start) == ( arch.combInfo.carry_start));
+                FM_CHECK((cell->combInfo.carry_end) == ( arch.combInfo.carry_end));
+                FM_CHECK((cell->combInfo.mlab_group) == ( arch.combInfo.mlab_group));
+                if (cell->type == id_MISTRAL_MLAB) {
+                    FM_CHECK((cell->combInfo.wclk) == ( arch.combInfo.wclk));
+                    FM_CHECK((cell->combInfo.we) == ( arch.combInfo.we));
+                }
+            } else if (cell->type == id_MISTRAL_FF) {
+                FM_CHECK((cell->ffInfo.ctrlset) == ( arch.ffInfo.ctrlset));
+                FM_CHECK((cell->ffInfo.datain) == ( arch.ffInfo.datain));
+                FM_CHECK((cell->ffInfo.sdata) == ( arch.ffInfo.sdata));
+            }
+        }
+        for (const auto &entry : nets) {
+            auto *net = ctx->nets.at(entry.first).get();
+            const auto &old = entry.second;
+            FM_CHECK((net) == ( old.identity)); FM_CHECK(net->name==entry.first);
+            FM_CHECK((net->region) == ( old.region)); FM_CHECK((net->constant_value) == ( old.constant));
+            FM_CHECK((net->hierpath) == ( old.hierpath)); FM_CHECK((net->is_global) == ( old.global)); FM_CHECK((net->clkconstr.get()) == ( old.clock));
+            FM_CHECK((net->attrs) == ( old.attrs));FM_CHECK((net->aliases) == (old.aliases));
+            std::map<WireId,std::pair<PipId,PlaceStrength>> current;
+            for(const auto &wire:net->wires) {
+                current[wire.first]={wire.second.pip,wire.second.strength};
+                FM_CHECK((ctx->getBoundWireNet(wire.first)) == (net));
+                if(wire.second.pip!=PipId()) { FM_CHECK((ctx->getBoundPipNet(wire.second.pip)) == (net)); }
+            }
+            if(!changed_routes.count(net)) { FM_CHECK((current) == (old.wires)); }
+            FM_CHECK((net->driver.cell) == ( old.driver.cell));
+            FM_CHECK((net->driver.port) == ( old.driver.port));
+            FM_CHECK((net->users.entries()) == ( old.users.entries()));
+            auto stored_users = old.users;
+            for (auto user : stored_users.enumerate()) {
+                FM_CHECK(net->users.count(user.index));
+                FM_CHECK((net->users.at(user.index).cell) == ( user.value.cell));
+                FM_CHECK((net->users.at(user.index).port) == ( user.value.port));
+            }
+            auto actual = net->users, expected = old.users;
+            FM_CHECK((actual.capacity()) == ( expected.capacity()));
+            // Include holes/free-list order, not only active user identities.
+            for (int i = 0; i < old.users.capacity() + 8; ++i)
+                FM_CHECK((actual.add(PortRef{})) == ( expected.add(PortRef{})));
+        }
+        FM_CHECK((ctx->labs.size()) == ( labs.size()));
+        for (size_t lab = 0; lab < labs.size(); ++lab) {
+            const auto &now = ctx->labs[lab], &old = expected_labs ? expected_labs->at(lab) : labs[lab];
+            FM_CHECK((now.is_mlab) == ( old.is_mlab));
+            FM_CHECK((now.clk_wires) == ( old.clk_wires));
+            FM_CHECK((now.ena_wires) == ( old.ena_wires));
+            FM_CHECK((now.aclr_wires) == ( old.aclr_wires));
+            FM_CHECK((now.sclr_wire) == ( old.sclr_wire));
+            FM_CHECK((now.sload_wire) == ( old.sload_wire));
+            FM_CHECK((now.aclr_used) == ( old.aclr_used));
+            for (size_t alm = 0; alm < old.alms.size(); ++alm) {
+                const auto &a = now.alms[alm], &b = old.alms[alm];
+                FM_CHECK((a.comb_out) == ( b.comb_out));
+                FM_CHECK((a.sel_clk) == ( b.sel_clk));
+                FM_CHECK((a.sel_ena) == ( b.sel_ena));
+                FM_CHECK((a.sel_aclr) == ( b.sel_aclr));
+                FM_CHECK((a.sel_ef) == ( b.sel_ef));
+                FM_CHECK((a.ff_in) == ( b.ff_in));
+                FM_CHECK((a.ff_out) == ( b.ff_out));
+                FM_CHECK((a.lut_bels) == ( b.lut_bels));
+                FM_CHECK((a.ff_bels) == ( b.ff_bels));
+                FM_CHECK((a.l6_mode) == ( b.l6_mode));
+                FM_CHECK((a.carry_mode) == ( b.carry_mode));
+                FM_CHECK((a.clk_ena_idx) == ( b.clk_ena_idx));
+                FM_CHECK((a.aclr_idx) == ( b.aclr_idx));
+                FM_CHECK((a.unique_input_count) == ( b.unique_input_count));
+            }
+        }
+        return true;
+    }
+};
+
+#undef FM_CHECK
+void fm_require_restore(Context *ctx,const FinalMoveSnapshot &state,BelId target)
+{
+    std::string why;
+    if(ctx->getBoundBelCell(target) || !state.matches(ctx,&why))
+        log_error("Final move rollback failed: %s.\n",why.empty()?"destination remained occupied":why.c_str());
+}
+bool fm_tree(Context *ctx,NetInfo *net,std::string *reason)
+{
+    auto fail=[&](const char *s){return fm_fail(reason,s);};
+    if(!net || !ctx->nets.count(net->name) || ctx->nets.at(net->name).get()!=net || !net->driver.cell ||
+       !ctx->cells.count(net->driver.cell->name) || ctx->cells.at(net->driver.cell->name).get()!=net->driver.cell ||
+       net->wires.empty() || net->wires.size()>4096 || net->users.capacity()>4096)return fail("malformed final move routed net");
+    auto d=net->driver.cell->ports.find(net->driver.port);
+    if(d==net->driver.cell->ports.end() || d->second.name!=net->driver.port || d->second.type!=PORT_OUT || d->second.net!=net)
+        return fail("final move driver backreference mismatch");
+    auto root=ctx->getNetinfoSourceWire(net);
+    if(!net->wires.count(root) || net->wires.at(root).pip!=PipId())return fail("final move route root mismatch");
+    for(const auto &w:net->wires) {
+        if(ctx->getBoundWireNet(w.first)!=net || (w.second.pip!=PipId() && ctx->getBoundPipNet(w.second.pip)!=net))return fail("foreign final move route");
+        std::set<WireId> seen;
+        for(auto wire=w.first;wire!=root;) {
+            auto at=net->wires.find(wire);
+            if(!seen.insert(wire).second || at==net->wires.end() || at->second.pip==PipId() || ctx->getPipDstWire(at->second.pip)!=wire)return fail("malformed final move tree");
+            wire=ctx->getPipSrcWire(at->second.pip);
+        }
+    }
+    for(const auto &u:net->users) {
+        if(!u.cell || !ctx->cells.count(u.cell->name) || ctx->cells.at(u.cell->name).get()!=u.cell)return fail("missing final move user");
+        auto p=u.cell->ports.find(u.port);
+        if(p==u.cell->ports.end() || p->second.name!=u.port || p->second.type!=PORT_IN || p->second.net!=net ||
+           !net->users.count(p->second.user_idx) || &net->users.at(p->second.user_idx)!=&u)return fail("final move user slot mismatch");
+        auto sinks=ctx->getNetinfoSinkWires(net,u);if(sinks.size()==0)return fail("unmapped final move user");
+        for(auto wire:sinks)if(!net->wires.count(wire))return fail("unrouted final move user");
+    }
+    return true;
+}
+bool fm_masks(Context *ctx,CellInfo *cell,BelId home,BelId target,const FMConfig &before,const FinalMoveSnapshot &state,std::string *reason)
+{
+    auto now=fm_config(ctx),old=before;
+    std::set<FMConfigKey> permitted{fm_mask_key(ctx,home),fm_mask_key(ctx,target)};
+    if(now.size()!=old.size())return fm_fail(reason,"LAB configured field inventory changed");
+    uint64_t source_mask=0,target_mask=0;
+    if(!fm_mask(old,fm_mask_key(ctx,home),source_mask) || !fm_mask(now,fm_mask_key(ctx,target),target_mask) ||
+       !fm_truth(ctx,cell,home,source_mask,reason) || !fm_truth(ctx,cell,target,target_mask,reason))return false;
+    for(auto bel:{home,target}) {
+        auto key=fm_mask_key(ctx,bel);uint64_t a=0,b=0;
+        if(!fm_mask(old,key,a) || !fm_mask(now,key,b))return fm_fail(reason,"missing affected ALM mask");
+        auto where=ctx->bel_data(bel).lab_data;
+        // ALUT6 owns both halves; a stationary mate is never waived.
+        if(cell->type==id_MISTRAL_ALUT6) {
+            auto mate=ctx->labs.at(where.lab).alms.at(where.alm).lut_bels[1-where.idx];
+            if(ctx->getBoundBelCell(mate))return fm_fail(reason,"ALUT6 move has a stationary mate");
+        } else {
+            uint64_t stationary=0;
+            for(unsigned row=0;row<32;++row)stationary|=uint64_t(1)<<fm_index(ctx,bel,row+32*(1-where.idx));
+            if((a&stationary)!=(b&stationary))return fm_fail(reason,"stationary mate LUT mask changed");
+        }
+    }
+    // Output selectors belong to routing, not the stationary FF input/control
+    // state. Admit only the selected Q's direct COMBOUT -> native output PIP,
+    // or a completely unused output on the other side of that transition.
+    // No input-net, mate-half, foreign-net or arbitrary selector exception.
+    const std::array<FMCV::bmux_type_t,6> muxes{FMCV::TDFF0,FMCV::TDFF1,FMCV::TDFF1L,
+                                             FMCV::BDFF0,FMCV::BDFF1,FMCV::BDFF1L};
+    const std::array<FMCV::port_type_t,6> ports{FMCV::FFT0,FMCV::FFT1,FMCV::FFT1L,
+                                             FMCV::FFB0,FMCV::FFB1,FMCV::FFB1L};
+    auto *q=cell->getPort(id_Q);const auto &old_q=state.nets.at(q->name).wires;
+    for(auto bel:{home,target}) {
+        const auto &loc=ctx->bel_data(bel).lab_data;
+        const auto &alm=ctx->labs.at(loc.lab).alms.at(loc.alm);
+        const auto block=ctx->labs.at(loc.lab).is_mlab?FMCV::MLAB:FMCV::LAB;
+        for(unsigned i=3*loc.idx;i<3*(loc.idx+1);++i) {
+            FMConfigKey key{block,bel.pos.v,muxes[i],loc.alm};
+            auto a=old.find(key),b=now.find(key);
+            if(a==old.end() || b==now.end())return fm_fail(reason,"missing moved output selector");
+            auto out=ctx->get_port(block,bel.pos.x(),bel.pos.y(),loc.alm,ports[i]);
+            auto prior=old_q.find(out);auto current=q->wires.find(out);
+            bool was=prior!=old_q.end(),is=current!=q->wires.end();
+            // Leave every output never owned by Q in the exact static comparison.
+            if(!was && !is)continue;
+            for(const auto &net:state.nets)if(net.first!=q->name && net.second.wires.count(out))
+                return fm_fail(reason,"old moved output selector has a foreign owner");
+            if(auto *owner=ctx->getBoundWireNet(out);owner && owner!=q)
+                return fm_fail(reason,"new moved output selector has a foreign owner");
+            auto direct=[&](PipId pip) {
+                return pip!=PipId() && ctx->getPipSrcWire(pip)==alm.comb_out[loc.idx] &&
+                    ctx->getPipDstWire(pip)==out;
+            };
+            if((was && !direct(prior->second.first)) || (is && !direct(current->second.pip)))
+                return fm_fail(reason,"moved output selector lacks direct COMBOUT route");
+            auto expected=[](bool used) {
+                return FMConfigValue{FMCV::MT_MUX,!used,uint32_t(used?FMCV::NLUT:FMCV::REG),{}};
+            };
+            if(a->second!=expected(was) || b->second!=expected(is))
+                return fm_fail(reason,"moved output selector disagrees with routed ownership");
+            permitted.insert(key);
+        }
+    }
+    for(const auto &key:permitted) {old.erase(key);now.erase(key);}
+    if(old!=now) {
+        if(reason) {
+            *reason="stationary LAB configured selector or mode changed";
+            for(const auto &entry:old) {
+                auto it=now.find(entry.first);
+                if(it!=now.end() && it->second==entry.second)continue;
+                const auto &[block,pos,mux,index]=entry.first;
+                *reason += " ["+std::string(FMCV::bmux_type_names[mux])+" pos="+std::to_string(pos)+
+                    " index="+std::to_string(index)+" old="+std::to_string(std::get<2>(entry.second))+
+                    " new="+(it==now.end()?std::string("missing"):std::to_string(std::get<2>(it->second)))+"]";
+            }
+        }
+        return false;
+    }
+    return true;
+}
+bool fm_coverage(Context *ctx,TimingAnalyser &skew,TimingAnalyser &reference,CellInfo *cell,
+                 const std::vector<NetInfo *> &nets,std::string *reason)
+{
+    for(auto *timing:{&skew,&reference}) {
+        if(timing->have_loops)return fm_fail(reason,"timing loop");
+        bool source=cell->type==id_MISTRAL_ALUT6?critical_lut6_swap_source_coverage(ctx,*timing,cell,reason):
+            critical_lut_permutation_source_coverage(ctx,*timing,cell,reason);
+        if(!source)return false;
+        for(auto *net:nets)if(!critical_lut6_swap_output_coverage(ctx,*timing,net,reason))return false;
+    }
+    return true;
+}
+} // namespace
+
+bool critical_final_routed_move_trial(Context *ctx,CellInfo *cell,BelId target,int visit_budget,
+                                      const std::function<bool()> &accept,std::string *reason)
+{
+    std::vector<NetInfo *> nets;
+    if(!fm_context(ctx) || visit_budget<1 || visit_budget>500000 || target==BelId() || ctx->getBoundBelCell(target) ||
+       !footprint(ctx,cell,nets) || !fixed_pin_target(ctx,cell,target) || !cell->constr_children.empty() ||
+       cell->constr_x || cell->constr_y || cell->constr_z || cell->constr_abs_z)
+        return fm_fail(reason,"ineligible final move context, LUT, destination or budget");
+    if(!fm_native_legal(ctx))return fm_fail(reason,"original final move LAB legality rejected");
+    if(!fm_no_local_consumer(ctx,cell,cell->bel,reason))return false;
+    for(auto *net:nets)if(!fm_tree(ctx,net,reason))return false;
+    // Prove complete reciprocal port inventory, including missing indexed slots.
+    std::map<NetInfo *,size_t> references;size_t work=0;std::set<NetInfo *> changed(nets.begin(),nets.end());
+    for(const auto &c:ctx->cells)for(const auto &p:c.second->ports) {
+        if(++work>1000000)return fm_fail(reason,"final move reverse-port bound exceeded");
+        if(changed.count(p.second.net))++references[p.second.net];
+    }
+    for(auto *net:nets)if(references[net]!=size_t(net->users.entries())+1)return fm_fail(reason,"final move net has hidden observers");
+    auto home=cell->bel;const FinalMoveSnapshot before(ctx);const auto config=fm_config(ctx);
+    uint64_t source_mask=0;
+    if(!fm_mask(config,fm_mask_key(ctx,home),source_mask) || !fm_truth(ctx,cell,home,source_mask,reason))return false;
+    std::vector<LABInfo> expected;bool legal=false;
+    try {
+        critical_cohort_swap_trial(ctx,cell,target,[&] {
+            refresh_modes(ctx,home);refresh_modes(ctx,target);
+            expected=before.labs;
+            for(auto bel:{home,target}) {
+                auto where=fm_alm(ctx,bel);const auto &now=ctx->labs.at(where.first).alms.at(where.second);
+                auto &allowed=expected.at(where.first).alms.at(where.second);
+                allowed.unique_input_count=now.unique_input_count;allowed.l6_mode=now.l6_mode;allowed.carry_mode=now.carry_mode;
+            }
+            legal=before.matches(ctx,reason,cell,target,changed,&expected);return false;
+        });
+    }catch(...){fm_require_restore(ctx,before,target);throw;}
+    fm_require_restore(ctx,before,target);
+    if(!legal)return fm_fail(reason,"final move placement or stationary native state rejected");
+    std::vector<SavedNet> stationary;
+    for(auto *net:nets) {
+        stationary.push_back({net,{},{},WireId()});
+        for(const auto &w:net->wires)stationary.back().wires.emplace_back(w.first,w.second.pip,w.second.strength);
+        if(!stationary_paths(ctx,cell,stationary.back()))return fm_fail(reason,"malformed stationary final move path");
+    }
+    auto physical_safe=[&] {
+        if(!before.matches(ctx,reason,cell,target,changed,&expected))return false;
+        if(!fm_native_legal(ctx))return fm_fail(reason,"candidate final move LAB legality rejected");
+        for(auto *net:nets)if(!fm_tree(ctx,net,reason))return false;
+        for(const auto &n:stationary)for(const auto &wire:n.wires)if(n.stationary.count(std::get<0>(wire))) {
+            auto it=n.net->wires.find(std::get<0>(wire));
+            if(it==n.net->wires.end() || it->second.pip!=std::get<1>(wire) || it->second.strength!=std::get<2>(wire))
+                return fm_fail(reason,"stationary input path or strength changed");
+        }
+        return fm_masks(ctx,cell,home,target,config,before,reason);
+    };
+    bool kept=false;
+    try {
+        kept=critical_routed_move_trial(ctx,cell,target,visit_budget,[&] {
+            if(!physical_safe())return false;
+            if(!accept())return false;
+            return physical_safe();
+        },reason);
+    }catch(...){fm_require_restore(ctx,before,target);throw;}
+    if(!kept)fm_require_restore(ctx,before,target);
+    return kept;
+}
+void Arch::repair_final_critical_moves()
+{
+    if(!critical_final_move_budget)return;
+    Context *ctx=getCtx();
+    if(critical_final_move_budget<0 || critical_final_move_budget>16 || !fm_context(ctx) ||
+       critical_move_route_budget || ctx->force)
+        log_error("Final critical move requires a configured ordinary route and budget 1..16.\n");
+    auto analyse=[&](bool skew) {auto t=std::make_unique<TimingAnalyser>(ctx);t->with_clock_skew=skew;t->setup(false,false,true);return t;};
+    auto before=analyse(true),reference=analyse(false);
+    if(before->have_loops || reference->have_loops)log_error("Final critical move refuses timing loops.\n");
+    auto inventory=critical_swap_live_endpoint_snapshot(ctx,*before,*reference);
+    struct Choice {CellInfo *cell;BelId target;float slack;double gain;};
+    std::vector<std::pair<float,CellInfo *>> cells;
+    for (const auto &entry:ctx->cells) {
+        auto *c=entry.second.get();std::vector<NetInfo *> nets;
+        if (!footprint(ctx,c,nets)) continue;
+        float slack=std::numeric_limits<float>::infinity();
+        for (auto *n:nets) for (const auto &u:n->users) {
+            auto s=before->get_setup_slack(CellPortKey(u));
+            if (std::isfinite(s) && s!=std::numeric_limits<float>::lowest()) slack=std::min(slack,float(s));
+        }
+        if(slack>=0) continue;
+        std::string why;
+        if(!fm_no_local_consumer(ctx,c,c->bel,&why) || !fm_coverage(ctx,*before,*reference,c,nets,&why)) {
+            log_info("Final critical move filter: cell %s: %s.\n",ctx->nameOf(c),why.c_str());continue;
+        }
+        cells.emplace_back(slack,c);
+    }
+    std::sort(cells.begin(),cells.end(),[&](const auto &a,const auto &b) {
+        return a.first!=b.first ? a.first<b.first : a.second->name.str(ctx)<b.second->name.str(ctx);
+    });
+    if(cells.size()>32) cells.resize(32);
+    // Before any placement preview, including legality ranking. Configuration,
+    // native cache and every exact indexed slot are checked after each preview.
+    const FinalMoveSnapshot discovery(ctx);
+    std::vector<std::vector<Choice>> choices;
+    for(const auto &entry:cells) {
+        auto *c=entry.second;std::vector<Loc> anchors{ctx->getBelLocation(c->bel)};
+        struct Edge {Loc point;double weight;};std::vector<Edge> edges;
+        auto add=[&](CellInfo *other,const PortRef &sink) {
+            if(!other || other==c || other->bel==BelId()) return;
+            auto loc=ctx->getBelLocation(other->bel);auto slack=before->get_setup_slack(CellPortKey(sink));
+            double weight=std::isfinite(slack)&&slack<0&&slack!=std::numeric_limits<float>::lowest()?1.0-std::max(-10000.0,double(slack))/1000.0:1.0;
+            edges.push_back({loc,weight});if(anchors.size()<5) anchors.push_back(loc);
+        };
+        for(const auto &port:c->ports) {
+            auto *n=port.second.net;if(!n)continue;
+            if(port.second.type==PORT_IN) add(n->driver.cell,PortRef{c,port.first});
+            else for(const auto &u:n->users) add(u.cell,u);
+        }
+        auto cost=[&](BelId bel) {auto l=ctx->getBelLocation(bel);double result=0;
+            for(const auto &e:edges) { result+=e.weight*(std::abs(l.x-e.point.x)+std::abs(l.y-e.point.y)); }
+            return result;};
+        double original=cost(c->bel);std::set<BelId> visited;std::vector<Choice> local;
+        for(auto anchor:anchors) for(int dx=-1;dx<=1;++dx) for(int dy=-1;dy<=1;++dy) {
+            int x=anchor.x+dx,y=anchor.y+dy;
+            if(x<0||y<0||x>=ctx->getGridDimX()||y>=ctx->getGridDimY())continue;
+            for(auto target:ctx->getBelsByTile(x,y)) {
+                if(!visited.insert(target).second || ctx->getBoundBelCell(target) || !fixed_pin_target(ctx,c,target))continue;
+                double gain=original-cost(target);if(gain>0) local.push_back({c,target,entry.first,gain});
+            }
+        }
+        std::sort(local.begin(),local.end(),[](const Choice &a,const Choice &b) {return a.gain!=b.gain?a.gain>b.gain:a.target<b.target;});
+        std::vector<Choice> legal;
+        for(const auto &choice:local) {
+            bool ok=false;
+            try {critical_cohort_swap_trial(ctx,c,choice.target,[&]{ok=true;return false;});}
+            catch(...){fm_require_restore(ctx,discovery,choice.target);throw;}
+            fm_require_restore(ctx,discovery,choice.target);
+            if(ok) legal.push_back(choice);
+            if(legal.size()==4) break;
+        }
+        choices.push_back(std::move(legal));
+    }
+    int tried=0,kept=0;
+    for(size_t rank=0;rank<4 && tried<critical_final_move_budget;++rank)for(auto &list:choices) {
+        if(tried>=critical_final_move_budget)break;
+        if(rank>=list.size())continue;
+        const auto choice=list[rank];std::string reason="native timing rejected";std::vector<NetInfo *> nets;
+        if(ctx->getBoundBelCell(choice.target) || !footprint(ctx,choice.cell,nets) ||
+           !fixed_pin_target(ctx,choice.cell,choice.target) || !fm_no_local_consumer(ctx,choice.cell,choice.cell->bel,&reason) ||
+           !fm_coverage(ctx,*before,*reference,choice.cell,nets,&reason)) {
+            log_info("Final critical move stale: cell %s: %s.\n",ctx->nameOf(choice.cell),reason.c_str());continue;
+        }
+        const FinalMoveSnapshot pretrial(ctx);bool legal=false;
+        try {critical_cohort_swap_trial(ctx,choice.cell,choice.target,[&]{legal=true;return false;});}
+        catch(...){fm_require_restore(ctx,pretrial,choice.target);throw;}
+        fm_require_restore(ctx,pretrial,choice.target);
+        if(!legal) {log_info("Final critical move stale: cell %s: native target legality.\n",ctx->nameOf(choice.cell));continue;}
+        ++tried;std::unique_ptr<TimingAnalyser> after,after_reference;json11::Json next_inventory;
+        bool accepted=critical_final_routed_move_trial(ctx,choice.cell,choice.target,500000,[&] {
+            after=analyse(true);after_reference=analyse(false);
+            if(!fm_coverage(ctx,*after,*after_reference,choice.cell,nets,&reason))return false;
+            for(auto frames:{std::make_pair(before.get(),after.get()),std::make_pair(reference.get(),after_reference.get())}) {
+                const auto &a=frames.first->get_timing_result(),&b=frames.second->get_timing_result();
+                auto report=[&](const char *kind,const auto &old,const auto &now) {
+                    std::set<IdString> clocks;for(const auto &row:old)clocks.insert(row.first);for(const auto &row:now)clocks.insert(row.first);
+                    for(auto clock:clocks) {auto x=old.find(clock),y=now.find(clock);
+                        if(x==old.end() || y==now.end())log_info("Final critical move margin %d: skew=%d %s %s coverage=%d/%d.\n",tried,int(frames.first->with_clock_skew),kind,clock.c_str(ctx),int(x!=old.end()),int(y!=now.end()));
+                        else log_info("Final critical move margin %d: skew=%d %s %s before=%d after=%d ps.\n",tried,int(frames.first->with_clock_skew),kind,clock.c_str(ctx),int(x->second),int(y->second));
+                    }
+                };
+                report("setup",a.clock_setup_slack,b.clock_setup_slack);report("hold",a.clock_hold_slack,b.clock_hold_slack);
+                if(!private_pair_clock_safe(a,b,&reason))return false;
+            }
+            next_inventory=critical_swap_live_endpoint_snapshot(ctx,*after,*after_reference);
+            return critical_route_snapshot_safe(inventory,next_inventory,&reason);
+        },&reason);
+        log_info("Final critical move trial %d: cell %s target %s accepted=%d; %s.\n",tried,ctx->nameOf(choice.cell),ctx->nameOfBel(choice.target),int(accepted),reason.c_str());
+        if(accepted){before=std::move(after);reference=std::move(after_reference);inventory=std::move(next_inventory);++kept;list.clear();}
+    }
+    log_info("Final critical move repair: cells=%zu tried=%d/%d kept=%d; unchanged unsupported coverage is not qualification.\n",cells.size(),tried,critical_final_move_budget,kept);
+}
+
 // Explicit zero and absent options preserve the original serialized bytes.
 void Arch::refresh_post_route_repair_checkpoint()
 {
-    if (!critical_route_budget && !critical_final_route_budget && !critical_move_route_budget && !critical_lut6_swap_budget && !critical_private_pair_budget && !critical_lut_permute_budget) return;
+    if (!critical_route_budget && !critical_final_route_budget && !critical_final_move_budget && !critical_move_route_budget && !critical_lut6_swap_budget && !critical_private_pair_budget && !critical_lut_permute_budget) return;
     save_fes_pin_maps();
     archInfoToAttributes();
 }

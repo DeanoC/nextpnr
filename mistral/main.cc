@@ -116,6 +116,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "retain original protected-LAB COMB output exits during LUT permutations (opt-in)");
     specific.add_options()("critical-unobserved-arith-outputs",
                            "allow proved unobserved arithmetic leaves in private-pair/permutation coverage (opt-in)");
+    specific.add_options()("critical-final-move-budget", po::value<int>(),
+                           "Diagnostic final ordinary-LUT moves after repairs (0..16, default 0)");
     specific.add_options()("critical-final-route-budget", po::value<int>(),
                            "fresh route rediscovery after LUT repairs (0..32 trials, default 0)");
     specific.add_options()("critical-final-route-buf-users",
@@ -213,6 +215,7 @@ void MistralCommandHandler::customBitstream(Context *ctx)
         ctx->repair_critical_private_pairs();
         ctx->repair_critical_lut_permutations();
         ctx->repair_critical_routes(true);
+        ctx->repair_final_critical_moves();
         ctx->build_bitstream();
         // Post-route repairs happen after Arch::route cached JSON attributes.
         // Publish the final live trees, BELs and physical pin/LAB state.
@@ -414,6 +417,26 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
                        (vm.count("critical-move-route-budget") && vm["critical-move-route-budget"].as<int>() > 0)))
             log_error("Final critical route rediscovery requires a fresh ordinary full GPU route with --rbf, no forced timing and no move repair.\n");
         ctx->critical_final_route_budget = budget;
+    }
+    ctx->critical_final_move_budget = 0;
+    if (vm.count("critical-final-move-budget")) {
+        const int budget = vm["critical-final-move-budget"].as<int>();
+        if (budget < 0 || budget > 16)
+            log_error("--critical-final-move-budget must be between 0 and 16.\n");
+        const bool prior = ctx->critical_final_route_budget > 0 ||
+            (vm.count("critical-lut6-swap-budget") && vm["critical-lut6-swap-budget"].as<int>() > 0) ||
+            (vm.count("critical-private-pair-budget") && vm["critical-private-pair-budget"].as<int>() > 0) ||
+            (vm.count("critical-lut-permute-budget") && vm["critical-lut-permute-budget"].as<int>() > 0);
+        if (budget && !prior)
+            log_error("--critical-final-move-budget requires a positive explicit preceding LUT or final-route repair budget.\n");
+        if (budget && (!vm.count("rbf") || vm.count("no-route") || vm.count("no-pack") || vm.count("no-place") ||
+                       vm.count("pack-only") || vm.count("fes-scaffold") || vm.count("fes-cart") || vm.count("fes-cram-region") ||
+                       (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != "") ||
+                       !vm.count("router") || vm["router"].as<std::string>() != "gpu" || ctx->force ||
+                       (ctx->settings.count(ctx->id("timing/allowFail")) && ctx->setting<bool>("timing/allowFail")) ||
+                       (vm.count("critical-move-route-budget") && vm["critical-move-route-budget"].as<int>() > 0)))
+            log_error("Final critical move requires a fresh ordinary full GPU route with --rbf, no forced timing and no legacy move repair.\n");
+        ctx->critical_final_move_budget = budget;
     }
     ctx->critical_lut6_swap_budget = 0;
     if (vm.count("critical-lut6-swap-budget")) {
