@@ -721,6 +721,122 @@ bool fm_tree(Context *ctx,NetInfo *net,std::string *reason)
     }
     return true;
 }
+bool fm_output_selectors(Context *ctx,const std::vector<NetInfo *> &incident,
+                         const FMConfig &old,const FMConfig &now,const FinalMoveSnapshot &state,
+                         std::set<FMConfigKey> &permitted,std::string *reason)
+{
+    if(old.size()!=now.size())return fm_fail(reason,"output selector inventory changed");
+    const std::array<FMCV::bmux_type_t,6> muxes{FMCV::TDFF0,FMCV::TDFF1,FMCV::TDFF1L,
+                                             FMCV::BDFF0,FMCV::BDFF1,FMCV::BDFF1L};
+    const std::array<FMCV::port_type_t,6> ports{FMCV::FFT0,FMCV::FFT1,FMCV::FFT1L,
+                                             FMCV::FFB0,FMCV::FFB1,FMCV::FFB1L};
+    std::map<std::pair<int,int>,std::pair<const LABInfo *,bool>> lab_index;
+    for(const auto &lab:ctx->labs) {
+        auto key=std::make_pair(int(lab.is_mlab?FMCV::MLAB:FMCV::LAB),int(lab.alms[0].lut_bels[0].pos.v));
+        auto inserted=lab_index.emplace(key,std::make_pair(&lab,false));
+        if(!inserted.second)inserted.first->second.second=true;
+    }
+    struct OutputProof {FMConfigKey key;const ALMInfo *alm;unsigned output;WireId wire;};
+    struct Owners {
+        const FinalMoveSnapshot::Net *saved=nullptr;
+        NetInfo *live=nullptr;
+        bool saved_duplicate=false,live_duplicate=false;
+    };
+    std::vector<OutputProof> proofs;
+    std::map<WireId,Owners> owners;
+    for(const auto &entry:old) {
+        auto current=now.find(entry.first);
+        if(current==now.end())return fm_fail(reason,"missing configured field");
+        const auto &[block,pos,mux,index]=entry.first;
+        auto mi=std::find(muxes.begin(),muxes.end(),mux);
+        if(mi==muxes.end())continue;
+        unsigned output=mi-muxes.begin();
+        auto li=lab_index.find({block,pos});
+        if(li!=lab_index.end() && li->second.second)return fm_fail(reason,"duplicate output selector LAB identity");
+        const LABInfo *lab=li==lab_index.end()?nullptr:li->second.first;
+        if(!lab || index<0 || size_t(index)>=lab->alms.size())return fm_fail(reason,"missing output selector ALM identity");
+        const auto &alm=lab->alms[index];auto loc=alm.lut_bels[0].pos;
+        auto out=ctx->get_port(lab->is_mlab?FMCV::MLAB:FMCV::LAB,loc.x(),loc.y(),index,ports[output]);
+        if(out==WireId())return fm_fail(reason,"missing output selector wire");
+        bool touched=false;
+        for(auto *net:incident) {
+            auto n=state.nets.find(net->name);
+            if(n!=state.nets.end() && n->second.identity==net && n->second.wires.count(out) &&
+               n->second.driver.cell && n->second.driver.port==id_Q) {
+                auto c=state.cells.find(n->second.driver.cell->name);
+                if(c!=state.cells.end() && c->second.identity==n->second.driver.cell &&
+                   c->second.bel==alm.lut_bels[output/3])touched=true;
+            }
+            if(net->wires.count(out) && net->driver.cell && net->driver.port==id_Q &&
+               net->driver.cell->bel==alm.lut_bels[output/3])touched=true;
+        }
+        if(!touched && current->second==entry.second)continue;
+        proofs.push_back({entry.first,&alm,output,out});
+        owners.emplace(out,Owners{});
+    }
+    // Scan route stores once, retaining duplicate evidence for selected outputs.
+    for(const auto &n:state.nets)for(const auto &w:n.second.wires) {
+        auto at=owners.find(w.first);if(at==owners.end())continue;
+        if(at->second.saved)at->second.saved_duplicate=true;
+        else at->second.saved=&n.second;
+    }
+    for(const auto &n:ctx->nets)for(const auto &w:n.second->wires) {
+        auto at=owners.find(w.first);if(at==owners.end())continue;
+        if(at->second.live)at->second.live_duplicate=true;
+        else at->second.live=n.second.get();
+    }
+    for(const auto &proof:proofs) {
+        const auto &alm=*proof.alm;auto output=proof.output;auto out=proof.wire;
+        const auto &entry=*old.find(proof.key);auto current=now.find(proof.key);
+        const auto &indexed=owners.at(out);
+        auto valid=[&](bool saved,const FMConfigValue &value) {
+            NetInfo *owner=nullptr;PipId pip;WireId root;unsigned roots=0;
+            const FinalMoveSnapshot::Net *prior=nullptr;
+            if(saved) {
+                if(indexed.saved_duplicate)return false;
+                prior=indexed.saved;owner=prior?prior->identity:nullptr;
+            } else {
+                if(indexed.live_duplicate)return false;
+                owner=indexed.live;
+                if(ctx->getBoundWireNet(out)!=owner)return false;
+            }
+            if(!owner)return value==FMConfigValue{FMCV::MT_MUX,true,uint32_t(FMCV::REG),{}};
+            if(std::find(incident.begin(),incident.end(),owner)==incident.end())return false;
+            BelId driver_bel;IdString driver_port;CellInfo *driver=nullptr;
+            if(saved) {
+                driver=prior->driver.cell;driver_port=prior->driver.port;
+                if(!driver)return false;
+                auto c=state.cells.find(driver->name);
+                if(c==state.cells.end() || c->second.identity!=driver)return false;
+                driver_bel=c->second.bel;
+                auto port=c->second.ports.find(driver_port);
+                if(port==c->second.ports.end() || port->second.net!=owner || port->second.type!=PORT_OUT)return false;
+                auto pin=c->second.architecture.pin_data.find(id_Q);
+                if(pin==c->second.architecture.pin_data.end() || pin->second.state!=PIN_SIG ||
+                   pin->second.bel_pins!=std::vector<IdString>{id_COMBOUT})return false;
+                for(const auto &w:prior->wires)if(w.second.first==PipId()){root=w.first;++roots;}
+                pip=prior->wires.at(out).first;
+            } else {
+                driver=owner->driver.cell;driver_port=owner->driver.port;if(!driver)return false;
+                driver_bel=driver->bel;
+                auto pin=driver->pin_data.find(id_Q);
+                if(pin==driver->pin_data.end() || pin->second.state!=PIN_SIG ||
+                   pin->second.bel_pins!=std::vector<IdString>{id_COMBOUT})return false;
+                for(const auto &w:owner->wires)if(w.second.pip==PipId()){root=w.first;++roots;}
+                pip=owner->wires.at(out).pip;
+                if(pip==PipId() || ctx->getNetinfoSourceWire(owner)!=root || ctx->getBoundWireNet(root)!=owner || ctx->getBoundPipNet(pip)!=owner || ctx->getBoundBelCell(driver_bel)!=driver)return false;
+            }
+            // COMBOUT-only admission: FFOUT and non-Q source identities reject.
+            if(driver_bel!=alm.lut_bels[output/3] || driver_port!=id_Q || roots!=1 ||
+               root!=alm.comb_out[output/3] || ctx->getBelPinWire(driver_bel,id_COMBOUT)!=root || pip==PipId() ||
+               ctx->getPipSrcWire(pip)!=root || ctx->getPipDstWire(pip)!=out)return false;
+            return value==FMConfigValue{FMCV::MT_MUX,false,uint32_t(FMCV::NLUT),{}};
+        };
+        if(!valid(true,entry.second) || !valid(false,current->second))return fm_fail(reason,"changed output selector lacks incident direct COMBOUT ownership");
+        permitted.insert(entry.first);
+    }
+    return true;
+}
 bool fm_masks(Context *ctx,CellInfo *cell,BelId home,BelId target,const FMConfig &before,const FinalMoveSnapshot &state,std::string *reason)
 {
     auto now=fm_config(ctx),old=before;
@@ -729,60 +845,75 @@ bool fm_masks(Context *ctx,CellInfo *cell,BelId home,BelId target,const FMConfig
     uint64_t source_mask=0,target_mask=0;
     if(!fm_mask(old,fm_mask_key(ctx,home),source_mask) || !fm_mask(now,fm_mask_key(ctx,target),target_mask) ||
        !fm_truth(ctx,cell,home,source_mask,reason) || !fm_truth(ctx,cell,target,target_mask,reason))return false;
+    // Only a completely unobserved ALM can transition to/from native defaults.
     for(auto bel:{home,target}) {
         auto key=fm_mask_key(ctx,bel);uint64_t a=0,b=0;
         if(!fm_mask(old,key,a) || !fm_mask(now,key,b))return fm_fail(reason,"missing affected ALM mask");
-        auto where=ctx->bel_data(bel).lab_data;
-        // ALUT6 owns both halves; a stationary mate is never waived.
-        if(cell->type==id_MISTRAL_ALUT6) {
-            auto mate=ctx->labs.at(where.lab).alms.at(where.alm).lut_bels[1-where.idx];
-            if(ctx->getBoundBelCell(mate))return fm_fail(reason,"ALUT6 move has a stationary mate");
+        const auto where=ctx->bel_data(bel).lab_data;
+        const auto &alm=ctx->labs.at(where.lab).alms.at(where.alm);
+        auto occupant=[&](BelId slot,bool saved)->CellInfo* {
+            if(!saved)return ctx->getBoundBelCell(slot);
+            CellInfo *found=nullptr;
+            for(const auto &c:state.cells)if(c.second.bel==slot) {
+                if(found)return cell; // Duplicate saved occupancy cannot qualify as empty.
+                found=c.second.identity;
+            }
+            return found;
+        };
+        auto empty=[&](bool saved) {
+            for(auto slot:alm.lut_bels)if(occupant(slot,saved))return false;
+            for(auto slot:alm.ff_bels)if(occupant(slot,saved))return false;
+            return true;
+        };
+        bool old_empty=empty(true),new_empty=empty(false);
+        if(old_empty!=new_empty) {
+            if(fm_width(cell)<2 || fm_width(cell)>5)return fm_fail(reason,"empty ALM requires ordinary ALUT2..5");
+            for(auto slot:alm.lut_bels)
+                if(occupant(slot,!old_empty)!=(slot==bel?cell:nullptr))return fm_fail(reason,"empty ALM opposite frame has a mate");
+            for(auto slot:alm.ff_bels)if(occupant(slot,!old_empty))return fm_fail(reason,"empty ALM opposite frame has an FF");
+            std::set<WireId> observers;
+            for(auto w:alm.comb_out)observers.insert(w);
+            for(auto w:alm.ff_in)observers.insert(w);
+            for(auto w:alm.ff_out)observers.insert(w);
+            for(auto slot:alm.lut_bels)for(auto pin:{id_CI,id_CO,id_SHAREIN,id_SHAREOUT})
+                observers.insert(ctx->getBelPinWire(slot,pin));
+            for(auto w:observers) {
+                if(w==WireId())return fm_fail(reason,"missing empty ALM observer identity");
+                if(old_empty) {for(const auto &n:state.nets)if(n.second.wires.count(w))return fm_fail(reason,"saved empty ALM has routed observer");}
+                else {
+                    if(ctx->getBoundWireNet(w))return fm_fail(reason,"live empty ALM has routed observer");
+                    for(const auto &n:ctx->nets)if(n.second->wires.count(w))return fm_fail(reason,"live empty ALM has routed observer");
+                }
+            }
+            const auto &vacant=old_empty?old:now;const auto &occupied=old_empty?now:old;
+            uint64_t vacant_mask=old_empty?a:b,occupied_mask=old_empty?b:a;
+            uint64_t unused=0;for(unsigned row=0;row<32;++row)unused|=uint64_t(1)<<fm_index(ctx,bel,row+32*(1-where.idx));
+            if(vacant_mask!=0 || (occupied_mask&unused)!=unused ||
+               vacant.at(key)!=FMConfigValue{FMCV::MT_RAM,true,64,std::vector<uint8_t>(8,0)})
+                return fm_fail(reason,"noncanonical empty or unused ALM mask");
+            // The complete occupied RAM record must have native nondefault metadata.
+            if(std::get<0>(occupied.at(key))!=FMCV::MT_RAM || std::get<1>(occupied.at(key)) || std::get<2>(occupied.at(key))!=64)
+                return fm_fail(reason,"noncanonical occupied ALM mask metadata");
+            for(auto mux:{FMCV::TMODE,FMCV::BMODE}) {
+                auto mode=key;std::get<2>(mode)=mux;
+                auto v=vacant.find(mode),o=occupied.find(mode);
+                if(v==vacant.end() || o==occupied.end() ||
+                   v->second!=FMConfigValue{FMCV::MT_MUX,true,uint32_t(mux==FMCV::TMODE?FMCV::D_E:FMCV::C_E),{}} ||
+                   o->second!=FMConfigValue{FMCV::MT_MUX,false,uint32_t(mux==FMCV::TMODE?FMCV::E_0:FMCV::E_1),{}})
+                    return fm_fail(reason,"noncanonical empty ALM mode transition");
+                permitted.insert(mode);
+            }
+        } else if(cell->type==id_MISTRAL_ALUT6) {
+            if(ctx->getBoundBelCell(alm.lut_bels[1-where.idx]))return fm_fail(reason,"ALUT6 move has a stationary mate");
         } else {
             uint64_t stationary=0;
             for(unsigned row=0;row<32;++row)stationary|=uint64_t(1)<<fm_index(ctx,bel,row+32*(1-where.idx));
             if((a&stationary)!=(b&stationary))return fm_fail(reason,"stationary mate LUT mask changed");
         }
     }
-    // Output selectors belong to routing, not the stationary FF input/control
-    // state. Admit only the selected Q's direct COMBOUT -> native output PIP,
-    // or a completely unused output on the other side of that transition.
-    // No input-net, mate-half, foreign-net or arbitrary selector exception.
-    const std::array<FMCV::bmux_type_t,6> muxes{FMCV::TDFF0,FMCV::TDFF1,FMCV::TDFF1L,
-                                             FMCV::BDFF0,FMCV::BDFF1,FMCV::BDFF1L};
-    const std::array<FMCV::port_type_t,6> ports{FMCV::FFT0,FMCV::FFT1,FMCV::FFT1L,
-                                             FMCV::FFB0,FMCV::FFB1,FMCV::FFB1L};
-    auto *q=cell->getPort(id_Q);const auto &old_q=state.nets.at(q->name).wires;
-    for(auto bel:{home,target}) {
-        const auto &loc=ctx->bel_data(bel).lab_data;
-        const auto &alm=ctx->labs.at(loc.lab).alms.at(loc.alm);
-        const auto block=ctx->labs.at(loc.lab).is_mlab?FMCV::MLAB:FMCV::LAB;
-        for(unsigned i=3*loc.idx;i<3*(loc.idx+1);++i) {
-            FMConfigKey key{block,bel.pos.v,muxes[i],loc.alm};
-            auto a=old.find(key),b=now.find(key);
-            if(a==old.end() || b==now.end())return fm_fail(reason,"missing moved output selector");
-            auto out=ctx->get_port(block,bel.pos.x(),bel.pos.y(),loc.alm,ports[i]);
-            auto prior=old_q.find(out);auto current=q->wires.find(out);
-            bool was=prior!=old_q.end(),is=current!=q->wires.end();
-            // Leave every output never owned by Q in the exact static comparison.
-            if(!was && !is)continue;
-            for(const auto &net:state.nets)if(net.first!=q->name && net.second.wires.count(out))
-                return fm_fail(reason,"old moved output selector has a foreign owner");
-            if(auto *owner=ctx->getBoundWireNet(out);owner && owner!=q)
-                return fm_fail(reason,"new moved output selector has a foreign owner");
-            auto direct=[&](PipId pip) {
-                return pip!=PipId() && ctx->getPipSrcWire(pip)==alm.comb_out[loc.idx] &&
-                    ctx->getPipDstWire(pip)==out;
-            };
-            if((was && !direct(prior->second.first)) || (is && !direct(current->second.pip)))
-                return fm_fail(reason,"moved output selector lacks direct COMBOUT route");
-            auto expected=[](bool used) {
-                return FMConfigValue{FMCV::MT_MUX,!used,uint32_t(used?FMCV::NLUT:FMCV::REG),{}};
-            };
-            if(a->second!=expected(was) || b->second!=expected(is))
-                return fm_fail(reason,"moved output selector disagrees with routed ownership");
-            permitted.insert(key);
-        }
-    }
+    std::vector<NetInfo *> incident;
+    if(!footprint(ctx,cell,incident))return fm_fail(reason,"invalid selector incident footprint");
+    if(!fm_output_selectors(ctx,incident,old,now,state,permitted,reason))return false;
     for(const auto &key:permitted) {old.erase(key);now.erase(key);}
     if(old!=now) {
         if(reason) {
@@ -835,6 +966,40 @@ bool critical_final_routed_move_trial(Context *ctx,CellInfo *cell,BelId target,i
     auto home=cell->bel;const FinalMoveSnapshot before(ctx);const auto config=fm_config(ctx);
     uint64_t source_mask=0;
     if(!fm_mask(config,fm_mask_key(ctx,home),source_mask) || !fm_truth(ctx,cell,home,source_mask,reason))return false;
+    // Reject a malformed original Q selector before any preview/restore can
+    // regenerate and thereby canonicalize the caller's configured RBF.
+    std::set<FMConfigKey> original_selectors;
+    if(!fm_output_selectors(ctx,nets,config,config,before,original_selectors,reason))return false;
+    // An empty target must already contain canonical native defaults. Preview
+    // rollback rebuilds configuration, so reject malformed originals first.
+    const auto target_loc=ctx->bel_data(target).lab_data;
+    const auto &target_alm=ctx->labs.at(target_loc.lab).alms.at(target_loc.alm);
+    bool target_empty=true;
+    for(auto slot:target_alm.lut_bels)if(ctx->getBoundBelCell(slot))target_empty=false;
+    for(auto slot:target_alm.ff_bels)if(ctx->getBoundBelCell(slot))target_empty=false;
+    if(target_empty) {
+        auto key=fm_mask_key(ctx,target);auto mask=config.find(key);
+        if(mask==config.end() || mask->second!=FMConfigValue{FMCV::MT_RAM,true,64,std::vector<uint8_t>(8,0)})
+            return fm_fail(reason,"original empty target has noncanonical mask");
+        for(auto mux:{FMCV::TMODE,FMCV::BMODE}) {
+            auto mode=key;std::get<2>(mode)=mux;auto at=config.find(mode);
+            if(at==config.end() || at->second!=FMConfigValue{FMCV::MT_MUX,true,
+                uint32_t(mux==FMCV::TMODE?FMCV::D_E:FMCV::C_E),{}})
+                return fm_fail(reason,"original empty target has noncanonical mode");
+        }
+        std::set<WireId> observers;
+        for(auto w:target_alm.comb_out)observers.insert(w);
+        for(auto w:target_alm.ff_in)observers.insert(w);
+        for(auto w:target_alm.ff_out)observers.insert(w);
+        for(auto slot:target_alm.lut_bels)for(auto pin:{id_CI,id_CO,id_SHAREIN,id_SHAREOUT})
+            observers.insert(ctx->getBelPinWire(slot,pin));
+        for(auto w:observers) {
+            if(w==WireId())return fm_fail(reason,"original empty target lacks observer identity");
+            if(ctx->getBoundWireNet(w))return fm_fail(reason,"original empty target has routed observer");
+            for(const auto &net:before.nets)if(net.second.wires.count(w))
+                return fm_fail(reason,"original empty target has routed observer");
+        }
+    }
     std::vector<LABInfo> expected;bool legal=false;
     try {
         critical_cohort_swap_trial(ctx,cell,target,[&] {

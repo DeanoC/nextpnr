@@ -256,8 +256,8 @@ class FinalRoutedMove : public ::testing::TestWithParam<std::tuple<bool,int>> {
         f->addOutput(id_Q);f->connectPort(id_Q,ctx->createNet(ctx->id(name+"$q")));
         ctx->assign_ff_info(f);ctx->assign_default_pinmap(f);ctx->bindBel(bel,f,STRENGTH_WEAK);return f;
     }
-    void build(bool moved_local_ff=false) {
-        inputs.clear();stationary.clear();reason.clear();
+    void build(bool moved_local_ff=false, bool empty_source=false, bool empty_target=false, bool ff_observer=false) {
+        inputs.clear();stationary.clear();reason.clear();source_mate=target_mate=source_ff=target_ff=nullptr;
         ArchArgs a;a.device="5CSEBA6U23I7";ctx=std::make_unique<Context>(a);ctx->settings[ctx->id("target_freq")]=1e8;
         ctx->createNet(ctx->id("$PACKER_GND_NET"));ctx->createNet(ctx->id("$PACKER_VCC_NET"));
         std::vector<std::pair<int,uint32_t>> sites;
@@ -270,14 +270,20 @@ class FinalRoutedMove : public ::testing::TestWithParam<std::tuple<bool,int>> {
         inputs[9]->clkconstr=std::make_unique<ClockConstraint>();inputs[9]->clkconstr->period=DelayPair(10000);inputs[9]->clkconstr->high=inputs[9]->clkconstr->low=DelayPair(5000);
         for(int i=0;i<7;++i)inputs[i]=ff("a0"+std::to_string(i),stimuli[i],ctx->labs[source_lab].alms[i].ff_bels[0])->getPort(id_Q);
         moved=lut("zz_moved",3,0xd2,{inputs[0],inputs[1],inputs[2]},home());moved->pin_data[id_B].state=PIN_INV;
-        source_mate=lut("source_mate",3,0x8e,{inputs[3],inputs[4],inputs[5]},ctx->labs[lab].alms[0].lut_bels[1-half()]);
-        target_mate=lut("target_mate",3,0x96,{inputs[3],inputs[4],inputs[5]},ctx->labs[lab].alms[8].lut_bels[1-half()]);
-        source_mate->pin_data[id_C].state=PIN_INV;target_mate->pin_data[id_A].state=PIN_INV;
-        source_ff=ff("source_mate_ff",source_mate,ctx->labs[lab].alms[0].ff_bels[2*(1-half())],true);
-        target_ff=ff("target_mate_ff",target_mate,ctx->labs[lab].alms[8].ff_bels[2*(1-half())],true);
+        if(!empty_source) {
+            source_mate=lut("source_mate",3,0x8e,{inputs[3],inputs[4],inputs[5]},ctx->labs[lab].alms[0].lut_bels[1-half()]);
+            source_mate->pin_data[id_C].state=PIN_INV;
+            source_ff=ff("source_mate_ff",source_mate,ctx->labs[lab].alms[0].ff_bels[2*(1-half())],true);
+        }
+        if(!empty_target) {
+            target_mate=lut("target_mate",3,0x96,{inputs[3],inputs[4],inputs[5]},ctx->labs[lab].alms[8].lut_bels[1-half()]);
+            target_mate->pin_data[id_A].state=PIN_INV;
+            target_ff=ff("target_mate_ff",target_mate,ctx->labs[lab].alms[8].ff_bels[2*(1-half())],true);
+        }
         if(moved_local_ff)ff("moved_local_ff",moved,ctx->labs[lab].alms[0].ff_bels[2*half()],true);
         for(int i=0;i<6;++i){auto *c=lut("stationary"+std::to_string(i),2,14,{inputs[0],inputs[6]},ctx->labs[lab].alms[i+1].lut_bels[0]);stationary.push_back(c);
             ff("stationary_capture"+std::to_string(i),c,ctx->labs[lab].alms[i+1].ff_bels[0],true);}
+        if(ff_observer) ff("opposite_half_observer",stationary.front(),ctx->labs[lab].alms[0].ff_bels[2*(1-half())],true);
         auto *capture=lut("capture",2,8,{moved->getPort(id_Q),inputs[6]},ctx->labs[lab].alms[7].lut_bels[0]);
         ff("output_capture",capture,ctx->labs[lab].alms[7].ff_bels[0],true);
         lut("outside",2,6,{inputs[6],inputs[7]},ctx->labs[lab].alms[9].lut_bels[0]);
@@ -286,12 +292,12 @@ class FinalRoutedMove : public ::testing::TestWithParam<std::tuple<bool,int>> {
         ctx->assignArchInfo();ctx->lab_pre_route();
         for(const auto &c:ctx->cells){ASSERT_TRUE(ctx->isBelLocationValid(c.second->bel))<<ctx->nameOf(c.second.get());}
         int visits=5000000;ASSERT_TRUE(critical_local_route_net(ctx.get(),inputs[9],visits));
-        for(auto *f:{source_ff,target_ff})for(auto p:{id_ENA,id_ACLR}){ASSERT_TRUE(critical_local_route_net(ctx.get(),f->getPort(p),visits));}
+        for(auto *net:{inputs[7],inputs[8]}){ASSERT_TRUE(critical_local_route_net(ctx.get(),net,visits));}
         for(const auto &n:ctx->nets)if(n.second->driver.cell){ASSERT_TRUE(critical_local_route_net(ctx.get(),n.second.get(),visits))<<ctx->nameOf(n.second.get());}
         for(const char *key:{"keep","dont_touch","BEL","FES_SLOT"})ctx->id(key);
         ctx->attrs[id_step]=std::string("route");ctx->configure_bitstream();ctx->check();
         ASSERT_TRUE(ctx->analogue_cache_valid);ASSERT_FALSE(Snapshot::cache(ctx.get()).empty());ASSERT_EQ(ctx->getBoundBelCell(target()),nullptr);
-        ASSERT_EQ(inputs[0]->users.entries(),7);ASSERT_EQ(source_ff->ffInfo.datain,source_mate->getPort(id_Q));ASSERT_EQ(target_ff->ffInfo.datain,target_mate->getPort(id_Q));
+        ASSERT_EQ(inputs[0]->users.entries(),7);if(source_ff){ASSERT_EQ(source_ff->ffInfo.datain,source_mate->getPort(id_Q));}if(target_ff){ASSERT_EQ(target_ff->ffInfo.datain,target_mate->getPort(id_Q));}
     }
     void SetUp()override{build();}
     bool trial(const std::function<bool()> &accept,int budget=500000,BelId destination=BelId()) {
@@ -373,11 +379,15 @@ class FinalRoutedMove : public ::testing::TestWithParam<std::tuple<bool,int>> {
         e.labs[lab].alms[0].unique_input_count=3;e.labs[lab].alms[8].unique_input_count=6;return e;
     }
     const Snapshot *accepted_before=nullptr;
-    void stationary_masks_and_config(const CV &old,const CV &now)const {
+    void stationary_masks_and_config(const CV &old,const CV &now,bool source_empty=false,bool target_empty=false)const {
         auto a=config(old),b=config(now);ASSERT_EQ(a.size(),b.size());
         for(auto bel:{home(),target()}){
             uint64_t stationary_bits=0;for(unsigned row=0;row<32;++row)stationary_bits|=uint64_t(1)<<emitted_index(bel,row+32*(1-half()));
-            EXPECT_EQ(mask(old,bel)&stationary_bits,mask(now,bel)&stationary_bits);
+            if(!(bel==home()?source_empty:target_empty)) EXPECT_EQ(mask(old,bel)&stationary_bits,mask(now,bel)&stationary_bits);
+            if(bel==home()?source_empty:target_empty) {
+                auto l=ctx->bel_data(bel).lab_data;auto block=ctx->labs[l.lab].is_mlab?CV::MLAB:CV::LAB;
+                for(auto mux:{CV::TMODE,CV::BMODE}){ConfigKey k{block,bel.pos.v,mux,l.alm};a.erase(k);b.erase(k);}
+            }
             a.erase(mask_key(bel));b.erase(mask_key(bel));
         }
         // Independently derive output selector values from actual decoded RBFs
@@ -468,6 +478,25 @@ TEST_P(FinalRoutedMove, MovedOutputSelectorFaultsRejectAndRestore)
         ASSERT_TRUE(reached)<<reason;restored(before);
     }
 }
+TEST_P(FinalRoutedMove, MalformedOriginalOwnedSelectorRejectsBeforeMutation)
+{
+    const Snapshot before(ctx.get());
+    const std::array<CV::bmux_type_t,6> muxes{CV::TDFF0,CV::TDFF1,CV::TDFF1L,CV::BDFF0,CV::BDFF1,CV::BDFF1L};
+    auto bel=home();auto l=ctx->bel_data(bel).lab_data;
+    auto block=ctx->labs[l.lab].is_mlab?CV::MLAB:CV::LAB;unsigned tested=0;
+    for(int i=3*half();i<3*(half()+1);++i) {
+        CV::bmux_setting_t setting{};
+        ASSERT_TRUE(ctx->cyclonev->bmux_get(block,bel.pos,muxes[i],l.alm,setting));
+        if(setting.s!=CV::NLUT)continue;
+        ASSERT_TRUE(ctx->cyclonev->bmux_m_set(block,bel.pos,muxes[i],l.alm,CV::REG));
+        const Snapshot malformed(ctx.get());bool reached=false;
+        EXPECT_FALSE(trial([&]{reached=true;return true;}));EXPECT_FALSE(reached);
+        malformed.expect_exact(ctx.get());
+        ASSERT_TRUE(ctx->cyclonev->bmux_m_set(block,bel.pos,muxes[i],l.alm,CV::bmux_type_t(setting.s)));
+        before.expect_exact(ctx.get());++tested;
+    }
+    EXPECT_GT(tested,0u);
+}
 TEST_P(FinalRoutedMove, TinyAndInvalidBudgetsNeverLeakPlacementOrTrees)
 {
     const Snapshot before(ctx.get());
@@ -513,5 +542,106 @@ TEST_P(FinalRoutedMove, ZeroFinalBudgetDoesNotTouchEvenAnUnroutedContext)
     const Snapshot before(ctx.get());ctx->repair_final_critical_moves();before.expect_exact(ctx.get());
     EXPECT_EQ(ctx->getBoundBelCell(target()),nullptr);
 }
+
+TEST_P(FinalRoutedMove, CanonicalEmptyAlmsPreserveMovedTruthAndNativeDefaults)
+{
+    for(auto flags:{std::make_pair(true,false),std::make_pair(false,true),std::make_pair(true,true)}) {
+        SCOPED_TRACE(::testing::PrintToString(flags));build(false,flags.first,flags.second);ASSERT_FALSE(HasFatalFailure());
+        coverage();ASSERT_FALSE(HasFailure());const Snapshot before(ctx.get());accepted_before=&before;auto old=decoded();truth(*old,moved);
+        std::vector<Tree> paths;for(auto *cell:stationary)paths.push_back(path(inputs[0],cell,id_A));
+        bool reached=false;
+        ASSERT_TRUE(trial([&]{reached=true;return true;}))<<reason;ASSERT_TRUE(reached);
+        auto now=decoded();truth(*now,moved);if(source_mate)truth(*now,source_mate);if(target_mate)truth(*now,target_mate);
+        for(auto bel:{home(),target()}) {
+            auto l=ctx->bel_data(bel).lab_data;auto block=ctx->labs[l.lab].is_mlab?CV::MLAB:CV::LAB;
+            bool empty=bel==home()&&flags.first;CV::bmux_setting_t setting{};
+            ASSERT_TRUE(now->bmux_get(block,bel.pos,CV::TMODE,l.alm,setting));
+            EXPECT_EQ(setting.s,uint32_t(empty?CV::D_E:CV::E_0));EXPECT_EQ(setting.def,empty);
+            ASSERT_TRUE(now->bmux_get(block,bel.pos,CV::BMODE,l.alm,setting));
+            EXPECT_EQ(setting.s,uint32_t(empty?CV::C_E:CV::E_1));EXPECT_EQ(setting.def,empty);
+            if(empty) EXPECT_EQ(mask(*now,bel),0u);
+            else if(bel==target()&&flags.second) {
+                uint64_t unused=0;for(unsigned row=0;row<32;++row)unused|=uint64_t(1)<<emitted_index(bel,row+32*(1-half()));
+                EXPECT_EQ(mask(*now,bel)&unused,unused);
+            }
+        }
+        stationary_masks_and_config(*old,*now,flags.first,flags.second);
+        Snapshot expected=before;expected.cells.at(moved->name).bel=target();
+        auto h=ctx->bel_data(home()).lab_data,t=ctx->bel_data(target()).lab_data;
+        expected.labs[h.lab].alms[h.alm].unique_input_count=flags.first?0:3;
+        expected.labs[t.lab].alms[t.alm].unique_input_count=flags.second?3:6;
+        expected.expect_exact(ctx.get(),incident());
+        for(size_t i=0;i<stationary.size();++i)EXPECT_EQ(path(inputs[0],stationary[i],id_A),paths[i]);
+        all_connected();ctx->check();coverage();
+    }
+}
+TEST_P(FinalRoutedMove, MalformedOriginalEmptyTargetRejectsBeforeMutation)
+{
+    build(false,false,true);ASSERT_FALSE(HasFatalFailure());const Snapshot before(ctx.get());
+    auto bel=target();auto l=ctx->bel_data(bel).lab_data;auto block=ctx->labs[l.lab].is_mlab?CV::MLAB:CV::LAB;
+    for(int fault=0;fault<3;++fault) {
+        SCOPED_TRACE(fault);
+        if(fault==0)flip(bel,7);
+        else ASSERT_TRUE(ctx->cyclonev->bmux_m_set(block,bel.pos,fault==1?CV::TMODE:CV::BMODE,l.alm,fault==1?CV::E_0:CV::E_1));
+        const Snapshot malformed(ctx.get());bool reached=false;
+        EXPECT_FALSE(trial([&]{reached=true;return true;}));EXPECT_FALSE(reached);malformed.expect_exact(ctx.get());
+        ctx->configure_bitstream();before.expect_exact(ctx.get());
+    }
+}
+TEST_P(FinalRoutedMove, CanonicalEmptyFalseAndThrowRestoreEveryState)
+{
+    for(auto flags:{std::make_pair(true,false),std::make_pair(false,true),std::make_pair(true,true)}) {
+        build(false,flags.first,flags.second);ASSERT_FALSE(HasFatalFailure());const Snapshot before(ctx.get());bool reached=false;
+        EXPECT_FALSE(trial([&]{reached=true;return false;}));ASSERT_TRUE(reached)<<reason;restored(before);
+        EXPECT_THROW(trial([&]()->bool{throw std::runtime_error("empty callback fault");}),std::runtime_error);restored(before);
+    }
+}
+TEST_P(FinalRoutedMove, CanonicalEmptyMaskAndModeFaultsRejectAndRestore)
+{
+    build(false,true,true);ASSERT_FALSE(HasFatalFailure());const Snapshot before(ctx.get());
+    for(int fault=0;fault<6;++fault) {
+        SCOPED_TRACE(fault);bool reached=false;
+        EXPECT_FALSE(trial([&]{reached=true;auto bel=fault<3?home():target();auto l=ctx->bel_data(bel).lab_data;
+            auto block=ctx->labs[l.lab].is_mlab?CV::MLAB:CV::LAB;
+            if(fault==0) flip(bel,0);
+            else if(fault==3) flip(bel,32*(1-half())+7);
+            else {auto mux=fault%3==1?CV::TMODE:CV::BMODE;
+                auto value=fault<3?(mux==CV::TMODE?CV::E_0:CV::E_1):(mux==CV::TMODE?CV::D_E:CV::C_E);
+                EXPECT_TRUE(ctx->cyclonev->bmux_m_set(block,bel.pos,mux,l.alm,value));}
+            return true;}));
+        ASSERT_TRUE(reached)<<reason;restored(before);
+    }
+}
+TEST_P(FinalRoutedMove, FfOnlySourceNeverGetsEmptyModeException)
+{
+    build(false,true,true,true);ASSERT_FALSE(HasFatalFailure());const Snapshot before(ctx.get());bool reached=false;
+    EXPECT_FALSE(trial([&]{reached=true;auto l=ctx->bel_data(home()).lab_data;auto block=ctx->labs[l.lab].is_mlab?CV::MLAB:CV::LAB;
+        EXPECT_TRUE(ctx->cyclonev->bmux_m_set(block,home().pos,CV::TMODE,l.alm,CV::D_E));return true;}));
+    ASSERT_TRUE(reached)<<reason;restored(before);
+    ASSERT_TRUE(trial([]{return true;}))<<reason;auto now=decoded();auto l=ctx->bel_data(home()).lab_data;
+    CV::bmux_setting_t setting{};ASSERT_TRUE(now->bmux_get(ctx->labs[l.lab].is_mlab?CV::MLAB:CV::LAB,home().pos,CV::TMODE,l.alm,setting));
+    EXPECT_EQ(setting.s,uint32_t(CV::E_0));EXPECT_NE(mask(*now,home()),0u);
+}
+TEST_P(FinalRoutedMove, BoundInternalObserversPreventEmptyException)
+{
+    for(bool saved_empty_target:{false,true}) {
+    SCOPED_TRACE(saved_empty_target);build(false,!saved_empty_target,saved_empty_target);ASSERT_FALSE(HasFatalFailure());
+    auto bel=saved_empty_target?target():home();auto l=ctx->bel_data(bel).lab_data;
+    const auto &alm=ctx->labs[l.lab].alms[l.alm];
+    std::vector<WireId> wires{alm.comb_out[1-half()],alm.ff_in[2*(1-half())],alm.ff_out[2*(1-half())],
+        ctx->getBelPinWire(bel,id_CI),ctx->getBelPinWire(bel,id_CO),
+        ctx->getBelPinWire(bel,id_SHAREIN),ctx->getBelPinWire(bel,id_SHAREOUT)};
+    for(auto wire:wires) {
+        ASSERT_NE(wire,WireId());ASSERT_TRUE(ctx->checkWireAvail(wire));
+        // Deliberate nonincident disconnected observer: detection-only malformed
+        // route fixture. A conservative empty qualification must reject it.
+        ctx->bindWire(wire,inputs[6],STRENGTH_WEAK);ctx->configure_bitstream();
+        const Snapshot malformed(ctx.get());bool reached=false;
+        EXPECT_FALSE(trial([&]{reached=true;return true;}));EXPECT_FALSE(reached);malformed.expect_exact(ctx.get());
+        ctx->unbindWire(wire);ctx->configure_bitstream();
+    }
+    }
+}
+
 INSTANTIATE_TEST_SUITE_P(LabAndMlabBothHalves,FinalRoutedMove,::testing::Combine(::testing::Bool(),::testing::Values(0,1)));
 } // namespace
