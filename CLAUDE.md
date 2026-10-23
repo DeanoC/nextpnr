@@ -1,6 +1,6 @@
 # Claude Code instructions
 
-Follow the repository-level agent guidance in [AGENTS.md](AGENTS.md), including its HIP/CUDA/CPU routing equivalence rule.
+Follow the repository-level agent guidance in [AGENTS.md](AGENTS.md), including its HIP/CUDA/Metal/CPU routing equivalence rule.
 
 ## Rules for all agents
 
@@ -10,7 +10,7 @@ All GPU work goes through the `gpu-run` wrapper. Never set GPU_LEASE_IDS and nev
 
 Nobody kills a GPU job, and nobody touches Deano's harness (~/harnesses on Powerboat) or its processes.
 
-HIP, CUDA and CPU route/build results count as equivalent evidence (they are bit-identical); don't require or discount one backend.
+HIP, CUDA, Metal and CPU route/build results count as equivalent evidence (they are bit-identical); don't require or discount one backend.
 
 Claim a MiSTer kit in ~/kit-status on Powerboat (kitA-STATUS.md / kitB-STATUS.md) before use, log what you change, restore the kit's designated baseline afterwards, and release the claim.
 

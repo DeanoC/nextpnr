@@ -1,6 +1,6 @@
 ---
-description: Follow repository routing equivalence guidance for HIP, CUDA, and CPU routes.
+description: Follow repository routing equivalence guidance for HIP, CUDA, Metal, and CPU routes.
 alwaysApply: true
 ---
 
-Follow the repository-level routing guidance in [AGENTS.md](../../AGENTS.md), including the HIP/CUDA/CPU routing equivalence rule.
+Follow the repository-level routing guidance in [AGENTS.md](../../AGENTS.md). The GPU router's HIP, CUDA and Metal backends and its CPU reference backend give bit-identical route results; treat their route evidence as interchangeable for seed and replay comparisons. This does not combine the distinct router2/router1-fallback cohort. Never require a separate HIP run or discount CUDA or Metal evidence; use whichever GPU is free via gpu-run, and never set GPU_LEASE_IDS.
