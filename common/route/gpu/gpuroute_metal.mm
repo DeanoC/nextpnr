@@ -478,6 +478,32 @@ class MetalBackend : public Backend
         }
     }
 
+    // The route_kernel pipeline for block threads per net, or nil with the
+    // reason in error if the device cannot build it or run that many threads
+    id<MTLComputePipelineState> route_pipeline(id<MTLLibrary> lib, int block, std::string &error)
+    {
+        NSError *err = nil;
+        MTLFunctionConstantValues *consts = [MTLFunctionConstantValues new];
+        [consts setConstantValue:&block type:MTLDataTypeInt atIndex:0];
+        id<MTLFunction> fn = [lib newFunctionWithName:@"route_kernel" constantValues:consts error:&err];
+        if (fn == nil) {
+            error = "Metal library has no route_kernel: " + ns_error(err);
+            return nil;
+        }
+        id<MTLComputePipelineState> pso = [dev_ newComputePipelineStateWithFunction:fn error:&err];
+        if (pso == nil) {
+            error = "Metal pipeline creation failed: " + ns_error(err);
+            return nil;
+        }
+        if ([pso maxTotalThreadsPerThreadgroup] < (NSUInteger)block) {
+            error = "Metal route kernel supports only " +
+                    std::to_string((unsigned long)[pso maxTotalThreadsPerThreadgroup]) +
+                    " threads per threadgroup, needs " + std::to_string(block);
+            return nil;
+        }
+        return pso;
+    }
+
     void build_pipeline()
     {
         NSError *err = nil;
@@ -496,22 +522,13 @@ class MetalBackend : public Backend
         id<MTLLibrary> lib = [dev_ newLibraryWithSource:src options:opts error:&err];
         if (lib == nil)
             throw std::runtime_error("Metal kernel compilation failed: " + ns_error(err));
+        // Only the smallest size is required. A larger one the device cannot
+        // build or run stays nil, and pick_block uses a smaller one instead.
         for (int i = 0; i < (int)std::size(BLOCK_SIZES); i++) {
-            const int block = BLOCK_SIZES[i];
-            MTLFunctionConstantValues *consts = [MTLFunctionConstantValues new];
-            [consts setConstantValue:&block type:MTLDataTypeInt atIndex:0];
-            id<MTLFunction> fn = [lib newFunctionWithName:@"route_kernel" constantValues:consts error:&err];
-            if (fn == nil)
-                throw std::runtime_error("Metal library has no route_kernel: " + ns_error(err));
-            id<MTLComputePipelineState> pso = [dev_ newComputePipelineStateWithFunction:fn error:&err];
-            if (pso == nil)
-                throw std::runtime_error("Metal pipeline creation failed: " + ns_error(err));
-            if ([pso maxTotalThreadsPerThreadgroup] >= (NSUInteger)block)
-                route_pso_[i] = pso;
-            else if (i == 0)
-                throw std::runtime_error("Metal route kernel supports only " +
-                                         std::to_string((unsigned long)[pso maxTotalThreadsPerThreadgroup]) +
-                                         " threads per threadgroup, needs " + std::to_string(block));
+            std::string why;
+            route_pso_[i] = route_pipeline(lib, BLOCK_SIZES[i], why);
+            if (route_pso_[i] == nil && i == 0)
+                throw std::runtime_error(why);
         }
         queue_ = [dev_ newCommandQueue];
         if (queue_ == nil)
