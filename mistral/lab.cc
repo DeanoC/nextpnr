@@ -500,7 +500,9 @@ bool Arch::is_alm_legal(uint32_t lab, uint8_t alm) const
             if (ff->ffInfo.datain && (!luts[i] || (ff->ffInfo.datain != luts[i]->combInfo.comb_out))) {
                 bool helper_allowed = route_thru_lut_avail;
                 if (helper_allowed && !fes_bel_region.empty()) {
-                    CellInfo candidate(const_cast<Context *>(getCtx()), ff->name, id_MISTRAL_BUF);
+                    // Same name as the helper routing preparation inserts, so a
+                    // user-locked flip-flop's reserved-LUT exception applies here too.
+                    CellInfo candidate(const_cast<Context *>(getCtx()), idf("%s$ROUTETHRU", nameOf(ff)), id_MISTRAL_BUF);
                     auto slot = ff->attrs.find(id_FES_SLOT);
                     if (slot != ff->attrs.end())
                         candidate.attrs[id_FES_SLOT] = slot->second;
