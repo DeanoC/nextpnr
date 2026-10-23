@@ -97,6 +97,9 @@ template <typename R> struct ArchAPI : BaseCtx
     virtual void unbindPip(PipId pip) = 0;
     virtual bool checkPipAvail(PipId pip) const = 0;
     virtual bool checkPipAvailForNet(PipId pip, const NetInfo *net) const = 0;
+    // Net-specific routing restrictions independent of pip ownership. Search
+    // algorithms that may rip up occupied pips use this before checkPipAvail.
+    virtual bool pipAllowedForNet(PipId, const NetInfo *) const { return true; }
     // A pip the shared routing graph must not offer to a net that may not
     // enter a reserved region. Default: no such pips.
     virtual bool pipInReservedRegion(PipId) const { return false; }

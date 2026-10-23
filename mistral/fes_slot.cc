@@ -569,6 +569,27 @@ bool Arch::fes_net_touches_slot(const NetInfo *net) const
     return false;
 }
 
+void Arch::fes_begin_shell_keepout()
+{
+    fes_shell_keepout = false;
+    fes_shell_socket_nets.clear();
+    if (fes_fence_active || !fes_has_reserved_rect)
+        return;
+    auto in_region = [&](const CellInfo *cell) {
+        return cell != nullptr && cell->bel != BelId() && fes_bel_region.count(cell->bel);
+    };
+    for (auto &item : getCtx()->nets) {
+        const NetInfo *net = item.second.get();
+        bool reaches = in_region(net->driver.cell);
+        for (auto &user : net->users)
+            reaches = reaches || in_region(user.cell);
+        if (reaches)
+            fes_shell_socket_nets.insert(item.first);
+    }
+    fes_shell_keepout = true;
+    log_info("FES shell routing keeps out of reserved regions; %zu nets reach them.\n", fes_shell_socket_nets.size());
+}
+
 bool Arch::fes_pip_in_socket(PipId pip) const
 {
     if (!fes_has_reserved_rect)

@@ -1150,6 +1150,7 @@ bool Arch::route()
     route_globals();
 
     fes_check_boundary_connectivity();
+    fes_begin_shell_keepout();
 
     std::string router = str_or_default(settings, id_router, defaultRouter);
     bool result;
