@@ -2461,7 +2461,7 @@ struct MistralPacker
 
             // One could remove the std::max here and the `- bit_offset`s here,
             // because they would cancel out, but I think this way is less confusing.
-            int addr_offset = std::max(12 - std::max(abits, dbits == 40 ? 8L : 9L), 0L);
+            int addr_offset = std::max<int64_t>(12 - std::max<int64_t>(abits, dbits == 40 ? 8 : 9), 0);
             int bit_offset = (abits == 13);
             if (abits == 13) {
                 ci->pin_data[ctx->id("A1ADDR[0]")].bel_pins = {ctx->id("DATAAIN[4]")};
@@ -2514,7 +2514,7 @@ struct MistralPacker
             bit_offset = dbits == 40 ? 20 : 0;
 
             // Write port
-            for (int bit = 0; bit < std::min(dbits, 20L); bit++)
+            for (int bit = 0; bit < std::min<int64_t>(dbits, 20); bit++)
                 for (int offset : offsets)
                     ci->pin_data[ctx->idf("A1DATA[%d]", bit)].bel_pins.push_back(ctx->idf("DATAAIN[%d]", bit + offset));
 

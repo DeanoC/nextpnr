@@ -114,8 +114,11 @@ std::vector<PortGroup> group_ports(Context *ctx, const dict<IdString, PortInfo> 
     for (auto &group : groups) {
         // A packed PLL can have scalar outclk alongside outclk[1], etc.
         // Grouping that bus as outclk would emit duplicate JSON keys and
-        // silently discard an output on reload. Preserve the literal bits.
-        if (group.is_bus && scalar_names.count(group.name)) {
+        // silently discard an output on reload. Cell connections also carry
+        // no offset, so a lone cell bus bit such as A[0] or A[3] would reload
+        // as scalar A, losing the name an architecture pin-map snapshot
+        // records. Preserve the literal bits in both cases.
+        if (group.is_bus && (scalar_names.count(group.name) || (is_cell && group.grouped_bits.size() == 1))) {
             for (auto bit : group.grouped_bits)
                 result.push_back({group.name + "[" + std::to_string(bit.first) + "]", {},
                                   {bit.second}, group.dir});

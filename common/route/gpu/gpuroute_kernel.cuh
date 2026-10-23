@@ -23,7 +23,9 @@
  *  be made there too.
  *
  *  Algorithm outline (per block, per arc of the task):
- *    1. Clear a private open-addressing hash table  wire -> (g, parent edge).
+ *    1. Start from an empty private open-addressing hash table
+ *       wire -> (g, parent edge); the slots an arc used are cleared again
+ *       when it is done, so a small search never pays for the whole table.
  *    2. Insert every wire of the net's current routing tree as a seed with
  *       g = 0 (connection-based routing: the sink may attach anywhere) and
  *       put the seeds on the frontier pile.
@@ -66,7 +68,6 @@ namespace gpuroute {
 
 namespace {
 
-constexpr int BLOCK = 256;
 constexpr uint32_t EMPTY_KEY = 0xFFFFFFFFu;
 constexpr uint32_t NONE_SLOT = 0xFFFFFFFFu; // "parent" marker of a seed wire
 constexpr unsigned long long EMPTY_VAL = ~0ull;
@@ -74,20 +75,28 @@ constexpr uint32_t INF_BITS = 0x7f800000u;
 constexpr int NBINS = 128; // histogram bins used to pick each step's expansion set
 constexpr int NPILES = 4;  // far, far2, the per-step expansion set, and the candidate list
 
+// Everything the relaxation of an edge reads about its destination wire, in
+// one 16-byte record so a random wire costs one memory transaction, not six
+struct __align__(16) WireRec
+{
+    int16_t x, y;
+    uint8_t flags;
+    uint8_t pad[3];
+    int32_t reserved;
+    int32_t occ;
+    float hist;
+};
+
 struct DevGraph
 {
     int32_t n_wires;
     const int32_t *out_off;
     const int32_t *out_dst;
+    const int32_t *edge_src; // n_edges, source wire of each CSR edge
     const float *edge_cost;
     const uint8_t *edge_region;
     const uint8_t *edge_outside_halo;
-    const int16_t *wx;
-    const int16_t *wy;
-    int32_t *reserved;
-    const uint8_t *flags;
-    int32_t *occ;
-    float *hist;
+    const WireRec *wires;
 };
 
 struct Scratch
@@ -97,13 +106,16 @@ struct Scratch
     float *sdelay;             // slots * cap, upstream base delay of seed entries
     float *sload;              // slots * cap, existing branch count of seed entries
     unsigned long long *piles; // slots * NPILES * cap
-    uint32_t *cand_par;        // slots * cap, parent edge of each candidate
+    uint32_t *cand_par;        // slots * cap, parent edge of each candidate; f of each
+                               // compacted frontier entry while a step selects its expansion set
+    uint32_t *touched;         // slots * cap, table slots the current arc claimed
     int cap;
 };
 
 struct BlockState
 {
     int near_n, far_n, far2_n, cand_n;
+    int touched_n;
     int fail;
     int inserted;
     int expanded;
@@ -199,20 +211,14 @@ __device__ __forceinline__ float h_est(const RouteParams &p, int x, int y, int s
     return p.est_weight * (p.est_x * (float)dx + p.est_y * (float)dy);
 }
 
-// Source wire of CSR edge e: the largest wire whose row starts at or before e
-__device__ __forceinline__ int edge_src(const DevGraph &g, int e)
-{
-    int lo = 0, hi = g.n_wires - 1;
-    while (lo < hi) {
-        int mid = (lo + hi + 1) >> 1;
-        if (g.out_off[mid] <= e)
-            lo = mid;
-        else
-            hi = mid - 1;
-    }
-    return lo;
-}
+// Source wire of CSR edge e
+__device__ __forceinline__ int edge_src(const DevGraph &g, int e) { return g.edge_src[e]; }
 
+// BLOCK threads route one net. The result does not depend on the thread
+// count (see Determinism above); more threads hide more memory latency on a
+// device running only a few blocks, at the cost of more idle threads in
+// small frontiers. Selected per launch by RouteParams::block_threads.
+template <int BLOCK>
 __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p, const TaskDesc *tasks, int ntasks,
                                                       const ArcDesc *arcs, const int32_t *seeds,
                                                       const float *seed_delay, const float *seed_load,
@@ -232,6 +238,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
     unsigned long long *near = pilebase + 2 * (size_t)cap;
     unsigned long long *cand = pilebase + 3 * (size_t)cap;
     uint32_t *cand_par = sc.cand_par + (size_t)blockIdx.x * cap;
+    uint32_t *touched = sc.touched + (size_t)blockIdx.x * cap;
 
     for (int t = blockIdx.x; t < ntasks; t += gridDim.x) {
         const TaskDesc task = tasks[t];
@@ -242,18 +249,16 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
         for (int a = 0; a < task.arc_cnt; a++) {
             const ArcDesc arc = arcs[task.arc_off + a];
             const int sink = arc.sink;
-            const int sx = g.wx[sink], sy = g.wy[sink];
+            const int sx = g.wires[sink].x, sy = g.wires[sink].y;
 
-            // 1. clear the table
-            for (int i = tid; i < cap; i += BLOCK) {
-                keys[i] = EMPTY_KEY;
-                vals[i] = EMPTY_VAL;
-            }
+            // 1. the table is empty: cleared by the lane's allocation and by
+            //    every arc before it finished (see 5.)
             if (tid == 0) {
                 st.near_n = 0;
                 st.far_n = 0;
                 st.far2_n = 0;
                 st.cand_n = 0;
+                st.touched_n = 0;
                 st.fail = 0;
                 st.inserted = 0;
                 st.expanded = 0;
@@ -303,6 +308,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                     if (!ins)
                         continue;
                     atomicAdd(&st.inserted, 1);
+                    touched[atomicAdd(&st.touched_n, 1)] = (uint32_t)s;
                     if (d < 0.0f) {
                         // blocked tree wire: present so nothing relaxes into it, never expanded
                         vals[s] = pack(u2f(INF_BITS), NONE_SLOT);
@@ -346,15 +352,17 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                     int sv = table_find(keys, mask, p.max_probe, v);
                     if (sv < 0 || pack_gbits(vals[sv]) != gbits)
                         continue;
-                    const float f = u2f(gbits) + h_est(p, g.wx[v], g.wy[v], sx, sy);
+                    const WireRec wv = g.wires[v];
+                    const float f = u2f(gbits) + h_est(p, wv.x, wv.y, sx, sy);
                     if (f >= prune)
                         continue;
                     atomicMin(&st.minf_bits, f2u(f));
                     atomicMax(&st.maxf_bits, f2u(f));
                     int pos = atomicAdd(&st.far2_n, 1);
-                    if (pos < cap)
+                    if (pos < cap) {
                         far2[pos] = e;
-                    else
+                        cand_par[pos] = f2u(f); // f for passes 2 and 3; free until phase A
+                    } else
                         st.fail = FAIL_PILE;
                 }
                 __syncthreads();
@@ -383,9 +391,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                 const float binw = st.binw;
                 if (binw > 0.0f) {
                     for (int i = tid; i < fn2; i += BLOCK) {
-                        unsigned long long e = far2[i];
-                        const uint32_t v = pack_lo(e);
-                        const float f = pack_g(e) + h_est(p, g.wx[v], g.wy[v], sx, sy);
+                        const float f = u2f(cand_par[i]);
                         int b = (int)((f - minf) / binw);
                         b = b < 0 ? 0 : (b >= NBINS ? NBINS - 1 : b);
                         atomicAdd(&hist[b], 1);
@@ -418,8 +424,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                     const float thr = u2f(st.thr_bits);
                     for (int i = tid; i < fn2; i += BLOCK) {
                         unsigned long long e = far2[i];
-                        const uint32_t v = pack_lo(e);
-                        const float f = pack_g(e) + h_est(p, g.wx[v], g.wy[v], sx, sy);
+                        const float f = u2f(cand_par[i]);
                         // The bin boundary can round back to minf when the range
                         // is small relative to the costs. Always expand the minima
                         // so a nonempty frontier cannot repeat without progress.
@@ -481,21 +486,22 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                             if (c < 0.0f || (g.edge_region[ei] && !task.allow_reserved))
                                 continue;
                             c += p.pip_adder;
-                            const int vx = g.wx[v], vy = g.wy[v];
+                            const WireRec wv = g.wires[v];
+                            const int vx = wv.x, vy = wv.y;
                             if (task.stay_in_halo && g.edge_outside_halo[ei] &&
                                 !shell_tile_hit(shell_tiles, task.shell_off, task.shell_cnt, vx, vy))
                                 continue;
                             if (p.use_bb && (vx < task.bb_x0 || vx > task.bb_x1 || vy < task.bb_y0 || vy > task.bb_y1))
                                 continue;
-                            if (g.flags[v] & WIRE_UNAVAILABLE)
+                            if (wv.flags & WIRE_UNAVAILABLE)
                                 continue;
-                            const int rsv = g.reserved[v];
+                            const int rsv = wv.reserved;
                             if (rsv != -1 && (rsv & ~RESERVED_SOFT) != task.net &&
                                 !(p.ignore_soft && (rsv & RESERVED_SOFT)))
                                 continue;
                             const float hist_c =
-                                    p.ignore_hist ? 1.0f : 1.0f + arc.crit_weight * (g.hist[v] - 1.0f);
-                            const float pres = 1.0f + (float)g.occ[v] * p.curr_cong_weight * arc.crit_weight;
+                                    p.ignore_hist ? 1.0f : 1.0f + arc.crit_weight * (wv.hist - 1.0f);
+                            const float pres = 1.0f + (float)wv.occ * p.curr_cong_weight * arc.crit_weight;
                             int bdx = vx - task.cx, bdy = vy - task.cy;
                             bdx = bdx < 0 ? -bdx : bdx;
                             bdy = bdy < 0 ? -bdy : bdy;
@@ -555,6 +561,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                             int cnt = atomicAdd(&st.inserted, 1);
                             if (cnt > (cap / 5) * 3)
                                 st.fail = FAIL_LOAD;
+                            touched[atomicAdd(&st.touched_n, 1)] = (uint32_t)sv;
                         }
                         const unsigned long long nv = pack(gv, cand_par[i]);
                         const unsigned long long old = atomicMin(&vals[sv], nv);
@@ -653,20 +660,40 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                 results[task.arc_off + a] = r;
             }
             __syncthreads();
+
+            // 5. leave the table empty for the next arc. A slot is claimed at
+            //    most once per arc, so the touched list cannot overflow; after
+            //    a failed search the list may be incomplete (a probe-limit
+            //    failure claims nothing, but be safe) and the whole table is
+            //    cleared instead.
+            if (st.fail) {
+                for (int i = tid; i < cap; i += BLOCK) {
+                    keys[i] = EMPTY_KEY;
+                    vals[i] = EMPTY_VAL;
+                }
+            } else {
+                const int tn = st.touched_n;
+                for (int i = tid; i < tn; i += BLOCK) {
+                    const uint32_t s = touched[i];
+                    keys[s] = EMPTY_KEY;
+                    vals[s] = EMPTY_VAL;
+                }
+            }
+            __syncthreads();
         }
     }
 }
 
-__global__ void update_state_kernel(int32_t *occ, float *hist, int32_t *reserved, int count, const int32_t *wires,
-                                    const int32_t *nocc, const float *nhist, const int32_t *nres)
+__global__ void update_state_kernel(WireRec *recs, int count, const int32_t *wires, const int32_t *nocc,
+                                    const float *nhist, const int32_t *nres)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= count)
         return;
-    int w = wires[i];
-    occ[w] = nocc[i];
-    hist[w] = nhist[i];
-    reserved[w] = nres[i];
+    WireRec &r = recs[wires[i]];
+    r.occ = nocc[i];
+    r.hist = nhist[i];
+    r.reserved = nres[i];
 }
 
 #define GPU_CHECK(call)                                                                                                \
@@ -730,11 +757,12 @@ struct Lane
     DevBuf<float> sdelay, sload;
     DevBuf<unsigned long long> piles;
     DevBuf<uint32_t> cand_par;
+    DevBuf<uint32_t> touched;
     int slots = 0;
     int cap = 0;
     static size_t bytes_per_slot(int bits)
     {
-        return (size_t(1) << bits) * (sizeof(uint32_t) * 4 + sizeof(unsigned long long) * (1 + NPILES));
+        return (size_t(1) << bits) * (sizeof(uint32_t) * 5 + sizeof(unsigned long long) * (1 + NPILES));
     }
     void alloc(int nslots, int bits)
     {
@@ -746,8 +774,12 @@ struct Lane
         sload.ensure(entries);
         piles.ensure((size_t)nslots * NPILES * (size_t)new_cap);
         cand_par.ensure(entries);
+        touched.ensure(entries);
         slots = nslots;
         cap = new_cap;
+        // Every table starts empty; each arc leaves its table empty again
+        GPU_CHECK(hipMemset(keys.ptr, 0xFF, entries * sizeof(uint32_t)));
+        GPU_CHECK(hipMemset(vals.ptr, 0xFF, entries * sizeof(unsigned long long)));
     }
     void release()
     {
@@ -757,6 +789,7 @@ struct Lane
         sload.release();
         piles.release();
         cand_par.release();
+        touched.release();
         slots = 0;
         cap = 0;
     }
@@ -769,6 +802,7 @@ struct Lane
         s.sload = sload.ptr;
         s.piles = piles.ptr;
         s.cand_par = cand_par.ptr;
+        s.touched = touched.ptr;
         s.cap = cap;
         return s;
     }
@@ -805,6 +839,15 @@ class DeviceBackend : public Backend
             n_wires_ = graph.n_wires;
             out_off_.upload(graph.out_off, (size_t)graph.n_wires + 1);
             out_dst_.upload(graph.out_dst, (size_t)graph.n_edges);
+            {
+                // The path walk needs the source wire of an edge; one load
+                // beats a binary search over the row offsets for every hop.
+                std::vector<int32_t> src((size_t)graph.n_edges);
+                for (int32_t w = 0; w < graph.n_wires; w++)
+                    for (int32_t e = graph.out_off[w]; e < graph.out_off[w + 1]; e++)
+                        src[e] = w;
+                edge_src_.upload(src.data(), src.size());
+            }
             edge_cost_.upload(graph.edge_cost, (size_t)graph.n_edges);
             // nullptr is an all-zero region (no reserved pips). hipMemcpy from a
             // null host pointer would fault, so allocate and clear instead.
@@ -822,12 +865,20 @@ class DeviceBackend : public Backend
                 edge_outside_halo_.alloc((size_t)graph.n_edges);
                 GPU_CHECK(hipMemset(edge_outside_halo_.ptr, 0, (size_t)graph.n_edges * sizeof(uint8_t)));
             }
-            wx_.upload(graph.wire_x, graph.n_wires);
-            wy_.upload(graph.wire_y, graph.n_wires);
-            reserved_.upload(graph.wire_reserved, graph.n_wires);
-            flags_.upload(graph.wire_flags, graph.n_wires);
-            occ_.upload(graph.wire_occ, graph.n_wires);
-            hist_.upload(graph.wire_hist, graph.n_wires);
+            {
+                std::vector<WireRec> recs((size_t)graph.n_wires);
+                for (int32_t w = 0; w < graph.n_wires; w++) {
+                    WireRec &r = recs[w];
+                    r.x = graph.wire_x[w];
+                    r.y = graph.wire_y[w];
+                    r.flags = graph.wire_flags[w];
+                    r.pad[0] = r.pad[1] = r.pad[2] = 0;
+                    r.reserved = graph.wire_reserved[w];
+                    r.occ = graph.wire_occ[w];
+                    r.hist = graph.wire_hist[w];
+                }
+                wires_.upload(recs.data(), recs.size());
+            }
             small_.alloc(small_slots, small_bits);
             auto_large_slots_ = large_slots <= 0;
             if (large_slots <= 0) {
@@ -862,8 +913,8 @@ class DeviceBackend : public Backend
         upd_hist_.upload(hist, count);
         upd_res_.upload(reserved, count);
         int blocks = (int)((count + 255) / 256);
-        update_state_kernel<<<blocks, 256>>>(occ_.ptr, hist_.ptr, reserved_.ptr, (int)count, upd_wires_.ptr,
-                                             upd_occ_.ptr, upd_hist_.ptr, upd_res_.ptr);
+        update_state_kernel<<<blocks, 256>>>(wires_.ptr, (int)count, upd_wires_.ptr, upd_occ_.ptr, upd_hist_.ptr,
+                                             upd_res_.ptr);
         GPU_CHECK(hipGetLastError());
         GPU_CHECK(hipDeviceSynchronize());
         stats_.transfer_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
@@ -928,17 +979,28 @@ class DeviceBackend : public Backend
         g.n_wires = n_wires_;
         g.out_off = out_off_.ptr;
         g.out_dst = out_dst_.ptr;
+        g.edge_src = edge_src_.ptr;
         g.edge_cost = edge_cost_.ptr;
         g.edge_region = edge_region_.ptr;
         g.edge_outside_halo = edge_outside_halo_.ptr;
-        g.wx = wx_.ptr;
-        g.wy = wy_.ptr;
-        g.reserved = reserved_.ptr;
-        g.flags = flags_.ptr;
-        g.occ = occ_.ptr;
-        g.hist = hist_.ptr;
-        route_kernel<<<grid, BLOCK>>>(g, params, tasks_.ptr, (int)tasks.size(), arcs_.ptr, seeds_.ptr, seed_delay_.ptr,
-                                      seed_load_.ptr, shell_tiles_.ptr, lane.scratch(), results_.ptr, paths_.ptr);
+        g.wires = wires_.ptr;
+        switch (params.block_threads) {
+        case 512:
+            route_kernel<512><<<grid, 512>>>(g, params, tasks_.ptr, (int)tasks.size(), arcs_.ptr, seeds_.ptr,
+                                             seed_delay_.ptr, seed_load_.ptr, shell_tiles_.ptr, lane.scratch(),
+                                             results_.ptr, paths_.ptr);
+            break;
+        case 1024:
+            route_kernel<1024><<<grid, 1024>>>(g, params, tasks_.ptr, (int)tasks.size(), arcs_.ptr, seeds_.ptr,
+                                               seed_delay_.ptr, seed_load_.ptr, shell_tiles_.ptr, lane.scratch(),
+                                               results_.ptr, paths_.ptr);
+            break;
+        default:
+            route_kernel<256><<<grid, 256>>>(g, params, tasks_.ptr, (int)tasks.size(), arcs_.ptr, seeds_.ptr,
+                                             seed_delay_.ptr, seed_load_.ptr, shell_tiles_.ptr, lane.scratch(),
+                                             results_.ptr, paths_.ptr);
+            break;
+        }
         GPU_CHECK(hipGetLastError());
         GPU_CHECK(hipDeviceSynchronize());
         auto t2 = std::chrono::steady_clock::now();
@@ -964,15 +1026,11 @@ class DeviceBackend : public Backend
     std::string name_;
     std::string device_name_;
     int32_t n_wires_ = 0;
-    DevBuf<int32_t> out_off_, out_dst_;
+    DevBuf<int32_t> out_off_, out_dst_, edge_src_;
     DevBuf<float> edge_cost_;
     DevBuf<uint8_t> edge_region_;
     DevBuf<uint8_t> edge_outside_halo_;
-    DevBuf<int16_t> wx_, wy_;
-    DevBuf<int32_t> reserved_;
-    DevBuf<uint8_t> flags_;
-    DevBuf<int32_t> occ_;
-    DevBuf<float> hist_;
+    DevBuf<WireRec> wires_;
     Lane small_, large_;
     DevBuf<TaskDesc> tasks_;
     DevBuf<ArcDesc> arcs_;

@@ -18,6 +18,7 @@
  */
 
 #include <map>
+#include <new>
 #include <string>
 #include <vector>
 
@@ -109,6 +110,62 @@ struct SharedSinkDesign
 
 const Tree expected_tree = {{"src", ""}, {"p", "src"}, {"x", "p"}, {"y", "x"}, {"z", "y"}, {"t", "z"}};
 
+struct SinglePipDesign
+{
+    NetInfo *net;
+    WireId destination;
+    PipId pip;
+};
+
+SinglePipDesign make_single_pip_design(Context &ctx, bool route_to_a)
+{
+    ctx.settings[ctx.id("timing_driven")] = false;
+    auto wire = [&](const char *name) { return ctx.addWire(IdStringList(ctx.id(name)), ctx.id("W"), 0, 0); };
+    const WireId src = wire("src"), a = wire("a"), b = wire("b");
+    const WireId destination = route_to_a ? a : b;
+    PipId pip = ctx.addPip(IdStringList(ctx.id(route_to_a ? "src_a" : "src_b")), ctx.id("P"), src, destination, 1,
+                           Loc(0, 0, 0));
+
+    const IdString type = ctx.id("B"), in = ctx.id("I"), out = ctx.id("O");
+    NetInfo *net = ctx.createNet(ctx.id("n"));
+    BelId driver_bel = ctx.addBel(IdStringList(ctx.id("drv")), type, Loc(0, 0, 0), false, false);
+    BelId sink_bel = ctx.addBel(IdStringList(ctx.id("sink")), type, Loc(0, 0, 1), false, false);
+    ctx.addBelOutput(driver_bel, out, src);
+    ctx.addBelInput(sink_bel, in, destination);
+    CellInfo *driver = ctx.createCell(ctx.id("drv"), type);
+    CellInfo *sink = ctx.createCell(ctx.id("sink"), type);
+    driver->addOutput(out);
+    driver->connectPort(out, net);
+    sink->addInput(in);
+    sink->connectPort(in, net);
+    ctx.assignArchInfo();
+    ctx.bindBel(driver_bel, driver, STRENGTH_USER);
+    ctx.bindBel(sink_bel, sink, STRENGTH_USER);
+    return {net, destination, pip};
+}
+
+struct ReusableContext
+{
+    alignas(Context) unsigned char storage[sizeof(Context)];
+    Context *ctx = nullptr;
+
+    Context *construct()
+    {
+        ctx = new (storage) Context(ArchArgs{});
+        return ctx;
+    }
+
+    void destroy()
+    {
+        if (ctx != nullptr) {
+            ctx->~Context();
+            ctx = nullptr;
+        }
+    }
+
+    ~ReusableContext() { destroy(); }
+};
+
 } // namespace
 
 // The device search is checked against the same contract in
@@ -118,4 +175,25 @@ TEST(GpuRouterSharedSink, LaterArcAttachesOnlyToRoutedWires)
     SharedSinkDesign design;
     ASSERT_TRUE(design.route());
     EXPECT_EQ(design.tree(), expected_tree);
+}
+
+TEST(GpuRouterTopologyCache, RecycledContextWithChangedDestinationRebuildsGraph)
+{
+    ReusableContext storage;
+    Context *ctx = storage.construct();
+    SinglePipDesign first = make_single_pip_design(*ctx, true);
+    GpuRouterCfg first_cfg(ctx);
+    first_cfg.cpu_backend = true;
+    ASSERT_TRUE(gpurouter(ctx, first_cfg));
+    ASSERT_EQ(first.net->wires.at(first.destination).pip, first.pip);
+
+    void *recycled_address = ctx;
+    storage.destroy();
+    ctx = storage.construct();
+    ASSERT_EQ(ctx, recycled_address);
+    SinglePipDesign second = make_single_pip_design(*ctx, false);
+    GpuRouterCfg second_cfg(ctx);
+    second_cfg.cpu_backend = true;
+    ASSERT_TRUE(gpurouter(ctx, second_cfg));
+    EXPECT_EQ(second.net->wires.at(second.destination).pip, second.pip);
 }
