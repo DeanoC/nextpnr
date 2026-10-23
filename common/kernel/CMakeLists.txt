@@ -67,7 +67,7 @@ if (BUILD_TESTS)
         ${CMAKE_SOURCE_DIR}/3rdparty/googletest/googletest/include
         .
     )
-    target_link_libraries(nextpnr-command-settings-test PRIVATE gtest_main)
+    target_link_libraries(nextpnr-command-settings-test PRIVATE gtest_main Boost::headers)
     set_property(TARGET nextpnr-command-settings-test PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
     add_test(NAME nextpnr-command-settings-test COMMAND nextpnr-command-settings-test)
 endif()
