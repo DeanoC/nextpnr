@@ -376,8 +376,11 @@ bool Arch::restore_cell_pin_map(CellInfo *ci)
             !ports.is_object() || !payload["count"].is_number() ||
             payload["count"].number_value() != double(ports.object_items().size()))
             log_error("Invalid frozen pin map for %s.\n", ctx->nameOf(ci));
+        // A folded hard constant is disconnected, so its only record is this
+        // snapshot. A missing entry is rebuilt as PIN_SIG and the route no
+        // longer matches the constant the checkpoint saved.
         for (const auto &port : ci->ports) {
-            if (port.second.net != nullptr && !ports.object_items().count(port.first.str(ctx)))
+            if (!ports.object_items().count(port.first.str(ctx)))
                 log_error("Incomplete frozen pin map for %s.%s.\n", ctx->nameOf(ci), port.first.c_str(ctx));
         }
         ci->pin_data.clear();
