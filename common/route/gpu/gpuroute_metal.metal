@@ -46,7 +46,9 @@ using namespace metal;
 // expressions and must reach bit-identical values
 #pragma METAL fp contract(off)
 
-constant constexpr int BLOCK = 256;
+// Threads per net (RouteParams::block_threads): 256, 512 or 1024, one
+// pipeline each. The result does not depend on it.
+constant int BLOCK [[function_constant(0)]];
 constant constexpr uint EMPTY_KEY = 0xFFFFFFFFu;
 constant constexpr uint NONE_SLOT = 0xFFFFFFFFu; // "parent" marker of a seed wire
 constant constexpr ulong EMPTY_VAL = ~0ul;
@@ -67,7 +69,19 @@ struct RouteParams
 {
     float est_x, est_y, est_weight, curr_cong_weight, bias_factor;
     float seed_delay_weight, seed_delay_floor, load_penalty, pip_adder;
-    int expand_k, expand_div, use_bb, ignore_soft, ignore_hist, max_probe, exact;
+    int expand_k, expand_div, use_bb, ignore_soft, ignore_hist, max_probe, block_threads, exact;
+};
+
+// Everything the relaxation of an edge reads about its destination wire, in
+// one record (32 bytes with its alignment)
+struct alignas(16) WireRec
+{
+    short x, y;
+    uchar flags;
+    uchar pad[3];
+    int reserved;
+    int occ;
+    float hist;
 };
 
 struct TaskDesc
@@ -112,6 +126,7 @@ struct LaunchArgs
 struct BlockState
 {
     atomic_int near_n, far_n, far2_n, cand_n;
+    atomic_int touched_n;
     atomic_int fail;
     atomic_int inserted;
     atomic_int expanded;
@@ -215,20 +230,6 @@ static inline float h_est(constant RouteParams &p, int x, int y, int sx, int sy)
     return p.est_weight * (p.est_x * float(dx) + p.est_y * float(dy));
 }
 
-// Source wire of CSR edge e: the largest wire whose row starts at or before e
-static inline int edge_src(const device int *out_off, int n_wires, int e)
-{
-    int lo = 0, hi = n_wires - 1;
-    while (lo < hi) {
-        int mid = (lo + hi + 1) >> 1;
-        if (out_off[mid] <= e)
-            lo = mid;
-        else
-            hi = mid - 1;
-    }
-    return lo;
-}
-
 static inline int pack_shell_tile(int x, int y)
 {
     return int(uint(ushort(short(x))) | (uint(ushort(short(y))) << 16));
@@ -245,23 +246,21 @@ static inline bool shell_tile_hit(const device int *tiles, int off, int cnt, int
     return false;
 }
 
-[[max_total_threads_per_threadgroup(256)]] kernel void
+[[max_total_threads_per_threadgroup(1024)]] kernel void
 route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst [[buffer(1)]],
-             const device float *edge_cost [[buffer(2)]], const device uchar *edge_region [[buffer(3)]],
-             const device uchar *edge_outside_halo [[buffer(4)]], const device short *wx [[buffer(5)]],
-             const device short *wy [[buffer(6)]], const device int *reserved [[buffer(7)]],
-             const device uchar *flags [[buffer(8)]], const device int *occ [[buffer(9)]],
-             const device float *whist [[buffer(10)]], constant RouteParams &p [[buffer(11)]],
-             constant LaunchArgs &la [[buffer(12)]], const device TaskDesc *tasks [[buffer(13)]],
-             const device ArcDesc *arcs [[buffer(14)]], const device int *seeds [[buffer(15)]],
-             const device float *seed_delay [[buffer(16)]], const device float *seed_load [[buffer(17)]],
-             const device int *shell_tiles [[buffer(18)]], device atomic_uint *sc_keys [[buffer(19)]],
-             device ulong *sc_vals [[buffer(20)]], device float *sc_sdelay [[buffer(21)]],
-             device float *sc_sload [[buffer(22)]], device ulong *sc_piles [[buffer(23)]],
-             device uint *sc_cand_par [[buffer(24)]], device ulong *sc_best [[buffer(25)]],
-             device ArcResult *results [[buffer(26)]], device PathEntry *paths [[buffer(27)]],
-             uint tid_u [[thread_index_in_threadgroup]], uint bid [[threadgroup_position_in_grid]],
-             uint nblocks [[threadgroups_per_grid]])
+             const device int *edge_src [[buffer(2)]], const device float *edge_cost [[buffer(3)]],
+             const device uchar *edge_region [[buffer(4)]], const device uchar *edge_outside_halo [[buffer(5)]],
+             const device WireRec *wires [[buffer(6)]], constant RouteParams &p [[buffer(7)]],
+             constant LaunchArgs &la [[buffer(8)]], const device TaskDesc *tasks [[buffer(9)]],
+             const device ArcDesc *arcs [[buffer(10)]], const device int *seeds [[buffer(11)]],
+             const device float *seed_delay [[buffer(12)]], const device float *seed_load [[buffer(13)]],
+             const device int *shell_tiles [[buffer(14)]], device atomic_uint *sc_keys [[buffer(15)]],
+             device ulong *sc_vals [[buffer(16)]], device float *sc_sdelay [[buffer(17)]],
+             device float *sc_sload [[buffer(18)]], device ulong *sc_piles [[buffer(19)]],
+             device uint *sc_cand_par [[buffer(20)]], device uint *sc_touched [[buffer(21)]],
+             device ulong *sc_best [[buffer(22)]], device ArcResult *results [[buffer(23)]],
+             device PathEntry *paths [[buffer(24)]], uint tid_u [[thread_index_in_threadgroup]],
+             uint bid [[threadgroup_position_in_grid]], uint nblocks [[threadgroups_per_grid]])
 {
     threadgroup BlockState st;
     threadgroup atomic_int hist[NBINS];
@@ -277,6 +276,7 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
     device ulong *near = pilebase + 2 * size_t(cap);
     device ulong *cand = pilebase + 3 * size_t(cap);
     device uint *cand_par = sc_cand_par + size_t(bid) * cap;
+    device uint *touched = sc_touched + size_t(bid) * cap;
     device ulong *best = sc_best + bid;
 
     for (int t = int(bid); t < la.ntasks; t += int(nblocks)) {
@@ -288,18 +288,16 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
         for (int a = 0; a < task.arc_cnt; a++) {
             const ArcDesc arc = arcs[task.arc_off + a];
             const int sink = arc.sink;
-            const int sx = wx[sink], sy = wy[sink];
+            const int sx = wires[sink].x, sy = wires[sink].y;
 
-            // 1. clear the table
-            for (int i = tid; i < cap; i += BLOCK) {
-                atomic_store_explicit(&keys[i], EMPTY_KEY, RELAXED);
-                vals[i] = EMPTY_VAL;
-            }
+            // 1. the table is empty: cleared by the lane's allocation and by
+            //    every arc before it finished (see 5.)
             if (tid == 0) {
                 st_(st.near_n, 0);
                 st_(st.far_n, 0);
                 st_(st.far2_n, 0);
                 st_(st.cand_n, 0);
+                st_(st.touched_n, 0);
                 st_(st.fail, 0);
                 st_(st.inserted, 0);
                 st_(st.expanded, 0);
@@ -349,6 +347,7 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                     if (!ins)
                         continue;
                     inc(st.inserted);
+                    touched[inc(st.touched_n)] = uint(s);
                     if (d < 0.0f) {
                         // blocked tree wire: present so nothing relaxes into it, never expanded
                         vals[s] = pack(u2f(INF_BITS), NONE_SLOT);
@@ -392,15 +391,17 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                     int sv = table_find(lookup, mask, p.max_probe, v);
                     if (sv < 0 || pack_gbits(vals[sv]) != gbits)
                         continue;
-                    const float f = u2f(gbits) + h_est(p, wx[v], wy[v], sx, sy);
+                    const WireRec wv = wires[v];
+                    const float f = u2f(gbits) + h_est(p, wv.x, wv.y, sx, sy);
                     if (f >= prune)
                         continue;
                     atomic_fetch_min_explicit(&st.minf_bits, f2u(f), RELAXED);
                     atomic_fetch_max_explicit(&st.maxf_bits, f2u(f), RELAXED);
                     int pos = inc(st.far2_n);
-                    if (pos < cap)
+                    if (pos < cap) {
                         far2[pos] = e;
-                    else
+                        cand_par[pos] = f2u(f); // f for passes 2 and 3; free until phase A
+                    } else
                         st_(st.fail, FAIL_PILE);
                 }
                 SYNC();
@@ -431,9 +432,7 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                 const float binw = st.binw;
                 if (binw > 0.0f) {
                     for (int i = tid; i < fn2; i += BLOCK) {
-                        ulong e = far2[i];
-                        const uint v = pack_lo(e);
-                        const float f = pack_g(e) + h_est(p, wx[v], wy[v], sx, sy);
+                        const float f = u2f(cand_par[i]);
                         int b = int((f - minf) / binw);
                         b = b < 0 ? 0 : (b >= NBINS ? NBINS - 1 : b);
                         atomic_fetch_add_explicit(&hist[b], 1, RELAXED);
@@ -466,8 +465,7 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                     const float thr = u2f(st.thr_bits);
                     for (int i = tid; i < fn2; i += BLOCK) {
                         ulong e = far2[i];
-                        const uint v = pack_lo(e);
-                        const float f = pack_g(e) + h_est(p, wx[v], wy[v], sx, sy);
+                        const float f = u2f(cand_par[i]);
                         // The bin boundary can round back to minf when the range
                         // is small relative to the costs. Always expand the minima
                         // so a nonempty frontier cannot repeat without progress.
@@ -530,20 +528,21 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                             if (c < 0.0f || (edge_region[ei] && !task.allow_reserved))
                                 continue;
                             c += p.pip_adder;
-                            const int vx = wx[v], vy = wy[v];
+                            const WireRec wv = wires[v];
+                            const int vx = wv.x, vy = wv.y;
                             if (task.stay_in_halo && edge_outside_halo[ei] &&
                                 !shell_tile_hit(shell_tiles, task.shell_off, task.shell_cnt, vx, vy))
                                 continue;
                             if (p.use_bb && (vx < task.bb_x0 || vx > task.bb_x1 || vy < task.bb_y0 || vy > task.bb_y1))
                                 continue;
-                            if (flags[v] & WIRE_UNAVAILABLE)
+                            if (wv.flags & WIRE_UNAVAILABLE)
                                 continue;
-                            const int rsv = reserved[v];
+                            const int rsv = wv.reserved;
                             if (rsv != -1 && (rsv & ~RESERVED_SOFT) != task.net &&
                                 !(p.ignore_soft && (rsv & RESERVED_SOFT)))
                                 continue;
-                            const float hist_c = p.ignore_hist ? 1.0f : 1.0f + arc.crit_weight * (whist[v] - 1.0f);
-                            const float pres = 1.0f + float(occ[v]) * p.curr_cong_weight * arc.crit_weight;
+                            const float hist_c = p.ignore_hist ? 1.0f : 1.0f + arc.crit_weight * (wv.hist - 1.0f);
+                            const float pres = 1.0f + float(wv.occ) * p.curr_cong_weight * arc.crit_weight;
                             int bdx = vx - task.cx, bdy = vy - task.cy;
                             bdx = bdx < 0 ? -bdx : bdx;
                             bdy = bdy < 0 ? -bdy : bdy;
@@ -599,6 +598,7 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                         int cnt = inc(st.inserted);
                         if (cnt > (cap / 5) * 3)
                             st_(st.fail, FAIL_LOAD);
+                        touched[inc(st.touched_n)] = uint(sv);
                     }
                     const ulong nv = pack(pack_g(cand[i]), cand_par[i] & ~IMPROVES_G);
                     atomic_min_explicit((device atomic_ulong *)&vals[sv], nv, RELAXED);
@@ -670,7 +670,7 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                             r.status = ARC_PATH_FULL;
                             break;
                         }
-                        const int par = edge_src(out_off, la.n_wires, int(edge));
+                        const int par = edge_src[edge];
                         PathEntry pe;
                         pe.wire = cur;
                         pe.parent = par;
@@ -703,6 +703,25 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                     }
                 }
                 results[task.arc_off + a] = r;
+            }
+            SYNC();
+
+            // 5. leave the table empty for the next arc. A slot is claimed at
+            //    most once per arc, so the touched list cannot overflow; after
+            //    a failed search the list may be incomplete and the whole
+            //    table is cleared instead.
+            if (ld(st.fail)) {
+                for (int i = tid; i < cap; i += BLOCK) {
+                    atomic_store_explicit(&keys[i], EMPTY_KEY, RELAXED);
+                    vals[i] = EMPTY_VAL;
+                }
+            } else {
+                const int tn = ld(st.touched_n);
+                for (int i = tid; i < tn; i += BLOCK) {
+                    const uint s = touched[i];
+                    atomic_store_explicit(&keys[s], EMPTY_KEY, RELAXED);
+                    vals[s] = EMPTY_VAL;
+                }
             }
             SYNC();
         }

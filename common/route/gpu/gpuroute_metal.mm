@@ -34,6 +34,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -45,8 +46,9 @@ namespace gpuroute {
 
 namespace {
 
-constexpr int BLOCK = 256;
 constexpr int NPILES = 4;
+// Threads per net the kernel is built for, one pipeline each
+constexpr int BLOCK_SIZES[] = {256, 512, 1024};
 
 // Mirrors of the structs gpuroute_metal.metal declares. Metal lays them out
 // as the host compiler does; a field added on one side only changes a size.
@@ -56,7 +58,17 @@ struct LaunchArgs
     int32_t ntasks;
     int32_t cap;
 };
-static_assert(sizeof(RouteParams) == 64 && offsetof(RouteParams, exact) == 60, "RouteParams layout");
+struct alignas(16) WireRec
+{
+    int16_t x, y;
+    uint8_t flags;
+    uint8_t pad[3];
+    int32_t reserved;
+    int32_t occ;
+    float hist;
+};
+static_assert(sizeof(WireRec) == 32 && offsetof(WireRec, hist) == 16, "WireRec layout");
+static_assert(sizeof(RouteParams) == 68 && offsetof(RouteParams, exact) == 64, "RouteParams layout");
 static_assert(sizeof(TaskDesc) == 68 && offsetof(TaskDesc, bb_x0) == 44 && offsetof(TaskDesc, shell_cnt) == 64,
               "TaskDesc layout");
 static_assert(sizeof(ArcDesc) == 12, "ArcDesc layout");
@@ -68,15 +80,11 @@ enum : NSUInteger
 {
     B_OUT_OFF,
     B_OUT_DST,
+    B_EDGE_SRC,
     B_EDGE_COST,
     B_EDGE_REGION,
     B_EDGE_OUTSIDE_HALO,
-    B_WX,
-    B_WY,
-    B_RESERVED,
-    B_FLAGS,
-    B_OCC,
-    B_HIST,
+    B_WIRES,
     B_PARAMS,
     B_ARGS,
     B_TASKS,
@@ -91,6 +99,7 @@ enum : NSUInteger
     B_SLOAD,
     B_PILES,
     B_CAND_PAR,
+    B_TOUCHED,
     B_BEST,
     B_RESULTS,
     B_PATHS,
@@ -165,12 +174,13 @@ struct Lane
     SharedBuf<float> sdelay, sload;
     SharedBuf<uint64_t> piles;
     SharedBuf<uint32_t> cand_par;
+    SharedBuf<uint32_t> touched;
     SharedBuf<uint64_t> best;
     int slots = 0;
     int cap = 0;
     static size_t bytes_per_slot(int bits)
     {
-        return (size_t(1) << bits) * (sizeof(uint32_t) * 4 + sizeof(uint64_t) * (1 + NPILES)) + sizeof(uint64_t);
+        return (size_t(1) << bits) * (sizeof(uint32_t) * 5 + sizeof(uint64_t) * (1 + NPILES)) + sizeof(uint64_t);
     }
     void alloc(id<MTLDevice> dev, int nslots, int bits)
     {
@@ -182,13 +192,17 @@ struct Lane
         sload.ensure(dev, entries);
         piles.ensure(dev, (size_t)nslots * NPILES * (size_t)new_cap);
         cand_par.ensure(dev, entries);
+        touched.ensure(dev, entries);
         best.ensure(dev, (size_t)nslots);
         slots = nslots;
         cap = new_cap;
+        // Every table starts empty; each arc leaves its table empty again
+        std::memset(keys.ptr(), 0xFF, entries * sizeof(uint32_t));
+        std::memset(vals.ptr(), 0xFF, entries * sizeof(uint64_t));
     }
     template <typename F> void for_each_buffer(F f) const
     {
-        for (id<MTLBuffer> b : {keys.buf, vals.buf, sdelay.buf, sload.buf, piles.buf, cand_par.buf, best.buf})
+        for (id<MTLBuffer> b : {keys.buf, vals.buf, sdelay.buf, sload.buf, piles.buf, cand_par.buf, touched.buf, best.buf})
             f(b);
     }
     void release()
@@ -199,6 +213,7 @@ struct Lane
         sload.release();
         piles.release();
         cand_par.release();
+        touched.release();
         best.release();
         slots = 0;
         cap = 0;
@@ -219,22 +234,33 @@ class MetalBackend : public Backend
                 char registry_id[32];
                 std::snprintf(registry_id, sizeof(registry_id), "%016" PRIx64, (uint64_t)[dev_ registryID]);
                 name_ = std::string("metal:") + registry_id + ":" + device_name_;
-                if (route_pso_ == nil || queue_ == nil)
+                if (queue_ == nil)
                     build_pipeline();
 
                 n_wires_ = graph.n_wires;
                 out_off_.upload(dev_, graph.out_off, (size_t)graph.n_wires + 1);
                 out_dst_.upload(dev_, graph.out_dst, (size_t)graph.n_edges);
+                // The path walk needs the source wire of an edge; one load
+                // beats a binary search over the row offsets for every hop.
+                edge_src_.ensure(dev_, (size_t)graph.n_edges);
+                for (int32_t w = 0; w < graph.n_wires; w++)
+                    for (int32_t e = graph.out_off[w]; e < graph.out_off[w + 1]; e++)
+                        edge_src_.ptr()[e] = w;
                 edge_cost_.upload(dev_, graph.edge_cost, (size_t)graph.n_edges);
                 // nullptr is an all-zero array (no reserved pips, no halo fence)
                 upload_or_zero(edge_region_, graph.edge_region, (size_t)graph.n_edges);
                 upload_or_zero(edge_outside_halo_, graph.edge_outside_halo, (size_t)graph.n_edges);
-                wx_.upload(dev_, graph.wire_x, graph.n_wires);
-                wy_.upload(dev_, graph.wire_y, graph.n_wires);
-                reserved_.upload(dev_, graph.wire_reserved, graph.n_wires);
-                flags_.upload(dev_, graph.wire_flags, graph.n_wires);
-                occ_.upload(dev_, graph.wire_occ, graph.n_wires);
-                hist_.upload(dev_, graph.wire_hist, graph.n_wires);
+                wires_.ensure(dev_, (size_t)graph.n_wires);
+                for (int32_t w = 0; w < graph.n_wires; w++) {
+                    WireRec &r = wires_.ptr()[w];
+                    r.x = graph.wire_x[w];
+                    r.y = graph.wire_y[w];
+                    r.flags = graph.wire_flags[w];
+                    r.pad[0] = r.pad[1] = r.pad[2] = 0;
+                    r.reserved = graph.wire_reserved[w];
+                    r.occ = graph.wire_occ[w];
+                    r.hist = graph.wire_hist[w];
+                }
                 small_.alloc(dev_, small_slots, small_bits);
                 auto_large_slots_ = large_slots <= 0;
                 if (large_slots <= 0) {
@@ -264,14 +290,12 @@ class MetalBackend : public Backend
         // No kernel is running between calls, and the buffers are shared:
         // write the new state in place
         auto t0 = std::chrono::steady_clock::now();
-        int32_t *docc = occ_.ptr();
-        float *dhist = hist_.ptr();
-        int32_t *dres = reserved_.ptr();
+        WireRec *recs = wires_.ptr();
         for (size_t i = 0; i < count; i++) {
-            const int32_t w = wires[i];
-            docc[w] = occ[i];
-            dhist[w] = hist[i];
-            dres[w] = reserved[i];
+            WireRec &r = recs[wires[i]];
+            r.occ = occ[i];
+            r.hist = hist[i];
+            r.reserved = reserved[i];
         }
         stats_.transfer_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     }
@@ -335,19 +359,16 @@ class MetalBackend : public Backend
             refresh_residency();
             id<MTLCommandBuffer> cmd = [queue_ commandBuffer];
             id<MTLComputeCommandEncoder> enc = [cmd computeCommandEncoder];
-            [enc setComputePipelineState:route_pso_];
+            const int block = pick_block(params.block_threads);
+            [enc setComputePipelineState:route_pso_[block]];
             auto bind = [&](id<MTLBuffer> b, NSUInteger index) { [enc setBuffer:b offset:0 atIndex:index]; };
             bind(out_off_.buf, B_OUT_OFF);
             bind(out_dst_.buf, B_OUT_DST);
+            bind(edge_src_.buf, B_EDGE_SRC);
             bind(edge_cost_.buf, B_EDGE_COST);
             bind(edge_region_.buf, B_EDGE_REGION);
             bind(edge_outside_halo_.buf, B_EDGE_OUTSIDE_HALO);
-            bind(wx_.buf, B_WX);
-            bind(wy_.buf, B_WY);
-            bind(reserved_.buf, B_RESERVED);
-            bind(flags_.buf, B_FLAGS);
-            bind(occ_.buf, B_OCC);
-            bind(hist_.buf, B_HIST);
+            bind(wires_.buf, B_WIRES);
             [enc setBytes:&params length:sizeof(params) atIndex:B_PARAMS];
             [enc setBytes:&args length:sizeof(args) atIndex:B_ARGS];
             bind(tasks_.buf, B_TASKS);
@@ -362,10 +383,11 @@ class MetalBackend : public Backend
             bind(lane.sload.buf, B_SLOAD);
             bind(lane.piles.buf, B_PILES);
             bind(lane.cand_par.buf, B_CAND_PAR);
+            bind(lane.touched.buf, B_TOUCHED);
             bind(lane.best.buf, B_BEST);
             bind(results_.buf, B_RESULTS);
             bind(paths_.buf, B_PATHS);
-            [enc dispatchThreadgroups:MTLSizeMake(grid, 1, 1) threadsPerThreadgroup:MTLSizeMake(BLOCK, 1, 1)];
+            [enc dispatchThreadgroups:MTLSizeMake(grid, 1, 1) threadsPerThreadgroup:MTLSizeMake(BLOCK_SIZES[block], 1, 1)];
             [enc endEncoding];
             [cmd commit];
             [cmd waitUntilCompleted];
@@ -413,10 +435,9 @@ class MetalBackend : public Backend
                 if (b != nil)
                     now.push_back(b);
             };
-            for (id<MTLBuffer> b : {out_off_.buf, out_dst_.buf, edge_cost_.buf, edge_region_.buf,
-                                    edge_outside_halo_.buf, wx_.buf, wy_.buf, reserved_.buf, flags_.buf, occ_.buf,
-                                    hist_.buf, tasks_.buf, arcs_.buf, seeds_.buf, seed_delay_.buf, seed_load_.buf,
-                                    shell_tiles_.buf, results_.buf, paths_.buf})
+            for (id<MTLBuffer> b : {out_off_.buf, out_dst_.buf, edge_src_.buf, edge_cost_.buf, edge_region_.buf,
+                                    edge_outside_halo_.buf, wires_.buf, tasks_.buf, arcs_.buf, seeds_.buf,
+                                    seed_delay_.buf, seed_load_.buf, shell_tiles_.buf, results_.buf, paths_.buf})
                 add(b);
             small_.for_each_buffer(add);
             large_.for_each_buffer(add);
@@ -432,6 +453,18 @@ class MetalBackend : public Backend
             resident_ = std::move(now);
             residency_generation_ = buffer_generation;
         }
+    }
+
+    // Index into BLOCK_SIZES of the pipeline for the requested threads per
+    // net: the largest built one not above it. The result does not depend on
+    // the thread count, so a device that cannot run a size uses a smaller one.
+    int pick_block(int threads) const
+    {
+        int pick = 0;
+        for (int i = 0; i < (int)std::size(BLOCK_SIZES); i++)
+            if (route_pso_[i] != nil && BLOCK_SIZES[i] <= threads)
+                pick = i;
+        return pick;
     }
 
     template <typename T> void upload_or_zero(SharedBuf<T> &buf, const T *src, size_t n)
@@ -462,16 +495,23 @@ class MetalBackend : public Backend
         id<MTLLibrary> lib = [dev_ newLibraryWithSource:src options:opts error:&err];
         if (lib == nil)
             throw std::runtime_error("Metal kernel compilation failed: " + ns_error(err));
-        id<MTLFunction> fn = [lib newFunctionWithName:@"route_kernel"];
-        if (fn == nil)
-            throw std::runtime_error("Metal library has no route_kernel");
-        route_pso_ = [dev_ newComputePipelineStateWithFunction:fn error:&err];
-        if (route_pso_ == nil)
-            throw std::runtime_error("Metal pipeline creation failed: " + ns_error(err));
-        if ([route_pso_ maxTotalThreadsPerThreadgroup] < (NSUInteger)BLOCK)
-            throw std::runtime_error("Metal route kernel supports only " +
-                                     std::to_string((unsigned long)[route_pso_ maxTotalThreadsPerThreadgroup]) +
-                                     " threads per threadgroup, needs " + std::to_string(BLOCK));
+        for (int i = 0; i < (int)std::size(BLOCK_SIZES); i++) {
+            const int block = BLOCK_SIZES[i];
+            MTLFunctionConstantValues *consts = [MTLFunctionConstantValues new];
+            [consts setConstantValue:&block type:MTLDataTypeInt atIndex:0];
+            id<MTLFunction> fn = [lib newFunctionWithName:@"route_kernel" constantValues:consts error:&err];
+            if (fn == nil)
+                throw std::runtime_error("Metal library has no route_kernel: " + ns_error(err));
+            id<MTLComputePipelineState> pso = [dev_ newComputePipelineStateWithFunction:fn error:&err];
+            if (pso == nil)
+                throw std::runtime_error("Metal pipeline creation failed: " + ns_error(err));
+            if ([pso maxTotalThreadsPerThreadgroup] >= (NSUInteger)block)
+                route_pso_[i] = pso;
+            else if (i == 0)
+                throw std::runtime_error("Metal route kernel supports only " +
+                                         std::to_string((unsigned long)[pso maxTotalThreadsPerThreadgroup]) +
+                                         " threads per threadgroup, needs " + std::to_string(block));
+        }
         queue_ = [dev_ newCommandQueue];
         if (queue_ == nil)
             throw std::runtime_error("Metal command queue creation failed");
@@ -487,7 +527,7 @@ class MetalBackend : public Backend
     }
 
     id<MTLDevice> dev_;
-    id<MTLComputePipelineState> route_pso_ = nil;
+    id<MTLComputePipelineState> route_pso_[std::size(BLOCK_SIZES)] = {};
     id<MTLCommandQueue> queue_ = nil;
     id residency_ = nil; // id<MTLResidencySet> on macOS 15 and later
     uint64_t residency_generation_ = ~uint64_t(0);
@@ -496,15 +536,11 @@ class MetalBackend : public Backend
     std::string name_;
     std::string device_name_;
     int32_t n_wires_ = 0;
-    SharedBuf<int32_t> out_off_, out_dst_;
+    SharedBuf<int32_t> out_off_, out_dst_, edge_src_;
     SharedBuf<float> edge_cost_;
     SharedBuf<uint8_t> edge_region_;
     SharedBuf<uint8_t> edge_outside_halo_;
-    SharedBuf<int16_t> wx_, wy_;
-    SharedBuf<int32_t> reserved_;
-    SharedBuf<uint8_t> flags_;
-    SharedBuf<int32_t> occ_;
-    SharedBuf<float> hist_;
+    SharedBuf<WireRec> wires_;
     Lane small_, large_;
     SharedBuf<TaskDesc> tasks_;
     SharedBuf<ArcDesc> arcs_;
