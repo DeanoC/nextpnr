@@ -24,9 +24,13 @@ and compares every saved pin state against the resulting routed snapshot. A
 frozen routed replay must produce the identical RBF. Malformed placed
 snapshots exercise invalid states, invalid physical pins, incomplete maps,
 unsupported versions, and a pin-state snapshot present on only some placed
-cells. A checkpoint that omits the snapshot on every placed cell still loads
-and warns. The previous compiler fails because the placed snapshot omits the
-folded states.
+cells. A placed cell port that is the only bit of its bus, here a disconnected
+`X[0]`, must keep that name when the checkpoint is copied. The JSON writer used
+to emit it as `X`, which the snapshot does not name, so the copy failed to
+reload. The same port missing from the snapshot is still rejected. A
+checkpoint that omits the snapshot on every placed cell still loads and warns.
+The previous compiler fails because the placed snapshot omits the folded
+states.
 
 Run with an explicit output directory on a filesystem with adequate space:
 

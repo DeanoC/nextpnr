@@ -366,6 +366,7 @@ struct Arch : BaseArch<ArchRanges>
     void note_reserved_rect(const std::string &spec);
     void note_reserved_rect_group(const std::string &spec);
     bool fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_invalid = false) const;
+    bool fes_locked_ff_route_through(BelId bel, const CellInfo *cell) const;
     bool fes_cell_is_slot(const CellInfo *cell) const;
     IdString fes_cell_slot_region(const CellInfo *cell) const;
     bool fes_net_touches_slot(const NetInfo *net) const;
@@ -891,6 +892,8 @@ struct Arch : BaseArch<ArchRanges>
     std::vector<FesReservedRect> fes_reserved_rects;
     dict<BelId, IdString> fes_bel_region;
     dict<IdString, std::set<BelId>> fes_region_bels;
+    // BELs reserved one at a time by FES_RESERVED_BEL, as opposed to by a rect.
+    pool<BelId> fes_explicit_reserved_bels;
     // Every region name ever declared (plain FES_RESERVED_RECT or
     // FES_RESERVED_RECT_GROUP), kept even after a region is absorbed into a
     // group so a stale reference gets a precise error instead of "unknown".

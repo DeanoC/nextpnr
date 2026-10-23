@@ -469,6 +469,16 @@ template <typename FrontendType> struct GenericFrontend
                 log_error("Failed to get direction for port '%s' of cell '%s'\n", name.c_str(), inst_name.c_str(ctx));
             PortType dir = port_dirs.at(ctx->id(name));
             int width = impl.get_vector_length(bits);
+            if (width == 0) {
+                // jsonwrite emits a disconnected scalar, or a lone bus bit
+                // under its literal name, as an empty list. Recreate the port
+                // with no net so a folded constant still has a logical pin for
+                // the architecture pin-map snapshot to cover.
+                IdString port_id = ctx->id(name);
+                ci->ports[port_id].name = port_id;
+                ci->ports[port_id].type = dir;
+                return;
+            }
             for (int i = 0; i < width; i++) {
                 std::string port_bit_name = get_bit_name(name, i, width);
                 IdString port_bit_ids = ctx->id(port_bit_name);

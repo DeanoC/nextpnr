@@ -365,6 +365,7 @@ void Arch::note_reserved_bel(const std::string &name)
         log_error("FES_RESERVED_BEL '%s' overlaps region '%s'.\n", name.c_str(), existing->second.c_str(getCtx()));
     fes_bel_region[bel] = region_id;
     fes_region_bels[region_id].insert(bel);
+    fes_explicit_reserved_bels.insert(bel);
     // Deliberately not added to fes_declared_region_names: a BEL reservation
     // augments whichever region owns "cart" (by default or via an explicit
     // FES_RESERVED_RECT/_GROUP declared before or after it) rather than
@@ -525,6 +526,33 @@ IdString Arch::fes_cell_slot_region(const CellInfo *cell) const
     return prop.as_bool() ? id_cart : IdString();
 }
 
+// A user BEL lock on a flip-flop also claims its ALM's LUT for that
+// flip-flop's data route-through, so a socket boundary keeps its registered
+// LUT input inside a reserved rect. A LUT reserved by FES_RESERVED_BEL itself
+// stays closed. The helper stays whatever drives the data, a constant tie-off
+// included: FES boundary layouts and their producer seals expect one beside
+// every pinned boundary flip-flop.
+bool Arch::fes_locked_ff_route_through(BelId bel, const CellInfo *cell) const
+{
+    static const std::string suffix = "$ROUTETHRU";
+    if (cell->type != id_MISTRAL_BUF || fes_explicit_reserved_bels.count(bel) ||
+        !bel_data(bel).type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB))
+        return false;
+    const std::string name = cell->name.str(getCtx());
+    if (name.size() <= suffix.size() || name.compare(name.size() - suffix.size(), suffix.size(), suffix) != 0)
+        return false;
+    auto found = getCtx()->cells.find(id(name.substr(0, name.size() - suffix.size())));
+    if (found == getCtx()->cells.end())
+        return false;
+    const CellInfo *ff = found->second.get();
+    // The placer binds a BEL attribute at STRENGTH_USER and a checkpoint keeps
+    // that strength after the attribute is erased, so test the strength.
+    if (ff->type != id_MISTRAL_FF || ff->bel == BelId() || ff->belStrength < STRENGTH_USER)
+        return false;
+    const auto &lut = bel_data(bel).lab_data, &reg = bel_data(ff->bel).lab_data;
+    return lut.lab == reg.lab && lut.alm == reg.alm;
+}
+
 bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_invalid) const
 {
     if (fes_cell_is_slot(cell) && bel_data(bel).type.in(id_MISTRAL_COMB, id_MISTRAL_MCOMB, id_MISTRAL_FF)) {
@@ -562,7 +590,7 @@ bool Arch::fes_placement_allowed(BelId bel, const CellInfo *cell, bool explain_i
     auto frozen = fes_frozen_cells.find(cell);
     const bool frozen_here = frozen != fes_frozen_cells.end() && frozen->second == bel && cell->bel == bel &&
                              cell->belStrength >= STRENGTH_LOCKED;
-    if (reserved && !(in_own_region || bel_locked || frozen_here)) {
+    if (reserved && !(in_own_region || bel_locked || frozen_here || fes_locked_ff_route_through(bel, cell))) {
         if (explain_invalid)
             log_info("FES reserved BEL %s (region '%s') rejects cell %s%s.\n", getBelName(bel).str(getCtx()).c_str(),
                      region_it->second.c_str(getCtx()), nameOf(cell),
