@@ -21,6 +21,7 @@
 #define MISTRAL_ARCH_H
 
 #include <array>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <unordered_map>
@@ -306,7 +307,9 @@ enum CellPinStyle
 struct Arch : BaseArch<ArchRanges>
 {
     ArchArgs args;
-    mistral::CycloneV *cyclonev;
+    // Owns the model from CycloneV::get_model, including its decompressed
+    // device database. A raw pointer here leaked one model per Context (#288).
+    std::unique_ptr<mistral::CycloneV> cyclonev;
 
     // Mistral needs the bitstream configuring before it can use the simulator.
     bool bitstream_configured = false;
