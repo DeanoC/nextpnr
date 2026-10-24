@@ -43,7 +43,7 @@ specified bound for the same clock/edge. A reversed interval is rejected.
 `get_ports` supports literal bus names, brace-enclosed lists, `*` and `?`.
 Brackets in bus names are literal; `{SDRAM_DQ[*]}` selects the bus bits.
 
-The initial implementation supports one clock/edge per port and direction, and
+IO constraints support one clock/edge per port and direction, and
 the same clock or equal-period phase-related clocks. Independent input/output
 constraints can coexist on a bidirectional port. For `MISTRAL_IO`, output
 constraints cover both data and OE. Virtual clocks, `-add_delay`, separate
@@ -52,6 +52,23 @@ supported. Unsupported options, empty selections, wrong port directions and
 missing timing boundaries fail explicitly. Clock-level `set_false_path`, clock groups and setup multicycles use the
 merged SDC timing-exception implementation. Clock uncertainty remains a
 compatibility no-op; multicycle hold retains the single-cycle relationship.
+
+Internal register crossings can opt into `--phase-related-harmonic-clocks`.
+This additionally times exact integer period ratios in one declared phase group;
+Mistral derives that group from the source PLL. It does not infer a relation
+from matching frequencies or a shared reference oscillator. Waveforms must be
+exact, with positive high/low times summing to the period. Unsupported ratios
+or uncertain waveforms in a declared group fail explicitly. External IO delay
+references retain the equal-period restriction above.
+
+The setup relationship is the nearest strictly later capture edge over the
+repeating edge pattern. Hold uses the preceding relationship in that same
+pattern, independently of setup multicycles. For phase-zero 100/50 MHz rising
+edges, the setup window is 10 ns in both directions and the ideal hold offset
+is zero. The slower launch period grants no extra hold margin. Existing clock
+cuts still apply, and `--ignore-rel-clk` does not exempt a declared harmonic
+relation. This option supplies no clock uncertainty, external board budget or
+physical qualification.
 
 Constraints and the clock periods, duty cycles and phase relationships used by
 their analysis are preserved in JSON settings. Explicit clocks on input pads

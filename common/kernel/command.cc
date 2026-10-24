@@ -83,6 +83,7 @@ std::set<std::string> dedicated_command_setting_keys(const po::variables_map &vm
     add("randomize-seed", "seed");
     add("ignore-loops", "timing/ignoreLoops");
     add("ignore-rel-clk", "timing/ignoreRelClk");
+    add("phase-related-harmonic-clocks", "timing/phaseRelatedHarmonicClocks");
     add("timing-allow-fail", "timing/allowFail");
     add("placer", "placer");
     add("router", "router");
@@ -444,6 +445,8 @@ po::options_description CommandHandler::getGeneralOptions()
 
     general.add_options()("ignore-loops", "ignore combinational loops in timing analysis");
     general.add_options()("ignore-rel-clk", "ignore clock-to-clock relations in timing checks");
+    general.add_options()("phase-related-harmonic-clocks",
+                          "time exact integer-related periods in the same declared phase group");
 
     general.add_options()("version,V", "show version");
     general.add_options()("seed-racing-contract", "report nextpnr.seed-racing.native.v1 capability");
@@ -564,6 +567,9 @@ void CommandHandler::setupContext(Context *ctx)
 
     if (vm.count("ignore-rel-clk")) {
         ctx->settings[ctx->id("timing/ignoreRelClk")] = true;
+    }
+    if (vm.count("phase-related-harmonic-clocks")) {
+        ctx->settings[ctx->id("timing/phaseRelatedHarmonicClocks")] = true;
     }
 
     if (vm.count("timing-allow-fail")) {

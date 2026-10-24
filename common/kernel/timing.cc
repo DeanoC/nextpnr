@@ -59,8 +59,31 @@ bool phase_related_clocks(const Context *ctx, IdString launch, IdString capture)
     if (a == ctx->nets.end() || b == ctx->nets.end() || !a->second->clkconstr || !b->second->clkconstr)
         return false;
     const auto &ca = *a->second->clkconstr, &cb = *b->second->clkconstr;
-    return ca.phase_group != IdString() && ca.phase_group == cb.phase_group && ca.period.minDelay() > 0 &&
-           ca.period.minDelay() == cb.period.minDelay() && ca.period.maxDelay() == cb.period.maxDelay();
+    if (ca.phase_group == IdString() || ca.phase_group != cb.phase_group || ca.period.minDelay() <= 0 ||
+        cb.period.minDelay() <= 0)
+        return false;
+    if (ca.period.minDelay() == cb.period.minDelay() && ca.period.maxDelay() == cb.period.maxDelay())
+        return true;
+    if (!bool_or_default(ctx->settings, ctx->id("timing/phaseRelatedHarmonicClocks"), false))
+        return false;
+    auto exact = [](const ClockConstraint &c) {
+        return std::isfinite(double(c.period.minDelay())) && std::isfinite(double(c.phase_shift)) &&
+               c.period.minDelay() == c.period.maxDelay() &&
+               c.high.minDelay() == c.high.maxDelay() && c.low.minDelay() == c.low.maxDelay() &&
+               c.high.minDelay() > 0 && c.low.minDelay() > 0 &&
+               double(c.high.minDelay()) + double(c.low.minDelay()) == double(c.period.minDelay());
+    };
+    return exact(ca) && exact(cb) &&
+           std::fmod(double(std::max(ca.period.minDelay(), cb.period.minDelay())),
+                     double(std::min(ca.period.minDelay(), cb.period.minDelay()))) == 0;
+}
+
+// For equal periods or an exact integer ratio, all relative edge positions
+// repeat modulo the faster period. This is also the period preceding the
+// setup edge for hold; using the slower launch period would invent hold slack.
+static delay_t phase_interval_period(const Context *ctx, IdString launch, IdString capture)
+{
+    return std::min(clock_period(ctx, launch), clock_period(ctx, capture));
 }
 
 static bool timed_clocks(const Context *ctx, IdString launch, IdString capture)
@@ -91,12 +114,20 @@ static delay_t clock_interval(const Context *ctx, IdString launch, IdString capt
         return clock_interval(ctx, launch, launch_edge, capture_edge);
     NPNR_ASSERT(phase_related_clocks(ctx, launch, capture));
     const auto &ca = *ctx->nets.at(launch)->clkconstr, &cb = *ctx->nets.at(capture)->clkconstr;
+    if (ca.period.minDelay() != cb.period.minDelay()) {
+        double interval = double(cb.phase_shift) - double(ca.phase_shift);
+        if (capture_edge == FALLING_EDGE) interval += double(cb.high.minDelay());
+        if (launch_edge == FALLING_EDGE) interval -= double(ca.high.minDelay());
+        const double period = double(phase_interval_period(ctx, launch, capture));
+        interval = std::fmod(interval, period);
+        return delay_t(interval <= 0 ? interval + period : interval);
+    }
     delay_t interval = cb.phase_shift - ca.phase_shift;
     if (capture_edge == FALLING_EDGE)
         interval += cb.high.minDelay();
     if (launch_edge == FALLING_EDGE)
         interval -= ca.high.minDelay();
-    const delay_t period = ca.period.minDelay();
+    const delay_t period = phase_interval_period(ctx, launch, capture);
     while (interval <= 0)
         interval += period;
     while (interval > period)
@@ -584,6 +615,15 @@ void TimingAnalyser::setup_port_domains()
         auto &launch_data = domains.at(dp.key.launch);
         auto &capture_data = domains.at(dp.key.capture);
         dp.timed = timed_clocks(ctx, launch_data.key.clock, capture_data.key.clock);
+        if (!dp.timed && !ctx->sdc_clock_false(launch_data.key.clock, capture_data.key.clock) &&
+            bool_or_default(ctx->settings, ctx->id("timing/phaseRelatedHarmonicClocks"), false)) {
+            auto a = ctx->nets.find(launch_data.key.clock), b = ctx->nets.find(capture_data.key.clock);
+            if (a != ctx->nets.end() && b != ctx->nets.end() && a->second->clkconstr && b->second->clkconstr &&
+                a->second->clkconstr->phase_group != IdString() &&
+                a->second->clkconstr->phase_group == b->second->clkconstr->phase_group)
+                log_error("Unsupported harmonic clock pair '%s' -> '%s': require exact waveforms and an integer period ratio.\n",
+                          launch_data.key.clock.c_str(ctx), capture_data.key.clock.c_str(ctx));
+        }
         if (!dp.timed)
             continue;
         dp.multicycle_extra = multicycle_extra(ctx, launch_data.key.clock, capture_data.key.clock);
@@ -598,7 +638,9 @@ void TimingAnalyser::setup_port_domains()
             const auto &launch = domains.at(dp.key.launch).key;
             const auto &capture = domains.at(dp.key.capture).key;
             if (launch.is_async() || capture.is_async() ||
-                (launch.clock != capture.clock && !phase_related_clocks(ctx, launch.clock, capture.clock)))
+                (launch.clock != capture.clock &&
+                 (!phase_related_clocks(ctx, launch.clock, capture.clock) ||
+                  clock_period(ctx, launch.clock) != clock_period(ctx, capture.clock))))
                 log_error("IO delay path at '%s.%s' requires the same clock or equal-period phase-related clocks.\n",
                           port.first.cell.c_str(ctx), port.first.port.c_str(ctx));
         }
@@ -1034,7 +1076,8 @@ void TimingAnalyser::compute_slack()
                 pdp.second.hold_slack = arr.value.minDelay() - req.value.maxDelay() + clock_to_clock;
             // Hold keeps the single-cycle relationship under a multicycle.
             if (!setup_only && timed_clocks(ctx, launch_clock, capture_clock))
-                pdp.second.hold_slack += clock_period(ctx, launch_clock) - (dp.period.minDelay() - dp.multicycle_extra);
+                pdp.second.hold_slack += phase_interval_period(ctx, launch_clock, capture_clock) -
+                                         (dp.period.minDelay() - dp.multicycle_extra);
             pdp.second.max_path_length = arr.path_length + req.path_length;
             if (dp.timed)
                 pd.worst_setup_slack = std::min(pd.worst_setup_slack, dp.period.minDelay() + pdp.second.setup_slack);
@@ -1557,7 +1600,7 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
     if (!longest_path && phase_locked && (register_start || io_start) && (register_end || io_end)) {
         CriticalPath::Segment seg_phase;
         seg_phase.type = CriticalPath::Segment::Type::CLK_TO_CLK;
-        seg_phase.delay = clock_period(ctx, launch.clock) -
+        seg_phase.delay = phase_interval_period(ctx, launch.clock, capture.clock) -
                           clock_interval(ctx, launch.clock, capture.clock, launch.edge, capture.edge);
         seg_phase.from = launch_terminal;
         seg_phase.to = capture_terminal;
@@ -1845,7 +1888,7 @@ std::vector<CriticalPath> TimingAnalyser::get_min_delay_violations()
 
                 auto hold_slack = arr.value.minDelay() - req.value.maxDelay() + clock_to_clock;
                 if (phase_locked)
-                    hold_slack += clock_period(ctx, launch_clock) -
+                    hold_slack += phase_interval_period(ctx, launch_clock, capture_clock) -
                                   clock_interval(ctx, launch_clock, capture_clock, launch.key.edge, capture.key.edge);
 
                 const bool ignored_related = bool_or_default(ctx->settings, ctx->id("timing/ignoreRelClk"), false) &&
