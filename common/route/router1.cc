@@ -558,6 +558,9 @@ struct Router1
             queue.pop();
 
             for (auto pip : ctx->getPipsDownhill(qw.wire)) {
+                if (!ctx->pipAllowedForNet(pip, net_info))
+                    continue;
+
                 delay_t next_delay = qw.delay + ctx->getPipDelay(pip).maxDelay();
                 delay_t next_penalty = qw.penalty;
                 delay_t next_bonus = qw.bonus;
@@ -741,6 +744,17 @@ struct Router1
             log("  final route bonus:   %8.2f\n", ctx->getDelayNS(visited[dst_wire].bonus));
         }
 
+        // Recheck the selected path before mutating routing. The search already
+        // filters these pips, but keep the binding path fail-closed as well.
+        for (WireId check_wire = dst_wire;;) {
+            PipId pip = visited[check_wire].pip;
+            if (pip == PipId())
+                break;
+            if (!ctx->pipAllowedForNet(pip, net_info))
+                return false;
+            check_wire = ctx->getPipSrcWire(pip);
+        }
+
         // bind resulting route (and maybe unroute other nets)
 
         pool<WireId> unassign_wires = arc_to_wires[arc];
@@ -885,6 +899,9 @@ struct Router1
             queue.pop();
 
             for (auto pip : ctx->getPipsUphill(qw.wire)) {
+                if (!ctx->pipAllowedForNet(pip, net_info))
+                    continue;
+
                 delay_t next_delay = qw.delay + ctx->getPipDelay(pip).maxDelay();
                 delay_t next_penalty = qw.penalty;
                 delay_t next_bonus = qw.bonus;
@@ -1039,6 +1056,16 @@ struct Router1
             log("  final route delay:   %8.2f\n", ctx->getDelayNS(visited[dst_wire].delay));
             log("  final route penalty: %8.2f\n", ctx->getDelayNS(visited[dst_wire].penalty));
             log("  final route bonus:   %8.2f\n", ctx->getDelayNS(visited[dst_wire].bonus));
+        }
+
+        // Recheck the selected constant path before mutating routing.
+        for (WireId check_wire = best_src;;) {
+            PipId pip = visited[check_wire].pip;
+            if (pip == PipId())
+                break;
+            if (!ctx->pipAllowedForNet(pip, net_info))
+                return false;
+            check_wire = ctx->getPipDstWire(pip);
         }
 
         // bind resulting route (and maybe unroute other nets)

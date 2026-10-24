@@ -509,6 +509,8 @@ struct Arch : BaseArch<ArchRanges>
         return pip_rejection_reason(pip, net) == nullptr;
     }
 
+    bool pipAllowedForNet(PipId pip, const NetInfo *net) const override { return pip_allowed_for_net(pip, net); }
+
     // Search fence for fes_slot_route_outside_plug_halo_and_shell. The pip
     // bit excludes the per-net shell tile; netHaloShellTiles carries that.
     bool pipOutsideNetHalo(PipId pip) const override
@@ -521,11 +523,6 @@ struct Arch : BaseArch<ArchRanges>
     {
         return fes_fence_active && fes_has_reserved_rect && net != nullptr &&
                fes_cell_is_slot(net->driver.cell);
-    }
-
-    bool checkPipAvailForNet(PipId pip, const NetInfo *net) const override
-    {
-        return pip_allowed_for_net(pip, net) && BaseArch::checkPipAvailForNet(pip, net);
     }
 
     void netHaloShellTiles(const NetInfo *net, std::vector<std::pair<int, int>> &tiles) const override;
