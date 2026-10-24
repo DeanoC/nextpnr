@@ -951,6 +951,11 @@ NarrowClass narrow_class(const Arch *arch, const NetInfo *net)
     return NARROW_CART;
 }
 
+// A carry or share-chain output reaches only the next ALM's input through
+// its dedicated wire. The chain is placed as one cluster, so that wire is
+// never another net's and has no second way to want.
+bool chain_pin(IdString pin) { return pin == id_CO || pin == id_SHAREOUT; }
+
 } // namespace
 
 // fes_search_pin_narrow, cached. The caller holds fes_narrow_mutex.
@@ -1011,7 +1016,7 @@ void Arch::fes_precompute_narrow_pins()
                     continue;
                 for (IdString pin : pin_data->second.bel_pins) {
                     WireId wire = getBelPinWire(bel, pin);
-                    if (wire == WireId())
+                    if (wire == WireId() || chain_pin(pin))
                         continue;
                     auto key = std::make_pair(std::make_pair(wire, IdString()), int(forward) | (int(cls) << 1));
                     if (seen.insert(key).second)
@@ -1067,7 +1072,7 @@ bool Arch::fes_slot_pins_escape(BelId bel, const CellInfo *cell, bool explain_in
             continue;
         for (IdString pin : pin_data->second.bel_pins) {
             WireId wire = getBelPinWire(bel, pin);
-            if (wire == WireId() || !fes_slot_pin_narrow(wire, net, port.second.type == PORT_OUT))
+            if (wire == WireId() || chain_pin(pin) || !fes_slot_pin_narrow(wire, net, port.second.type == PORT_OUT))
                 continue;
             if (explain_invalid)
                 log_info("FES slot cell %s pin %s at %s has no second way past frozen routing and the slot "
