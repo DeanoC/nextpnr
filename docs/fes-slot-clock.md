@@ -94,11 +94,14 @@ the region retain their original selections and net owners, together with their
 upstream paths. These paths use `STRENGTH_LOCKED`, so orphan cleanup in router1
 (also used for GPU-router legality checking) cannot remove them when a vacant
 response input is detached. Obsolete branches entirely inside the region can
-still be trimmed. Detaching a protected physical sink fails explicitly.
-Before emitting RBF, the compiler checks both surviving protected selections
-and all routed pips. Consumers must still compare the complete emitted CRAM and
-header against their sealed shell; this routing check does not cover every
-possible cell or device setting.
+still be trimmed before the scaffold lock. An in-region shell pip that is
+still bound to its shell net at that lock stays part of the seal: a later
+rebind or drop, or a rebind already present at the lock, fails before the RBF.
+Detaching a protected physical sink fails explicitly.
+Before emitting RBF, the compiler checks surviving protected selections, the
+in-region shell pips sealed at lock, and all routed pips. Consumers must still
+compare the complete emitted CRAM and header against their sealed shell; this
+routing check does not cover every possible cell or device setting.
 
 For a cart with a physical CRAM region, unbound packing gives remaining constant
 consumers local slot `MISTRAL_CONST` drivers after control folding and RAM setup.
@@ -111,7 +114,8 @@ and use without a routed scaffold must reject before compilation.
 
 With `BUILD_TESTS=ON`, `nextpnr-mistral-test` covers protected orphan ancestry,
 unfenced and whole-chip cleanup, and rejection of removed/replaced selections
-or changed ownership. Routed-design checks accept connected locked physical
+or changed ownership. It also rejects a part rebinding or dropping an in-region
+shell pip. Routed-design checks accept connected locked physical
 stubs and sinkless trees, while rejecting unlocked, disconnected, or undriven
 routing. The retained FES #237 shell/cart fixture can also be
 replayed without a GPU:

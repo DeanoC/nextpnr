@@ -135,3 +135,20 @@ TEST_F(FesCramTest, RoutedDesignAllowsLockedSinklessNetButRequiresConnectedDrive
     source->disconnectPort(ctx->id("pin"));
     EXPECT_FALSE(ctx->checkRoutedDesign());
 }
+
+TEST_F(FesCramTest, InRegionRebindIsRejected)
+{
+    fence();
+    ctx->unbindPip(removable_pip);
+    auto cart = ctx->createNet(ctx->id("cart"));
+    ctx->bindPip(removable_pip, cart, STRENGTH_USER);
+    EXPECT_THROW(ctx->fes_validate_cram_routing(), log_execution_error_exception);
+}
+
+TEST_F(FesCramTest, InRegionDropIsRejected)
+{
+    fence();
+    EXPECT_NO_THROW(ctx->fes_validate_cram_routing());
+    ctx->unbindPip(removable_pip);
+    EXPECT_THROW(ctx->fes_validate_cram_routing(), log_execution_error_exception);
+}

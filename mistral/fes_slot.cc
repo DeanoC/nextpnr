@@ -300,27 +300,6 @@ bool Arch::fes_cell_is_slot(const CellInfo *cell) const
     return prop.is_string ? !prop.as_string().empty() : prop.as_bool();
 }
 
-void Arch::fes_rip_reserved_shell_pips()
-{
-    Context *ctx = getCtx();
-    int ripped = 0;
-    for (auto &item : ctx->nets) {
-        NetInfo *net = item.second.get();
-        if (fes_cell_is_slot(net->driver.cell))
-            continue;
-        std::vector<PipId> pips;
-        for (auto &wire : net->wires) {
-            if (wire.second.pip != PipId() && fes_pip_in_socket(wire.second.pip))
-                pips.push_back(wire.second.pip);
-        }
-        for (PipId pip : pips) {
-            ctx->unbindPip(pip);
-            ++ripped;
-        }
-    }
-    log_info("FES ripped %d reserved-tile pips from shell nets.\n", ripped);
-}
-
 void Arch::save_fes_pin_maps(bool save_lab_state)
 {
     // Routing does not describe unused memory lanes or folded hard constants.
@@ -491,8 +470,6 @@ void Arch::lock_fes_scaffold()
             alm.aclr_idx = {state[start + 4].int_value(), state[start + 5].int_value()};
         }
     }
-    // Rip is optional; mixed USER/WEAK trees make GPU router1 check abort.
-    // fes_rip_reserved_shell_pips();
     if (fes_has_reserved_rect) {
         int m10ks = 0;
         for (BelId bel : getBels()) {
@@ -622,15 +599,23 @@ void Arch::note_fes_cram_region(const std::string &spec)
             if (pip == PipId())
                 continue;
             fes_frozen_pips.insert(pip);
-            if (WireId(pip.src).is_nextpnr_created() || WireId(pip.dst).is_nextpnr_created() ||
-                fes_cram_allowed_muxes.count(pip.dst))
+            // Synthetic BEL edges are not routing muxes. An in-region mux is
+            // recorded by its shell net but stays out of fes_protected_routing,
+            // so an obsolete branch can still be trimmed before the lock.
+            const bool synthetic = WireId(pip.src).is_nextpnr_created() || WireId(pip.dst).is_nextpnr_created();
+            if (!synthetic && fes_cram_allowed_muxes.count(pip.dst)) {
+                auto inserted = fes_frozen_pip_nets.emplace(pip, item.first);
+                if (!inserted.second && inserted.first->second != item.first)
+                    log_error("Frozen in-region pip %s is on two shell nets.\n", getPipName(pip).str(getCtx()).c_str());
+            }
+            if (synthetic || fes_cram_allowed_muxes.count(pip.dst))
                 continue;
             WireId cursor = wire.first;
             while (!fes_protected_routing.count(cursor)) {
                 auto upstream = net->wires.find(cursor);
                 if (upstream == net->wires.end())
-                    log_error("Incomplete frozen CRAM route at wire %s on net %s.\n",
-                              getCtx()->nameOfWire(cursor), getCtx()->nameOf(net));
+                    log_error("Incomplete frozen CRAM route at wire %s on net %s.\n", getCtx()->nameOfWire(cursor),
+                              getCtx()->nameOf(net));
                 PipId parent = upstream->second.pip;
                 fes_protected_routing[cursor] = std::make_pair(parent, item.first);
                 if (parent == PipId())
@@ -639,8 +624,8 @@ void Arch::note_fes_cram_region(const std::string &spec)
             }
         }
     }
-    log_info("FES physical CRAM fence admits %zu muxes and preserves %zu frozen pips.\n",
-             fes_cram_allowed_muxes.size(), fes_frozen_pips.size());
+    log_info("FES physical CRAM fence admits %zu muxes and preserves %zu frozen pips.\n", fes_cram_allowed_muxes.size(),
+             fes_frozen_pips.size());
 #endif
 }
 
@@ -657,14 +642,50 @@ void Arch::fes_validate_cram_routing() const
         const NetInfo *net = getBoundWireNet(entry.first);
         if (net == nullptr || net->name != entry.second.second || !net->wires.count(entry.first) ||
             net->wires.at(entry.first).pip != entry.second.first)
-            log_error("Missing or changed frozen CRAM route at wire %s on net %s.\n",
-                      getCtx()->nameOfWire(entry.first), entry.second.second.c_str(getCtx()));
+            log_error("Missing or changed frozen CRAM route at wire %s on net %s.\n", getCtx()->nameOfWire(entry.first),
+                      entry.second.second.c_str(getCtx()));
     }
     for (const auto &item : getCtx()->nets)
         for (const auto &wire : item.second->wires)
             if (wire.second.pip != PipId() && !fes_pip_preserves_cram(wire.second.pip))
                 log_error("Routed pip %s violates frozen CRAM region.\n",
                           getPipName(wire.second.pip).str(getCtx()).c_str());
+    // In-region shell pips are not protected routing: orphan trim may drop an
+    // obsolete branch before the scaffold locks. A pip still on its snapshot
+    // net at the first successful check is sealed. A later rebind or drop,
+    // and a rebind already present at that check, fails before the RBF.
+    auto still_on_net = [&](PipId pip, IdString owner) {
+        const NetInfo *bound = getBoundPipNet(pip);
+        if (bound == nullptr || bound->name != owner)
+            return false;
+        WireId dst(pip.dst);
+        return bound->wires.count(dst) && bound->wires.at(dst).pip == pip;
+    };
+    auto fail = [&](PipId pip, IdString owner) {
+        log_error("Missing or changed in-region shell pip %s on net %s.\n", getPipName(pip).str(getCtx()).c_str(),
+                  owner.c_str(getCtx()));
+    };
+    if (!fes_in_region_sealed) {
+        dict<PipId, IdString> live;
+        for (PipId pip : fes_frozen_pips) {
+            auto found = fes_frozen_pip_nets.find(pip);
+            if (found == fes_frozen_pip_nets.end())
+                continue;
+            IdString owner = found->second;
+            if (getBoundPipNet(pip) == nullptr && getBoundWireNet(WireId(pip.dst)) == nullptr)
+                continue;
+            if (!still_on_net(pip, owner))
+                fail(pip, owner);
+            else
+                live[pip] = owner;
+        }
+        fes_in_region_live = live;
+        fes_in_region_sealed = true;
+    } else {
+        for (const auto &entry : fes_in_region_live)
+            if (!still_on_net(entry.first, entry.second))
+                fail(entry.first, entry.second);
+    }
 }
 
 bool Arch::fes_pip_preserves_cram(PipId pip) const
@@ -693,9 +714,8 @@ void Arch::fes_check_boundary_connectivity() const
             continue;
         boundary_nets.push_back(net);
     }
-    std::sort(boundary_nets.begin(), boundary_nets.end(), [&](const NetInfo *a, const NetInfo *b) {
-        return a->name.str(ctx) < b->name.str(ctx);
-    });
+    std::sort(boundary_nets.begin(), boundary_nets.end(),
+              [&](const NetInfo *a, const NetInfo *b) { return a->name.str(ctx) < b->name.str(ctx); });
     for (const NetInfo *net : boundary_nets) {
         WireId source = ctx->getNetinfoSourceWire(net);
         if (source == WireId())
