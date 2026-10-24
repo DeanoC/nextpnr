@@ -141,3 +141,33 @@ TEST_F(FesNarrowPinTest, PlacerStrengthOnStartingPinIsIgnored)
     ctx->bindWire(pin, frozen, STRENGTH_PLACER);
     EXPECT_FALSE(narrow());
 }
+
+TEST_F(FesNarrowPinTest, CarryChainOutputIsNotACheckedPin)
+{
+    // A carry output wire reaches only the next ALM's carry input, which
+    // the search sees as a dead end. The chain is one placement cluster.
+    BelId bel;
+    for (BelId candidate : ctx->getBels())
+        if (ctx->getBelType(candidate) == id_MISTRAL_COMB) {
+            bel = candidate;
+            break;
+        }
+    ASSERT_NE(bel, BelId());
+    auto carry = ctx->createNet(ctx->id("carry"));
+    auto arith = [&](const char *name) {
+        auto ci = ctx->createCell(ctx->id(name), id_MISTRAL_ALUT_ARITH);
+        ci->attrs[id_FES_SLOT] = std::string("cart");
+        return ci;
+    };
+    auto first = arith("first"), next = arith("next");
+    first->addOutput(id_CO);
+    first->connectPort(id_CO, carry);
+    first->pin_data[id_CO].bel_pins = {id_CO};
+    next->addInput(id_CI);
+    next->connectPort(id_CI, carry);
+    {
+        std::lock_guard<std::mutex> guard(ctx->fes_narrow_mutex);
+        EXPECT_TRUE(ctx->fes_slot_pin_narrow(ctx->getBelPinWire(bel, id_CO), carry, true));
+    }
+    EXPECT_TRUE(ctx->fes_slot_pins_escape(bel, first, false));
+}
