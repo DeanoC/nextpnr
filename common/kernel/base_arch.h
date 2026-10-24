@@ -279,7 +279,7 @@ template <typename R> struct BaseArch : ArchAPI<R>
     virtual bool checkPipAvailForNet(PipId pip, const NetInfo *net) const override
     {
         NetInfo *bound_net = getBoundPipNet(pip);
-        return this->pipAllowedForNet(pip, net) && (bound_net == nullptr || bound_net == net);
+        return bound_net == nullptr || bound_net == net;
     }
     virtual NetInfo *getBoundPipNet(PipId pip) const override
     {
