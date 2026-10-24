@@ -787,3 +787,23 @@ TEST(LutPlacementTiming, SynchronousLoadKeepsASelectorInput)
     EXPECT_EQ(pin(mate, id_A), id_D);
     EXPECT_EQ(pin(mate, id_B), id_E1);
 }
+
+TEST(HardBlockPinmapTest, UnconnectedBusOutputMapsToNoPin)
+{
+    // fes_hps_ddr writes .wrack_data_0(), which yosys emits as an empty
+    // connection and the loader keeps as a disconnected scalar port. The
+    // fpga2sdram BEL has only wrack_data_0[0..9].
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    auto ctx = std::make_unique<Context>(args);
+    auto cell = ctx->createCell(ctx->id("f2sdram"), id_cyclonev_hps_interface_fpga2sdram);
+    cell->addOutput(ctx->id("wrack_data_0"));
+    cell->addOutput(ctx->id("cmd_ready_3"));
+    cell->addInput(ctx->id("wrack_ready_0"));
+    cell->connectPort(ctx->id("wrack_ready_0"), ctx->createNet(ctx->id("ready")));
+    ctx->assign_default_pinmap(cell);
+    EXPECT_TRUE(cell->pin_data.at(ctx->id("wrack_data_0")).bel_pins.empty());
+    // Disconnected scalar and connected pins keep their same-named BEL pin.
+    EXPECT_EQ(cell->pin_data.at(ctx->id("cmd_ready_3")).bel_pins, std::vector<IdString>{ctx->id("cmd_ready_3")});
+    EXPECT_EQ(cell->pin_data.at(ctx->id("wrack_ready_0")).bel_pins, std::vector<IdString>{ctx->id("wrack_ready_0")});
+}

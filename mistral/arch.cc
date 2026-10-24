@@ -913,6 +913,7 @@ void Arch::add_bel_pin(BelId bel, IdString pin, PortType dir, WireId wire)
     NPNR_ASSERT(!b.pins.count(pin));
     b.pins[pin].dir = dir;
     b.pins[pin].wire = wire;
+    bel_type_pins[b.type].insert(pin);
 
     BelPin bel_pin;
     bel_pin.bel = bel;
@@ -945,6 +946,12 @@ void Arch::assign_default_pinmap(CellInfo *cell)
         }
         if (!pinmap.empty())
             continue; // already mapped
+        // An explicitly unconnected bus output, such as fpga2sdram's
+        // .wrack_data_0(), reloads as a disconnected scalar port. Its BEL has
+        // only the bus bits, so it maps to no pin rather than an invented one.
+        auto type_pins = bel_type_pins.find(cell->type);
+        if (port.second.net == nullptr && type_pins != bel_type_pins.end() && !type_pins->second.count(port.first))
+            continue;
         pinmap.push_back(port.first); // default: assume bel pin named the same as cell pin
     }
 }

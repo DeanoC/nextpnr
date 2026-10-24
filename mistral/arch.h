@@ -693,6 +693,8 @@ struct Arch : BaseArch<ArchRanges>
     PipId add_pip(WireId src, WireId dst);
 
     void add_bel_pin(BelId bel, IdString pin, PortType dir, WireId wire);
+    // Pin names of each BEL type, for cell types that name their BEL type.
+    dict<IdString, pool<IdString>> bel_type_pins;
 
     CycloneV::rnode_coords find_rnode(CycloneV::block_type_t bt, int x, int y, CycloneV::port_type_t port, int bi = -1,
                                  int pi = -1) const;
