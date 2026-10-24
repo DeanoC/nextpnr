@@ -61,6 +61,47 @@ bool gpio_fabric_profile(const Context *ctx, const CellInfo *cell)
            io.d5_delay < 0 && io.d5_oe_delay < 0;
 }
 
+// Opt-in local FF clear recovery reference. The retained four-corner fixtures
+// cover every FF/ALM position, constant/dynamic/inverted enables and 100/50/
+// 74.25 MHz rising clocks. Recovery CELL-minus-clock maximum is 164 ps;
+// round outward to 170 ps. Observed removal maximum is 75 ps, but retain
+// the existing 270 ps hold floor. This mode never loosens an existing check.
+// It supplies no reset pulse, routing fast-corner, MTBF or board qualification.
+bool ff_reset_reference(const Context *ctx, const CellInfo *cell)
+{
+    if (!bool_or_default(ctx->settings, ctx->id("mistral/ff_reset_reference"), false))
+        return false;
+    // Post-route calibration queries every FF port, including disconnected
+    // inactive clear pins. This exact packed constant proves no reset path
+    // exists; it must retain the data approximation used by calibration.
+    if (!cell->getPort(id_ACLR) && cell->get_pin_state(id_ACLR) == PIN_1)
+        return false;
+    auto reject = [&]() {
+        log_error("FF reset reference does not cover cell '%s': require 5CSEBA6U23I7, "
+                  "rising exact clock period >=10ns and high/low >=5ns, driven active-low clear, "
+                  "enabled or dynamic ENA, and inactive SCLR/SLOAD.\n", cell->name.c_str(ctx));
+    };
+    if (ctx->getChipName() != "5CSEBA6U23I7" || cell->type != id_MISTRAL_FF ||
+        !cell->getPort(id_CLK) || !cell->getPort(id_ACLR) ||
+        !cell->getPort(id_ACLR)->driver.cell ||
+        cell->get_pin_state(id_CLK) != PIN_SIG || cell->get_pin_state(id_ACLR) != PIN_SIG)
+        reject();
+    const auto *clock = cell->getPort(id_CLK)->clkconstr.get();
+    if (!clock || clock->period.minDelay() != clock->period.maxDelay() ||
+        clock->high.minDelay() != clock->high.maxDelay() || clock->low.minDelay() != clock->low.maxDelay() ||
+        clock->period.minDelay() < 10000 || clock->high.minDelay() < 5000 || clock->low.minDelay() < 5000 ||
+        clock->high.minDelay() + clock->low.minDelay() != clock->period.minDelay())
+        reject();
+    for (auto port : {id_SCLR, id_SLOAD})
+        if (cell->getPort(port) || cell->get_pin_state(port) != PIN_0)
+            reject();
+    auto ena = cell->get_pin_state(id_ENA);
+    if (!((ena == PIN_1 && !cell->getPort(id_ENA)) ||
+          ((ena == PIN_SIG || ena == PIN_INV) && cell->getPort(id_ENA) && cell->getPort(id_ENA)->driver.cell)))
+        reject();
+    return true;
+}
+
 bool gpio_input_registered(const Context *ctx, const CellInfo *cell)
 {
     return cell->type.in(id_MISTRAL_SDRIN, id_MISTRAL_DDRIN) ||
@@ -637,8 +678,13 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
         auto clock_pin = cell->pin_data.find(id_CLK);
         timing.edge = clock_pin != cell->pin_data.end() && clock_pin->second.state == PIN_INV ?
                 FALLING_EDGE : RISING_EDGE;
-        // ACLR is considered synchronous for timing purposes.
-        if (port.in(id_DATAIN, id_ACLR, id_ENA, id_SCLR, id_SLOAD, id_SDATA)) {
+        if (port == id_ACLR && ff_reset_reference(getCtx(), cell)) {
+            // The ordinary setup/hold equations express recovery/removal here.
+            timing.setup = DelayPair{170, 170};
+            timing.hold = DelayPair{270, 270};
+            timing.clockToQ = DelayQuad{};
+        } else if (port.in(id_DATAIN, id_ACLR, id_ENA, id_SCLR, id_SLOAD, id_SDATA)) {
+            // Default ACLR handling retains the historical data approximation.
             timing.setup = DelayPair{-196, -196};
             timing.hold = DelayPair{270, 270};
             timing.clockToQ = DelayQuad{};

@@ -1,0 +1,60 @@
+{
+  "device": "5CSEBA6U23I7",
+  "sites": [
+    {
+      "cell": "sink_0_0",
+      "location": null,
+      "alm": null,
+      "ff_index": null,
+      "dynamic_enable": false,
+      "enable_inverted": false,
+      "clock": "memory_clock|general[0].gpll~PLL_OUTPUT_COUNTER|divclk"
+    },
+    {
+      "cell": "sink_0_1",
+      "location": null,
+      "alm": null,
+      "ff_index": null,
+      "dynamic_enable": true,
+      "enable_inverted": false,
+      "clock": "memory_clock|general[0].gpll~PLL_OUTPUT_COUNTER|divclk"
+    },
+    {
+      "cell": "sink_1_0",
+      "location": null,
+      "alm": null,
+      "ff_index": null,
+      "dynamic_enable": false,
+      "enable_inverted": false,
+      "clock": "memory_clock|general[2].gpll~PLL_OUTPUT_COUNTER|divclk"
+    },
+    {
+      "cell": "sink_1_1",
+      "location": null,
+      "alm": null,
+      "ff_index": null,
+      "dynamic_enable": true,
+      "enable_inverted": false,
+      "clock": "memory_clock|general[2].gpll~PLL_OUTPUT_COUNTER|divclk"
+    },
+    {
+      "cell": "sink_2_0",
+      "location": null,
+      "alm": null,
+      "ff_index": null,
+      "dynamic_enable": false,
+      "enable_inverted": false,
+      "clock": "video_clock|general[0].gpll~PLL_OUTPUT_COUNTER|divclk"
+    },
+    {
+      "cell": "sink_2_1",
+      "location": null,
+      "alm": null,
+      "ff_index": null,
+      "dynamic_enable": true,
+      "enable_inverted": false,
+      "clock": "video_clock|general[0].gpll~PLL_OUTPUT_COUNTER|divclk"
+    }
+  ],
+  "scope": "Local reset reference only; no routed-native, board or silicon qualification."
+}
