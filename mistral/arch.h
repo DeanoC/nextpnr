@@ -371,22 +371,12 @@ struct Arch : BaseArch<ArchRanges>
     IdString fes_cell_slot_region(const CellInfo *cell) const;
     bool fes_net_touches_slot(const NetInfo *net) const;
     bool fes_pip_in_socket(PipId pip) const;
-    // A shell routed around reserved part regions keeps its nets out of them,
-    // so each part keeps its whole region. Only a net with a cell placed in a
-    // region (the socket boundary) or a global clock routes there.
-    bool fes_shell_net_may_enter_socket(const NetInfo *net) const
-    {
-        return net == nullptr || net->is_global || fes_shell_socket_nets.count(net->name);
-    }
-    void fes_begin_shell_keepout();
     bool pipInReservedRegion(PipId pip) const override
     {
-        return (fes_fence_active || fes_shell_keepout) && fes_pip_in_socket(pip);
+        return fes_fence_active && fes_pip_in_socket(pip);
     }
     bool netMayUseReservedRegion(const NetInfo *net) const override
     {
-        if (fes_shell_keepout)
-            return fes_shell_net_may_enter_socket(net);
         return !fes_fence_active || !fes_has_reserved_rect || fes_net_touches_slot(net);
     }
     void note_fes_cram_region(const std::string &spec);
@@ -499,8 +489,6 @@ struct Arch : BaseArch<ArchRanges>
             return "pll_private_reference_requires_pll_sink";
         if (!fes_pip_preserves_cram(pip))
             return "fes_scaffold_cram_preservation";
-        if (fes_shell_keepout && fes_pip_in_socket(pip) && !fes_shell_net_may_enter_socket(net))
-            return "fes_shell_route_enters_socket";
         if (fes_fence_active && fes_has_reserved_rect && net != nullptr) {
             const bool slot_driven = fes_cell_is_slot(net->driver.cell);
             const bool slot_user = fes_net_touches_slot(net);
@@ -928,9 +916,6 @@ struct Arch : BaseArch<ArchRanges>
     bool fes_has_reserved_rect = false;
     bool fes_any_slot_region_active = false;
     bool fes_fence_active = false;
-    // Shell routing with reserved part regions, and the nets that reach them.
-    bool fes_shell_keepout = false;
-    pool<IdString> fes_shell_socket_nets;
     bool fes_has_cram_region = false;
     std::array<int, 4> fes_cram_region = {};
     pool<PipId> fes_frozen_pips;
