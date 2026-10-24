@@ -394,7 +394,6 @@ struct Arch : BaseArch<ArchRanges>
     bool fes_slot_pin_narrow(WireId wire, const NetInfo *net, bool forward) const;
     void fes_precompute_narrow_pins();
     bool fes_slot_pins_escape(BelId bel, const CellInfo *cell, bool explain_invalid) const;
-    void fes_rip_reserved_shell_pips();
     void lock_fes_scaffold();
     void save_fes_pin_maps(bool save_lab_state = true);
     bool restore_cell_pin_map(CellInfo *cell);
@@ -919,6 +918,13 @@ struct Arch : BaseArch<ArchRanges>
     bool fes_has_cram_region = false;
     std::array<int, 4> fes_cram_region = {};
     pool<PipId> fes_frozen_pips;
+    // Net that owned each frozen pip whose destination mux lies entirely
+    // inside the CRAM region, captured with fes_frozen_pips. Obsolete
+    // branches may be trimmed before the first successful seal check; the
+    // pips still bound then are fes_in_region_live and must stay on that net.
+    dict<PipId, IdString> fes_frozen_pip_nets;
+    mutable bool fes_in_region_sealed = false;
+    mutable dict<PipId, IdString> fes_in_region_live;
     pool<CycloneV::rnode_coords> fes_cram_allowed_muxes;
     // Outside-region frozen muxes and the connected upstream paths needed
     // to keep them driven. Each entry records the original pip and net owner.
