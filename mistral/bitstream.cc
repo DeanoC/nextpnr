@@ -51,7 +51,7 @@ bool dsp_reg_param(const dict<IdString, Property> &params, IdString key)
 
 struct MistralBitgen
 {
-    MistralBitgen(Context *ctx) : ctx(ctx), cv(ctx->cyclonev) {};
+    MistralBitgen(Context *ctx) : ctx(ctx), cv(ctx->cyclonev.get()) {};
     Context *ctx;
     CycloneV *cv;
 
