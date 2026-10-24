@@ -159,6 +159,7 @@ static Json::array json_report_detailed_net_timings(const Context *ctx)
 
             auto endpointJson = Json::object({{"cell", sink_timing.cell_port.first.c_str(ctx)},
                                               {"port", sink_timing.cell_port.second.c_str(ctx)},
+                                              {"launch_event", clock_event_name(ctx, sink_timing.clock_pair.start)},
                                               {"event", clock_event_name(ctx, sink_timing.clock_pair.end)},
                                               {"delay", Json::array({minDelay, maxDelay})}});
             endpointJson["setup_checked"] = sink_timing.setup_checked;

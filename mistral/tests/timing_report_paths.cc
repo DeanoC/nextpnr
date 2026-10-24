@@ -695,3 +695,59 @@ TEST_F(TimingReportPathsTest, SdcFalsePathClearsEndpointHoldRelation)
         EXPECT_FALSE(rows.front().hold_margin.has_value());
     }
 }
+
+TEST_F(TimingReportPathsTest, DetailedEndpointsRetainEachLaunchEvent)
+{
+    // One physical net can carry arrivals from different clock domains or
+    // asynchronous logic. The net's first event cannot identify every row.
+    ctx->detailed_timing_report = true;
+    ctx->timing_result = TimingResult();
+    auto *net = launch->getPort(id_Q);
+    const std::array<ClockEvent, 3> starts{{
+            {clock->name, RISING_EDGE},
+            {ctx->id("slow_clock"), FALLING_EDGE},
+            {ctx->id("$async$"), RISING_EDGE},
+    }};
+    const std::array<std::string, 3> names{{
+            "posedge " + clock->name.str(ctx.get()), "negedge slow_clock", "<async>",
+    }};
+    for (unsigned i = 0; i < starts.size(); ++i) {
+        NetSinkTiming row;
+        row.clock_pair = {starts[i], {clock->name, FALLING_EDGE}};
+        row.cell_port = {rising.front()->name, id_DATAIN};
+        row.delay = DelayPair(100, 200);
+        row.setup_checked = row.hold_checked = i != 2;
+        row.setup_slack = 300;
+        row.hold_slack = 400;
+        if (i == 1) row.timing_source = {launch->name, id_Q};
+        ctx->timing_result.detailed_net_timings[net->name].push_back(row);
+    }
+    auto check = [&]() {
+        std::ostringstream out; ctx->writeJsonReport(out);
+        std::string error; auto report = json11::Json::parse(out.str(), error);
+        ASSERT_TRUE(error.empty()) << error;
+        const auto &nets = report["detailed_net_timings"].array_items();
+        ASSERT_EQ(nets.size(), 1U);
+        const auto &rows = nets.front()["endpoints"].array_items();
+        ASSERT_EQ(rows.size(), starts.size());
+        for (const auto &row : rows) {
+            auto found = std::find(names.begin(), names.end(), row["launch_event"].string_value());
+            ASSERT_NE(found, names.end());
+            auto i = unsigned(found - names.begin());
+            EXPECT_EQ(row["event"].string_value(), "negedge " + clock->name.str(ctx.get()));
+            EXPECT_EQ(row["setup_checked"].bool_value(), i != 2);
+            EXPECT_EQ(row["hold_checked"].bool_value(), i != 2);
+            EXPECT_EQ(row["setup_slack_ns"].is_null(), i == 2);
+            EXPECT_EQ(row["hold_slack_ns"].is_null(), i == 2);
+            if (i == 1) EXPECT_EQ(row["source"]["event"], row["launch_event"]);
+        }
+        // Keep the existing aggregate field; endpoint identities do not rely
+        // on it, including when the first arrival changes.
+        EXPECT_EQ(nets.front()["event"].string_value(),
+                  rows.front()["launch_event"].string_value());
+    };
+    check();
+    auto &rows = ctx->timing_result.detailed_net_timings[net->name];
+    std::reverse(rows.begin(), rows.end());
+    check();
+}
