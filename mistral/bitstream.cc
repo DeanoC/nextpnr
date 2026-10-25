@@ -534,6 +534,11 @@ struct MistralBitgen
             auto pip = net->wires.at(input).pip;
             if (ctx->pll_clock_select.count(pip))
                 select = ctx->pll_clock_select.at(pip);
+            if (ctx->hps_clock_select.count(pip)) {
+                auto [slot, value] = ctx->hps_clock_select.at(pip);
+                NPNR_ASSERT(cv->bmux_r_set(CycloneV::HPS_CLOCKS, cv->hps_get_pos()[CycloneV::I_HPS_CLOCKS],
+                                           CycloneV::INPUT_SEL, slot, value));
+            }
         }
         NPNR_ASSERT(cv->bmux_r_set(cmux, pos, CycloneV::INPUT_SEL, bi, select));
         cv->bmux_m_set(cmux, pos, CycloneV::TESTSYN_ENOUT_SELECT, bi, CycloneV::PRE_SYNENB);

@@ -698,7 +698,12 @@ struct Arch : BaseArch<ArchRanges>
     bool m10k_output_registered(const CellInfo *cell, bool a_half) const; // m10k.cc
     void create_dsp(int x, int y);                     // dsp.cc
     void create_plls();                               // globals.cc
+    void create_hps_clocks_resets();                  // globals.cc
     dict<PipId, int> pll_ref_select, pll_clock_select;
+    // HPS clock/reset output -> clock buffer edges: {HPS_CLOCKS slot, its INPUT_SEL value}
+    dict<PipId, std::pair<int, int>> hps_clock_select;
+    dict<IdString, std::vector<BelId>> hps_clock_bels; // per output pin, the buffers it reaches
+    BelId hps_clocks_resets_bel;
     dict<BelId, std::array<std::vector<BelId>, 9>> pll_clock_bels; // per FPLL counter C0..C8
     WireId pll_output_wire(const CellInfo *pll, IdString port) const; // mapped counter wire
     // Edges added after the original ones are hidden from nets that cannot

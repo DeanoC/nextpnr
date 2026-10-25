@@ -202,6 +202,8 @@ Arch::Arch(ArchArgs args)
         create_dsp(dsp_pos.x(), dsp_pos.y());
 
     create_plls();
+    if (!cyclonev->hps_get_pos().empty())
+        create_hps_clocks_resets();
 
     // This import takes about 5s, perhaps long term we can speed it up, e.g. defer to Mistral more...
     log_info("Initialising routing graph...\n");
@@ -688,6 +690,14 @@ bool Arch::isBelLocationValid(BelId bel, bool explain_invalid) const
     }
     if (data.type.in(id_MISTRAL_CLKENA, id_MISTRAL_CLKENA_PLL) && data.block_index != 2 && data.bound) {
         auto input = data.bound->getPort(id_A);
+        if (input && input->driver.cell && input->driver.cell->type == id_cyclonev_hps_interface_clocks_resets) {
+            const CellInfo *hps = input->driver.cell;
+            if (hps->bel == BelId())
+                return false;
+            WireId source = getBelPinWire(hps->bel, input->driver.port);
+            WireId dest = getBelPinWire(bel, id_A);
+            return hps_clock_select.count(PipId(source.node, dest.node));
+        }
         if (!input || !input->driver.cell || input->driver.cell->type != id_altera_pll ||
             input->driver.cell->bel == BelId())
             return false;

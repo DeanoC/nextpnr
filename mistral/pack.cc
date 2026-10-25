@@ -2873,6 +2873,60 @@ struct MistralPacker
         }
     }
 
+    // HPS reset and user clock outputs reach the fabric only through a global
+    // clock mux: put each used output behind a clock buffer on a lane that its
+    // HPS_CLOCKS slot feeds.
+    void setup_hps_clocks()
+    {
+        for (auto &cell : ctx->cells) {
+            CellInfo *ci = cell.second.get();
+            if (ci->type != id_cyclonev_hps_interface_clocks_resets)
+                continue;
+            if (ctx->hps_clocks_resets_bel == BelId())
+                log_error("'%s': this device has no HPS.\n", ctx->nameOf(ci));
+            if (ci->bel == BelId())
+                ctx->bindBel(ctx->hps_clocks_resets_bel, ci, STRENGTH_LOCKED);
+            for (auto &port : ci->ports) {
+                NetInfo *net = port.second.net;
+                if (port.second.type != PORT_OUT || net == nullptr || net->users.empty())
+                    continue;
+                CellInfo *buffer = nullptr;
+                for (auto &user : net->users)
+                    if (ctx->is_clkbuf_cell(user.cell->type) && user.port == id_A)
+                        buffer = user.cell;
+                if (buffer && net->users.entries() != 1)
+                    log_error("'%s.%s' drives a clock buffer and other logic; drive one or the other.\n",
+                              ctx->nameOf(ci), port.first.c_str(ctx));
+                if (!buffer) {
+                    buffer = ctx->createCell(ctx->idf("%s$%s$clkbuf", ctx->nameOf(ci), port.first.c_str(ctx)),
+                                             id_MISTRAL_CLKBUF);
+                    buffer->addInput(id_A);
+                    buffer->addOutput(id_Q);
+                    NetInfo *global = ctx->createNet(ctx->idf("%s$%s$global", ctx->nameOf(ci), port.first.c_str(ctx)));
+                    std::vector<PortRef> users;
+                    for (auto &user : net->users)
+                        users.push_back(user);
+                    for (auto &user : users) {
+                        user.cell->disconnectPort(user.port);
+                        user.cell->connectPort(user.port, global);
+                    }
+                    buffer->connectPort(id_A, net);
+                    buffer->connectPort(id_Q, global);
+                }
+                if (buffer->bel != BelId())
+                    continue;
+                for (BelId lane : ctx->hps_clock_bels[port.first])
+                    if (ctx->checkBelAvail(lane)) {
+                        ctx->bindBel(lane, buffer, STRENGTH_LOCKED);
+                        break;
+                    }
+                if (buffer->bel == BelId())
+                    log_error("'%s.%s': no free global clock buffer on its HPS_CLOCKS slots.\n", ctx->nameOf(ci),
+                              port.first.c_str(ctx));
+            }
+        }
+    }
+
     void setup_plls()
     {
         using namespace mistral_pll_solver;
@@ -3231,6 +3285,7 @@ struct MistralPacker
         ctx->check_io_electrical();
         setup_clock_enables();
         setup_plls();
+        setup_hps_clocks();
         fold_inverted_pll_clock_buffers();
         propagate_io_clocks();
         ensure_dsp_control_ports();
