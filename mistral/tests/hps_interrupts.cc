@@ -1,5 +1,9 @@
+#include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <set>
+#include <string>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -76,4 +80,38 @@ TEST(HpsInterrupts, UndrivenLinesAreTiedLow)
     EXPECT_FALSE(inv.count(ctx->cyclonev->rc2ri(irq0.node))) << "routed irq[0] must not be inverted";
     WireId irq1 = ctx->getBelPinWire(bel, ctx->id("irq[1]"));
     EXPECT_TRUE(inv.count(ctx->cyclonev->rc2ri(irq1.node)));
+}
+
+TEST(HpsInterrupts, CartImportSkipsFixedInterruptSite)
+{
+    auto ctx = make_context();
+    NetInfo *clock_net = ctx->createNet(ctx->id("FPGA_CLK1_50"));
+    CellInfo *clock_source = ctx->createCell(ctx->id("clock_source"), ctx->id("MISTRAL_IB"));
+    clock_source->addOutput(ctx->id("O"));
+    clock_source->connectPort(ctx->id("O"), clock_net);
+
+    struct TemporaryFile
+    {
+        std::filesystem::path path = std::filesystem::temp_directory_path() /
+                                     ("nextpnr-hps-interrupt-cart-" +
+                                      std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
+                                      ".json");
+        ~TemporaryFile()
+        {
+            std::error_code error;
+            std::filesystem::remove(path, error);
+        }
+    } cart;
+    {
+        std::ofstream file(cart.path);
+        ASSERT_TRUE(file.good());
+        file << R"({"modules":{"cart":{"cells":{"interrupts":{"type":"cyclonev_hps_interface_interrupts"}}}}})";
+        ASSERT_TRUE(file.good());
+    }
+
+    ctx->merge_fes_cart(cart.path.string(), "test");
+
+    EXPECT_EQ(ctx->cells.count(ctx->id("fes_cart$interrupts")), 0);
+    for (const auto &cell : ctx->cells)
+        EXPECT_NE(cell.second->type, ctx->id("cyclonev_hps_interface_interrupts"));
 }
