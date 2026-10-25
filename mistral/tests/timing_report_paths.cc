@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <climits>
 #include <limits>
 #include <map>
 #include <memory>
@@ -750,4 +751,136 @@ TEST_F(TimingReportPathsTest, DetailedEndpointsRetainEachLaunchEvent)
     auto &rows = ctx->timing_result.detailed_net_timings[net->name];
     std::reverse(rows.begin(), rows.end());
     check();
+}
+
+TEST_F(TimingReportPathsTest, HarmonicWindowsMatchEnumeratedEdgesInBothDirections)
+{
+    bind_clock_source(clock, "fast_clock_source");
+    clock->clkconstr->phase_group = ctx->id("integer_pll_phase");
+    auto *slow = other_clock("slow_clock");
+    auto *endpoint = rising.front();
+    launch->disconnectPort(id_DATAIN);
+    for (auto *cell : rising) if (cell != endpoint) cell->disconnectPort(id_DATAIN);
+    for (auto *cell : falling) cell->disconnectPort(id_DATAIN);
+    ctx->settings[ctx->id("timing/phaseRelatedHarmonicClocks")] = true;
+    ctx->settings[ctx->id("timing/ignoreRelClk")] = true;
+    ctx->detailed_timing_report = true;
+    auto analyse = [&]() {
+        ctx->assignArchInfo();
+        TimingAnalyser timing(ctx.get());
+        timing.with_clock_skew = false;
+        timing.setup(false, false, true);
+        std::vector<EndpointClockPairTiming> rows;
+        EXPECT_TRUE(timing.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_DATAIN), rows));
+        EXPECT_EQ(rows.size(), 1U);
+        ctx->timing_result = timing.get_timing_result();
+        return rows.front();
+    };
+    for (int slow_period : {20000, 30000}) {
+        for (int phase : {0, 2500, -1000}) {
+            for (bool reverse : {false, true}) {
+                for (bool launch_falling : {false, true}) {
+                    for (bool capture_falling : {false, true}) {
+                        SCOPED_TRACE(::testing::Message() << slow_period << ':' << phase << ':' << reverse
+                                     << ':' << launch_falling << ':' << capture_falling);
+                        auto *from = reverse ? slow : clock;
+                        auto *to = reverse ? clock : slow;
+                        launch->disconnectPort(id_CLK); launch->connectPort(id_CLK, from);
+                        endpoint->disconnectPort(id_CLK); endpoint->connectPort(id_CLK, to);
+                        launch->pin_data[id_CLK].state = launch_falling ? PIN_INV : PIN_SIG;
+                        endpoint->pin_data[id_CLK].state = capture_falling ? PIN_INV : PIN_SIG;
+                        // Obtain the data-only hold bound at coincident edges,
+                        // using the established equal-period implementation.
+                        *slow->clkconstr = *clock->clkconstr;
+                        slow->clkconstr->phase_shift = reverse
+                                ? (capture_falling ? 3000 : 0) - (launch_falling ? 3000 : 0)
+                                : (launch_falling ? 3000 : 0) - (capture_falling ? 3000 : 0);
+                        auto baseline = analyse();
+                        ASSERT_TRUE(baseline.hold_related);
+                        slow->clkconstr->period = DelayPair(slow_period);
+                        slow->clkconstr->high = DelayPair(slow_period == 20000 ? 7000 : 11000);
+                        slow->clkconstr->low = DelayPair(slow_period - slow->clkconstr->high.minDelay());
+                        slow->clkconstr->phase_shift = phase;
+                        // Independent finite edge enumeration, rather than
+                        // reproducing the implementation's modulo formula.
+                        auto edge = [](const ClockConstraint &c, bool falling, int k) {
+                            return int(c.phase_shift) + (falling ? int(c.high.minDelay()) : 0) +
+                                   k * int(c.period.minDelay());
+                        };
+                        int setup = INT_MAX, hold = INT_MAX;
+                        for (int k = -8; k <= 8; ++k) {
+                            int capture = edge(*to->clkconstr, capture_falling, k);
+                            if (capture < 0 || capture >= slow_period) continue;
+                            int previous = INT_MIN, next = INT_MAX;
+                            for (int j = -16; j <= 16; ++j) {
+                                int value = edge(*from->clkconstr, launch_falling, j);
+                                if (value < capture) previous = std::max(previous, value);
+                                else next = std::min(next, value);
+                            }
+                            ASSERT_NE(previous, INT_MIN); ASSERT_NE(next, INT_MAX);
+                            setup = std::min(setup, capture - previous);
+                            hold = std::min(hold, next - capture);
+                        }
+                        auto row = analyse();
+                        ASSERT_TRUE(row.setup_timed); ASSERT_TRUE(row.hold_related);
+                        ASSERT_TRUE(row.setup_window.has_value()); ASSERT_TRUE(row.setup_margin.has_value());
+                        ASSERT_TRUE(row.hold_margin.has_value());
+                        EXPECT_EQ(*row.setup_window, setup);
+                        EXPECT_EQ(*row.setup_margin, setup - row.max_path_delay);
+                        EXPECT_EQ(row.min_path_delay, baseline.min_path_delay + hold);
+                        EXPECT_EQ(*row.hold_margin, row.min_path_delay);
+                        const auto &result = ctx->timing_result;
+                        EXPECT_EQ(result.clock_setup_slack.at(from->name), *row.setup_margin);
+                        EXPECT_EQ(result.clock_hold_slack.at(from->name), *row.hold_margin);
+                    }
+                }
+            }
+        }
+    }
+    auto before_multicycle = analyse();
+    std::istringstream multicycle("set_multicycle_path 3 -setup -from [get_clocks {slow_clock}] -to [get_clocks {report_clock}]\n");
+    ctx->read_sdc(multicycle);
+    auto after_multicycle = analyse();
+    EXPECT_EQ(*after_multicycle.setup_window, *before_multicycle.setup_window + 20000);
+    EXPECT_EQ(*after_multicycle.hold_margin, *before_multicycle.hold_margin);
+}
+
+TEST_F(TimingReportPathsTest, HarmonicTimingRequiresOptInAndExactDeclaredRelation)
+{
+    clock->clkconstr->phase_group = ctx->id("integer_pll_phase");
+    auto *slow = other_clock("slow_clock");
+    slow->clkconstr->period = DelayPair(20000);
+    slow->clkconstr->high = slow->clkconstr->low = DelayPair(10000);
+    EXPECT_FALSE(phase_related_clocks(ctx.get(), clock->name, slow->name));
+    ctx->settings[ctx->id("timing/phaseRelatedHarmonicClocks")] = true;
+    EXPECT_TRUE(phase_related_clocks(ctx.get(), clock->name, slow->name));
+    slow->clkconstr->phase_group = ctx->id("other_pll");
+    EXPECT_FALSE(phase_related_clocks(ctx.get(), clock->name, slow->name));
+    slow->clkconstr->phase_group = IdString();
+    EXPECT_FALSE(phase_related_clocks(ctx.get(), clock->name, slow->name));
+    slow->clkconstr->phase_group = clock->clkconstr->phase_group;
+    auto *endpoint = rising.front();
+    endpoint->disconnectPort(id_CLK); endpoint->connectPort(id_CLK, slow);
+    for (int invalid : {0, 1, 2}) {
+        SCOPED_TRACE(invalid);
+        slow->clkconstr->period = invalid == 0 ? DelayPair(15000) :
+                                    invalid == 1 ? DelayPair(20000, 20001) : DelayPair(20000);
+        slow->clkconstr->high = invalid == 0 ? DelayPair(7500) : DelayPair(10000);
+        slow->clkconstr->low = invalid == 0 ? DelayPair(7500) :
+                                 invalid == 2 ? DelayPair(9999) : DelayPair(10000);
+        EXPECT_FALSE(phase_related_clocks(ctx.get(), clock->name, slow->name));
+        ctx->assignArchInfo();
+        TimingAnalyser timing(ctx.get());
+        EXPECT_THROW(timing.setup(false, false, true), log_execution_error_exception);
+    }
+    slow->clkconstr->period = DelayPair(20000);
+    slow->clkconstr->high = slow->clkconstr->low = DelayPair(10000);
+    std::istringstream sdc("set_false_path -from [get_clocks {report_clock}] -to [get_clocks {slow_clock}]\n");
+    ctx->read_sdc(sdc);
+    ctx->assignArchInfo();
+    TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
+    std::vector<EndpointClockPairTiming> rows;
+    ASSERT_TRUE(timing.get_endpoint_clock_pair_timings(CellPortKey(endpoint->name, id_DATAIN), rows));
+    ASSERT_EQ(rows.size(), 1U);
+    EXPECT_FALSE(rows.front().setup_timed); EXPECT_FALSE(rows.front().hold_related);
 }
