@@ -148,7 +148,9 @@ Arch::Arch(ArchArgs args)
     // Spread cells out of regions whose estimated routing demand would
     // overflow; dense FES cores otherwise fail to route on most seeds (#247).
     settings[id("placerHeap/congestion")] = std::to_string(1);
-    this->cyclonev = mistral::CycloneV::get_model(args.device);
+    // get_model returns a new CycloneV. The unique_ptr deletes that model,
+    // including its decompressed device database, with this Arch (#288).
+    this->cyclonev.reset(mistral::CycloneV::get_model(args.device));
     NPNR_ASSERT(this->cyclonev != nullptr);
 
     // Setup fast identifier maps
