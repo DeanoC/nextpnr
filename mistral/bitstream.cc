@@ -1012,6 +1012,22 @@ struct MistralBitgen
         return true;
     }
 
+    void write_hps_interrupts()
+    {
+        // An FPGA-to-HPS interrupt input that nothing drives reads 1, which
+        // holds the line asserted at the GIC. Invert every IRQ input no net
+        // reaches so unused lines read 0, as in vendor-built bitstreams.
+        auto hps_pos = cv->hps_get_pos();
+        if (hps_pos.empty())
+            return;
+        auto pos = hps_pos[CycloneV::I_HPS_INTERRUPTS];
+        for (int i = 0; i < 64; i++) {
+            auto rn = find_rnode(CycloneV::HPS_INTERRUPTS, pos, CycloneV::IRQ, -1, i);
+            bool driven = ctx->getBoundWireNet(WireId(rn)) != nullptr;
+            NPNR_ASSERT(cv->inv_set(cv->rc2ri(rn), !driven));
+        }
+    }
+
     void write_ff_routing(uint32_t lab)
     {
         auto &lab_data = ctx->labs.at(lab);
@@ -1086,6 +1102,7 @@ struct MistralBitgen
         cv->clear();
         options();
         write_routing();
+        write_hps_interrupts();
         write_cells();
         write_labs();
         ctx->write_control_bitstream();

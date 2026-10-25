@@ -185,6 +185,7 @@ Arch::Arch(ArchArgs args)
 
     auto hps_pos = cyclonev->hps_get_pos();
     if (!hps_pos.empty()) {
+        create_hps_interrupts(hps_pos[CycloneV::I_HPS_INTERRUPTS].x(), hps_pos[CycloneV::I_HPS_INTERRUPTS].y());
         create_hps_mpu_general_purpose(hps_pos[CycloneV::I_HPS_MPU_GENERAL_PURPOSE].x(),
                                        hps_pos[CycloneV::I_HPS_MPU_GENERAL_PURPOSE].y());
         for (int index = 0; index < 4; index++) {

@@ -139,6 +139,7 @@ X(WCLK_INV)
 X(WE_INV)
 
 X(cyclonev_oscillator)
+X(cyclonev_hps_interface_interrupts)
 X(cyclonev_hps_interface_mpu_general_purpose)
 X(cyclonev_hps_interface_peripheral_i2c)
 X(cyclonev_hps_interface_fpga2sdram)
