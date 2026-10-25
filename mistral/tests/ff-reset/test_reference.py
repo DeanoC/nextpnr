@@ -53,13 +53,15 @@ class ReferenceTest(unittest.TestCase):
                 parse_report(self.report().replace(original, replacement), 'recovery', 'corner', self.expected)
 
     def test_wrong_clear_source_or_deassertion_transition_rejected(self):
-        with self.assertRaises(AssertionError):
-            parse_report(self.report().replace('; From Node ; reset_n ;', '; From Node ; other_reset ;'),
-                         'recovery', 'corner', self.expected)
-        with self.assertRaises(AssertionError):
-            parse_report(self.report().replace('; 0 ; 0.4 ; RR ; IC ; 1 ; FF_X31_Y49_N1 ; sink|clrn ;',
-                                               '; 0 ; 0.4 ; RF ; IC ; 1 ; FF_X31_Y49_N1 ; sink|clrn ;'),
-                         'recovery', 'corner', self.expected)
+        for kind in ('recovery', 'removal'):
+            with self.subTest(kind=kind, error='source'), self.assertRaises(AssertionError):
+                parse_report(self.report(kind).replace('; From Node ; reset_n ;', '; From Node ; other_reset ;'),
+                             kind, 'corner', self.expected)
+            for transition in ('RF', 'FF'):
+                with self.subTest(kind=kind, transition=transition), self.assertRaises(AssertionError):
+                    parse_report(self.report(kind).replace('; 0 ; 0.4 ; RR ; IC ; 1 ; FF_X31_Y49_N1 ; sink|clrn ;',
+                                                          f'; 0 ; 0.4 ; {transition} ; IC ; 1 ; FF_X31_Y49_N1 ; sink|clrn ;'),
+                                 kind, 'corner', self.expected)
 
     def test_missing_intrinsic_and_nonfinite_values_rejected(self):
         with self.assertRaises(AssertionError):
@@ -89,6 +91,8 @@ class ReferenceTest(unittest.TestCase):
                 self.assertEqual(source_digest(fixture / filename), digest)
             expected = {v['cell'] for v in json.loads((fixture / 'fixture.json').read_text())['sites']}
             rows = evidence['observations']
+            for row in rows:
+                self.assertEqual(row['clear_source'], clear_by_cell[row['cell']])
             self.assertEqual(len(rows), len(expected) * len(CORNERS) * 2)
             total += len(rows)
             for corner in CORNERS:

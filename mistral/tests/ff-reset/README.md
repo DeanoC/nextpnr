@@ -25,7 +25,7 @@ The retained 1,648 observations cover all four available slow/fast temperature
 corners. Local recovery is the clear CELL delay minus the internal clock CELL
 delay plus intrinsic recovery. Removal reverses the CELL subtraction and adds
 intrinsic removal. Fabric routing and clock uncertainty are separate.
-Observed maxima are 164 ps recovery and 75 ps removal. The opt-in backend uses
+Observed maxima are 164 ps recovery and 43 ps removal. The opt-in backend uses
 170 ps recovery, rounded outward to 10 ps, and retains the historical 270 ps
 hold floor. Thus it tightens recovery without weakening an existing hold check.
 The characterizer rejects a rebuilt reference that exceeds those model limits.
@@ -44,14 +44,15 @@ rebuilds the fits and reports, and publishes output only after all timing and
 source checks pass. A successful local reference still does not establish
 physical-board acceptance.
 
-The checked-in archive predates `clear_source` recording, so its 1,648
-observations are not source-validated. New characterizations derive each clear
-source from fixture RTL and include it in every observation; the report's
-`From Node` must match before a reference can be published. A regeneration with
-Quartus Prime Lite 17.0.2 Build 602 could not be published: the first `rates`
-removal report has a falling (`FF`) transition at `sink_0_0|clrn`, while the
-characterizer requires the rising transition (`R`) for clear deassertion. The
-existing archive remains unchanged until a real report passes that check.
+The recovery/removal queries explicitly select rising transitions from the
+fixture clear sources. CLRN is active low; an unrestricted removal query can
+select its falling assertion edge instead. The parser independently requires
+a rising transition at every sink's `clrn` pin and checks the report's
+`From Node` against the fixture RTL. The checked-in archive was regenerated
+with Quartus Prime Lite 17.0.2 Build 602 using those queries. All 1,648
+observations record their validated `clear_source`, and all fitted checks pass.
+No timing limits or backend behavior changed. This bounded fitted reference
+does not qualify native fast-corner routing, reset pulses, MTBF or a board.
 
 Calibration queries for disconnected clears with the explicit packed inactive
 `PIN_1` state retain the ordinary data approximation; no reset path exists on
