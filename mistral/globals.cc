@@ -258,6 +258,53 @@ void Arch::create_hps_fpga2sdram(int x, int y)
     }
 }
 
+void Arch::create_hps_hps2fpga_light_weight(int x, int y)
+{
+    // Lightweight HPS-to-FPGA AXI3 bridge. The HPS is the master: the address,
+    // write-data and ready-to-accept signals leave the HPS; the fabric slave's
+    // ready, response and read-data signals and the bridge clock enter it.
+    // Response inputs left unconnected read as 1 (DECERR), so designs must
+    // tie bresp/rresp low.
+    BelId bel = add_bel(x, y, id_cyclonev_hps_interface_hps2fpga_light_weight,
+                        id_cyclonev_hps_interface_hps2fpga_light_weight);
+    struct Pin
+    {
+        const char *name;
+        PortType dir;
+        CycloneV::port_type_t port;
+        int count; // 0 = scalar
+    };
+    static const Pin pins[] = {
+            {"clk", PORT_IN, CycloneV::CLK, 0},
+            {"awid", PORT_OUT, CycloneV::AWID, 12},       {"awaddr", PORT_OUT, CycloneV::AWADDR, 21},
+            {"awlen", PORT_OUT, CycloneV::AWLEN, 4},      {"awsize", PORT_OUT, CycloneV::AWSIZE, 3},
+            {"awburst", PORT_OUT, CycloneV::AWBURST, 2},  {"awlock", PORT_OUT, CycloneV::AWLOCK, 2},
+            {"awcache", PORT_OUT, CycloneV::AWCACHE, 4},  {"awprot", PORT_OUT, CycloneV::AWPROT, 3},
+            {"awvalid", PORT_OUT, CycloneV::AWVALID, 0},  {"awready", PORT_IN, CycloneV::AWREADY, 0},
+            {"wid", PORT_OUT, CycloneV::WID, 12},         {"wdata", PORT_OUT, CycloneV::WDATA, 32},
+            {"wstrb", PORT_OUT, CycloneV::WSTRB, 4},      {"wlast", PORT_OUT, CycloneV::WLAST, 0},
+            {"wvalid", PORT_OUT, CycloneV::WVALID, 0},    {"wready", PORT_IN, CycloneV::WREADY, 0},
+            {"bid", PORT_IN, CycloneV::BID, 12},          {"bresp", PORT_IN, CycloneV::BRESP, 2},
+            {"bvalid", PORT_IN, CycloneV::BVALID, 0},     {"bready", PORT_OUT, CycloneV::BREADY, 0},
+            {"arid", PORT_OUT, CycloneV::ARID, 12},       {"araddr", PORT_OUT, CycloneV::ARADDR, 21},
+            {"arlen", PORT_OUT, CycloneV::ARLEN, 4},      {"arsize", PORT_OUT, CycloneV::ARSIZE, 3},
+            {"arburst", PORT_OUT, CycloneV::ARBURST, 2},  {"arlock", PORT_OUT, CycloneV::ARLOCK, 2},
+            {"arcache", PORT_OUT, CycloneV::ARCACHE, 4},  {"arprot", PORT_OUT, CycloneV::ARPROT, 3},
+            {"arvalid", PORT_OUT, CycloneV::ARVALID, 0},  {"arready", PORT_IN, CycloneV::ARREADY, 0},
+            {"rid", PORT_IN, CycloneV::RID, 12},          {"rdata", PORT_IN, CycloneV::RDATA, 32},
+            {"rresp", PORT_IN, CycloneV::RRESP, 2},       {"rlast", PORT_IN, CycloneV::RLAST, 0},
+            {"rvalid", PORT_IN, CycloneV::RVALID, 0},     {"rready", PORT_OUT, CycloneV::RREADY, 0},
+    };
+    for (const auto &p : pins) {
+        if (p.count == 0)
+            add_bel_pin(bel, id(p.name), p.dir, get_port(CycloneV::HPS_HPS2FPGA_LIGHT_WEIGHT, x, y, -1, p.port));
+        else
+            for (int bit = 0; bit < p.count; bit++)
+                add_bel_pin(bel, idf("%s[%d]", p.name, bit), p.dir,
+                            get_port(CycloneV::HPS_HPS2FPGA_LIGHT_WEIGHT, x, y, -1, p.port, bit));
+    }
+}
+
 void Arch::create_control(int x, int y)
 {
     BelId oscillator_bel = add_bel(x, y, id_cyclonev_oscillator, id_cyclonev_oscillator);

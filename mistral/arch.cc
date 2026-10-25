@@ -193,6 +193,8 @@ Arch::Arch(ArchArgs args)
         }
         auto f2sdram = hps_pos[CycloneV::I_HPS_FPGA2SDRAM];
         create_hps_fpga2sdram(f2sdram.x(), f2sdram.y());
+        auto lw = hps_pos[CycloneV::I_HPS_HPS2FPGA_LIGHT_WEIGHT];
+        create_hps_hps2fpga_light_weight(lw.x(), lw.y());
     }
 
     for (auto m10k_pos : cyclonev->m10k_get_pos())
