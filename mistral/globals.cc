@@ -274,6 +274,15 @@ void Arch::create_hps_mpu_general_purpose(int x, int y)
     }
 }
 
+void Arch::create_hps_interrupts(int x, int y)
+{
+    // The 64 FPGA-to-HPS interrupts (GIC IDs 72-135). Lines that no net
+    // drives are tied low by bitgen (write_hps_interrupts).
+    BelId bel = add_bel(x, y, id_cyclonev_hps_interface_interrupts, id_cyclonev_hps_interface_interrupts);
+    for (int i = 0; i < 64; i++)
+        add_bel_pin(bel, idf("irq[%d]", i), PORT_IN, get_port(CycloneV::HPS_INTERRUPTS, x, y, -1, CycloneV::IRQ, i));
+}
+
 void Arch::create_hps_peripheral_i2c(int x, int y)
 {
     BelId i2c_bel = add_bel(x, y, id_cyclonev_hps_interface_peripheral_i2c,
