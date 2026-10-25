@@ -39,9 +39,19 @@ fast-corner routing, all possible input slews/placements, or metastability.
 Unrelated/asynchronous sources remain unpaired. No timing exception is added.
 
 `reference-summary.json` lists the bounds and hashes; `reference.json.gz` retains
-the complete observations, source and raw-report hashes. Full
-fits and reports are reproducible with the command above; a successful local
-reference still does not establish physical-board acceptance.
+the complete observations, source and raw-report hashes. The command above
+rebuilds the fits and reports, and publishes output only after all timing and
+source checks pass. A successful local reference still does not establish
+physical-board acceptance.
+
+The checked-in archive predates `clear_source` recording, so its 1,648
+observations are not source-validated. New characterizations derive each clear
+source from fixture RTL and include it in every observation; the report's
+`From Node` must match before a reference can be published. A regeneration with
+Quartus Prime Lite 17.0.2 Build 602 could not be published: the first `rates`
+removal report has a falling (`FF`) transition at `sink_0_0|clrn`, while the
+characterizer requires the rising transition (`R`) for clear deassertion. The
+existing archive remains unchanged until a real report passes that check.
 
 Calibration queries for disconnected clears with the explicit packed inactive
 `PIN_1` state retain the ordinary data approximation; no reset path exists on
