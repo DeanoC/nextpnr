@@ -183,3 +183,6 @@ and output hold budgets through routing and bitstream generation. It retains
 logs, constraints, reports and a results receipt. It also reloads the passing
 checkpoint in a fresh process without an SDC file and verifies the external
 requirements in its timing reports. It does not program hardware.
+
+LAB FF clear recovery references are separate from registered GPIO clear models;
+see [Mistral reset reference](mistral-reset-reference.md).

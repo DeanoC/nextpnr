@@ -90,6 +90,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("qsf", po::value<std::string>(), "path to QSF constraints file");
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
     specific.add_options()("compress-rbf", "generate compressed bitstream");
+    specific.add_options()("mistral-ff-reset-reference",
+                           "opt in to the bounded FF reset recovery reference; retains historical hold floor");
     specific.add_options()("isolated-lut-placement",
                            "score the earlier L5 LUT inputs on their isolated legal pins during placement (opt-in)");
     specific.add_options()("arrival-pin-assignment",
@@ -152,6 +154,8 @@ std::set<std::string> MistralCommandHandler::getArchSettingKeys() const
         keys.insert("mistral/isolated_lut_placement");
     if (vm.count("arrival-pin-assignment"))
         keys.insert("mistral/arrival_pin_assignment");
+    if (vm.count("mistral-ff-reset-reference"))
+        keys.insert("mistral/ff_reset_reference");
     if (vm.count("mistral-ff4"))
         keys.insert("mistral/ff4");
     if (vm.count("mistral-clkb"))
@@ -239,7 +243,7 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     };
     pin_policy("mistral/isolated_lut_placement", ctx->isolated_lut_placement);
     pin_policy("mistral/arrival_pin_assignment", ctx->arrival_pin_assignment);
-    // LAB packing models are enabled only from the command line. A JSON written with one records it, and is refused
+    // Packing and timing reference models require an explicit command-line opt-in on every load. A JSON records it, and is refused
     // without the same option: its placement (and, for CLKB, its routing) relies on that model.
     auto lab_model = [&](const char *setting, const char *option) {
         const bool requested = vm.count(option) != 0;
@@ -255,6 +259,7 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
             ctx->settings.erase(found);
         return requested;
     };
+    lab_model("mistral/ff_reset_reference", "mistral-ff-reset-reference");
     ctx->lab_ff4 = lab_model("mistral/ff4", "mistral-ff4");
     lab_model("mistral/clkb", "mistral-clkb");
     // Preload request bytes before packing or placement; saved settings cannot enable it.
