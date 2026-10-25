@@ -32,6 +32,8 @@ def main():
                 subprocess.run([str(args.quartus_bin / tool), *command], cwd=project,
                                stdout=log, stderr=subprocess.STDOUT, check=True)
         result = summarize(project)
+        if not result['all_fitted_checks_pass']:
+            raise SystemExit(f'{name}: fitted timing checks failed; refusing to write reference')
         (project / 'reference.json').write_text(json.dumps(result, indent=2) + '\n')
         projects[name] = dict(reference_sha256=digest(project / 'reference.json'), evidence=result)
         print(name, result['observed_max_ns'], flush=True)

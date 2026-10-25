@@ -59,6 +59,8 @@ add_nextpnr_architecture(${family}
 if (BUILD_TESTS)
     add_test(NAME nextpnr-${family}-ff-reset-reference-parser
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ff-reset/test_reference.py)
+    add_test(NAME nextpnr-${family}-ff-reset-characterizer
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ff-reset/test_characterize.py)
     add_test(NAME nextpnr-${family}-ff-reset-reference-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ff-reset/check_cli.py
                 $<TARGET_FILE:nextpnr-${family}>)

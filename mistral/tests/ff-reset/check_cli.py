@@ -24,6 +24,10 @@ def main():
             assert (result.returncode == 0) == success, (result.returncode, text)
             if message:
                 assert message in text, text
+        run(['--json', 'empty.json', '--pack-only', '--mistral-ff-reset-reference',
+             '--set', 'mistral/ff_reset_reference=0', '--write', 'conflict.json'], success=False,
+            message="setting 'mistral/ff_reset_reference' is set by both --set and a dedicated command-line option")
+        assert not (work / 'conflict.json').exists()
         run(['--json', 'empty.json', '--pack-only', '--write', 'default.json'])
         run(['--json', 'empty.json', '--pack-only', '--mistral-ff-reset-reference', '--write', 'recorded.json'])
         replay = ['--json', 'recorded.json', '--no-pack', '--no-place', '--no-route']

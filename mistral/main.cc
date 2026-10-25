@@ -154,6 +154,8 @@ std::set<std::string> MistralCommandHandler::getArchSettingKeys() const
         keys.insert("mistral/isolated_lut_placement");
     if (vm.count("arrival-pin-assignment"))
         keys.insert("mistral/arrival_pin_assignment");
+    if (vm.count("mistral-ff-reset-reference"))
+        keys.insert("mistral/ff_reset_reference");
     if (vm.count("mistral-ff4"))
         keys.insert("mistral/ff4");
     if (vm.count("mistral-clkb"))
