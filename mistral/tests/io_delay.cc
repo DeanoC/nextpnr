@@ -1103,3 +1103,17 @@ TEST_F(IoDelayTest, NativeSdrCaptureHasOnePadEdgeAndCompleteDataOeTiming)
     timing.setup(false, false, true);
     EXPECT_EQ(timing.get_timing_result().clock_hold_slack.at(clock->name), -1690);
 }
+
+TEST_F(IoDelayTest, HarmonicOptionDoesNotBroadenExternalReferenceClockRates)
+{
+    auto *slow = net("slow_reference");
+    slow->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+    slow->clkconstr->period = DelayPair(20000);
+    slow->clkconstr->high = slow->clkconstr->low = DelayPair(10000);
+    clock->clkconstr->phase_group = slow->clkconstr->phase_group = ctx->id("pll");
+    ctx->settings[ctx->id("timing/phaseRelatedHarmonicClocks")] = true;
+    ASSERT_TRUE(phase_related_clocks(ctx.get(), clock->name, slow->name));
+    sdc("set_input_delay -clock slow_reference -min 1 [get_ports din]\n"
+        "set_input_delay -clock slow_reference -max 3 [get_ports din]\n");
+    EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
+}
