@@ -250,11 +250,21 @@ Report JSON structure:
         {
           "cell": <sink cell name>,
           "port": <sink cell port name>,
+          "launch_event": <launch clock event name>,
           "event": <destination clock event name>,
           "delay": [
             <minimum segment delay [ns]>,
             <maximum segment delay [ns]>,
           ],
+          "setup_checked": <whether setup was checked>,
+          "hold_checked": <whether hold was checked>,
+          "setup_slack_ns": <setup slack [ns], or null if unchecked>,
+          "hold_slack_ns": <hold slack [ns], or null if unchecked>,
+          "source": {
+            "cell": <timing source cell name>,
+            "port": <timing source cell port name>,
+            "event": <launch clock event name>,
+          }, // only when a timing source is available
         }
         ...
       ]
