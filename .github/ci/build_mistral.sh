@@ -25,7 +25,7 @@ function run_tests {
     python3 common/route/tests/router2_profile.py
     ctest --test-dir build -R '^nextpnr-(command-settings|heap-control-set|reserved-route-slack|gpu-lease)-test$' --output-on-failure
     ctest --test-dir build -R '^nextpnr-mistral-(command-settings|gpu-lease)-cli$' --output-on-failure
-    ./build/nextpnr-mistral-test --gtest_filter='HpsInterrupts.*'
+    ./build/nextpnr-mistral-test --gtest_filter='HpsInterrupts.*:HpsClocksResets.*'
     python3 mistral/tests/router2_profile.py --nextpnr build/nextpnr-mistral --output build/router2-profile
     python3 mistral/tests/router2_undriven.py --nextpnr build/nextpnr-mistral --output build/router2-undriven
     python3 mistral/tests/pad_clock.py
