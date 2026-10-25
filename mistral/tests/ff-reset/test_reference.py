@@ -5,18 +5,20 @@ import json
 import tempfile
 from pathlib import Path
 import unittest
-from summarize import CORNERS, parse_report, source_digest
+from summarize import CORNERS, clear_sources, parse_report, source_digest
 
 
 class ReferenceTest(unittest.TestCase):
     def setUp(self):
         self.site = dict(cell='sink', location='FF_X31_Y49_N1', clock='clock',
-                         alm=0, ff_index=0, dynamic_enable=False, enable_inverted=False)
+                         alm=0, ff_index=0, dynamic_enable=False, enable_inverted=False,
+                         clear_source='reset_n')
         self.expected = {'sink': self.site}
 
     def report(self, kind='recovery', data=.623, clock=.489):
         intrinsic = 'uTsu' if kind == 'recovery' else 'uTh'
         return f'''\nPath #1: {kind}
+; From Node ; reset_n ;
 ; To Node ; sink ;
 ; Launch Clock ; clock ;
 ; Latch Clock ; clock ;
@@ -50,6 +52,15 @@ class ReferenceTest(unittest.TestCase):
             with self.subTest(original=original), self.assertRaises(AssertionError):
                 parse_report(self.report().replace(original, replacement), 'recovery', 'corner', self.expected)
 
+    def test_wrong_clear_source_or_deassertion_transition_rejected(self):
+        with self.assertRaises(AssertionError):
+            parse_report(self.report().replace('; From Node ; reset_n ;', '; From Node ; other_reset ;'),
+                         'recovery', 'corner', self.expected)
+        with self.assertRaises(AssertionError):
+            parse_report(self.report().replace('; 0 ; 0.4 ; RR ; IC ; 1 ; FF_X31_Y49_N1 ; sink|clrn ;',
+                                               '; 0 ; 0.4 ; RF ; IC ; 1 ; FF_X31_Y49_N1 ; sink|clrn ;'),
+                         'recovery', 'corner', self.expected)
+
     def test_missing_intrinsic_and_nonfinite_values_rejected(self):
         with self.assertRaises(AssertionError):
             parse_report(self.report().replace('; uTsu ;', '; absent ;'), 'recovery', 'corner', self.expected)
@@ -68,6 +79,12 @@ class ReferenceTest(unittest.TestCase):
         for name, project in data['projects'].items():
             evidence = project['evidence']
             fixture = root / 'fixtures' / name
+            clear_by_cell = clear_sources(fixture / 'top.sv')
+            self.assertEqual(set(clear_by_cell),
+                             {v['cell'] for v in json.loads((fixture / 'fixture.json').read_text())['sites']})
+            for cell, source in clear_by_cell.items():
+                expected_source = f'reset_n_{cell.split("_")[1]}' if name == 'rates' else 'reset_n'
+                self.assertEqual(source, expected_source)
             for filename, digest in evidence['source_sha256'].items():
                 self.assertEqual(source_digest(fixture / filename), digest)
             expected = {v['cell'] for v in json.loads((fixture / 'fixture.json').read_text())['sites']}

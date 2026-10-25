@@ -27,6 +27,22 @@ def source_digest(path):
     return hashlib.sha256(data).hexdigest()
 
 
+def clear_sources(path):
+    sources = {}
+    for block in re.split(r'\bdffeas\b', path.read_text())[1:]:
+        cell = re.search(r'\b(sink_[A-Za-z0-9_]+)\s*\(', block)
+        assert cell, 'dffeas instance has no expected sink name'
+        end = block.find(');', cell.end())
+        assert end >= 0, cell.group(1)
+        ports = block[cell.end():end]
+        clear = re.findall(r'\.clrn\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)', ports)
+        assert len(clear) == 1, (cell.group(1), clear)
+        assert cell.group(1) not in sources, cell.group(1)
+        sources[cell.group(1)] = clear[0]
+    assert sources, 'fixture has no dffeas clear endpoints'
+    return sources
+
+
 def parse_report(text, kind, corner, expected):
     assert kind in ('recovery', 'removal')
     seen, out = set(), []
@@ -35,10 +51,12 @@ def parse_report(text, kind, corner, expected):
             values = re.findall(r'(?m)^; ' + name + r'\s*;([^;\n]+)', block)
             assert len(values) == 1, (name, len(values))
             return values[0].strip()
+        source = field('From Node')
         name = field('To Node')
         assert name in expected and name not in seen, name
         seen.add(name)
         target = expected[name]
+        assert source == target['clear_source'], (name, source, target['clear_source'])
         arrival = block.split('; Data Arrival Path')[1].split('; Data Required Path')[0]
         required = block.split('; Data Required Path')[1]
 
@@ -63,6 +81,7 @@ def parse_report(text, kind, corner, expected):
         reset = one(ar, 'CELL', name)
         clock = one(rr, 'CELL', name)
         cp, rp = one(rr, 'IC', name + '|clk'), one(ar, 'IC', name + '|clrn')
+        assert len(rp[2]) == 2 and rp[2][-1] == 'R', (kind, name, rp[2])
         intrinsic = one(rr, 'uTsu' if kind == 'recovery' else 'uTh', name)
         locations = {x[5] for x in (reset, clock, cp, rp, intrinsic)}
         assert len(locations) == 1
@@ -86,8 +105,10 @@ def summarize(project):
     for name, value in binding['source_sha256'].items():
         assert source_digest(project / name) == value, name
     fixture = json.loads((project / 'fixture.json').read_text())
-    expected = {x['cell']: x for x in fixture['sites']}
+    clear_by_cell = clear_sources(project / 'top.sv')
+    expected = {x['cell']: dict(x, clear_source=clear_by_cell[x['cell']]) for x in fixture['sites']}
     assert len(expected) == len(fixture['sites'])
+    assert set(clear_by_cell) == set(expected), (set(clear_by_cell), set(expected))
     observations, reports = [], {}
     for corner in CORNERS:
         for kind in ('recovery', 'removal'):
