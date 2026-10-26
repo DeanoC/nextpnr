@@ -315,6 +315,8 @@ struct Arch : BaseArch<ArchRanges>
 
     // Mistral needs the bitstream configuring before it can use the simulator.
     bool bitstream_configured = false;
+    // Explicit CLI opt-in; a checkpoint alone never enables this reference.
+    bool use_lut_core_reference = false;
 
     Arch(ArchArgs args);
     ArchArgs archArgs() const override { return args; }
@@ -547,6 +549,8 @@ struct Arch : BaseArch<ArchRanges>
                                        int &clockInfoCount) const override;                                // delay.cc
     TimingClockingInfo getPortClockingInfo(const CellInfo *cell, IdString port, int index) const override; // delay.cc
     bool ff_core_reference(const CellInfo *cell, IdString port, TimingClockingInfo &timing) const; // ff_core.cc
+    bool lut_core_delay(const CellInfo *cell, IdString from, IdString to, DelayQuad &delay) const;
+    const char *lut_core_reference_identity() const;
     bool gpio_core_reference(const CellInfo *cell, IdString port, TimingClockingInfo &timing) const; // gpio_core.cc
     bool gpio_core_clock_prefix(const CellInfo *cell, IdString data_port, DelayQuad &prefix) const;
     std::vector<RegisteredIoTiming> getRegisteredIoTiming(const CellInfo *cell, IdString pad, bool input) const override;

@@ -96,6 +96,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "opt in to guarded native-cut FF timing references for the slow100 model");
     specific.add_options()("mistral-gpio-core-reference",
                            "opt in to guarded native-cut SDR GPIO timing references for the slow100 model");
+    specific.add_options()("mistral-lut-core-reference",
+                           "opt in to guarded native-cut Boolean LUT timing references for the slow100 model");
     specific.add_options()("mistral-routed-delay-ranges",
                            "retain early/late routed delays for internal data and clocks without external IO constraints");
     specific.add_options()("mistral-clock-edge-ranges",
@@ -168,6 +170,8 @@ std::set<std::string> MistralCommandHandler::getArchSettingKeys() const
         keys.insert("mistral/ff_core_reference");
     if (vm.count("mistral-gpio-core-reference"))
         keys.insert("mistral/gpio_core_reference");
+    if (vm.count("mistral-lut-core-reference"))
+        keys.insert("mistral/lut_core_reference");
     if (vm.count("mistral-routed-delay-ranges"))
         keys.insert("mistral/routed_delay_ranges");
     if (vm.count("mistral-clock-edge-ranges"))
@@ -278,6 +282,13 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     lab_model("mistral/ff_reset_reference", "mistral-ff-reset-reference");
     lab_model("mistral/ff_core_reference", "mistral-ff-core-reference");
     lab_model("mistral/gpio_core_reference", "mistral-gpio-core-reference");
+    // Avoid interning a new ID on the ordinary path: untouched modes retain
+    // their placement identities and their default timing behavior.
+    bool saved_lut_reference = false;
+    for (const auto &entry : ctx->settings)
+        saved_lut_reference |= entry.first.str(ctx) == "mistral/lut_core_reference";
+    if (saved_lut_reference || vm.count("mistral-lut-core-reference"))
+        ctx->use_lut_core_reference = lab_model("mistral/lut_core_reference", "mistral-lut-core-reference");
     lab_model("mistral/routed_delay_ranges", "mistral-routed-delay-ranges");
     lab_model("mistral/clock_edge_ranges", "mistral-clock-edge-ranges");
     ctx->useClockEdgeRanges(); // Validate the explicit range-model dependency before packing.

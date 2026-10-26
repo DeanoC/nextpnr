@@ -12,6 +12,7 @@ set(SOURCES
     delay.cc
     ff_core.cc
     gpio_core.cc
+    lut_core.cc
     local_remap.cc
     local_remap_pin_policy.h
     remap_plan.cc
@@ -53,7 +54,7 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/gpu_backend_selection.cc tests/analogue_jobs.cc tests/critical_cohort.cc tests/analogue_budget.cc tests/analogue_improve.cc tests/bel_id.cc tests/completed_observations.cc tests/lab_pinmap.cc tests/lab_ff4.cc tests/device_model_lifetime.cc tests/fes_cram.cc tests/fes_boundary.cc tests/fes_narrow_pin.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/io_delay.cc tests/m10k_timing.cc tests/ff_reset_timing.cc tests/ff_core_timing.cc tests/gpio_core_timing.cc tests/hps_interrupts.cc tests/hps_clocks_resets.cc tests/hps_lw_bridge.cc
+    TEST_SOURCES tests/gpu_backend_selection.cc tests/analogue_jobs.cc tests/critical_cohort.cc tests/analogue_budget.cc tests/analogue_improve.cc tests/bel_id.cc tests/completed_observations.cc tests/lab_pinmap.cc tests/lab_ff4.cc tests/device_model_lifetime.cc tests/fes_cram.cc tests/fes_boundary.cc tests/fes_narrow_pin.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/io_delay.cc tests/m10k_timing.cc tests/ff_reset_timing.cc tests/ff_core_timing.cc tests/gpio_core_timing.cc tests/lut_core_timing.cc tests/hps_interrupts.cc tests/hps_clocks_resets.cc tests/hps_lw_bridge.cc
     tests/parked_reviews.cc tests/lut_input_delay.cc
     MAIN_SOURCE  main.cc
 )
@@ -197,6 +198,11 @@ if (BUILD_TESTS)
                 --decoder $<TARGET_FILE:nextpnr-${family}-lut-carry-decode>)
     add_test(NAME nextpnr-${family}-lut-carry-parser
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut-carry/test_reference.py)
+    add_test(NAME nextpnr-${family}-lut-core-reference
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut-carry/lut_model_reference.py --check)
+    add_test(NAME nextpnr-${family}-lut-core-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut_core_cli.py
+                $<TARGET_FILE:nextpnr-${family}>)
     add_executable(nextpnr-${family}-gpio-core-config tests/gpio-core/config.cc)
     target_include_directories(nextpnr-${family}-gpio-core-config PRIVATE
         ${MISTRAL_ROOT}/libmistral ${CMAKE_CURRENT_BINARY_DIR}/tools

@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 
 NEXTPNR_NAMESPACE_BEGIN
 
@@ -885,6 +886,10 @@ bool Arch::get_lut_pin_delay(IdString physical, bool l6, DelayQuad &delay) const
 
 bool Arch::getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort, DelayQuad &delay) const
 {
+    if(lut_core_delay(cell,fromPort,toPort,delay)) {
+        delay += get_lut_input_delay(cell,fromPort);
+        return true;
+    }
     if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
                       id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED) &&
         toPort.str(this).find("Y[") == 0) {
@@ -1127,6 +1132,9 @@ DelayQuad Arch::get_lut_input_delay(const CellInfo *cell, IdString port) const
         if (analogue_arc_delay(net, user, route, nullptr, &input))
             return input;
     }
+    if(use_lut_core_reference && bitstream_configured)
+        log_error("LUT core reference requires a complete native input-buffer observation for '%s.%s'.\n",
+                  cell->name.c_str(getCtx()),port.c_str(getCtx()));
     return estimate;
 }
 
@@ -1165,6 +1173,7 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         *lut_input_delay = DelayQuad(0);
     const bool terminal_lut = boolean_lut_input(sink.cell, sink.port) && !dst_wire.is_nextpnr_created() &&
                               dst_wire.node.t() == CycloneV::GOUT;
+    const bool strict_lut = terminal_lut && use_lut_core_reference;
     // SCLR has a physical GOUT pin, while ENA/ACLR and bypass data have
     // virtual suffixes that already simulate this buffer. The reference FF
     // constraint begins after it, so retain its delay on the routed net.
@@ -1182,6 +1191,9 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
                            gpio_core_clock_prefix(sink.cell,sink.port == id_CLKIN ? id_Q : id_I,gpio_prefix);
     const bool strict_gpio = terminal_gpio || gpio_source || gpio_clock;
     auto unavailable = [&]() {
+        if (strict_lut)
+            log_error("LUT core reference requires a complete native analogue observation for net '%s' to '%s.%s'.\n",
+                      net_info->name.c_str(getCtx()),sink.cell->name.c_str(getCtx()),sink.port.c_str(getCtx()));
         if (terminal_ff)
             log_error("FF core reference requires a complete SCLR input-buffer observation for '%s'.\n",
                       sink.cell->name.c_str(getCtx()));
@@ -1224,7 +1236,7 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         pips.push_back(pip);
         cursor = getPipSrcWire(pip);
     }
-    if ((terminal_ff || strict_gpio) && cursor != src_wire)
+    if ((terminal_ff || strict_gpio || strict_lut) && cursor != src_wire)
         return unavailable();
 
     for (size_t i = 0; i < pips.size() + size_t(terminal_lut || terminal_ff || terminal_gpio); ++i) {
@@ -1313,23 +1325,31 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
             int input = -1;
             std::vector<std::pair<mistral::CycloneV::rnode_index, int>> outputs;
             cyclonev->rnode_timing_build_circuit(src_ri, temp, CycloneV::DELAY_MAX, actual_edge, sim, input, outputs);
-            if (strict_gpio && input < 0)
+            if ((strict_gpio || strict_lut) && input < 0)
                 return unavailable();
             sim.set_input_wave(input, input_wave[edge]);
             auto o = std::find_if(
                     outputs.begin(), outputs.end(),
                     [&](std::pair<mistral::CycloneV::rnode_index, int> output) { return output.first == dst_ri; });
-            if (strict_gpio && o == outputs.end())
+            if ((strict_gpio || strict_lut) && o == outputs.end())
                 return unavailable();
             NPNR_ASSERT(o != outputs.end());
 
             output_wave[edge].clear();
             sim.set_output_wave(o->second, output_wave[edge], output_delays[edge]);
             sim.run();
-            if ((terminal_ff || strict_gpio) && (output_wave[edge].empty() || !std::isfinite(output_delays[edge].mi) ||
+            if ((terminal_ff || strict_gpio || strict_lut) && (output_wave[edge].empty() || !std::isfinite(output_delays[edge].mi) ||
                                 !std::isfinite(output_delays[edge].mx) ||
                                 output_delays[edge].mi > output_delays[edge].mx))
                 return unavailable();
+            if(strict_lut) {
+                for(const auto &point:output_wave[edge])
+                    if(!std::isfinite(point.t) || !std::isfinite(point.v))return unavailable();
+                for(double v:{output_delay_sum[edge].mi+output_delays[edge].mi,
+                              output_delay_sum[edge].mx+output_delays[edge].mx})
+                    if(v*1e12 <= std::numeric_limits<delay_t>::min() ||
+                       v*1e12 >= std::numeric_limits<delay_t>::max())return unavailable();
+            }
             cyclonev->rnode_timing_trim_wave(temp, CycloneV::DELAY_MAX, output_wave[edge], input_wave[edge]);
 
             output_delay_sum[edge].mi += output_delays[edge].mi;
