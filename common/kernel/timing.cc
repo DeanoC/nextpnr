@@ -158,8 +158,11 @@ void TimingAnalyser::run(bool update_route_delays, bool update_net_timings, bool
                          bool update_crit_paths)
 {
     analysis_complete = false;
+    const bool requested_clock_edges = ctx->useClockEdgeRanges();
+    if (!update_route_delays && requested_clock_edges != clock_edge_ranges)
+        log_error("Changing clock-edge range mode requires refreshing routed delays.\n");
     reset_times();
-    clock_edge_ranges = ctx->useClockEdgeRanges();
+    clock_edge_ranges = requested_clock_edges;
     if (update_route_delays)
         get_route_delays();
     check_primitive_clocks();

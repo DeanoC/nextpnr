@@ -1222,6 +1222,9 @@ TEST_F(IoDelayTest, ClockEdgeRangesSelectEachRegisterEdgeAndPreserveManualOverri
     ctx->settings[option] = false;
     std::vector<EndpointClockPairTiming> stale;
     EXPECT_FALSE(timing.get_endpoint_clock_pair_timings(endpoint, stale));
+    EXPECT_THROW(timing.run(false, false, false, true), log_execution_error_exception);
+    EXPECT_NO_THROW(timing.setup(false, false, true));
+    EXPECT_EQ(timing.get_timing_result().clock_hold_slack.at(clock->name), -1439);
 }
 
 TEST_F(IoDelayTest, ClockEdgeRangesRequireFullRouteRanges)

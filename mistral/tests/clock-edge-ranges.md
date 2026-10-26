@@ -16,6 +16,8 @@ backward required time, unrelated-clock cancellation and reported path sums.
 Data intervals, clock periods/phases, endpoint admission and primitive pulse
 requirements keep their existing behavior. A manually supplied route interval
 applies to both transitions; it replaces earlier routed clock bounds.
+Changing clock-edge mode requires a fresh routing-delay update; a cached
+`run(false, ...)` rejects a changed mode before evaluating stale intervals.
 
 This is transition selection within supplied intervals. It adds no common-path
 pessimism removal, clock reduction, exception, board budget or physical corner
