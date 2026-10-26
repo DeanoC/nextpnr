@@ -623,6 +623,7 @@ struct Arch : BaseArch<ArchRanges>
 
     void assignArchInfo() override;
     bool pack() override;
+    void pack_hps_clocks(); // pack.cc; split out so HPS clock-lane allocation can be tested directly.
     bool place() override;
     int enable_replication_budget = 0; // Explicit opt-in; never inherited from JSON settings.
     int critical_cohort_budget = 0; // CLI only; number of complete placement STA trials.

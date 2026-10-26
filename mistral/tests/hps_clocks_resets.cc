@@ -5,6 +5,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -12,6 +13,19 @@
 #include "nextpnr.h"
 
 USING_NEXTPNR_NAMESPACE
+
+namespace {
+
+struct ScopedLogCapture
+{
+    std::string text;
+    log_write_type previous = log_write_function;
+
+    ScopedLogCapture() { log_write_function = [&](std::string message) { text += message; }; }
+    ~ScopedLogCapture() { log_write_function = std::move(previous); }
+};
+
+} // namespace
 
 // The HPS reset and user clock outputs have no routing node; each reaches
 // global clock buffers through one fixed HPS_CLOCKS slot per clock mux.
@@ -91,7 +105,6 @@ TEST(HpsClocksResets, PackerReservesFabricLaneWhenOtherHpsLanesAreOccupied)
     hps->addOutput(pin);
     NetInfo *hps_clock = ctx->createNet(ctx->id("hps_clock"));
     hps->connectPort(pin, hps_clock);
-
     CellInfo *hps_buffer = ctx->createCell(ctx->id("hps_clock_buffer"), id_MISTRAL_CLKBUF);
     hps_buffer->addInput(id_A);
     hps_buffer->addOutput(id_Q);
@@ -110,25 +123,48 @@ TEST(HpsClocksResets, PackerReservesFabricLaneWhenOtherHpsLanesAreOccupied)
     fabric_buffer->connectPort(id_A, fabric_clock);
     fabric_buffer->connectPort(id_Q, ctx->createNet(ctx->id("fabric_global_clock")));
 
-    std::vector<BelId> fabric_lanes;
-    int occupied_lanes = 0;
+    BelId fabric_lane;
+    std::vector<BelId> alternative_lanes;
     for (BelId lane : ctx->hps_clock_bels[pin]) {
-        bool fabric_lane = ctx->getBelType(lane) == id_MISTRAL_CLKENA && ctx->bel_data(lane).block_index == 2;
-        if (fabric_lane) {
-            fabric_lanes.push_back(lane);
-            continue;
+        bool is_fabric = ctx->getBelType(lane) == id_MISTRAL_CLKENA && ctx->bel_data(lane).block_index == 2;
+        if (is_fabric) {
+            ASSERT_EQ(fabric_lane, BelId());
+            fabric_lane = lane;
+        } else {
+            alternative_lanes.push_back(lane);
         }
-        CellInfo *occupant = ctx->createCell(ctx->idf("occupied_hps_lane_%d", occupied_lanes++),
-                                             ctx->getBelType(lane));
-        ctx->bindBel(lane, occupant, STRENGTH_LOCKED);
     }
-    ASSERT_GT(occupied_lanes, 0);
-    ASSERT_FALSE(fabric_lanes.empty());
+    ASSERT_NE(fabric_lane, BelId());
+    ASSERT_FALSE(alternative_lanes.empty());
 
-    EXPECT_THROW(ctx->pack(), log_execution_error_exception);
+    // Fill the HPS output's alternatives with connected clock-buffer cells and
+    // call the allocation pass directly. This isolates the allocation outcome
+    // from setup_clock_enables(), which validates MISTRAL_CLKENA cells earlier
+    // in a full pack.
+    int occupied_lanes = 0;
+    for (BelId lane : alternative_lanes) {
+        CellInfo *occupant = ctx->createCell(ctx->idf("occupied_hps_lane_%d", occupied_lanes++), id_MISTRAL_CLKBUF);
+        occupant->addInput(id_A);
+        occupant->addOutput(id_Q);
+        occupant->connectPort(id_A, fabric_clock);
+        occupant->connectPort(id_Q, ctx->createNet(ctx->idf("occupied_hps_lane_global_%d", occupied_lanes)));
+        ctx->bindBel(lane, occupant, STRENGTH_LOCKED);
+        EXPECT_FALSE(ctx->checkBelAvail(lane));
+    }
+
+    bool pack_failed = false;
+    ScopedLogCapture captured;
+    try {
+        ctx->pack_hps_clocks();
+    } catch (const log_execution_error_exception &) {
+        pack_failed = true;
+    }
+    EXPECT_TRUE(pack_failed) << captured.text;
+    EXPECT_NE(captured.text.find("'hps.h2f_rst_n': no free global clock buffer on its HPS_CLOCKS slots."),
+              std::string::npos)
+            << captured.text;
     EXPECT_EQ(hps_buffer->bel, BelId());
-    for (BelId lane : fabric_lanes)
-        EXPECT_TRUE(ctx->checkBelAvail(lane));
+    EXPECT_TRUE(ctx->checkBelAvail(fabric_lane));
 }
 
 // The HPS reset and user clock outputs come from a single fixed HPS site, so
