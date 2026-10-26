@@ -27,6 +27,13 @@ pin identity, mode coverage or analogue observations stop the run. Feedback,
 RAM and arithmetic modes are outside the profile. Explicit inactive constant
 inputs do not create routed timing paths.
 
+The current native source-wave API has no M10K data-output or FPLL lock-output
+waveform implementation. A design with those sources feeding LUTs therefore
+stops at the required analogue observation. This profile does not substitute
+another source family's ramp or retain an estimated input-buffer delay on
+those paths. Source-wave characterization is a separate prerequisite for
+timing such designs with this flag.
+
 Checkpoints record the selection and require the explicit flag again on
 reload. Critical-cohort calibration records bind both the selection and the
 reference data digest, so measured models cannot cross profiles. Ordinary
