@@ -17,7 +17,7 @@ jobs:
       ICESTORM_REVISION: 68044cc4dac829729ccd0ee88d0780525b515746
       TRELLIS_REVISION: 36c615d1740473cc3574464c7f0bed44da20e5b6
       PRJOXIDE_REVISION: be5891272a783f6c7d890da7f8dbf663dcaf61f4
-      MISTRAL_REVISION: 7ed06e21c18b047ec5c6d6a7e85e5ea2c8827039
+      MISTRAL_REVISION: 5e311528d8a373503f3508b0dc916e876db0a7a8
       APYCULA_REVISION: 0.8.2a1
       # Pinned: prjpeppercorn HEAD moved to v1.14 (783fe9db, 7bd77370) on
       # 2026-10-19 and the gatemate chipdb step exits 255. This is the last
