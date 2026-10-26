@@ -98,6 +98,16 @@ if (BUILD_TESTS)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut6-select/check.py
                     ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut6-select/${LUT6_SELECT_FIXTURE})
     endforeach()
+    add_executable(nextpnr-${family}-lut-carry-decode ${MISTRAL_ROOT}/mistral-cv/main.cc)
+    target_include_directories(nextpnr-${family}-lut-carry-decode PRIVATE
+        ${MISTRAL_ROOT}/libmistral ${CMAKE_CURRENT_BINARY_DIR}/tools
+        ${CMAKE_CURRENT_BINARY_DIR}/libmistral ${LIBLZMA_INCLUDE_DIRS})
+    target_link_libraries(nextpnr-${family}-lut-carry-decode PRIVATE mistral ${LIBLZMA_LIBRARIES})
+    add_test(NAME nextpnr-${family}-lut-carry-reference
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut-carry/reference.py
+                --decoder $<TARGET_FILE:nextpnr-${family}-lut-carry-decode>)
+    add_test(NAME nextpnr-${family}-lut-carry-parser
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut-carry/test_reference.py)
     if (MISTRAL_CHECKPOINT_YOSYS)
         add_test(NAME nextpnr-${family}-placed-checkpoint
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/placed_checkpoint.py

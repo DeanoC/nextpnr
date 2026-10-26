@@ -1,0 +1,239 @@
+cell	location	wysiwyg	src	dst	input	output	unate	rr_min	rr_max	rf_min	rf_max	fr_min	fr_max	ff_min	ff_max
+target_0	LABCELL_X29_Y77_N0	cyclonev_lcell_comb	target_0|dataf	target_0|cout	dataf	cout	unknown	0.190	0.444	0.186	0.405	0.190	0.450	0.183	0.400
+target_0	LABCELL_X29_Y77_N0	cyclonev_lcell_comb	target_0|dataf	target_0|sumout	dataf	sumout	unknown	0.035	0.243	0.042	0.279	0.035	0.244	0.038	0.274
+target_0	LABCELL_X29_Y77_N0	cyclonev_lcell_comb	target_0|datac	target_0|sumout	datac	sumout	unknown	0.101	0.273	0.117	0.307	0.096	0.262	0.121	0.313
+target_0	LABCELL_X29_Y77_N0	cyclonev_lcell_comb	target_0|datac	target_0|cout	datac	cout	unknown	0.184	0.323	0.181	0.294	0.189	0.309	0.174	0.300
+target_0	LABCELL_X29_Y77_N0	cyclonev_lcell_comb	target_0|datad	target_0|sumout	datad	sumout	unknown	0.095	0.295	0.129	0.261	0.113	0.275	0.102	0.276
+target_0	LABCELL_X29_Y77_N0	cyclonev_lcell_comb	target_0|datad	target_0|cout	datad	cout	negative			0.147	0.224	0.158	0.233		
+target_0	LABCELL_X29_Y77_N0	cyclonev_lcell_comb	target_0|dataa	target_0|sumout	dataa	sumout	unknown	0.192	0.432	0.183	0.411	0.186	0.422	0.174	0.404
+target_0	LABCELL_X29_Y77_N0	cyclonev_lcell_comb	target_0|dataa	target_0|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_0	LABCELL_X29_Y77_N0	cyclonev_lcell_comb	target_0|datab	target_0|sumout	datab	sumout	unknown	0.191	0.426	0.182	0.408	0.190	0.423	0.179	0.403
+target_0	LABCELL_X29_Y77_N0	cyclonev_lcell_comb	target_0|datab	target_0|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_1	LABCELL_X29_Y77_N3	cyclonev_lcell_comb	target_1|dataf	target_1|cout	dataf	cout	negative			0.168	0.375	0.174	0.442		
+target_1	LABCELL_X29_Y77_N3	cyclonev_lcell_comb	target_1|dataf	target_1|sumout	dataf	sumout	unknown	0.035	0.249	0.043	0.284	0.036	0.250	0.037	0.285
+target_1	LABCELL_X29_Y77_N3	cyclonev_lcell_comb	target_1|datac	target_1|sumout	datac	sumout	unknown	0.108	0.281	0.116	0.328	0.097	0.269	0.123	0.313
+target_1	LABCELL_X29_Y77_N3	cyclonev_lcell_comb	target_1|datac	target_1|cout	datac	cout	unknown	0.188	0.321	0.189	0.306	0.192	0.304	0.178	0.289
+target_1	LABCELL_X29_Y77_N3	cyclonev_lcell_comb	target_1|datad	target_1|sumout	datad	sumout	unknown	0.099	0.325	0.128	0.323	0.116	0.308	0.106	0.306
+target_1	LABCELL_X29_Y77_N3	cyclonev_lcell_comb	target_1|datad	target_1|cout	datad	cout	unknown	0.181	0.271	0.149	0.242	0.163	0.254	0.162	0.225
+target_1	LABCELL_X29_Y77_N3	cyclonev_lcell_comb	target_1|dataa	target_1|sumout	dataa	sumout	unknown	0.194	0.470	0.182	0.463	0.188	0.460	0.173	0.453
+target_1	LABCELL_X29_Y77_N3	cyclonev_lcell_comb	target_1|dataa	target_1|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_1	LABCELL_X29_Y77_N3	cyclonev_lcell_comb	target_1|datab	target_1|sumout	datab	sumout	unknown	0.193	0.464	0.181	0.457	0.191	0.461	0.178	0.455
+target_1	LABCELL_X29_Y77_N3	cyclonev_lcell_comb	target_1|datab	target_1|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_1	LABCELL_X29_Y77_N3	cyclonev_lcell_comb	target_1|cin	target_1|cout	cin	cout	positive	0.000	0.000					0.000	0.000
+target_1	LABCELL_X29_Y77_N3	cyclonev_lcell_comb	target_1|cin	target_1|sumout	cin	sumout	unknown	0.133	0.143	0.133	0.143	0.133	0.143	0.133	0.143
+target_2	LABCELL_X29_Y77_N6	cyclonev_lcell_comb	target_2|dataf	target_2|cout	dataf	cout	unknown	0.190	0.444	0.186	0.405	0.190	0.450	0.183	0.400
+target_2	LABCELL_X29_Y77_N6	cyclonev_lcell_comb	target_2|dataf	target_2|sumout	dataf	sumout	unknown	0.035	0.243	0.042	0.279	0.035	0.244	0.038	0.274
+target_2	LABCELL_X29_Y77_N6	cyclonev_lcell_comb	target_2|datac	target_2|sumout	datac	sumout	unknown	0.101	0.273	0.117	0.307	0.096	0.262	0.121	0.313
+target_2	LABCELL_X29_Y77_N6	cyclonev_lcell_comb	target_2|datac	target_2|cout	datac	cout	unknown	0.184	0.323	0.181	0.294	0.189	0.309	0.174	0.300
+target_2	LABCELL_X29_Y77_N6	cyclonev_lcell_comb	target_2|datad	target_2|sumout	datad	sumout	unknown	0.095	0.295	0.129	0.261	0.113	0.275	0.102	0.276
+target_2	LABCELL_X29_Y77_N6	cyclonev_lcell_comb	target_2|datad	target_2|cout	datad	cout	negative			0.147	0.224	0.158	0.233		
+target_2	LABCELL_X29_Y77_N6	cyclonev_lcell_comb	target_2|dataa	target_2|sumout	dataa	sumout	unknown	0.192	0.432	0.183	0.411	0.186	0.422	0.174	0.404
+target_2	LABCELL_X29_Y77_N6	cyclonev_lcell_comb	target_2|dataa	target_2|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_2	LABCELL_X29_Y77_N6	cyclonev_lcell_comb	target_2|datab	target_2|sumout	datab	sumout	unknown	0.191	0.426	0.182	0.408	0.190	0.423	0.179	0.403
+target_2	LABCELL_X29_Y77_N6	cyclonev_lcell_comb	target_2|datab	target_2|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_2	LABCELL_X29_Y77_N6	cyclonev_lcell_comb	target_2|cin	target_2|cout	cin	cout	positive	0.025	0.027					0.023	0.025
+target_2	LABCELL_X29_Y77_N6	cyclonev_lcell_comb	target_2|cin	target_2|sumout	cin	sumout	unknown	0.114	0.128	0.116	0.130	0.115	0.130	0.115	0.133
+target_3	LABCELL_X29_Y77_N9	cyclonev_lcell_comb	target_3|dataf	target_3|cout	dataf	cout	negative			0.168	0.375	0.174	0.442		
+target_3	LABCELL_X29_Y77_N9	cyclonev_lcell_comb	target_3|dataf	target_3|sumout	dataf	sumout	unknown	0.035	0.249	0.043	0.284	0.036	0.250	0.037	0.285
+target_3	LABCELL_X29_Y77_N9	cyclonev_lcell_comb	target_3|datac	target_3|sumout	datac	sumout	unknown	0.108	0.281	0.116	0.328	0.097	0.269	0.123	0.313
+target_3	LABCELL_X29_Y77_N9	cyclonev_lcell_comb	target_3|datac	target_3|cout	datac	cout	unknown	0.188	0.321	0.189	0.306	0.192	0.304	0.178	0.289
+target_3	LABCELL_X29_Y77_N9	cyclonev_lcell_comb	target_3|datad	target_3|sumout	datad	sumout	unknown	0.099	0.325	0.128	0.323	0.116	0.308	0.106	0.306
+target_3	LABCELL_X29_Y77_N9	cyclonev_lcell_comb	target_3|datad	target_3|cout	datad	cout	unknown	0.181	0.271	0.149	0.242	0.163	0.254	0.162	0.225
+target_3	LABCELL_X29_Y77_N9	cyclonev_lcell_comb	target_3|dataa	target_3|sumout	dataa	sumout	unknown	0.194	0.470	0.182	0.463	0.188	0.460	0.173	0.453
+target_3	LABCELL_X29_Y77_N9	cyclonev_lcell_comb	target_3|dataa	target_3|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_3	LABCELL_X29_Y77_N9	cyclonev_lcell_comb	target_3|datab	target_3|sumout	datab	sumout	unknown	0.193	0.464	0.181	0.457	0.191	0.461	0.178	0.455
+target_3	LABCELL_X29_Y77_N9	cyclonev_lcell_comb	target_3|datab	target_3|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_3	LABCELL_X29_Y77_N9	cyclonev_lcell_comb	target_3|cin	target_3|cout	cin	cout	positive	0.000	0.000					0.000	0.000
+target_3	LABCELL_X29_Y77_N9	cyclonev_lcell_comb	target_3|cin	target_3|sumout	cin	sumout	unknown	0.133	0.143	0.133	0.143	0.133	0.143	0.133	0.143
+target_4	LABCELL_X29_Y77_N12	cyclonev_lcell_comb	target_4|dataf	target_4|cout	dataf	cout	unknown	0.190	0.444	0.186	0.405	0.190	0.450	0.183	0.400
+target_4	LABCELL_X29_Y77_N12	cyclonev_lcell_comb	target_4|dataf	target_4|sumout	dataf	sumout	unknown	0.035	0.243	0.042	0.279	0.035	0.244	0.038	0.274
+target_4	LABCELL_X29_Y77_N12	cyclonev_lcell_comb	target_4|datac	target_4|sumout	datac	sumout	unknown	0.101	0.273	0.117	0.307	0.096	0.262	0.121	0.313
+target_4	LABCELL_X29_Y77_N12	cyclonev_lcell_comb	target_4|datac	target_4|cout	datac	cout	unknown	0.184	0.323	0.181	0.294	0.189	0.309	0.174	0.300
+target_4	LABCELL_X29_Y77_N12	cyclonev_lcell_comb	target_4|datad	target_4|sumout	datad	sumout	unknown	0.095	0.295	0.129	0.261	0.113	0.275	0.102	0.276
+target_4	LABCELL_X29_Y77_N12	cyclonev_lcell_comb	target_4|datad	target_4|cout	datad	cout	negative			0.147	0.224	0.158	0.233		
+target_4	LABCELL_X29_Y77_N12	cyclonev_lcell_comb	target_4|dataa	target_4|sumout	dataa	sumout	unknown	0.192	0.432	0.183	0.411	0.186	0.422	0.174	0.404
+target_4	LABCELL_X29_Y77_N12	cyclonev_lcell_comb	target_4|dataa	target_4|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_4	LABCELL_X29_Y77_N12	cyclonev_lcell_comb	target_4|datab	target_4|sumout	datab	sumout	unknown	0.191	0.426	0.182	0.408	0.190	0.423	0.179	0.403
+target_4	LABCELL_X29_Y77_N12	cyclonev_lcell_comb	target_4|datab	target_4|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_4	LABCELL_X29_Y77_N12	cyclonev_lcell_comb	target_4|cin	target_4|cout	cin	cout	positive	0.025	0.027					0.023	0.025
+target_4	LABCELL_X29_Y77_N12	cyclonev_lcell_comb	target_4|cin	target_4|sumout	cin	sumout	unknown	0.106	0.132	0.106	0.135	0.115	0.137	0.116	0.139
+target_5	LABCELL_X29_Y77_N15	cyclonev_lcell_comb	target_5|dataf	target_5|cout	dataf	cout	negative			0.168	0.375	0.174	0.442		
+target_5	LABCELL_X29_Y77_N15	cyclonev_lcell_comb	target_5|dataf	target_5|sumout	dataf	sumout	unknown	0.035	0.249	0.043	0.284	0.036	0.250	0.037	0.285
+target_5	LABCELL_X29_Y77_N15	cyclonev_lcell_comb	target_5|datac	target_5|sumout	datac	sumout	unknown	0.108	0.281	0.116	0.328	0.097	0.269	0.123	0.313
+target_5	LABCELL_X29_Y77_N15	cyclonev_lcell_comb	target_5|datac	target_5|cout	datac	cout	unknown	0.188	0.321	0.189	0.306	0.192	0.304	0.178	0.289
+target_5	LABCELL_X29_Y77_N15	cyclonev_lcell_comb	target_5|datad	target_5|sumout	datad	sumout	unknown	0.099	0.325	0.128	0.323	0.116	0.308	0.106	0.306
+target_5	LABCELL_X29_Y77_N15	cyclonev_lcell_comb	target_5|datad	target_5|cout	datad	cout	unknown	0.181	0.271	0.149	0.242	0.163	0.254	0.162	0.225
+target_5	LABCELL_X29_Y77_N15	cyclonev_lcell_comb	target_5|dataa	target_5|sumout	dataa	sumout	unknown	0.194	0.470	0.182	0.463	0.188	0.460	0.173	0.453
+target_5	LABCELL_X29_Y77_N15	cyclonev_lcell_comb	target_5|dataa	target_5|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_5	LABCELL_X29_Y77_N15	cyclonev_lcell_comb	target_5|datab	target_5|sumout	datab	sumout	unknown	0.193	0.464	0.181	0.457	0.191	0.461	0.178	0.455
+target_5	LABCELL_X29_Y77_N15	cyclonev_lcell_comb	target_5|datab	target_5|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_5	LABCELL_X29_Y77_N15	cyclonev_lcell_comb	target_5|cin	target_5|cout	cin	cout	positive	0.000	0.000					0.000	0.000
+target_5	LABCELL_X29_Y77_N15	cyclonev_lcell_comb	target_5|cin	target_5|sumout	cin	sumout	unknown	0.133	0.143	0.133	0.143	0.133	0.143	0.133	0.143
+target_6	LABCELL_X29_Y77_N18	cyclonev_lcell_comb	target_6|dataf	target_6|cout	dataf	cout	unknown	0.190	0.444	0.186	0.405	0.190	0.450	0.183	0.400
+target_6	LABCELL_X29_Y77_N18	cyclonev_lcell_comb	target_6|dataf	target_6|sumout	dataf	sumout	unknown	0.035	0.243	0.042	0.279	0.035	0.244	0.038	0.274
+target_6	LABCELL_X29_Y77_N18	cyclonev_lcell_comb	target_6|datac	target_6|sumout	datac	sumout	unknown	0.101	0.273	0.117	0.307	0.096	0.262	0.121	0.313
+target_6	LABCELL_X29_Y77_N18	cyclonev_lcell_comb	target_6|datac	target_6|cout	datac	cout	unknown	0.184	0.323	0.181	0.294	0.189	0.309	0.174	0.300
+target_6	LABCELL_X29_Y77_N18	cyclonev_lcell_comb	target_6|datad	target_6|sumout	datad	sumout	unknown	0.095	0.295	0.129	0.261	0.113	0.275	0.102	0.276
+target_6	LABCELL_X29_Y77_N18	cyclonev_lcell_comb	target_6|datad	target_6|cout	datad	cout	negative			0.147	0.224	0.158	0.233		
+target_6	LABCELL_X29_Y77_N18	cyclonev_lcell_comb	target_6|dataa	target_6|sumout	dataa	sumout	unknown	0.192	0.432	0.183	0.411	0.186	0.422	0.174	0.404
+target_6	LABCELL_X29_Y77_N18	cyclonev_lcell_comb	target_6|dataa	target_6|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_6	LABCELL_X29_Y77_N18	cyclonev_lcell_comb	target_6|datab	target_6|sumout	datab	sumout	unknown	0.191	0.426	0.182	0.408	0.190	0.423	0.179	0.403
+target_6	LABCELL_X29_Y77_N18	cyclonev_lcell_comb	target_6|datab	target_6|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_6	LABCELL_X29_Y77_N18	cyclonev_lcell_comb	target_6|cin	target_6|cout	cin	cout	positive	0.025	0.027					0.023	0.025
+target_6	LABCELL_X29_Y77_N18	cyclonev_lcell_comb	target_6|cin	target_6|sumout	cin	sumout	unknown	0.114	0.128	0.116	0.130	0.115	0.130	0.115	0.133
+target_7	LABCELL_X29_Y77_N21	cyclonev_lcell_comb	target_7|dataf	target_7|cout	dataf	cout	negative			0.168	0.375	0.174	0.442		
+target_7	LABCELL_X29_Y77_N21	cyclonev_lcell_comb	target_7|dataf	target_7|sumout	dataf	sumout	unknown	0.035	0.249	0.043	0.284	0.036	0.250	0.037	0.285
+target_7	LABCELL_X29_Y77_N21	cyclonev_lcell_comb	target_7|datac	target_7|sumout	datac	sumout	unknown	0.108	0.281	0.116	0.328	0.097	0.269	0.123	0.313
+target_7	LABCELL_X29_Y77_N21	cyclonev_lcell_comb	target_7|datac	target_7|cout	datac	cout	unknown	0.188	0.321	0.189	0.306	0.192	0.304	0.178	0.289
+target_7	LABCELL_X29_Y77_N21	cyclonev_lcell_comb	target_7|datad	target_7|sumout	datad	sumout	unknown	0.099	0.325	0.128	0.323	0.116	0.308	0.106	0.306
+target_7	LABCELL_X29_Y77_N21	cyclonev_lcell_comb	target_7|datad	target_7|cout	datad	cout	unknown	0.181	0.271	0.149	0.242	0.163	0.254	0.162	0.225
+target_7	LABCELL_X29_Y77_N21	cyclonev_lcell_comb	target_7|dataa	target_7|sumout	dataa	sumout	unknown	0.194	0.470	0.182	0.463	0.188	0.460	0.173	0.453
+target_7	LABCELL_X29_Y77_N21	cyclonev_lcell_comb	target_7|dataa	target_7|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_7	LABCELL_X29_Y77_N21	cyclonev_lcell_comb	target_7|datab	target_7|sumout	datab	sumout	unknown	0.193	0.464	0.181	0.457	0.191	0.461	0.178	0.455
+target_7	LABCELL_X29_Y77_N21	cyclonev_lcell_comb	target_7|datab	target_7|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_7	LABCELL_X29_Y77_N21	cyclonev_lcell_comb	target_7|cin	target_7|cout	cin	cout	positive	0.000	0.000					0.000	0.000
+target_7	LABCELL_X29_Y77_N21	cyclonev_lcell_comb	target_7|cin	target_7|sumout	cin	sumout	unknown	0.133	0.143	0.133	0.143	0.133	0.143	0.133	0.143
+target_8	LABCELL_X29_Y77_N24	cyclonev_lcell_comb	target_8|dataf	target_8|cout	dataf	cout	unknown	0.200	0.453	0.191	0.424	0.200	0.459	0.188	0.419
+target_8	LABCELL_X29_Y77_N24	cyclonev_lcell_comb	target_8|dataf	target_8|sumout	dataf	sumout	unknown	0.035	0.243	0.042	0.279	0.035	0.244	0.038	0.274
+target_8	LABCELL_X29_Y77_N24	cyclonev_lcell_comb	target_8|datac	target_8|sumout	datac	sumout	unknown	0.101	0.273	0.117	0.307	0.096	0.262	0.121	0.313
+target_8	LABCELL_X29_Y77_N24	cyclonev_lcell_comb	target_8|datac	target_8|cout	datac	cout	unknown	0.194	0.329	0.186	0.299	0.198	0.315	0.179	0.312
+target_8	LABCELL_X29_Y77_N24	cyclonev_lcell_comb	target_8|datad	target_8|sumout	datad	sumout	unknown	0.095	0.295	0.129	0.261	0.113	0.275	0.102	0.276
+target_8	LABCELL_X29_Y77_N24	cyclonev_lcell_comb	target_8|datad	target_8|cout	datad	cout	negative			0.152	0.229	0.168	0.238		
+target_8	LABCELL_X29_Y77_N24	cyclonev_lcell_comb	target_8|dataa	target_8|sumout	dataa	sumout	unknown	0.192	0.432	0.183	0.411	0.186	0.422	0.174	0.404
+target_8	LABCELL_X29_Y77_N24	cyclonev_lcell_comb	target_8|dataa	target_8|cout	dataa	cout	unknown	0.244	0.397	0.254	0.367	0.235	0.387	0.245	0.357
+target_8	LABCELL_X29_Y77_N24	cyclonev_lcell_comb	target_8|datab	target_8|sumout	datab	sumout	unknown	0.191	0.426	0.182	0.408	0.190	0.423	0.179	0.403
+target_8	LABCELL_X29_Y77_N24	cyclonev_lcell_comb	target_8|datab	target_8|cout	datab	cout	unknown	0.243	0.391	0.253	0.361	0.239	0.389	0.250	0.359
+target_8	LABCELL_X29_Y77_N24	cyclonev_lcell_comb	target_8|cin	target_8|cout	cin	cout	positive	0.031	0.033					0.028	0.031
+target_8	LABCELL_X29_Y77_N24	cyclonev_lcell_comb	target_8|cin	target_8|sumout	cin	sumout	unknown	0.106	0.132	0.106	0.135	0.115	0.137	0.116	0.139
+target_9	LABCELL_X29_Y77_N27	cyclonev_lcell_comb	target_9|dataf	target_9|cout	dataf	cout	negative			0.172	0.383	0.183	0.451		
+target_9	LABCELL_X29_Y77_N27	cyclonev_lcell_comb	target_9|dataf	target_9|sumout	dataf	sumout	unknown	0.035	0.249	0.043	0.284	0.036	0.250	0.037	0.285
+target_9	LABCELL_X29_Y77_N27	cyclonev_lcell_comb	target_9|datac	target_9|sumout	datac	sumout	unknown	0.108	0.281	0.116	0.328	0.097	0.269	0.123	0.313
+target_9	LABCELL_X29_Y77_N27	cyclonev_lcell_comb	target_9|datac	target_9|cout	datac	cout	unknown	0.197	0.326	0.193	0.311	0.202	0.309	0.183	0.294
+target_9	LABCELL_X29_Y77_N27	cyclonev_lcell_comb	target_9|datad	target_9|sumout	datad	sumout	unknown	0.099	0.325	0.128	0.323	0.116	0.308	0.106	0.306
+target_9	LABCELL_X29_Y77_N27	cyclonev_lcell_comb	target_9|datad	target_9|cout	datad	cout	unknown	0.190	0.277	0.154	0.247	0.172	0.260	0.167	0.230
+target_9	LABCELL_X29_Y77_N27	cyclonev_lcell_comb	target_9|dataa	target_9|sumout	dataa	sumout	unknown	0.194	0.470	0.182	0.463	0.188	0.460	0.173	0.453
+target_9	LABCELL_X29_Y77_N27	cyclonev_lcell_comb	target_9|dataa	target_9|cout	dataa	cout	unknown	0.244	0.397	0.254	0.367	0.235	0.387	0.245	0.357
+target_9	LABCELL_X29_Y77_N27	cyclonev_lcell_comb	target_9|datab	target_9|sumout	datab	sumout	unknown	0.193	0.464	0.181	0.457	0.191	0.461	0.178	0.455
+target_9	LABCELL_X29_Y77_N27	cyclonev_lcell_comb	target_9|datab	target_9|cout	datab	cout	unknown	0.243	0.391	0.253	0.361	0.239	0.389	0.250	0.359
+target_9	LABCELL_X29_Y77_N27	cyclonev_lcell_comb	target_9|cin	target_9|cout	cin	cout	positive	0.000	0.000					0.000	0.000
+target_9	LABCELL_X29_Y77_N27	cyclonev_lcell_comb	target_9|cin	target_9|sumout	cin	sumout	unknown	0.133	0.143	0.133	0.143	0.133	0.143	0.133	0.143
+target_10	LABCELL_X29_Y77_N30	cyclonev_lcell_comb	target_10|dataf	target_10|cout	dataf	cout	unknown	0.190	0.444	0.186	0.405	0.190	0.450	0.183	0.400
+target_10	LABCELL_X29_Y77_N30	cyclonev_lcell_comb	target_10|dataf	target_10|sumout	dataf	sumout	unknown	0.035	0.243	0.042	0.279	0.035	0.244	0.038	0.274
+target_10	LABCELL_X29_Y77_N30	cyclonev_lcell_comb	target_10|datac	target_10|sumout	datac	sumout	unknown	0.101	0.273	0.117	0.307	0.096	0.262	0.121	0.313
+target_10	LABCELL_X29_Y77_N30	cyclonev_lcell_comb	target_10|datac	target_10|cout	datac	cout	unknown	0.184	0.323	0.181	0.294	0.189	0.309	0.174	0.300
+target_10	LABCELL_X29_Y77_N30	cyclonev_lcell_comb	target_10|datad	target_10|sumout	datad	sumout	unknown	0.095	0.295	0.129	0.261	0.113	0.275	0.102	0.276
+target_10	LABCELL_X29_Y77_N30	cyclonev_lcell_comb	target_10|datad	target_10|cout	datad	cout	negative			0.147	0.224	0.158	0.233		
+target_10	LABCELL_X29_Y77_N30	cyclonev_lcell_comb	target_10|dataa	target_10|sumout	dataa	sumout	unknown	0.192	0.432	0.183	0.411	0.186	0.422	0.174	0.404
+target_10	LABCELL_X29_Y77_N30	cyclonev_lcell_comb	target_10|dataa	target_10|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_10	LABCELL_X29_Y77_N30	cyclonev_lcell_comb	target_10|datab	target_10|sumout	datab	sumout	unknown	0.191	0.426	0.182	0.408	0.190	0.423	0.179	0.403
+target_10	LABCELL_X29_Y77_N30	cyclonev_lcell_comb	target_10|datab	target_10|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_10	LABCELL_X29_Y77_N30	cyclonev_lcell_comb	target_10|cin	target_10|cout	cin	cout	positive	0.047	0.051					0.050	0.054
+target_10	LABCELL_X29_Y77_N30	cyclonev_lcell_comb	target_10|cin	target_10|sumout	cin	sumout	unknown	0.130	0.156	0.132	0.158	0.125	0.154	0.125	0.157
+target_11	LABCELL_X29_Y77_N33	cyclonev_lcell_comb	target_11|dataf	target_11|cout	dataf	cout	negative			0.168	0.375	0.174	0.442		
+target_11	LABCELL_X29_Y77_N33	cyclonev_lcell_comb	target_11|dataf	target_11|sumout	dataf	sumout	unknown	0.035	0.249	0.043	0.284	0.036	0.250	0.037	0.285
+target_11	LABCELL_X29_Y77_N33	cyclonev_lcell_comb	target_11|datac	target_11|sumout	datac	sumout	unknown	0.108	0.281	0.116	0.328	0.097	0.269	0.123	0.313
+target_11	LABCELL_X29_Y77_N33	cyclonev_lcell_comb	target_11|datac	target_11|cout	datac	cout	unknown	0.188	0.321	0.189	0.306	0.192	0.304	0.178	0.289
+target_11	LABCELL_X29_Y77_N33	cyclonev_lcell_comb	target_11|datad	target_11|sumout	datad	sumout	unknown	0.099	0.325	0.128	0.323	0.116	0.308	0.106	0.306
+target_11	LABCELL_X29_Y77_N33	cyclonev_lcell_comb	target_11|datad	target_11|cout	datad	cout	unknown	0.181	0.271	0.149	0.242	0.163	0.254	0.162	0.225
+target_11	LABCELL_X29_Y77_N33	cyclonev_lcell_comb	target_11|dataa	target_11|sumout	dataa	sumout	unknown	0.194	0.470	0.182	0.463	0.188	0.460	0.173	0.453
+target_11	LABCELL_X29_Y77_N33	cyclonev_lcell_comb	target_11|dataa	target_11|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_11	LABCELL_X29_Y77_N33	cyclonev_lcell_comb	target_11|datab	target_11|sumout	datab	sumout	unknown	0.193	0.464	0.181	0.457	0.191	0.461	0.178	0.455
+target_11	LABCELL_X29_Y77_N33	cyclonev_lcell_comb	target_11|datab	target_11|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_11	LABCELL_X29_Y77_N33	cyclonev_lcell_comb	target_11|cin	target_11|cout	cin	cout	positive	0.000	0.000					0.000	0.000
+target_11	LABCELL_X29_Y77_N33	cyclonev_lcell_comb	target_11|cin	target_11|sumout	cin	sumout	unknown	0.133	0.143	0.133	0.143	0.133	0.143	0.133	0.143
+target_12	LABCELL_X29_Y77_N36	cyclonev_lcell_comb	target_12|dataf	target_12|cout	dataf	cout	unknown	0.190	0.444	0.186	0.405	0.190	0.450	0.183	0.400
+target_12	LABCELL_X29_Y77_N36	cyclonev_lcell_comb	target_12|dataf	target_12|sumout	dataf	sumout	unknown	0.035	0.243	0.042	0.279	0.035	0.244	0.038	0.274
+target_12	LABCELL_X29_Y77_N36	cyclonev_lcell_comb	target_12|datac	target_12|sumout	datac	sumout	unknown	0.101	0.273	0.117	0.307	0.096	0.262	0.121	0.313
+target_12	LABCELL_X29_Y77_N36	cyclonev_lcell_comb	target_12|datac	target_12|cout	datac	cout	unknown	0.184	0.323	0.181	0.294	0.189	0.309	0.174	0.300
+target_12	LABCELL_X29_Y77_N36	cyclonev_lcell_comb	target_12|datad	target_12|sumout	datad	sumout	unknown	0.095	0.295	0.129	0.261	0.113	0.275	0.102	0.276
+target_12	LABCELL_X29_Y77_N36	cyclonev_lcell_comb	target_12|datad	target_12|cout	datad	cout	negative			0.147	0.224	0.158	0.233		
+target_12	LABCELL_X29_Y77_N36	cyclonev_lcell_comb	target_12|dataa	target_12|sumout	dataa	sumout	unknown	0.192	0.432	0.183	0.411	0.186	0.422	0.174	0.404
+target_12	LABCELL_X29_Y77_N36	cyclonev_lcell_comb	target_12|dataa	target_12|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_12	LABCELL_X29_Y77_N36	cyclonev_lcell_comb	target_12|datab	target_12|sumout	datab	sumout	unknown	0.191	0.426	0.182	0.408	0.190	0.423	0.179	0.403
+target_12	LABCELL_X29_Y77_N36	cyclonev_lcell_comb	target_12|datab	target_12|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_12	LABCELL_X29_Y77_N36	cyclonev_lcell_comb	target_12|cin	target_12|cout	cin	cout	positive	0.025	0.027					0.023	0.025
+target_12	LABCELL_X29_Y77_N36	cyclonev_lcell_comb	target_12|cin	target_12|sumout	cin	sumout	unknown	0.114	0.128	0.116	0.130	0.115	0.130	0.115	0.133
+target_13	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	target_13|dataf	target_13|cout	dataf	cout	negative			0.168	0.375	0.174	0.442		
+target_13	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	target_13|dataf	target_13|sumout	dataf	sumout	unknown	0.035	0.249	0.043	0.284	0.036	0.250	0.037	0.285
+target_13	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	target_13|datac	target_13|sumout	datac	sumout	unknown	0.108	0.281	0.116	0.328	0.097	0.269	0.123	0.313
+target_13	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	target_13|datac	target_13|cout	datac	cout	unknown	0.188	0.321	0.189	0.306	0.192	0.304	0.178	0.289
+target_13	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	target_13|datad	target_13|sumout	datad	sumout	unknown	0.099	0.325	0.128	0.323	0.116	0.308	0.106	0.306
+target_13	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	target_13|datad	target_13|cout	datad	cout	unknown	0.181	0.271	0.149	0.242	0.163	0.254	0.162	0.225
+target_13	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	target_13|dataa	target_13|sumout	dataa	sumout	unknown	0.194	0.470	0.182	0.463	0.188	0.460	0.173	0.453
+target_13	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	target_13|dataa	target_13|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_13	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	target_13|datab	target_13|sumout	datab	sumout	unknown	0.193	0.464	0.181	0.457	0.191	0.461	0.178	0.455
+target_13	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	target_13|datab	target_13|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_13	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	target_13|cin	target_13|cout	cin	cout	positive	0.000	0.000					0.000	0.000
+target_13	LABCELL_X29_Y77_N39	cyclonev_lcell_comb	target_13|cin	target_13|sumout	cin	sumout	unknown	0.133	0.143	0.133	0.143	0.133	0.143	0.133	0.143
+target_14	LABCELL_X29_Y77_N42	cyclonev_lcell_comb	target_14|dataf	target_14|cout	dataf	cout	unknown	0.190	0.444	0.186	0.405	0.190	0.450	0.183	0.400
+target_14	LABCELL_X29_Y77_N42	cyclonev_lcell_comb	target_14|dataf	target_14|sumout	dataf	sumout	unknown	0.035	0.243	0.042	0.279	0.035	0.244	0.038	0.274
+target_14	LABCELL_X29_Y77_N42	cyclonev_lcell_comb	target_14|datac	target_14|sumout	datac	sumout	unknown	0.101	0.273	0.117	0.307	0.096	0.262	0.121	0.313
+target_14	LABCELL_X29_Y77_N42	cyclonev_lcell_comb	target_14|datac	target_14|cout	datac	cout	unknown	0.184	0.323	0.181	0.294	0.189	0.309	0.174	0.300
+target_14	LABCELL_X29_Y77_N42	cyclonev_lcell_comb	target_14|datad	target_14|sumout	datad	sumout	unknown	0.095	0.295	0.129	0.261	0.113	0.275	0.102	0.276
+target_14	LABCELL_X29_Y77_N42	cyclonev_lcell_comb	target_14|datad	target_14|cout	datad	cout	negative			0.147	0.224	0.158	0.233		
+target_14	LABCELL_X29_Y77_N42	cyclonev_lcell_comb	target_14|dataa	target_14|sumout	dataa	sumout	unknown	0.192	0.432	0.183	0.411	0.186	0.422	0.174	0.404
+target_14	LABCELL_X29_Y77_N42	cyclonev_lcell_comb	target_14|dataa	target_14|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_14	LABCELL_X29_Y77_N42	cyclonev_lcell_comb	target_14|datab	target_14|sumout	datab	sumout	unknown	0.191	0.426	0.182	0.408	0.190	0.423	0.179	0.403
+target_14	LABCELL_X29_Y77_N42	cyclonev_lcell_comb	target_14|datab	target_14|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_14	LABCELL_X29_Y77_N42	cyclonev_lcell_comb	target_14|cin	target_14|cout	cin	cout	positive	0.025	0.027					0.023	0.025
+target_14	LABCELL_X29_Y77_N42	cyclonev_lcell_comb	target_14|cin	target_14|sumout	cin	sumout	unknown	0.106	0.132	0.106	0.135	0.115	0.137	0.116	0.139
+target_15	LABCELL_X29_Y77_N45	cyclonev_lcell_comb	target_15|dataf	target_15|cout	dataf	cout	negative			0.168	0.375	0.174	0.442		
+target_15	LABCELL_X29_Y77_N45	cyclonev_lcell_comb	target_15|dataf	target_15|sumout	dataf	sumout	unknown	0.035	0.249	0.043	0.284	0.036	0.250	0.037	0.285
+target_15	LABCELL_X29_Y77_N45	cyclonev_lcell_comb	target_15|datac	target_15|sumout	datac	sumout	unknown	0.108	0.281	0.116	0.328	0.097	0.269	0.123	0.313
+target_15	LABCELL_X29_Y77_N45	cyclonev_lcell_comb	target_15|datac	target_15|cout	datac	cout	unknown	0.188	0.321	0.189	0.306	0.192	0.304	0.178	0.289
+target_15	LABCELL_X29_Y77_N45	cyclonev_lcell_comb	target_15|datad	target_15|sumout	datad	sumout	unknown	0.099	0.325	0.128	0.323	0.116	0.308	0.106	0.306
+target_15	LABCELL_X29_Y77_N45	cyclonev_lcell_comb	target_15|datad	target_15|cout	datad	cout	unknown	0.181	0.271	0.149	0.242	0.163	0.254	0.162	0.225
+target_15	LABCELL_X29_Y77_N45	cyclonev_lcell_comb	target_15|dataa	target_15|sumout	dataa	sumout	unknown	0.194	0.470	0.182	0.463	0.188	0.460	0.173	0.453
+target_15	LABCELL_X29_Y77_N45	cyclonev_lcell_comb	target_15|dataa	target_15|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_15	LABCELL_X29_Y77_N45	cyclonev_lcell_comb	target_15|datab	target_15|sumout	datab	sumout	unknown	0.193	0.464	0.181	0.457	0.191	0.461	0.178	0.455
+target_15	LABCELL_X29_Y77_N45	cyclonev_lcell_comb	target_15|datab	target_15|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_15	LABCELL_X29_Y77_N45	cyclonev_lcell_comb	target_15|cin	target_15|cout	cin	cout	positive	0.000	0.000					0.000	0.000
+target_15	LABCELL_X29_Y77_N45	cyclonev_lcell_comb	target_15|cin	target_15|sumout	cin	sumout	unknown	0.133	0.143	0.133	0.143	0.133	0.143	0.133	0.143
+target_16	LABCELL_X29_Y77_N48	cyclonev_lcell_comb	target_16|dataf	target_16|cout	dataf	cout	unknown	0.190	0.444	0.186	0.405	0.190	0.450	0.183	0.400
+target_16	LABCELL_X29_Y77_N48	cyclonev_lcell_comb	target_16|dataf	target_16|sumout	dataf	sumout	unknown	0.035	0.243	0.042	0.279	0.035	0.244	0.038	0.274
+target_16	LABCELL_X29_Y77_N48	cyclonev_lcell_comb	target_16|datac	target_16|sumout	datac	sumout	unknown	0.101	0.273	0.117	0.307	0.096	0.262	0.121	0.313
+target_16	LABCELL_X29_Y77_N48	cyclonev_lcell_comb	target_16|datac	target_16|cout	datac	cout	unknown	0.184	0.323	0.181	0.294	0.189	0.309	0.174	0.300
+target_16	LABCELL_X29_Y77_N48	cyclonev_lcell_comb	target_16|datad	target_16|sumout	datad	sumout	unknown	0.095	0.295	0.129	0.261	0.113	0.275	0.102	0.276
+target_16	LABCELL_X29_Y77_N48	cyclonev_lcell_comb	target_16|datad	target_16|cout	datad	cout	negative			0.147	0.224	0.158	0.233		
+target_16	LABCELL_X29_Y77_N48	cyclonev_lcell_comb	target_16|dataa	target_16|sumout	dataa	sumout	unknown	0.192	0.432	0.183	0.411	0.186	0.422	0.174	0.404
+target_16	LABCELL_X29_Y77_N48	cyclonev_lcell_comb	target_16|dataa	target_16|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_16	LABCELL_X29_Y77_N48	cyclonev_lcell_comb	target_16|datab	target_16|sumout	datab	sumout	unknown	0.191	0.426	0.182	0.408	0.190	0.423	0.179	0.403
+target_16	LABCELL_X29_Y77_N48	cyclonev_lcell_comb	target_16|datab	target_16|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_16	LABCELL_X29_Y77_N48	cyclonev_lcell_comb	target_16|cin	target_16|cout	cin	cout	positive	0.025	0.027					0.023	0.025
+target_16	LABCELL_X29_Y77_N48	cyclonev_lcell_comb	target_16|cin	target_16|sumout	cin	sumout	unknown	0.114	0.128	0.116	0.130	0.115	0.130	0.115	0.133
+target_17	LABCELL_X29_Y77_N51	cyclonev_lcell_comb	target_17|dataf	target_17|cout	dataf	cout	negative			0.168	0.375	0.174	0.442		
+target_17	LABCELL_X29_Y77_N51	cyclonev_lcell_comb	target_17|dataf	target_17|sumout	dataf	sumout	unknown	0.035	0.249	0.043	0.284	0.036	0.250	0.037	0.285
+target_17	LABCELL_X29_Y77_N51	cyclonev_lcell_comb	target_17|datac	target_17|sumout	datac	sumout	unknown	0.108	0.281	0.116	0.328	0.097	0.269	0.123	0.313
+target_17	LABCELL_X29_Y77_N51	cyclonev_lcell_comb	target_17|datac	target_17|cout	datac	cout	unknown	0.188	0.321	0.189	0.306	0.192	0.304	0.178	0.289
+target_17	LABCELL_X29_Y77_N51	cyclonev_lcell_comb	target_17|datad	target_17|sumout	datad	sumout	unknown	0.099	0.325	0.128	0.323	0.116	0.308	0.106	0.306
+target_17	LABCELL_X29_Y77_N51	cyclonev_lcell_comb	target_17|datad	target_17|cout	datad	cout	unknown	0.181	0.271	0.149	0.242	0.163	0.254	0.162	0.225
+target_17	LABCELL_X29_Y77_N51	cyclonev_lcell_comb	target_17|dataa	target_17|sumout	dataa	sumout	unknown	0.194	0.470	0.182	0.463	0.188	0.460	0.173	0.453
+target_17	LABCELL_X29_Y77_N51	cyclonev_lcell_comb	target_17|dataa	target_17|cout	dataa	cout	unknown	0.234	0.391	0.244	0.362	0.225	0.381	0.234	0.352
+target_17	LABCELL_X29_Y77_N51	cyclonev_lcell_comb	target_17|datab	target_17|sumout	datab	sumout	unknown	0.193	0.464	0.181	0.457	0.191	0.461	0.178	0.455
+target_17	LABCELL_X29_Y77_N51	cyclonev_lcell_comb	target_17|datab	target_17|cout	datab	cout	unknown	0.233	0.385	0.243	0.356	0.230	0.383	0.239	0.354
+target_17	LABCELL_X29_Y77_N51	cyclonev_lcell_comb	target_17|cin	target_17|cout	cin	cout	positive	0.000	0.000					0.000	0.000
+target_17	LABCELL_X29_Y77_N51	cyclonev_lcell_comb	target_17|cin	target_17|sumout	cin	sumout	unknown	0.133	0.143	0.133	0.143	0.133	0.143	0.133	0.143
+target_18	LABCELL_X29_Y77_N54	cyclonev_lcell_comb	target_18|dataf	target_18|cout	dataf	cout	unknown	0.187	0.440	0.184	0.399	0.187	0.446	0.182	0.394
+target_18	LABCELL_X29_Y77_N54	cyclonev_lcell_comb	target_18|dataf	target_18|sumout	dataf	sumout	unknown	0.035	0.243	0.042	0.279	0.035	0.244	0.038	0.274
+target_18	LABCELL_X29_Y77_N54	cyclonev_lcell_comb	target_18|datac	target_18|sumout	datac	sumout	unknown	0.101	0.273	0.117	0.307	0.096	0.262	0.121	0.313
+target_18	LABCELL_X29_Y77_N54	cyclonev_lcell_comb	target_18|datac	target_18|cout	datac	cout	unknown	0.181	0.321	0.180	0.292	0.185	0.307	0.173	0.297
+target_18	LABCELL_X29_Y77_N54	cyclonev_lcell_comb	target_18|datad	target_18|sumout	datad	sumout	unknown	0.095	0.295	0.129	0.261	0.113	0.275	0.102	0.276
+target_18	LABCELL_X29_Y77_N54	cyclonev_lcell_comb	target_18|datad	target_18|cout	datad	cout	negative			0.146	0.223	0.155	0.231		
+target_18	LABCELL_X29_Y77_N54	cyclonev_lcell_comb	target_18|dataa	target_18|sumout	dataa	sumout	unknown	0.192	0.432	0.183	0.411	0.186	0.422	0.174	0.404
+target_18	LABCELL_X29_Y77_N54	cyclonev_lcell_comb	target_18|dataa	target_18|cout	dataa	cout	unknown	0.231	0.389	0.240	0.361	0.222	0.379	0.231	0.350
+target_18	LABCELL_X29_Y77_N54	cyclonev_lcell_comb	target_18|datab	target_18|sumout	datab	sumout	unknown	0.191	0.426	0.182	0.408	0.190	0.423	0.179	0.403
+target_18	LABCELL_X29_Y77_N54	cyclonev_lcell_comb	target_18|datab	target_18|cout	datab	cout	unknown	0.230	0.383	0.239	0.354	0.227	0.381	0.236	0.352
+target_18	LABCELL_X29_Y77_N54	cyclonev_lcell_comb	target_18|cin	target_18|cout	cin	cout	positive	0.023	0.025					0.021	0.023
+target_18	LABCELL_X29_Y77_N54	cyclonev_lcell_comb	target_18|cin	target_18|sumout	cin	sumout	unknown	0.106	0.132	0.106	0.135	0.115	0.137	0.116	0.139
+target_19	LABCELL_X29_Y77_N57	cyclonev_lcell_comb	target_19|dataf	target_19|cout	dataf	cout	negative			0.166	0.372	0.171	0.439		
+target_19	LABCELL_X29_Y77_N57	cyclonev_lcell_comb	target_19|dataf	target_19|sumout	dataf	sumout	unknown	0.035	0.249	0.043	0.284	0.036	0.250	0.037	0.285
+target_19	LABCELL_X29_Y77_N57	cyclonev_lcell_comb	target_19|datac	target_19|sumout	datac	sumout	unknown	0.108	0.281	0.116	0.328	0.097	0.269	0.123	0.313
+target_19	LABCELL_X29_Y77_N57	cyclonev_lcell_comb	target_19|datac	target_19|cout	datac	cout	unknown	0.184	0.319	0.187	0.304	0.189	0.302	0.176	0.287
+target_19	LABCELL_X29_Y77_N57	cyclonev_lcell_comb	target_19|datad	target_19|sumout	datad	sumout	unknown	0.099	0.325	0.128	0.323	0.116	0.308	0.106	0.306
+target_19	LABCELL_X29_Y77_N57	cyclonev_lcell_comb	target_19|datad	target_19|cout	datad	cout	unknown	0.178	0.269	0.148	0.240	0.160	0.252	0.161	0.223
+target_19	LABCELL_X29_Y77_N57	cyclonev_lcell_comb	target_19|dataa	target_19|sumout	dataa	sumout	unknown	0.194	0.470	0.182	0.463	0.188	0.460	0.173	0.453
+target_19	LABCELL_X29_Y77_N57	cyclonev_lcell_comb	target_19|dataa	target_19|cout	dataa	cout	unknown	0.231	0.389	0.240	0.361	0.222	0.379	0.231	0.350
+target_19	LABCELL_X29_Y77_N57	cyclonev_lcell_comb	target_19|datab	target_19|sumout	datab	sumout	unknown	0.193	0.464	0.181	0.457	0.191	0.461	0.178	0.455
+target_19	LABCELL_X29_Y77_N57	cyclonev_lcell_comb	target_19|datab	target_19|cout	datab	cout	unknown	0.230	0.383	0.239	0.354	0.227	0.381	0.236	0.352
+target_19	LABCELL_X29_Y77_N57	cyclonev_lcell_comb	target_19|cin	target_19|cout	cin	cout	positive	0.000	0.000					0.000	0.000
+target_19	LABCELL_X29_Y77_N57	cyclonev_lcell_comb	target_19|cin	target_19|sumout	cin	sumout	unknown	0.133	0.143	0.133	0.143	0.133	0.143	0.133	0.143
