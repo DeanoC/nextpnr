@@ -430,6 +430,32 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         clockInfoCount = 1;
         return group->output ? TMG_REGISTER_OUTPUT : TMG_REGISTER_INPUT;
     }
+    if (cell->type == id_cyclonev_hps_interface_hps2fpga_light_weight) {
+        if (port == id("clk"))
+            return TMG_CLOCK_INPUT;
+        auto bridge_port = cell->ports.find(port);
+        if (bridge_port == cell->ports.end())
+            return TMG_IGNORE;
+        // The HPS manual identifies the fabric clock domain, but does not
+        // provide AXI setup/hold or clock-to-output characterization. Keep
+        // connected fabric paths visible as unclocked boundaries, with no
+        // fabricated timing budget, and report the coverage gap once.
+        if (bridge_port->second.net != nullptr) {
+            std::lock_guard<std::mutex> lock(hps_lw_timing_warning_mutex);
+            if (!hps_lw_timing_warning_emitted) {
+                log_warning("Timing for HPS lightweight bridge '%s' is not covered: no AXI setup/hold or "
+                            "clock-to-output characterization is available; connected AXI pins are reported "
+                            "as unclocked timing boundaries.\n",
+                            cell->name.c_str(this));
+                hps_lw_timing_warning_emitted = true;
+            }
+        }
+        if (bridge_port->second.type == PORT_IN)
+            return TMG_ENDPOINT;
+        if (bridge_port->second.type == PORT_OUT)
+            return TMG_STARTPOINT;
+        return TMG_IGNORE;
+    }
     if (cell->type.in(id_MISTRAL_MUL9X9, id_MISTRAL_MUL18X18, id_MISTRAL_MUL27X27,
                       id_MISTRAL_MUL18X19, id_MISTRAL_MUL18X19_COMBINED)) {
         const auto &name = port.str(this);

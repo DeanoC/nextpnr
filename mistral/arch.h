@@ -307,6 +307,8 @@ enum CellPinStyle
 struct Arch : BaseArch<ArchRanges>
 {
     ArchArgs args;
+    mutable std::mutex hps_lw_timing_warning_mutex;
+    mutable bool hps_lw_timing_warning_emitted = false;
     // Owns the model from CycloneV::get_model, including its decompressed
     // device database. A raw pointer here leaked one model per Context (#288).
     std::unique_ptr<mistral::CycloneV> cyclonev;
@@ -721,6 +723,7 @@ struct Arch : BaseArch<ArchRanges>
     void create_hps_mpu_general_purpose(int x, int y); // globals.cc
     void create_hps_peripheral_i2c(int x, int y);      // globals.cc
     void create_hps_fpga2sdram(int x, int y);          // globals.cc
+    void create_hps_hps2fpga_light_weight(int x, int y); // globals.cc
 
     // -------------------------------------------------
 

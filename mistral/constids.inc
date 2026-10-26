@@ -143,6 +143,7 @@ X(cyclonev_hps_interface_interrupts)
 X(cyclonev_hps_interface_mpu_general_purpose)
 X(cyclonev_hps_interface_peripheral_i2c)
 X(cyclonev_hps_interface_fpga2sdram)
+X(cyclonev_hps_interface_hps2fpga_light_weight)
 
 X(MISTRAL_M10K)
 X(MISTRAL_M10K_TDP)

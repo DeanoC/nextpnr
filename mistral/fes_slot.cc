@@ -79,7 +79,8 @@ bool fes_skip_cart_cell(IdString type)
 {
     return type.in(id_MISTRAL_IB, id_MISTRAL_OB, id_MISTRAL_IO, id_MISTRAL_BUF, id_MISTRAL_CLKENA,
                    id_MISTRAL_CLKBUF, id_cyclonev_hps_interface_mpu_general_purpose,
-                   id_cyclonev_hps_interface_peripheral_i2c, id_cyclonev_hps_interface_interrupts);
+                   id_cyclonev_hps_interface_peripheral_i2c, id_cyclonev_hps_interface_interrupts,
+                   id_cyclonev_hps_interface_hps2fpga_light_weight);
 }
 
 NetInfo *find_named_net(Context *ctx, const std::string &name)
