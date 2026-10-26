@@ -22,7 +22,7 @@ Build the Mistral backend with tests, then run:
 
 ```sh
 build/nextpnr-mistral-test \
-  --gtest_filter='IoDelayTest.RoutedRangesDoNotDependOnExternalIoConstraints:IoDelayTest.PrimitiveClock*'
+  --gtest_filter='IoDelayTest.RoutedRangesDoNotDependOnExternalIoConstraints:IoDelayTest.PrimitiveClock*:CriticalCohort.MeasuredModel*'
 ctest --test-dir build -R routed-delay-ranges-cli --output-on-failure
 ```
 
@@ -31,3 +31,10 @@ physical FF owners. It verifies the early hold change, unchanged setup with
 fixed clocks, equality with the existing IO mode and restored default
 behavior after re-entry. The CLI regression checks default-off behavior,
 conflicting settings, recording and explicit reload acknowledgement.
+
+Critical-cohort calibration exports the same intervals and includes the range
+setting in its identity. A separate regression exports a supplied 1..4 ns
+route, reloads the model on the original graph and checks native versus
+calibrated early/late arrivals and setup/hold margins in all four combinations
+of range mode and external IO mode. Changing only the range setting rejects
+the calibration before applying it to a placement trial.

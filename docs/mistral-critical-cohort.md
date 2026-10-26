@@ -61,7 +61,9 @@ budget and fresh synthesis-to-placement input.
 report after a fresh ordinary full route with `--rbf`. The model records every
 eligible data arc's measured early/late wire delay, including register buffer
 input and local wires. Pairs follow native STA: IO-delay mode uses the routed
-quad's early/late envelope; otherwise both entries use the maximum wire delay.
+quad's early/late envelope, as does `--mistral-routed-delay-ranges` without IO
+constraints; otherwise both entries use the maximum wire delay. The range
+setting is part of the calibration identity, so a model cannot cross modes.
 It also records the normalized logical graph, parameters,
 port states, device/LAB models, clock periods/phases, timing settings, native
 clocking/primitive timing and physical LUT tables. Export requires repair budget
