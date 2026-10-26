@@ -30,6 +30,14 @@ bool Arch::useRoutedDelayRanges() const
     return bool_or_default(getCtx()->settings,getCtx()->id("mistral/routed_delay_ranges"),false);
 }
 
+bool Arch::useClockEdgeRanges() const
+{
+    const bool enabled = bool_or_default(getCtx()->settings, getCtx()->id("mistral/clock_edge_ranges"), false);
+    if (enabled && !useRoutedDelayRanges())
+        log_error("--mistral-clock-edge-ranges requires --mistral-routed-delay-ranges.\n");
+    return enabled;
+}
+
 namespace {
 
 constexpr delay_t block_input_table_delay = 175;

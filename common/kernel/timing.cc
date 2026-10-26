@@ -159,6 +159,7 @@ void TimingAnalyser::run(bool update_route_delays, bool update_net_timings, bool
 {
     analysis_complete = false;
     reset_times();
+    clock_edge_ranges = ctx->useClockEdgeRanges();
     if (update_route_delays)
         get_route_delays();
     check_primitive_clocks();
@@ -423,14 +424,36 @@ void TimingAnalyser::get_route_delays()
         for (auto &usr : ni->users) {
             if (usr.cell->bel == BelId())
                 continue;
-            ports.at(CellPortKey(usr)).route_delay = (use_ranges ||
-                                                     primitive_clocks.count(CellPortKey(usr)))
-                    ? ctx->getNetinfoRouteDelayQuad(ni, usr).delayPair() : DelayPair(ctx->getNetinfoRouteDelay(ni, usr));
+            auto &port = ports.at(CellPortKey(usr));
+            const bool ranges = use_ranges || primitive_clocks.count(CellPortKey(usr));
+            if (ranges || clock_edge_ranges) {
+                port.route_delay_quad = ctx->getNetinfoRouteDelayQuad(ni, usr);
+                port.route_delay = ranges ? port.route_delay_quad.delayPair()
+                                          : DelayPair(port.route_delay_quad.maxDelay());
+            } else {
+                port.route_delay = DelayPair(ctx->getNetinfoRouteDelay(ni, usr));
+                port.route_delay_quad = DelayQuad(port.route_delay, port.route_delay);
+            }
         }
     }
 }
 
-void TimingAnalyser::set_route_delay(CellPortKey port, DelayPair value) { ports.at(port).route_delay = value; }
+void TimingAnalyser::set_route_delay(CellPortKey port, DelayPair value)
+{
+    auto &data = ports.at(port);
+    data.route_delay = value;
+    // A manual interval has no transition identity; conservatively use it for
+    // either clock edge rather than retaining stale routed clock bounds.
+    data.route_delay_quad = DelayQuad(value, value);
+}
+
+DelayPair TimingAnalyser::clock_route_delay(CellPortKey clock, ClockEdge edge) const
+{
+    const auto &port = ports.at(clock);
+    if (!clock_edge_ranges)
+        return port.route_delay;
+    return edge == RISING_EDGE ? port.route_delay_quad.rise : port.route_delay_quad.fall;
+}
 
 void TimingAnalyser::check_primitive_clocks()
 {
@@ -890,7 +913,7 @@ void TimingAnalyser::walk_forward()
                         init_arrival += fanin.value.delayPair();
                         // Include the clock delay if clock_skew analysis is enabled
                         if (with_clock_skew) {
-                            init_arrival += ports.at(CellPortKey(sp.first.cell, fanin.other_port)).route_delay;
+                            init_arrival += clock_route_delay(CellPortKey(sp.first.cell, fanin.other_port), dom.key.edge);
                         }
                         break;
                     }
@@ -949,7 +972,7 @@ void TimingAnalyser::walk_backward()
 
                     if (fanin.type == CellArc::SETUP && fanin.other_port == ep.second) {
                         if (with_clock_skew) {
-                            init_required += ports.at(CellPortKey(ep.first.cell, fanin.other_port)).route_delay;
+                            init_required += clock_route_delay(CellPortKey(ep.first.cell, fanin.other_port), dom.key.edge);
                         }
                         init_required.min_delay -= fanin.value.maxDelay();
                     }
@@ -1019,7 +1042,7 @@ dict<domain_id_t, delay_t> TimingAnalyser::max_delay_by_domain_pairs()
                 if (with_clock_skew && !same_clock && !related_clocks) {
                     for (auto &fanin : ep_port.cell_arcs) {
                         if (fanin.type == CellArc::SETUP) {
-                            auto clock_delay = ports.at(CellPortKey(ep.first.cell, fanin.other_port)).route_delay;
+                            auto clock_delay = clock_route_delay(CellPortKey(ep.first.cell, fanin.other_port), capture.key.edge);
                             delay += clock_delay.minDelay();
                         }
                     }
@@ -1032,7 +1055,7 @@ dict<domain_id_t, delay_t> TimingAnalyser::max_delay_by_domain_pairs()
 
                     for (auto &fanin : sp_port.cell_arcs) {
                         if (fanin.type == CellArc::CLK_TO_Q) {
-                            auto clock_delay = ports.at(CellPortKey(sp.cell->name, fanin.other_port)).route_delay;
+                            auto clock_delay = clock_route_delay(CellPortKey(sp.cell->name, fanin.other_port), launch.key.edge);
                             delay -= clock_delay.maxDelay();
                         }
                     }
@@ -1285,6 +1308,7 @@ bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,
     auto found = ports.find(endpoint);
     auto owner = ctx->cells.find(endpoint.cell);
     if (!analysis_complete || setup_only || analysed_setup_only || with_clock_skew != analysed_clock_skew ||
+        clock_edge_ranges != ctx->useClockEdgeRanges() ||
         have_loops || found == ports.end() || owner == ctx->cells.end() ||
         !owner->second->ports.count(endpoint.port) || !owner->second->getPort(endpoint.port))
         return false;
@@ -1612,8 +1636,8 @@ CriticalPath TimingAnalyser::build_critical_path_report(domain_id_t domain_pair,
     if (with_clock_skew && (register_start || io_start) && (register_end || io_end) &&
         (same_clock || related_clock || phase_locked)) {
 
-        auto clock_delay_launch = register_start ? ports.at(CellPortKey(sp_cell->name, sp_clk_info.clock_port)).route_delay : DelayPair(0);
-        auto clock_delay_capture = register_end ? ports.at(CellPortKey(ep_cell->name, ep_clk_info.clock_port)).route_delay : DelayPair(0);
+        auto clock_delay_launch = register_start ? clock_route_delay(CellPortKey(sp_cell->name, sp_clk_info.clock_port), launch.edge) : DelayPair(0);
+        auto clock_delay_capture = register_end ? clock_route_delay(CellPortKey(ep_cell->name, ep_clk_info.clock_port), capture.edge) : DelayPair(0);
 
         delay_t clock_skew = longest_path ? clock_delay_launch.maxDelay() - clock_delay_capture.minDelay()
                                          : clock_delay_launch.minDelay() - clock_delay_capture.maxDelay();
