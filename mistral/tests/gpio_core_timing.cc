@@ -1,13 +1,17 @@
 #include "nextpnr.h"
 #include "log.h"
 #include "timing.h"
+#include "gpio_core_reference_data.h"
 #include "gtest/gtest.h"
+#include <algorithm>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <memory>
+#include <string_view>
+#include <vector>
 
 USING_NEXTPNR_NAMESPACE
 
@@ -139,6 +143,67 @@ TEST_F(GpioCoreTimingTest, IncompleteAnalogueRouteFailsClosed) {
     ctx->bindBel(ctx->labs[0].alms[0].ff_bels[0],sink,STRENGTH_USER);
     PortRef endpoint;endpoint.cell=sink;endpoint.port=id_DATAIN;DelayQuad delay;
     EXPECT_THROW(ctx->analogue_arc_delay(gpio->getPort(id_Q),endpoint,delay,nullptr),log_execution_error_exception);
+}
+TEST_F(GpioCoreTimingTest, CompleteAnalogueRoutePropagatesNativeGpioWave) {
+    enable();physical();
+    const gpio_core_reference::Site *fixture=nullptr;
+    for (const auto &candidate : gpio_core_reference::sites)
+        if (std::string_view(candidate.pin)=="V12") fixture=&candidate;
+    ASSERT_NE(fixture,nullptr);
+    const auto q=info(),data=info(id_I),oe=info(id_OE);
+    const auto &q_ref=fixture->arcs[0][2],&data_ref=fixture->arcs[0][0],&oe_ref=fixture->arcs[0][1];
+    EXPECT_EQ(q.clockToQ.minRiseDelay(),q_ref.a);EXPECT_EQ(q.clockToQ.maxRiseDelay(),q_ref.b);
+    EXPECT_EQ(q.clockToQ.minFallDelay(),q_ref.c);EXPECT_EQ(q.clockToQ.maxFallDelay(),q_ref.d);
+    EXPECT_EQ(data.setup.minDelay(),data_ref.a);EXPECT_EQ(data.setup.maxDelay(),data_ref.a);
+    EXPECT_EQ(data.hold.minDelay(),data_ref.b);EXPECT_EQ(data.hold.maxDelay(),data_ref.b);
+    EXPECT_EQ(oe.setup.minDelay(),oe_ref.a);EXPECT_EQ(oe.setup.maxDelay(),oe_ref.a);
+    EXPECT_EQ(oe.hold.minDelay(),oe_ref.b);EXPECT_EQ(oe.hold.maxDelay(),oe_ref.b);
+#ifndef MISTRAL_GPIO_SOURCE_WAVE
+    GTEST_SKIP() << "Mistral lacks GPIO source-wave support";
+#else
+    auto source=ctx->getNetinfoSourceWire(gpio->getPort(id_Q));
+    ASSERT_EQ(source.node.t(),CV::GIN);
+    const auto source_ri=ctx->cyclonev->rc2ri(source.node);
+    ASSERT_EQ(ctx->cyclonev->rnode_timing_get_mode(source_ri),CV::RTM_CIRCUIT);
+
+    mistral::AnalogSim probe;
+    int input=-1;
+    std::vector<std::pair<CV::rnode_index,int>> outputs;
+    ctx->cyclonev->rnode_timing_build_circuit(source_ri,CV::T_100,CV::DELAY_MAX,CV::RF_RISE,
+                                               probe,input,outputs);
+    ASSERT_GE(input,0);
+    ASSERT_FALSE(outputs.empty());
+    PipId route_pip;
+    WireId destination;
+    for (auto output : outputs) {
+        auto wire=WireId{ctx->cyclonev->ri2rc(output.first)};
+        for (auto pip : ctx->getPipsDownhill(source)) {
+            if (ctx->getPipDstWire(pip)==wire) {
+                route_pip=pip;
+                destination=wire;
+                break;
+            }
+        }
+        if (route_pip!=PipId())
+            break;
+    }
+    ASSERT_NE(route_pip,PipId());
+    ctx->cyclonev->rnode_link(source_ri,ctx->cyclonev->rc2ri(destination.node));
+
+    auto net=gpio->getPort(id_Q);
+    auto sink_id=ctx->id("complete_route_sink"),sink_pin=ctx->id("pin");
+    ctx->createRegionPlug(sink_id,ctx->id("test_plug"),Loc());
+    ctx->addPlugPin(sink_id,sink_pin,PORT_IN,destination);
+    auto sink=ctx->cells.at(sink_id).get();
+    sink->connectPort(sink_pin,net);
+    ctx->bindPip(route_pip,net,STRENGTH_USER);
+
+    PortRef endpoint;endpoint.cell=sink;endpoint.port=sink_pin;
+    DelayQuad routed;
+    ASSERT_TRUE(ctx->analogue_arc_delay(net,endpoint,routed,nullptr));
+    EXPECT_GT(routed.maxDelay(),0);
+    EXPECT_LE(routed.minDelay(),routed.maxDelay());
+#endif
 }
 
 TEST_F(GpioCoreTimingTest, StandaloneSdrOutputUsesItsOwnPhysicalMode) {
