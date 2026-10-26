@@ -64,6 +64,8 @@ clock transitions in early/late analysis at all four retained corners.
 Raw reports, source/SDC/QSF inputs and the fitted RBF are compressed and
 hash-bound in `manifest.json`. The parser re-extracts all observations and
 independently reconstructs register-to-pin bindings from the pad reports.
+The 56 retained reports comprise eight pad-binding reports, 32 native local
+timing reports and 16 clock-prefix reports across the four corners.
 
 Generate or check the compiled table:
 
