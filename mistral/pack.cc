@@ -2878,6 +2878,22 @@ struct MistralPacker
     // HPS_CLOCKS slot feeds.
     void setup_hps_clocks()
     {
+        // Fabric-fed buffers can only use HG lane 2. Reserve it before the
+        // placer assigns those buffers, or an HPS buffer packed below can
+        // consume the lane first.
+        bool fabric_clock_needs_lane = false;
+        for (auto &cell : ctx->cells) {
+            CellInfo *buffer = cell.second.get();
+            if (buffer->type != id_MISTRAL_CLKBUF)
+                continue;
+            NetInfo *input = buffer->getPort(id_A);
+            CellInfo *source = input ? input->driver.cell : nullptr;
+            if (!source || !source->type.in(id_cyclonev_hps_interface_clocks_resets, id_altera_pll)) {
+                fabric_clock_needs_lane = true;
+                break;
+            }
+        }
+
         for (auto &cell : ctx->cells) {
             CellInfo *ci = cell.second.get();
             if (ci->type != id_cyclonev_hps_interface_clocks_resets)
@@ -2930,7 +2946,7 @@ struct MistralPacker
                     }
                 };
                 bind_available_lane(false);
-                if (buffer->bel == BelId())
+                if (buffer->bel == BelId() && !fabric_clock_needs_lane)
                     bind_available_lane(true);
                 if (buffer->bel == BelId())
                     log_error("'%s.%s': no free global clock buffer on its HPS_CLOCKS slots.\n", ctx->nameOf(ci),
@@ -3297,8 +3313,8 @@ struct MistralPacker
         ctx->check_io_electrical();
         setup_clock_enables();
         setup_plls();
-        setup_hps_clocks();
         fold_inverted_pll_clock_buffers();
+        setup_hps_clocks();
         propagate_io_clocks();
         ensure_dsp_control_ports();
         extend_dsp_signed_operands();

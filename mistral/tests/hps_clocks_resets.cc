@@ -5,8 +5,10 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "gtest/gtest.h"
+#include "log.h"
 #include "nextpnr.h"
 
 USING_NEXTPNR_NAMESPACE
@@ -76,6 +78,57 @@ TEST(HpsClocksResets, PackerPrefersOtherLanesForHpsOutputs)
     ASSERT_TRUE(ctx->pack());
     ASSERT_NE(buffer->bel, BelId());
     EXPECT_FALSE(ctx->getBelType(buffer->bel) == id_MISTRAL_CLKENA && ctx->bel_data(buffer->bel).block_index == 2);
+}
+
+TEST(HpsClocksResets, PackerReservesFabricLaneWhenOtherHpsLanesAreOccupied)
+{
+    ArchArgs args;
+    args.device = "5CSEMA5F31C6";
+    auto ctx = std::make_unique<Context>(args);
+
+    const IdString pin = ctx->id("h2f_rst_n");
+    CellInfo *hps = ctx->createCell(ctx->id("hps"), ctx->id("cyclonev_hps_interface_clocks_resets"));
+    hps->addOutput(pin);
+    NetInfo *hps_clock = ctx->createNet(ctx->id("hps_clock"));
+    hps->connectPort(pin, hps_clock);
+
+    CellInfo *hps_buffer = ctx->createCell(ctx->id("hps_clock_buffer"), id_MISTRAL_CLKBUF);
+    hps_buffer->addInput(id_A);
+    hps_buffer->addOutput(id_Q);
+    hps_buffer->connectPort(id_A, hps_clock);
+    hps_buffer->connectPort(id_Q, ctx->createNet(ctx->id("hps_global_clock")));
+
+    CellInfo *fabric_source = ctx->createCell(ctx->id("fabric_clock_source"), id_MISTRAL_NOT);
+    fabric_source->addInput(id_A);
+    fabric_source->addOutput(id_Q);
+    fabric_source->connectPort(id_A, ctx->createNet(ctx->id("fabric_clock_source_input")));
+    NetInfo *fabric_clock = ctx->createNet(ctx->id("fabric_clock"));
+    fabric_source->connectPort(id_Q, fabric_clock);
+    CellInfo *fabric_buffer = ctx->createCell(ctx->id("fabric_clock_buffer"), id_MISTRAL_CLKBUF);
+    fabric_buffer->addInput(id_A);
+    fabric_buffer->addOutput(id_Q);
+    fabric_buffer->connectPort(id_A, fabric_clock);
+    fabric_buffer->connectPort(id_Q, ctx->createNet(ctx->id("fabric_global_clock")));
+
+    std::vector<BelId> fabric_lanes;
+    int occupied_lanes = 0;
+    for (BelId lane : ctx->hps_clock_bels[pin]) {
+        bool fabric_lane = ctx->getBelType(lane) == id_MISTRAL_CLKENA && ctx->bel_data(lane).block_index == 2;
+        if (fabric_lane) {
+            fabric_lanes.push_back(lane);
+            continue;
+        }
+        CellInfo *occupant = ctx->createCell(ctx->idf("occupied_hps_lane_%d", occupied_lanes++),
+                                             ctx->getBelType(lane));
+        ctx->bindBel(lane, occupant, STRENGTH_LOCKED);
+    }
+    ASSERT_GT(occupied_lanes, 0);
+    ASSERT_FALSE(fabric_lanes.empty());
+
+    EXPECT_THROW(ctx->pack(), log_execution_error_exception);
+    EXPECT_EQ(hps_buffer->bel, BelId());
+    for (BelId lane : fabric_lanes)
+        EXPECT_TRUE(ctx->checkBelAvail(lane));
 }
 
 // The HPS reset and user clock outputs come from a single fixed HPS site, so
