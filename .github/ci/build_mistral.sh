@@ -15,7 +15,7 @@ function build_nextpnr {
     export PATH=${GITHUB_WORKSPACE}/.yosys/bin:$PATH
     mkdir build
     pushd build
-    cmake .. -DARCH=mistral -DMISTRAL_ROOT=${MISTRAL_PATH} -DBUILD_TESTS=ON
+    cmake .. -DARCH=mistral -DMISTRAL_ROOT=${MISTRAL_PATH} -DBUILD_TESTS=ON -DMISTRAL_REQUIRE_GPIO_SOURCE_WAVE=ON
     make nextpnr-mistral nextpnr-mistral-test nextpnr-mistral-gpio-core-config nextpnr-command-settings-test nextpnr-heap-control-set-test nextpnr-reserved-route-slack-test nextpnr-gpu-lease-test -j`nproc`
     popd
 }
