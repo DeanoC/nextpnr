@@ -50,8 +50,8 @@ delay stays outside it. Input requirements subtract the internal clock CELL
 delay from the data/control CELL delay, retaining the report's intrinsic
 adjustment. These primitive pin observations alone do not establish
 equivalence to native virtual endpoints or timing-model bounds for every
-configuration. The timing engine, default models and source locks are
-unchanged. No native corner, reset pulse/MTBF, IO, board or hardware
+configuration. This primitive-pin archive alone does not change a timing
+model or qualify a native boundary. No native corner, reset pulse/MTBF, IO, board or hardware
 acceptance follows from this reference.
 
 Run the host regressions with the built configuration reader:
@@ -72,3 +72,62 @@ python3 mistral/tests/ff-core/characterize.py \
 
 The characterizer runs only host compilers and file conversion. It does not
 program a device, invoke a native router, select a GPU or contact a kit.
+
+## Guarded native FF profile
+
+`--mistral-ff-core-reference` selects a default-off local FF model for the
+backend's native slow100 analysis. It requires `5CSEBA6U23I7`, the common-CLKA
+graph, an exact nominal 50 percent clock with period at least 10 ns, driven
+supported controls, and inactive synchronous-load/data overrides. Active
+asynchronous clear also requires `--mistral-ff-reset-reference`; its existing
+coverage and 170/270 ps limits remain separate.
+
+`native-reference.json.gz` retains 326,912 observations from 52 fits. The
+thirty-six added fits cover native combinations of constant/dynamic enables,
+clear controls and local clock selectors that the original sixteen did not
+exercise together. Mixed cases declare their active timing roles per FF:
+inactive controls have no report endpoint. The manifest binds all source,
+fixture, RBF and report identities. `model_reference.py` generates the compiled
+table, including four corner datasets and explicit coverage for each role.
+An unmatched mode or incomplete physical identity is fatal.
+
+Clock-to-Q starts after the dedicated LAB clock-input buffer and ends before
+the FF output buffer. Local LUT data starts at `d`; E/F data and controls
+start after their input-mux buffers. Input constraints subtract the local
+clock delay using both fitted clock/data anchors, including their IC
+increments. The model rounds Q bounds outward by 1 ps and input constraints
+by 3 ps, accounting for the five rounded report quantities. It preserves
+signed requirements and distinct early/late Q values. Bounds pool the fitted
+FF slots within each declared physical mode. SCLR DIN1 and DIN3 selections
+have separate mode keys; E and F bypass data have separate coverage and bounds.
+The current native graph requires the measured DIN3 SCLR mode.
+
+Before configuration the placer uses conservative unions over possible
+physical choices. After configuration the model checks the actual owner,
+PKREG/E/F selection, physical clock/enable index and polarity, active controls
+and net-owned routing cuts. The default allocator may use virtual CLK0 for
+physical CLK/ENA1; the RBF index owns model selection. SCLR's direct physical
+GOUT sink needs an explicit terminal-buffer observation; the profile charges
+it once on the routed net. The ordinary model retains its existing boundary.
+
+Regenerate the header or check it against the fitted artifacts:
+
+```sh
+python3 mistral/tests/ff-core/model_reference.py --check \
+  --config-reader build/mistral/nextpnr-mistral-ff-core-config
+```
+
+Rebuild the complete native-cut reference into a new directory:
+
+```sh
+python3 mistral/tests/ff-core/characterize.py \
+  --manifest native-manifest.json --native-cuts \
+  --quartus-bin /absolute/quartus/bin \
+  --config-reader /absolute/build/mistral/nextpnr-mistral-ff-core-config \
+  --output /absolute/new-native-ff-reference
+```
+
+The public profile uses the slow100 table to match the native routing model.
+The other corner data does not qualify native fast-corner routing, other
+primitive/PLL/pad/HPS models or a physical board. No timing exception, packing
+relaxation, clock change, source-lock update or hardware acceptance is implied.

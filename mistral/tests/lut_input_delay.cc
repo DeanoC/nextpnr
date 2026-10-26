@@ -1,6 +1,7 @@
 #include <memory>
 #include "gtest/gtest.h"
 #include "nextpnr.h"
+#include "log.h"
 
 USING_NEXTPNR_NAMESPACE
 
@@ -109,4 +110,68 @@ TEST_F(LutInputDelayTest, AnalogueIncludesTerminalStageAndPreservesControlArc)
     // Rip-up invalidation drops the measured cell-input term with its route.
     ctx->analogue_arc_cache.erase(&user(lut, id_A));
     same(ctx->get_lut_input_delay(lut, id_A), DelayQuad(0, 175));
+}
+
+TEST_F(LutInputDelayTest, FfSynchronousClearReferenceCountsTerminalBufferOnTheNet)
+{
+    // A physical GOUT sink stops before its buffer. ENA's existing virtual
+    // suffix already includes it; the FF SCLR reference must do so explicitly.
+    auto name=ctx->id("synchronous_clear");
+    ctx->createRegionPlug(name,id_MISTRAL_FF,Loc());
+    ctx->addPlugPin(name,id_SCLR,PORT_IN,input);
+    auto *sink=ctx->cells.at(name).get(); sink->connectPort(id_SCLR,net);
+    ctx->bitstream_configured=true;
+    DelayQuad baseline,reference,existing,no_cell_stage;
+    ASSERT_TRUE(ctx->analogue_arc_delay(net,user(control,id_ENA),existing,nullptr,nullptr));
+    ASSERT_TRUE(ctx->analogue_arc_delay(net,user(sink,id_SCLR),baseline,nullptr,nullptr));
+    EXPECT_GT(existing.maxDelay()-baseline.maxDelay(),100);
+    ctx->settings[ctx->id("mistral/ff_core_reference")]=Property::State::S1;
+    ASSERT_TRUE(ctx->analogue_arc_delay(net,user(sink,id_SCLR),reference,nullptr,&no_cell_stage));
+    same(reference,existing);
+    same(no_cell_stage,DelayQuad(0));
+    // The FF setup/hold envelope starts after this buffer, so unlike LUT
+    // timing it must remain in the routed net delay rather than be subtracted.
+    DelayQuad route;
+    ASSERT_TRUE(ctx->getArcDelayOverride(net,user(sink,id_SCLR),route));
+    same(route,reference);
+}
+
+TEST_F(LutInputDelayTest, FfSynchronousClearReferenceRejectsMissingSourceWave)
+{
+    ctx->cells.at(ctx->id("source"))->disconnectPort(id_Q);
+    auto source_name=ctx->id("unseeded_source");
+    ctx->createRegionPlug(source_name,ctx->id("test_source"),Loc());
+    ctx->addPlugPin(source_name,id_Q,PORT_OUT,input);
+    ctx->cells.at(source_name)->connectPort(id_Q,net);
+    auto sink_name=ctx->id("synchronous_clear");
+    ctx->createRegionPlug(sink_name,id_MISTRAL_FF,Loc());
+    ctx->addPlugPin(sink_name,id_SCLR,PORT_IN,input);
+    auto *sink=ctx->cells.at(sink_name).get(); sink->connectPort(id_SCLR,net);
+    ctx->bitstream_configured=true;
+    DelayQuad delay;
+    // The ordinary zero-length route keeps its previous behavior. GOUT is
+    // not a characterized launch source for the opt-in terminal observation.
+    ASSERT_TRUE(ctx->analogue_arc_delay(net,user(sink,id_SCLR),delay,nullptr,nullptr));
+    EXPECT_EQ(delay.maxDelay(),0);
+    ctx->settings[ctx->id("mistral/ff_core_reference")]=Property::State::S1;
+    EXPECT_THROW(ctx->analogue_arc_delay(net,user(sink,id_SCLR),delay,nullptr,nullptr),log_execution_error_exception);
+}
+
+TEST_F(LutInputDelayTest, FfSynchronousClearReferenceRejectsAPathThatMissesItsDriver)
+{
+    ctx->cells.at(ctx->id("source"))->disconnectPort(id_Q);
+    auto source_name=ctx->id("other_source");
+    ctx->createRegionPlug(source_name,ctx->id("test_source"),Loc());
+    ctx->addPlugPin(source_name,id_Q,PORT_OUT,WireId{CycloneV::rnode_coords(CycloneV::LD,22,8,18)});
+    ctx->cells.at(source_name)->connectPort(id_Q,net);
+    auto sink_name=ctx->id("synchronous_clear");
+    ctx->createRegionPlug(sink_name,id_MISTRAL_FF,Loc());
+    ctx->addPlugPin(sink_name,id_SCLR,PORT_IN,input);
+    auto *sink=ctx->cells.at(sink_name).get(); sink->connectPort(id_SCLR,net);
+    ctx->bitstream_configured=true;
+    DelayQuad delay;
+    // The old routed prefix is simulatable, but it is not this net's driver.
+    ASSERT_TRUE(ctx->analogue_arc_delay(net,user(sink,id_SCLR),delay,nullptr,nullptr));
+    ctx->settings[ctx->id("mistral/ff_core_reference")]=Property::State::S1;
+    EXPECT_THROW(ctx->analogue_arc_delay(net,user(sink,id_SCLR),delay,nullptr,nullptr),log_execution_error_exception);
 }

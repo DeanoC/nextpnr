@@ -43,16 +43,17 @@ foreach corner [get_available_operating_conditions] {
     return text + '}\nproject_close\n'
 
 
-def characterize(root, output, quartus_bin, config_reader):
+def characterize(root, output, quartus_bin, config_reader, *, manifest_name='manifest.json', native_cuts=False):
     root, output, quartus_bin = Path(root), Path(output).absolute(), Path(quartus_bin)
-    manifest = json.loads((root / 'manifest.json').read_text())
+    manifest_path = root / manifest_name
+    manifest = json.loads(manifest_path.read_text())
     version = subprocess.check_output([str(quartus_bin / 'quartus_sh'), '--version'], text=True)
     assert 'Version 17.0.2 Build 602' in version, version
     if output.exists() or output.is_symlink():
         raise FileExistsError(output)
     output.mkdir(parents=True)
     result = dict(schema=1, scope=manifest['scope'], device=manifest['device'],
-                  quartus_version=version, source_manifest_sha256=digest(root / 'manifest.json'),
+                  quartus_version=version, source_manifest_sha256=digest(manifest_path),
                   cases={}, hardware=False, physical_qualified=False)
     for name, case in manifest['cases'].items():
         source, project = root / 'fixtures' / name, output / name
@@ -81,8 +82,14 @@ def characterize(root, output, quartus_bin, config_reader):
             if run.returncode:
                 raise RuntimeError(f'{name}: {tool} returned {run.returncode}; capture retained at {project}')
         assert all(source_digest(project / n) == h for n, h in binding['source_sha256'].items())
-        evidence = summarize_project(project, spec)
+        evidence = summarize_project(project, spec, native_cuts=native_cuts)
         evidence['configuration'] = check_config(config_reader, project / 'fitted.rbf', spec, evidence['observations'])
+        if native_cuts:
+            from model_reference import mode_key
+            sites = {s['cell']:s for s in spec['sites']}
+            source = (project/'top.sv').read_text()
+            for config in evidence['configuration']:
+                config['mode_key'] = mode_key(config, sites[config['cell']], source)
         evidence.update(input_binding_sha256=digest(project / 'input-binding.json'), rbf_sha256=digest(project / 'fitted.rbf'))
         result['cases'][name] = evidence
         (output / 'progress.json').write_text(json.dumps(dict(completed_cases=list(result['cases'])), indent=2) + '\n')
@@ -97,5 +104,8 @@ if __name__ == '__main__':
     parser.add_argument('--quartus-bin', type=Path, required=True)
     parser.add_argument('--config-reader', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--manifest', default='manifest.json')
+    parser.add_argument('--native-cuts', action='store_true')
     args = parser.parse_args()
-    characterize(Path(__file__).resolve().parent, args.output, args.quartus_bin, args.config_reader.resolve())
+    characterize(Path(__file__).resolve().parent, args.output, args.quartus_bin, args.config_reader.resolve(),
+                 manifest_name=args.manifest, native_cuts=args.native_cuts)

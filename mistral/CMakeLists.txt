@@ -10,6 +10,7 @@ set(SOURCES
     constids.inc
     ctrl.cc
     delay.cc
+    ff_core.cc
     local_remap.cc
     local_remap_pin_policy.h
     remap_plan.cc
@@ -51,7 +52,7 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/gpu_backend_selection.cc tests/analogue_jobs.cc tests/critical_cohort.cc tests/analogue_budget.cc tests/analogue_improve.cc tests/bel_id.cc tests/completed_observations.cc tests/lab_pinmap.cc tests/lab_ff4.cc tests/device_model_lifetime.cc tests/fes_cram.cc tests/fes_boundary.cc tests/fes_narrow_pin.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/io_delay.cc tests/m10k_timing.cc tests/ff_reset_timing.cc tests/hps_interrupts.cc tests/hps_clocks_resets.cc tests/hps_lw_bridge.cc
+    TEST_SOURCES tests/gpu_backend_selection.cc tests/analogue_jobs.cc tests/critical_cohort.cc tests/analogue_budget.cc tests/analogue_improve.cc tests/bel_id.cc tests/completed_observations.cc tests/lab_pinmap.cc tests/lab_ff4.cc tests/device_model_lifetime.cc tests/fes_cram.cc tests/fes_boundary.cc tests/fes_narrow_pin.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/io_delay.cc tests/m10k_timing.cc tests/ff_reset_timing.cc tests/ff_core_timing.cc tests/hps_interrupts.cc tests/hps_clocks_resets.cc tests/hps_lw_bridge.cc
     tests/parked_reviews.cc tests/lut_input_delay.cc
     MAIN_SOURCE  main.cc
 )
@@ -182,6 +183,14 @@ if (BUILD_TESTS)
     add_test(NAME nextpnr-${family}-ff-core-reference
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ff-core/test_reference.py
                 --config-reader $<TARGET_FILE:nextpnr-${family}-ff-core-config>)
+    add_test(NAME nextpnr-${family}-ff-core-native-reference
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ff-core/model_reference.py
+                --check --config-reader $<TARGET_FILE:nextpnr-${family}-ff-core-config>)
+    add_test(NAME nextpnr-${family}-ff-core-native-parser
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ff-core/test_model_reference.py)
+    add_test(NAME nextpnr-${family}-ff-core-reference-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ff-core/check_cli.py
+                $<TARGET_FILE:nextpnr-${family}>)
 endif()
 
 # The Cyclone V coordinate constructors take narrow integer types, and the
