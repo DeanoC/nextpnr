@@ -45,6 +45,39 @@ TEST(HpsClocksResets, EveryOutputReachesAGlobalThroughItsOwnSlot)
     EXPECT_TRUE(selects[ctx->id("h2f_cold_rst_n")].count({5, 1}));
 }
 
+TEST(HpsClocksResets, PackerPrefersOtherLanesForHpsOutputs)
+{
+    ArchArgs args;
+    args.device = "5CSEMA5F31C6";
+    auto ctx = std::make_unique<Context>(args);
+
+    const IdString pin = ctx->id("h2f_rst_n");
+    CellInfo *hps = ctx->createCell(ctx->id("hps"), ctx->id("cyclonev_hps_interface_clocks_resets"));
+    hps->addOutput(pin);
+    NetInfo *clock = ctx->createNet(ctx->id("hps_clock"));
+    hps->connectPort(pin, clock);
+
+    CellInfo *buffer = ctx->createCell(ctx->id("hps_clock_buffer"), id_MISTRAL_CLKBUF);
+    buffer->addInput(id_A);
+    buffer->addOutput(id_Q);
+    buffer->connectPort(id_A, clock);
+    buffer->connectPort(id_Q, ctx->createNet(ctx->id("hps_global_clock")));
+
+    bool has_fabric_lane = false;
+    bool has_alternative = false;
+    for (BelId lane : ctx->hps_clock_bels[pin]) {
+        bool fabric_lane = ctx->getBelType(lane) == id_MISTRAL_CLKENA && ctx->bel_data(lane).block_index == 2;
+        has_fabric_lane |= fabric_lane && ctx->checkBelAvail(lane);
+        has_alternative |= !fabric_lane && ctx->checkBelAvail(lane);
+    }
+    ASSERT_TRUE(has_fabric_lane);
+    ASSERT_TRUE(has_alternative);
+
+    ASSERT_TRUE(ctx->pack());
+    ASSERT_NE(buffer->bel, BelId());
+    EXPECT_FALSE(ctx->getBelType(buffer->bel) == id_MISTRAL_CLKENA && ctx->bel_data(buffer->bel).block_index == 2);
+}
+
 // The HPS reset and user clock outputs come from a single fixed HPS site, so
 // a cart that instantiates it imports without the cell: the site belongs to
 // the shell.

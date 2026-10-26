@@ -2915,11 +2915,23 @@ struct MistralPacker
                 }
                 if (buffer->bel != BelId())
                     continue;
-                for (BelId lane : ctx->hps_clock_bels[port.first])
-                    if (ctx->checkBelAvail(lane)) {
+                auto is_fabric_lane = [&](BelId lane) {
+                    // HG lane 2 is the only global-clock lane with a direct
+                    // fabric input, so keep it available when an HPS route
+                    // can use another lane.
+                    return ctx->getBelType(lane) == id_MISTRAL_CLKENA && ctx->bel_data(lane).block_index == 2;
+                };
+                auto bind_available_lane = [&](bool fabric_lane) {
+                    for (BelId lane : ctx->hps_clock_bels[port.first]) {
+                        if (is_fabric_lane(lane) != fabric_lane || !ctx->checkBelAvail(lane))
+                            continue;
                         ctx->bindBel(lane, buffer, STRENGTH_LOCKED);
-                        break;
+                        return;
                     }
+                };
+                bind_available_lane(false);
+                if (buffer->bel == BelId())
+                    bind_available_lane(true);
                 if (buffer->bel == BelId())
                     log_error("'%s.%s': no free global clock buffer on its HPS_CLOCKS slots.\n", ctx->nameOf(ci),
                               port.first.c_str(ctx));
