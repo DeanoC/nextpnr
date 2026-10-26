@@ -36,6 +36,14 @@ activation, and synchronous-clear configuration. Its mirrored PKREG and
 TCLK/BCLK mappings follow `bitstream.cc`: FF0/FF3 use the top control group,
 FF1/FF2 the bottom one; data and synchronous-clear selection follow the half.
 The Python check binds every reported `d`/`asdata` identity to these bits.
+For active E/F data and synchronous clear, the archive also retains the final
+input-mux routing row before the FF pin. The configuration reader resolves
+`TEF_SEL`/`BEF_SEL` and `SCLR_SEL` through Mistral's physical-port API, then
+the Python check compares the selected input with every fitted report at
+every corner and transition. Unused selectors do not describe a path and
+are not claimed as validated selections. The input mux is the upstream
+`BLOCK_INPUT_MUX` row; the later `LAB_INPUT` index already includes the
+control selection and cannot independently verify it.
 
 Clock-to-Q ends at the reported FF Q pin; subsequent output-buffer and route
 delay stays outside it. Input requirements subtract the internal clock CELL

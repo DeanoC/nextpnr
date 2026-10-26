@@ -41,6 +41,25 @@ int main(int argc,char **argv) {
       if(v.type==CV::MT_MUX)std::cout<<CV::bmux_type_names[v.s];
       else if(v.type==CV::MT_BOOL)std::cout<<v.s;
       else return 5;
+      // Resolve selected inputs with the device API rather than equating
+      // a decoded selector name with an independently observed route.
+      if(field==CV::SCLR_SEL||field==ef_sel[s/2]) {
+        CV::port_type_t port;int block_index=-1,port_index=-1;
+        if(field==CV::SCLR_SEL) {
+          port=CV::DATAIN;
+          port_index=v.s==CV::DIN0?0:v.s==CV::DIN1?1:v.s==CV::DIN2?2:v.s==CV::DIN3?3:-1;
+          if(port_index<0)return 6;
+        } else {
+          if(v.s!=CV::E&&v.s!=CV::F)return 6;
+          port=s/2==0?(v.s==CV::E?CV::E0:CV::F1):(v.s==CV::E?CV::E1:CV::F0);
+          block_index=a;
+        }
+        auto ri=cv->pnode_to_rnode(CV::pnode_coords(bt,pos,port,block_index,port_index));
+        if(ri==0xffffffff)return 6;
+        auto node=cv->ri2rc(ri);
+        if(node.t()!=CV::GOUT||node.p()!=pos)return 6;
+        std::cout<<'\t'<<(field==CV::SCLR_SEL?"SCLR_INPUT_MUX":"EF_INPUT_MUX")<<'='<<node.z();
+      }
     }
     std::cout<<'\n';
   }

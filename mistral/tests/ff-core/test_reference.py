@@ -134,10 +134,24 @@ class ReferenceTest(unittest.TestCase):
             decoded = run([str(CONFIG_READER), str(rbf)], input=request, text=True,
                           capture_output=True, check=True).stdout
             for old, new in [('EN2_EN=1', 'EN2_EN=0'), ('EN2_NINV=0', 'EN2_NINV=1'),
-                             ('CLK2_INV=0', 'CLK2_INV=1'), ('SCLR_INV=0', 'SCLR_INV=1')]:
+                             ('CLK2_INV=0', 'CLK2_INV=1'), ('SCLR_INV=0', 'SCLR_INV=1'),
+                             ('SCLR_SEL=DIN1', 'SCLR_SEL=DIN3')]:
                 self.assertIn(old, decoded)
                 with self.subTest(field=old), mock.patch('reference.subprocess.run',
                         return_value=mock.Mock(stdout=decoded.replace(old, new, 1))):
+                    with self.assertRaises(AssertionError):
+                        check_config(CONFIG_READER, rbf, spec, rows)
+            # Select a row whose E/F input is actually active. An unused
+            # selector does not describe an observed data path.
+            lines = decoded.splitlines()
+            for field in ('TEF_SEL', 'BEF_SEL'):
+                index = next(i for i, line in enumerate(lines) if line.split('\t')[5] == '1' and field+'=' in line)
+                line = lines[index]
+                value = re.search(field + r'=([EF])\b', line)[1]
+                changed = lines[:]
+                changed[index] = line.replace(field+'='+value, field+'='+('F' if value == 'E' else 'E'))
+                with self.subTest(field=field), mock.patch('reference.subprocess.run',
+                        return_value=mock.Mock(stdout='\n'.join(changed)+'\n')):
                     with self.assertRaises(AssertionError):
                         check_config(CONFIG_READER, rbf, spec, rows)
             with mock.patch('reference.subprocess.run', return_value=mock.Mock(stdout=decoded)):

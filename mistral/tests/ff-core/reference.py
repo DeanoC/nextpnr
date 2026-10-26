@@ -108,6 +108,21 @@ def parse_report(text, spec, role, analysis, edge, corner):
             data_pins = [r for r in ar if r[3] == 'IC' and r[6] in tuple(cell + '|' + p for p in pins)]
             assert len(data_pins) == 1 and data_pins[0][5] == physical
             dp = data_pins[0]
+            if role == 'sclear' or (role == 'din' and dp[6].endswith('|asdata')):
+                # The final fitted input mux is upstream of the FF pin. Its
+                # index is the physical GOUT input, not the LAB_INPUT index
+                # after the configurable control selector.
+                anchors = [(r, re.fullmatch(r'BLOCK_INPUT_MUX(?:_PASSTHROUGH)?_X' + x +
+                            r'_Y' + y + r'_N0_I(\d+)', r[5])) for r in ar[:ar.index(dp)]]
+                anchors = [(r, m) for r, m in anchors if m]
+                assert anchors, (cell, role, 'missing fitted input mux')
+                anchor, match = anchors[-1]
+                mux = int(match[1])
+                if role == 'sclear':
+                    assert 80 <= mux < 84
+                else:
+                    assert mux // 8 == site['alm'] and mux % 8 in ((0, 7) if site['ff_index']//2 == 0 else (6, 1))
+                item.update(input_mux_location=anchor[5], input_mux_index=mux)
             if role == 'ACLR':
                 assert len(dp[2]) == 2 and dp[2][-1] == 'R', dp
             cp = one(rr, 'IC', cell + '|clk')
@@ -173,10 +188,22 @@ def check_config(reader, rbf, spec, observations):
             assert int(mode[f'EN{clock}_NINV']) == int(site['enable_inverted'])
         pins = {r['physical_pin'] for r in observations if r['cell'] == site['cell'] and r['role'] == 'din'}
         assert pins == {'asdata' if pkreg == '1' else 'd'}, (site['cell'], pins, pkreg)
+        if pkreg == '1':
+            muxes = {r['input_mux_index'] for r in observations if r['cell'] == site['cell'] and r['role'] == 'din'}
+            expected_mux = int(mode['EF_INPUT_MUX'])
+            assert muxes == {expected_mux}, (site['cell'], muxes, mode)
+            # Also bind the symbolic selector to the resolved physical input;
+            # otherwise a changed selector label could evade a reader check.
+            half = int(ff)//2
+            assert expected_mux == 8*int(alm) + ({'E': 0, 'F': 7} if half == 0 else {'E': 6, 'F': 1})[mode['TEF_SEL' if half == 0 else 'BEF_SEL']]
         disabled = mode['SCLR_DIS'] == '1' or mode['TSCLR_DIS' if int(ff)//2 == 0 else 'BSCLR_DIS'] == '1'
         if 'sclear' in spec['report_roles']:
             assert not disabled
             assert int(mode['SCLR_INV']) == int(site['clear_inverted'])
+            muxes = {r['input_mux_index'] for r in observations if r['cell'] == site['cell'] and r['role'] == 'sclear'}
+            assert mode['SCLR_SEL'] in ('DIN0', 'DIN1', 'DIN2', 'DIN3')
+            assert int(mode['SCLR_INPUT_MUX']) == 80 + int(mode['SCLR_SEL'][-1])
+            assert muxes == {int(mode['SCLR_INPUT_MUX'])}, (site['cell'], muxes, mode)
         else:
             assert disabled
         result.append(dict(cell=site['cell'], clock_index=int(clock), clock_source=clock_source,
