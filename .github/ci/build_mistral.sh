@@ -16,7 +16,7 @@ function build_nextpnr {
     mkdir build
     pushd build
     cmake .. -DARCH=mistral -DMISTRAL_ROOT=${MISTRAL_PATH} -DBUILD_TESTS=ON
-    make nextpnr-mistral nextpnr-mistral-test nextpnr-command-settings-test nextpnr-heap-control-set-test nextpnr-reserved-route-slack-test nextpnr-gpu-lease-test -j`nproc`
+    make nextpnr-mistral nextpnr-mistral-test nextpnr-mistral-gpio-core-config nextpnr-command-settings-test nextpnr-heap-control-set-test nextpnr-reserved-route-slack-test nextpnr-gpu-lease-test -j`nproc`
     popd
 }
 
@@ -26,6 +26,8 @@ function run_tests {
     ctest --test-dir build -R '^nextpnr-(command-settings|heap-control-set|reserved-route-slack|gpu-lease)-test$' --output-on-failure
     ctest --test-dir build -R '^nextpnr-mistral-(command-settings|gpu-lease)-cli$' --output-on-failure
     ./build/nextpnr-mistral-test --gtest_filter='HpsInterrupts.*:HpsClocksResets.*:HpsLwBridge.*'
+    ./build/nextpnr-mistral-test --gtest_filter='GpioCoreTimingTest.*'
+    ctest --test-dir build -R '^nextpnr-mistral-gpio-core-(reference-cli|parser|reference)$' --output-on-failure
     python3 mistral/tests/router2_profile.py --nextpnr build/nextpnr-mistral --output build/router2-profile
     python3 mistral/tests/router2_undriven.py --nextpnr build/nextpnr-mistral --output build/router2-undriven
     python3 mistral/tests/pad_clock.py
