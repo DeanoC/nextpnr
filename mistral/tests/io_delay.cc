@@ -1154,3 +1154,46 @@ TEST_F(IoDelayTest, RoutedRangesDoNotDependOnExternalIoConstraints)
     check(false,true,731+1000-270);
     check(false,false,731+4000-270); // No cached mode after re-entry.
 }
+
+TEST_F(IoDelayTest, RoutedRangesAffectSkewAwareClockRoutes)
+{
+    capture->disconnectPort(id_DATAIN);
+    capture->connectPort(id_DATAIN, launch->getPort(id_Q));
+    ctx->assign_ff_info(launch);
+    ctx->assign_ff_info(capture);
+    ctx->bindBel(ctx->labs[0].alms[0].ff_bels[0], launch, STRENGTH_USER);
+    ctx->bindBel(ctx->labs[0].alms[1].ff_bels[0], capture, STRENGTH_USER);
+    launch->pin_data[id_Q].bel_pins = {id_Q};
+    ctx->bindWire(ctx->getBelPinWire(launch->bel, id_Q), launch->getPort(id_Q), STRENGTH_USER);
+
+    auto *clock_driver = ctx->createCell(ctx->id("clock_driver"), id_MISTRAL_BUF);
+    clock_driver->addInput(id_A);
+    clock_driver->addOutput(id_Q);
+    clock_driver->connectPort(id_Q, clock);
+    clock_driver->pin_data[id_Q].bel_pins = {id_COMBOUT};
+    ctx->assign_comb_info(clock_driver);
+    ctx->bindBel(ctx->labs[0].alms[9].lut_bels[0], clock_driver, STRENGTH_USER);
+    ctx->bindWire(ctx->labs[0].alms[9].comb_out[0], clock, STRENGTH_USER);
+
+    auto *models = static_cast<IoBoundaryTestContext *>(ctx.get());
+    models->route_models[CellPortKey(capture->name, id_DATAIN)] = DelayQuad(1000, 4000);
+    models->route_models[CellPortKey(launch->name, id_CLK)] = DelayQuad(1000, 2000);
+    models->route_models[CellPortKey(capture->name, id_CLK)] = DelayQuad(3000, 4000);
+
+    TimingAnalyser timing(ctx.get());
+    timing.with_clock_skew = true;
+    auto analyze = [&](bool ranges) {
+        models->routed_ranges = ranges;
+        ctx->settings.erase(ctx->id("timing/io_delays"));
+        timing.setup(false, false, true);
+        return std::make_pair(timing.get_setup_slack(CellPortKey(capture->name, id_DATAIN)),
+                              timing.get_timing_result().clock_hold_slack.at(clock->name));
+    };
+
+    const auto scalar = analyze(false);
+    const auto ranged = analyze(true);
+    EXPECT_EQ(scalar.first, 7465);
+    EXPECT_EQ(scalar.second, 2461);
+    EXPECT_EQ(ranged.first, 6465);
+    EXPECT_EQ(ranged.second, -1539);
+}
