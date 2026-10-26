@@ -173,6 +173,17 @@ target_link_libraries(nextpnr-${family}-core INTERFACE
     ${LIBLZMA_LIBRARIES}
 )
 
+if (BUILD_TESTS)
+    add_executable(nextpnr-${family}-ff-core-config tests/ff-core/config.cc)
+    target_include_directories(nextpnr-${family}-ff-core-config PRIVATE
+        ${MISTRAL_ROOT}/libmistral ${CMAKE_CURRENT_BINARY_DIR}/tools
+        ${CMAKE_CURRENT_BINARY_DIR}/libmistral ${LIBLZMA_INCLUDE_DIRS})
+    target_link_libraries(nextpnr-${family}-ff-core-config PRIVATE mistral ${LIBLZMA_LIBRARIES})
+    add_test(NAME nextpnr-${family}-ff-core-reference
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ff-core/test_reference.py
+                --config-reader $<TARGET_FILE:nextpnr-${family}-ff-core-config>)
+endif()
+
 # The Cyclone V coordinate constructors take narrow integer types, and the
 # arch builds them from ints in braced initialisers. GCC warns about that
 # narrowing; clang (as on macOS) makes it an error unless told to warn too.

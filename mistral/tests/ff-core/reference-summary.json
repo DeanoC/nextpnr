@@ -1,0 +1,8 @@
+{
+  "scope": "Fitted FF local pin observations. Synthetic IO constraints and asynchronous reset fixtures are not native timing or physical acceptance.",
+  "observations": 101120,
+  "full_reference_gzip_sha256": "a758688f8495048ec0e15f44857d677fa031550bef7a3384606d1c1797f264e9",
+  "full_reference_json_sha256": "cba88a17789c022a311dae83fff9e63295978ba895735e9273ef2e5dcc74882d",
+  "hardware": false,
+  "physical_qualified": false
+}
