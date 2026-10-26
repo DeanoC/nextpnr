@@ -410,6 +410,7 @@ void TimingAnalyser::add_registered_io_boundary(CellInfo *cell, IdString pad, bo
 
 void TimingAnalyser::get_route_delays()
 {
+    const bool use_ranges = ctx->settings.count(ctx->id("timing/io_delays")) || ctx->useRoutedDelayRanges();
     pool<CellPortKey> primitive_clocks;
     for (const auto &entry : ctx->cells)
         for (const auto &requirement : ctx->getPrimitiveClockRequirements(entry.second.get()))
@@ -422,7 +423,7 @@ void TimingAnalyser::get_route_delays()
         for (auto &usr : ni->users) {
             if (usr.cell->bel == BelId())
                 continue;
-            ports.at(CellPortKey(usr)).route_delay = (ctx->settings.count(ctx->id("timing/io_delays")) ||
+            ports.at(CellPortKey(usr)).route_delay = (use_ranges ||
                                                      primitive_clocks.count(CellPortKey(usr)))
                     ? ctx->getNetinfoRouteDelayQuad(ni, usr).delayPair() : DelayPair(ctx->getNetinfoRouteDelay(ni, usr));
         }

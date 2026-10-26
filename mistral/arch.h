@@ -562,6 +562,7 @@ struct Arch : BaseArch<ArchRanges>
     DelayQuad getPipDelayTable(PipId pip) const;
     DelayQuad getPipDelayCalibrated(PipId pip, const DelayQuad &table) const; // analogue.cc
     bool getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay) const override; // delay.cc
+    bool useRoutedDelayRanges() const override;
     // Observation records contain completed hops only, including valid zero delays.
     struct AnalogueHop
     {

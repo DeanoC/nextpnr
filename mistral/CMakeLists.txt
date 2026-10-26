@@ -176,6 +176,9 @@ target_link_libraries(nextpnr-${family}-core INTERFACE
 )
 
 if (BUILD_TESTS)
+    add_test(NAME nextpnr-${family}-routed-delay-ranges-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/routed_delay_ranges_cli.py
+                $<TARGET_FILE:nextpnr-${family}>)
     add_test(NAME nextpnr-${family}-gpio-core-reference-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/gpio-core/check_cli.py
                 $<TARGET_FILE:nextpnr-${family}>)
