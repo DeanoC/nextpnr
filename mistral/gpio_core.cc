@@ -16,12 +16,17 @@ using Site = ::gpio_core_reference::Site;
 
 const Site *reference_site(const Context *ctx, const CellInfo *cell)
 {
-    if (!bool_or_default(ctx->settings, ctx->id("mistral/gpio_core_reference"), false) ||
-        !cell->type.in(id_MISTRAL_SDROUT, id_MISTRAL_SDRIO))
+    if (!bool_or_default(ctx->settings, ctx->id("mistral/gpio_core_reference"), false))
         return nullptr;
     auto reject = [&](const char *reason) {
         log_error("GPIO core reference does not cover '%s': %s.\n", cell->name.c_str(ctx), reason);
     };
+    if (cell->type.in(id_MISTRAL_SDRIN,id_MISTRAL_DDRIN,id_MISTRAL_DDRBIDIR) ||
+        (cell->type == id_MISTRAL_DDROUT &&
+         (cell->getPort(id_I) || cell->getPort(id_D_H) || cell->getPort(id_D_L))))
+        reject("this registered GPIO fabric mode has no native reference");
+    if (!cell->type.in(id_MISTRAL_SDROUT,id_MISTRAL_SDRIO))
+        return nullptr; // Constant clock forwarding retains its separate model.
     if (ctx->getChipName() != "5CSEBA6U23I7")
         reject("require the characterized 5CSEBA6U23I7 package");
     const bool bidir = cell->type == id_MISTRAL_SDRIO;
@@ -136,11 +141,11 @@ int role(IdString port) { return port == id_I ? 0 : port == id_OE ? 1 : port == 
 
 bool Arch::gpio_core_reference(const CellInfo *cell, IdString port, TimingClockingInfo &timing) const
 {
-    const int r = role(port);
-    if (r < 0 || !cell->getPort(port))
-        return false;
     const auto *site = reference_site(getCtx(),cell);
     if (!site)
+        return false;
+    const int r = role(port);
+    if (r < 0 || !cell->getPort(port))
         return false;
     if (!(site->valid & (1u << r)))
         log_error("GPIO core reference has no '%s' observation for '%s'.\n",port.c_str(getCtx()),cell->name.c_str(getCtx()));

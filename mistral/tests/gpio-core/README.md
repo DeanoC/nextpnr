@@ -88,3 +88,5 @@ three corners are retained data for a separately qualified timing engine.
 This is host characterization, not whole-chip fast-corner qualification,
 SDRAM board qualification or hardware acceptance. No timing exceptions,
 clock reductions or physical bitstream changes are introduced by the flag.
+Constant DDR clock forwarding retains its separate legacy model; this
+reference does not qualify that clock/pad boundary.

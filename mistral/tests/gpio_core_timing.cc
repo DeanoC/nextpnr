@@ -158,3 +158,13 @@ TEST_F(GpioCoreTimingTest, EndpointDiscoveryDoesNotWaiveLaterClockValidation) {
     TimingAnalyser timing(ctx.get());
     EXPECT_THROW(timing.setup(),log_execution_error_exception);
 }
+
+TEST_F(GpioCoreTimingTest, UnsupportedRegisteredInputsDoNotFallBack) {
+    enable();gpio->type=id_MISTRAL_SDRIN;reject();
+    gpio->type=id_MISTRAL_DDRIN;
+    EXPECT_THROW(info(id_Q_H),log_execution_error_exception);
+    gpio->type=id_MISTRAL_DDRBIDIR;
+    EXPECT_THROW(info(id_Q_L),log_execution_error_exception);
+    gpio->type=id_MISTRAL_DDROUT;
+    EXPECT_THROW(info(id_D_H),log_execution_error_exception);
+}
