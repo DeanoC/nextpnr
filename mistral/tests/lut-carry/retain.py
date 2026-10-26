@@ -38,7 +38,7 @@ def retain(capture, root=ROOT):
         for name in names:
             destination = target/name
             destination.parent.mkdir(parents=True,exist_ok=True)
-            if name in ("fixture.json","fitted.rbf","fitted.bt","fitted.qsf","receipt.json") or name.endswith(".rpt"):
+            if name in ("fixture.json","fitted.rbf","fitted.bt","fitted.qsf","receipt.json") or name.endswith(".rpt") or name.startswith("arcs/"):
                 Path(str(destination)+".gz").write_bytes(gzip.compress((source/name).read_bytes(),mtime=0))
             else:
                 shutil.copyfile(source/name,destination)

@@ -2,10 +2,10 @@
   "capture_sha256": "57ffcf6f855c4bd34a78c583410713f7251dc41f715cabbbd14c6d40b58655f3",
   "cases": {
     "lab-carry": {
-      "arcs/7_slow_1100mv_-40c.tsv": "286be0c9042fdeeff1a6e718f75d38116fd348f3a89e30d0589e2c8ce2442ca2",
-      "arcs/7_slow_1100mv_100c.tsv": "5e0f9eaac3e20ae8b17305c6c7caa6ce94b65d706817110a4cadb93a39342741",
-      "arcs/MIN_fast_1100mv_-40c.tsv": "2f0cf7125f9435b627029edf0c6e25c2015c43622f8c6142147bef17f2e86ce6",
-      "arcs/MIN_fast_1100mv_100c.tsv": "4b0fe382dcbd8e143670164ac6c3f8e4ae6df34757bf2d2a9673ee27afc9c37b",
+      "arcs/7_slow_1100mv_-40c.tsv.gz": "e2acb5057427e31daf40413194ffbde8943b6cb836966f320711900ef799cc9f",
+      "arcs/7_slow_1100mv_100c.tsv.gz": "2abd0f3d14f84979e503b139d5fa07afa81e1a0473d6836f9933983b426c9bb4",
+      "arcs/MIN_fast_1100mv_-40c.tsv.gz": "cecfcb42734ca3ae2ef58394afd06f49a3fabfd09e2485db508163675c9bc38d",
+      "arcs/MIN_fast_1100mv_100c.tsv.gz": "9fb5492ee058a5000013ad807f40f8a21ff71b052cf8fd6305dc827d2fa5f028",
       "bindings.tsv": "bf8e8693e039dea556c75de5a3fa706129c7a968137a0261fe2d715befc7edd3",
       "fitted.bt.gz": "75c12283d8d9c8f6d7dc587832ee60d454dc4199c0f3b397f3030b5dbdab19c2",
       "fitted.qsf.gz": "c61af231e4e2591158c5ecd741f5868d53caa996af340ce275ed675d5747b3ff",
@@ -34,10 +34,10 @@
       "source/top.sv": "c038002889a1a992cd93ca833b6cf9fb0a288b7441999651539510cd53f9bb7b"
     },
     "lab-l5": {
-      "arcs/7_slow_1100mv_-40c.tsv": "6e593e3b0f26d64e89f38029c4e448c5bc683d9df66b249968a81b2ad85501b7",
-      "arcs/7_slow_1100mv_100c.tsv": "61c46d5bdb9cb8606aedffa52980e1f7af9eaf40cf645b1112c7f0eac9d8b6f9",
-      "arcs/MIN_fast_1100mv_-40c.tsv": "75cf8dc47595a4597f74eed1b137fc002c0e64a9c841c4e8208e7abb1100bf8f",
-      "arcs/MIN_fast_1100mv_100c.tsv": "198bc9e93e5810e47b6f33b56096a2f9cb9b5a229de8868f9da20ff593dfbe2a",
+      "arcs/7_slow_1100mv_-40c.tsv.gz": "d9d670e5f7b73af39dff7ed1e6ab231cce1c91008d07cda30289d2516e1ff975",
+      "arcs/7_slow_1100mv_100c.tsv.gz": "764592f17bc8fbefdfbffaa7ed33c6c9ebeac6e6f35834bc52f1132738621c87",
+      "arcs/MIN_fast_1100mv_-40c.tsv.gz": "d30bb9d1269821bf269d4e555ec85b8b555531a036b3167e8a738d8e639a67c7",
+      "arcs/MIN_fast_1100mv_100c.tsv.gz": "df868b78b0b916c315d064333016ac233923d33020bbb591e22296b8da3200ba",
       "bindings.tsv": "cff281422aae0ec075081cd711fb8b41ad4593e56666847107c8119b3916a8df",
       "fitted.bt.gz": "6f364274756003ab10d28529088ba34dfac149935407ed5a4fb372f913711c68",
       "fitted.qsf.gz": "d16d8f4f7832d04911f8307a171e25dc5f6a1c176ade7ae1eecf8a104380e35a",
@@ -66,10 +66,10 @@
       "source/top.sv": "be92b263e3c97907cf26de4349d286ee961bc9c6415616634160626c2df9ab5d"
     },
     "lab-l6-bottom": {
-      "arcs/7_slow_1100mv_-40c.tsv": "092d0ec4ddef36efc45009d9db59dbc0de03f5eb7e8e144ca14a3fec4d667080",
-      "arcs/7_slow_1100mv_100c.tsv": "4983323c565d02fe780799f3a1e8c7d68b23714bea8943d88ff41857900a5be1",
-      "arcs/MIN_fast_1100mv_-40c.tsv": "222dc72017c8a8ba73ca1063fd66ba7dc87904a486490ce7050e4f2ac61a457e",
-      "arcs/MIN_fast_1100mv_100c.tsv": "7204726b2bfeb0ce1da1f156b5e8ac266efed3c5d3131ae620d5888d62f9c5c5",
+      "arcs/7_slow_1100mv_-40c.tsv.gz": "711e5a066ff1bf397669ff7841d231ff3c9f7957d7c7901ebdc36622a26bde5d",
+      "arcs/7_slow_1100mv_100c.tsv.gz": "b304cd8c198c945d939e0638992a8e9f8c1f965f43c3a88f62ac5749ef5d0c9f",
+      "arcs/MIN_fast_1100mv_-40c.tsv.gz": "582598ec33d13f91f20442583d02ad70603f6fda3ef68c078eff7beefaf3efe6",
+      "arcs/MIN_fast_1100mv_100c.tsv.gz": "5bb92e0db5c2abdfe06b8d82e9abc71690a5ad7b8c067ff979d6d465a77af4b0",
       "bindings.tsv": "361972df36c0ea8c63143c7ab57e69fcf9398e2fb5a06c421ba502de566be526",
       "fitted.bt.gz": "2deee10abb5115b32920099e35f93a8275e1b9af46f50113c6204df11724d40d",
       "fitted.qsf.gz": "b66bf63cc34ad39fd3686f5abf68e9a1586bfb5832cf1c59c771cb4c789cb676",
@@ -98,10 +98,10 @@
       "source/top.sv": "0cd4d197abb3ec9f7092eedb755069ee2e65f1caab96c2f38a8dbebcfe6b7fde"
     },
     "lab-l6-top": {
-      "arcs/7_slow_1100mv_-40c.tsv": "5833517170c648011d8b5c190d9d3e7478001b9ad66b9e4ae368a117a62a2a27",
-      "arcs/7_slow_1100mv_100c.tsv": "dfd661a984b99d2113e20bf527021071d91b92a11b5f38d8358f4bfbadfa02ab",
-      "arcs/MIN_fast_1100mv_-40c.tsv": "686d99a9096ee63e2272b314400f1c47cb761e805d6c9cd3646cd4cef61d7c2f",
-      "arcs/MIN_fast_1100mv_100c.tsv": "509a3350d3ee46d65a5c66e29bd6ea727a0375f8f5fdc8db240dab3cd42ffc8b",
+      "arcs/7_slow_1100mv_-40c.tsv.gz": "f91bc160bf4cf9ef7f87f5386178b3d76393765e523096ad8e984a0a15891b07",
+      "arcs/7_slow_1100mv_100c.tsv.gz": "a4bee88015836216d53950418a7171cdb36f8edcd130d17f75b18a0cc609474f",
+      "arcs/MIN_fast_1100mv_-40c.tsv.gz": "6c9f742c7249f893d754e72b651f90725f610719e9a07f2024f9b1f1dae09c83",
+      "arcs/MIN_fast_1100mv_100c.tsv.gz": "f76367c5753d3e03b8ccde4aa7af90ed07dd831af5efcd0af6839934b35ab028",
       "bindings.tsv": "4c438faefad97d3e6b2b87bfe0f9a700b1ec5d547ecfbec3c6e91e3d1fab758e",
       "fitted.bt.gz": "e9ef0b906a7e8f1c41023e865b42268686406247912476372603fdfe890e179b",
       "fitted.qsf.gz": "551a1dca8d6fe7a6ceed19c3bf77b402539ad625b38f6fdb5c016eaf95cb8a38",
@@ -130,10 +130,10 @@
       "source/top.sv": "0cd4d197abb3ec9f7092eedb755069ee2e65f1caab96c2f38a8dbebcfe6b7fde"
     },
     "mlab-carry": {
-      "arcs/7_slow_1100mv_-40c.tsv": "b2b5c5052961438d64032ecfbc53c2b1b4358eba256a8ddae92598e923d748bc",
-      "arcs/7_slow_1100mv_100c.tsv": "b6c11c1cbc8002d1db73faa4535f51ec3ff87a1ca581b20dbb59d7a37dde3daa",
-      "arcs/MIN_fast_1100mv_-40c.tsv": "6f0e647b73594a0642a9074103ca78a8afa30ee8277047e19866601e15155129",
-      "arcs/MIN_fast_1100mv_100c.tsv": "459baff74046d7bbd71cae403d0b9a398b5dc0ec3fb7973c8beb870ba1de8128",
+      "arcs/7_slow_1100mv_-40c.tsv.gz": "98af547dd50064f0bc2db5a14f9926730b65332df0e37f4737554aca16157166",
+      "arcs/7_slow_1100mv_100c.tsv.gz": "1e09fc8ba979a1aeafb8195f09c5de26b7ae7de022550eefefe4fd684f43c4f9",
+      "arcs/MIN_fast_1100mv_-40c.tsv.gz": "467bf211ee86abdb4e4537a56da74fa620632c95b08468f04601ea013e7d74e2",
+      "arcs/MIN_fast_1100mv_100c.tsv.gz": "a10862b40e5b085e9f4096a3a05387c4089375a44a5d142461f3c11a68b9d681",
       "bindings.tsv": "e4e3481e8c5d929227a65b0aeba1f761a51c771806405d2dbd38b11204ac9e59",
       "fitted.bt.gz": "e84e28dd6d70dcab973975317f671f58c1c569030ec800b630a2e32250749f10",
       "fitted.qsf.gz": "61f4ecbecf38b545208b79f7e528d3817243559a25b52838b0945f0c9eaef95c",
@@ -162,10 +162,10 @@
       "source/top.sv": "c038002889a1a992cd93ca833b6cf9fb0a288b7441999651539510cd53f9bb7b"
     },
     "mlab-l5": {
-      "arcs/7_slow_1100mv_-40c.tsv": "ef6cad5fd9a083505f42848ca36b97f8f8f56e61928ebf577faf5c62a4db9980",
-      "arcs/7_slow_1100mv_100c.tsv": "59dde8783e3b9152acbc32b3132823a0408d8b35ae036a669eff6668228ab65b",
-      "arcs/MIN_fast_1100mv_-40c.tsv": "702b48b0512162bc10bea3bcf9dabdb8246136becb9fbce53a986d458ae37b94",
-      "arcs/MIN_fast_1100mv_100c.tsv": "fcc3cb520c56d27cf24ed79fc5245ded534b15ab5586a12953a94c8cf9ff0216",
+      "arcs/7_slow_1100mv_-40c.tsv.gz": "9d7d9f22f5d96fcefdaf93b79b8e203b7f4f8ddc49797e7249eb82e2493655e8",
+      "arcs/7_slow_1100mv_100c.tsv.gz": "6ca07ab965d4c20454bdcf2cf31836a9f36e0fa0b66a03ee7379247336adba86",
+      "arcs/MIN_fast_1100mv_-40c.tsv.gz": "2f5133f61b039aed086b0a2725a161c02563121bbc29521a148d57ef355b957f",
+      "arcs/MIN_fast_1100mv_100c.tsv.gz": "0ad8245a91c90d5ba812fa9b0a2b15707a789f937608e61abfc53b924b8fc54c",
       "bindings.tsv": "48a9c2f3ba72c4c775c3710784a7135023320adad29c6a5ccab21301d2ec76ab",
       "fitted.bt.gz": "a7e3672cc3e5a3ba8b69a045fe804a738bc8a4bdb86b39c4b73b8ba9aff4ad34",
       "fitted.qsf.gz": "df458aca69b5335c8c7286d20bf6fd1709ab85c6e00ba539ad088dd30f58e333",
@@ -194,10 +194,10 @@
       "source/top.sv": "be92b263e3c97907cf26de4349d286ee961bc9c6415616634160626c2df9ab5d"
     },
     "mlab-l6-bottom": {
-      "arcs/7_slow_1100mv_-40c.tsv": "4f3d669f273d07cb8a62cc71269c1518e4c2164bb3f46a1ea8727b410a845e93",
-      "arcs/7_slow_1100mv_100c.tsv": "a1c82b3ad1a5d43fdc82acdcc8d8727733dd63cbb259023988f937b9c85f5f9b",
-      "arcs/MIN_fast_1100mv_-40c.tsv": "c9842949bad33324161a1c6295ce360615a99953594c88ea8a4acba87048f335",
-      "arcs/MIN_fast_1100mv_100c.tsv": "8110cbded924ed321979d36c6d81f7087f619ddb892d110149c10f779f4b4934",
+      "arcs/7_slow_1100mv_-40c.tsv.gz": "ab17d593ddb9300f748e2f0e573adc63ccb6b457aab6b75cd40c3832be8e32b4",
+      "arcs/7_slow_1100mv_100c.tsv.gz": "0d5aeb02b3f99b4c526382a2088868b57e526b139006d4aa834a432ae3fdbe4f",
+      "arcs/MIN_fast_1100mv_-40c.tsv.gz": "e45cf8b40a84275159ab8954d1da57444101c6702deaf53abb77069b611cd9c5",
+      "arcs/MIN_fast_1100mv_100c.tsv.gz": "59d76f00d80a2f5a100212dc1d9a0b2a6e190dd261fd073ed5f748e3828f41c8",
       "bindings.tsv": "d095c977ecf3c1aa39ceefd2abed8e7cf8b40537f6ede2b923cb9a423f933425",
       "fitted.bt.gz": "9f0e0047d81ab7cd560b21d6234850d9e97392e115639b548516aeae591c70df",
       "fitted.qsf.gz": "014a9cadf7ef075d90b5dc6f8a97ba17191413d3323b0d6074aab80ad35fafec",
@@ -226,10 +226,10 @@
       "source/top.sv": "0cd4d197abb3ec9f7092eedb755069ee2e65f1caab96c2f38a8dbebcfe6b7fde"
     },
     "mlab-l6-top": {
-      "arcs/7_slow_1100mv_-40c.tsv": "e49b505e95e37661cd43ee33cdd033d612dcb1c6a5434310554635c4b69b8542",
-      "arcs/7_slow_1100mv_100c.tsv": "ad7a155a237efe9de7e10f583314222c84573f0414056523afec1995217b3b20",
-      "arcs/MIN_fast_1100mv_-40c.tsv": "2da030d91b59ebdf2a20ca9f7c86b5be4c192bd17115e6497b5bf899a81df05f",
-      "arcs/MIN_fast_1100mv_100c.tsv": "06b70d3abf2d4d1bb758f2ad193815221200b08afa19b6fa44052761e8270261",
+      "arcs/7_slow_1100mv_-40c.tsv.gz": "bb4a6f92fc947bfd79232e2523569ac6998191ec73adccd870da18a2d574fd95",
+      "arcs/7_slow_1100mv_100c.tsv.gz": "e6bc50bf3ec819787c2e8fbb0b41fe55e14fb1400389550dccd8944d60d63c68",
+      "arcs/MIN_fast_1100mv_-40c.tsv.gz": "6195d2c7c7db873d47b0a14db332b7c637f64bd811ed8cbe3e87718ab8899973",
+      "arcs/MIN_fast_1100mv_100c.tsv.gz": "b9bafe868fd65fc67f71f48933f3917752e7efcbf4b92759541f686a9eab6830",
       "bindings.tsv": "3c169d0e454ca5250e98e591d607e9314cab699d67fcd00474da2dbe961d973a",
       "fitted.bt.gz": "666c611076f2603317ecd35a71e4efc907314e75cd7a03eef33a0062bc0bbb63",
       "fitted.qsf.gz": "b96924ce321cca2a5049b49d4e990e55252c83d822b7636e44845de713b35504",

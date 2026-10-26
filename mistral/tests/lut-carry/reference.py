@@ -243,7 +243,7 @@ def load(root=ROOT, decoder=None):
         directory = root/"fixtures"/case
         required = {"fixture.json.gz","fitted.rbf.gz","fitted.bt.gz","fitted.qsf.gz","bindings.tsv","receipt.json.gz"}
         required |= {"source/"+n for n in sources(case)[0]}
-        required |= {f"arcs/{c}.tsv" for c in CORNERS}
+        required |= {f"arcs/{c}.tsv.gz" for c in CORNERS}
         required |= {f"paths/{c}/{a}-{e}.rpt.gz" for c in CORNERS for a in ("setup","hold") for e in ("rise","fall")}
         assert set(files) == required,(case,required-set(files),set(files)-required)
         assert set(str(p.relative_to(directory)) for p in directory.rglob('*') if p.is_file()) == set(files)

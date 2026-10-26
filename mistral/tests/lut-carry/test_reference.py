@@ -79,7 +79,7 @@ class PrimitiveReference(unittest.TestCase):
         self.reject()
 
     def test_missing_corner(self):
-        (self.directory/'arcs'/f'{CORNERS[3]}.tsv').unlink()
+        (self.directory/'arcs'/f'{CORNERS[3]}.tsv.gz').unlink()
         self.reject()
 
     def test_changed_source(self):
