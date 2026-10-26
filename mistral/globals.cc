@@ -21,8 +21,11 @@
 #include "nextpnr.h"
 #include "util.h"
 
+#include <array>
 #include <cstdio>
+#include <map>
 #include <queue>
+#include <set>
 
 NEXTPNR_NAMESPACE_BEGIN
 
@@ -165,6 +168,87 @@ void Arch::create_plls()
         for (auto link : links)
             if (counter_link(link.first, link.second, pos, CycloneV::CMUXVG))
                 add_counter(site, link.first, link.second, true);
+    }
+}
+
+void Arch::create_hps_clocks_resets()
+{
+    // H2F_RST_N, H2F_COLD_RST_N and H2F_USER_CLK[0..2] have no routing node:
+    // they reach the fabric only through an HPS_CLOCKS slot (a 4:1 mux whose
+    // INPUT_SEL value v selects CLKIN(3 - v)) feeding a global clock mux
+    // PLLIN. Each signal gets one fixed slot per global clock mux, so no two
+    // signals can claim the same slot.
+    auto site = cyclonev->hps_get_pos()[CycloneV::I_HPS_CLOCKS_RESETS];
+    hps_clocks_resets_bel = add_bel(site.x(), site.y(), id_cyclonev_hps_interface_clocks_resets,
+                                    id_cyclonev_hps_interface_clocks_resets);
+    struct Signal
+    {
+        const char *pin;
+        CycloneV::port_type_t port;
+        int bi;
+        WireId wire;
+    };
+    std::array<Signal, 5> signals{{
+            {"h2f_rst_n", CycloneV::H2F_RST_N, -1, {}},
+            {"h2f_cold_rst_n", CycloneV::H2F_COLD_RST_N, -1, {}},
+            {"h2f_user0_clk", CycloneV::H2F_USER_CLK, 0, {}},
+            {"h2f_user1_clk", CycloneV::H2F_USER_CLK, 1, {}},
+            {"h2f_user2_clk", CycloneV::H2F_USER_CLK, 2, {}},
+    }};
+    for (auto &s : signals) {
+        s.wire = add_wire(site.x(), site.y(), idf("HPS_%s", s.pin));
+        add_bel_pin(hps_clocks_resets_bel, id(s.pin), PORT_OUT, s.wire);
+    }
+
+    std::map<int, std::map<int, int>> slot_inputs; // slot -> CLKIN index -> signal
+    std::map<int, std::vector<CycloneV::pnode_coords>> slot_outputs; // slot -> clock mux PLLIN
+    for (const auto &[src, dst] : cyclonev->get_all_p2p()) {
+        if (src.bt() == CycloneV::HPS_CLOCKS_RESETS && dst.bt() == CycloneV::HPS_CLOCKS && dst.pt() == CycloneV::CLKIN)
+            for (int i = 0; i < int(signals.size()); i++)
+                if (src.pt() == signals[i].port && (signals[i].bi < 0 || src.bi() == signals[i].bi))
+                    slot_inputs[dst.bi()][dst.pi()] = i;
+        if (src.bt() == CycloneV::HPS_CLOCKS && src.pt() == CycloneV::CLKOUT && dst.pt() == CycloneV::PLLIN &&
+            (dst.bt() == CycloneV::CMUXHG || dst.bt() == CycloneV::CMUXVG))
+            slot_outputs[src.bi()].push_back(dst);
+    }
+
+    // The horizontal mux serves the warm reset and the user clocks first, the
+    // vertical one the cold reset first, so every signal reaches a global.
+    const std::array<std::pair<CycloneV::block_type_t, std::array<int, 5>>, 2> muxes{{
+            {CycloneV::CMUXHG, {0, 2, 3, 4, 1}},
+            {CycloneV::CMUXVG, {1, 0, 2, 3, 4}},
+    }};
+    for (const auto &[cmux, order] : muxes) {
+        std::set<int> used;
+        for (int sig : order) {
+            for (const auto &[slot, inputs] : slot_inputs) {
+                if (used.count(slot))
+                    continue;
+                int k = -1;
+                for (const auto &[index, input] : inputs)
+                    if (input == sig)
+                        k = index;
+                bool feeds_mux = false;
+                for (const auto &dst : slot_outputs[slot])
+                    feeds_mux |= dst.bt() == cmux;
+                if (k < 0 || !feeds_mux)
+                    continue;
+                used.insert(slot);
+                for (const auto &dst : slot_outputs[slot]) {
+                    if (dst.bt() != cmux)
+                        continue;
+                    for (BelId clock : getBelsByTile(dst.x(), dst.y())) {
+                        if (getBelType(clock) != (cmux == CycloneV::CMUXHG ? id_MISTRAL_CLKENA : id_MISTRAL_CLKENA_PLL))
+                            continue;
+                        PipId pip = add_pip(signals[sig].wire, getBelPinWire(clock, id_A));
+                        pll_clock_select[pip] = 8 + dst.pi();
+                        hps_clock_select[pip] = {slot, 3 - k};
+                        hps_clock_bels[id(signals[sig].pin)].push_back(clock);
+                    }
+                }
+                break;
+            }
+        }
     }
 }
 
