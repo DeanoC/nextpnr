@@ -307,6 +307,8 @@ enum CellPinStyle
 struct Arch : BaseArch<ArchRanges>
 {
     ArchArgs args;
+    mutable std::mutex hps_lw_timing_warning_mutex;
+    mutable bool hps_lw_timing_warning_emitted = false;
     // Owns the model from CycloneV::get_model, including its decompressed
     // device database. A raw pointer here leaked one model per Context (#288).
     std::unique_ptr<mistral::CycloneV> cyclonev;
