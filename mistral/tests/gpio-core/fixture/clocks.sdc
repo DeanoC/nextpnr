@@ -1,0 +1,7 @@
+create_clock -period 10 -name memory [get_ports FPGA_CLK1_50]
+set_input_delay -clock memory -min 0 [remove_from_collection [all_inputs] [get_ports FPGA_CLK1_50]]
+set_input_delay -clock memory -max 1 [remove_from_collection [all_inputs] [get_ports FPGA_CLK1_50]]
+set_input_delay -clock memory -min 0 [get_ports {SDRAM_DQ[*]}]
+set_input_delay -clock memory -max 1 [get_ports {SDRAM_DQ[*]}]
+set_output_delay -clock memory -min 0 [all_outputs]
+set_output_delay -clock memory -max 1 [all_outputs]

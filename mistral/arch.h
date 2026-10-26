@@ -547,6 +547,8 @@ struct Arch : BaseArch<ArchRanges>
                                        int &clockInfoCount) const override;                                // delay.cc
     TimingClockingInfo getPortClockingInfo(const CellInfo *cell, IdString port, int index) const override; // delay.cc
     bool ff_core_reference(const CellInfo *cell, IdString port, TimingClockingInfo &timing) const; // ff_core.cc
+    bool gpio_core_reference(const CellInfo *cell, IdString port, TimingClockingInfo &timing) const; // gpio_core.cc
+    bool gpio_core_clock_prefix(const CellInfo *cell, IdString data_port, DelayQuad &prefix) const;
     std::vector<RegisteredIoTiming> getRegisteredIoTiming(const CellInfo *cell, IdString pad, bool input) const override;
     std::vector<PrimitiveClockRequirement> getPrimitiveClockRequirements(const CellInfo *cell) const override;
     bool getCellDelay(const CellInfo *cell, IdString fromPort, IdString toPort,
