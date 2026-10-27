@@ -15,8 +15,8 @@ function build_nextpnr {
     export PATH=${GITHUB_WORKSPACE}/.yosys/bin:$PATH
     mkdir build
     pushd build
-    cmake .. -DARCH=mistral -DMISTRAL_ROOT=${MISTRAL_PATH} -DBUILD_TESTS=ON
-    make nextpnr-mistral nextpnr-mistral-test nextpnr-mistral-gpio-core-config nextpnr-mistral-lut-carry-decode nextpnr-command-settings-test nextpnr-heap-control-set-test nextpnr-reserved-route-slack-test nextpnr-gpu-lease-test -j`nproc`
+    cmake .. -DARCH=mistral -DMISTRAL_ROOT=${MISTRAL_PATH} -DBUILD_TESTS=ON -DMISTRAL_REQUIRE_GPIO_SOURCE_WAVE=ON
+    make nextpnr-mistral nextpnr-mistral-test nextpnr-mistral-ff-core-config nextpnr-mistral-gpio-core-config nextpnr-mistral-lut-carry-decode nextpnr-command-settings-test nextpnr-heap-control-set-test nextpnr-reserved-route-slack-test nextpnr-gpu-lease-test -j`nproc`
     popd
 }
 
@@ -24,14 +24,10 @@ function run_tests {
     export PATH=${GITHUB_WORKSPACE}/.yosys/bin:$PATH
     python3 common/route/tests/router2_profile.py
     ctest --test-dir build -R '^nextpnr-(command-settings|heap-control-set|reserved-route-slack|gpu-lease)-test$' --output-on-failure
-    ctest --test-dir build -R '^nextpnr-mistral-(command-settings|gpu-lease|routed-delay-ranges)-cli$' --output-on-failure
-    ./build/nextpnr-mistral-test --gtest_filter='HpsInterrupts.*:HpsClocksResets.*:HpsLwBridge.*'
-    ./build/nextpnr-mistral-test --gtest_filter='GpioCoreTimingTest.*'
-    ./build/nextpnr-mistral-test --gtest_filter='LutCoreTimingTest.*:CriticalCohort.MeasuredModelBindsLutReferenceModeAndData'
-    ./build/nextpnr-mistral-test --gtest_filter='IoDelayTest.RoutedRangesDoNotDependOnExternalIoConstraints:IoDelayTest.RoutedRangesAffectSkewAwareClockRoutes:CriticalCohort.MeasuredModelPreservesRoutedRangesAndRejectsDifferentRangeMode'
-    ctest --test-dir build -R '^nextpnr-mistral-gpio-core-(reference-cli|parser|reference)$' --output-on-failure
+    ctest --test-dir build -R '^nextpnr-mistral-(command-settings|gpu-lease|clock-edge-ranges|routed-delay-ranges)-cli$|^nextpnr-mistral-(ff|gpio)-core-(reference|native-reference|native-parser|reference-cli|parser)$|^nextpnr-mistral-lut-core-(reference|cli)$' --output-on-failure
+    ./build/nextpnr-mistral-test --gtest_filter='HpsInterrupts.*:HpsClocksResets.*:HpsLwBridge.*:FfCoreTimingTest.*:LutInputDelayTest.FfSynchronousClearReference*:GpioCoreTimingTest.*:LutCoreTimingTest.*:CriticalCohort.MeasuredModelBindsLutReferenceModeAndData'
+    ./build/nextpnr-mistral-test --gtest_filter='IoDelayTest.RoutedRangesDoNotDependOnExternalIoConstraints:IoDelayTest.RoutedRangesAffectSkewAwareClockRoutes:IoDelayTest.ClockEdgeRanges*:CriticalCohort.MeasuredModelPreservesRoutedRangesAndRejectsDifferentRangeMode'
     ctest --test-dir build -R '^nextpnr-mistral-lut-carry-(reference|parser)$' --output-on-failure
-    ctest --test-dir build -R '^nextpnr-mistral-lut-core-(reference|cli)$' --output-on-failure
     python3 mistral/tests/router2_profile.py --nextpnr build/nextpnr-mistral --output build/router2-profile
     python3 mistral/tests/router2_undriven.py --nextpnr build/nextpnr-mistral --output build/router2-undriven
     python3 mistral/tests/pad_clock.py

@@ -156,7 +156,18 @@ if (BUILD_TESTS)
 endif()
 
 set(MISTRAL_ROOT "" CACHE STRING "Mistral install path")
+option(MISTRAL_REQUIRE_GPIO_SOURCE_WAVE "Require the explicit GPIO source-wave API" OFF)
 set(MISTRAL_DONT_INSTALL ON)
+
+if (MISTRAL_REQUIRE_GPIO_SOURCE_WAVE)
+    file(STRINGS "${MISTRAL_ROOT}/libmistral/cyclonev.h" MISTRAL_GPIO_SOURCE_WAVE_DEFINITION
+        REGEX "^[ \t]*#define[ \t]+MISTRAL_GPIO_SOURCE_WAVE[ \t]+1([ \t].*)?$")
+    if (NOT MISTRAL_GPIO_SOURCE_WAVE_DEFINITION)
+        message(FATAL_ERROR
+            "MISTRAL_REQUIRE_GPIO_SOURCE_WAVE is enabled, but "
+            "${MISTRAL_ROOT}/libmistral/cyclonev.h does not define MISTRAL_GPIO_SOURCE_WAVE")
+    endif()
+endif()
 
 add_subdirectory(${MISTRAL_ROOT}/tools ${CMAKE_CURRENT_BINARY_DIR}/tools)
 add_subdirectory(${MISTRAL_ROOT}/generator ${CMAKE_CURRENT_BINARY_DIR}/generator)
