@@ -11,7 +11,7 @@ BINARY = sys.argv.pop(1)
 
 
 class Cli(unittest.TestCase):
-    def run_design(self, extra=(), settings=None, step=None, plan=None, propose=False, record=True):
+    def run_design(self, extra=(), settings=None, step=None, plan=None, propose=False, record=True, compound_plan=None):
         with tempfile.TemporaryDirectory(prefix="routed-placement-cli-") as directory:
             root = Path(directory)
             module = dict(attributes={"top": 1}, settings=settings or {}, ports={}, cells={}, netnames={})
@@ -33,11 +33,32 @@ class Cli(unittest.TestCase):
                 path = root / "plan.json"
                 path.write_text(plan)
                 options += ["--routed-placement-plan", str(path)]
+            if compound_plan is not None:
+                path = root / "compound.json"
+                path.write_text(compound_plan)
+                options += ["--post-route-lut-branch-plan", str(path)]
             result = subprocess.run([BINARY, *options, *extra], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                     text=True)
             self.assertFalse((root / "native/completion.json").exists())
             self.assertNotEqual(result.returncode, 0, result.stdout)
             return result.stdout
+
+    def test_compound_branch_requires_an_explicit_fresh_recorded_flow(self):
+        flag = ["--post-route-lut-branch-plan", "unused.json"]
+        for record, extra, propose in ((False, flag, False), (True, flag + ["--no-route"], False),
+                                        (True, flag, True), (True, flag + ["--routed-placement-preserve-routes"], False)):
+            with self.subTest(record=record, extra=extra, propose=propose):
+                self.assertIn("Compound LUT branch plans require a fresh full recorded route",
+                              self.run_design(extra, record=record, propose=propose))
+
+    def test_compound_plan_syntax_duplicate_keys_and_budget_fail_before_routing(self):
+        self.assertIn("Invalid compound LUT branch JSON", self.run_design(compound_plan="}"))
+        self.assertIn("Duplicate compound LUT branch plan key", self.run_design(compound_plan='{"version":1,"version":2}'))
+        for budget in (-1, 17, 0.5):
+            plan = dict(version=1, parent={}, route_state={}, branch_trials=budget,
+                        move=dict(cell="x", from_bel="MISTRAL_COMB.1.1.0", to_bel="MISTRAL_COMB.1.1.6", strength=1))
+            with self.subTest(budget=budget):
+                self.assertIn("invalid bounded plan", self.run_design(compound_plan=json.dumps(plan)))
 
     def test_orphan_control(self):
         self.assertIn("require --routed-placement-record", self.run_design(

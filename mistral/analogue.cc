@@ -57,6 +57,7 @@
 #include "analogue_lut_pins.h"
 #include "analogue_lut_moves.h"
 #include "analogue_lut_pairs.h"
+#include "analogue_lut_branch.h"
 #include "critical_cohort.h"
 #include "critical_cohort_route_cost.h"
 #include "routed_placement.h"
@@ -2162,6 +2163,41 @@ bool Arch::analogue_repair()
         signoff_table();
         bitstream_configured = false;
         analogue_cache_valid = false;
+    }
+    if (result && !post_route_lut_branch_plan.empty()) {
+        if (expired()) {
+            log_info("Compound LUT/branch proposal: runtime budget exhausted before stage; no proposal evaluated.\n");
+        } else {
+            std::string error;
+            const auto plan = json11::Json::parse(post_route_lut_branch_plan, error);
+            NPNR_ASSERT(error.empty());
+            const auto receipt = lut_branch_detail::run(ctx, plan, expired);
+            post_route_lut_branch_receipt = receipt.dump();
+            if (receipt["accepted"].bool_value()) {
+                auto parent = receipt["parent"];
+                if (!post_route_lut_move_receipt.empty()) {
+                    const auto prior = json11::Json::parse(post_route_lut_move_receipt, error);
+                    NPNR_ASSERT(error.empty());
+                    check_post_route_lut_moves(prior, receipt["parent"]);
+                    parent = prior["parent"];
+                }
+                json11::Json::array moves;
+                for (const auto &entry : parent["placement"].object_items()) {
+                    const auto now = receipt["target"]["placement"][entry.first];
+                    if (entry.second != now)
+                        moves.push_back(json11::Json::object{{"cell",entry.first},{"from_bel",entry.second[0]},
+                            {"to_bel",now[0]},{"strength",entry.second[1]}});
+                }
+                const auto combined = json11::Json::object{{"version",1},{"parent",parent},
+                    {"target",receipt["target"]},{"moves",moves}};
+                check_post_route_lut_moves(combined,routed_placement_snapshot(ctx));
+                post_route_lut_move_receipt=json11::Json(combined).dump();
+            }
+            // The normal final bitstream analysis still performs strict signoff.
+            ctx->timing_result_is_final_analogue=false;
+            bitstream_configured=false;
+            analogue_cache_valid=false;
+        }
     }
     return result;
 }

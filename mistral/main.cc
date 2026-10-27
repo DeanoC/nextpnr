@@ -36,6 +36,7 @@
 #include "lut_pair_placement.h"
 #include "critical_cohort_model.h"
 #include "routed_placement.h"
+#include "analogue_lut_branch.h"
 #include <filesystem>
 
 USING_NEXTPNR_NAMESPACE
@@ -94,6 +95,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
     specific.add_options()("routed-placement-record", po::value<std::string>(),
                            "record native placement and final routed timing in a new directory (opt-in)");
+    specific.add_options()("post-route-lut-branch-plan", po::value<std::string>(),
+                           "trial a declared LUT move plus bounded branch repairs on its exact fresh parent (opt-in)");
     specific.add_options()("post-route-lut-moves", po::value<int>(),
                            "trial ordinary LUT relocations with full analogue endpoint guards (0..16, default 0)");
     specific.add_options()("post-route-private-lut-pins", po::value<int>(),
@@ -373,6 +376,22 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     }
     const bool propose_placement = vm.count("routed-placement-propose") != 0;
     const bool check_placement = vm.count("routed-placement-check-plan") != 0;
+    ctx->post_route_lut_branch_plan.clear();
+    ctx->post_route_lut_branch_receipt.clear();
+    if (vm.count("post-route-lut-branch-plan")) {
+        if (!vm.count("routed-placement-record") || vm.count("no-route") || propose_placement || check_placement ||
+            vm.count("routed-placement-plan") || vm.count("routed-placement-group-moves") ||
+            vm.count("routed-placement-preserve-routes") || vm.count("routed-placement-preserve-branches"))
+            log_error("Compound LUT branch plans require a fresh full recorded route without placement plans or preserved-route modes.\n");
+        auto in = open_ifstream_and_log_error(vm["post-route-lut-branch-plan"].as<std::string>(), "compound LUT branch plan");
+        ctx->post_route_lut_branch_plan.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        std::string error;
+        const auto plan = json11::Json::parse(ctx->post_route_lut_branch_plan, error);
+        if (!error.empty() || !plan.is_object())
+            log_error("Invalid compound LUT branch JSON document.\n");
+        check_plan_keys(ctx->post_route_lut_branch_plan, "compound LUT branch");
+        lut_branch_detail::validate_plan(plan);
+    }
     ctx->post_route_lut_moves = 0;
     ctx->post_route_lut_move_receipt.clear();
     if (vm.count("post-route-lut-moves")) {

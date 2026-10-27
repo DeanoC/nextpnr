@@ -662,6 +662,8 @@ struct Arch : BaseArch<ArchRanges>
     const pool<PipId> *analogue_cell_pip_allowlist = nullptr;
     int post_route_sole_lut_pins = 0; // Independent L5 trials only in otherwise empty ALMs.
     std::string post_route_lut_move_receipt; // Native parent/target witness, never imported.
+    std::string post_route_lut_branch_plan; // Explicit fresh full-flow input; never inherited.
+    std::string post_route_lut_branch_receipt; // Measured compound result; never imported.
     bool routed_placement_preserve_routes = false;
     // Capture complete final route/calibration state without preserving input routes.
     bool routed_placement_record_calibration = false;

@@ -1,5 +1,6 @@
 set(SOURCES
     analogue.cc
+    analogue_lut_branch.h
     analogue_routing.h
     analogue_lut_pins.h
     arch.cc

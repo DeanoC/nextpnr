@@ -870,6 +870,13 @@ void finish_routed_placement(Context *ctx, bool timing_pass)
                             {"analysis_complete", endpoints["analysis_complete"]}, {"timing_pass", timing_pass},
                             {"graph_matches", graph_match}, {"coverage_complete", endpoints["complete"]},
                             {"process_complete", false}};
+    if (!ctx->post_route_lut_branch_receipt.empty()) {
+        const auto receipt = parse(ctx->post_route_lut_branch_receipt);
+        if (receipt["target"] != after)
+            log_error("Compound LUT branch result does not match the final native identity.\n");
+        write(ctx, "post-route-lut-branch.json", receipt);
+        status["post_route_lut_branch_accepted"] = receipt["accepted"];
+    }
     if (!ctx->post_route_lut_move_receipt.empty()) {
         const auto receipt = parse(ctx->post_route_lut_move_receipt);
         check_post_route_lut_moves(receipt, after);
