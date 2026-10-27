@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Fresh CPU-reference routes: recorder/empty-plan neutrality and strict feedback.
 
-An optional untouched compiler also checks byte equivalence against the parent.
+An optional untouched compiler checks identical RBF/timing and routed-data
+bytes. Each JSON creator must match its actual producing compiler's version.
 The CPU reference runs the same GPU algorithm without leasing a device.
 """
 import argparse
@@ -51,6 +52,27 @@ endmodule
         assert result.returncode in codes, f"{label} exited {result.returncode}: see {root / (label + '.log')}"
         return result.returncode
 
+    producers = {}
+    for label, binary in (("candidate", args.nextpnr), ("untouched", args.baseline)):
+        if binary is None or str(binary.resolve()) in producers:
+            continue
+        run([str(binary.resolve()), "--version"], label + "-version")
+        banner = (root / (label + "-version.log")).read_text().strip()
+        prefix, separator, creator = banner.partition(" -- ")
+        assert prefix and separator and creator.startswith("Next Generation Place and Route (Version ")
+        assert creator.endswith(")") and "\n" not in creator
+        producers[str(binary.resolve())] = dict(sha256=feedback.digest(binary), creator=creator)
+
+    def routed_data(directory, binary):
+        # Keep the raw file and creator intact. Bind that one metadata field
+        # to the actual executable, then compare every remaining raw byte.
+        text = (directory / "routed.json").read_text()
+        creator = producers[str(binary.resolve())]["creator"]
+        assert json.loads(text)["creator"] == creator
+        lines = text.splitlines(keepends=True)
+        assert lines[1] == '  "creator": ' + json.dumps(creator) + ',\n'
+        return ''.join(lines[:1] + lines[2:])
+
     # Paths inside the Yosys command are quoted for its own parser.
     run([str(args.yosys.resolve()), "-p", f'read_verilog "{root / "top.v"}"; synth_intel_alm -top top; '
          f'write_json "{root / "synth.json"}"'], "synth")
@@ -75,6 +97,7 @@ endmodule
         if routes:
             command += ["--routed-placement-routes", str(routes)]
         code = run(command, label, codes=(1,) if tight else (0,))
+        assert feedback.digest(binary) == producers[str(binary.resolve())]["sha256"]
         feedback.save(directory / "result.json", dict(exit_code=code, sha256={
             str(p.relative_to(directory)): feedback.digest(p) for p in directory.rglob("*") if p.is_file()}))
         return directory
@@ -87,13 +110,23 @@ endmodule
                              predicted=dict(before_ps=0, after_ps=0)))
     controls.append(route(args.nextpnr, "empty-plan", record=True, plan=plan))
     feedback.read_observation(controls[-1], 0)
-    if args.baseline:
-        controls.append(route(args.baseline, "untouched"))
     identical = {}
     for name in ("routed.json", "timing.json", "core.rbf"):
         hashes = {directory.name: feedback.digest(directory / name) for directory in controls}
         assert len(set(hashes.values())) == 1, f"{name} changed: {hashes}"
         identical[name] = hashes
+    for directory in controls:
+        routed_data(directory, args.nextpnr)
+    untouched = None
+    if args.baseline:
+        reference = route(args.baseline, "untouched")
+        for name in ("timing.json", "core.rbf"):
+            assert feedback.digest(reference / name) == identical[name][controls[0].name], name
+        assert routed_data(reference, args.baseline) == routed_data(controls[0], args.nextpnr)
+        untouched = dict(RBF_and_timing_bytes_exact=True, all_other_routed_JSON_bytes_exact=True,
+                         creator_verified_against_each_actual_compiler=True,
+                         routed_JSON_byte_exact=feedback.digest(reference / "routed.json") ==
+                                                feedback.digest(controls[0] / "routed.json"))
 
     # Reconstruct fresh placement and native preparation before importing data
     # trees. Identity replay must retain every captured tree and physical bytes.
@@ -233,7 +266,10 @@ endmodule
     assert any(feedback.load(p)["current"] == second["parent"] for p in first_round)
     gain = dict(original_score_ps=feedback.score(original), retained_score_ps=feedback.score(improved),
                 decision=feedback.load(root / "improvement/decision.json"), round_two_parent_matches=True)
+    for path, identity in producers.items():
+        assert feedback.digest(Path(path)) == identity["sha256"]
     feedback.save(root / "checks.json", dict(commands=commands, identical_sha256=identical,
+        producer_identities=producers, untouched_comparison=untouched,
         handoff_identity=handed_checks,
         group_identity=group_checks,
         preservation_identity=dict(preserved_count=len(preservation["preserved"]),
@@ -243,7 +279,8 @@ endmodule
         baseline_coverage_complete=True, decisions=decision, measured_improvement=gain,
         nextpnr_sha256=feedback.digest(args.nextpnr),
         untouched_sha256=feedback.digest(args.baseline) if args.baseline else None))
-    print(json.dumps(dict(identical_artifacts=list(identical), decision=decision, measured_improvement=gain), indent=2))
+    print(json.dumps(dict(identical_artifacts=list(identical), untouched_comparison=untouched,
+                          decision=decision, measured_improvement=gain), indent=2))
 
 
 if __name__ == "__main__":
