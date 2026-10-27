@@ -1285,9 +1285,9 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
                 const auto bi = int8_t(bel_data(driver.cell->bel).block_index);
                 const CycloneV::pnode_coords source{CycloneV::GPIO,position,CycloneV::DATAIN,bi,3};
                 const bool rising = cyclonev->gpio_timing_build_input_wave(source,src_ri,temp,CycloneV::DELAY_MAX,
-                        inverted ? CycloneV::RF_FALL : CycloneV::RF_RISE,est,input_wave[0]);
+                        inverted ? mistral::CycloneV::RF_FALL : mistral::CycloneV::RF_RISE,est,input_wave[0]);
                 const bool falling = cyclonev->gpio_timing_build_input_wave(source,src_ri,temp,CycloneV::DELAY_MAX,
-                        inverted ? CycloneV::RF_RISE : CycloneV::RF_FALL,est,input_wave[1]);
+                        inverted ? mistral::CycloneV::RF_RISE : mistral::CycloneV::RF_FALL,est,input_wave[1]);
                 if (!rising || !falling)
                     return unavailable();
 #else
@@ -1315,6 +1315,7 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
             cyclonev->rnode_timing_build_circuit(src_ri, temp, CycloneV::DELAY_MAX, actual_edge, sim, input, outputs);
             if (strict_gpio && input < 0)
                 return unavailable();
+
             sim.set_input_wave(input, input_wave[edge]);
             auto o = std::find_if(
                     outputs.begin(), outputs.end(),
