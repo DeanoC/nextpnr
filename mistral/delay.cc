@@ -25,6 +25,11 @@
 
 NEXTPNR_NAMESPACE_BEGIN
 
+bool Arch::useRoutedDelayRanges() const
+{
+    return bool_or_default(getCtx()->settings,getCtx()->id("mistral/routed_delay_ranges"),false);
+}
+
 namespace {
 
 constexpr delay_t block_input_table_delay = 175;

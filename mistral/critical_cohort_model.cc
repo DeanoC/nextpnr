@@ -93,7 +93,8 @@ J identity(Context *ctx)
         }
     for (const auto &entry : ctx->settings) {
         const auto key = entry.first.str(ctx);
-        if (key == "target_freq" || key.find("timing/") == 0 || key.find("sdc/") == 0)
+        if (key == "target_freq" || key.find("timing/") == 0 || key.find("sdc/") == 0 ||
+            key == "mistral/routed_delay_ranges")
             settings[key] = entry.second.to_string();
     }
     return J::object{{"device", ctx->getChipName()},
@@ -172,8 +173,11 @@ Prediction predict(Context *ctx, NetInfo *net, PortRef sink)
 }
 DelayPair measured(Context *ctx, NetInfo *net, PortRef sink)
 {
-    return ctx->settings.count(ctx->id("timing/io_delays")) ? ctx->getNetinfoRouteDelayQuad(net, sink).delayPair()
-                                                            : DelayPair(ctx->getNetinfoRouteDelay(net, sink));
+    // Eligible calibration arcs exclude clock ports. Preserve the same data
+    // route intervals as native STA, including range mode without IO delays.
+    const bool ranges = ctx->settings.count(ctx->id("timing/io_delays")) || ctx->useRoutedDelayRanges();
+    return ranges ? ctx->getNetinfoRouteDelayQuad(net, sink).delayPair()
+                  : DelayPair(ctx->getNetinfoRouteDelay(net, sink));
 }
 DelayPair read_pair(const J &value)
 {

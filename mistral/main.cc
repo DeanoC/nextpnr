@@ -96,6 +96,8 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "opt in to guarded native-cut FF timing references for the slow100 model");
     specific.add_options()("mistral-gpio-core-reference",
                            "opt in to guarded native-cut SDR GPIO timing references for the slow100 model");
+    specific.add_options()("mistral-routed-delay-ranges",
+                           "retain early/late routed delays for internal data and clocks without external IO constraints");
     specific.add_options()("isolated-lut-placement",
                            "score the earlier L5 LUT inputs on their isolated legal pins during placement (opt-in)");
     specific.add_options()("arrival-pin-assignment",
@@ -164,6 +166,8 @@ std::set<std::string> MistralCommandHandler::getArchSettingKeys() const
         keys.insert("mistral/ff_core_reference");
     if (vm.count("mistral-gpio-core-reference"))
         keys.insert("mistral/gpio_core_reference");
+    if (vm.count("mistral-routed-delay-ranges"))
+        keys.insert("mistral/routed_delay_ranges");
     if (vm.count("mistral-ff4"))
         keys.insert("mistral/ff4");
     if (vm.count("mistral-clkb"))
@@ -270,6 +274,7 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
     lab_model("mistral/ff_reset_reference", "mistral-ff-reset-reference");
     lab_model("mistral/ff_core_reference", "mistral-ff-core-reference");
     lab_model("mistral/gpio_core_reference", "mistral-gpio-core-reference");
+    lab_model("mistral/routed_delay_ranges", "mistral-routed-delay-ranges");
     ctx->lab_ff4 = lab_model("mistral/ff4", "mistral-ff4");
     lab_model("mistral/clkb", "mistral-clkb");
     // Preload request bytes before packing or placement; saved settings cannot enable it.
