@@ -1,0 +1,29 @@
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEBA6U23I7
+set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+set_global_assignment -name SEED 1
+set_global_assignment -name SYSTEMVERILOG_FILE top.sv
+set_global_assignment -name SDC_FILE clocks.sdc
+set_global_assignment -name REMOVE_DUPLICATE_REGISTERS OFF
+set_location_assignment PIN_V11 -to clk
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to clk
+set_instance_assignment -name VIRTUAL_PIN ON -to "din[*]"
+set_instance_assignment -name VIRTUAL_PIN ON -to "probes[*]"
+set_location_assignment LABCELL_X29_Y77_N0 -to target_0
+set_location_assignment LABCELL_X29_Y77_N6 -to target_1
+set_location_assignment LABCELL_X29_Y77_N12 -to target_2
+set_location_assignment LABCELL_X29_Y77_N18 -to target_3
+set_location_assignment LABCELL_X29_Y77_N24 -to target_4
+set_location_assignment LABCELL_X29_Y77_N30 -to target_5
+set_location_assignment LABCELL_X29_Y77_N36 -to target_6
+set_location_assignment LABCELL_X29_Y77_N42 -to target_7
+set_location_assignment LABCELL_X29_Y77_N48 -to target_8
+set_location_assignment LABCELL_X29_Y77_N54 -to target_9
+set_location_assignment FF_X30_Y77_N1 -to launch_0
+set_location_assignment FF_X30_Y77_N2 -to launch_1
+set_location_assignment FF_X30_Y77_N4 -to launch_2
+set_location_assignment FF_X30_Y77_N5 -to launch_3
+set_location_assignment FF_X30_Y77_N7 -to launch_4
+set_location_assignment FF_X30_Y77_N8 -to launch_5

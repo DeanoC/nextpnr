@@ -217,6 +217,16 @@ if (BUILD_TESTS)
                 $<TARGET_FILE:nextpnr-${family}>)
     add_test(NAME nextpnr-${family}-gpio-core-parser
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/gpio-core/test_reference.py)
+    add_executable(nextpnr-${family}-lut-carry-decode ${MISTRAL_ROOT}/mistral-cv/main.cc)
+    target_include_directories(nextpnr-${family}-lut-carry-decode PRIVATE
+        ${MISTRAL_ROOT}/libmistral ${CMAKE_CURRENT_BINARY_DIR}/tools
+        ${CMAKE_CURRENT_BINARY_DIR}/libmistral ${LIBLZMA_INCLUDE_DIRS})
+    target_link_libraries(nextpnr-${family}-lut-carry-decode PRIVATE mistral ${LIBLZMA_LIBRARIES})
+    add_test(NAME nextpnr-${family}-lut-carry-reference
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut-carry/reference.py
+                --decoder $<TARGET_FILE:nextpnr-${family}-lut-carry-decode>)
+    add_test(NAME nextpnr-${family}-lut-carry-parser
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/lut-carry/test_reference.py)
     add_executable(nextpnr-${family}-gpio-core-config tests/gpio-core/config.cc)
     target_include_directories(nextpnr-${family}-gpio-core-config PRIVATE
         ${MISTRAL_ROOT}/libmistral ${CMAKE_CURRENT_BINARY_DIR}/tools
