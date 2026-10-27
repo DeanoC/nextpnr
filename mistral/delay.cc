@@ -1315,7 +1315,6 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
             cyclonev->rnode_timing_build_circuit(src_ri, temp, CycloneV::DELAY_MAX, actual_edge, sim, input, outputs);
             if (strict_gpio && input < 0)
                 return unavailable();
-
             sim.set_input_wave(input, input_wave[edge]);
             auto o = std::find_if(
                     outputs.begin(), outputs.end(),

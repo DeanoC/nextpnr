@@ -1231,7 +1231,6 @@ TEST_F(IoDelayTest, ClockEdgeRangesRequireFullRouteRanges)
 {
     ctx->settings[ctx->id("mistral/clock_edge_ranges")] = true;
     EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
-
 }
 
 TEST_F(IoDelayTest, RoutedRangesAffectSkewAwareClockRoutes)
