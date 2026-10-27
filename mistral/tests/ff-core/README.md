@@ -51,9 +51,9 @@ delay from the data/control CELL delay, retaining the report's intrinsic
 adjustment. These primitive pin observations alone do not establish
 equivalence to native virtual endpoints or timing-model bounds for every
 configuration. For the #305 primitive-pin archive, the timing engine, default
-models and source locks remain unchanged. The archive alone neither changes a
-timing model nor qualifies a native boundary. No native corner, reset
-pulse/MTBF, IO, board or hardware acceptance follows from this reference.
+models and source locks remain unchanged. That archive alone does not qualify
+a native boundary. No native corner, reset pulse/MTBF, IO, board or hardware
+acceptance follows from this reference.
 
 Run the host regressions with the built configuration reader:
 
