@@ -47,11 +47,11 @@ def columns(text):
     return result
 
 
-def parse_report(text, spec, role, analysis, edge, corner):
+def parse_report(text, spec, role, analysis, edge, corner, *, native_cuts=False):
     assert corner in CORNERS and role in spec['report_roles']
     assert analysis in (('recovery', 'removal') if role == 'ACLR' else ('setup', 'hold'))
     assert edge in (('rise',) if role == 'ACLR' else ('rise', 'fall'))
-    expected = {site['cell']: site for site in spec['sites']}
+    expected = {site['cell']: site for site in spec['sites'] if role in site.get('report_roles', spec['report_roles'])}
     seen, result = set(), []
     for block in re.split(r'\nPath #\d+:', text)[1:]:
         def field(name):
@@ -108,7 +108,7 @@ def parse_report(text, spec, role, analysis, edge, corner):
             data_pins = [r for r in ar if r[3] == 'IC' and r[6] in tuple(cell + '|' + p for p in pins)]
             assert len(data_pins) == 1 and data_pins[0][5] == physical
             dp = data_pins[0]
-            if role == 'sclear' or (role == 'din' and dp[6].endswith('|asdata')):
+            if role == 'sclear' or (role == 'din' and dp[6].endswith('|asdata')) or (native_cuts and role != 'din'):
                 # The final fitted input mux is upstream of the FF pin. Its
                 # index is the physical GOUT input, not the LAB_INPUT index
                 # after the configurable control selector.
@@ -118,7 +118,7 @@ def parse_report(text, spec, role, analysis, edge, corner):
                 assert anchors, (cell, role, 'missing fitted input mux')
                 anchor, match = anchors[-1]
                 mux = int(match[1])
-                if role == 'sclear':
+                if role != 'din':
                     assert 80 <= mux < 84
                 else:
                     assert mux // 8 == site['alm'] and mux % 8 in ((0, 7) if site['ff_index']//2 == 0 else (6, 1))
@@ -136,6 +136,18 @@ def parse_report(text, spec, role, analysis, edge, corner):
             item.update(source=source, physical_pin=dp[6].split('|')[-1], pin_rf=dp[2],
                         clock_pin_rf=cp[2], data_cell_ns=data_delay, clock_cell_ns=clock_delay,
                         intrinsic_adjustment_ns=adjust, effective_pin_constraint_ns=round(constraint, 6))
+            if native_cuts:
+                clock_anchors = [r for r in rr if r[5].startswith(f'LAB_INPUT_X{x}_Y{y}_')]
+                assert len(clock_anchors) == 1
+                # Native combinational LUT timing ends at d. Bypass data and
+                # controls end after their physical input-mux buffer instead.
+                data_anchor = dp if role == 'din' and item['physical_pin'] == 'd' else anchor
+                data_local = float(dc[0]) - float(data_anchor[0])
+                clock_local = float(cc[0]) - float(clock_anchors[0][0])
+                effective = data_local - clock_local - adjust if setup else clock_local + adjust - data_local
+                item.update(native_data_anchor=data_anchor[5], native_clock_anchor=clock_anchors[0][5],
+                            native_data_local_ns=round(data_local, 6), native_clock_local_ns=round(clock_local, 6),
+                            effective_native_constraint_ns=round(effective, 6))
         slack_text = field('Slack')
         slack = re.fullmatch(r'(-?\d+(?:\.\d+)?)(?: \(VIOLATED\))?', slack_text)
         assert slack, slack_text
@@ -155,12 +167,12 @@ def keys(spec):
                     yield corner, role, analysis, edge
 
 
-def summarize_project(project, spec):
+def summarize_project(project, spec, *, native_cuts=False):
     rows, reports = [], {}
     for corner, role, analysis, edge in keys(spec):
         path = Path(project) / 'reports' / corner / f'{role}-{analysis}-{edge}.rpt'
         reports[str(path.relative_to(project))] = digest(path)
-        rows.extend(parse_report(path.read_text(encoding='latin1'), spec, role, analysis, edge, corner))
+        rows.extend(parse_report(path.read_text(encoding='latin1'), spec, role, analysis, edge, corner, native_cuts=native_cuts))
     return dict(observations=rows, reports_sha256=reports)
 
 
@@ -197,7 +209,7 @@ def check_config(reader, rbf, spec, observations):
             half = int(ff)//2
             assert expected_mux == 8*int(alm) + ({'E': 0, 'F': 7} if half == 0 else {'E': 6, 'F': 1})[mode['TEF_SEL' if half == 0 else 'BEF_SEL']]
         disabled = mode['SCLR_DIS'] == '1' or mode['TSCLR_DIS' if int(ff)//2 == 0 else 'BSCLR_DIS'] == '1'
-        if 'sclear' in spec['report_roles']:
+        if 'sclear' in site.get('report_roles', spec['report_roles']):
             assert not disabled
             assert int(mode['SCLR_INV']) == int(site['clear_inverted'])
             muxes = {r['input_mux_index'] for r in observations if r['cell'] == site['cell'] and r['role'] == 'sclear'}
@@ -223,7 +235,8 @@ def validate_cached(root, reference, config_reader=None):
         assert digest(source / 'fixture.json.gz') == case['fixture_sha256']
         assert digest(source / 'fitted.rbf.gz') == case['rbf_gzip_sha256']
         spec = fixture(root, name)
-        expected = {(c, r, a, e, s['cell']) for c, r, a, e in keys(spec) for s in spec['sites']}
+        expected = {(c, r, a, e, s['cell']) for c, r, a, e in keys(spec) for s in spec['sites']
+                    if r in s.get('report_roles', spec['report_roles'])}
         observations = reference['cases'][name]['observations']
         actual = {(r['corner'], r['role'], r['analysis'], r['edge'], r['cell']) for r in observations}
         assert len(observations) == len(actual) and actual == expected, name

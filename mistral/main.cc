@@ -92,6 +92,8 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("compress-rbf", "generate compressed bitstream");
     specific.add_options()("mistral-ff-reset-reference",
                            "opt in to the bounded FF reset recovery reference; retains historical hold floor");
+    specific.add_options()("mistral-ff-core-reference",
+                           "opt in to guarded native-cut FF timing references for the slow100 model");
     specific.add_options()("isolated-lut-placement",
                            "score the earlier L5 LUT inputs on their isolated legal pins during placement (opt-in)");
     specific.add_options()("arrival-pin-assignment",
@@ -156,6 +158,8 @@ std::set<std::string> MistralCommandHandler::getArchSettingKeys() const
         keys.insert("mistral/arrival_pin_assignment");
     if (vm.count("mistral-ff-reset-reference"))
         keys.insert("mistral/ff_reset_reference");
+    if (vm.count("mistral-ff-core-reference"))
+        keys.insert("mistral/ff_core_reference");
     if (vm.count("mistral-ff4"))
         keys.insert("mistral/ff4");
     if (vm.count("mistral-clkb"))
@@ -260,6 +264,7 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         return requested;
     };
     lab_model("mistral/ff_reset_reference", "mistral-ff-reset-reference");
+    lab_model("mistral/ff_core_reference", "mistral-ff-core-reference");
     ctx->lab_ff4 = lab_model("mistral/ff4", "mistral-ff4");
     lab_model("mistral/clkb", "mistral-clkb");
     // Preload request bytes before packing or placement; saved settings cannot enable it.

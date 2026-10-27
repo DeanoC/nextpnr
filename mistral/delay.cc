@@ -719,6 +719,7 @@ TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port
             timing.hold = DelayPair{};
             timing.clockToQ = DelayQuad{731};
         }
+        ff_core_reference(cell, port, timing);
         return timing;
     } else if (cell->type == id_MISTRAL_MLAB) {
         timing.clock_port = id_CLK1;
@@ -1110,6 +1111,18 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         *lut_input_delay = DelayQuad(0);
     const bool terminal_lut = boolean_lut_input(sink.cell, sink.port) && !dst_wire.is_nextpnr_created() &&
                               dst_wire.node.t() == CycloneV::GOUT;
+    // SCLR has a physical GOUT pin, while ENA/ACLR and bypass data have
+    // virtual suffixes that already simulate this buffer. The reference FF
+    // constraint begins after it, so retain its delay on the routed net.
+    const bool terminal_ff = sink.cell->type == id_MISTRAL_FF && sink.port == id_SCLR &&
+                             !dst_wire.is_nextpnr_created() && dst_wire.node.t() == CycloneV::GOUT &&
+                             bool_or_default(getCtx()->settings, getCtx()->id("mistral/ff_core_reference"), false);
+    auto unavailable = [&]() {
+        if (terminal_ff)
+            log_error("FF core reference requires a complete SCLR input-buffer observation for '%s'.\n",
+                      sink.cell->name.c_str(getCtx()));
+        return false;
+    };
 
     bool inverted = false;
     mistral::AnalogSim::wave input_wave[2], output_wave[2];
@@ -1144,8 +1157,10 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         pips.push_back(pip);
         cursor = getPipSrcWire(pip);
     }
+    if (terminal_ff && cursor != src_wire)
+        return unavailable();
 
-    for (size_t i = 0; i < pips.size() + size_t(terminal_lut); ++i) {
+    for (size_t i = 0; i < pips.size() + size_t(terminal_lut || terminal_ff); ++i) {
         const bool terminal = i == pips.size();
         PipId pip = terminal ? PipId() : pips[pips.size() - 1 - i];
         auto src = terminal ? dst_wire : getPipSrcWire(pip);
@@ -1155,7 +1170,7 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         // not a load on the GPIO's fabric DATAIN routing node. Mistral has
         // no analogue model for that tap; retain the estimated arc instead.
         if (!terminal && pll_ref_select.count(pip))
-            return false;
+            return unavailable();
 
         // An unfinished hop is not a zero-delay observation. Retain completed
         // prefixes even when a later hop cannot be simulated.
@@ -1204,7 +1219,7 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
                                                     inverted ? mistral::CycloneV::RF_RISE : mistral::CycloneV::RF_FALL,
                                                     est, input_wave[1]);
             if (input_wave[mistral::CycloneV::RF_RISE].empty() || input_wave[mistral::CycloneV::RF_FALL].empty())
-                return false;
+                return unavailable();
         }
 
         for (int edge = 0; edge != 2; edge++) {
@@ -1225,11 +1240,15 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
             output_wave[edge].clear();
             sim.set_output_wave(o->second, output_wave[edge], output_delays[edge]);
             sim.run();
+            if (terminal_ff && (output_wave[edge].empty() || !std::isfinite(output_delays[edge].mi) ||
+                                !std::isfinite(output_delays[edge].mx) ||
+                                output_delays[edge].mi > output_delays[edge].mx))
+                return unavailable();
             cyclonev->rnode_timing_trim_wave(temp, CycloneV::DELAY_MAX, output_wave[edge], input_wave[edge]);
 
             output_delay_sum[edge].mi += output_delays[edge].mi;
             output_delay_sum[edge].mx += output_delays[edge].mx;
-            if (terminal && lut_input_delay) {
+            if (terminal && terminal_lut && lut_input_delay) {
                 auto &d = edge ? lut_input_delay->fall : lut_input_delay->rise;
                 d = DelayPair(delay_t(output_delays[edge].mi * 1e12), delay_t(output_delays[edge].mx * 1e12));
             }
