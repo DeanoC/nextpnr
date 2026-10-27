@@ -13,6 +13,21 @@
 
 USING_NEXTPNR_NAMESPACE
 namespace {
+class CriticalCohortTestContext : public Context
+{
+  public:
+    using Context::Context;
+    dict<CellPortKey, DelayQuad> route_models;
+    bool getArcDelayOverride(const NetInfo *net, const PortRef &sink, DelayQuad &delay) const override
+    {
+        auto found = route_models.find(CellPortKey(sink));
+        if (found == route_models.end())
+            return Arch::getArcDelayOverride(net, sink, delay);
+        delay = found->second;
+        return true;
+    }
+};
+
 class CriticalCohort : public ::testing::Test
 {
   protected:
@@ -22,7 +37,7 @@ class CriticalCohort : public ::testing::Test
     {
         ArchArgs args;
         args.device = "5CSEBA6U23I7";
-        ctx = std::make_unique<Context>(args);
+        ctx = std::make_unique<CriticalCohortTestContext>(args);
         ctx->settings[ctx->id("target_freq")] = 1e8;
         ctx->createNet(ctx->id("$PACKER_GND_NET"));
         ctx->createNet(ctx->id("$PACKER_VCC_NET"));
@@ -1278,6 +1293,79 @@ TEST_F(CriticalCohort, MeasuredModelMatchesInsertedGraphAndRejectsMismatches)
         EXPECT_THROW(CriticalCohortRouteModel(ctx.get(), report), log_execution_error_exception);
     });
     ctx->check();
+}
+
+TEST_F(CriticalCohort, MeasuredModelPreservesRoutedRangesAndRejectsDifferentRangeMode)
+{
+    using J = json11::Json;
+    for (bool ranges : {false, true})
+        for (bool io : {false, true}) {
+            SCOPED_TRACE(::testing::Message() << "ranges=" << ranges << " io=" << io);
+            auto create = [&]() {
+                serial = 0;
+                SetUp();
+                if (ranges)
+                    ctx->settings[ctx->id("mistral/routed_delay_ranges")] = true;
+                if (io)
+                    ctx->settings[ctx->id("timing/io_delays")] = std::string("[]");
+                return timing_cone(clock("clk", 10000));
+            };
+            auto *logic = create();
+            const auto capture = (*logic->getPort(id_Q)->users.begin()).cell->name;
+            auto *net = logic->getPort(id_A);
+            net->driver.cell->pin_data[id_Q].bel_pins = {id_Q};
+            ctx->bindWire(ctx->getBelPinWire(net->driver.cell->bel, id_Q), net, STRENGTH_USER);
+            static_cast<CriticalCohortTestContext *>(ctx.get())->route_models[CellPortKey(logic->name, id_A)] =
+                    DelayQuad(1000, 4000);
+            for (uint32_t lab = 0; lab < ctx->labs.size(); ++lab)
+                for (uint8_t alm = 0; alm < 10; ++alm)
+                    ctx->reassign_alm_inputs(lab, alm);
+            TimingAnalyser actual(ctx.get());
+            actual.with_clock_skew = false;
+            actual.setup(false, false, true);
+            std::vector<EndpointClockPairTiming> expected;
+            ASSERT_TRUE(actual.get_endpoint_clock_pair_timings({capture, id_DATAIN}, expected));
+            ctx->timing_result = actual.get_timing_result();
+            ctx->timing_result_is_final_analogue = true;
+            std::ostringstream out;
+            write_critical_cohort_route_model(ctx.get(), out);
+            const auto report = out.str();
+            std::string error;
+            auto document = J::parse(report, error);
+            ASSERT_TRUE(error.empty());
+            bool found = false;
+            for (const auto &row : document["cohort_route_model"]["arcs"].array_items())
+                if (row["sink"] == J(logic->name.str(ctx.get())) && row["port"] == J("A")) {
+                    EXPECT_EQ(row["wire"], J(J::array{(ranges || io) ? 1000 : 4000, 4000}));
+                    found = true;
+                }
+            ASSERT_TRUE(found);
+            create();
+            critical_cohort_pin_preview(ctx.get(), [&]() {
+                CriticalCohortRouteModel model(ctx.get(), report);
+                ASSERT_TRUE(model.active());
+                TimingAnalyser calibrated(ctx.get());
+                calibrated.with_clock_skew = false;
+                critical_cohort_setup_timing(ctx.get(), calibrated);
+                model.apply(ctx.get(), calibrated);
+                std::vector<EndpointClockPairTiming> got;
+                ASSERT_TRUE(calibrated.get_endpoint_clock_pair_timings({capture, id_DATAIN}, got));
+                ASSERT_EQ(got.size(), expected.size());
+                for (size_t i = 0; i < got.size(); ++i) {
+                    EXPECT_EQ(got[i].min_path_delay, expected[i].min_path_delay);
+                    EXPECT_EQ(got[i].max_path_delay, expected[i].max_path_delay);
+                    EXPECT_EQ(got[i].setup_margin, expected[i].setup_margin);
+                    EXPECT_EQ(got[i].hold_margin, expected[i].hold_margin);
+                }
+                // The graph, clocks and placement still match: only the route
+                // interval setting changes, and must invalidate calibration.
+                if (ranges)
+                    ctx->settings.erase(ctx->id("mistral/routed_delay_ranges"));
+                else
+                    ctx->settings[ctx->id("mistral/routed_delay_ranges")] = true;
+                EXPECT_THROW(CriticalCohortRouteModel(ctx.get(), report), log_execution_error_exception);
+            });
+        }
 }
 
 TEST_F(CriticalCohort, CalibratedRepairPacksACriticalRegisterWithItsDriver)

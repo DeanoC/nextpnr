@@ -143,6 +143,9 @@ template <typename R> struct ArchAPI : BaseCtx
     virtual delay_t estimateDelay(WireId src, WireId dst) const = 0;
     virtual BoundingBox getRouteBoundingBox(WireId src, WireId dst) const = 0;
     virtual bool getArcDelayOverride(const NetInfo *net_info, const PortRef &sink, DelayQuad &delay) const = 0;
+    // Preserve supplied early/late route bounds independently of external IO
+    // constraints. Backends opt in only when their caller requests this model.
+    virtual bool useRoutedDelayRanges() const { return false; }
     // Decal methods
     virtual typename R::DecalGfxRangeT getDecalGraphics(DecalId decal) const = 0;
     virtual DecalXY getBelDecal(BelId bel) const = 0;

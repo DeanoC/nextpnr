@@ -101,7 +101,8 @@ J identity(Context *ctx)
         }
     for (const auto &entry : ctx->settings) {
         const auto key = entry.first.str(ctx);
-        if (key == "target_freq" || key.find("timing/") == 0 || key.find("sdc/") == 0)
+        if (key == "target_freq" || key.find("timing/") == 0 || key.find("sdc/") == 0 ||
+            key == "mistral/routed_delay_ranges")
             settings[key] = entry.second.to_string();
     }
     return J::object{{"device", ctx->getChipName()},
@@ -222,8 +223,11 @@ const PortRef &native_sink(NetInfo *net, const PortRef &sink)
 DelayPair measured(Context *ctx, NetInfo *net, const PortRef &sink)
 {
     const auto &user = native_sink(net, sink);
-    return ctx->settings.count(ctx->id("timing/io_delays")) ? ctx->getNetinfoRouteDelayQuad(net, user).delayPair()
-                                                            : DelayPair(ctx->getNetinfoRouteDelay(net, user));
+    // Use the native user address and preserve the same data-route intervals
+    // as STA, including explicit range mode without IO delays.
+    const bool ranges = ctx->settings.count(ctx->id("timing/io_delays")) || ctx->useRoutedDelayRanges();
+    return ranges ? ctx->getNetinfoRouteDelayQuad(net, user).delayPair()
+                  : DelayPair(ctx->getNetinfoRouteDelay(net, user));
 }
 DelayPair read_pair(const J &value)
 {
