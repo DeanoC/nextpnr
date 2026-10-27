@@ -146,6 +146,8 @@ template <typename R> struct ArchAPI : BaseCtx
     // Preserve supplied early/late route bounds independently of external IO
     // constraints. Backends opt in only when their caller requests this model.
     virtual bool useRoutedDelayRanges() const { return false; }
+    // Keep rising/falling clock routing bounds separate at registered events.
+    virtual bool useClockEdgeRanges() const { return false; }
     // Decal methods
     virtual typename R::DecalGfxRangeT getDecalGraphics(DecalId decal) const = 0;
     virtual DecalXY getBelDecal(BelId bel) const = 0;
