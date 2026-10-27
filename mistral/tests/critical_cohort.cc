@@ -1274,3 +1274,44 @@ TEST_F(CriticalCohort, CalibratedRepairImprovesOneOfTwoTiedMemoryAddressInputs)
     });
     ctx->check();
 }
+
+TEST_F(CriticalCohort, MeasuredModelBindsLutReferenceModeAndData)
+{
+    using J = json11::Json;
+    auto create = [&](bool selected) {
+        serial=0;SetUp();
+        auto *logic=timing_cone(clock("clk",10000));
+        logic->params[id_LUT]=Property(6,4);
+        ctx->use_lut_core_reference=selected;
+        if(selected)ctx->settings[ctx->id("mistral/lut_core_reference")]=true;
+        return logic;
+    };
+    for(bool selected:{false,true}) {
+        create(selected);
+        for(uint32_t lab=0;lab<ctx->labs.size();++lab)
+            for(uint8_t alm=0;alm<10;++alm)ctx->reassign_alm_inputs(lab,alm);
+        TimingAnalyser timing(ctx.get());timing.setup(false,false,true);
+        ctx->timing_result=timing.get_timing_result();ctx->timing_result_is_final_analogue=true;
+        std::ostringstream out;write_critical_cohort_route_model(ctx.get(),out);
+        std::string error;auto report=J::parse(out.str(),error);ASSERT_TRUE(error.empty());
+        const auto &identity=report["cohort_route_model"]["identity"];
+        if(selected)EXPECT_EQ(identity["lut_core_reference"].string_value(),ctx->lut_core_reference_identity());
+        else EXPECT_FALSE(identity.object_items().count("lut_core_reference"));
+        create(selected);
+        critical_cohort_pin_preview(ctx.get(),[&]() {
+            EXPECT_NO_THROW({CriticalCohortRouteModel same(ctx.get(),out.str());EXPECT_TRUE(same.active());});
+            if(selected) {
+                auto document=report.object_items();
+                auto model=document.at("cohort_route_model").object_items();
+                auto bound=model.at("identity").object_items();
+                bound["lut_core_reference"]="different-reference-data";
+                model["identity"]=bound;document["cohort_route_model"]=model;
+                EXPECT_THROW(CriticalCohortRouteModel(ctx.get(),J(document).dump()),log_execution_error_exception);
+            }
+            ctx->use_lut_core_reference=!selected;
+            ctx->settings.erase(ctx->id("mistral/lut_core_reference"));
+            if(!selected)ctx->settings[ctx->id("mistral/lut_core_reference")]=true;
+            EXPECT_THROW(CriticalCohortRouteModel(ctx.get(),out.str()),log_execution_error_exception);
+        });
+    }
+}

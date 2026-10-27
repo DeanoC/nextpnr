@@ -3,7 +3,9 @@
 These Quartus Prime Lite 17.0.2 references cover the local combinational
 primitives on `5CSEBA6U23I7`. They supply the missing four-corner early/late
 observations needed before replacing the backend's fixed LUT/carry constants.
-They do not change a compiler timing model or qualify a board.
+The corpus itself changes no compiler timing model and does not qualify a
+board. A separate [experimental Boolean LUT profile](lut-core-model.md)
+uses its native slow-100-C intervals through an explicit opt-in.
 
 Eight fixed fits cover LAB and MLAB logic. Each block has a paired L5 case,
 separate top/bottom LUT6 cases, and a twenty-stage arithmetic carry chain.
@@ -43,10 +45,10 @@ paths.
 
 These are fitted reference observations, not general worst-case bounds for
 every LUT mask, input slew, output load, packing arrangement, cross-LAB
-carry bridge, speed grade or device. Native cell/route boundary integration,
-complete corner coverage of other primitives, clocks and IO, and physical
-board/hardware acceptance remain separate work. No timing exceptions or
-frequency changes are introduced.
+carry bridge, speed grade or device. Native cell/route boundary integration
+for carry and other primitives, complete corner coverage of other primitives,
+clocks and IO, and physical board/hardware acceptance remain separate work.
+No timing exceptions or frequency changes are introduced.
 
 Run the offline regressions:
 
