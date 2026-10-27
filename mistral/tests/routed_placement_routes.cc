@@ -139,12 +139,17 @@ class RoutedPlacementRoutes : public ::testing::Test
         auto routes = witness.object_items();
         auto record = routes["nets"]["data"].object_items();
         auto wires = record["wires"].array_items();
+        auto physical = record["physical"].object_items();
+        auto sinks = physical["sinks"].array_items();
         auto background = result["background"]["data"].array_items();
         for (auto pip : extra) {
-            wires.push_back(J::array{ctx->getWireName(ctx->getPipDstWire(pip)).str(ctx.get()),
-                                     ctx->getPipName(pip).str(ctx.get())});
+            auto sink = ctx->getWireName(ctx->getPipDstWire(pip)).str(ctx.get());
+            wires.push_back(J::array{sink, ctx->getPipName(pip).str(ctx.get())});
+            sinks.push_back(sink);
             background.push_back(ctx->getPipName(pip).str(ctx.get()));
         }
+        physical["sinks"] = sinks;
+        record["physical"] = physical;
         record["wires"] = wires;
         routes["nets"] = J::object{{"data", record}};
         result["routes"] = routes;
@@ -841,6 +846,17 @@ TEST_F(RoutedPlacementRoutes, StaleParentAndDuplicateWireAreRejectedBeforeBindin
     auto tree = witness["nets"]["data"].object_items();
     auto wires = tree["wires"].array_items();
     wires.push_back(wires.front());
+    tree["wires"] = wires;
+    EXPECT_THROW(apply_routed_placement_routes(ctx.get(), replace_tree(tree), parent), log_execution_error_exception);
+    EXPECT_TRUE(net->wires.empty());
+}
+
+TEST_F(RoutedPlacementRoutes, UndeclaredLeafIsRejectedBeforeBinding)
+{
+    auto tree = witness["nets"]["data"].object_items();
+    auto wires = tree["wires"].array_items();
+    PipId branch = ctx->add_pip(source, spare);
+    wires.push_back(J::array{ctx->getWireName(spare).str(ctx.get()), ctx->getPipName(branch).str(ctx.get())});
     tree["wires"] = wires;
     EXPECT_THROW(apply_routed_placement_routes(ctx.get(), replace_tree(tree), parent), log_execution_error_exception);
     EXPECT_TRUE(net->wires.empty());

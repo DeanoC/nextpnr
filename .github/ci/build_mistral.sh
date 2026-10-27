@@ -25,8 +25,8 @@ function run_tests {
     python3 common/route/tests/router2_profile.py
     ctest --test-dir build -R '^nextpnr-(command-settings|heap-control-set|reserved-route-slack|gpu-lease)-test$' --output-on-failure
     ctest --test-dir build -R '^nextpnr-mistral-(command-settings|gpu-lease|clock-edge-ranges|routed-delay-ranges)-cli$|^nextpnr-mistral-(ff|gpio)-core-(reference|native-reference|native-parser|reference-cli|parser)$' --output-on-failure
-    ctest --test-dir build -R '^nextpnr-mistral-routed-placement-(controller|refiner|cli)$' --output-on-failure
-    ./build/nextpnr-mistral-test --gtest_filter='LabPinmapTest.RoutedBufferCacheRefreshPreservesGraphAndRestoresNativeLegality:RoutedPlacement.PostRouteLutReceiptRejectsUndeclaredCellsClocksAndRegisters:RoutedPlacement.StalePlanCannotMoveTheFreshPlacement'
+    ctest --test-dir build -R '^nextpnr-mistral-routed-placement-(controller|refiner|cli|route)$' --output-on-failure
+    ./build/nextpnr-mistral-test --gtest_filter='LabPinmapTest.RoutedBufferCacheRefreshPreservesGraphAndRestoresNativeLegality:RoutedPlacement.PostRouteLutReceiptRejectsUndeclaredCellsClocksAndRegisters:RoutedPlacement.StalePlanCannotMoveTheFreshPlacement:RoutedPlacementRoutes.*'
     ./build/nextpnr-mistral-test --gtest_filter='HpsInterrupts.*:HpsClocksResets.*:HpsLwBridge.*:FfCoreTimingTest.*:LutInputDelayTest.FfSynchronousClearReference*:GpioCoreTimingTest.*:IoDelayTest.RoutedRangesDoNotDependOnExternalIoConstraints:IoDelayTest.RoutedRangesAffectSkewAwareClockRoutes:IoDelayTest.ClockEdgeRanges*:CriticalCohort.MeasuredModelPreservesRoutedRangesAndRejectsDifferentRangeMode'
     python3 mistral/tests/router2_profile.py --nextpnr build/nextpnr-mistral --output build/router2-profile
     python3 mistral/tests/router2_undriven.py --nextpnr build/nextpnr-mistral --output build/router2-undriven

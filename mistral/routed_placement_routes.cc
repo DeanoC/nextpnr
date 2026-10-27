@@ -147,11 +147,18 @@ Tree parse_tree(Context *ctx, const J &entry, std::set<WireId> &all_wires)
             cursor = next;
         }
     }
+    std::set<WireId> sinks;
     for (const auto &sink : physical["sinks"].array_items()) {
         require(sink.is_string(), "invalid physical sink");
         WireId wire = ctx->getWireByName(IdStringList::parse(ctx, sink.string_value()));
         require(result.wires.count(wire), "route omits a physical sink");
+        sinks.insert(wire);
     }
+    std::set<WireId> non_leaves;
+    for (const auto &binding : result.wires)
+        if (binding.second != PipId()) non_leaves.insert(ctx->getPipSrcWire(binding.second));
+    for (const auto &binding : result.wires)
+        if (!non_leaves.count(binding.first)) require(sinks.count(binding.first), "route has an undeclared leaf");
     for (const auto &entry : depth) result.ordered.emplace_back(entry.second, entry.first);
     std::sort(result.ordered.begin(), result.ordered.end());
     return result;
