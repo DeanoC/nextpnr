@@ -1,5 +1,7 @@
 set(SOURCES
     analogue.cc
+    analogue_routing.h
+    analogue_lut_pins.h
     arch.cc
     archdefs.cc
     archdefs.h
@@ -31,6 +33,11 @@ set(SOURCES
     critical_cohort.h
     critical_cohort_model.cc
     critical_cohort_model.h
+    critical_cohort_route_cost.cc
+    critical_cohort_route_cost.h
+    routed_placement.cc
+    routed_placement.h
+    routed_placement_routes.cc
     reduction_balance.cc
     placed_reduction.cc
     reduction_balance_plan.h
@@ -52,7 +59,7 @@ set(SOURCES
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
     TEST_SOURCES tests/gpu_backend_selection.cc tests/analogue_jobs.cc tests/critical_cohort.cc tests/analogue_budget.cc tests/analogue_improve.cc tests/bel_id.cc tests/completed_observations.cc tests/lab_pinmap.cc tests/lab_ff4.cc tests/device_model_lifetime.cc tests/fes_cram.cc tests/fes_boundary.cc tests/fes_narrow_pin.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/io_delay.cc tests/m10k_timing.cc tests/ff_reset_timing.cc tests/hps_interrupts.cc tests/hps_lw_bridge.cc
-    tests/parked_reviews.cc tests/lut_input_delay.cc
+    tests/parked_reviews.cc tests/lut_input_delay.cc tests/routed_placement.cc tests/routed_placement_routes.cc
     MAIN_SOURCE  main.cc
 )
 
@@ -65,6 +72,13 @@ if (BUILD_TESTS)
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/ff-reset/check_cli.py
                 $<TARGET_FILE:nextpnr-${family}>)
     find_program(MISTRAL_CHECKPOINT_YOSYS yosys)
+    add_test(NAME nextpnr-${family}-routed-placement-controller
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/routed_placement.py -v)
+    add_test(NAME nextpnr-${family}-routed-placement-refiner
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/routed_placement_refine.py -v)
+    add_test(NAME nextpnr-${family}-routed-placement-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/routed_placement_cli.py
+                $<TARGET_FILE:nextpnr-${family}> -v)
     add_test(NAME nextpnr-${family}-pip-rejection
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../common/route/tests/mistral_pip_rejection.py)
     add_test(NAME nextpnr-${family}-pad-clock
@@ -81,6 +95,10 @@ if (BUILD_TESTS)
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/critical_cohort_cli.py
                 $<TARGET_FILE:nextpnr-${family}> -v)
     if (MISTRAL_CHECKPOINT_YOSYS)
+        add_test(NAME nextpnr-${family}-routed-placement-route
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/routed_placement_route.py
+                    --nextpnr $<TARGET_FILE:nextpnr-${family}> --yosys ${MISTRAL_CHECKPOINT_YOSYS}
+                    --output-root ${CMAKE_CURRENT_BINARY_DIR}/tests/routed-placement)
         add_test(NAME nextpnr-${family}-place-region
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/place-region/check.py
                     --yosys ${MISTRAL_CHECKPOINT_YOSYS} $<TARGET_FILE:nextpnr-${family}>)

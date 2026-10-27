@@ -22,6 +22,8 @@
 #include "dsp.h"
 #include "pll_cell.h"
 #include "timing.h"
+#include "routed_placement.h"
+#include "critical_cohort_route_cost.h"
 #include "util.h"
 
 NEXTPNR_NAMESPACE_BEGIN
@@ -54,6 +56,11 @@ struct MistralBitgen
     MistralBitgen(Context *ctx) : ctx(ctx), cv(ctx->cyclonev.get()) {};
     Context *ctx;
     CycloneV *cv;
+    const pool<PipId> *preview_pips = nullptr;
+    bool connected(WireId source, WireId sink) const
+    {
+        return preview_pips ? preview_pips->count(PipId(source.node, sink.node)) : ctx->wires_connected(source, sink);
+    }
 
     using rnode_coords = CycloneV::rnode_coords;
     using pnode_coords = CycloneV::pnode_coords;
@@ -855,7 +862,7 @@ struct MistralBitgen
             write_dsp_block(dsp_pos.x(), dsp_pos.y());
     }
 
-    bool write_alm(uint32_t lab, uint8_t alm)
+    bool write_alm(uint32_t lab, uint8_t alm, bool data_only = false)
     {
         auto &alm_data = ctx->labs.at(lab).alms.at(alm);
         auto block_type = ctx->labs.at(lab).is_mlab ? CycloneV::MLAB : CycloneV::LAB;
@@ -908,7 +915,7 @@ struct MistralBitgen
         const std::array<CycloneV::port_type_t, 6> mux_port{CycloneV::FFT0, CycloneV::FFT1, CycloneV::FFT1L,
                                                             CycloneV::FFB0, CycloneV::FFB1, CycloneV::FFB1L};
         for (int i = 0; i < 6; i++) {
-            if (ctx->wires_connected(alm_data.comb_out[i / 3], ctx->get_port(block_type, pos.x(),
+            if (connected(alm_data.comb_out[i / 3], ctx->get_port(block_type, pos.x(),
                                                                              pos.y(), alm, mux_port[i])))
                 cv->bmux_m_set(block_type, pos, mux_settings[i], alm, CycloneV::NLUT);
         }
@@ -940,10 +947,11 @@ struct MistralBitgen
 
         for (int i = 0; i < 2; i++) {
             // EF selection mux
-            if (ctx->wires_connected(ctx->getBelPinWire(alm_data.lut_bels[i], i ? id_F0 : id_F1), alm_data.sel_ef[i]))
+            if (connected(ctx->getBelPinWire(alm_data.lut_bels[i], i ? id_F0 : id_F1), alm_data.sel_ef[i]))
                 cv->bmux_m_set(block_type, pos, ef_sel[i], alm, CycloneV::bmux_type_t::F);
         }
 
+        if (data_only) return true;
         for (int i = 0; i < 4; i++) {
             CellInfo *ff = ffs[i];
             if (!ff)
@@ -1119,6 +1127,22 @@ void Arch::configure_bitstream(bool observe)
     compute_analogue_arcs(observe);
 }
 
+void configure_critical_cohort_analogue(Context *ctx, const pool<PipId> &pips)
+{
+    MistralBitgen gen(ctx);
+    gen.preview_pips = &pips;
+    gen.cv->clear();
+    gen.options();
+    for (auto pip : pips) {
+        auto source = ctx->getPipSrcWire(pip), sink = ctx->getPipDstWire(pip);
+        if (!source.is_nextpnr_created() && !sink.is_nextpnr_created())
+            gen.cv->rnode_link(gen.cv->rc2ri(source.node), gen.cv->rc2ri(sink.node));
+    }
+    gen.write_cells();
+    for (uint32_t lab = 0; lab < ctx->labs.size(); ++lab)
+        for (uint8_t alm = 0; alm < 10; ++alm) gen.write_alm(lab, alm, true);
+}
+
 void Arch::build_bitstream()
 {
     configure_bitstream();
@@ -1131,8 +1155,15 @@ void Arch::build_bitstream()
     // {un,}bind{Bel, Pip} and friends, but we're not there yet.
     log_info("Running signoff timing analysis...\n");
 
-    timing_analysis(getCtx(), true, true, true, true, true);
+    if (!routed_placement_directory.empty())
+        routed_placement_errors_before_signoff = message_count_by_level[LogLevel::ERROR_MSG];
+    bool timing_pass = timing_analysis(getCtx(), true, true, true, true, true);
+    if (!routed_placement_directory.empty())
+        routed_placement_errors_after_signoff = message_count_by_level[LogLevel::ERROR_MSG];
     getCtx()->timing_result_is_final_analogue = true;
+
+    if (!routed_placement_directory.empty())
+        finish_routed_placement(getCtx(), timing_pass);
 
     if (const char *dump = getenv("NEXTPNR_MISTRAL_ARC_DUMP"))
         dump_analogue_arcs(dump);

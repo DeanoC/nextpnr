@@ -87,6 +87,17 @@ struct EndpointClockPairTiming
     EndpointClockPairTiming(ClockDomainKey launch, ClockDomainKey capture) : launch(launch), capture(capture) {}
 };
 
+// Optional observations from the existing primitive clock check. These are
+// collected from the check itself, never reconstructed from data-path Fmax.
+struct PrimitiveClockTiming
+{
+    CellPortKey endpoint;
+    IdString clock;
+    PrimitiveClockRequirement requirement;
+    DelayPair period, high, low, route;
+    double actual_period = 0, actual_high = 0, actual_low = 0;
+};
+
 struct TimingAnalyser
 {
   public:
@@ -167,6 +178,17 @@ struct TimingAnalyser
     // frame. Use a separate false-skew analyser for reference-free unrelated
     // extrema: true-skew backpointers can select a different launch register.
     bool get_endpoint_clock_pair_timings(CellPortKey endpoint, std::vector<EndpointClockPairTiming> &rows);
+    // Explicit diagnostic export of the native setup backpointers. This does
+    // not change endpoint coverage, timing classification or ordinary reports.
+    bool get_endpoint_setup_paths(CellPortKey endpoint, std::vector<CriticalPath> &paths);
+
+    bool observations_complete() const
+    {
+        return analysis_complete && !have_loops && !analysed_setup_only && !setup_only &&
+               with_clock_skew == analysed_clock_skew;
+    }
+    bool collect_primitive_clock_timings = false;
+    std::vector<PrimitiveClockTiming> primitive_clock_timings;
 
     // Enable analysis of clock skew between FFs.
     bool with_clock_skew = false;

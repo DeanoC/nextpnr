@@ -433,6 +433,8 @@ void TimingAnalyser::set_route_delay(CellPortKey port, DelayPair value) { ports.
 
 void TimingAnalyser::check_primitive_clocks()
 {
+    if (collect_primitive_clock_timings)
+        primitive_clock_timings.clear();
     // This validates the domain of the architecture's primitive model, even
     // with setup_only, disabled clock skew, false paths or asynchronous groups.
     // Run after routing updates, including callers supplying manual delays.
@@ -470,6 +472,10 @@ void TimingAnalyser::check_primitive_clocks()
                                      double(wave.low.minDelay()) - distortion};
             const delay_t required[] = {requirement.min_period, requirement.min_high, requirement.min_low};
             const char *names[] = {"period", "high pulse", "low pulse"};
+            if (collect_primitive_clock_timings)
+                primitive_clock_timings.push_back({CellPortKey(cell->name, requirement.clock_port), clock->name,
+                                                  requirement, wave.period, wave.high, wave.low, route,
+                                                  actual[0], actual[1], actual[2]});
             for (int i = 0; i != 3; ++i)
                 if (required[i] > 0 && actual[i] < double(required[i]))
                     log_error("Primitive clock '%s.%s' %s %.3f ns is outside its timing model (minimum %.3f ns).\n",
@@ -1275,6 +1281,26 @@ std::vector<CriticalPath> TimingAnalyser::get_report_setup_paths(int count)
         }
     }
     return paths;
+}
+
+bool TimingAnalyser::get_endpoint_setup_paths(CellPortKey endpoint, std::vector<CriticalPath> &paths)
+{
+    paths.clear();
+    std::vector<EndpointClockPairTiming> rows;
+    if (!get_endpoint_clock_pair_timings(endpoint, rows)) return false;
+    std::vector<CriticalPath> complete;
+    for (const auto &row : rows) {
+        if (!row.setup_timed) continue;
+        auto launch = domain_to_id.find(row.launch), capture = domain_to_id.find(row.capture);
+        if (launch == domain_to_id.end() || capture == domain_to_id.end()) return false;
+        auto pair = pair_to_id.find(ClockDomainPairKey(launch->second, capture->second));
+        if (pair == pair_to_id.end()) return false;
+        auto path = build_critical_path_report(pair->second, endpoint, true);
+        if (path.segments.empty()) return false;
+        complete.push_back(std::move(path));
+    }
+    paths.swap(complete);
+    return true;
 }
 
 bool TimingAnalyser::get_endpoint_clock_pair_timings(CellPortKey endpoint,

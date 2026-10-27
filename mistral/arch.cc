@@ -29,6 +29,7 @@
 #include "placer1.h"
 #include "placer_heap.h"
 #include "critical_cohort.h"
+#include "routed_placement.h"
 #include "lut_driver_copy.h"
 #include "lut_pair_placement.h"
 #include "router1.h"
@@ -1148,6 +1149,8 @@ bool Arch::place()
         lut_driver_copy_selection >= 0)
         log_error("Requested LUT driver copy candidate was not qualified; routing was not started.\n");
     repair_critical_cohorts(getCtx(), critical_cohort_budget);
+    if (!routed_placement_directory.empty())
+        prepare_routed_placement(getCtx());
     check_place_regions();
     getCtx()->attrs[id_step] = std::string("place");
     save_fes_pin_maps(false);
@@ -1160,6 +1163,9 @@ bool Arch::route()
     lab_pre_route();
 
     route_globals();
+
+    if (!routed_placement_routes.empty())
+        preserve_routed_placement_routes(getCtx());
 
     fes_check_boundary_connectivity();
 
@@ -1256,6 +1262,8 @@ bool Arch::route()
                      clock.second.achieved);
     }
     getCtx()->attrs[id_step] = std::string("route");
+    if (!routed_placement_directory.empty())
+        routed_placement_route_complete = result;
     save_fes_pin_maps();
     archInfoToAttributes();
     return result;

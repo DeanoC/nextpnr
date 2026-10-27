@@ -35,6 +35,8 @@
 #include "lut_driver_copy.h"
 #include "lut_pair_placement.h"
 #include "critical_cohort_model.h"
+#include "routed_placement.h"
+#include <filesystem>
 
 USING_NEXTPNR_NAMESPACE
 
@@ -75,6 +77,7 @@ class MistralCommandHandler : public CommandHandler
     void setupArchContext(Context *ctx) override {};
     void customBitstream(Context *ctx) override;
     void customAfterLoad(Context *ctx) override;
+    void customAfterRun(Context *ctx) override;
 
   protected:
     po::options_description getArchOptions() override;
@@ -89,6 +92,37 @@ po::options_description MistralCommandHandler::getArchOptions()
     specific.add_options()("device", po::value<std::string>(), "device name (e.g. 5CSEBA6U23I7)");
     specific.add_options()("qsf", po::value<std::string>(), "path to QSF constraints file");
     specific.add_options()("rbf", po::value<std::string>(), "RBF bitstream to write");
+    specific.add_options()("routed-placement-record", po::value<std::string>(),
+                           "record native placement and final routed timing in a new directory (opt-in)");
+    specific.add_options()("post-route-lut-moves", po::value<int>(),
+                           "trial ordinary LUT relocations with full analogue endpoint guards (0..16, default 0)");
+    specific.add_options()("post-route-private-lut-pins", po::value<int>(),
+                           "trial private L5 input swaps after existing refinements (0..16, default 0)");
+    specific.add_options()("post-route-net-trials", po::value<int>(),
+                           "trial one data net at a time with complete analogue guards (0..64, default 0)");
+    specific.add_options()("post-route-final-lut-pins", po::value<int>(),
+                           "trial LUT6 input swaps after all routed refinements (0..16, default 0)");
+    specific.add_options()("post-route-sole-lut-pins", po::value<int>(),
+                           "trial L5 input swaps in otherwise empty ALMs after prior refinements (0..16, default 0)");
+    specific.add_options()("post-route-lut-pairs", po::value<int>(),
+                           "trial FF-free connected L5 co-packing after prior refinements (0..16, default 0)");
+    specific.add_options()("post-route-lut-input-nets", po::value<int>(),
+                           "trial LUT input swaps with both input net trees rebuilt (0..16, default 0)");
+    specific.add_options()("post-route-static-ff-lut-pins", po::value<int>(),
+                           "trial private L5 inputs beside independent static bypass FFs (0..16, default 0)");
+    specific.add_options()("routed-placement-plan", po::value<std::string>(),
+                           "apply a validated cumulative placement plan after fresh placement (opt-in)");
+    specific.add_options()("routed-placement-propose", po::value<std::string>(),
+                           "emit independent placements from a matching measured route model (requires --no-route)");
+    specific.add_options()("routed-placement-trials", po::value<int>(), "proposal STA trials, 1..64 (explicit opt-in)");
+    specific.add_options()("routed-placement-candidates", po::value<int>(), "proposal count, 1..4 (explicit opt-in)");
+    specific.add_options()("routed-placement-preserve-routes", "record and preserve matching complete data trees (opt-in)");
+    specific.add_options()("routed-placement-record-calibration", "record complete final routing calibration for exact replay (default off)");
+    specific.add_options()("routed-placement-preserve-branches", "protect unchanged sink branches of group-move data trees (opt-in)");
+    specific.add_options()("routed-placement-group-moves", "legal logic/register group candidates requiring full routing (opt-in)");
+    specific.add_options()("routed-placement-retarget-luts", "search empty native sites for displaced LUTs of an explicit group plan (proposal only)");
+    specific.add_options()("routed-placement-check-plan", "check group-plan placement legality only (requires --no-route)");
+    specific.add_options()("routed-placement-routes", po::value<std::string>(), "validated immediate-parent data trees (opt-in)");
     specific.add_options()("compress-rbf", "generate compressed bitstream");
     specific.add_options()("mistral-ff-reset-reference",
                            "opt in to the bounded FF reset recovery reference; retains historical hold floor");
@@ -180,6 +214,16 @@ void MistralCommandHandler::customBitstream(Context *ctx)
                       std::error_code(errno, std::generic_category()).message().c_str());
         }
         out.write(reinterpret_cast<const char *>(data.data()), data.size());
+        if (!ctx->routed_placement_directory.empty()) {
+            out.flush();
+            if (!out)
+                log_error("Failed to complete routed placement RBF output.\n");
+            std::string error;
+            auto status = json11::Json::parse(ctx->routed_placement_status, error).object_items();
+            NPNR_ASSERT(error.empty() && !status.empty());
+            status["rbf_bytes"] = double(data.size());
+            ctx->routed_placement_status = json11::Json(status).dump();
+        }
         if (vm.count("critical-cohort-model-out")) {
             std::ofstream model(vm["critical-cohort-model-out"].as<std::string>());
             if (!model.is_open())
@@ -198,6 +242,29 @@ void MistralCommandHandler::customBitstream(Context *ctx)
         log_info("Running final routed timing analysis for --report (no bitstream signoff).\n");
         timing_analysis(ctx, false, true, false, false, true);
     }
+}
+
+void MistralCommandHandler::customAfterRun(Context *ctx)
+{
+    if (ctx->routed_placement_directory.empty())
+        return;
+    if (!ctx->routed_placement_model.empty() || ctx->routed_placement_check_only)
+        return; // Proposal and legality workers make no routing/completion claim.
+    std::string error;
+    auto completion = json11::Json::parse(ctx->routed_placement_status, error).object_items();
+    if (!error.empty() || completion.empty())
+        log_error("Routed placement run has no final native observation.\n");
+    completion["process_complete"] = true;
+    completion["errors_before_signoff"] = ctx->routed_placement_errors_before_signoff;
+    completion["errors_after_signoff"] = ctx->routed_placement_errors_after_signoff;
+    completion["errors_at_completion"] = message_count_by_level[LogLevel::ERROR_MSG];
+    auto path = std::filesystem::path(ctx->routed_placement_directory) / "completion.json";
+    if (std::filesystem::exists(path))
+        log_error("Refusing to overwrite routed placement completion record.\n");
+    std::ofstream out(path);
+    out << json11::Json(completion).dump() << '\n';
+    if (!out)
+        log_error("Failed to write routed placement completion record.\n");
 }
 
 std::unique_ptr<Context> MistralCommandHandler::createContext(dict<std::string, Property> &values)
@@ -303,6 +370,189 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         if (!error.empty() || !report["critical_paths"].is_array() ||
             !report["timing_summary"]["final_analogue_model"].bool_value())
             log_error("Critical cohort guidance requires a final analogue timing report.\n");
+    }
+    const bool propose_placement = vm.count("routed-placement-propose") != 0;
+    const bool check_placement = vm.count("routed-placement-check-plan") != 0;
+    ctx->post_route_lut_moves = 0;
+    ctx->post_route_lut_move_receipt.clear();
+    if (vm.count("post-route-lut-moves")) {
+        const int budget = vm["post-route-lut-moves"].as<int>();
+        if (budget < 0 || budget > 16)
+            log_error("--post-route-lut-moves must be between 0 and 16.\n");
+        if (budget && (!vm.count("routed-placement-record") || vm.count("no-route") ||
+            propose_placement || check_placement || vm.count("routed-placement-plan") ||
+            vm.count("routed-placement-group-moves") || vm.count("routed-placement-preserve-routes") ||
+            vm.count("routed-placement-preserve-branches")))
+            log_error("Post-route LUT moves require a fresh full recorded route without placement plans or preserved-route modes.\n");
+        ctx->post_route_lut_moves = budget;
+    }
+    ctx->post_route_private_lut_pins = 0;
+    if (vm.count("post-route-private-lut-pins")) {
+        const int budget = vm["post-route-private-lut-pins"].as<int>();
+        if (budget < 0 || budget > 16)
+            log_error("--post-route-private-lut-pins must be between 0 and 16.\n");
+        if (budget && (!vm.count("routed-placement-record") || vm.count("no-route") ||
+            propose_placement || check_placement || vm.count("routed-placement-plan") ||
+            vm.count("routed-placement-group-moves") || vm.count("routed-placement-preserve-routes") ||
+            vm.count("routed-placement-preserve-branches")))
+            log_error("Private LUT input trials require a fresh full recorded route without placement plans or preserved-route modes.\n");
+        ctx->post_route_private_lut_pins = budget;
+    }
+    ctx->post_route_net_trials = 0;
+    if (vm.count("post-route-net-trials")) {
+        const int budget = vm["post-route-net-trials"].as<int>();
+        if (budget < 0 || budget > 64)
+            log_error("--post-route-net-trials must be between 0 and 64.\n");
+        if (budget && (!vm.count("routed-placement-record") || vm.count("no-route") ||
+            propose_placement || check_placement || vm.count("routed-placement-plan") ||
+            vm.count("routed-placement-group-moves") || vm.count("routed-placement-preserve-routes") ||
+            vm.count("routed-placement-preserve-branches")))
+            log_error("Individual net trials require a fresh full recorded route without placement plans or preserved-route modes.\n");
+        ctx->post_route_net_trials = budget;
+    }
+    ctx->post_route_final_lut_pins = 0;
+    if (vm.count("post-route-final-lut-pins")) {
+        const int budget = vm["post-route-final-lut-pins"].as<int>();
+        if (budget < 0 || budget > 16)
+            log_error("--post-route-final-lut-pins must be between 0 and 16.\n");
+        if (budget && (!vm.count("routed-placement-record") || vm.count("no-route") ||
+            propose_placement || check_placement || vm.count("routed-placement-plan") ||
+            vm.count("routed-placement-group-moves") || vm.count("routed-placement-preserve-routes") ||
+            vm.count("routed-placement-preserve-branches")))
+            log_error("Final LUT input trials require a fresh full recorded route without placement plans or preserved-route modes.\n");
+        ctx->post_route_final_lut_pins = budget;
+    }
+    ctx->post_route_sole_lut_pins = 0;
+    if (vm.count("post-route-sole-lut-pins")) {
+        const int budget = vm["post-route-sole-lut-pins"].as<int>();
+        if (budget < 0 || budget > 16)
+            log_error("--post-route-sole-lut-pins must be between 0 and 16.\n");
+        if (budget && (!vm.count("routed-placement-record") || vm.count("no-route") ||
+            propose_placement || check_placement || vm.count("routed-placement-plan") ||
+            vm.count("routed-placement-group-moves") || vm.count("routed-placement-preserve-routes") ||
+            vm.count("routed-placement-preserve-branches")))
+            log_error("Sole L5 input trials require a fresh full recorded route without placement plans or preserved-route modes.\n");
+        ctx->post_route_sole_lut_pins = budget;
+    }
+    ctx->post_route_lut_pairs = 0;
+    if (vm.count("post-route-lut-pairs")) {
+        const int budget = vm["post-route-lut-pairs"].as<int>();
+        if (budget < 0 || budget > 16)
+            log_error("--post-route-lut-pairs must be between 0 and 16.\n");
+        if (budget && (!vm.count("routed-placement-record") || vm.count("no-route") ||
+            propose_placement || check_placement || vm.count("routed-placement-plan") ||
+            vm.count("routed-placement-group-moves") || vm.count("routed-placement-preserve-routes") ||
+            vm.count("routed-placement-preserve-branches")))
+            log_error("LUT pair trials require a fresh full recorded route without placement plans or preserved-route modes.\n");
+        ctx->post_route_lut_pairs = budget;
+    }
+    ctx->post_route_lut_input_nets = 0;
+    if (vm.count("post-route-lut-input-nets")) {
+        const int budget = vm["post-route-lut-input-nets"].as<int>();
+        if (budget < 0 || budget > 16)
+            log_error("--post-route-lut-input-nets must be between 0 and 16.\n");
+        if (budget && (!vm.count("routed-placement-record") || vm.count("no-route") ||
+            propose_placement || check_placement || vm.count("routed-placement-plan") ||
+            vm.count("routed-placement-group-moves") || vm.count("routed-placement-preserve-routes") ||
+            vm.count("routed-placement-preserve-branches")))
+            log_error("Whole input net trials require a fresh full recorded route without placement plans or preserved-route modes.\n");
+        ctx->post_route_lut_input_nets = budget;
+    }
+    ctx->post_route_static_ff_lut_pins = 0;
+    if (vm.count("post-route-static-ff-lut-pins")) {
+        const int budget = vm["post-route-static-ff-lut-pins"].as<int>();
+        if (budget < 0 || budget > 16)
+            log_error("--post-route-static-ff-lut-pins must be between 0 and 16.\n");
+        if (budget && (!vm.count("routed-placement-record") || vm.count("no-route") ||
+            propose_placement || check_placement || vm.count("routed-placement-plan") ||
+            vm.count("routed-placement-group-moves") || vm.count("routed-placement-preserve-routes") ||
+            vm.count("routed-placement-preserve-branches")))
+            log_error("Static FF L5 input trials require a fresh full recorded route without placement plans or preserved-route modes.\n");
+        ctx->post_route_static_ff_lut_pins = budget;
+    }
+    ctx->routed_placement_record_calibration = vm.count("routed-placement-record-calibration") != 0;
+    if (ctx->routed_placement_record_calibration && (propose_placement || check_placement || vm.count("no-route")))
+        log_error("Calibration recording requires a fresh full recorded route.\n");
+    if ((propose_placement || vm.count("routed-placement-plan") || vm.count("routed-placement-trials") ||
+         vm.count("routed-placement-candidates") || vm.count("routed-placement-preserve-routes") ||
+         vm.count("routed-placement-routes") || vm.count("routed-placement-group-moves") ||
+         vm.count("routed-placement-preserve-branches") || vm.count("routed-placement-retarget-luts") ||
+         check_placement || ctx->routed_placement_record_calibration) && !vm.count("routed-placement-record"))
+        log_error("Routed placement controls require --routed-placement-record.\n");
+    if (vm.count("routed-placement-record")) {
+        auto validate_document = [](const std::string &document) {
+            std::string error;
+            auto parsed = json11::Json::parse(document, error);
+            if (!error.empty() || !parsed.is_object())
+                log_error("Invalid routed placement JSON document.\n");
+            check_plan_keys(document, "routed placement");
+        };
+        if (vm.count("no-pack") || vm.count("no-place") || vm.count("pack-only") ||
+            vm.count("run") || vm.count("pre-pack") || vm.count("pre-place") || vm.count("pre-route") ||
+            vm.count("post-route") || vm.count("fes-cart") || vm.count("fes-scaffold") || ctx->critical_cohort_budget ||
+            (ctx->attrs.count(id_step) && ctx->attrs.at(id_step).as_string() != "") ||
+            ctx->setting<std::string>("placer") != "heap" || ctx->setting<std::string>("router") != "gpu" ||
+            !ctx->setting<bool>("timing_driven"))
+            log_error("Routed placement recording requires fresh ordinary HeAP/GPU flow and critical-cohort budget 0.\n");
+        if (check_placement && (propose_placement || !vm.count("routed-placement-plan") ||
+            !vm.count("routed-placement-group-moves") || !vm.count("no-route") || vm.count("rbf") ||
+            vm.count("write") || vm.count("report") || vm.count("routed-placement-routes") ||
+            vm.count("routed-placement-trials") || vm.count("routed-placement-candidates")))
+            log_error("Plan checking requires group mode, a plan and --no-route, without timing outputs or proposal controls.\n");
+        if ((propose_placement || check_placement) ? (!vm.count("no-route") || vm.count("rbf")) :
+                               (vm.count("no-route") || !vm.count("rbf") || !vm.count("report") || !vm.count("write")))
+            log_error("Routed placement requires --no-route for proposals, or --rbf/--report/--write for full routes.\n");
+        if (ctx->force || vm.count("force") || vm.count("timing-allow-fail"))
+            log_error("Routed placement recording rejects force and timing-failure overrides.\n");
+        for (const auto &setting : ctx->settings) {
+            const auto &key = setting.first.str(ctx);
+            if (key != "timing/allowFail" && key != "timing/ignoreLoops" && key != "timing/ignoreRelClk")
+                continue;
+            const auto &value = setting.second;
+            if (value.is_string ? (value.as_string() != "0" && value.as_string() != "false") : value.as_bool())
+                log_error("Routed placement recording rejects saved timing override '%s'.\n", key.c_str());
+        }
+        if (vm.count("routed-placement-plan")) {
+            auto in = open_ifstream_and_log_error(vm["routed-placement-plan"].as<std::string>(), "routed placement plan");
+            ctx->routed_placement_plan.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+            validate_document(ctx->routed_placement_plan);
+        }
+        ctx->routed_placement_preserve_routes = vm.count("routed-placement-preserve-routes") != 0;
+        ctx->routed_placement_group_moves = vm.count("routed-placement-group-moves") != 0;
+        ctx->routed_placement_retarget_luts = vm.count("routed-placement-retarget-luts") != 0;
+        if (ctx->routed_placement_retarget_luts &&
+            (!propose_placement || !ctx->routed_placement_group_moves || !vm.count("routed-placement-plan")))
+            log_error("LUT retargeting requires proposal mode, group mode and an explicit group plan.\n");
+        ctx->routed_placement_preserve_branches = vm.count("routed-placement-preserve-branches") != 0;
+        if (ctx->routed_placement_preserve_branches &&
+            (!ctx->routed_placement_preserve_routes || !ctx->routed_placement_group_moves))
+            log_error("Branch preservation requires explicit preserve-routes and group mode.\n");
+        ctx->routed_placement_check_only = check_placement;
+        if (vm.count("routed-placement-routes")) {
+            if (!ctx->routed_placement_preserve_routes || propose_placement || !vm.count("routed-placement-plan"))
+                log_error("Routed placement routes require preserve-routes, a plan, and a full route.\n");
+            auto in = open_ifstream_and_log_error(vm["routed-placement-routes"].as<std::string>(), "routed placement routes");
+            ctx->routed_placement_routes.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+            validate_document(ctx->routed_placement_routes);
+        }
+        if (propose_placement) {
+            if (!vm.count("routed-placement-trials") || !vm.count("routed-placement-candidates"))
+                log_error("Routed placement proposals require explicit trial and candidate limits.\n");
+            ctx->routed_placement_trials = vm["routed-placement-trials"].as<int>();
+            ctx->routed_placement_candidates = vm["routed-placement-candidates"].as<int>();
+            if (ctx->routed_placement_trials < 1 || ctx->routed_placement_trials > 64 ||
+                ctx->routed_placement_candidates < 1 || ctx->routed_placement_candidates > 4)
+                log_error("Routed placement limits must be trials 1..64 and candidates 1..4.\n");
+            auto in = open_ifstream_and_log_error(vm["routed-placement-propose"].as<std::string>(), "routed placement model");
+            ctx->routed_placement_model.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+            validate_document(ctx->routed_placement_model);
+        } else if (vm.count("routed-placement-trials") || vm.count("routed-placement-candidates")) {
+            log_error("Routed placement trial/candidate limits require proposal mode.\n");
+        }
+        ctx->routed_placement_directory = vm["routed-placement-record"].as<std::string>();
+        if (ctx->routed_placement_directory.empty() || std::filesystem::exists(ctx->routed_placement_directory))
+            log_error("Routed placement recording requires a new output directory.\n");
+        std::filesystem::create_directories(ctx->routed_placement_directory);
     }
     if (vm.count("balance-reduction-root")) {
         if (vm.count("fes-cart") || vm.count("fes-scaffold") ||

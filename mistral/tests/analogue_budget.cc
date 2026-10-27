@@ -50,3 +50,31 @@ TEST(AnalogueRepair, RequiredGpuFailureEscapesRecoverableRouteHandling)
     EXPECT_FALSE(try_analogue_repair_reroute(1, []() -> bool { throw log_execution_error_exception{}; }));
     EXPECT_THROW(try_analogue_repair_reroute(1, []() -> bool { throw GpuRequiredFailure{}; }), GpuRequiredFailure);
 }
+
+TEST(AnalogueRepairBudget, RejectsOutOfRangePolishBeforeRouting)
+{
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    auto ctx = std::make_unique<Context>(args);
+    ctx->settings[ctx->id("gpurouter/analogueRounds")] = std::string("0");
+    for (const char *value : {"-1", "33"}) {
+        ctx->settings[ctx->id("gpurouter/analoguePolishCandidates")] = std::string(value);
+        EXPECT_THROW(ctx->analogue_repair(), log_execution_error_exception);
+    }
+    ctx->settings[ctx->id("gpurouter/analoguePolishCandidates")] = std::string("0");
+    EXPECT_TRUE(ctx->analogue_repair());
+}
+
+TEST(AnalogueRepairBudget, RejectsOutOfRangeLutInputTrialsBeforeRouting)
+{
+    ArchArgs args;
+    args.device = "5CSEBA6U23I7";
+    auto ctx = std::make_unique<Context>(args);
+    ctx->settings[ctx->id("gpurouter/analogueRounds")] = std::string("0");
+    for (const char *value : {"-1", "17"}) {
+        ctx->settings[ctx->id("gpurouter/analogueLutPinTrials")] = std::string(value);
+        EXPECT_THROW(ctx->analogue_repair(), log_execution_error_exception);
+    }
+    ctx->settings[ctx->id("gpurouter/analogueLutPinTrials")] = std::string("0");
+    EXPECT_TRUE(ctx->analogue_repair());
+}
