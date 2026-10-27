@@ -11,6 +11,7 @@ set(SOURCES
     ctrl.cc
     delay.cc
     ff_core.cc
+    gpio_core.cc
     local_remap.cc
     local_remap_pin_policy.h
     remap_plan.cc
@@ -52,7 +53,7 @@ set(SOURCES
 
 add_nextpnr_architecture(${family}
     CORE_SOURCES ${SOURCES}
-    TEST_SOURCES tests/gpu_backend_selection.cc tests/analogue_jobs.cc tests/critical_cohort.cc tests/analogue_budget.cc tests/analogue_improve.cc tests/bel_id.cc tests/completed_observations.cc tests/lab_pinmap.cc tests/lab_ff4.cc tests/device_model_lifetime.cc tests/fes_cram.cc tests/fes_boundary.cc tests/fes_narrow_pin.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/io_delay.cc tests/m10k_timing.cc tests/ff_reset_timing.cc tests/ff_core_timing.cc tests/hps_interrupts.cc tests/hps_clocks_resets.cc tests/hps_lw_bridge.cc
+    TEST_SOURCES tests/gpu_backend_selection.cc tests/analogue_jobs.cc tests/critical_cohort.cc tests/analogue_budget.cc tests/analogue_improve.cc tests/bel_id.cc tests/completed_observations.cc tests/lab_pinmap.cc tests/lab_ff4.cc tests/device_model_lifetime.cc tests/fes_cram.cc tests/fes_boundary.cc tests/fes_narrow_pin.cc tests/enable_replication/backend.cc tests/placed_timeout.cc tests/local_remap.cc tests/placed_reduction.cc tests/local_remap_cut_policy.cc tests/comb_remap.cc tests/remap_plan.cc tests/comb_remap_plan.cc tests/decomposition_policy.cc tests/decomposition_backend.cc tests/lut_driver_copy.cc tests/lut_pair_placement.cc tests/timing_report_paths.cc tests/capture_pipeline_locality.cc tests/io_delay.cc tests/m10k_timing.cc tests/ff_reset_timing.cc tests/ff_core_timing.cc tests/gpio_core_timing.cc tests/hps_interrupts.cc tests/hps_clocks_resets.cc tests/hps_lw_bridge.cc
     tests/parked_reviews.cc tests/lut_input_delay.cc
     MAIN_SOURCE  main.cc
 )
@@ -154,7 +155,18 @@ if (BUILD_TESTS)
 endif()
 
 set(MISTRAL_ROOT "" CACHE STRING "Mistral install path")
+option(MISTRAL_REQUIRE_GPIO_SOURCE_WAVE "Require the explicit GPIO source-wave API" OFF)
 set(MISTRAL_DONT_INSTALL ON)
+
+if (MISTRAL_REQUIRE_GPIO_SOURCE_WAVE)
+    file(STRINGS "${MISTRAL_ROOT}/libmistral/cyclonev.h" MISTRAL_GPIO_SOURCE_WAVE_DEFINITION
+        REGEX "^[ \t]*#define[ \t]+MISTRAL_GPIO_SOURCE_WAVE[ \t]+1([ \t].*)?$")
+    if (NOT MISTRAL_GPIO_SOURCE_WAVE_DEFINITION)
+        message(FATAL_ERROR
+            "MISTRAL_REQUIRE_GPIO_SOURCE_WAVE is enabled, but "
+            "${MISTRAL_ROOT}/libmistral/cyclonev.h does not define MISTRAL_GPIO_SOURCE_WAVE")
+    endif()
+endif()
 
 add_subdirectory(${MISTRAL_ROOT}/tools ${CMAKE_CURRENT_BINARY_DIR}/tools)
 add_subdirectory(${MISTRAL_ROOT}/generator ${CMAKE_CURRENT_BINARY_DIR}/generator)
@@ -175,6 +187,19 @@ target_link_libraries(nextpnr-${family}-core INTERFACE
 )
 
 if (BUILD_TESTS)
+    add_test(NAME nextpnr-${family}-gpio-core-reference-cli
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/gpio-core/check_cli.py
+                $<TARGET_FILE:nextpnr-${family}>)
+    add_test(NAME nextpnr-${family}-gpio-core-parser
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/gpio-core/test_reference.py)
+    add_executable(nextpnr-${family}-gpio-core-config tests/gpio-core/config.cc)
+    target_include_directories(nextpnr-${family}-gpio-core-config PRIVATE
+        ${MISTRAL_ROOT}/libmistral ${CMAKE_CURRENT_BINARY_DIR}/tools
+        ${CMAKE_CURRENT_BINARY_DIR}/libmistral ${LIBLZMA_INCLUDE_DIRS})
+    target_link_libraries(nextpnr-${family}-gpio-core-config PRIVATE mistral ${LIBLZMA_LIBRARIES})
+    add_test(NAME nextpnr-${family}-gpio-core-reference
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/gpio-core/model_reference.py
+                --check --config-reader $<TARGET_FILE:nextpnr-${family}-gpio-core-config>)
     add_executable(nextpnr-${family}-ff-core-config tests/ff-core/config.cc)
     target_include_directories(nextpnr-${family}-ff-core-config PRIVATE
         ${MISTRAL_ROOT}/libmistral ${CMAKE_CURRENT_BINARY_DIR}/tools

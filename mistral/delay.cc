@@ -613,6 +613,14 @@ std::vector<RegisteredIoTiming> Arch::getRegisteredIoTiming(const CellInfo *cell
         timing.clock_port = cell->type == id_MISTRAL_SDRIO ? id_CLKIN : id_CLK;
         timing.edge = RISING_EDGE;
         timing.setup = DelayPair(1910); timing.hold = DelayPair(-310);
+        DelayQuad prefix;
+        if (gpio_core_clock_prefix(cell,id_Q,prefix)) {
+            // The retained pad envelope starts at the internal clock pin.
+            // Move it to the native DCMUX cut using the independently
+            // measured local prefix, without crediting global clock delay.
+            timing.setup = DelayPair(1910-prefix.minRiseDelay());
+            timing.hold = DelayPair(-310+prefix.maxRiseDelay());
+        }
         RegisteredIoTiming high{ddr_in ? id("high") : id("rise"), timing};
         if (!ddr_in) return {high};
         timing.edge = FALLING_EDGE;
@@ -631,10 +639,15 @@ std::vector<RegisteredIoTiming> Arch::getRegisteredIoTiming(const CellInfo *cell
     // fit to a guaranteed silicon minimum. Use the 30pF late bound at all
     // supported declared loads, without extrapolating a load curve.
     timing.clockToQ = DelayQuad(0, 5280);
+    DelayQuad prefix;
+    if (gpio_core_clock_prefix(cell,id_I,prefix))
+        timing.clockToQ = DelayQuad(0,5280+prefix.maxRiseDelay());
     RegisteredIoTiming data{id("data"), timing};
     if (cell->type == id_MISTRAL_SDROUT)
         return {data};
     timing.clockToQ = DelayQuad(0, 5420);
+    if (gpio_core_clock_prefix(cell,id_OE,prefix))
+        timing.clockToQ = DelayQuad(0,5420+prefix.maxRiseDelay());
     return {data, {id("oe"), timing}};
 }
 
@@ -645,17 +658,45 @@ std::vector<PrimitiveClockRequirement> Arch::getPrimitiveClockRequirements(const
     // to GPIO clock ingress, including local early/late CELL distortion.
     // The DDR input's hidden low-word retiming remains an opaque primitive;
     // its period/pulse requirements must still be met when data paths are cut.
-    if (!getRegisteredIoTiming(cell, id_PAD, true).empty())
-        result.push_back({cell->type == id_MISTRAL_SDRIO ? id_CLKIN : id_CLK, 1540, 170, 190});
-    if (!getRegisteredIoTiming(cell, id_PAD, false).empty())
-        result.push_back({id_CLK, 1540, cell->type == id_MISTRAL_SDRIO ? 810 : 790,
+    const bool native_gpio = cell->type.in(id_MISTRAL_SDROUT,id_MISTRAL_SDRIO) &&
+            bool_or_default(getCtx()->settings,getCtx()->id("mistral/gpio_core_reference"),false);
+    if (native_gpio) {
+        // Mandatory even without pad-profile attributes or dynamic data:
+        // common STA requires an inferred physical waveform. Its same-edge
+        // period also enforces the local reference's 10ns domain boundary.
+        if (cell->type == id_MISTRAL_SDRIO)
+            result.push_back({id_CLKIN,10000,170,190});
+        result.push_back({id_CLK,10000,cell->type == id_MISTRAL_SDRIO ? 810 : 790,
                          cell->type == id_MISTRAL_SDRIO ? 780 : 770});
+    } else {
+        if (!getRegisteredIoTiming(cell, id_PAD, true).empty())
+            result.push_back({cell->type == id_MISTRAL_SDRIO ? id_CLKIN : id_CLK, 1540, 170, 190});
+        if (!getRegisteredIoTiming(cell, id_PAD, false).empty())
+            result.push_back({id_CLK, 1540, cell->type == id_MISTRAL_SDRIO ? 810 : 790,
+                             cell->type == id_MISTRAL_SDRIO ? 780 : 770});
+    }
+    for (auto &requirement : result) {
+        DelayQuad prefix;
+        if (gpio_core_clock_prefix(cell,requirement.clock_port == id_CLKIN ? id_Q : id_I,prefix)) {
+            DelayQuad oe;
+            if (requirement.clock_port == id_CLK && cell->type == id_MISTRAL_SDRIO &&
+                gpio_core_clock_prefix(cell,id_OE,oe))
+                prefix = DelayQuad{std::min(prefix.minRiseDelay(),oe.minRiseDelay()),
+                                   std::max(prefix.maxRiseDelay(),oe.maxRiseDelay()),
+                                   std::min(prefix.minFallDelay(),oe.minFallDelay()),
+                                   std::max(prefix.maxFallDelay(),oe.maxFallDelay())};
+            requirement.min_high += std::max<delay_t>(0,prefix.maxRiseDelay()-prefix.minFallDelay());
+            requirement.min_low += std::max<delay_t>(0,prefix.maxFallDelay()-prefix.minRiseDelay());
+        }
+    }
     return result;
 }
 
 TimingClockingInfo Arch::getPortClockingInfo(const CellInfo *cell, IdString port, int index) const
 {
     TimingClockingInfo timing{};
+    if (gpio_core_reference(cell, port, timing))
+        return timing;
     if (gpio_fabric_profile(getCtx(), cell)) {
         const bool input = port.in(id_Q, id_Q_H, id_Q_L, id_CEIN);
         timing.clock_port = input && cell->type == id_MISTRAL_SDRIO ? id_CLKIN : id_CLK;
@@ -1117,10 +1158,23 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
     const bool terminal_ff = sink.cell->type == id_MISTRAL_FF && sink.port == id_SCLR &&
                              !dst_wire.is_nextpnr_created() && dst_wire.node.t() == CycloneV::GOUT &&
                              bool_or_default(getCtx()->settings, getCtx()->id("mistral/ff_core_reference"), false);
+    TimingClockingInfo gpio_timing{};
+    const bool terminal_gpio = sink.port.in(id_I,id_OE) &&
+                               gpio_core_reference(sink.cell,sink.port,gpio_timing);
+    const auto &driver = net_info->driver;
+    const bool gpio_source = driver.cell && driver.port == id_Q &&
+                             gpio_core_reference(driver.cell,driver.port,gpio_timing);
+    DelayQuad gpio_prefix;
+    const bool gpio_clock = sink.port.in(id_CLK,id_CLKIN) &&
+                           gpio_core_clock_prefix(sink.cell,sink.port == id_CLKIN ? id_Q : id_I,gpio_prefix);
+    const bool strict_gpio = terminal_gpio || gpio_source || gpio_clock;
     auto unavailable = [&]() {
         if (terminal_ff)
             log_error("FF core reference requires a complete SCLR input-buffer observation for '%s'.\n",
                       sink.cell->name.c_str(getCtx()));
+        if (strict_gpio)
+            log_error("GPIO core reference requires a complete native analogue observation for net '%s' to '%s.%s'.\n",
+                      net_info->name.c_str(getCtx()),sink.cell->name.c_str(getCtx()),sink.port.c_str(getCtx()));
         return false;
     };
 
@@ -1157,10 +1211,10 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         pips.push_back(pip);
         cursor = getPipSrcWire(pip);
     }
-    if (terminal_ff && cursor != src_wire)
+    if ((terminal_ff || strict_gpio) && cursor != src_wire)
         return unavailable();
 
-    for (size_t i = 0; i < pips.size() + size_t(terminal_lut || terminal_ff); ++i) {
+    for (size_t i = 0; i < pips.size() + size_t(terminal_lut || terminal_ff || terminal_gpio); ++i) {
         const bool terminal = i == pips.size();
         PipId pip = terminal ? PipId() : pips[pips.size() - 1 - i];
         auto src = terminal ? dst_wire : getPipSrcWire(pip);
@@ -1212,12 +1266,28 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
         }
 
         if (input_wave[0].empty()) {
-            cyclonev->rnode_timing_build_input_wave(src_ri, temp, CycloneV::DELAY_MAX,
+            if (gpio_source) {
+#ifdef MISTRAL_GPIO_SOURCE_WAVE
+                const auto position = driver.cell->bel.pos;
+                const auto bi = int8_t(bel_data(driver.cell->bel).block_index);
+                const CycloneV::pnode_coords source{CycloneV::GPIO,position,CycloneV::DATAIN,bi,3};
+                const bool rising = cyclonev->gpio_timing_build_input_wave(source,src_ri,temp,CycloneV::DELAY_MAX,
+                        inverted ? mistral::CycloneV::RF_FALL : mistral::CycloneV::RF_RISE,est,input_wave[0]);
+                const bool falling = cyclonev->gpio_timing_build_input_wave(source,src_ri,temp,CycloneV::DELAY_MAX,
+                        inverted ? mistral::CycloneV::RF_RISE : mistral::CycloneV::RF_FALL,est,input_wave[1]);
+                if (!rising || !falling)
+                    return unavailable();
+#else
+                log_error("GPIO core reference requires Mistral with MISTRAL_GPIO_SOURCE_WAVE; rebuild nextpnr.\n");
+#endif
+            } else {
+                cyclonev->rnode_timing_build_input_wave(src_ri, temp, CycloneV::DELAY_MAX,
                                                     inverted ? mistral::CycloneV::RF_FALL : mistral::CycloneV::RF_RISE,
                                                     est, input_wave[0]);
-            cyclonev->rnode_timing_build_input_wave(src_ri, temp, CycloneV::DELAY_MAX,
+                cyclonev->rnode_timing_build_input_wave(src_ri, temp, CycloneV::DELAY_MAX,
                                                     inverted ? mistral::CycloneV::RF_RISE : mistral::CycloneV::RF_FALL,
                                                     est, input_wave[1]);
+            }
             if (input_wave[mistral::CycloneV::RF_RISE].empty() || input_wave[mistral::CycloneV::RF_FALL].empty())
                 return unavailable();
         }
@@ -1230,17 +1300,21 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
             int input = -1;
             std::vector<std::pair<mistral::CycloneV::rnode_index, int>> outputs;
             cyclonev->rnode_timing_build_circuit(src_ri, temp, CycloneV::DELAY_MAX, actual_edge, sim, input, outputs);
+            if (strict_gpio && input < 0)
+                return unavailable();
 
             sim.set_input_wave(input, input_wave[edge]);
             auto o = std::find_if(
                     outputs.begin(), outputs.end(),
                     [&](std::pair<mistral::CycloneV::rnode_index, int> output) { return output.first == dst_ri; });
+            if (strict_gpio && o == outputs.end())
+                return unavailable();
             NPNR_ASSERT(o != outputs.end());
 
             output_wave[edge].clear();
             sim.set_output_wave(o->second, output_wave[edge], output_delays[edge]);
             sim.run();
-            if (terminal_ff && (output_wave[edge].empty() || !std::isfinite(output_delays[edge].mi) ||
+            if ((terminal_ff || strict_gpio) && (output_wave[edge].empty() || !std::isfinite(output_delays[edge].mi) ||
                                 !std::isfinite(output_delays[edge].mx) ||
                                 output_delays[edge].mi > output_delays[edge].mx))
                 return unavailable();
