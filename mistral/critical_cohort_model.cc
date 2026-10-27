@@ -102,16 +102,20 @@ J identity(Context *ctx)
     for (const auto &entry : ctx->settings) {
         const auto key = entry.first.str(ctx);
         if (key == "target_freq" || key.find("timing/") == 0 || key.find("sdc/") == 0 ||
-            key == "mistral/routed_delay_ranges" || key == "mistral/clock_edge_ranges")
+            key == "mistral/routed_delay_ranges" || key == "mistral/clock_edge_ranges" ||
+            key == "mistral/lut_core_reference")
             settings[key] = entry.second.to_string();
     }
-    return J::object{{"device", ctx->getChipName()},
+    J::object result{{"device", ctx->getChipName()},
                      {"ff4", ctx->lab_ff4},
                      {"clkb", ctx->args.lab_clkb},
                      {"cells", cells},
                      {"clocks", clocks},
                      {"settings", settings},
                      {"lut_delays", lut_delays}};
+    if(ctx->use_lut_core_reference)
+        result["lut_core_reference"] = ctx->lut_core_reference_identity();
+    return result;
 }
 
 using ArcKey = std::pair<std::string, std::string>;
