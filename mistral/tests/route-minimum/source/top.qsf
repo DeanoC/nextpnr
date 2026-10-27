@@ -1,0 +1,106 @@
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEBA6U23I7
+set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name SYSTEMVERILOG_FILE top.sv
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name SDC_FILE clocks.sdc
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+set_global_assignment -name GENERATE_RBF_FILE ON
+set_location_assignment PIN_V11 -to wclk
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to wclk
+set_location_assignment M10K_X41_Y2_N0 -to ram
+set_location_assignment MLABCELL_X28_Y2_N57 -to target
+set_location_assignment FF_X28_Y2_N58 -to capture
+set_instance_assignment -name VIRTUAL_PIN ON -to "we"
+set_instance_assignment -name VIRTUAL_PIN ON -to "wa[*]"
+set_instance_assignment -name VIRTUAL_PIN ON -to "ra[*]"
+set_instance_assignment -name VIRTUAL_PIN ON -to "wd[*]"
+set_instance_assignment -name VIRTUAL_PIN ON -to "din[*]"
+set_instance_assignment -name VIRTUAL_PIN ON -to "probes[*]"
+set_location_assignment FF_X29_Y2_N1 -to launch_0
+set_location_assignment FF_X29_Y2_N2 -to launch_1
+set_location_assignment FF_X29_Y2_N4 -to launch_2
+set_location_assignment FF_X29_Y2_N5 -to launch_3
+set_location_assignment FF_X29_Y2_N7 -to launch_4
+set_location_assignment PIN_Y13 -to rclk
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to rclk
+set_instance_assignment -name VIRTUAL_PIN ON -to cer
+
+set_global_assignment -name LAST_QUARTUS_VERSION "17.0.2 Lite Edition"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|ram_block1a0~PORTADATAOUT0"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|q_b[0]"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|ram_block1a9~PORTADATAOUT0"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|ram_block1a8~PORTADATAOUT0"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|ram_block1a7~PORTADATAOUT0"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|ram_block1a6~PORTADATAOUT0"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|ram_block1a5~PORTADATAOUT0"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|ram_block1a4~PORTADATAOUT0"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|ram_block1a3~PORTADATAOUT0"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|ram_block1a2~PORTADATAOUT0"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|ram_block1a1~PORTADATAOUT0"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|q_b[9]"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|q_b[8]"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|q_b[7]"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|q_b[6]"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|q_b[5]"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|q_b[4]"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|q_b[3]"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|q_b[2]"
+set_location_assignment M10K_X41_Y2_N0 -to "altsyncram:ram|altsyncram_ccu1:auto_generated|q_b[1]"
+set_location_assignment MLABCELL_X28_Y2_N57 -to mixed
+set_location_assignment MLABCELL_X28_Y2_N57 -to target~SUM_OUT
+set_location_assignment MLABCELL_X28_Y2_N57 -to target~COUT
+set_location_assignment MLABCELL_X28_Y2_N57 -to target~SHAREOUT
+set_location_assignment IOIBUF_X32_Y0_N1 -to wclk~input
+set_location_assignment IOIBUF_X56_Y0_N1 -to rclk~input
+set_location_assignment LABCELL_X42_Y2_N3 -to probes[0]
+set_location_assignment LABCELL_X42_Y2_N9 -to probes[1]
+set_location_assignment LABCELL_X42_Y2_N12 -to probes[2]
+set_location_assignment LABCELL_X42_Y2_N15 -to probes[3]
+set_location_assignment LABCELL_X42_Y2_N21 -to probes[4]
+set_location_assignment LABCELL_X40_Y2_N3 -to probes[5]
+set_location_assignment LABCELL_X42_Y2_N24 -to probes[6]
+set_location_assignment LABCELL_X42_Y2_N30 -to probes[7]
+set_location_assignment LABCELL_X42_Y2_N18 -to probes[8]
+set_location_assignment LABCELL_X42_Y2_N39 -to probes[9]
+set_location_assignment LABCELL_X40_Y2_N9 -to we
+set_location_assignment LABCELL_X43_Y2_N30 -to cer
+set_location_assignment LABCELL_X40_Y2_N15 -to wd[0]
+set_location_assignment LABCELL_X42_Y2_N33 -to wa[0]
+set_location_assignment LABCELL_X40_Y2_N6 -to wa[1]
+set_location_assignment LABCELL_X42_Y2_N42 -to wa[2]
+set_location_assignment MLABCELL_X39_Y2_N33 -to wa[3]
+set_location_assignment LABCELL_X40_Y2_N21 -to wa[4]
+set_location_assignment MLABCELL_X39_Y2_N6 -to wa[5]
+set_location_assignment LABCELL_X40_Y2_N27 -to wa[6]
+set_location_assignment LABCELL_X40_Y2_N30 -to wa[7]
+set_location_assignment LABCELL_X40_Y2_N36 -to wa[8]
+set_location_assignment LABCELL_X42_Y2_N36 -to wa[9]
+set_location_assignment LABCELL_X40_Y2_N42 -to ra[0]
+set_location_assignment LABCELL_X42_Y2_N0 -to ra[1]
+set_location_assignment LABCELL_X42_Y2_N48 -to ra[2]
+set_location_assignment LABCELL_X42_Y2_N51 -to ra[3]
+set_location_assignment LABCELL_X43_Y2_N36 -to ra[4]
+set_location_assignment LABCELL_X40_Y2_N48 -to ra[5]
+set_location_assignment LABCELL_X40_Y2_N0 -to ra[6]
+set_location_assignment MLABCELL_X39_Y2_N42 -to ra[7]
+set_location_assignment LABCELL_X40_Y2_N39 -to ra[8]
+set_location_assignment MLABCELL_X39_Y2_N18 -to ra[9]
+set_location_assignment LABCELL_X42_Y2_N6 -to wd[1]
+set_location_assignment LABCELL_X40_Y2_N54 -to wd[2]
+set_location_assignment LABCELL_X40_Y2_N24 -to wd[3]
+set_location_assignment LABCELL_X40_Y2_N12 -to wd[4]
+set_location_assignment LABCELL_X42_Y2_N57 -to wd[6]
+set_location_assignment LABCELL_X40_Y2_N18 -to wd[7]
+set_location_assignment LABCELL_X45_Y2_N33 -to wd[8]
+set_location_assignment LABCELL_X45_Y2_N36 -to wd[9]
+set_location_assignment LABCELL_X29_Y1_N30 -to din[0]
+set_location_assignment LABCELL_X42_Y2_N45 -to wd[5]
+set_location_assignment LABCELL_X29_Y1_N36 -to din[1]
+set_location_assignment LABCELL_X27_Y2_N3 -to din[2]
+set_location_assignment LABCELL_X29_Y1_N15 -to din[3]
+set_location_assignment LABCELL_X27_Y2_N9 -to din[4]
+set_location_assignment LABCELL_X74_Y35_N3 -to ~QUARTUS_CREATED_GND~I
+set_location_assignment CLKCTRL_G6 -to rclk~inputCLKENA0
+set_location_assignment CLKCTRL_G7 -to wclk~inputCLKENA0
+set_global_assignment -name ROUTING_BACK_ANNOTATION_FILE top.rcf

@@ -28,10 +28,12 @@ function run_tests {
     ./build/nextpnr-mistral-test --gtest_filter='HpsInterrupts.*:HpsClocksResets.*:HpsLwBridge.*'
     ./build/nextpnr-mistral-test --gtest_filter='GpioCoreTimingTest.*'
     ./build/nextpnr-mistral-test --gtest_filter='LutCoreTimingTest.*:CriticalCohort.MeasuredModelBindsLutReferenceModeAndData'
+    ./build/nextpnr-mistral-test --gtest_filter='LutRouteMinimum.*:LutRouteMinimumTest.*:CriticalCohort.MeasuredModelBindsLutRouteMinimumModeAndData'
     ./build/nextpnr-mistral-test --gtest_filter='IoDelayTest.RoutedRangesDoNotDependOnExternalIoConstraints:IoDelayTest.RoutedRangesAffectSkewAwareClockRoutes:CriticalCohort.MeasuredModelPreservesRoutedRangesAndRejectsDifferentRangeMode'
     ctest --test-dir build -R '^nextpnr-mistral-gpio-core-(reference-cli|parser|reference)$' --output-on-failure
     ctest --test-dir build -R '^nextpnr-mistral-lut-carry-(reference|parser)$' --output-on-failure
     ctest --test-dir build -R '^nextpnr-mistral-lut-core-(reference|cli)$' --output-on-failure
+    ctest --test-dir build -R '^nextpnr-mistral-lut-route-min-(reference|cli)$' --output-on-failure
     python3 mistral/tests/router2_profile.py --nextpnr build/nextpnr-mistral --output build/router2-profile
     python3 mistral/tests/router2_undriven.py --nextpnr build/nextpnr-mistral --output build/router2-undriven
     python3 mistral/tests/pad_clock.py

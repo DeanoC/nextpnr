@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "scope": "Native route-scale setup parameters; no waveform or full timing calibration",
+  "device": "5CSEBA6U23I7",
+  "tool": "Quartus Prime Lite 17.0.2 Build 602",
+  "rows": [
+    {
+      "native_model": 0,
+      "pvt": "-7_revprod_1100mv_100c",
+      "data_min_scale": 0.921478271,
+      "clock_min_scale": 0.965408325,
+      "additional_max_scale": 1.0,
+      "mode": 0
+    },
+    {
+      "native_model": 0,
+      "pvt": "-7_revprod_1100mv_n40c",
+      "data_min_scale": 0.919657171,
+      "clock_min_scale": 0.963500321,
+      "additional_max_scale": 1.0,
+      "mode": 0
+    },
+    {
+      "native_model": 1,
+      "pvt": "-m_revprod_1100mv_100c",
+      "data_min_scale": 0.93069309,
+      "clock_min_scale": 0.97506237,
+      "additional_max_scale": 1.0,
+      "mode": 0
+    },
+    {
+      "native_model": 1,
+      "pvt": "-m_revprod_1100mv_n40c",
+      "data_min_scale": 0.93069309,
+      "clock_min_scale": 0.97506237,
+      "additional_max_scale": 1.0,
+      "mode": 0
+    }
+  ],
+  "input_sha256": {
+    "native-scale-observer.tcl": "68e178d88c58e17cef3b57dbf453076f650c9657bf99706ecdc0c983a7a85db0",
+    "fitted.rbf.gz": "b5e5f16f54258521957e9b5ad7a65b9e4708cbeb6080e9e88d9e4fa675c918aa",
+    "native-scale-observer.cc": "3ee70624eb1630d44e65b48b8c60b44ba8b7d0adbfae67af4b73392a6c1a368a",
+    "native-scale-observer.log": "f6a0cdb1ea376abd5d6f5f3ebf69de99aae8ecead9b4272041959662090719fc",
+    "source/clocks.sdc": "cce54d381dcd01667a01963d2c1e7a2bd645df4cf8264ad5ef6cc4a873aae213",
+    "source/top.qpf": "cd9c7a2a7e4afab0dc571f3ae644cd22a934534b4fe4cdf12069281b43db4215",
+    "source/top.rcf": "7699d1df00486a654458befcd75d7e50a921b66a1d5243a56eace1f883d2b574",
+    "source/top.sv": "2f5e84f2c62c5f0652a8d218844cefee3cc8748bc405db2285174a814dd6ed53",
+    "source/top.qsf": "033d15f1ecee3bfacab4950176aa49e5044bb5747229beb6b5233ef734fdb451",
+    "native-scale-ff-slots.log": "8b1cc3444e3502b186c81778a99f8f846f55f6c65f198ef08be99e1dac9f616f",
+    "ff-slots-source/clocks.sdc": "f28bb8decbaf4d903b79fe90df4090e38301e7b74d54e2d9b25305186735c63c",
+    "ff-slots-source/top.qpf": "7a131c9521f2b7da8012faedb841cfe89996b4569c20130b402c5f0133da4a56",
+    "ff-slots-source/top.sv": "8eacf54f7dd7cee55072a963852dc89c66fe20975e4c050bd06f88d22af8d012",
+    "ff-slots-source/top.qsf": "4b7f90711f7d298eb4f04a05203e076c3e00c6ce8ab37f4a454792fee737dfb1"
+  },
+  "vendor_library_sha256": {
+    "libtsm_tis.so": "6baf1a3127531037eadcc803c91a897b1899a9fafa08438eca2941aef875be3b",
+    "libddb_dmgr.so": "84b1ac58c6d4794e63f99dc7b846616ed17ceaad301aa42ce44facb80253fbfa"
+  },
+  "reference_RBF_sha256": "55dbd1ec1a14bec45010c2efd29052f9d7714d68122847df7a7d0b53de314e1d",
+  "runtime_scope": "slow100 data scale on explicit Boolean LUT input routes only",
+  "physical_or_hardware_acceptance": false,
+  "secondary_layout": "Independent FF-slot fit exposes slow/fast 100 C conditions in its retained timing database",
+  "selected_vendor_model_sha256": {
+    "ddb_cyclonev-7_revprod_1100mv_100c_nlspcdata.ddb": "e57cfd34dabaf19a5da763c3bc47ea7f4fd6a7e6aef8155fb345f582598fc3ff",
+    "ddb_cyclonev-7_revprod_1100mv_n40c_nlspcdata.ddb": "36061482e1bf3f4cd332d47f0a6adbdbabce3654c3df5cb78c185cbc93b44319",
+    "ddb_cyclonev-m_revprod_1100mv_100c_nlspccache.ddb": "0f9424bef47710d371b7e9acfd0c7df15e0ef3db006655a1f34c1164bd273486",
+    "ddb_cyclonev-m_revprod_1100mv_100c_nlspcdata.ddb": "a0f5711928d3d2c51b9f63ac642ffccc76a493999d57331b83da54589a4fbbc9",
+    "ddb_cyclonev-m_revprod_1100mv_n40c_nlspccache.ddb": "9c830b67bc3cbfdd52b6b10bd60a939a0410ffd7d3e959d15593ad95fdd823cb",
+    "ddb_cyclonev-m_revprod_1100mv_n40c_nlspcdata.ddb": "44eb47d5080f458a70111be54c5fab824d0de7996cd6ec38439a64249aca7a8f"
+  },
+  "Mistral_reference_commit": "5e311528d8a373503f3508b0dc916e876db0a7a8",
+  "Mistral_reference_circuit_sha256": "0a021d37c019b9f7893bb7838ace29157de0b001adc8447cdb25976bacbadede"
+}

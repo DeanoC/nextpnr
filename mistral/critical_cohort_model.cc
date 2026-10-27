@@ -95,7 +95,7 @@ J identity(Context *ctx)
         const auto key = entry.first.str(ctx);
         if (key == "target_freq" || key.find("timing/") == 0 || key.find("sdc/") == 0 ||
             key == "mistral/routed_delay_ranges" || key == "mistral/clock_edge_ranges" ||
-            key == "mistral/lut_core_reference")
+            key == "mistral/lut_core_reference" || key == "mistral/lut_route_min_reference")
             settings[key] = entry.second.to_string();
     }
     J::object result{{"device", ctx->getChipName()},
@@ -107,6 +107,8 @@ J identity(Context *ctx)
                      {"lut_delays", lut_delays}};
     if(ctx->use_lut_core_reference)
         result["lut_core_reference"] = ctx->lut_core_reference_identity();
+    if(ctx->use_lut_route_min_reference)
+        result["lut_route_min_reference"] = ctx->lut_route_min_reference_identity();
     return result;
 }
 
