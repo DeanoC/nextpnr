@@ -387,7 +387,8 @@ CriticalCohortRouteModel::CriticalCohortRouteModel(Context *ctx, const std::stri
                 auto wire = (native->delay - native->lut_input_delay).delayPair();
                 arc.native_error = wire.maxDelay() - arc.measured_wire.maxDelay();
                 if (arc.native_error == 0 &&
-                    (!ctx->settings.count(ctx->id("timing/io_delays")) || wire.minDelay() == arc.measured_wire.minDelay())) {
+                    (!(ctx->settings.count(ctx->id("timing/io_delays")) || ctx->useRoutedDelayRanges()) ||
+                     wire.minDelay() == arc.measured_wire.minDelay())) {
                     arc.native_full = native->delay.delayPair();
                     ++matches;
                 }
@@ -530,7 +531,8 @@ bool CriticalCohortRouteModel::apply(Context *ctx, TimingAnalyser &timing, const
                 auto native = native_delays.find(entry.first);
                 if (found && native != native_delays.end() && arc.native_full) {
                     auto delta = native->second.delay.delayPair() - *arc.native_full;
-                    if (!ctx->settings.count(ctx->id("timing/io_delays"))) delta = DelayPair(delta.maxDelay());
+                    if (!ctx->settings.count(ctx->id("timing/io_delays")) && !ctx->useRoutedDelayRanges())
+                        delta = DelayPair(delta.maxDelay());
                     delay = nonnegative(arc.measured_wire + delta);
                     if (delay.minDelay() > delay.maxDelay()) {
                         complete = false;
