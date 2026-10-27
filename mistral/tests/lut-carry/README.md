@@ -45,10 +45,10 @@ paths.
 
 These are fitted reference observations, not general worst-case bounds for
 every LUT mask, input slew, output load, packing arrangement, cross-LAB
-carry bridge, speed grade or device. Native cell/route boundary integration,
-complete corner coverage of other primitives, clocks and IO, and physical
-board/hardware acceptance remain separate work. No timing exceptions or
-frequency changes are introduced.
+carry bridge, speed grade or device. Native cell/route boundary integration
+for carry and other primitives, complete corner coverage of other primitives,
+clocks and IO, and physical board/hardware acceptance remain separate work.
+No timing exceptions or frequency changes are introduced.
 
 Run the offline regressions:
 

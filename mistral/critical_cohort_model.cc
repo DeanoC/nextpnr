@@ -109,6 +109,7 @@ J identity(Context *ctx)
         result["lut_core_reference"] = ctx->lut_core_reference_identity();
     if(ctx->use_lut_route_min_reference)
         result["lut_route_min_reference"] = ctx->lut_route_min_reference_identity();
+
     return result;
 }
 

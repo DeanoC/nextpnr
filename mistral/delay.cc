@@ -54,6 +54,7 @@ const char *Arch::lut_route_min_reference_identity() const
     return lut_route_minimum::reference_sha256;
 }
 
+
 namespace {
 
 constexpr delay_t block_input_table_delay = 175;
@@ -1192,6 +1193,7 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
     const bool minimum_reference = strict_lut && use_lut_route_min_reference;
     if (minimum_reference)
         validate_lut_route_min_reference();
+
     // SCLR has a physical GOUT pin, while ENA/ACLR and bypass data have
     // virtual suffixes that already simulate this buffer. The reference FF
     // constraint begins after it, so retain its delay on the routed net.
@@ -1320,9 +1322,10 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
                 const auto bi = int8_t(bel_data(driver.cell->bel).block_index);
                 const CycloneV::pnode_coords source{CycloneV::GPIO,position,CycloneV::DATAIN,bi,3};
                 const bool rising = cyclonev->gpio_timing_build_input_wave(source,src_ri,temp,CycloneV::DELAY_MAX,
-                        inverted ? CycloneV::RF_FALL : CycloneV::RF_RISE,est,input_wave[0]);
+                        inverted ? mistral::CycloneV::RF_FALL : mistral::CycloneV::RF_RISE,est,input_wave[0]);
                 const bool falling = cyclonev->gpio_timing_build_input_wave(source,src_ri,temp,CycloneV::DELAY_MAX,
-                        inverted ? CycloneV::RF_RISE : CycloneV::RF_FALL,est,input_wave[1]);
+                        inverted ? mistral::CycloneV::RF_RISE : mistral::CycloneV::RF_FALL,est,input_wave[1]);
+
                 if (!rising || !falling)
                     return unavailable();
 #else
@@ -1365,6 +1368,7 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
                 !lut_route_minimum::enclose_minimum(lut_route_minimum::slow100_data_scale, output_delays[edge]))
                 log_error("LUT route minimum reference does not cover the interval at '%s'.\n",
                           src.node.to_string().c_str());
+
             if ((terminal_ff || strict_gpio || strict_lut) && (output_wave[edge].empty() || !std::isfinite(output_delays[edge].mi) ||
                                 !std::isfinite(output_delays[edge].mx) ||
                                 output_delays[edge].mi > output_delays[edge].mx))

@@ -554,6 +554,7 @@ struct Arch : BaseArch<ArchRanges>
     const char *lut_core_reference_identity() const;
     void validate_lut_route_min_reference() const;
     const char *lut_route_min_reference_identity() const;
+
     bool gpio_core_reference(const CellInfo *cell, IdString port, TimingClockingInfo &timing) const; // gpio_core.cc
     bool gpio_core_clock_prefix(const CellInfo *cell, IdString data_port, DelayQuad &prefix) const;
     std::vector<RegisteredIoTiming> getRegisteredIoTiming(const CellInfo *cell, IdString pad, bool input) const override;
