@@ -1,0 +1,124 @@
+{
+  "scope": "Historical pre-main-integration full i386 diagnostic. This does not qualify the current publication tree or production/hardware timing.",
+  "producer": {
+    "binary_sha256": "1fce51cbf4e87e867b34d2e2ebfa91f895012071f7c0cecf9f54277bfa6d674f",
+    "source_manifest_sha256": "0bbfd2db297788dad5fb3d33144e314bcdb5c383ac6f06ee8946dd1b15082831",
+    "source_files_verified_unchanged": 411,
+    "source_boundary": "Frozen experimental tree based on 03f39e460c2a7d323372f0bc4681d7cfd62371be, including independent experiments excluded from this PR."
+  },
+  "recipe": {
+    "constraint_mhz": 100,
+    "seed": 1,
+    "router_cohort": "HeAP/GPU plus native analogue repair",
+    "preceding_opt_in_refinements": {
+      "--post-route-lut-moves": 16,
+      "--post-route-private-lut-pins": 16,
+      "--post-route-net-trials": 16,
+      "--post-route-final-lut-pins": 16,
+      "--post-route-sole-lut-pins": 16,
+      "--post-route-lut-pairs": 0,
+      "--post-route-lut-input-nets": 0,
+      "--post-route-static-ff-lut-pins": 0
+    },
+    "compound_branch_trials": 16,
+    "input_sha256": {
+      "json_sha256": "fa451744dad3e96f6da46a0bfccd6ddf1ae237c485c1629753b7c4c53e59df02",
+      "qsf_sha256": "be6bb015f250bb3bc35f6e3e51c1c68e005f7797829d7ed4b320f92f2fe95658",
+      "sdc_sha256": "90dbd69fc0e35ec5e457d552ea6c127d247c4cbbeea76671a8240203327ff535"
+    }
+  },
+  "full_run": {
+    "exit_code": 1,
+    "elapsed_seconds": 3839.6396398969955,
+    "strict_signoff_target_still_fails": true,
+    "native_candidate_accepted": true,
+    "matched_parent_fmax_mhz": 66.6311264038086,
+    "fmax_mhz": 66.79580688476562,
+    "parent_wns_ps": -5008,
+    "parent_tns_ps": -1006232,
+    "rows": 12920,
+    "wns_ps": -4971,
+    "tns_ps": -1003484,
+    "setup_gains": 18,
+    "setup_regressions": 0,
+    "new_setup_violations": 0,
+    "hold_violations": 0,
+    "unrelated_extrema_regressions": 0
+  },
+  "derived_cache_refresh": {
+    "corrected_FF_caches": 3613,
+    "invalid_cells_before_refresh": 11797,
+    "invalid_cells_after_refresh": 0,
+    "target_eligible_before_refresh": false,
+    "target_eligible_after_refresh": true,
+    "all_five_actual_artifacts_byte_exact": true
+  },
+  "physical_audit": {
+    "raw_cells_checked": 20259,
+    "route_records_checked": 21274,
+    "declared_changed_route_trees": 7,
+    "changed_tree_electrical_sink_arcs": 241,
+    "actual_LUT_functions_preserved": true,
+    "register_control_fields_identical": 21043,
+    "only_declared_source_target_nonrouting_configuration_changed": true,
+    "historical_calibration_and_reservations_exact": true
+  },
+  "hold": {
+    "scope": "Compare every related hold margin in the completed compound proposal.",
+    "related_hold_rows": 12920,
+    "hold_margin_gains": 0,
+    "hold_margin_decreases": 0,
+    "hold_safety_failures": 0
+  },
+  "own_replay": {
+    "artifact_bytes_exact": {
+      "core.rbf": true,
+      "timing.json": true,
+      "native/routed-identity.json": true,
+      "native/model.json": true
+    },
+    "complete_native_execution_and_cost_state_exact": true,
+    "all_raw_graph_and_route_triples_exact_after_complete_alias_resolution": true,
+    "endpoint_file_byte_exact": false,
+    "all_endpoint_values_multiplicities_and_nested_order_exact": true,
+    "only_static_endpoint_outer_collection_order_differs": true,
+    "collections": {
+      "clock_inputs": {
+        "count": 2,
+        "same_values_and_order": true
+      },
+      "endpoints": {
+        "count": 12920,
+        "same_values_and_order": true
+      },
+      "inactive_endpoints": {
+        "count": 6366,
+        "same_values_and_order": true
+      },
+      "primitive_clocks": {
+        "count": 0,
+        "same_values_and_order": true
+      },
+      "static_endpoints": {
+        "count": 20049,
+        "same_values_and_order": false
+      },
+      "unsupported": {
+        "count": 5,
+        "same_values_and_order": true
+      }
+    }
+  },
+  "retained_artifact_identity": {
+    "final_rbf_sha256": "224ed116ab37fe1793e74b72649d7892a3e2ed41e39b52aa27fb9defa1908861",
+    "final_timing_report_sha256": "7b9b7b055ccbc8717e430d315dc8d697a00f8d22021b2329db3c65b9df271284",
+    "final_native_identity_sha256": "f40d4338ec509c2b270f2d6da24710a26c37bae5d7ae5acbfd94fb940d02caff",
+    "final_model_sha256": "3034ce164e961b2fc4e9b54a06eb1b2ab4858bc56da4ec6ecfdd713e7392c889",
+    "frozen_artifact_manifest_sha256": "a6adf6f1e0a134edee2bd19e788d409b87ced1918f3364021ab36ccac6843fef",
+    "availability": "Full-design raw routes and bitstreams remain retained external artifacts; they are not included in this source PR."
+  },
+  "unsupported_external_IO_records": 5,
+  "coverage_complete": false,
+  "production_retention_authorized": false,
+  "hardware_acceptance_complete": false
+}
