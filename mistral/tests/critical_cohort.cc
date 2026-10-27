@@ -1057,6 +1057,14 @@ TEST_F(CriticalCohort, MeasuredModelPreservesRoutedRangesAndRejectsDifferentRang
                     EXPECT_EQ(got[i].setup_margin, expected[i].setup_margin);
                     EXPECT_EQ(got[i].hold_margin, expected[i].hold_margin);
                 }
+                if (ranges) {
+                    // Clock-edge selection also belongs to calibration identity,
+                    // even when placement STA uses ideal clocks.
+                    const auto edge_setting = ctx->id("mistral/clock_edge_ranges");
+                    ctx->settings[edge_setting] = true;
+                    EXPECT_THROW(CriticalCohortRouteModel(ctx.get(), report), log_execution_error_exception);
+                    ctx->settings.erase(edge_setting);
+                }
                 // The graph, clocks and placement still match: only the route
                 // interval setting changes, and must invalidate calibration.
                 if (ranges)

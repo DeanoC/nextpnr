@@ -94,7 +94,7 @@ J identity(Context *ctx)
     for (const auto &entry : ctx->settings) {
         const auto key = entry.first.str(ctx);
         if (key == "target_freq" || key.find("timing/") == 0 || key.find("sdc/") == 0 ||
-            key == "mistral/routed_delay_ranges")
+            key == "mistral/routed_delay_ranges" || key == "mistral/clock_edge_ranges")
             settings[key] = entry.second.to_string();
     }
     return J::object{{"device", ctx->getChipName()},

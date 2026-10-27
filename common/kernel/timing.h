@@ -179,6 +179,7 @@ struct TimingAnalyser
     void init_ports();
     void get_cell_delays();
     void get_route_delays();
+    DelayPair clock_route_delay(CellPortKey clock, ClockEdge edge) const;
     void check_primitive_clocks();
     void topo_sort();
     void setup_port_domains();
@@ -287,6 +288,7 @@ struct TimingAnalyser
         std::vector<CellArc> cell_arcs;
         // routing delay into this port (input ports only)
         DelayPair route_delay{0};
+        DelayQuad route_delay_quad{0};
         // worst criticality and slack across domain pairs
         float worst_crit = 0;
         delay_t worst_setup_slack = std::numeric_limits<delay_t>::max(),
@@ -343,6 +345,7 @@ struct TimingAnalyser
     TimingResult result;
     bool analysis_complete = false;
     bool analysed_clock_skew = false, analysed_setup_only = false;
+    bool clock_edge_ranges = false;
 };
 
 // Perform timing analysis and optionaly print out slack histogram, fmax and critical paths

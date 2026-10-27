@@ -1155,6 +1155,85 @@ TEST_F(IoDelayTest, RoutedRangesDoNotDependOnExternalIoConstraints)
     check(false,false,731+4000-270); // No cached mode after re-entry.
 }
 
+TEST_F(IoDelayTest, ClockEdgeRangesSelectEachRegisterEdgeAndPreserveManualOverrides)
+{
+    // Give the constrained clock a physical source so the native routing API
+    // consumes the independently supplied clock intervals.
+    auto *source = ff("clock_source");
+    auto *auxiliary = net("clock_source_reference");
+    auxiliary->clkconstr = std::make_unique<ClockConstraint>(*clock->clkconstr);
+    source->disconnectPort(id_CLK);
+    source->connectPort(id_CLK, auxiliary);
+    source->disconnectPort(id_Q);
+    source->connectPort(id_Q, clock);
+    capture->disconnectPort(id_DATAIN);
+    capture->connectPort(id_DATAIN, launch->getPort(id_Q));
+    ctx->assignArchInfo();
+    ctx->bindBel(ctx->labs[0].alms[2].ff_bels[0], source, STRENGTH_USER);
+    ctx->bindBel(ctx->labs[0].alms[0].ff_bels[0], launch, STRENGTH_USER);
+    ctx->bindBel(ctx->labs[0].alms[1].ff_bels[0], capture, STRENGTH_USER);
+    for (auto *cell : {source, launch}) {
+        cell->pin_data[id_Q].bel_pins = {id_Q};
+        ctx->bindWire(ctx->getBelPinWire(cell->bel, id_Q), cell->getPort(id_Q), STRENGTH_USER);
+    }
+    auto *models = static_cast<IoBoundaryTestContext *>(ctx.get());
+    models->route_models[CellPortKey(launch->name, id_CLK)] = DelayQuad(1000, 1100, 3000, 3200);
+    models->route_models[CellPortKey(capture->name, id_CLK)] = DelayQuad(1200, 1400, 3500, 3900);
+    models->route_models[CellPortKey(capture->name, id_DATAIN)] = DelayQuad(1000, 4000);
+    ctx->settings[ctx->id("mistral/routed_delay_ranges")] = true;
+    const auto option = ctx->id("mistral/clock_edge_ranges");
+    const CellPortKey endpoint(capture->name, id_DATAIN);
+    TimingAnalyser timing(ctx.get());
+    timing.with_clock_skew = true;
+    auto check = [&](TimingAnalyser &analysis, bool selected, bool launch_fall, bool capture_fall,
+                     delay_t setup, delay_t hold) {
+        ctx->settings[option] = selected;
+        launch->pin_data[id_CLK].state = launch_fall ? PIN_INV : PIN_SIG;
+        capture->pin_data[id_CLK].state = capture_fall ? PIN_INV : PIN_SIG;
+        ctx->assignArchInfo();
+        analysis.setup(false, false, true);
+        EXPECT_EQ(analysis.get_setup_slack(endpoint), setup);
+        EXPECT_EQ(analysis.get_timing_result().clock_hold_slack.at(clock->name), hold);
+        std::vector<EndpointClockPairTiming> rows;
+        ASSERT_TRUE(analysis.get_endpoint_clock_pair_timings(endpoint, rows));
+        ASSERT_EQ(rows.size(), 1u);
+        EXPECT_EQ(rows.front().setup_margin, setup);
+        EXPECT_EQ(rows.front().hold_margin, hold);
+        EXPECT_EQ(rows.front().launch.edge, launch_fall ? FALLING_EDGE : RISING_EDGE);
+        EXPECT_EQ(rows.front().capture.edge, capture_fall ? FALLING_EDGE : RISING_EDGE);
+    };
+    check(timing, false, false, false, 3465, -1439); // The ordinary envelope is preserved.
+    check(timing, true, false, false, 5565, 1061);
+    timing.set_route_delay(CellPortKey(launch->name, id_CLK), DelayPair(2000, 2100));
+    timing.run(false, false, false, true);
+    EXPECT_EQ(timing.get_setup_slack(endpoint), 4565);
+    EXPECT_EQ(timing.get_timing_result().clock_hold_slack.at(clock->name), 2061);
+    struct EdgeCase { bool launch_fall, capture_fall; delay_t setup, hold; };
+    for (const auto &test : {EdgeCase{true, true, 5765, 561}, EdgeCase{false, true, 2865, 3561},
+                             EdgeCase{true, false, -1535, 8061}}) {
+        // A changed register polarity is a different timing graph. Re-entry
+        // with unchanged clock events is exercised on `timing` separately.
+        TimingAnalyser other(ctx.get());
+        other.with_clock_skew = true;
+        check(other, true, test.launch_fall, test.capture_fall, test.setup, test.hold);
+    }
+    check(timing, false, false, false, 3465, -1439);
+    check(timing, true, false, false, 5565, 1061);
+    ctx->settings[option] = false;
+    std::vector<EndpointClockPairTiming> stale;
+    EXPECT_FALSE(timing.get_endpoint_clock_pair_timings(endpoint, stale));
+    EXPECT_THROW(timing.run(false, false, false, true), log_execution_error_exception);
+    EXPECT_NO_THROW(timing.setup(false, false, true));
+    EXPECT_EQ(timing.get_timing_result().clock_hold_slack.at(clock->name), -1439);
+}
+
+TEST_F(IoDelayTest, ClockEdgeRangesRequireFullRouteRanges)
+{
+    ctx->settings[ctx->id("mistral/clock_edge_ranges")] = true;
+    EXPECT_THROW(TimingAnalyser(ctx.get()).setup(), log_execution_error_exception);
+
+}
+
 TEST_F(IoDelayTest, RoutedRangesAffectSkewAwareClockRoutes)
 {
     capture->disconnectPort(id_DATAIN);
