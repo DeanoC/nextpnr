@@ -18,6 +18,7 @@ setter, then names the native PVT through the vendor's own model getter. Its
 two object offsets and old string ABI are tied to the exact installed library
 hashes in `reference.json`; this observer is a diagnostic for that build only.
 It does not implement the compiler correction or change a timing factor.
+The two `.log.gz` fixtures preserve the raw native output byte for byte.
 
 The source reproduces the RAM/FF control design retained in FES
 `175ec40040ac9e702595acf9a606d7ef4fec5358`. The compressed fitted RBF is

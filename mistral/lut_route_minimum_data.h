@@ -4,7 +4,7 @@
 NEXTPNR_NAMESPACE_BEGIN
 namespace lut_route_minimum {
 inline constexpr double slow100_data_scale = double(0.921478271f);
-inline constexpr char reference_sha256[] = "7229760858fed6bbceb7e30f8b4a9cedbb6766af65d641ab634aced570e6a6ed";
+inline constexpr char reference_sha256[] = "6ee16d6ed9c1d0c096c573417c69d1ddc4d2d28f47890f1a5b6e047341da985a";
 } // namespace lut_route_minimum
 NEXTPNR_NAMESPACE_END
 #endif

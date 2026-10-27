@@ -21,8 +21,12 @@ def generated():
     for name, digest in ref['input_sha256'].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
     assert hashlib.sha256(gzip.decompress((ROOT / 'fitted.rbf.gz').read_bytes())).hexdigest() == ref['reference_RBF_sha256']
+    def log(name):
+        data = gzip.decompress((ROOT / (name + '.gz')).read_bytes())
+        assert hashlib.sha256(data).hexdigest() == ref['raw_log_sha256'][name]
+        return data.decode().splitlines()
     native = []
-    for line in (ROOT / 'native-scale-observer.log').read_text().splitlines():
+    for line in log('native-scale-observer.log'):
         if line.startswith('NATIVE_MODEL_SCALE '):
             row = dict(re.findall(r'(\w+)=([^ ]+)', line))
             native.append(dict(native_model=int(row['model']), pvt=row['pvt'], data_min_scale=float(row['first']),
@@ -34,7 +38,7 @@ def generated():
         assert row['mode'] == 0 and row['native_model'] == (0 if row['pvt'].startswith('-7_') else 1)
         assert 0 < row['data_min_scale'] < row['clock_min_scale'] < row['additional_max_scale'] == 1
     controls = [dict(re.findall(r'(\w+)=([^ ]+)', line))
-        for line in (ROOT / 'native-scale-ff-slots.log').read_text().splitlines()
+        for line in log('native-scale-ff-slots.log')
         if line.startswith('NATIVE_MODEL_SCALE ')]
     assert len(controls) == 2 and {r['pvt'] for r in controls} == {r['pvt'] for r in native if r['pvt'].endswith('_100c')}
     for control in controls:
