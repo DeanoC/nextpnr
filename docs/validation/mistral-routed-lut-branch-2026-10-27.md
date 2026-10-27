@@ -5,9 +5,46 @@ refinement. It preserves strict signoff and treats incomplete timing coverage
 as incomplete. Related investigation: [issue #300](https://github.com/DeanoC/nextpnr/issues/300).
 That broader Quartus timing gap remains unresolved.
 
+## Publication-branch validation
+
+The framework and compound code are integrated with main. Independent packing
+and remap experiments are excluded. The
+[validation summary](mistral-routed-lut-branch-2026-10-27.json) binds each phase
+to its actual compiled source and executable hashes:
+
+| Phase | Source | Result |
+| --- | --- | --- |
+| Broad component checks | `1ee129ef`, based on main `4d63c8df` | 226 unique native cases, no skips; 20 controller and 14 refinement tests; six additional model/cache checks |
+| Current-main integration | `6778705e`, merging main `00f22afe` | Compiler/native builds, 11 focused native regressions and four CLI CTest suites pass |
+| Current-main fresh routes | Same merged code, untouched `00f22afe` comparison compiler | 18 direct routes plus complete controller rejection/improvement checks pass |
+
+Both current-main builds use Mistral
+`5e311528d8a373503f3508b0dc916e876db0a7a8`. The native integration selection
+covers the DATAIN cache correction, stale/undeclared placement rejection,
+native electrical-preview restoration, complete calibrated intervals, and
+the new clock-edge/range modes. CLI checks include all 14 feedback methods,
+10 critical-cohort methods and both timing-mode suites. CI runs the feedback
+controller/refiner/CLI suites and the cache/parent-identity regressions.
+
+Fresh disabled, recorder and empty-plan runs have byte-identical routed JSON,
+RBF and timing reports. Against the separately built untouched main compiler,
+RBF and timing bytes are identical. The only routed JSON difference is the
+top-level compiler-version creator line. The test verifies each creator
+against its actual executable's version output and checks that the executable
+hash stays fixed; every other raw JSON byte must match. This does not discard
+graph, route, ordering or timing values.
+
+Complete-tree preservation and handoff reproduce all 26 captured trees and
+endpoint rows for both passing and failing targets. Group checks preserve
+the exact final placements and rows. Every regressing controller candidate
+is rejected. The redundant single-endpoint fixture gains **328 ps WNS/TNS**,
+from -4757 to -4429 ps, and its second proposal round reconstructs the exact
+selected first-round parent. Its original tight timing target still fails;
+the test retains that failure rather than overriding it.
+
 ## Historical full-design measurement
 
-The [measurement summary](mistral-routed-lut-branch-2026-10-27.json) records the
+The `historical_i386_diagnostic` section of the validation summary records the
 completed frozen i386 experiment before integration with newer main. Its
 producer SHA-256 is
 `1fce51cbf4e87e867b34d2e2ebfa91f895012071f7c0cecf9f54277bfa6d674f`.

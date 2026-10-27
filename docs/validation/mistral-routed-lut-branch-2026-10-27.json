@@ -1,124 +1,241 @@
 {
-  "scope": "Historical pre-main-integration full i386 diagnostic. This does not qualify the current publication tree or production/hardware timing.",
-  "producer": {
-    "binary_sha256": "1fce51cbf4e87e867b34d2e2ebfa91f895012071f7c0cecf9f54277bfa6d674f",
-    "source_manifest_sha256": "0bbfd2db297788dad5fb3d33144e314bcdb5c383ac6f06ee8946dd1b15082831",
-    "source_files_verified_unchanged": 411,
-    "source_boundary": "Frozen experimental tree based on 03f39e460c2a7d323372f0bc4681d7cfd62371be, including independent experiments excluded from this PR."
-  },
-  "recipe": {
-    "constraint_mhz": 100,
-    "seed": 1,
-    "router_cohort": "HeAP/GPU plus native analogue repair",
-    "preceding_opt_in_refinements": {
-      "--post-route-lut-moves": 16,
-      "--post-route-private-lut-pins": 16,
-      "--post-route-net-trials": 16,
-      "--post-route-final-lut-pins": 16,
-      "--post-route-sole-lut-pins": 16,
-      "--post-route-lut-pairs": 0,
-      "--post-route-lut-input-nets": 0,
-      "--post-route-static-ff-lut-pins": 0
+  "schema": 1,
+  "scope": "Source-bound historical full-design diagnostic and separate publication-branch validation. These are distinct evidence cohorts.",
+  "historical_i386_diagnostic": {
+    "scope": "Historical pre-main-integration full i386 diagnostic. This does not qualify the current publication tree or production/hardware timing.",
+    "producer": {
+      "binary_sha256": "1fce51cbf4e87e867b34d2e2ebfa91f895012071f7c0cecf9f54277bfa6d674f",
+      "source_manifest_sha256": "0bbfd2db297788dad5fb3d33144e314bcdb5c383ac6f06ee8946dd1b15082831",
+      "source_files_verified_unchanged": 411,
+      "source_boundary": "Frozen experimental tree based on 03f39e460c2a7d323372f0bc4681d7cfd62371be, including independent experiments excluded from this PR."
     },
-    "compound_branch_trials": 16,
-    "input_sha256": {
-      "json_sha256": "fa451744dad3e96f6da46a0bfccd6ddf1ae237c485c1629753b7c4c53e59df02",
-      "qsf_sha256": "be6bb015f250bb3bc35f6e3e51c1c68e005f7797829d7ed4b320f92f2fe95658",
-      "sdc_sha256": "90dbd69fc0e35ec5e457d552ea6c127d247c4cbbeea76671a8240203327ff535"
-    }
-  },
-  "full_run": {
-    "exit_code": 1,
-    "elapsed_seconds": 3839.6396398969955,
-    "strict_signoff_target_still_fails": true,
-    "native_candidate_accepted": true,
-    "matched_parent_fmax_mhz": 66.6311264038086,
-    "fmax_mhz": 66.79580688476562,
-    "parent_wns_ps": -5008,
-    "parent_tns_ps": -1006232,
-    "rows": 12920,
-    "wns_ps": -4971,
-    "tns_ps": -1003484,
-    "setup_gains": 18,
-    "setup_regressions": 0,
-    "new_setup_violations": 0,
-    "hold_violations": 0,
-    "unrelated_extrema_regressions": 0
-  },
-  "derived_cache_refresh": {
-    "corrected_FF_caches": 3613,
-    "invalid_cells_before_refresh": 11797,
-    "invalid_cells_after_refresh": 0,
-    "target_eligible_before_refresh": false,
-    "target_eligible_after_refresh": true,
-    "all_five_actual_artifacts_byte_exact": true
-  },
-  "physical_audit": {
-    "raw_cells_checked": 20259,
-    "route_records_checked": 21274,
-    "declared_changed_route_trees": 7,
-    "changed_tree_electrical_sink_arcs": 241,
-    "actual_LUT_functions_preserved": true,
-    "register_control_fields_identical": 21043,
-    "only_declared_source_target_nonrouting_configuration_changed": true,
-    "historical_calibration_and_reservations_exact": true
-  },
-  "hold": {
-    "scope": "Compare every related hold margin in the completed compound proposal.",
-    "related_hold_rows": 12920,
-    "hold_margin_gains": 0,
-    "hold_margin_decreases": 0,
-    "hold_safety_failures": 0
-  },
-  "own_replay": {
-    "artifact_bytes_exact": {
-      "core.rbf": true,
-      "timing.json": true,
-      "native/routed-identity.json": true,
-      "native/model.json": true
-    },
-    "complete_native_execution_and_cost_state_exact": true,
-    "all_raw_graph_and_route_triples_exact_after_complete_alias_resolution": true,
-    "endpoint_file_byte_exact": false,
-    "all_endpoint_values_multiplicities_and_nested_order_exact": true,
-    "only_static_endpoint_outer_collection_order_differs": true,
-    "collections": {
-      "clock_inputs": {
-        "count": 2,
-        "same_values_and_order": true
+    "recipe": {
+      "constraint_mhz": 100,
+      "seed": 1,
+      "router_cohort": "HeAP/GPU plus native analogue repair",
+      "preceding_opt_in_refinements": {
+        "--post-route-lut-moves": 16,
+        "--post-route-private-lut-pins": 16,
+        "--post-route-net-trials": 16,
+        "--post-route-final-lut-pins": 16,
+        "--post-route-sole-lut-pins": 16,
+        "--post-route-lut-pairs": 0,
+        "--post-route-lut-input-nets": 0,
+        "--post-route-static-ff-lut-pins": 0
       },
-      "endpoints": {
-        "count": 12920,
-        "same_values_and_order": true
-      },
-      "inactive_endpoints": {
-        "count": 6366,
-        "same_values_and_order": true
-      },
-      "primitive_clocks": {
-        "count": 0,
-        "same_values_and_order": true
-      },
-      "static_endpoints": {
-        "count": 20049,
-        "same_values_and_order": false
-      },
-      "unsupported": {
-        "count": 5,
-        "same_values_and_order": true
+      "compound_branch_trials": 16,
+      "input_sha256": {
+        "json_sha256": "fa451744dad3e96f6da46a0bfccd6ddf1ae237c485c1629753b7c4c53e59df02",
+        "qsf_sha256": "be6bb015f250bb3bc35f6e3e51c1c68e005f7797829d7ed4b320f92f2fe95658",
+        "sdc_sha256": "90dbd69fc0e35ec5e457d552ea6c127d247c4cbbeea76671a8240203327ff535"
       }
-    }
+    },
+    "full_run": {
+      "exit_code": 1,
+      "elapsed_seconds": 3839.6396398969955,
+      "strict_signoff_target_still_fails": true,
+      "native_candidate_accepted": true,
+      "matched_parent_fmax_mhz": 66.6311264038086,
+      "fmax_mhz": 66.79580688476562,
+      "parent_wns_ps": -5008,
+      "parent_tns_ps": -1006232,
+      "rows": 12920,
+      "wns_ps": -4971,
+      "tns_ps": -1003484,
+      "setup_gains": 18,
+      "setup_regressions": 0,
+      "new_setup_violations": 0,
+      "hold_violations": 0,
+      "unrelated_extrema_regressions": 0
+    },
+    "derived_cache_refresh": {
+      "corrected_FF_caches": 3613,
+      "invalid_cells_before_refresh": 11797,
+      "invalid_cells_after_refresh": 0,
+      "target_eligible_before_refresh": false,
+      "target_eligible_after_refresh": true,
+      "all_five_actual_artifacts_byte_exact": true
+    },
+    "physical_audit": {
+      "raw_cells_checked": 20259,
+      "route_records_checked": 21274,
+      "declared_changed_route_trees": 7,
+      "changed_tree_electrical_sink_arcs": 241,
+      "actual_LUT_functions_preserved": true,
+      "register_control_fields_identical": 21043,
+      "only_declared_source_target_nonrouting_configuration_changed": true,
+      "historical_calibration_and_reservations_exact": true
+    },
+    "hold": {
+      "scope": "Compare every related hold margin in the completed compound proposal.",
+      "related_hold_rows": 12920,
+      "hold_margin_gains": 0,
+      "hold_margin_decreases": 0,
+      "hold_safety_failures": 0
+    },
+    "own_replay": {
+      "artifact_bytes_exact": {
+        "core.rbf": true,
+        "timing.json": true,
+        "native/routed-identity.json": true,
+        "native/model.json": true
+      },
+      "complete_native_execution_and_cost_state_exact": true,
+      "all_raw_graph_and_route_triples_exact_after_complete_alias_resolution": true,
+      "endpoint_file_byte_exact": false,
+      "all_endpoint_values_multiplicities_and_nested_order_exact": true,
+      "only_static_endpoint_outer_collection_order_differs": true,
+      "collections": {
+        "clock_inputs": {
+          "count": 2,
+          "same_values_and_order": true
+        },
+        "endpoints": {
+          "count": 12920,
+          "same_values_and_order": true
+        },
+        "inactive_endpoints": {
+          "count": 6366,
+          "same_values_and_order": true
+        },
+        "primitive_clocks": {
+          "count": 0,
+          "same_values_and_order": true
+        },
+        "static_endpoints": {
+          "count": 20049,
+          "same_values_and_order": false
+        },
+        "unsupported": {
+          "count": 5,
+          "same_values_and_order": true
+        }
+      }
+    },
+    "retained_artifact_identity": {
+      "final_rbf_sha256": "224ed116ab37fe1793e74b72649d7892a3e2ed41e39b52aa27fb9defa1908861",
+      "final_timing_report_sha256": "7b9b7b055ccbc8717e430d315dc8d697a00f8d22021b2329db3c65b9df271284",
+      "final_native_identity_sha256": "f40d4338ec509c2b270f2d6da24710a26c37bae5d7ae5acbfd94fb940d02caff",
+      "final_model_sha256": "3034ce164e961b2fc4e9b54a06eb1b2ab4858bc56da4ec6ecfdd713e7392c889",
+      "frozen_artifact_manifest_sha256": "a6adf6f1e0a134edee2bd19e788d409b87ced1918f3364021ab36ccac6843fef",
+      "availability": "Full-design raw routes and bitstreams remain retained external artifacts; they are not included in this source PR."
+    },
+    "unsupported_external_IO_records": 5,
+    "coverage_complete": false,
+    "production_retention_authorized": false,
+    "hardware_acceptance_complete": false
   },
-  "retained_artifact_identity": {
-    "final_rbf_sha256": "224ed116ab37fe1793e74b72649d7892a3e2ed41e39b52aa27fb9defa1908861",
-    "final_timing_report_sha256": "7b9b7b055ccbc8717e430d315dc8d697a00f8d22021b2329db3c65b9df271284",
-    "final_native_identity_sha256": "f40d4338ec509c2b270f2d6da24710a26c37bae5d7ae5acbfd94fb940d02caff",
-    "final_model_sha256": "3034ce164e961b2fc4e9b54a06eb1b2ab4858bc56da4ec6ecfdd713e7392c889",
-    "frozen_artifact_manifest_sha256": "a6adf6f1e0a134edee2bd19e788d409b87ced1918f3364021ab36ccac6843fef",
-    "availability": "Full-design raw routes and bitstreams remain retained external artifacts; they are not included in this source PR."
-  },
-  "unsupported_external_IO_records": 5,
-  "coverage_complete": false,
-  "production_retention_authorized": false,
-  "hardware_acceptance_complete": false
+  "publication_validation": {
+    "scope": "Publication branch checks, separately bound to the code revision for each phase. CPU-only reference routing; no physical GPU or board qualification.",
+    "initial_integration": {
+      "compiled_code_commit": "1ee129ef0a44a83180f794264fae5c721df725cc",
+      "main_base": "4d63c8dfbc4a8b53c7cc8d160f1bc3d856984056",
+      "native_cases_passed": 226,
+      "native_cases_skipped": 0,
+      "native_binary_sha256": "c92382b985c2dec15ec148e1759ca6ef8dcbdc4d3c9aab829ea57156d6cf6a81",
+      "controller_tests_passed": 20,
+      "refinement_tests_passed": 14,
+      "additional_model_cache_regressions_passed": 6
+    },
+    "current_main_integration": {
+      "compiled_code_commit": "6778705e4da03444040e453079975990b70d787b",
+      "main_base": "00f22afe0d13e7a7f9cc88b6072de8ef53e2ea10",
+      "mistral_dependency_revision": "5e311528d8a373503f3508b0dc916e876db0a7a8",
+      "compiler_and_native_builds_passed": true,
+      "native_cases_passed": 11,
+      "native_cases_skipped": 0,
+      "native_binary_sha256": "b2d9c65b6f0756dc7d40cad7d48f727da5590512d13492ee416d7c78efdc4e4a",
+      "CLI_CTest_suites_passed": 4,
+      "feedback_CLI_methods": 14,
+      "critical_cohort_CLI_methods": 10,
+      "range_and_clock_edge_CLI_suites_passed": true,
+      "candidate_compiler_sha256": "58695d3eaa7a2d5efb4bb0aa8f866862f8703d926432544e33480adc73e517c7",
+      "untouched_main_compiler_sha256": "22e5ff46b1f3a9b602f1fcd1e857d34ef9756b1f1ff28cfb9e84e1569c8de01a",
+      "producer_version_labels": [
+        "Next Generation Place and Route (Version nextpnr-0.11.1-592-g6778705e)",
+        "Next Generation Place and Route (Version nextpnr-0.11.1-584-g00f22afe)"
+      ]
+    },
+    "current_main_fresh_routes": {
+      "direct_routes_passed": 18,
+      "disabled_recorder_empty_plan_artifacts_byte_exact": true,
+      "untouched_main_comparison": {
+        "RBF_and_timing_bytes_exact": true,
+        "all_other_routed_JSON_bytes_exact": true,
+        "creator_verified_against_each_actual_compiler": true,
+        "routed_JSON_byte_exact": false
+      },
+      "baseline_coverage_complete": true,
+      "preservation": {
+        "preserved_count": 26,
+        "identical_sha256": {
+          "core.rbf": "9df254daf865c16aa4d8b00b6a044aaf0d323c4e5f3cf953ab1e0d5236441987",
+          "timing.json": "78db900cf46a3bf4f4351853c96232b75a8bc7e96d40963551ec6d71fbcfca03"
+        },
+        "final_trees_match": true,
+        "failing_replay_preserved_count": 26,
+        "failing_replay_rows_identical": true
+      },
+      "handoff": {
+        "handoff-identity": {
+          "trees": 26,
+          "final_trees_match": true,
+          "rows_identical": true,
+          "timing_pass": true
+        },
+        "handoff-failing-identity": {
+          "trees": 26,
+          "final_trees_match": true,
+          "rows_identical": true,
+          "timing_pass": false
+        }
+      },
+      "groups": {
+        "group-full-passing": {
+          "final_placement_matches": true,
+          "rows_identical": true,
+          "timing_pass": true,
+          "placement_only_check": true
+        },
+        "group-full-failing": {
+          "final_placement_matches": true,
+          "rows_identical": true,
+          "timing_pass": false,
+          "placement_only_check": true
+        },
+        "group-preserved-passing": {
+          "final_placement_matches": true,
+          "rows_identical": true,
+          "timing_pass": true,
+          "placement_only_check": true
+        },
+        "group-preserved-failing": {
+          "final_placement_matches": true,
+          "rows_identical": true,
+          "timing_pass": false,
+          "placement_only_check": true
+        }
+      },
+      "all_regressing_candidates_rejected": true,
+      "synthetic_original_score_ps": [
+        -4757,
+        -4757
+      ],
+      "synthetic_retained_score_ps": [
+        -4429,
+        -4429
+      ],
+      "synthetic_WNS_and_TNS_gain_ps": 328,
+      "synthetic_timing_still_fails": true,
+      "round_two_parent_replay_exact": true
+    },
+    "retained_log_sha256": {
+      "pr-controller-tests.log": "58203dcbb4f3a09e7dd635ce3f56f2196ddf9ca9d24021d38dce5d89d9d4261e",
+      "pr-refiner-tests.log": "db5a038889efe5cc802572f85056aa28379171dd4fd603161df1c864884bf8bb",
+      "pr-clock-edge-merge-cli-tests.log": "182288aa53f56d773990eb70b59642ef1c441ed13872826cd415d4c73188fe5b",
+      "pr-clock-edge-merge-native-tests.log": "9e98df00a1a3649b792ae62a79af67baf7e9911480c514b1074e5b04c76a4a61",
+      "pr-current-main-fresh-route-tests.log": "dad3a29460561648ced3405d59ceaa85cb6b9c2c0004d1da3f8a99af206b489f"
+    },
+    "fresh_control_receipt_sha256": "b812f9ad0cfa31762d2e6dbc3267dfff359492e14d3080a055681cb1d7c74ebb"
+  }
 }
