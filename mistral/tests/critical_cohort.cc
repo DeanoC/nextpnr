@@ -4,6 +4,7 @@
 #include <sstream>
 #include <stdexcept>
 #include "critical_cohort_model.h"
+#include "routed_placement.h"
 #include "gtest/gtest.h"
 #include "json11.hpp"
 #include "log.h"
@@ -195,6 +196,180 @@ class CriticalCohort : public ::testing::Test
     };
 };
 
+TEST_F(CriticalCohort, GroupCandidatesMoveRegistersAndRestoreOnConsumerFailure)
+{
+    auto *clk = clock("clk", 1000);
+    auto *logic = timing_cone(clk);
+    auto paths = guidance(logic);
+    // Export the actual prepared route-through graph, then reconstruct the
+    // original placed graph exactly as a fresh proposal worker does.
+    for (uint32_t lab = 0; lab < ctx->labs.size(); ++lab)
+        for (uint8_t alm = 0; alm < 10; ++alm) ctx->reassign_alm_inputs(lab, alm);
+    TimingAnalyser timing(ctx.get());
+    timing.setup(false, false, true);
+    ctx->timing_result = timing.get_timing_result();
+    ctx->timing_result_is_final_analogue = true;
+    std::ostringstream out;
+    write_critical_cohort_route_model(ctx.get(), out);
+    std::string error;
+    auto document = json11::Json::parse(out.str(), error).object_items();
+    document["critical_paths"] = paths["critical_paths"];
+    document["fmax"] = paths["fmax"];
+    serial = 0;
+    SetUp();
+    clk = clock("clk", 1000);
+    logic = timing_cone(clk);
+    Snapshot saved(ctx.get());
+    int inspected = 0;
+    EXPECT_THROW(propose_critical_cohort_groups(ctx.get(), json11::Json(document).dump(), 2,
+        [&](const CriticalCohortGroupTrial &trial) {
+            ++inspected;
+            EXPECT_GT(trial.moved_registers, 0);
+            EXPECT_GE(trial.moved_cells, trial.moved_registers);
+            for (const auto &cell : ctx->cells) EXPECT_TRUE(ctx->isBelLocationValid(cell.second->bel));
+            throw std::runtime_error("consumer failed");
+        }), std::runtime_error);
+    EXPECT_EQ(inspected, 1);
+    saved.check(ctx.get());
+}
+
+TEST_F(CriticalCohort, DisplacedLutSelectionIncludesAlmMatesAndHonorsProtection)
+{
+    auto *victim = lut(30, 20, 0), *arriving = lut(24, 20, 6);
+    auto original = routed_placement_snapshot(ctx.get());
+    ctx->unbindBel(victim->bel); ctx->bindBel(bel(24, 20, 0), victim, STRENGTH_WEAK);
+    ctx->unbindBel(arriving->bel); ctx->bindBel(bel(30, 20, 1), arriving, STRENGTH_WEAK);
+    auto selected = critical_cohort_displaced_luts(ctx.get(), original);
+    ASSERT_EQ(selected.size(), 1); EXPECT_EQ(selected.front(), victim);
+    victim->attrs[ctx->id("keep")] = 1;
+    EXPECT_TRUE(critical_cohort_displaced_luts(ctx.get(), original).empty());
+    victim->attrs.erase(ctx->id("keep"));
+    victim->cluster = victim->name;
+    EXPECT_TRUE(critical_cohort_displaced_luts(ctx.get(), original).empty());
+}
+
+TEST_F(CriticalCohort, DisplacedLutSelectionIncludesRegisterPressureWithoutMovingRegisters)
+{
+    auto *victim = lut(24, 20, 6);
+    auto *reg = ff(clock("clk", 1000), 30, 20, 8);
+    ctx->assignArchInfo();
+    auto original = routed_placement_snapshot(ctx.get());
+    ctx->unbindBel(victim->bel); ctx->bindBel(bel(30, 20, 0), victim, STRENGTH_WEAK);
+    ctx->unbindBel(reg->bel); ctx->bindBel(bel(24, 20, 8), reg, STRENGTH_WEAK);
+    auto selected = critical_cohort_displaced_luts(ctx.get(), original);
+    ASSERT_EQ(selected.size(), 1); EXPECT_EQ(selected.front(), victim);
+    EXPECT_EQ(reg->bel, bel(24, 20, 8));
+}
+
+TEST_F(CriticalCohort, DisplacedLutInspectionPreservesOccupantsStrengthsAndExceptionRollback)
+{
+    auto *logic = lut(24, 20, 0), *obstruction = lut(30, 20, 0);
+    ff(clock("clk", 1000), 30, 20, 8);
+    ctx->assignArchInfo();
+    Snapshot saved(ctx.get());
+    int inspected = 0;
+    EXPECT_FALSE(inspect_critical_cohort_lut_site(ctx.get(), logic, obstruction->bel, [&]() { ++inspected; }));
+    EXPECT_EQ(inspected, 0); saved.check(ctx.get());
+    EXPECT_THROW(inspect_critical_cohort_lut_site(ctx.get(), logic, bel(24, 20, 6), [&]() {
+        ++inspected;
+        EXPECT_EQ(logic->bel, bel(24, 20, 6));
+        EXPECT_EQ(logic->belStrength, STRENGTH_WEAK);
+        for (const auto &entry : saved.cells) {
+            if (std::get<0>(entry) != logic) {
+                EXPECT_EQ(std::get<0>(entry)->bel, std::get<1>(entry));
+            }
+        }
+        throw std::runtime_error("consumer failed");
+    }), std::runtime_error);
+    EXPECT_EQ(inspected, 1); saved.check(ctx.get());
+}
+
+TEST_F(CriticalCohort, DisplacedLutSearchIsBoundedAndRestoresOnConsumerFailure)
+{
+    auto populate = [&]() {
+        auto *logic = timing_cone(clock("clk", 1000));
+        auto *guest = lut(24, 20, 6);
+        ctx->unbindBel(logic->bel); ctx->bindBel(bel(30, 20, 0), logic, STRENGTH_WEAK);
+        auto original = routed_placement_snapshot(ctx.get());
+        ctx->unbindBel(logic->bel); ctx->bindBel(bel(24, 20, 0), logic, STRENGTH_WEAK);
+        ctx->unbindBel(guest->bel); ctx->bindBel(bel(30, 20, 0), guest, STRENGTH_WEAK);
+        return std::make_pair(logic, original);
+    };
+    populate();
+    for (uint32_t lab = 0; lab < ctx->labs.size(); ++lab)
+        for (uint8_t alm = 0; alm < 10; ++alm) ctx->reassign_alm_inputs(lab, alm);
+    TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
+    ctx->timing_result = timing.get_timing_result(); ctx->timing_result_is_final_analogue = true;
+    std::ostringstream report; write_critical_cohort_route_model(ctx.get(), report);
+    serial = 0; SetUp();
+    auto source = populate(); Snapshot saved(ctx.get());
+    CriticalCohortLutSearch stats; int inspected = 0;
+    EXPECT_THROW(propose_critical_cohort_displaced_luts(ctx.get(), source.second, report.str(), 1,
+        [&](const CriticalCohortLutTrial &trial) {
+            ++inspected; EXPECT_EQ(trial.cell, source.first->name);
+            EXPECT_EQ(source.first->bel, trial.to);
+            EXPECT_LT(trial.boundary_after, trial.boundary_before);
+            for (const auto &entry : saved.cells) {
+                if (std::get<0>(entry) != source.first) {
+                    EXPECT_EQ(std::get<0>(entry)->bel, std::get<1>(entry));
+                }
+            }
+            throw std::runtime_error("consumer failed");
+        }, stats), std::runtime_error);
+    EXPECT_EQ(inspected, 1); EXPECT_EQ(stats.legal, 1); EXPECT_LE(stats.attempted, 128);
+    saved.check(ctx.get());
+}
+
+TEST_F(CriticalCohort, DisplacedLutSearchInspectsLegalFallbackWithoutAnEstimatedGain)
+{
+    auto populate = [&]() {
+        auto *clk = clock("clk", 1000);
+        auto *launch = ff(clk, 30, 20, 14);
+        auto *logic = lut(30, 20, 0), *guest = lut(24, 20, 0);
+        logic->disconnectPort(id_A); logic->connectPort(id_A, launch->getPort(id_Q));
+        ff(clk, 30, 20, 8, logic->getPort(id_Q));
+        ctx->assignArchInfo();
+        auto original = routed_placement_snapshot(ctx.get());
+        ctx->unbindBel(logic->bel); ctx->bindBel(bel(30, 20, 6), logic, STRENGTH_WEAK);
+        ctx->unbindBel(guest->bel); ctx->bindBel(bel(30, 20, 0), guest, STRENGTH_WEAK);
+        ctx->assignArchInfo();
+        return std::make_pair(logic, original);
+    };
+    populate();
+    for (uint32_t lab = 0; lab < ctx->labs.size(); ++lab)
+        for (uint8_t alm = 0; alm < 10; ++alm) ctx->reassign_alm_inputs(lab, alm);
+    TimingAnalyser timing(ctx.get()); timing.setup(false, false, true);
+    ctx->timing_result = timing.get_timing_result(); ctx->timing_result_is_final_analogue = true;
+    std::ostringstream report; write_critical_cohort_route_model(ctx.get(), report);
+    serial = 0; SetUp();
+    auto source = populate(); Snapshot saved(ctx.get());
+    CriticalCohortLutSearch stats; int inspected = 0;
+    propose_critical_cohort_displaced_luts(ctx.get(), source.second, report.str(), 1,
+        [&](const CriticalCohortLutTrial &trial) {
+            ++inspected; EXPECT_EQ(trial.cell, source.first->name);
+            EXPECT_EQ(source.first->bel, trial.to);
+            EXPECT_GE(trial.boundary_after, trial.boundary_before);
+            for (const auto &entry : saved.cells) {
+                if (std::get<0>(entry) != source.first) {
+                    EXPECT_EQ(std::get<0>(entry)->bel, std::get<1>(entry));
+                }
+            }
+        }, stats);
+    EXPECT_EQ(inspected, 1); EXPECT_EQ(stats.legal, 1); EXPECT_LE(stats.attempted, 128);
+    saved.check(ctx.get());
+}
+
+TEST_F(CriticalCohort, DisplacedLutSearchRejectsIncompleteGuidanceBeforeMoving)
+{
+    lut(30, 20, 0);
+    Snapshot saved(ctx.get()); auto original = routed_placement_snapshot(ctx.get());
+    CriticalCohortLutSearch stats;
+    EXPECT_THROW(propose_critical_cohort_displaced_luts(ctx.get(), original, "{}", 1,
+        [&](const CriticalCohortLutTrial &) { FAIL() << "unmatched model inspected a placement"; }, stats),
+        log_execution_error_exception);
+    saved.check(ctx.get());
+}
+
 TEST_F(CriticalCohort, EmptyDestinationMovesWholeCohort)
 {
     auto *a = lut(30, 20, 0), *b = lut(30, 20, 6);
@@ -241,6 +416,41 @@ TEST_F(CriticalCohort, RejectedRegisterSlotChangeRestoresEveryParticipant)
     CriticalCohortStats stats;
     EXPECT_FALSE(critical_cohort_trial(ctx.get(), {capture}, -6, 0, 1000, []() { return false; }, stats, -6));
     EXPECT_TRUE(stats.timed);
+    saved.check(ctx.get());
+}
+
+TEST_F(CriticalCohort, SingleLutCanPackWithAnExistingRegisterAtAnotherAlmSlot)
+{
+    auto *logic = lut(24, 20, 6);
+    auto *capture = ff(clock("clk", 20000), 30, 20, 14, logic->getPort(id_Q));
+    const auto fixed = capture->bel;
+    CriticalCohortStats stats;
+    Snapshot parent(ctx.get());
+    EXPECT_FALSE(critical_cohort_trial(ctx.get(), {capture}, -6, 0, 1000, []() { return true; }, stats, -6,
+                                      true));
+    EXPECT_FALSE(stats.timed);
+    parent.check(ctx.get());
+    ASSERT_TRUE(critical_cohort_trial(ctx.get(), {logic}, 6, 0, 1000, [&]() {
+        EXPECT_EQ(logic->bel, bel(30, 20, 12));
+        EXPECT_EQ(capture->bel, fixed);
+        critical_cohort_pin_preview(ctx.get(), [&]() {
+            EXPECT_EQ(ctx->predictArcDelay(logic->getPort(id_Q), {capture, id_DATAIN}), 20);
+        });
+        return true;
+    }, stats, 6, true));
+    EXPECT_TRUE(stats.timed);
+    EXPECT_EQ(capture->bel, fixed);
+    ctx->check();
+}
+
+TEST_F(CriticalCohort, LutSlotTrialPreservesProtectedOccupantsAndRestoresOnRejection)
+{
+    auto *logic = lut(24, 20, 6);
+    ff(clock("clk", 20000), 30, 20, 14, logic->getPort(id_Q));
+    lut(30, 20, 12, STRENGTH_USER);
+    Snapshot saved(ctx.get());
+    CriticalCohortStats stats;
+    EXPECT_FALSE(critical_cohort_trial(ctx.get(), {logic}, 6, 0, 1000, []() { return true; }, stats, 6));
     saved.check(ctx.get());
 }
 
@@ -548,6 +758,30 @@ TEST_F(CriticalCohort, IncludesCarryMembersOutsideTheSelectedLab)
     }
 }
 
+TEST_F(CriticalCohort, CarryCohortCanApproachAFixedRegisterWithoutMovingItsClockSink)
+{
+    auto chain = carry(30, 20, 8);
+    auto *capture = ff(clock("clk", 20000), 24, 20, 14, chain[4]->getPort(id_SO));
+    const auto fixed = capture->bel;
+    CriticalCohortStats stats;
+    ASSERT_TRUE(critical_cohort_trial(ctx.get(), {chain[4]}, -6, 0, 1000, [&]() {
+        EXPECT_EQ(capture->bel, fixed);
+        for (auto *cell : chain) EXPECT_EQ(ctx->getBelLocation(cell->bel).x, 24);
+        return capture->bel == fixed;
+    }, stats, 0, true));
+    EXPECT_EQ(capture->bel, fixed);
+    EXPECT_EQ(stats.cells, 8);
+    ctx->check();
+}
+
+TEST_F(CriticalCohort, ExplicitPlanRejectsPartialClusterAndRestoresLabState)
+{
+    auto chain = carry(30, 20, 22);
+    Snapshot saved(ctx.get());
+    EXPECT_FALSE(apply_critical_cohort_placement(ctx.get(), {{chain.front(), bel(24, 20, 0)}}));
+    saved.check(ctx.get());
+}
+
 TEST_F(CriticalCohort, DisplacesWholeDestinationCarryCluster)
 {
     auto *source = lut(30, 20, 0);
@@ -652,6 +886,72 @@ TEST_F(CriticalCohort, NativeTimingAcceptsCompleteSetupImprovement)
     after.with_clock_skew = true;
     after.setup(false, false, true);
     EXPECT_TRUE(critical_cohort_timing_safe(ctx.get(), before, after));
+}
+
+TEST_F(CriticalCohort, RoutedProposalPreservesPassingSetupAndPositiveHoldMargins)
+{
+    ClockDomainKey clk(ctx->id("clk"), RISING_EDGE);
+    EndpointClockPairTiming critical(clk, clk), passing(clk, clk);
+    for (auto *row : {&critical, &passing}) {
+        row->setup_timed = row->hold_related = true;
+        row->setup_window = 1000;
+        row->hold_margin = 20;
+    }
+    critical.setup_margin = -100;
+    passing.setup_margin = 1000;
+    CellPortKey a(ctx->id("critical"), id_DATAIN), b(ctx->id("passing"), id_DATAIN);
+    CriticalCohortEndpointRows before{{a, {critical}}, {b, {passing}}};
+    auto after = before;
+    after.at(a).front().setup_margin = -80;
+    EXPECT_TRUE(critical_cohort_proposal_rows_safe(before, after));
+    after.at(b).front().setup_margin = 999;
+    EXPECT_FALSE(critical_cohort_proposal_rows_safe(before, after));
+    after.at(b).front().setup_margin = 1000;
+    after.at(b).front().hold_margin = 0;
+    EXPECT_FALSE(critical_cohort_proposal_rows_safe(before, after));
+    after.at(b).front().hold_margin = 1;
+    EXPECT_TRUE(critical_cohort_proposal_rows_safe(before, after));
+    before.at(b).front().hold_margin = -10;
+    after.at(b).front().hold_margin = -11;
+    EXPECT_FALSE(critical_cohort_proposal_rows_safe(before, after));
+    after.at(b).front().hold_margin = -10;
+    EXPECT_TRUE(critical_cohort_proposal_rows_safe(before, after));
+    before.at(b).front().hold_margin = 0;
+    after.at(b).front().hold_margin = 0;
+    EXPECT_TRUE(critical_cohort_proposal_rows_safe(before, after));
+}
+
+TEST_F(CriticalCohort, RoutedProposalRequiresScoreGainMatchingRowsAndUnrelatedExtrema)
+{
+    ClockDomainKey clk(ctx->id("clk"), RISING_EDGE);
+    EndpointClockPairTiming worst(clk, clk), tied(clk, clk), unrelated(clk, {ctx->id("other"), RISING_EDGE});
+    worst.setup_timed = tied.setup_timed = true;
+    worst.setup_window = tied.setup_window = 1000;
+    worst.setup_margin = -100;
+    tied.setup_margin = -80;
+    unrelated.max_path_delay = 100;
+    unrelated.min_path_delay = 20;
+    CellPortKey a(ctx->id("worst"), id_DATAIN), b(ctx->id("tied"), id_DATAIN), c(ctx->id("unrelated"), id_DATAIN);
+    CriticalCohortEndpointRows before{{a, {worst}}, {b, {tied}}, {c, {unrelated}}};
+    auto after = before;
+    after.at(b).front().setup_margin = -60;
+    EXPECT_TRUE(critical_cohort_proposal_rows_safe(before, after));
+    after.at(b).front().setup_margin = -61;
+    EXPECT_FALSE(critical_cohort_proposal_rows_safe(before, after));
+    after.at(b).front().setup_margin = -60;
+    after.at(c).front().max_path_delay = 101;
+    EXPECT_FALSE(critical_cohort_proposal_rows_safe(before, after));
+    after.at(c).front().max_path_delay = 99;
+    after.at(c).front().min_path_delay = 19;
+    EXPECT_FALSE(critical_cohort_proposal_rows_safe(before, after));
+    after.at(c).front().min_path_delay = 21;
+    EXPECT_TRUE(critical_cohort_proposal_rows_safe(before, after));
+    after.at(a).front().launch.edge = FALLING_EDGE;
+    EXPECT_FALSE(critical_cohort_proposal_rows_safe(before, after));
+    after = before;
+    after.erase(b);
+    EXPECT_FALSE(critical_cohort_proposal_rows_safe(before, after));
+    EXPECT_FALSE(critical_cohort_proposal_rows_safe({}, {}));
 }
 
 TEST_F(CriticalCohort, NativeTimingRejectsRegressingAPassingClock)
@@ -1117,6 +1417,157 @@ TEST_F(CriticalCohort, CalibratedRepairPacksACriticalRegisterWithItsDriver)
     EXPECT_EQ(ctx->cells.size(), cells);
     EXPECT_EQ(ctx->nets.size(), nets);
     ctx->check();
+}
+
+TEST_F(CriticalCohort, IndependentProposalsRestoreParentEvenWhenConsumerThrows)
+{
+    auto *clk = clock("clk", 1000);
+    timing_cone(clk);
+    for (uint32_t lab = 0; lab < ctx->labs.size(); ++lab)
+        for (uint8_t alm = 0; alm < 10; ++alm)
+            ctx->reassign_alm_inputs(lab, alm);
+    TimingAnalyser actual(ctx.get());
+    actual.with_clock_skew = false;
+    actual.setup(false, false, true);
+    ctx->timing_result = actual.get_timing_result();
+    ctx->timing_result_is_final_analogue = true;
+    std::ostringstream out;
+    write_critical_cohort_route_model(ctx.get(), out);
+    std::string error;
+    auto document = json11::Json::parse(out.str(), error).object_items();
+    auto model = document.at("cohort_route_model").object_items();
+    auto arcs = model.at("arcs").array_items();
+    for (auto &entry : arcs) {
+        auto row = entry.object_items();
+        row["wire"] = json11::Json::array{100, 250};
+        row["local"] = json11::Json::array{0, 0};
+        entry = row;
+    }
+    model["arcs"] = arcs;
+    document["cohort_route_model"] = model;
+    const auto text = json11::Json(document).dump();
+    serial = 0;
+    SetUp();
+    timing_cone(clock("clk", 1000));
+    ctx->settings[ctx->id("timing_driven")] = 1;
+    const auto parent = routed_placement_snapshot(ctx.get());
+    int emitted = 0, inspected = 0, without_register_moves = 0;
+    propose_critical_cohorts(ctx.get(), text, 8, 4, [&](const CriticalCohortPrediction &prediction) {
+        ++inspected;
+        EXPECT_LT(prediction.before_slack, 0);
+        if (!prediction.eligible)
+            return false;
+        EXPECT_TRUE(prediction.legacy_safe);
+        EXPECT_TRUE(critical_cohort_proposal_rows_safe(prediction.before, prediction.after));
+        EXPECT_NE(parent["placement"], routed_placement_snapshot(ctx.get())["placement"]);
+        bool fixed = true;
+        for (const auto &cell : ctx->cells)
+            if (cell.second->type == id_MISTRAL_FF)
+                fixed &= parent["placement"][cell.first.str(ctx.get())] ==
+                        routed_placement_snapshot(ctx.get())["placement"][cell.first.str(ctx.get())];
+        without_register_moves += fixed;
+        ++emitted;
+        return true;
+    });
+    EXPECT_GE(emitted, 1);
+    EXPECT_LE(emitted, 4);
+    EXPECT_GE(inspected, emitted);
+    EXPECT_GE(without_register_moves, 1);
+    EXPECT_EQ(parent, routed_placement_snapshot(ctx.get()));
+    EXPECT_THROW(propose_critical_cohorts(ctx.get(), text, 8, 4,
+                                        [](const CriticalCohortPrediction &) -> bool {
+                                            throw std::runtime_error("consumer failed");
+                                        }),
+                 std::runtime_error);
+    EXPECT_EQ(parent, routed_placement_snapshot(ctx.get()));
+    ctx->check();
+}
+
+TEST_F(CriticalCohort, MovedDriverDoesNotReleaseUnchangedConsumerOutputs)
+{
+    auto *source = lut(24, 3, 0), *consumer = lut(27, 5, 0), *tail = lut(30, 20, 0);
+    for (auto *cell : {source, consumer, tail}) cell->params[id_LUT] = 6;
+    consumer->disconnectPort(id_A);
+    consumer->connectPort(id_A, source->getPort(id_Q));
+    tail->disconnectPort(id_A);
+    tail->connectPort(id_A, consumer->getPort(id_Q));
+    ctx->assignArchInfo();
+    ctx->routed_placement_preserve_routes = true;
+    std::unique_ptr<CriticalCohortRouteModel> model;
+    critical_cohort_pin_preview(ctx.get(), [&]() {
+        ctx->routed_placement_current = routed_placement_snapshot(ctx.get()).dump();
+        ctx->timing_result_is_final_analogue = true;
+        std::ostringstream out;
+        write_critical_cohort_route_model(ctx.get(), out);
+        ctx->timing_result_is_final_analogue = false;
+        model = std::make_unique<CriticalCohortRouteModel>(ctx.get(), out.str());
+    });
+    auto home = source->bel;
+    ctx->unbindBel(home);
+    ctx->bindBel(bel(24, 20, 0), source, STRENGTH_WEAK);
+    critical_cohort_pin_preview(ctx.get(), [&]() {
+        TimingAnalyser timing(ctx.get());
+        critical_cohort_setup_timing(ctx.get(), timing);
+        EXPECT_FALSE(model->apply(ctx.get(), timing)); // Deliberately unrouted parent has no references.
+        auto trace = model->routing_trace()["nets"].object_items();
+        EXPECT_TRUE(trace.count(source->getPort(id_Q)->name.str(ctx.get())));
+        EXPECT_FALSE(trace.count(consumer->getPort(id_Q)->name.str(ctx.get())));
+    });
+    ctx->unbindBel(source->bel);
+    ctx->bindBel(home, source, STRENGTH_WEAK);
+}
+
+TEST_F(CriticalCohort, AnaloguePreviewRestoresTheOriginalModelOnException)
+{
+    auto parent = routed_placement_snapshot(ctx.get());
+    auto source = CriticalCohortRouteCosts::snapshot(ctx.get(), parent);
+    CriticalCohortRouteCosts costs(ctx.get(), source, parent);
+    auto *original = ctx->cyclonev.get();
+    std::vector<uint8_t> before, after;
+    ctx->cyclonev->rbf_save(before);
+    EXPECT_THROW(costs.with_analogue(ctx.get(), {}, {}, [&]() { throw std::runtime_error("trial failed"); }),
+                 std::runtime_error);
+    EXPECT_EQ(ctx->cyclonev.get(), original);
+    EXPECT_FALSE(ctx->bitstream_configured);
+    EXPECT_FALSE(ctx->analogue_cache_valid);
+    ctx->cyclonev->rbf_save(after);
+    EXPECT_EQ(before, after);
+}
+
+TEST_F(CriticalCohort, AnaloguePreviewRejectsUnselectedCircuitOutputsWithoutWeakeningSignoff)
+{
+    auto *source = lut(24, 20, 0);
+    auto *destination = lut(30, 20, 0);
+    for (auto *cell : {source, destination}) cell->params[id_LUT] = 6;
+    auto parent = routed_placement_snapshot(ctx.get());
+    CriticalCohortRouteCosts costs(ctx.get(), CriticalCohortRouteCosts::snapshot(ctx.get(), parent), parent);
+    auto *net = source->getPort(id_Q);
+    auto root = ctx->getNetinfoSourceWire(net);
+    bool rejected = false;
+    costs.with_analogue(ctx.get(), {}, {}, [&]() {
+        int tested = 0;
+        for (auto first : ctx->getPipsDownhill(root)) {
+            auto middle = ctx->getPipDstWire(first);
+            if (middle.is_nextpnr_created()) continue;
+            for (auto last : ctx->getPipsDownhill(middle)) {
+                auto target = ctx->getPipDstWire(last);
+                if (target.is_nextpnr_created()) continue;
+                auto pin = ctx->idf("PREVIEW_TARGET_%d", tested++);
+                ctx->add_bel_pin(destination->bel, pin, PORT_IN, target);
+                CellInfo terminal(ctx.get(), ctx->id("preview_terminal"), id_MISTRAL_ALUT2);
+                terminal.bel = destination->bel;
+                terminal.addInput(id_A);
+                terminal.pin_data[id_A].bel_pins = {pin};
+                std::map<WireId, PipId> tree{{root, PipId()}, {middle, first}, {target, last}};
+                if (!costs.analogue(ctx.get(), net, {&terminal, id_A}, tree)) { rejected = true; return; }
+                if (tested == 32) return;
+            }
+        }
+    });
+    EXPECT_TRUE(rejected);
+    EXPECT_FALSE(ctx->bitstream_configured);
+    EXPECT_FALSE(ctx->analogue_cache_valid);
+    EXPECT_TRUE(net->wires.empty());
 }
 
 TEST_F(CriticalCohort, CalibratedRepairImprovesOneOfTwoTiedEnableEndpoints)

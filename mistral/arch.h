@@ -474,8 +474,17 @@ struct Arch : BaseArch<ArchRanges>
         return false;
     }
 
+    bool analogue_cell_pip_blocked(PipId pip) const
+    {
+        return analogue_cell_pip_allowlist &&
+               (WireId(pip.src).is_nextpnr_created() || WireId(pip.dst).is_nextpnr_created()) &&
+               !analogue_cell_pip_allowlist->count(pip);
+    }
+
     bool checkPipAvail(PipId pip) const override
     {
+        if (analogue_cell_pip_blocked(pip))
+            return false;
         // Check reserved routes
         if (is_pip_blocked(pip))
             return false;
@@ -487,6 +496,8 @@ struct Arch : BaseArch<ArchRanges>
     // Architecture constraints before the per-pip ownership check.
     const char *pip_rejection_reason(PipId pip, const NetInfo *net) const
     {
+        if (analogue_cell_pip_blocked(pip))
+            return "analogue_trial_requires_original_cell_connection";
         if (is_pip_blocked(pip))
             return "reserved_route_requires_other_source";
         if (WireId(pip.src).is_nextpnr_created() && pll_private_pips.count(pip) &&
@@ -618,7 +629,9 @@ struct Arch : BaseArch<ArchRanges>
     // one kept. To repair, a net scores by its worst sink slack; to improve
     // a passing design, by its worst sink margin over that sink's clock
     // pairs (TimingAnalyser::get_setup_slack_margin).
-    bool analogue_candidate_pass(TimingAnalyser &tmg, float limit, bool improve, const GpuRouterCfg &repair_cfg);
+    bool analogue_candidate_pass(TimingAnalyser &tmg, float limit, bool improve, const GpuRouterCfg &repair_cfg,
+                                 int candidate_count = 0, bool preserve_delays = false,
+                                 std::set<IdString> *visited_nets = nullptr);
     // Keep the analogue simulator's routing-mux state in step with a net
     // whose routing changed: removed pips are parked on an unused input,
     // added pips linked.
@@ -643,6 +656,38 @@ struct Arch : BaseArch<ArchRanges>
     int enable_replication_budget = 0; // Explicit opt-in; never inherited from JSON settings.
     int critical_cohort_budget = 0; // CLI only; number of complete placement STA trials.
     std::string critical_cohort_report; // CLI only; optional prior routed timing guidance.
+    // Explicit fresh-flow experiment controls. Never inherited from JSON.
+    std::string routed_placement_directory, routed_placement_plan, routed_placement_model;
+    std::string routed_placement_origin, routed_placement_current;
+    std::string routed_placement_status;
+    std::string routed_placement_routes;
+    std::string routed_placement_preserved_nets;
+    std::string routed_placement_handoff;
+    std::string routed_placement_branches;
+    int post_route_lut_moves = 0; // Explicit fresh-flow CLI budget, never inherited from JSON.
+    int post_route_private_lut_pins = 0; // Independent private L5 stage after the existing refinements.
+    int post_route_net_trials = 0; // Complete timing acceptance for one data net at a time.
+    int post_route_final_lut_pins = 0; // Independent LUT6 pin trials after all routed refinements.
+    int post_route_lut_pairs = 0; // Independent FF-free L5 co-packing trials.
+    int post_route_lut_input_nets = 0; // Input pin swaps with complete input-net rerouting.
+    int post_route_static_ff_lut_pins = 0; // Private L5 pins beside independent static EF-bypass FFs.
+    // Temporary calling-thread scope; never serialized or inherited. GPU
+    // routing refreshes its host availability costs before each search.
+    const pool<PipId> *analogue_cell_pip_allowlist = nullptr;
+    int post_route_sole_lut_pins = 0; // Independent L5 trials only in otherwise empty ALMs.
+    std::string post_route_lut_move_receipt; // Native parent/target witness, never imported.
+    std::string post_route_lut_branch_plan; // Explicit fresh full-flow input; never inherited.
+    std::string post_route_lut_branch_receipt; // Measured compound result; never imported.
+    bool routed_placement_preserve_routes = false;
+    // Capture complete final route/calibration state without preserving input routes.
+    bool routed_placement_record_calibration = false;
+    bool routed_placement_preserve_branches = false; // CLI routing policy, not a placement identity.
+    bool routed_placement_group_moves = false;
+    bool routed_placement_retarget_luts = false; // CLI proposal policy only.
+    bool routed_placement_check_only = false;
+    int routed_placement_trials = 0, routed_placement_candidates = 0;
+    bool routed_placement_route_complete = false;
+    int routed_placement_errors_before_signoff = 0, routed_placement_errors_after_signoff = 0;
     void replicate_enables(int budget);
     std::string local_remap_report; // CLI only, never read from serialized settings.
     int local_remap_selection = -1;

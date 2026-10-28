@@ -5,6 +5,7 @@
 #include "gtest/gtest.h"
 #include "nextpnr.h"
 #include "timing.h"
+#include "analogue_lut_branch.h"
 
 USING_NEXTPNR_NAMESPACE
 
@@ -80,6 +81,70 @@ TEST_F(LabPinmapTest, UserLockedSocketStillLegalisesOtherArithmeticInputs)
     EXPECT_EQ(buffer->pin_data.at(id_A).bel_pins, std::vector<IdString>{id_F0});
 }
 
+TEST_F(LabPinmapTest, RoutedBufferCacheRefreshPreservesGraphAndRestoresNativeLegality)
+{
+    // A peer with three inputs occupies the alternative E/F data path.
+    // The stale cache then incorrectly demands a second FF fabric input.
+    auto *peer = ctx->createCell(ctx->id("cache_refresh_peer"), id_MISTRAL_ALUT3);
+    for (IdString port : {id_A, id_B, id_C}) {
+        peer->addInput(port);
+        peer->connectPort(port, ctx->createNet(ctx->idf("peer_%s", port.c_str(ctx.get()))));
+    }
+    peer->addOutput(id_Q);
+    peer->connectPort(id_Q, ctx->createNet(ctx->id("peer_output")));
+    peer->setParam(id_LUT, Property(0x96, 8));
+    ctx->assign_comb_info(peer);
+    ctx->assign_default_pinmap(peer);
+    ctx->bindBel(ctx->getBelByLocation(Loc(24, 1, 1)), peer, STRENGTH_STRONG);
+    auto add_lut = [&](const std::string &name, int width, int alm, PlaceStrength strength) {
+        auto *lut = ctx->createCell(ctx->id(name), width == 6 ? id_MISTRAL_ALUT6 : id_MISTRAL_ALUT3);
+        const std::array<IdString, 6> pins{id_A,id_B,id_C,id_D,id_E,id_F};
+        for (int i = 0; i < width; ++i) {
+            lut->addInput(pins[i]);
+            lut->connectPort(pins[i], ctx->createNet(ctx->id(name + "_input" + std::to_string(i))));
+        }
+        lut->addOutput(id_Q);lut->connectPort(id_Q,ctx->createNet(ctx->id(name + "_output")));
+        lut->setParam(id_LUT,Property(0x9696,width == 6 ? 64 : 8));
+        ctx->assign_comb_info(lut);ctx->assign_default_pinmap(lut);
+        ctx->bindBel(ctx->getBelByLocation(Loc(24,1,6*alm)),lut,strength);
+        return lut;
+    };
+    auto *moved = add_lut("cache_order_move",3,1,STRENGTH_WEAK);
+    for (int alm = 4; alm <= 8; ++alm) add_lut("cache_order_fill" + std::to_string(alm),6,alm,STRENGTH_STRONG);
+    add_lut("cache_order_fill9",3,9,STRENGTH_STRONG);
+    auto target = ctx->getBelByLocation(Loc(24,1,12));
+    auto *logical_input = socket->getPort(id_DATAIN);
+    const auto controls = socket->ffInfo.ctrlset;
+    ctx->lab_pre_route();
+    auto *buffer = ctx->cells.at(ctx->id("socket$ROUTETHRU")).get();
+    ASSERT_EQ(buffer->getPort(id_A), logical_input);
+    ASSERT_EQ(buffer->getPort(id_Q), socket->getPort(id_DATAIN));
+    ASSERT_EQ(socket->ffInfo.datain, logical_input);
+    const auto data = ctx->bel_data(socket_bel).lab_data;
+    const auto before_count = ctx->labs.at(data.lab).alms.at(data.alm).unique_input_count;
+    ASSERT_FALSE(ctx->is_alm_legal(data.lab, data.alm));
+    auto lab_inputs = [&]() { int count = 0;for(const auto &a:ctx->labs.at(data.lab).alms)count+=a.unique_input_count;return count; };
+    ASSERT_EQ(lab_inputs(),43);
+    ASSERT_FALSE(analogue_lut_move_allowed(ctx.get(),moved,target));
+    const auto native = routed_placement_snapshot(ctx.get());
+    const auto top_wire = input_wire(top), bottom_wire = input_wire(bottom);
+    const auto changed = lut_branch_detail::refresh_route_through_datain(ctx.get());
+    ASSERT_EQ(changed.array_items().size(), 1u);
+    EXPECT_EQ(socket->ffInfo.datain, buffer->getPort(id_Q));
+    EXPECT_EQ(socket->getPort(id_DATAIN), buffer->getPort(id_Q));
+    EXPECT_EQ(buffer->getPort(id_A), logical_input);
+    EXPECT_EQ(socket->ffInfo.ctrlset, controls);
+    EXPECT_EQ(routed_placement_snapshot(ctx.get()), native);
+    EXPECT_EQ(input_wire(top), top_wire);
+    EXPECT_EQ(input_wire(bottom), bottom_wire);
+    EXPECT_EQ(ctx->labs.at(data.lab).alms.at(data.alm).unique_input_count, before_count - 1);
+    EXPECT_TRUE(ctx->is_alm_legal(data.lab, data.alm));
+    EXPECT_TRUE(ctx->isBelLocationValid(socket_bel));
+    EXPECT_EQ(lab_inputs(),42);
+    EXPECT_TRUE(analogue_lut_move_allowed(ctx.get(),moved,target));
+    EXPECT_TRUE(lut_branch_detail::refresh_route_through_datain(ctx.get()).array_items().empty());
+}
+
 TEST_F(LabPinmapTest, RestoredScaffoldPreservesPinmapsAndDataInput)
 {
     // A frozen shell can carry an alternate legal pin assignment. It must
@@ -96,6 +161,33 @@ TEST_F(LabPinmapTest, RestoredScaffoldPreservesPinmapsAndDataInput)
     EXPECT_EQ(input_wire(bottom), bottom_wire);
     EXPECT_EQ(socket->getPort(id_DATAIN), data);
     EXPECT_EQ(ctx->cells.size(), cell_count);
+}
+
+TEST(LutBranchBudget, ExpiryAfterBestCandidateRestoresOriginalState)
+{
+    enum class State { Original, Trial, Best, Replayed };
+    State state = State::Original;
+    bool best_recorded = false;
+    bool budget_expired = false;
+    int replay_count = 0;
+    int restore_count = 0;
+
+    state = State::Trial;
+    state = State::Best;
+    best_recorded = true;
+    budget_expired = true;
+    const bool accepted = lut_branch_detail::replay_best_candidate_if_unexpired(
+            best_recorded, [&] { return budget_expired; },
+            [&] { ++replay_count; state = State::Replayed; });
+    if (!accepted) {
+        ++restore_count;
+        state = State::Original;
+    }
+
+    EXPECT_FALSE(accepted);
+    EXPECT_EQ(state, State::Original);
+    EXPECT_EQ(replay_count, 0);
+    EXPECT_EQ(restore_count, 1);
 }
 
 TEST(LutPlacementTiming, Lut6PhysicalFIsFasterThanE)

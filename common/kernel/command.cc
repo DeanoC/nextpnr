@@ -977,6 +977,8 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
         ctx->writeJsonReport(f);
     }
 
+    customAfterRun(ctx.get());
+
 #ifndef NO_PYTHON
     deinit_python();
 #endif

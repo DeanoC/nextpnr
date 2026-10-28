@@ -53,6 +53,7 @@ class CommandHandler
     virtual std::set<std::string> getArchSettingKeys() const { return {}; }
     virtual void validate() {}
     virtual void customAfterLoad(Context * /*ctx*/) {}
+    virtual void customAfterRun(Context * /*ctx*/) {}
     virtual void customBitstream(Context * /*ctx*/) {}
     void conflicting_options(const boost::program_options::variables_map &vm, const char *opt1, const char *opt2);
 

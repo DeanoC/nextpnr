@@ -892,11 +892,26 @@ TEST_F(IoDelayTest, PrimitiveClockLimitsFollowRoutedWaveformAndReentry)
     models[bidir->name] = {{id_CLKIN, 1538, 170, 190}, {id_CLK, 1538, 810, 780}};
     TimingAnalyser timing(ctx.get());
     EXPECT_NO_THROW(timing.setup());
+    EXPECT_TRUE(timing.primitive_clock_timings.empty());
+    timing.collect_primitive_clock_timings = true;
     // A large constant delay moves both edges without narrowing either pulse.
     timing.set_route_delay(CellPortKey(bidir->name, id_CLK), DelayPair(5000));
     EXPECT_NO_THROW(timing.run(false));
     timing.set_route_delay(CellPortKey(bidir->name, id_CLK), DelayPair(0, 3190));
     EXPECT_NO_THROW(timing.run(false)); // exactly the 810 ps high requirement
+    ASSERT_EQ(timing.primitive_clock_timings.size(), 2U);
+    bool observed = false;
+    for (const auto &row : timing.primitive_clock_timings) {
+        if (row.endpoint.port != id_CLK) continue;
+        observed = true;
+        EXPECT_EQ(row.endpoint.cell, bidir->name);
+        EXPECT_EQ(row.requirement.min_high, 810);
+        EXPECT_EQ(row.route.maxDelay(), 3190);
+        EXPECT_EQ(row.actual_high, 810);
+        EXPECT_EQ(row.actual_low, row.low.minDelay() - 3190);
+        EXPECT_EQ(row.actual_period, row.period.minDelay());
+    }
+    EXPECT_TRUE(observed);
     timing.set_route_delay(CellPortKey(bidir->name, id_CLK), DelayPair(0, 3191));
     EXPECT_THROW(timing.run(false), log_execution_error_exception);
     timing.set_route_delay(CellPortKey(bidir->name, id_CLK), DelayPair(0));
@@ -908,6 +923,7 @@ TEST_F(IoDelayTest, PrimitiveClockLimitsFollowRoutedWaveformAndReentry)
     EXPECT_NO_THROW(timing.setup()); // no stale route bounds after setup
     models.clear();
     EXPECT_NO_THROW(timing.setup()); // no cached primitive checks either
+    EXPECT_TRUE(timing.primitive_clock_timings.empty());
 }
 
 TEST_F(IoDelayTest, PrimitiveClockLimitsCannotBeCutOrRelaxed)
