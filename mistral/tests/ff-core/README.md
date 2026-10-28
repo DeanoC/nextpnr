@@ -50,9 +50,9 @@ delay stays outside it. Input requirements subtract the internal clock CELL
 delay from the data/control CELL delay, retaining the report's intrinsic
 adjustment. These primitive pin observations alone do not establish
 equivalence to native virtual endpoints or timing-model bounds for every
-configuration. This archive alone does not change a timing model or qualify a
-native boundary. The timing engine, default models and source locks remain
-unchanged. No native corner, reset pulse/MTBF, IO, board or hardware
+configuration. This primitive-pin archive alone does not change a timing
+model or qualify a native boundary. The timing engine, default models and source
+locks remain unchanged. No native corner, reset pulse/MTBF, IO, board or hardware
 acceptance follows from this reference.
 
 Run the host regressions with the built configuration reader:
