@@ -18,6 +18,7 @@
 
 #include "nextpnr.h"
 #include "util.h"
+#include "lut_route_minimum.h"
 
 #include <cstdio>
 #include <cmath>
@@ -38,6 +39,21 @@ bool Arch::useClockEdgeRanges() const
         log_error("--mistral-clock-edge-ranges requires --mistral-routed-delay-ranges.\n");
     return enabled;
 }
+
+void Arch::validate_lut_route_min_reference() const
+{
+    if (!use_lut_route_min_reference)
+        return;
+    if (!use_lut_core_reference || !useRoutedDelayRanges() || getChipName() != "5CSEBA6U23I7")
+        log_error("--mistral-lut-route-min-reference requires 5CSEBA6U23I7, "
+                  "--mistral-lut-core-reference and --mistral-routed-delay-ranges.\n");
+}
+
+const char *Arch::lut_route_min_reference_identity() const
+{
+    return lut_route_minimum::reference_sha256;
+}
+
 
 namespace {
 
@@ -1174,6 +1190,10 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
     const bool terminal_lut = boolean_lut_input(sink.cell, sink.port) && !dst_wire.is_nextpnr_created() &&
                               dst_wire.node.t() == CycloneV::GOUT;
     const bool strict_lut = terminal_lut && use_lut_core_reference;
+    const bool minimum_reference = strict_lut && use_lut_route_min_reference;
+    if (minimum_reference)
+        validate_lut_route_min_reference();
+
     // SCLR has a physical GOUT pin, while ENA/ACLR and bypass data have
     // virtual suffixes that already simulate this buffer. The reference FF
     // constraint begins after it, so retain its delay on the routed net.
@@ -1271,6 +1291,11 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
 
         auto mode = cyclonev->rnode_timing_get_mode(src_ri);
         NPNR_ASSERT(mode != mistral::CycloneV::RTM_UNSUPPORTED);
+        if (minimum_reference && !lut_route_minimum::data_element(src.node.t()) &&
+            !(src.node.t() == CycloneV::WM &&
+              (mode == CycloneV::RTM_P2P || mode == CycloneV::RTM_NO_DELAY)))
+            log_error("LUT route minimum reference does not cover routing element '%s'.\n",
+                      src.node.to_string().c_str());
 
         auto inverting = cyclonev->rnode_is_inverting(src_ri);
 
@@ -1300,6 +1325,7 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
                         inverted ? mistral::CycloneV::RF_FALL : mistral::CycloneV::RF_RISE,est,input_wave[0]);
                 const bool falling = cyclonev->gpio_timing_build_input_wave(source,src_ri,temp,CycloneV::DELAY_MAX,
                         inverted ? mistral::CycloneV::RF_RISE : mistral::CycloneV::RF_FALL,est,input_wave[1]);
+
                 if (!rising || !falling)
                     return unavailable();
 #else
@@ -1338,6 +1364,11 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
             output_wave[edge].clear();
             sim.set_output_wave(o->second, output_wave[edge], output_delays[edge]);
             sim.run();
+            if (minimum_reference &&
+                !lut_route_minimum::enclose_minimum(lut_route_minimum::slow100_data_scale, output_delays[edge]))
+                log_error("LUT route minimum reference does not cover the interval at '%s'.\n",
+                          src.node.to_string().c_str());
+
             if ((terminal_ff || strict_gpio || strict_lut) && (output_wave[edge].empty() || !std::isfinite(output_delays[edge].mi) ||
                                 !std::isfinite(output_delays[edge].mx) ||
                                 output_delays[edge].mi > output_delays[edge].mx))
@@ -1356,7 +1387,15 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
             output_delay_sum[edge].mx += output_delays[edge].mx;
             if (terminal && terminal_lut && lut_input_delay) {
                 auto &d = edge ? lut_input_delay->fall : lut_input_delay->rise;
-                d = DelayPair(delay_t(output_delays[edge].mi * 1e12), delay_t(output_delays[edge].mx * 1e12));
+                if (minimum_reference) {
+                    delay_t early, late;
+                    if (!lut_route_minimum::outward_ps(output_delays[edge].mi, true, early) ||
+                        !lut_route_minimum::outward_ps(output_delays[edge].mx, false, late))
+                        return unavailable();
+                    d = DelayPair(early, late);
+                } else {
+                    d = DelayPair(delay_t(output_delays[edge].mi * 1e12), delay_t(output_delays[edge].mx * 1e12));
+                }
             }
             if (hops && !terminal)
                 (edge ? hop.fall : hop.rise) = delay_t(output_delays[edge].mx * 1e12);
@@ -1368,8 +1407,18 @@ bool Arch::analogue_arc_delay(const NetInfo *net_info, const PortRef &sink, Dela
             inverted = !inverted;
     }
 
-    delay = DelayQuad{delay_t(output_delay_sum[0].mi * 1e12), delay_t(output_delay_sum[0].mx * 1e12),
-                      delay_t(output_delay_sum[1].mi * 1e12), delay_t(output_delay_sum[1].mx * 1e12)};
+    if (minimum_reference) {
+        delay_t early_rise, late_rise, early_fall, late_fall;
+        if (!lut_route_minimum::outward_ps(output_delay_sum[0].mi, true, early_rise) ||
+            !lut_route_minimum::outward_ps(output_delay_sum[0].mx, false, late_rise) ||
+            !lut_route_minimum::outward_ps(output_delay_sum[1].mi, true, early_fall) ||
+            !lut_route_minimum::outward_ps(output_delay_sum[1].mx, false, late_fall))
+            return unavailable();
+        delay = DelayQuad{early_rise, late_rise, early_fall, late_fall};
+    } else {
+        delay = DelayQuad{delay_t(output_delay_sum[0].mi * 1e12), delay_t(output_delay_sum[0].mx * 1e12),
+                          delay_t(output_delay_sum[1].mi * 1e12), delay_t(output_delay_sum[1].mx * 1e12)};
+    }
 
     return true;
 }

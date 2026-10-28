@@ -135,6 +135,9 @@ po::options_description MistralCommandHandler::getArchOptions()
                            "opt in to guarded native-cut SDR GPIO timing references for the slow100 model");
     specific.add_options()("mistral-lut-core-reference",
                            "opt in to guarded native-cut Boolean LUT timing references for the slow100 model");
+    specific.add_options()("mistral-lut-route-min-reference",
+                           "apply the characterized slow100 data minimum scale to native Boolean LUT input routes; requires LUT core reference and routed delay ranges");
+
     specific.add_options()("mistral-routed-delay-ranges",
                            "retain early/late routed delays for internal data and clocks without external IO constraints");
     specific.add_options()("mistral-clock-edge-ranges",
@@ -209,6 +212,9 @@ std::set<std::string> MistralCommandHandler::getArchSettingKeys() const
         keys.insert("mistral/gpio_core_reference");
     if (vm.count("mistral-lut-core-reference"))
         keys.insert("mistral/lut_core_reference");
+    if (vm.count("mistral-lut-route-min-reference"))
+        keys.insert("mistral/lut_route_min_reference");
+
     if (vm.count("mistral-routed-delay-ranges"))
         keys.insert("mistral/routed_delay_ranges");
     if (vm.count("mistral-clock-edge-ranges"))
@@ -359,9 +365,17 @@ void MistralCommandHandler::customAfterLoad(Context *ctx)
         saved_lut_reference |= entry.first.str(ctx) == "mistral/lut_core_reference";
     if (saved_lut_reference || vm.count("mistral-lut-core-reference"))
         ctx->use_lut_core_reference = lab_model("mistral/lut_core_reference", "mistral-lut-core-reference");
+    bool saved_lut_route_min_reference = false;
+    for (const auto &entry : ctx->settings)
+        saved_lut_route_min_reference |= entry.first.str(ctx) == "mistral/lut_route_min_reference";
+    if (saved_lut_route_min_reference || vm.count("mistral-lut-route-min-reference"))
+        ctx->use_lut_route_min_reference = lab_model("mistral/lut_route_min_reference", "mistral-lut-route-min-reference");
     lab_model("mistral/routed_delay_ranges", "mistral-routed-delay-ranges");
     lab_model("mistral/clock_edge_ranges", "mistral-clock-edge-ranges");
     ctx->useClockEdgeRanges(); // Validate the explicit range-model dependency before packing.
+    if (ctx->use_lut_route_min_reference)
+        ctx->validate_lut_route_min_reference();
+
     ctx->lab_ff4 = lab_model("mistral/ff4", "mistral-ff4");
     lab_model("mistral/clkb", "mistral-clkb");
     // Preload request bytes before packing or placement; saved settings cannot enable it.

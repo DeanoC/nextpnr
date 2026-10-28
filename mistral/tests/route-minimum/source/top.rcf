@@ -1,0 +1,18 @@
+### Routing Constraints File: top.rcf
+### Written on:				Tue Oct 27 02:14:02 2026
+### Written by:				Version 17.0.2 Build 602 07/19/2017 SJ Lite Edition
+
+section global_data {
+	rcf_written_by = "Quartus Prime 17.0 Build 602";
+	device = 5CSEBA6U23I7;
+}
+
+signal_name = altsyncram:ram|altsyncram_ccu1:auto_generated|q_b[5] {
+	M20K_BUFFER:X41Y2S0I25;
+	R6:X36Y2S0I29;
+	R6:X30Y2S0I24;
+	R3:X27Y2S0I12;
+	LOCAL_INTERCONNECT:X28Y2S0I38;
+	BLOCK_INPUT_MUX:X28Y2S0I75;
+	dest = ( mixed, DATAB ), route_port = DATAB;
+}
