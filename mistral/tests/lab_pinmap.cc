@@ -163,6 +163,33 @@ TEST_F(LabPinmapTest, RestoredScaffoldPreservesPinmapsAndDataInput)
     EXPECT_EQ(ctx->cells.size(), cell_count);
 }
 
+TEST(LutBranchBudget, ExpiryAfterBestCandidateRestoresOriginalState)
+{
+    enum class State { Original, Trial, Best, Replayed };
+    State state = State::Original;
+    bool best_recorded = false;
+    bool budget_expired = false;
+    int replay_count = 0;
+    int restore_count = 0;
+
+    state = State::Trial;
+    state = State::Best;
+    best_recorded = true;
+    budget_expired = true;
+    const bool accepted = lut_branch_detail::replay_best_candidate_if_unexpired(
+            best_recorded, [&] { return budget_expired; },
+            [&] { ++replay_count; state = State::Replayed; });
+    if (!accepted) {
+        ++restore_count;
+        state = State::Original;
+    }
+
+    EXPECT_FALSE(accepted);
+    EXPECT_EQ(state, State::Original);
+    EXPECT_EQ(replay_count, 0);
+    EXPECT_EQ(restore_count, 1);
+}
+
 TEST(LutPlacementTiming, Lut6PhysicalFIsFasterThanE)
 {
     // Independent Quartus asymmetric-LUT audit traces the launch registers

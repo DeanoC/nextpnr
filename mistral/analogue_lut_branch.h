@@ -301,6 +301,13 @@ inline void validate_plan(const J &plan) {
     require(move.object_items().size()==4&&move["cell"].is_string()&&move["from_bel"].is_string()&&
             move["to_bel"].is_string()&&move["strength"].is_number(),"invalid direct move identity");
 }
+template <typename Replay>
+inline bool replay_best_candidate_if_unexpired(bool has_candidate, const std::function<bool()> &expired, Replay replay) {
+    if (!has_candidate || expired())
+        return false;
+    replay();
+    return true;
+}
 inline J run(Context *ctx,const J &plan,const std::function<bool()> &expired) {
     validate_plan(plan);const auto move=plan["move"];
     const auto original_native=routed_placement_snapshot(ctx);
@@ -499,12 +506,14 @@ inline J run(Context *ctx,const J &plan,const std::function<bool()> &expired) {
                     require(routed_placement_snapshot(ctx)==seed_native&&pins(ctx)==original_pins&&labs(ctx)==original_controls&&other_routes_equal(ctx,seed_routes),"branch rollback changed native state");
                     require(canonical(routed_placement_endpoints(ctx))==canonical(seed_inventory)&&rbf(ctx,dir+"/rollback.rbf")==seed_rbf,"branch rollback changed seed bitstream or rows");
                 }
-                if(best_net){require(bind_tree(ctx,best_net,best_tree),"selected branch replay failed");auto selected=analyse(ctx);
+                accepted=replay_best_candidate_if_unexpired(best_net!=nullptr,expired,[&]{
+                    require(bind_tree(ctx,best_net,best_tree),"selected branch replay failed");auto selected=analyse(ctx);
                     require(critical_cohort_proposal_rows_safe(original_rows,rows(ctx,*selected))&&
                         !AnalogueClockTiming(selected->get_timing_result()).worse_than(original_clock)&&inventory_safe(original_inventory,routed_placement_endpoints(ctx)),"selected candidate failed original final guard");
                     require(routed_placement_snapshot(ctx)==seed_native&&pins(ctx)==original_pins&&labs(ctx)==original_controls&&other_routes_equal(ctx,seed_routes,best_net->name),"selected proposal changed protected native state");
-                    require(rbf(ctx,root+"/selected-replay.rbf")==best_rbf,"selected bitstream did not replay exactly");accepted=true;
-                }}
+                    require(rbf(ctx,root+"/selected-replay.rbf")==best_rbf,"selected bitstream did not replay exactly");
+                });
+            }
             }
         }
         if(!accepted){restore_original();auto restored=analyse(ctx);
