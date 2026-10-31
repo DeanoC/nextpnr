@@ -1,5 +1,13 @@
 # Agent instructions
 
+## FES PR workflow rules (read first)
+
+The shared rules for lanes/labels (`lane:lander`, `lane:deano`, `needs:design`), the merge gate, review budget, stacks, HIL, ops and hard rules live in the FES repo:
+https://github.com/DeanoC/fes/blob/main/AGENTS.md#pr-workflow-lanes-merge-gate-review-stacks-hil-ops
+
+They apply to this repo too. No rebase, force-push or amend; never relax timing or seal checks; don't close PRs without Deano's OK.
+
+
 ## Routing equivalence
 
 The GPU router's HIP, CUDA and Metal backends and its CPU reference backend give bit-identical route results. HIP, CUDA, Metal and CPU-reference route evidence is interchangeable for seed and replay comparisons; this does not combine the distinct router2/router1-fallback cohort. Never require a separate HIP run or discount CUDA or Metal evidence; use whichever GPU is free via gpu-run. Never set GPU_LEASE_IDS per job (it is a box inventory override).
