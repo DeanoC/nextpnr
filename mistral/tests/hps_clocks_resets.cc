@@ -39,8 +39,13 @@ TEST(HpsClocksResets, EveryOutputReachesAGlobalThroughItsOwnSlot)
 
     std::map<int, IdString> slot_owner;
     std::map<IdString, std::set<std::pair<int, int>>> selects; // pin -> {slot, INPUT_SEL value}
+    // The five clock/reset outputs. The bel's other pins (reset request/acknowledge handshake) are ordinary
+    // fabric-routed pins, covered in hps_tie_offs.cc.
+    static const char *const clock_outputs[] = {"h2f_rst_n", "h2f_cold_rst_n", "h2f_user0_clk", "h2f_user1_clk",
+                                                "h2f_user2_clk"};
     int pins = 0;
-    for (IdString pin : ctx->getBelPins(bel)) {
+    for (const char *name : clock_outputs) {
+        const IdString pin = ctx->id(name);
         ++pins;
         EXPECT_EQ(ctx->getBelPinType(bel, pin), PORT_OUT) << pin.c_str(ctx.get());
         EXPECT_FALSE(ctx->hps_clock_bels[pin].empty()) << pin.c_str(ctx.get()) << " reaches no clock buffer";

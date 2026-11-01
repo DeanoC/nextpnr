@@ -1041,6 +1041,50 @@ struct MistralBitgen
         }
     }
 
+    void write_hps_tie_offs()
+    {
+        // Inversion bits of the fabric inputs of HPS interface cells (pins.cc PINSTYLE_HPS). An unrouted HPS input
+        // reads 1 (measured on silicon); its inversion bit turns that into 0. The inversion defaults are not uniform
+        // (the HPS_BOOT inputs default to inverted), so the bit is written explicitly for every input of a placed
+        // cell:
+        //   - tied to 0 (packer state PIN_0, input left unrouted): inversion 1
+        //   - tied to 1 (PIN_1, unrouted):                         inversion 0
+        //   - driven by logic (routed):                            inversion 0, true polarity
+        // Inputs the netlist leaves unconnected keep their default.
+        auto set_inv = [&](CellInfo *ci, IdString port, const std::vector<IdString> &mapped, bool inv, const char *what) {
+            std::vector<IdString> bel_pins = mapped;
+            if (bel_pins.empty())
+                bel_pins.push_back(port);
+            for (IdString bel_pin : bel_pins) {
+                WireId wire = ctx->getBelPinWire(ci->bel, bel_pin);
+                if (wire == WireId() || wire.is_nextpnr_created())
+                    log_error("HPS input '%s.%s' (%s) has no routing node.\n", ctx->nameOf(ci), port.c_str(ctx), what);
+                if (!cv->inv_set(cv->rc2ri(wire.node), inv))
+                    log_error("HPS input '%s.%s' (%s) has no inversion bit.\n", ctx->nameOf(ci), port.c_str(ctx), what);
+            }
+        };
+        for (auto &cell : ctx->cells) {
+            CellInfo *ci = cell.second.get();
+            if (ci->bel == BelId())
+                continue;
+            for (auto &port : ci->ports) {
+                if (port.second.type != PORT_IN || ctx->get_cell_pin_style(ci, port.first) != PINSTYLE_HPS)
+                    continue;
+                auto found = ci->pin_data.find(port.first);
+                std::vector<IdString> mapped;
+                CellPinState state = PIN_SIG;
+                if (found != ci->pin_data.end()) {
+                    mapped = found->second.bel_pins;
+                    state = found->second.state;
+                }
+                if (state == PIN_0 || state == PIN_1)
+                    set_inv(ci, port.first, mapped, state == PIN_0, state == PIN_0 ? "tied to 0" : "tied to 1");
+                else if (port.second.net != nullptr)
+                    set_inv(ci, port.first, mapped, false, "driven");
+            }
+        }
+    }
+
     void write_ff_routing(uint32_t lab)
     {
         auto &lab_data = ctx->labs.at(lab);
@@ -1116,6 +1160,7 @@ struct MistralBitgen
         options();
         write_routing();
         write_hps_interrupts();
+        write_hps_tie_offs();
         write_cells();
         write_labs();
         ctx->write_control_bitstream();

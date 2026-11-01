@@ -81,7 +81,8 @@ bool fes_skip_cart_cell(IdString type)
                    id_MISTRAL_CLKBUF, id_cyclonev_hps_interface_mpu_general_purpose,
                    id_cyclonev_hps_interface_peripheral_i2c, id_cyclonev_hps_interface_interrupts,
                    id_cyclonev_hps_interface_clocks_resets,
-                   id_cyclonev_hps_interface_hps2fpga_light_weight);
+                   id_cyclonev_hps_interface_hps2fpga_light_weight,
+                   id_cyclonev_hps_interface_hps2fpga, id_cyclonev_hps_interface_fpga2hps);
 }
 
 NetInfo *find_named_net(Context *ctx, const std::string &name)

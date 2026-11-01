@@ -197,6 +197,16 @@ Arch::Arch(ArchArgs args)
         create_hps_fpga2sdram(f2sdram.x(), f2sdram.y());
         auto lw = hps_pos[CycloneV::I_HPS_HPS2FPGA_LIGHT_WEIGHT];
         create_hps_hps2fpga_light_weight(lw.x(), lw.y());
+        auto hf = hps_pos[CycloneV::I_HPS_HPS2FPGA];
+        create_hps_hps2fpga(hf.x(), hf.y());
+        auto fh = hps_pos[CycloneV::I_HPS_FPGA2HPS];
+        create_hps_fpga2hps(fh.x(), fh.y());
+        auto tpiu = hps_pos[CycloneV::I_HPS_TPIU_TRACE];
+        create_hps_tpiu_trace(tpiu.x(), tpiu.y());
+        auto dbg = hps_pos[CycloneV::I_HPS_DBG_APB];
+        create_hps_dbg_apb(dbg.x(), dbg.y());
+        auto boot = hps_pos[CycloneV::I_HPS_BOOT];
+        create_hps_boot_from_fpga(boot.x(), boot.y());
     }
 
     for (auto m10k_pos : cyclonev->m10k_get_pos())
