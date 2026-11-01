@@ -210,3 +210,44 @@ TEST(HpsClocksResets, CartImportSkipsFixedSite)
     for (const auto &cell : ctx->cells)
         EXPECT_NE(cell.second->type, ctx->id("cyclonev_hps_interface_clocks_resets"));
 }
+
+// h2f_pending_rst_req_n is routed through the fabric: the packer gives it no
+// global clock buffer, while h2f_rst_n on the same cell still gets one.
+TEST(HpsClocksResets, HandshakeOutputKeepsFabricRouting)
+{
+    ArchArgs args;
+    args.device = "5CSEMA5F31C6";
+    auto ctx = std::make_unique<Context>(args);
+
+    CellInfo *hps = ctx->createCell(ctx->id("hps"), ctx->id("cyclonev_hps_interface_clocks_resets"));
+    const IdString pending = ctx->id("h2f_pending_rst_req_n");
+    const IdString reset = ctx->id("h2f_rst_n");
+    hps->addOutput(pending);
+    hps->addOutput(reset);
+    NetInfo *pending_net = ctx->createNet(ctx->id("pending"));
+    NetInfo *reset_net = ctx->createNet(ctx->id("reset"));
+    hps->connectPort(pending, pending_net);
+    hps->connectPort(reset, reset_net);
+
+    CellInfo *ff = ctx->createCell(ctx->id("ff"), id_MISTRAL_FF);
+    ff->addInput(id_DATAIN);
+    ff->addInput(id_ACLR);
+    ff->connectPort(id_DATAIN, pending_net);
+    ff->connectPort(id_ACLR, reset_net);
+
+    ASSERT_NO_THROW(ctx->pack_hps_clocks());
+    ASSERT_EQ(pending_net->users.entries(), 1);
+    for (const auto &user : pending_net->users) {
+        EXPECT_EQ(user.cell, ff);
+        EXPECT_EQ(user.port, id_DATAIN);
+    }
+    int buffers = 0;
+    for (const auto &cell : ctx->cells) {
+        if (cell.second->type != id_MISTRAL_CLKBUF)
+            continue;
+        ++buffers;
+        EXPECT_EQ(cell.second->getPort(id_A), reset_net);
+        EXPECT_NE(cell.second->bel, BelId());
+    }
+    EXPECT_EQ(buffers, 1);
+}

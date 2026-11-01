@@ -146,3 +146,103 @@ TEST(HpsBridgePortSize, CartImportSkipsFixedBridgeSites)
     for (const auto &cell : ctx->cells)
         EXPECT_NE(cell.second->type, f2h_type) << cell.first.c_str(ctx.get());
 }
+
+// Like the lightweight bridge, the full bridges have no AXI setup/hold or
+// clock-to-output characterization: clk is a clock input, port_size_config is
+// static, and connected AXI pins stay visible as unclocked timing boundaries.
+TEST(HpsBridgePortSize, UncharacterizedAxiTimingIsReportedAsUncovered)
+{
+    struct Case
+    {
+        const char *type;
+        const char *warning;
+        const char *to_bridge;   // a fabric -> HPS pin
+        const char *from_bridge; // an HPS -> fabric pin
+    };
+    const Case cases[] = {
+            {"cyclonev_hps_interface_hps2fpga", "Timing for HPS-to-FPGA bridge 'bridge'", "awready", "awaddr[0]"},
+            {"cyclonev_hps_interface_fpga2hps", "Timing for FPGA-to-HPS bridge 'bridge'", "awaddr[0]", "awready"},
+    };
+    for (const auto &c : cases) {
+        SCOPED_TRACE(c.type);
+        ArchArgs args;
+        args.device = "5CSEMA5F31C6";
+        auto ctx = std::make_unique<Context>(args);
+        const IdString type = ctx->id(c.type);
+        BelId bel;
+        for (BelId candidate : ctx->getBels())
+            if (ctx->getBelType(candidate) == type)
+                bel = candidate;
+        ASSERT_NE(bel, BelId());
+
+        CellInfo *bridge = ctx->createCell(ctx->id("bridge"), type);
+        for (IdString pin : ctx->getBelPins(bel)) {
+            const PortType direction = ctx->getBelPinType(bel, pin);
+            if (direction == PORT_IN)
+                bridge->addInput(pin);
+            else
+                bridge->addOutput(pin);
+            const std::string name = pin.str(ctx.get());
+            const TimingPortClass expected = pin == ctx->id("clk")                       ? TMG_CLOCK_INPUT
+                                             : name.rfind("port_size_config[", 0) == 0 ? TMG_IGNORE
+                                             : direction == PORT_IN                     ? TMG_ENDPOINT
+                                                                                        : TMG_STARTPOINT;
+            int clocks = -1;
+            EXPECT_EQ(ctx->getPortTimingClass(bridge, pin, clocks), expected) << name;
+            EXPECT_EQ(clocks, 0) << name;
+        }
+
+        NetInfo *clock = ctx->createNet(ctx->id("clock"));
+        PortInfo clock_port;
+        clock_port.name = ctx->id("clock");
+        clock_port.type = PORT_IN;
+        clock_port.net = clock;
+        ctx->ports[clock_port.name] = clock_port;
+        ctx->addClock(clock_port.name, 50.0);
+        bridge->connectPort(ctx->id("clk"), clock);
+
+        auto make_ff = [&](const char *name, NetInfo *q_net) {
+            CellInfo *ff = ctx->createCell(ctx->id(name), id_MISTRAL_FF);
+            ff->addInput(id_CLK);
+            ff->addInput(id_DATAIN);
+            ff->addOutput(id_Q);
+            ff->connectPort(id_CLK, clock);
+            ff->connectPort(id_Q, q_net);
+            return ff;
+        };
+        NetInfo *fabric_to_bridge = ctx->createNet(ctx->id("fabric_to_bridge"));
+        NetInfo *bridge_to_fabric = ctx->createNet(ctx->id("bridge_to_fabric"));
+        make_ff("launch", fabric_to_bridge);
+        CellInfo *capture = make_ff("capture", ctx->createNet(ctx->id("captured_q")));
+        bridge->connectPort(ctx->id(c.to_bridge), fabric_to_bridge);
+        bridge->connectPort(ctx->id(c.from_bridge), bridge_to_fabric);
+        capture->connectPort(id_DATAIN, bridge_to_fabric);
+        ctx->settings[ctx->id("target_freq")] = 1e8;
+
+        struct WarningCapture
+        {
+            std::ostringstream stream;
+            WarningCapture() { log_streams.emplace_back(&stream, LogLevel::WARNING_MSG); }
+            ~WarningCapture() { log_streams.pop_back(); }
+        } warnings;
+        TimingAnalyser timing(ctx.get());
+        timing.setup(true, false, false);
+        EXPECT_NE(warnings.stream.str().find(c.warning), std::string::npos) << warnings.stream.str();
+        EXPECT_NE(warnings.stream.str().find("is not covered"), std::string::npos);
+
+        const auto &reported = timing.get_timing_result().detailed_net_timings;
+        auto has_uncovered_sink = [&](IdString net, CellInfo *sink, IdString pin) {
+            auto found = reported.find(net);
+            if (found == reported.end())
+                return false;
+            for (const auto &row : found->second)
+                if (row.cell_port == std::make_pair(sink->name, pin) && !row.setup_checked && !row.hold_checked)
+                    return true;
+            return false;
+        };
+        EXPECT_TRUE(has_uncovered_sink(fabric_to_bridge->name, bridge, ctx->id(c.to_bridge)))
+                << "fabric-to-HPS path must remain visible without setup/hold coverage";
+        EXPECT_TRUE(has_uncovered_sink(bridge_to_fabric->name, capture, id_DATAIN))
+                << "HPS-to-fabric path must remain visible without setup/hold coverage";
+    }
+}

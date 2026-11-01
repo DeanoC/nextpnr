@@ -3387,6 +3387,10 @@ void Arch::pack_hps_clocks()
             NetInfo *net = port.second.net;
             if (port.second.type != PORT_OUT || net == nullptr || net->users.empty())
                 continue;
+            // Only the reset and user clock outputs leave through HPS_CLOCKS slots. The reset handshake output
+            // (h2f_pending_rst_req_n) is routed through the fabric.
+            if (!ctx->hps_clock_bels.count(port.first))
+                continue;
             CellInfo *buffer = nullptr;
             for (auto &user : net->users)
                 if (ctx->is_clkbuf_cell(user.cell->type) && user.port == id_A)

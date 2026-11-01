@@ -460,24 +460,30 @@ TimingPortClass Arch::getPortTimingClass(const CellInfo *cell, IdString port, in
         clockInfoCount = 1;
         return group->output ? TMG_REGISTER_OUTPUT : TMG_REGISTER_INPUT;
     }
-    if (cell->type == id_cyclonev_hps_interface_hps2fpga_light_weight) {
+    if (cell->type.in(id_cyclonev_hps_interface_hps2fpga_light_weight, id_cyclonev_hps_interface_hps2fpga,
+                      id_cyclonev_hps_interface_fpga2hps)) {
         if (port == id("clk"))
             return TMG_CLOCK_INPUT;
+        // port_size_config is a static configuration input.
+        if (port.str(this).rfind("port_size_config[", 0) == 0)
+            return TMG_IGNORE;
         auto bridge_port = cell->ports.find(port);
         if (bridge_port == cell->ports.end())
             return TMG_IGNORE;
         // The HPS manual identifies the fabric clock domain, but does not
         // provide AXI setup/hold or clock-to-output characterization. Keep
         // connected fabric paths visible as unclocked boundaries, with no
-        // fabricated timing budget, and report the coverage gap once.
+        // fabricated timing budget, and report the coverage gap once per bridge.
         if (bridge_port->second.net != nullptr) {
-            std::lock_guard<std::mutex> lock(hps_lw_timing_warning_mutex);
-            if (!hps_lw_timing_warning_emitted) {
-                log_warning("Timing for HPS lightweight bridge '%s' is not covered: no AXI setup/hold or "
+            std::lock_guard<std::mutex> lock(hps_bridge_timing_warning_mutex);
+            if (hps_bridge_timing_warned.insert(cell->name).second) {
+                const char *kind = cell->type == id_cyclonev_hps_interface_hps2fpga_light_weight ? "HPS lightweight"
+                                   : cell->type == id_cyclonev_hps_interface_hps2fpga           ? "HPS-to-FPGA"
+                                                                                                 : "FPGA-to-HPS";
+                log_warning("Timing for %s bridge '%s' is not covered: no AXI setup/hold or "
                             "clock-to-output characterization is available; connected AXI pins are reported "
                             "as unclocked timing boundaries.\n",
-                            cell->name.c_str(this));
-                hps_lw_timing_warning_emitted = true;
+                            kind, cell->name.c_str(this));
             }
         }
         if (bridge_port->second.type == PORT_IN)

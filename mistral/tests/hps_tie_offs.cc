@@ -3,6 +3,9 @@
 // 0. The inversion defaults differ per block (the boot-select inputs default to inverted), so bitgen writes the bit
 // for every input of a placed HPS cell.
 
+#include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -121,6 +124,46 @@ TEST(HpsFabricBels, ClocksResetsHandshakePins)
         ++pins;
     }
     EXPECT_EQ(pins, 10) << "5 clock/reset outputs + 4 handshake inputs + h2f_pending_rst_req_n";
+}
+
+// Trace, debug APB and boot each have one fixed HPS site, which the shell owns: a cart that instantiates them must
+// not import a second cell.
+TEST(HpsFabricBels, CartImportSkipsFixedSites)
+{
+    auto ctx = make_context();
+    NetInfo *clock_net = ctx->createNet(ctx->id("FPGA_CLK1_50"));
+    CellInfo *clock_source = ctx->createCell(ctx->id("clock_source"), ctx->id("MISTRAL_IB"));
+    clock_source->addOutput(ctx->id("O"));
+    clock_source->connectPort(ctx->id("O"), clock_net);
+
+    struct TemporaryFile
+    {
+        std::filesystem::path path = std::filesystem::temp_directory_path() /
+                                     ("nextpnr-hps-fabric-bels-cart-" +
+                                      std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
+                                      ".json");
+        ~TemporaryFile()
+        {
+            std::error_code error;
+            std::filesystem::remove(path, error);
+        }
+    } cart;
+    {
+        std::ofstream file(cart.path);
+        ASSERT_TRUE(file.good());
+        file << R"({"modules":{"cart":{"cells":{"tpiu":{"type":"cyclonev_hps_interface_tpiu_trace"},)"
+                R"("apb":{"type":"cyclonev_hps_interface_dbg_apb"},"boot":{"type":"cyclonev_hps_interface_boot_from_fpga"}}}}})";
+        ASSERT_TRUE(file.good());
+    }
+
+    ctx->merge_fes_cart(cart.path.string(), "test");
+
+    for (const char *name : {"fes_cart$tpiu", "fes_cart$apb", "fes_cart$boot"})
+        EXPECT_EQ(ctx->cells.count(ctx->id(name)), 0) << name;
+    for (const char *type :
+         {"cyclonev_hps_interface_tpiu_trace", "cyclonev_hps_interface_dbg_apb", "cyclonev_hps_interface_boot_from_fpga"})
+        for (const auto &cell : ctx->cells)
+            EXPECT_NE(cell.second->type, ctx->id(type)) << cell.first.c_str(ctx.get());
 }
 
 // The packer folds constants on HPS inputs into the cell (no routing); bitgen then writes inversion 1 for a 0-tie

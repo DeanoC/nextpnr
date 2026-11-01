@@ -198,6 +198,7 @@ void Arch::create_hps_clocks_resets()
     for (auto &s : signals) {
         s.wire = add_wire(site.x(), site.y(), idf("HPS_%s", s.pin));
         add_bel_pin(hps_clocks_resets_bel, id(s.pin), PORT_OUT, s.wire);
+        hps_clock_bels[id(s.pin)]; // marks the pin as global-only; the lanes are added below
     }
 
     // Fabric-routed reset handshake pins (libmistral p2r: GOUT inputs, GIN output; names match the primitive's
