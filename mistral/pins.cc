@@ -24,6 +24,16 @@
 NEXTPNR_NAMESPACE_BEGIN
 
 const dict<IdString, Arch::CellPinsData> Arch::cell_pins_db = {
+        // HPS interface inputs: constants become inversion-bit tie-offs (bitstream.cc write_hps_tie_offs).
+        // Not cyclonev_hps_interface_interrupts: write_hps_interrupts() inverts every undriven IRQ.
+        {id_cyclonev_hps_interface_clocks_resets, {{{}, PINSTYLE_HPS}}},
+        {id_cyclonev_hps_interface_hps2fpga, {{{}, PINSTYLE_HPS}}},
+        {id_cyclonev_hps_interface_hps2fpga_light_weight, {{{}, PINSTYLE_HPS}}},
+        {id_cyclonev_hps_interface_fpga2hps, {{{}, PINSTYLE_HPS}}},
+        {id_cyclonev_hps_interface_fpga2sdram, {{{}, PINSTYLE_HPS}}},
+        {id_cyclonev_hps_interface_tpiu_trace, {{{}, PINSTYLE_HPS}}},
+        {id_cyclonev_hps_interface_dbg_apb, {{{}, PINSTYLE_HPS}}},
+        {id_cyclonev_hps_interface_boot_from_fpga, {{{}, PINSTYLE_HPS}}},
         // DSP inputs have individual inversion bits, allowing constants and
         // inverters to be folded. Bitgen accounts for each physical default.
         {id_MISTRAL_MUL9X9,

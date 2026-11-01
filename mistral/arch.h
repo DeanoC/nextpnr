@@ -299,6 +299,10 @@ enum CellPinStyle
     PINSTYLE_DEDI = 0x000, // dedicated signals, leave alone
     PINSTYLE_INP = 0x010,  // general inputs, no inversion/tieing but defaults low
     PINSTYLE_PU = 0x022,   // signals that float high and default high
+    // HPS interface inputs: a constant is never routed; the packer disconnects it (PIN_0/PIN_1) and bitgen
+    // writes the input's inversion bit (an unrouted HPS input reads 1 on silicon; inversion makes it 0).
+    // Unused inputs are left alone (their per-bit inversion default stands).
+    PINSTYLE_HPS = 0x003,
 
     PINSTYLE_CARRY = 0x001, // carry chains can be floating or 0?
 
@@ -307,8 +311,8 @@ enum CellPinStyle
 struct Arch : BaseArch<ArchRanges>
 {
     ArchArgs args;
-    mutable std::mutex hps_lw_timing_warning_mutex;
-    mutable bool hps_lw_timing_warning_emitted = false;
+    mutable std::mutex hps_bridge_timing_warning_mutex;
+    mutable pool<IdString> hps_bridge_timing_warned; // bridge cells whose uncovered timing was reported
     // Owns the model from CycloneV::get_model, including its decompressed
     // device database. A raw pointer here leaked one model per Context (#288).
     std::unique_ptr<mistral::CycloneV> cyclonev;
@@ -788,6 +792,11 @@ struct Arch : BaseArch<ArchRanges>
     void create_hps_peripheral_i2c(int x, int y);      // globals.cc
     void create_hps_fpga2sdram(int x, int y);          // globals.cc
     void create_hps_hps2fpga_light_weight(int x, int y); // globals.cc
+    void create_hps_hps2fpga(int x, int y);             // globals.cc
+    void create_hps_fpga2hps(int x, int y);             // globals.cc
+    void create_hps_tpiu_trace(int x, int y);           // globals.cc
+    void create_hps_dbg_apb(int x, int y);              // globals.cc
+    void create_hps_boot_from_fpga(int x, int y);       // globals.cc
 
     // -------------------------------------------------
 

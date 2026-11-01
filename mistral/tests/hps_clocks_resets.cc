@@ -39,8 +39,13 @@ TEST(HpsClocksResets, EveryOutputReachesAGlobalThroughItsOwnSlot)
 
     std::map<int, IdString> slot_owner;
     std::map<IdString, std::set<std::pair<int, int>>> selects; // pin -> {slot, INPUT_SEL value}
+    // The five clock/reset outputs. The bel's other pins (reset request/acknowledge handshake) are ordinary
+    // fabric-routed pins, covered in hps_tie_offs.cc.
+    static const char *const clock_outputs[] = {"h2f_rst_n", "h2f_cold_rst_n", "h2f_user0_clk", "h2f_user1_clk",
+                                                "h2f_user2_clk"};
     int pins = 0;
-    for (IdString pin : ctx->getBelPins(bel)) {
+    for (const char *name : clock_outputs) {
+        const IdString pin = ctx->id(name);
         ++pins;
         EXPECT_EQ(ctx->getBelPinType(bel, pin), PORT_OUT) << pin.c_str(ctx.get());
         EXPECT_FALSE(ctx->hps_clock_bels[pin].empty()) << pin.c_str(ctx.get()) << " reaches no clock buffer";
@@ -204,4 +209,45 @@ TEST(HpsClocksResets, CartImportSkipsFixedSite)
     EXPECT_EQ(ctx->cells.count(ctx->id("fes_cart$hps_cr")), 0);
     for (const auto &cell : ctx->cells)
         EXPECT_NE(cell.second->type, ctx->id("cyclonev_hps_interface_clocks_resets"));
+}
+
+// h2f_pending_rst_req_n is routed through the fabric: the packer gives it no
+// global clock buffer, while h2f_rst_n on the same cell still gets one.
+TEST(HpsClocksResets, HandshakeOutputKeepsFabricRouting)
+{
+    ArchArgs args;
+    args.device = "5CSEMA5F31C6";
+    auto ctx = std::make_unique<Context>(args);
+
+    CellInfo *hps = ctx->createCell(ctx->id("hps"), ctx->id("cyclonev_hps_interface_clocks_resets"));
+    const IdString pending = ctx->id("h2f_pending_rst_req_n");
+    const IdString reset = ctx->id("h2f_rst_n");
+    hps->addOutput(pending);
+    hps->addOutput(reset);
+    NetInfo *pending_net = ctx->createNet(ctx->id("pending"));
+    NetInfo *reset_net = ctx->createNet(ctx->id("reset"));
+    hps->connectPort(pending, pending_net);
+    hps->connectPort(reset, reset_net);
+
+    CellInfo *ff = ctx->createCell(ctx->id("ff"), id_MISTRAL_FF);
+    ff->addInput(id_DATAIN);
+    ff->addInput(id_ACLR);
+    ff->connectPort(id_DATAIN, pending_net);
+    ff->connectPort(id_ACLR, reset_net);
+
+    ASSERT_NO_THROW(ctx->pack_hps_clocks());
+    ASSERT_EQ(pending_net->users.entries(), 1);
+    for (const auto &user : pending_net->users) {
+        EXPECT_EQ(user.cell, ff);
+        EXPECT_EQ(user.port, id_DATAIN);
+    }
+    int buffers = 0;
+    for (const auto &cell : ctx->cells) {
+        if (cell.second->type != id_MISTRAL_CLKBUF)
+            continue;
+        ++buffers;
+        EXPECT_EQ(cell.second->getPort(id_A), reset_net);
+        EXPECT_NE(cell.second->bel, BelId());
+    }
+    EXPECT_EQ(buffers, 1);
 }

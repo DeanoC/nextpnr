@@ -198,7 +198,28 @@ void Arch::create_hps_clocks_resets()
     for (auto &s : signals) {
         s.wire = add_wire(site.x(), site.y(), idf("HPS_%s", s.pin));
         add_bel_pin(hps_clocks_resets_bel, id(s.pin), PORT_OUT, s.wire);
+        hps_clock_bels[id(s.pin)]; // marks the pin as global-only; the lanes are added below
     }
+
+    // Fabric-routed reset handshake pins (libmistral p2r: GOUT inputs, GIN output; names match the primitive's
+    // ports). Designs that do not use them tie the four request/ack inputs to 1. The clock inputs
+    // f2h_sdram_ref_clk, f2h_periph_ref_clk and ptp_ref_clk (DCMUX nodes) are not modelled.
+    struct FabricPin
+    {
+        const char *pin;
+        PortType dir;
+        CycloneV::port_type_t port;
+    };
+    static const FabricPin fabric_pins[] = {
+            {"f2h_cold_rst_req_n", PORT_IN, CycloneV::F2H_COLD_RST_REQ_N},
+            {"f2h_warm_rst_req_n", PORT_IN, CycloneV::F2H_WARM_RST_REQ_N},
+            {"f2h_dbg_rst_req_n", PORT_IN, CycloneV::F2H_DBG_RST_REQ_N},
+            {"f2h_pending_rst_ack", PORT_IN, CycloneV::F2H_PENDING_RST_ACK},
+            {"h2f_pending_rst_req_n", PORT_OUT, CycloneV::H2F_PENDING_RST_REQ_N},
+    };
+    for (const auto &f : fabric_pins)
+        add_bel_pin(hps_clocks_resets_bel, id(f.pin), f.dir,
+                    get_port(CycloneV::HPS_CLOCKS_RESETS, site.x(), site.y(), -1, f.port));
 
     std::map<int, std::map<int, int>> slot_inputs; // slot -> CLKIN index -> signal
     std::map<int, std::vector<CycloneV::pnode_coords>> slot_outputs; // slot -> clock mux PLLIN
@@ -398,6 +419,102 @@ void Arch::create_hps_hps2fpga_light_weight(int x, int y)
     }
 }
 
+void Arch::create_hps_hps2fpga(int x, int y)
+{
+    // Full HPS-to-FPGA bridge: an AXI3 master like the lightweight one, at
+    // 128-bit data width (16 WSTRB) and a 30-bit address. The HPS is the
+    // master, so the address/write channels leave it and the ready, response
+    // and read-data signals enter it. port_size_config[2] selects the data
+    // width the design uses; 2'b10 (bit 0 low) is the 128-bit setting,
+    // tested on silicon. Other encodings are untested.
+    BelId bel = add_bel(x, y, id_cyclonev_hps_interface_hps2fpga, id_cyclonev_hps_interface_hps2fpga);
+    struct Pin
+    {
+        const char *name;
+        PortType dir;
+        CycloneV::port_type_t port;
+        int count; // 0 = scalar
+    };
+    static const Pin pins[] = {
+            {"clk", PORT_IN, CycloneV::CLK, 0},
+            {"awid", PORT_OUT, CycloneV::AWID, 12},       {"awaddr", PORT_OUT, CycloneV::AWADDR, 30},
+            {"awlen", PORT_OUT, CycloneV::AWLEN, 4},      {"awsize", PORT_OUT, CycloneV::AWSIZE, 3},
+            {"awburst", PORT_OUT, CycloneV::AWBURST, 2},  {"awlock", PORT_OUT, CycloneV::AWLOCK, 2},
+            {"awcache", PORT_OUT, CycloneV::AWCACHE, 4},  {"awprot", PORT_OUT, CycloneV::AWPROT, 3},
+            {"awvalid", PORT_OUT, CycloneV::AWVALID, 0},  {"awready", PORT_IN, CycloneV::AWREADY, 0},
+            {"wid", PORT_OUT, CycloneV::WID, 12},         {"wdata", PORT_OUT, CycloneV::WDATA, 128},
+            {"wstrb", PORT_OUT, CycloneV::WSTRB, 16},     {"wlast", PORT_OUT, CycloneV::WLAST, 0},
+            {"wvalid", PORT_OUT, CycloneV::WVALID, 0},    {"wready", PORT_IN, CycloneV::WREADY, 0},
+            {"bid", PORT_IN, CycloneV::BID, 12},          {"bresp", PORT_IN, CycloneV::BRESP, 2},
+            {"bvalid", PORT_IN, CycloneV::BVALID, 0},     {"bready", PORT_OUT, CycloneV::BREADY, 0},
+            {"arid", PORT_OUT, CycloneV::ARID, 12},       {"araddr", PORT_OUT, CycloneV::ARADDR, 30},
+            {"arlen", PORT_OUT, CycloneV::ARLEN, 4},      {"arsize", PORT_OUT, CycloneV::ARSIZE, 3},
+            {"arburst", PORT_OUT, CycloneV::ARBURST, 2},  {"arlock", PORT_OUT, CycloneV::ARLOCK, 2},
+            {"arcache", PORT_OUT, CycloneV::ARCACHE, 4},  {"arprot", PORT_OUT, CycloneV::ARPROT, 3},
+            {"arvalid", PORT_OUT, CycloneV::ARVALID, 0},  {"arready", PORT_IN, CycloneV::ARREADY, 0},
+            {"rid", PORT_IN, CycloneV::RID, 12},          {"rdata", PORT_IN, CycloneV::RDATA, 128},
+            {"rresp", PORT_IN, CycloneV::RRESP, 2},       {"rlast", PORT_IN, CycloneV::RLAST, 0},
+            {"rvalid", PORT_IN, CycloneV::RVALID, 0},     {"rready", PORT_OUT, CycloneV::RREADY, 0},
+            {"port_size_config", PORT_IN, CycloneV::PORT_SIZE_CONFIG, 2},
+    };
+    for (const auto &p : pins) {
+        if (p.count == 0)
+            add_bel_pin(bel, id(p.name), p.dir, get_port(CycloneV::HPS_HPS2FPGA, x, y, -1, p.port));
+        else
+            for (int bit = 0; bit < p.count; bit++)
+                add_bel_pin(bel, idf("%s[%d]", p.name, bit), p.dir,
+                            get_port(CycloneV::HPS_HPS2FPGA, x, y, -1, p.port, bit));
+    }
+}
+
+void Arch::create_hps_fpga2hps(int x, int y)
+{
+    // FPGA-to-HPS bridge: the fabric is the AXI3 master, so the address and
+    // write channels are inputs here and the read/response channels outputs.
+    // 128-bit data, 32-bit address, 8-bit IDs, 5-bit AWUSER/ARUSER, and the
+    // same port_size_config width select as the H2F bridge.
+    BelId bel = add_bel(x, y, id_cyclonev_hps_interface_fpga2hps, id_cyclonev_hps_interface_fpga2hps);
+    struct Pin
+    {
+        const char *name;
+        PortType dir;
+        CycloneV::port_type_t port;
+        int count;
+    };
+    static const Pin pins[] = {
+            {"clk", PORT_IN, CycloneV::CLK, 0},
+            {"awid", PORT_IN, CycloneV::AWID, 8},        {"awaddr", PORT_IN, CycloneV::AWADDR, 32},
+            {"awlen", PORT_IN, CycloneV::AWLEN, 4},      {"awsize", PORT_IN, CycloneV::AWSIZE, 3},
+            {"awburst", PORT_IN, CycloneV::AWBURST, 2},  {"awlock", PORT_IN, CycloneV::AWLOCK, 2},
+            {"awcache", PORT_IN, CycloneV::AWCACHE, 4},  {"awprot", PORT_IN, CycloneV::AWPROT, 3},
+            {"awuser", PORT_IN, CycloneV::AWUSER, 5},    {"awvalid", PORT_IN, CycloneV::AWVALID, 0},
+            {"awready", PORT_OUT, CycloneV::AWREADY, 0},
+            {"wid", PORT_IN, CycloneV::WID, 8},          {"wdata", PORT_IN, CycloneV::WDATA, 128},
+            {"wstrb", PORT_IN, CycloneV::WSTRB, 16},     {"wlast", PORT_IN, CycloneV::WLAST, 0},
+            {"wvalid", PORT_IN, CycloneV::WVALID, 0},    {"wready", PORT_OUT, CycloneV::WREADY, 0},
+            {"bid", PORT_OUT, CycloneV::BID, 8},         {"bresp", PORT_OUT, CycloneV::BRESP, 2},
+            {"bvalid", PORT_OUT, CycloneV::BVALID, 0},   {"bready", PORT_IN, CycloneV::BREADY, 0},
+            {"arid", PORT_IN, CycloneV::ARID, 8},        {"araddr", PORT_IN, CycloneV::ARADDR, 32},
+            {"arlen", PORT_IN, CycloneV::ARLEN, 4},      {"arsize", PORT_IN, CycloneV::ARSIZE, 3},
+            {"arburst", PORT_IN, CycloneV::ARBURST, 2},  {"arlock", PORT_IN, CycloneV::ARLOCK, 2},
+            {"arcache", PORT_IN, CycloneV::ARCACHE, 4},  {"arprot", PORT_IN, CycloneV::ARPROT, 3},
+            {"aruser", PORT_IN, CycloneV::ARUSER, 5},    {"arvalid", PORT_IN, CycloneV::ARVALID, 0},
+            {"arready", PORT_OUT, CycloneV::ARREADY, 0},
+            {"rid", PORT_OUT, CycloneV::RID, 8},         {"rdata", PORT_OUT, CycloneV::RDATA, 128},
+            {"rresp", PORT_OUT, CycloneV::RRESP, 2},     {"rlast", PORT_OUT, CycloneV::RLAST, 0},
+            {"rvalid", PORT_OUT, CycloneV::RVALID, 0},   {"rready", PORT_IN, CycloneV::RREADY, 0},
+            {"port_size_config", PORT_IN, CycloneV::PORT_SIZE_CONFIG, 2},
+    };
+    for (const auto &p : pins) {
+        if (p.count == 0)
+            add_bel_pin(bel, id(p.name), p.dir, get_port(CycloneV::HPS_FPGA2HPS, x, y, -1, p.port));
+        else
+            for (int bit = 0; bit < p.count; bit++)
+                add_bel_pin(bel, idf("%s[%d]", p.name, bit), p.dir,
+                            get_port(CycloneV::HPS_FPGA2HPS, x, y, -1, p.port, bit));
+    }
+}
+
 void Arch::create_control(int x, int y)
 {
     BelId oscillator_bel = add_bel(x, y, id_cyclonev_oscillator, id_cyclonev_oscillator);
@@ -554,5 +671,80 @@ void Arch::route_globals()
     MistralGlobalRouter router(getCtx());
     router();
 }
+
+// HPS blocks whose fabric pins are plain GOUT (fabric -> HPS) / GIN (HPS -> fabric) routing nodes. Pin names are
+// the cyclonev_hps_interface_* primitive ports, so a netlist instantiating the primitive
+// binds by name. Clock pins (DCMUX nodes / HPS_CLOCKS slots) are not modelled.
+namespace {
+struct HpsFabricPin
+{
+    const char *name;
+    PortType dir;
+    CycloneV::port_type_t port;
+    int count; // 0 = scalar
+};
+} // namespace
+
+#define ADD_HPS_FABRIC_PINS(BEL, BT, X, Y, PINS)                                                                    \
+    for (const auto &p : PINS) {                                                                                      \
+        if (p.count == 0)                                                                                             \
+            add_bel_pin(BEL, id(p.name), p.dir, get_port(BT, X, Y, -1, p.port));                                      \
+        else                                                                                                          \
+            for (int bit = 0; bit < p.count; bit++)                                                                   \
+                add_bel_pin(BEL, idf("%s[%d]", p.name, bit), p.dir, get_port(BT, X, Y, -1, p.port, bit));             \
+    }
+
+void Arch::create_hps_tpiu_trace(int x, int y)
+{
+    // Trace port. Designs without tracing tie traceclk_ctl to 1. traceclkin (DCMUX) and traceclk (an HPS_CLOCKS
+    // slot input) are not modelled.
+    BelId bel = add_bel(x, y, id_cyclonev_hps_interface_tpiu_trace, id_cyclonev_hps_interface_tpiu_trace);
+    static const HpsFabricPin pins[] = {
+            {"traceclk_ctl", PORT_IN, CycloneV::TRACECLK_CTL, 0},
+            {"trace_data", PORT_OUT, CycloneV::TRACE_DATA, 32},
+    };
+    ADD_HPS_FABRIC_PINS(bel, CycloneV::HPS_TPIU_TRACE, x, y, pins);
+}
+
+void Arch::create_hps_dbg_apb(int x, int y)
+{
+    // Debug APB slave port (the atom's ports are upper case). Designs tie DBG_APB_DISABLE and P_CLK_EN to 0 when the
+    // port is unused. P_CLK (DCMUX) is not modelled.
+    BelId bel = add_bel(x, y, id_cyclonev_hps_interface_dbg_apb, id_cyclonev_hps_interface_dbg_apb);
+    static const HpsFabricPin pins[] = {
+            {"DBG_APB_DISABLE", PORT_IN, CycloneV::DBG_APB_DISABLE, 0},
+            {"P_CLK_EN", PORT_IN, CycloneV::P_CLK_EN, 0},
+            {"P_RDATA", PORT_IN, CycloneV::P_RDATA, 32},
+            {"P_READY", PORT_IN, CycloneV::P_READY, 0},
+            {"P_SLV_ERR", PORT_IN, CycloneV::P_SLV_ERR, 0},
+            {"P_ADDR", PORT_OUT, CycloneV::P_ADDR, 18},
+            {"P_ADDR_31", PORT_OUT, CycloneV::P_ADDR_31, 0},
+            {"P_ENABLE", PORT_OUT, CycloneV::P_ENABLE, 0},
+            {"P_SEL", PORT_OUT, CycloneV::P_SEL, 0},
+            {"P_WDATA", PORT_OUT, CycloneV::P_WDATA, 32},
+            {"P_WRITE", PORT_OUT, CycloneV::P_WRITE, 0},
+            {"P_RESET_N", PORT_OUT, CycloneV::P_RESET_N, 0},
+    };
+    ADD_HPS_FABRIC_PINS(bel, CycloneV::HPS_DBG_APB, x, y, pins);
+}
+
+void Arch::create_hps_boot_from_fpga(int x, int y)
+{
+    // Boot-from-FPGA handshake and boot/clock select override, all fabric -> HPS. Their inversion bits default to 1
+    // (an unconfigured input reads 0); designs tie ready/on_failure/bsel_en/csel_en to 0 and csel/bsel to the board's
+    // values.
+    BelId bel = add_bel(x, y, id_cyclonev_hps_interface_boot_from_fpga, id_cyclonev_hps_interface_boot_from_fpga);
+    static const HpsFabricPin pins[] = {
+            {"boot_from_fpga_ready", PORT_IN, CycloneV::BOOT_FROM_FPGA_READY, 0},
+            {"boot_from_fpga_on_failure", PORT_IN, CycloneV::BOOT_FROM_FPGA_ON_FAILURE, 0},
+            {"bsel_en", PORT_IN, CycloneV::BSEL_EN, 0},
+            {"csel_en", PORT_IN, CycloneV::CSEL_EN, 0},
+            {"csel", PORT_IN, CycloneV::CSEL, 2},
+            {"bsel", PORT_IN, CycloneV::BSEL, 3},
+    };
+    ADD_HPS_FABRIC_PINS(bel, CycloneV::HPS_BOOT, x, y, pins);
+}
+
+#undef ADD_HPS_FABRIC_PINS
 
 NEXTPNR_NAMESPACE_END
