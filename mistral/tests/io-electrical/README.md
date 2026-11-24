@@ -52,9 +52,12 @@ with an error and every other option still works.
 
 `check.py` synthesizes both designs, places and routes them with the same
 QSFs, decodes the RBFs and requires every pad's settings to equal the Quartus
-decode. It then checks 14 invalid requests fail before placement. With
-`--reference-nextpnr` it also requires byte-identical RBF bytes from a binary
-without this change when no electrical assignment is present.
+decode. It then checks 16 invalid requests fail before placement, verifies that
+routing `top.v` with no electrical assignments decodes to the exact default
+GPIO/DQS16 settings on all 24 pads, and requires byte-identical RBF bytes
+between no electrical assignments and explicit default electrical assignments.
+With `--reference-nextpnr` it also requires byte-identical RBF bytes against a
+reference binary.
 
 ```sh
 python3 mistral/tests/io-electrical/check.py \
