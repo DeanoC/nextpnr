@@ -51,7 +51,7 @@ TEST(AnalogueRepairBudget, RejectsInvalidBudgetEvenWithoutRouting)
     EXPECT_FALSE(ctx->analogue_repair_time_budget_truncated);
 
     std::ostringstream report;
-    ctx->write_timing_report_json(report);
+    ctx->writeJsonReport(report);
     std::string error;
     auto parsed = json11::Json::parse(report.str(), error);
     ASSERT_TRUE(error.empty()) << error;
