@@ -1040,6 +1040,14 @@ bool Arch::analogue_repair()
         };
         // (A design without a timed clock has nothing to improve.)
         for (int pass = 1; pass <= improve_rounds && !kept_timing.setup.empty(); pass++) {
+            if (configured_max_rounds > 0 &&
+                (total_cand_passes + reroutes + improve_passes_run) >= configured_max_rounds) {
+                log_info("    stopping improvement passes after %d repair actions (%d candidate passes, %d reroutes, "
+                         "%d improve passes; analogueMaxRounds=%d)\n",
+                         total_cand_passes + reroutes + improve_passes_run, total_cand_passes, reroutes,
+                         improve_passes_run, configured_max_rounds);
+                break;
+            }
             if (expired()) {
                 stop_reason = "time_budget_improve";
                 time_budget_truncated = true;
