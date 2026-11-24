@@ -49,19 +49,19 @@ def route(netlist, qsf, name, nextpnr=None, success=True, sdc=True):
     return run(command, o / (name + ".route.log"), success)
 
 
-def settings(name):
+def settings(name, ignore=IGNORED):
     run([a.mistral_cv, "decomp", "5CSEBA6U23I7", o / (name + ".rbf"), o / (name + ".bt")], o / (name + ".decode.log"))
     found = {}
     for line in (o / (name + ".bt")).read_text().splitlines():
         m = re.match(r"^s ((?:GPIO|DQS16)\.\S+) (\S+) ; (\S+)", line)
-        if not m or IGNORED.search(m.group(1)):
+        if not m or (ignore and ignore.search(m.group(1))):
             continue
         found.setdefault(m.group(3), []).append(m.group(1) + " " + m.group(2))
     return {pin: sorted(values) for pin, values in found.items()}
 
 
-def compare_settings(name, want):
-    got = settings(name)
+def compare_settings(name, want, ignore=IGNORED):
+    got = settings(name, ignore=ignore)
     for pin in sorted(set(got) | set(want)):
         assert got.get(pin, []) == want.get(pin, []), (name, pin, got.get(pin), want.get(pin))
     return len(set(got) | set(want))
@@ -128,76 +128,89 @@ print("PASS: 16 invalid electrical requests rejected")
 #    RBF output to having no electrical assignments at all.
 PLAIN_DEFAULT_SETTINGS = {
     "AA15": [
+        "DQS16.060.000:INPUT_REG4_SEL.1 SEL_LOCKED_DPA",
         "DQS16.060.000:RB_T9_SEL_EREG_CFF_DELAY.1 1f",
         "GPIO.064.000:DRIVE_STRENGTH.1 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.064.000:IOCSR_STD.1 DIS",
         "GPIO.064.000:USE_WEAK_PULLUP.1 0",
     ],
     "AC24": [
+        "DQS16.089.008:INPUT_REG4_SEL.10 SEL_LOCKED_DPA",
         "DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.10 1f",
         "GPIO.089.008:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.089.008:IOCSR_STD.2 DIS",
         "GPIO.089.008:USE_WEAK_PULLUP.2 0",
     ],
     "AD26": [
+        "DQS16.089.008:INPUT_REG4_SEL.7 SEL_LOCKED_DPA",
         "DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.7 1f",
         "GPIO.089.006:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.089.006:IOCSR_STD.3 DIS",
         "GPIO.089.006:USE_WEAK_PULLUP.3 0",
     ],
     "AE25": [
+        "DQS16.089.008:INPUT_REG4_SEL.6 SEL_LOCKED_DPA",
         "DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.6 1f",
         "GPIO.089.006:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.089.006:IOCSR_STD.2 DIS",
         "GPIO.089.006:USE_WEAK_PULLUP.2 0",
     ],
     "AF23": [
+        "DQS16.076.000:INPUT_REG4_SEL.5 SEL_LOCKED_DPA",
         "DQS16.076.000:RB_T9_SEL_EREG_CFF_DELAY.5 1f",
         "GPIO.078.000:DRIVE_STRENGTH.1 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.078.000:IOCSR_STD.1 DIS",
         "GPIO.078.000:USE_WEAK_PULLUP.1 0",
     ],
     "AF25": [
+        "DQS16.084.000:INPUT_REG4_SEL.4 SEL_LOCKED_DPA",
         "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.4 1f",
         "GPIO.086.000:DRIVE_STRENGTH.0 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.086.000:USE_WEAK_PULLUP.0 0",
     ],
     "AF27": [
+        "DQS16.084.000:INPUT_REG4_SEL.2 SEL_LOCKED_DPA",
         "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.2 1f",
         "GPIO.088.000:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.088.000:IOCSR_STD.2 DIS",
         "GPIO.088.000:USE_WEAK_PULLUP.2 0",
     ],
     "AF28": [
+        "DQS16.084.000:INPUT_REG4_SEL.3 SEL_LOCKED_DPA",
         "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.3 1f",
         "GPIO.088.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.088.000:IOCSR_STD.3 DIS",
         "GPIO.088.000:USE_WEAK_PULLUP.3 0",
     ],
     "AG23": [
+        "DQS16.076.000:INPUT_REG4_SEL.4 SEL_LOCKED_DPA",
         "DQS16.076.000:RB_T9_SEL_EREG_CFF_DELAY.4 1f",
         "GPIO.078.000:DRIVE_STRENGTH.0 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.078.000:USE_WEAK_PULLUP.0 0",
     ],
     "AG25": [
+        "DQS16.084.000:INPUT_REG4_SEL.5 SEL_LOCKED_DPA",
         "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.5 1f",
         "GPIO.086.000:DRIVE_STRENGTH.1 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.086.000:IOCSR_STD.1 DIS",
         "GPIO.086.000:USE_WEAK_PULLUP.1 0",
     ],
     "AG26": [
+        "DQS16.084.000:INPUT_REG4_SEL.14 SEL_LOCKED_DPA",
         "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.14 1f",
         "GPIO.082.000:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.082.000:IOCSR_STD.2 DIS",
         "GPIO.082.000:USE_WEAK_PULLUP.2 0",
     ],
     "AG28": [
+        "DQS16.084.000:INPUT_REG4_SEL.6 SEL_LOCKED_DPA",
         "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.6 1f",
         "GPIO.086.000:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.086.000:IOCSR_STD.2 DIS",
         "GPIO.086.000:USE_WEAK_PULLUP.2 0",
     ],
     "AH24": [
+        "DQS16.076.000:INPUT_REG4_SEL.3 SEL_LOCKED_DPA",
         "DQS16.076.000:RB_T9_SEL_EREG_CFF_DELAY.3 1f",
         "GPIO.080.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.080.000:USE_WEAK_PULLUP.3 0",
@@ -211,6 +224,7 @@ PLAIN_DEFAULT_SETTINGS = {
         "GPIO.084.000:USE_WEAK_PULLUP.3 0",
     ],
     "AH27": [
+        "DQS16.084.000:INPUT_REG4_SEL.7 SEL_LOCKED_DPA",
         "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.7 1f",
         "GPIO.086.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.086.000:IOCSR_STD.3 DIS",
@@ -229,6 +243,7 @@ PLAIN_DEFAULT_SETTINGS = {
     "V12": ["GPIO.040.000:USE_WEAK_PULLUP.0 0"],
     "W12": ["GPIO.040.000:USE_WEAK_PULLUP.1 0"],
     "Y15": [
+        "DQS16.060.000:INPUT_REG4_SEL.0 SEL_LOCKED_DPA",
         "DQS16.060.000:RB_T9_SEL_EREG_CFF_DELAY.0 1f",
         "GPIO.064.000:DRIVE_STRENGTH.0 V3P3_LVTTL_16MA_LVCMOS_2MA",
         "GPIO.064.000:IOCSR_STD.0 DIS",
@@ -243,7 +258,7 @@ plain_lines = [
 ]
 (o / "plain.qsf").write_text("\n".join(plain_lines) + "\n")
 route(top, o / "plain.qsf", "plain")
-plain_pins = compare_settings("plain", PLAIN_DEFAULT_SETTINGS)
+plain_pins = compare_settings("plain", PLAIN_DEFAULT_SETTINGS, ignore=None)
 print(f"PASS: {plain_pins} pads without electrical assignments match exact default GPIO/DQS16 settings")
 
 plain_defaults_lines = plain_lines + [
