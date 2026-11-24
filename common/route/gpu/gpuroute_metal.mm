@@ -58,16 +58,17 @@ struct LaunchArgs
     int32_t ntasks;
     int32_t cap;
 };
+constexpr uint32_t WIRE_UNAVAILABLE_BIT = 0x80000000u;
+
 struct alignas(16) WireRec
 {
     int16_t x, y;
-    uint8_t flags;
-    uint8_t pad[3];
     int32_t reserved;
-    int32_t occ;
+    uint32_t occ_flags;
     float hist;
 };
-static_assert(sizeof(WireRec) == 32 && offsetof(WireRec, hist) == 16, "WireRec layout");
+static_assert(sizeof(WireRec) == 16 && offsetof(WireRec, hist) == 12, "WireRec layout");
+static_assert(sizeof(EdgeRec) == 8 && offsetof(EdgeRec, cost) == 4, "EdgeRec layout");
 static_assert(sizeof(RouteParams) == 68 && offsetof(RouteParams, exact) == 64, "RouteParams layout");
 static_assert(sizeof(TaskDesc) == 68 && offsetof(TaskDesc, bb_x0) == 44 && offsetof(TaskDesc, shell_cnt) == 64,
               "TaskDesc layout");
@@ -79,11 +80,8 @@ static_assert(sizeof(PathEntry) == 16, "PathEntry layout");
 enum : NSUInteger
 {
     B_OUT_OFF,
-    B_OUT_DST,
     B_EDGE_SRC,
-    B_EDGE_COST,
-    B_EDGE_REGION,
-    B_EDGE_OUTSIDE_HALO,
+    B_EDGES,
     B_WIRES,
     B_PARAMS,
     B_ARGS,
@@ -238,29 +236,52 @@ class MetalBackend : public Backend
                 if (queue_ == nil)
                     build_pipeline();
 
+                if (graph.n_wires > int32_t(EDGE_DST_MASK)) {
+                    error = "graph wire count exceeds EdgeRec 30-bit destination limit";
+                    return false;
+                }
                 n_wires_ = graph.n_wires;
                 out_off_.upload(dev_, graph.out_off, (size_t)graph.n_wires + 1);
-                out_dst_.upload(dev_, graph.out_dst, (size_t)graph.n_edges);
-                // The path walk needs the source wire of an edge; one load
-                // beats a binary search over the row offsets for every hop.
-                edge_src_.ensure(dev_, (size_t)graph.n_edges);
-                for (int32_t w = 0; w < graph.n_wires; w++)
-                    for (int32_t e = graph.out_off[w]; e < graph.out_off[w + 1]; e++)
-                        edge_src_.ptr()[e] = w;
-                edge_cost_.upload(dev_, graph.edge_cost, (size_t)graph.n_edges);
-                // nullptr is an all-zero array (no reserved pips, no halo fence)
-                upload_or_zero(edge_region_, graph.edge_region, (size_t)graph.n_edges);
-                upload_or_zero(edge_outside_halo_, graph.edge_outside_halo, (size_t)graph.n_edges);
+                if (graph.edge_src != nullptr) {
+                    edge_src_.upload(dev_, graph.edge_src, (size_t)graph.n_edges);
+                } else {
+                    // The path walk needs the source wire of an edge; one load
+                    // beats a binary search over the row offsets for every hop.
+                    edge_src_.ensure(dev_, (size_t)graph.n_edges);
+                    int32_t *esrc = edge_src_.ptr();
+                    for (int32_t w = 0; w < graph.n_wires; w++)
+                        for (int32_t e = graph.out_off[w]; e < graph.out_off[w + 1]; e++)
+                            esrc[e] = w;
+                }
+                if (graph.edges != nullptr) {
+                    edges_.upload(dev_, graph.edges, (size_t)graph.n_edges);
+                } else {
+                    edges_.ensure(dev_, (size_t)graph.n_edges);
+                    EdgeRec *erecs = edges_.ptr();
+                    const uint8_t *ereg = graph.edge_region;
+                    const uint8_t *ehalo = graph.edge_outside_halo;
+                    for (int64_t e = 0; e < graph.n_edges; e++) {
+                        uint32_t df = uint32_t(graph.out_dst[e]);
+                        if (ereg != nullptr && ereg[e])
+                            df |= EDGE_REGION_BIT;
+                        if (ehalo != nullptr && ehalo[e])
+                            df |= EDGE_OUTSIDE_HALO_BIT;
+                        erecs[e].dst_flags = df;
+                        erecs[e].cost = graph.edge_cost[e];
+                    }
+                }
                 wires_.ensure(dev_, (size_t)graph.n_wires);
-                for (int32_t w = 0; w < graph.n_wires; w++) {
-                    WireRec &r = wires_.ptr()[w];
-                    r.x = graph.wire_x[w];
-                    r.y = graph.wire_y[w];
-                    r.flags = graph.wire_flags[w];
-                    r.pad[0] = r.pad[1] = r.pad[2] = 0;
-                    r.reserved = graph.wire_reserved[w];
-                    r.occ = graph.wire_occ[w];
-                    r.hist = graph.wire_hist[w];
+                {
+                    WireRec *wrecs = wires_.ptr();
+                    for (int32_t w = 0; w < graph.n_wires; w++) {
+                        WireRec &r = wrecs[w];
+                        r.x = graph.wire_x[w];
+                        r.y = graph.wire_y[w];
+                        r.reserved = graph.wire_reserved[w];
+                        const uint32_t unavail = (graph.wire_flags[w] & WIRE_UNAVAILABLE) ? WIRE_UNAVAILABLE_BIT : 0u;
+                        r.occ_flags = unavail | (uint32_t(graph.wire_occ[w]) & ~WIRE_UNAVAILABLE_BIT);
+                        r.hist = graph.wire_hist[w];
+                    }
                 }
                 small_.alloc(dev_, small_slots, small_bits);
                 auto_large_slots_ = large_slots <= 0;
@@ -294,7 +315,7 @@ class MetalBackend : public Backend
         WireRec *recs = wires_.ptr();
         for (size_t i = 0; i < count; i++) {
             WireRec &r = recs[wires[i]];
-            r.occ = occ[i];
+            r.occ_flags = (r.occ_flags & WIRE_UNAVAILABLE_BIT) | (uint32_t(occ[i]) & ~WIRE_UNAVAILABLE_BIT);
             r.hist = hist[i];
             r.reserved = reserved[i];
         }
@@ -325,8 +346,9 @@ class MetalBackend : public Backend
                 shell_tiles_.upload(dev_, shell_tiles.data(), shell_tiles.size());
                 results_.ensure(dev_, arcs.size());
                 std::memset(results_.ptr(), 0, arcs.size() * sizeof(ArcResult));
-                // Unused path slots come back as the CPU backend leaves them
-                paths_.upload(dev_, paths.data(), total_paths);
+                // Only written path ranges are copied back below, so unused
+                // host slots stay at {-1, -1, -1, 0.0f} without uploading paths.
+                paths_.ensure(dev_, total_paths);
             };
             try {
                 prepare_route_buffers();
@@ -364,11 +386,8 @@ class MetalBackend : public Backend
             [enc setComputePipelineState:route_pso_[block]];
             auto bind = [&](id<MTLBuffer> b, NSUInteger index) { [enc setBuffer:b offset:0 atIndex:index]; };
             bind(out_off_.buf, B_OUT_OFF);
-            bind(out_dst_.buf, B_OUT_DST);
             bind(edge_src_.buf, B_EDGE_SRC);
-            bind(edge_cost_.buf, B_EDGE_COST);
-            bind(edge_region_.buf, B_EDGE_REGION);
-            bind(edge_outside_halo_.buf, B_EDGE_OUTSIDE_HALO);
+            bind(edges_.buf, B_EDGES);
             bind(wires_.buf, B_WIRES);
             [enc setBytes:&params length:sizeof(params) atIndex:B_PARAMS];
             [enc setBytes:&args length:sizeof(args) atIndex:B_ARGS];
@@ -399,7 +418,21 @@ class MetalBackend : public Backend
             stats_.launches++;
 
             std::memcpy(results.data(), results_.ptr(), arcs.size() * sizeof(ArcResult));
-            std::memcpy(paths.data(), paths_.ptr(), total_paths * sizeof(PathEntry));
+            const PathEntry *src_paths = paths_.ptr();
+            for (const auto &task : tasks) {
+                size_t task_end = (size_t)task.path_off;
+                for (int a = 0; a < task.arc_cnt; a++) {
+                    const ArcResult &r = results[task.arc_off + a];
+                    if (r.path_len > 0)
+                        task_end = std::max(task_end, (size_t)r.path_off + (size_t)r.path_len);
+                    else if (r.status == ARC_PATH_FULL)
+                        task_end = std::max(task_end, (size_t)task.path_off + (size_t)task.path_cap);
+                }
+                task_end = std::min(task_end, total_paths);
+                if (task_end > (size_t)task.path_off)
+                    std::memcpy(paths.data() + task.path_off, src_paths + task.path_off,
+                                (task_end - (size_t)task.path_off) * sizeof(PathEntry));
+            }
             stats_.transfer_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - t2).count();
         }
         for (auto &r : results) {
@@ -436,9 +469,9 @@ class MetalBackend : public Backend
                 if (b != nil)
                     now.push_back(b);
             };
-            for (id<MTLBuffer> b : {out_off_.buf, out_dst_.buf, edge_src_.buf, edge_cost_.buf, edge_region_.buf,
-                                    edge_outside_halo_.buf, wires_.buf, tasks_.buf, arcs_.buf, seeds_.buf,
-                                    seed_delay_.buf, seed_load_.buf, shell_tiles_.buf, results_.buf, paths_.buf})
+            for (id<MTLBuffer> b : {out_off_.buf, edge_src_.buf, edges_.buf, wires_.buf, tasks_.buf, arcs_.buf,
+                                    seeds_.buf, seed_delay_.buf, seed_load_.buf, shell_tiles_.buf, results_.buf,
+                                    paths_.buf})
                 add(b);
             small_.for_each_buffer(add);
             large_.for_each_buffer(add);
@@ -466,16 +499,6 @@ class MetalBackend : public Backend
             if (route_pso_[i] != nil && BLOCK_SIZES[i] <= threads)
                 pick = i;
         return pick;
-    }
-
-    template <typename T> void upload_or_zero(SharedBuf<T> &buf, const T *src, size_t n)
-    {
-        if (src != nullptr) {
-            buf.upload(dev_, src, n);
-        } else {
-            buf.alloc(dev_, n);
-            std::memset(buf.ptr(), 0, std::max<size_t>(n, 1) * sizeof(T));
-        }
     }
 
     // The route_kernel pipeline for block threads per net, or nil with the
@@ -554,10 +577,8 @@ class MetalBackend : public Backend
     std::string name_;
     std::string device_name_;
     int32_t n_wires_ = 0;
-    SharedBuf<int32_t> out_off_, out_dst_, edge_src_;
-    SharedBuf<float> edge_cost_;
-    SharedBuf<uint8_t> edge_region_;
-    SharedBuf<uint8_t> edge_outside_halo_;
+    SharedBuf<int32_t> out_off_, edge_src_;
+    SharedBuf<EdgeRec> edges_;
     SharedBuf<WireRec> wires_;
     Lane small_, large_;
     SharedBuf<TaskDesc> tasks_;

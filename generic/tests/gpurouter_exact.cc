@@ -380,13 +380,18 @@ bool any_overflow(const Result &result)
                        [](const ArcResult &arc) { return arc.status == ARC_OVERFLOW; });
 }
 
+// Every device block size the router can select (gpurouter/blockThreads,
+// default 1024). Routes must not depend on it, and above 256 threads a block
+// has more threads than an expansion chunk has nodes.
+const int block_thread_counts[] = {256, 512, 1024};
+
 TEST(GpuApproximateSearch, CorpusMatchesCpuOnDevice)
 {
     // The K-best corpus cases (the device ignores exact) must route as the
-    // CPU reference does, bit for bit. A case where either backend overflows
-    // is skipped: the CPU emulates only the load factor limit, not the
-    // device's pile and probe limits, and the router retries those arcs in
-    // the large lane.
+    // CPU reference does, bit for bit, at every block size. A case where
+    // either backend overflows is skipped: the CPU emulates only the load
+    // factor limit, not the device's pile and probe limits, and the router
+    // retries those arcs in the large lane.
     std::string skip_reason;
     if (!device_tests_enabled(skip_reason))
         GTEST_SKIP() << skip_reason;
@@ -400,87 +405,260 @@ TEST(GpuApproximateSearch, CorpusMatchesCpuOnDevice)
         const int case_index = index++;
         if (p.exact)
             return;
-        const auto device = run_with_backend(*backend, graph, p, seeds, delays, loads, arcs, path_cap, bits, bounded,
-                                             large);
         const auto cpu = run(graph, p, seeds, delays, loads, arcs, path_cap, bits, bounded, large);
-        if (any_overflow(device) || any_overflow(cpu))
+        if (any_overflow(cpu))
             return;
-        compared++;
-        EXPECT_EQ(returned_routes(device), returned_routes(cpu)) << "corpus case " << case_index;
+        for (int threads : block_thread_counts) {
+            p.block_threads = threads;
+            const auto device = run_with_backend(*backend, graph, p, seeds, delays, loads, arcs, path_cap, bits,
+                                                 bounded, large);
+            if (any_overflow(device))
+                continue;
+            compared++;
+            EXPECT_EQ(returned_routes(device), returned_routes(cpu))
+                    << "corpus case " << case_index << ", " << threads << " threads";
+        }
     });
-    // 640 K-best cases; the small (8-entry) tables overflow in a quarter
-    EXPECT_GE(compared, 400);
+    // 640 K-best cases at each block size; the small (8-entry) tables
+    // overflow in a quarter
+    EXPECT_GE(compared, 400 * 3);
 }
 
-TEST(GpuApproximateSearch, ManyNetLaunchMatchesCpuOnDevice)
+// Wire state changes as the router sends them between launches: distinct
+// wires per update, applied in order.
+struct StateUpdate
 {
-    // A 64x64 grid with long hops and congestion, 48 nets of 4 sinks each
-    // routed in one launch: many threadgroups at once, many threads per
-    // step, and real contention on the hash table and frontier. Costs are
-    // not dyadic, so every rounding step of the cost expressions counts.
-    std::string skip_reason;
-    if (!device_tests_enabled(skip_reason))
-        GTEST_SKIP() << skip_reason;
-    constexpr int side = 64, n = side * side, nets = 48, sinks = 4, path_cap = 2048;
-    uint32_t random = 0xc0ffeeu;
-    auto next = [&]() {
-        random = random * 1664525u + 1013904223u;
-        return random >> 8;
-    };
-    Graph graph(n);
-    for (int w = 0; w < n; ++w) {
-        graph.x[w] = int16_t(w % side);
-        graph.y[w] = int16_t(w / side);
-        const int x = w % side, y = w / side;
-        auto cost = [&]() { return 0.05f + float(next() % 37) * 0.013f; };
-        if (x + 1 < side)
-            graph.edge(w, w + 1, cost());
-        if (x > 0)
-            graph.edge(w, w - 1, cost());
-        if (y + 1 < side)
-            graph.edge(w, w + side, cost());
-        if (y > 0)
-            graph.edge(w, w - side, cost());
-        const int hop = int(next() % n);
-        graph.edge(w, hop, 0.3f + float(next() % 11) * 0.07f);
-        graph.occupancy[w] = int(next() % 3);
-        graph.history[w] = 1.0f + float(next() % 9) * 0.1f;
-        if (w % 97 == 0)
-            graph.flags[w] = WIRE_UNAVAILABLE;
-        if (w % 89 == 0)
-            graph.reservations[w] = int(next() % nets) | (w % 2 ? RESERVED_SOFT : 0);
+    std::vector<int32_t> wires, occ, reserved;
+    std::vector<float> hist;
+    void add(int32_t wire, int32_t o, float h, int32_t r)
+    {
+        wires.push_back(wire);
+        occ.push_back(o);
+        hist.push_back(h);
+        reserved.push_back(r);
     }
-    const auto data = graph.data();
+};
+
+void send_updates(Backend &backend, const std::vector<StateUpdate> &updates)
+{
+    for (const auto &u : updates)
+        backend.update_wire_state(u.wires.size(), u.wires.data(), u.occ.data(), u.hist.data(), u.reserved.data());
+}
+
+// A 64x64 grid with long hops and congestion, 48 nets of 4 sinks each
+// routed in one launch: many threadgroups at once, many threads per step,
+// and real contention on the hash table and frontier. Costs are not dyadic,
+// so every rounding step of the cost expressions counts.
+struct GridLaunch
+{
+    static constexpr int side = 64, n = side * side, nets = 48, sinks = 4, path_cap = 2048;
+    Graph graph{n};
     std::vector<TaskDesc> tasks;
     std::vector<ArcDesc> arcs;
     std::vector<int32_t> seeds;
     std::vector<float> delays, loads;
-    for (int t = 0; t < nets; ++t) {
-        TaskDesc task;
-        task.net = t;
-        task.tree_off = int(seeds.size());
-        task.tree_cnt = 1 + t % 3;
-        for (int i = 0; i < task.tree_cnt; ++i) {
-            seeds.push_back(int32_t(next() % n));
-            delays.push_back(float(i) * 0.37f);
-            loads.push_back(float(i % 2));
+    std::vector<int32_t> shell_tiles;
+    bool fenced = false;
+    std::vector<uint8_t> halo;
+    std::vector<EdgeRec> packed_edges;
+    std::vector<int32_t> packed_src;
+
+    GridLaunch()
+    {
+        uint32_t random = 0xc0ffeeu;
+        auto next = [&]() {
+            random = random * 1664525u + 1013904223u;
+            return random >> 8;
+        };
+        for (int w = 0; w < n; ++w) {
+            graph.x[w] = int16_t(w % side);
+            graph.y[w] = int16_t(w / side);
+            const int x = w % side, y = w / side;
+            auto cost = [&]() { return 0.05f + float(next() % 37) * 0.013f; };
+            if (x + 1 < side)
+                graph.edge(w, w + 1, cost());
+            if (x > 0)
+                graph.edge(w, w - 1, cost());
+            if (y + 1 < side)
+                graph.edge(w, w + side, cost());
+            if (y > 0)
+                graph.edge(w, w - side, cost());
+            const int hop = int(next() % n);
+            graph.edge(w, hop, 0.3f + float(next() % 11) * 0.07f);
+            graph.occupancy[w] = int(next() % 3);
+            graph.history[w] = 1.0f + float(next() % 9) * 0.1f;
+            if (w % 97 == 0)
+                graph.flags[w] = WIRE_UNAVAILABLE;
+            if (w % 89 == 0)
+                graph.reservations[w] = int(next() % nets) | (w % 2 ? RESERVED_SOFT : 0);
         }
-        task.arc_off = int(arcs.size());
-        task.arc_cnt = sinks;
-        for (int i = 0; i < sinks; ++i)
-            arcs.push_back(ArcDesc{int32_t(next() % n), 0.05f + float(next() % 19) * 0.05f, float(next() % 11) * 0.1f});
-        task.path_off = t * path_cap;
-        task.path_cap = path_cap;
-        task.cx = side / 2;
-        task.cy = side / 2;
-        task.hpwl = 1 + t;
-        task.fanout = sinks;
-        task.bb_x0 = 0;
-        task.bb_y0 = 0;
-        task.bb_x1 = side - 1;
-        task.bb_y1 = side - 1;
-        tasks.push_back(task);
+        for (int t = 0; t < nets; ++t) {
+            TaskDesc task;
+            task.net = t;
+            task.tree_off = int(seeds.size());
+            task.tree_cnt = 1 + t % 3;
+            for (int i = 0; i < task.tree_cnt; ++i) {
+                seeds.push_back(int32_t(next() % n));
+                delays.push_back(float(i) * 0.37f);
+                loads.push_back(float(i % 2));
+            }
+            task.arc_off = int(arcs.size());
+            task.arc_cnt = sinks;
+            for (int i = 0; i < sinks; ++i)
+                arcs.push_back(
+                        ArcDesc{int32_t(next() % n), 0.05f + float(next() % 19) * 0.05f, float(next() % 11) * 0.1f});
+            task.path_off = t * path_cap;
+            task.path_cap = path_cap;
+            task.cx = side / 2;
+            task.cy = side / 2;
+            task.hpwl = 1 + t;
+            task.fanout = sinks;
+            task.bb_x0 = 0;
+            task.bb_y0 = 0;
+            task.bb_x1 = side - 1;
+            task.bb_y1 = side - 1;
+            tasks.push_back(task);
+        }
     }
+
+    // What the plain grid lacks for the device's edge-parallel expansion
+    // and packed records: a hub wire, net 0's only seed, whose 1371 pips
+    // outnumber the threads of any block; wires without pips among the
+    // expanded nodes; reserved-region pips that a quarter of the nets may
+    // not use; halo-fenced pips that another quarter may use only into
+    // their shell tiles; and path regions some arcs do not fit in.
+    void add_stress()
+    {
+        const int hub = n / 2 + side / 2;
+        for (int w = 0; w < n; w += 3)
+            if (w != hub)
+                graph.edge(hub, w, 0.4f + float(w % 13) * 0.031f);
+        for (int w = 5; w < n; w += 23)
+            if (w != hub)
+                graph.rows[w].clear();
+        seeds[tasks[0].tree_off] = hub;
+        fenced = true;
+        for (int t = 0; t < nets; ++t) {
+            TaskDesc &task = tasks[t];
+            task.allow_reserved = t % 4 != 1;
+            if (t % 4 == 2) {
+                task.stay_in_halo = 1;
+                task.shell_off = int(shell_tiles.size());
+                task.shell_cnt = 2;
+                for (int k : {t + 1, t + 2}) {
+                    const int w = 37 * k; // a halo-fenced destination
+                    shell_tiles.push_back(pack_shell_tile(w % side, w / side));
+                }
+            }
+            if (t % 8 == 3)
+                task.path_cap = 4; // ARC_PATH_FULL in a multi-task launch
+        }
+    }
+
+    // The unpacked per-edge arrays
+    GraphData data()
+    {
+        GraphData result = graph.data();
+        if (fenced) {
+            halo.assign(graph.destinations.size(), 0);
+            for (size_t e = 0; e < graph.destinations.size(); ++e) {
+                graph.region[e] = graph.destinations[e] % 31 == 0;
+                halo[e] = graph.destinations[e] % 37 == 0;
+            }
+            result.edge_outside_halo = halo.data();
+        }
+        return result;
+    }
+
+    // The same graph in the form the router passes it: pre-packed EdgeRecs
+    // and the source wire of every edge, without the arrays they replace
+    GraphData packed(const GraphData &unpacked)
+    {
+        packed_edges.resize(size_t(unpacked.n_edges));
+        packed_src.resize(size_t(unpacked.n_edges));
+        for (int32_t w = 0; w < unpacked.n_wires; ++w) {
+            for (int32_t e = unpacked.out_off[w]; e < unpacked.out_off[w + 1]; ++e) {
+                uint32_t dst_flags = uint32_t(unpacked.out_dst[e]);
+                if (unpacked.edge_region != nullptr && unpacked.edge_region[e])
+                    dst_flags |= EDGE_REGION_BIT;
+                if (unpacked.edge_outside_halo != nullptr && unpacked.edge_outside_halo[e])
+                    dst_flags |= EDGE_OUTSIDE_HALO_BIT;
+                packed_edges[e] = EdgeRec{dst_flags, unpacked.edge_cost[e]};
+                packed_src[e] = w;
+            }
+        }
+        GraphData result = unpacked;
+        result.edges = packed_edges.data();
+        result.edge_src = packed_src.data();
+        result.edge_cost = nullptr;
+        result.edge_region = nullptr;
+        result.edge_outside_halo = nullptr;
+        return result;
+    }
+
+    Result route(Backend &backend, const RouteParams &p, bool large) const
+    {
+        Result result;
+        backend.route(p, tasks, arcs, seeds, delays, loads, shell_tiles, large, result.arcs, result.paths);
+        return result;
+    }
+
+    // Two updates, the second larger than the first (a device's upload
+    // buffer grows while the first update may still be running) and
+    // rewriting part of it. They touch wires locked to another net, which an
+    // update must leave locked, and add hard and soft reservations.
+    std::vector<StateUpdate> state_updates() const
+    {
+        std::vector<StateUpdate> updates(2);
+        for (int w = 0; w < n; ++w) {
+            if (w % 5 == 0)
+                updates[0].add(w, w / 5 % 4, 1.0f + float(w / 5 % 7) * 0.25f, w % 3 == 0 ? w / 3 % nets : -1);
+            if (w % 10 == 0 || w % 7 == 3)
+                updates[1].add(w, w % 3, 1.0f + float(w % 11) * 0.15f,
+                               w % 4 == 0 ? (w / 4 % nets) | RESERVED_SOFT : -1);
+        }
+        return updates;
+    }
+
+    // Write the updates into the graph's own wire state, for a fresh init
+    void apply_updates(const std::vector<StateUpdate> &updates)
+    {
+        for (const auto &u : updates) {
+            for (size_t i = 0; i < u.wires.size(); ++i) {
+                graph.occupancy[u.wires[i]] = u.occ[i];
+                graph.history[u.wires[i]] = u.hist[i];
+                graph.reservations[u.wires[i]] = u.reserved[i];
+            }
+        }
+    }
+};
+
+int routed_arcs(const Result &result)
+{
+    int routed = 0;
+    for (const auto &arc : result.arcs)
+        routed += arc.status == ARC_OK && arc.path_len > 0;
+    return routed;
+}
+
+// Arc by arc, so a mismatch names the first arc that differs
+void expect_same_routes(const Result &actual, const Result &expected)
+{
+    std::istringstream actual_routes(returned_routes(actual)), expected_routes(returned_routes(expected));
+    std::string actual_arc, expected_arc;
+    for (int arc = 0; std::getline(expected_routes, expected_arc, '|'); ++arc) {
+        ASSERT_TRUE(std::getline(actual_routes, actual_arc, '|'));
+        ASSERT_EQ(actual_arc, expected_arc) << "net " << arc / GridLaunch::sinks << " arc " << arc % GridLaunch::sinks;
+    }
+}
+
+TEST(GpuApproximateSearch, ManyNetLaunchMatchesCpuOnDevice)
+{
+    std::string skip_reason;
+    if (!device_tests_enabled(skip_reason))
+        GTEST_SKIP() << skip_reason;
+    GridLaunch launch;
+    const auto data = launch.data();
     struct Config
     {
         int expand_k, expand_div;
@@ -488,35 +666,126 @@ TEST(GpuApproximateSearch, ManyNetLaunchMatchesCpuOnDevice)
         bool large;
     };
     for (const Config &config : {Config{256, 0, 0.0f, false}, Config{16, 4, 0.3f, true}}) {
-        SCOPED_TRACE(config.expand_k);
+        SCOPED_TRACE("expand_k " + std::to_string(config.expand_k));
         RouteParams p;
         p.expand_k = config.expand_k;
         p.expand_div = config.expand_div;
         p.load_penalty = config.load_penalty;
         p.pip_adder = 0.01f;
         p.seed_delay_floor = 0.2f;
-        std::vector<Result> results;
         std::string error;
-        for (bool device : {true, false}) {
-            std::unique_ptr<Backend> backend = device ? create_device_backend(-1, error) : create_cpu_backend();
-            ASSERT_NE(backend, nullptr) << error;
-            ASSERT_TRUE(backend->init(data, 12, 14, 4, 15, error)) << error;
-            Result result;
-            backend->route(p, tasks, arcs, seeds, delays, loads, {}, config.large, result.arcs, result.paths);
-            results.push_back(std::move(result));
+        auto cpu_backend = create_cpu_backend();
+        ASSERT_TRUE(cpu_backend->init(data, 12, 14, 4, 15, error)) << error;
+        const Result cpu = launch.route(*cpu_backend, p, config.large);
+        EXPECT_FALSE(any_overflow(cpu));
+        EXPECT_GT(routed_arcs(cpu), GridLaunch::nets * GridLaunch::sinks / 2);
+        // One device backend for every block size, so each launch also
+        // relies on the one before it leaving its tables empty
+        auto device_backend = create_device_backend(-1, error);
+        ASSERT_NE(device_backend, nullptr) << error;
+        ASSERT_TRUE(device_backend->init(data, 12, 14, 4, 15, error)) << error;
+        for (int threads : block_thread_counts) {
+            SCOPED_TRACE(std::to_string(threads) + " threads");
+            p.block_threads = threads;
+            const Result device = launch.route(*device_backend, p, config.large);
+            EXPECT_FALSE(any_overflow(device));
+            expect_same_routes(device, cpu);
         }
-        int routed = 0;
-        for (const auto &arc : results[1].arcs)
-            routed += arc.status == ARC_OK && arc.path_len > 0;
-        EXPECT_FALSE(any_overflow(results[0]));
-        EXPECT_FALSE(any_overflow(results[1]));
-        EXPECT_GT(routed, nets * sinks / 2);
-        // Arc by arc, so a mismatch names the first arc that differs
-        std::istringstream device_routes(returned_routes(results[0])), cpu_routes(returned_routes(results[1]));
-        std::string device_arc, cpu_arc;
-        for (int arc = 0; std::getline(cpu_routes, cpu_arc, '|'); ++arc) {
-            ASSERT_TRUE(std::getline(device_routes, device_arc, '|'));
-            ASSERT_EQ(device_arc, cpu_arc) << "net " << arc / sinks << " arc " << arc % sinks;
+    }
+}
+
+// Parameters of the wire state tests. Expansion sets of 512 or more nodes
+// span several chunks of the device's edge-parallel expansion, and a
+// smaller frontier is expanded whole without a histogram; the second
+// configuration takes the histogram path in the large lane.
+struct StressConfig
+{
+    int expand_k, expand_div;
+    float load_penalty;
+    bool large;
+};
+const StressConfig stress_configs[] = {{512, 0, 0.3f, false}, {16, 4, 0.0f, true}};
+
+RouteParams stress_params(const StressConfig &config)
+{
+    RouteParams p;
+    p.expand_k = config.expand_k;
+    p.expand_div = config.expand_div;
+    p.load_penalty = config.load_penalty;
+    p.pip_adder = 0.01f;
+    p.seed_delay_floor = 0.2f;
+    return p;
+}
+
+TEST(GpuApproximateSearch, WireStateUpdateMatchesFreshInit)
+{
+    // A backend that applied update_wire_state routes exactly as one
+    // initialised with the updated state, and the pre-packed EdgeRec and
+    // edge_src arrays the router passes route as the unpacked arrays do.
+    // WireStateUpdateMatchesCpuOnDevice runs this sequence on the device.
+    for (const StressConfig &config : stress_configs) {
+        SCOPED_TRACE("expand_k " + std::to_string(config.expand_k));
+        GridLaunch launch;
+        launch.add_stress();
+        const auto updates = launch.state_updates();
+        const RouteParams p = stress_params(config);
+        std::string error;
+        auto updated = create_cpu_backend();
+        ASSERT_TRUE(updated->init(launch.data(), 12, 14, 4, 15, error)) << error;
+        const Result before = launch.route(*updated, p, config.large);
+        send_updates(*updated, updates);
+        const Result after = launch.route(*updated, p, config.large);
+
+        launch.apply_updates(updates);
+        auto fresh = create_cpu_backend();
+        ASSERT_TRUE(fresh->init(launch.packed(launch.data()), 12, 14, 4, 15, error)) << error;
+        const Result expected = launch.route(*fresh, p, config.large);
+
+        EXPECT_FALSE(any_overflow(after));
+        EXPECT_GT(routed_arcs(after), GridLaunch::nets * GridLaunch::sinks / 2);
+        EXPECT_TRUE(std::any_of(after.arcs.begin(), after.arcs.end(),
+                                [](const ArcResult &arc) { return arc.status == ARC_PATH_FULL; }));
+        EXPECT_NE(returned_routes(before), returned_routes(after)); // the updates matter
+        expect_same_routes(after, expected);
+    }
+}
+
+TEST(GpuApproximateSearch, WireStateUpdateMatchesCpuOnDevice)
+{
+    // The sequence above on the device at every block size: the packed
+    // graph as the router passes it, a launch, both wire state updates
+    // (applied by kernels the host does not wait for), and a second launch,
+    // which must see exactly the updated state.
+    std::string skip_reason;
+    if (!device_tests_enabled(skip_reason))
+        GTEST_SKIP() << skip_reason;
+    GridLaunch launch;
+    launch.add_stress();
+    const auto unpacked = launch.data();
+    const auto packed = launch.packed(unpacked);
+    const auto updates = launch.state_updates();
+    for (const StressConfig &config : stress_configs) {
+        SCOPED_TRACE("expand_k " + std::to_string(config.expand_k));
+        RouteParams p = stress_params(config);
+        std::string error;
+        auto cpu_backend = create_cpu_backend();
+        ASSERT_TRUE(cpu_backend->init(unpacked, 12, 14, 4, 15, error)) << error;
+        const Result cpu_before = launch.route(*cpu_backend, p, config.large);
+        send_updates(*cpu_backend, updates);
+        const Result cpu_after = launch.route(*cpu_backend, p, config.large);
+        EXPECT_FALSE(any_overflow(cpu_after));
+        for (int threads : block_thread_counts) {
+            SCOPED_TRACE(std::to_string(threads) + " threads");
+            p.block_threads = threads;
+            auto device_backend = create_device_backend(-1, error);
+            ASSERT_NE(device_backend, nullptr) << error;
+            ASSERT_TRUE(device_backend->init(packed, 12, 14, 4, 15, error)) << error;
+            const Result device_before = launch.route(*device_backend, p, config.large);
+            expect_same_routes(device_before, cpu_before);
+            send_updates(*device_backend, updates);
+            const Result device_after = launch.route(*device_backend, p, config.large);
+            EXPECT_FALSE(any_overflow(device_after));
+            expect_same_routes(device_after, cpu_after);
         }
     }
 }

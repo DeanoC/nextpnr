@@ -45,7 +45,9 @@
 #define hipMalloc cudaMalloc
 #define hipFree cudaFree
 #define hipMemcpy cudaMemcpy
+#define hipMemcpyAsync cudaMemcpyAsync
 #define hipMemset cudaMemset
+#define hipMemsetAsync cudaMemsetAsync
 #define hipMemcpyHostToDevice cudaMemcpyHostToDevice
 #define hipMemcpyDeviceToHost cudaMemcpyDeviceToHost
 #define hipDeviceSynchronize cudaDeviceSynchronize

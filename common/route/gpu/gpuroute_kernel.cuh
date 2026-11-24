@@ -74,16 +74,26 @@ constexpr unsigned long long EMPTY_VAL = ~0ull;
 constexpr uint32_t INF_BITS = 0x7f800000u;
 constexpr int NBINS = 128; // histogram bins used to pick each step's expansion set
 constexpr int NPILES = 4;  // far, far2, the per-step expansion set, and the candidate list
+constexpr int EXPAND_CHUNK = 256; // nodes per edge-parallel expansion chunk
+constexpr uint32_t WIRE_UNAVAILABLE_BIT = 0x80000000u;
 
 // Everything the relaxation of an edge reads about its destination wire, in
-// one 16-byte record so a random wire costs one memory transaction, not six
+// one 16-byte record so a random wire costs one 128-bit load, not six.
+// Bit 31 of occ_flags stores WIRE_UNAVAILABLE; bits 0..30 store occupancy.
 struct __align__(16) WireRec
 {
     int16_t x, y;
-    uint8_t flags;
-    uint8_t pad[3];
     int32_t reserved;
+    uint32_t occ_flags;
+    float hist;
+};
+static_assert(sizeof(WireRec) == 16, "WireRec must be 16 bytes");
+
+struct __align__(16) WireUpdate
+{
+    int32_t wire;
     int32_t occ;
+    int32_t reserved;
     float hist;
 };
 
@@ -91,11 +101,8 @@ struct DevGraph
 {
     int32_t n_wires;
     const int32_t *out_off;
-    const int32_t *out_dst;
     const int32_t *edge_src; // n_edges, source wire of each CSR edge
-    const float *edge_cost;
-    const uint8_t *edge_region;
-    const uint8_t *edge_outside_halo;
+    const EdgeRec *edges;
     const WireRec *wires;
 };
 
@@ -122,8 +129,9 @@ struct BlockState
     int steps;
     int path_pos;
     int far_idx;
-    int decision; // 0 continue, 1 stop
-    int reached;  // an earlier arc of the task already routed through the sink
+    int decision;   // 0 continue, 1 stop
+    int reached;    // an earlier arc of the task already routed through the sink
+    int expand_all; // 1 when every compacted frontier entry is expanded directly
     float binw;
     uint32_t thr_bits;
     uint32_t prune_bits;
@@ -205,6 +213,8 @@ __device__ __forceinline__ int table_insert(uint32_t *keys, int mask, int max_pr
 
 __device__ __forceinline__ float h_est(const RouteParams &p, int x, int y, int sx, int sy)
 {
+    if (p.est_weight == 0.0f)
+        return 0.0f;
     int dx = x - sx, dy = y - sy;
     dx = dx < 0 ? -dx : dx;
     dy = dy < 0 ? -dy : dy;
@@ -227,6 +237,11 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
 {
     __shared__ BlockState st;
     __shared__ int hist[NBINS];
+    __shared__ int32_t ch_off[EXPAND_CHUNK + 1];
+    __shared__ int32_t ch_e0[EXPAND_CHUNK];
+    __shared__ float ch_gu[EXPAND_CHUNK];
+    __shared__ float ch_branch[EXPAND_CHUNK];
+    __shared__ int32_t seg_sum[16];
     const int tid = threadIdx.x;
     const int cap = sc.cap;
     const int mask = cap - 1;
@@ -266,6 +281,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                 st.far_idx = 0;
                 st.decision = 0;
                 st.reached = 0;
+                st.expand_all = 0;
                 st.minf_bits = INF_BITS;
                 st.maxf_bits = 0;
                 st.prune_bits = INF_BITS;
@@ -322,7 +338,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                     sload[s] = ld;
                     int pos = atomicAdd(&st.far_n, 1);
                     if (pos < cap)
-                        far[pos] = pack(g0, (uint32_t)w);
+                        far[pos] = pack(g0, (uint32_t)s); // slot-indexed frontier
                     else
                         st.fail = FAIL_PILE;
                 }
@@ -344,27 +360,38 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                 const int fn = st.far_n;
                 const float prune = u2f(st.prune_bits);
 
-                // pass 1: drop stale and pruned entries, track the f range
+                // pass 1: drop stale and pruned entries, track the f range.
+                // Frontier entries store (g, table_slot) so stale checks read
+                // vals[sv] directly without hash probing.
+                uint32_t local_minf = INF_BITS;
+                uint32_t local_maxf = 0u;
                 for (int i = tid; i < fn; i += BLOCK) {
                     unsigned long long e = far[i];
-                    const uint32_t v = pack_lo(e);
+                    const uint32_t sv = pack_lo(e);
                     const uint32_t gbits = pack_gbits(e);
-                    int sv = table_find(keys, mask, p.max_probe, v);
-                    if (sv < 0 || pack_gbits(vals[sv]) != gbits)
+                    if (pack_gbits(vals[sv]) != gbits)
                         continue;
+                    const uint32_t v = keys[sv];
                     const WireRec wv = g.wires[v];
                     const float f = u2f(gbits) + h_est(p, wv.x, wv.y, sx, sy);
                     if (f >= prune)
                         continue;
-                    atomicMin(&st.minf_bits, f2u(f));
-                    atomicMax(&st.maxf_bits, f2u(f));
+                    const uint32_t fb = f2u(f);
+                    if (fb < local_minf)
+                        local_minf = fb;
+                    if (fb > local_maxf)
+                        local_maxf = fb;
                     int pos = atomicAdd(&st.far2_n, 1);
                     if (pos < cap) {
                         far2[pos] = e;
-                        cand_par[pos] = f2u(f); // f for passes 2 and 3; free until phase A
+                        cand_par[pos] = fb; // f for passes 2 and 3; free until phase A
                     } else
                         st.fail = FAIL_PILE;
                 }
+                if (local_minf < INF_BITS)
+                    atomicMin(&st.minf_bits, local_minf);
+                if (local_maxf > 0u)
+                    atomicMax(&st.maxf_bits, local_maxf);
                 __syncthreads();
                 if (tid == 0) {
                     const bool have_best = st.best != EMPTY_VAL;
@@ -373,10 +400,20 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                     if (st.fail || st.far2_n == 0 || st.minf_bits == INF_BITS || (have_best && minf >= bestg)) {
                         st.decision = 1;
                     } else {
-                        const float range = u2f(st.maxf_bits) - minf;
-                        st.binw = range > 1e-6f ? range / (float)NBINS : 0.0f;
                         if (st.far2_n > cap)
                             st.far2_n = cap;
+                        const float range = u2f(st.maxf_bits) - minf;
+                        st.binw = range > 1e-6f ? range / (float)NBINS : 0.0f;
+                        st.expand_all =
+                                ((st.far2_n < p.expand_k || st.binw <= 0.0f) && st.maxf_bits < INF_BITS) ? 1 : 0;
+                        if (st.expand_all) {
+                            st.near_n = st.far2_n;
+                            st.far_n = 0;
+                            st.far2_n = 0;
+                            st.minf_bits = INF_BITS;
+                            st.maxf_bits = 0;
+                            st.prune_bits = have_best ? pack_gbits(st.best) : INF_BITS;
+                        }
                     }
                 }
                 for (int i = tid; i < NBINS; i += BLOCK)
@@ -385,129 +422,186 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                 if (st.decision != 0)
                     break;
 
-                // pass 2: histogram of f over the compacted frontier
-                const int fn2 = st.far2_n;
-                const float minf = u2f(st.minf_bits);
-                const float binw = st.binw;
-                if (binw > 0.0f) {
-                    for (int i = tid; i < fn2; i += BLOCK) {
-                        const float f = u2f(cand_par[i]);
-                        int b = (int)((f - minf) / binw);
-                        b = b < 0 ? 0 : (b >= NBINS ? NBINS - 1 : b);
-                        atomicAdd(&hist[b], 1);
-                    }
-                }
-                __syncthreads();
-                if (tid == 0) {
-                    float thr = u2f(INF_BITS);
+                if (!st.expand_all) {
+                    // pass 2: histogram of f over the compacted frontier
+                    const int fn2 = st.far2_n;
+                    const float minf = u2f(st.minf_bits);
+                    const float binw = st.binw;
                     if (binw > 0.0f) {
-                        int cum = 0;
-                        int want = p.expand_k;
-                        if (p.expand_div > 0 && fn2 / p.expand_div > want)
-                            want = fn2 / p.expand_div;
-                        for (int b = 0; b < NBINS; b++) {
-                            cum += hist[b];
-                            if (cum >= want) {
-                                thr = minf + (float)(b + 1) * binw;
-                                break;
+                        for (int i = tid; i < fn2; i += BLOCK) {
+                            const float f = u2f(cand_par[i]);
+                            int b = (int)((f - minf) / binw);
+                            b = b < 0 ? 0 : (b >= NBINS ? NBINS - 1 : b);
+                            atomicAdd(&hist[b], 1);
+                        }
+                    }
+                    __syncthreads();
+                    if (tid == 0) {
+                        float thr = u2f(INF_BITS);
+                        if (binw > 0.0f) {
+                            int cum = 0;
+                            int want = p.expand_k;
+                            if (p.expand_div > 0 && fn2 / p.expand_div > want)
+                                want = fn2 / p.expand_div;
+                            for (int b = 0; b < NBINS; b++) {
+                                cum += hist[b];
+                                if (cum >= want) {
+                                    thr = minf + (float)(b + 1) * binw;
+                                    break;
+                                }
+                            }
+                        }
+                        st.thr_bits = f2u(thr);
+                        st.near_n = 0;
+                        st.far_n = 0;
+                    }
+                    __syncthreads();
+
+                    // pass 3: split the frontier into this step's expansion set and the rest
+                    {
+                        const float thr = u2f(st.thr_bits);
+                        for (int i = tid; i < fn2; i += BLOCK) {
+                            unsigned long long e = far2[i];
+                            const float f = u2f(cand_par[i]);
+                            // The bin boundary can round back to minf when the range
+                            // is small relative to the costs. Always expand the minima
+                            // so a nonempty frontier cannot repeat without progress.
+                            if (f < thr || f == minf) {
+                                int pos = atomicAdd(&st.near_n, 1);
+                                if (pos < cap)
+                                    near[pos] = e;
+                                else
+                                    st.fail = FAIL_PILE;
+                            } else {
+                                int pos = atomicAdd(&st.far_n, 1);
+                                if (pos < cap)
+                                    far[pos] = e;
+                                else
+                                    st.fail = FAIL_PILE;
                             }
                         }
                     }
-                    st.thr_bits = f2u(thr);
-                    st.near_n = 0;
-                    st.far_n = 0;
-                }
-                __syncthreads();
-
-                // pass 3: split the frontier into this step's expansion set and the rest
-                {
-                    const float thr = u2f(st.thr_bits);
-                    for (int i = tid; i < fn2; i += BLOCK) {
-                        unsigned long long e = far2[i];
-                        const float f = u2f(cand_par[i]);
-                        // The bin boundary can round back to minf when the range
-                        // is small relative to the costs. Always expand the minima
-                        // so a nonempty frontier cannot repeat without progress.
-                        if (f < thr || f == minf) {
-                            int pos = atomicAdd(&st.near_n, 1);
-                            if (pos < cap)
-                                near[pos] = e;
-                            else
-                                st.fail = FAIL_PILE;
-                        } else {
-                            int pos = atomicAdd(&st.far_n, 1);
-                            if (pos < cap)
-                                far[pos] = e;
-                            else
-                                st.fail = FAIL_PILE;
-                        }
+                    __syncthreads();
+                    if (tid == 0) {
+                        if (st.near_n > cap)
+                            st.near_n = cap;
+                        if (st.far_n > cap)
+                            st.far_n = cap;
+                        st.far2_n = 0;
+                        st.minf_bits = INF_BITS;
+                        st.maxf_bits = 0;
+                        st.prune_bits = (st.best != EMPTY_VAL) ? pack_gbits(st.best) : INF_BITS;
+                        if (st.fail)
+                            st.decision = 1;
                     }
+                    __syncthreads();
+                    if (st.decision != 0)
+                        break;
                 }
-                __syncthreads();
-                if (tid == 0) {
-                    if (st.near_n > cap)
-                        st.near_n = cap;
-                    if (st.far_n > cap)
-                        st.far_n = cap;
-                    st.far2_n = 0;
-                    st.minf_bits = INF_BITS;
-                    st.maxf_bits = 0;
-                    st.prune_bits = (st.best != EMPTY_VAL) ? pack_gbits(st.best) : INF_BITS;
-                    if (st.fail)
-                        st.decision = 1;
-                }
-                __syncthreads();
-                if (st.decision != 0)
-                    break;
 
                 // expansion pass, phase A: relax every edge of the expansion
                 // set against the table state at the start of the step and
-                // record candidates; nothing is written to the table yet
+                // record candidates; nothing is written to the table yet.
+                // Work is flattened across outgoing edges in chunks of up to
+                // EXPAND_CHUNK nodes so all BLOCK threads stay active even on
+                // small frontiers and high-degree wires.
                 {
+                    const unsigned long long *expand_buf = st.expand_all ? far2 : near;
                     const int nn = st.near_n;
                     const float prune2 = u2f(st.prune_bits);
-                    for (int i = tid; i < nn; i += BLOCK) {
-                        unsigned long long e = near[i];
-                        const uint32_t u = pack_lo(e);
-                        const float gu = pack_g(e);
-                        atomicAdd(&st.expanded, 1);
-                        // branching off a tree wire that already drives other
-                        // branches loads it further; charge for that
-                        float branch_extra = 0.0f;
-                        if (p.load_penalty > 0.0f) {
-                            const int su = table_find(keys, mask, p.max_probe, u);
-                            if (su >= 0 && pack_lo(vals[su]) == NONE_SLOT)
-                                branch_extra = p.load_penalty * sload[su];
+                    if (tid == 0)
+                        st.expanded += nn;
+                    for (int base = 0; base < nn; base += EXPAND_CHUNK) {
+                        const int cnt = (nn - base < EXPAND_CHUNK) ? (nn - base) : EXPAND_CHUNK;
+                        for (int j = tid; j < cnt; j += BLOCK) {
+                            const unsigned long long e = expand_buf[base + j];
+                            const uint32_t su = pack_lo(e);
+                            const uint32_t u = keys[su];
+                            const int32_t e0 = g.out_off[u];
+                            const int32_t e1 = g.out_off[u + 1];
+                            ch_e0[j] = e0;
+                            ch_off[j + 1] = e1 - e0;
+                            ch_gu[j] = pack_g(e);
+                            float be = 0.0f;
+                            if (p.load_penalty > 0.0f && pack_lo(vals[su]) == NONE_SLOT)
+                                be = p.load_penalty * sload[su];
+                            ch_branch[j] = be;
                         }
-                        const int e0 = g.out_off[u], e1 = g.out_off[u + 1];
-                        for (int ei = e0; ei < e1; ei++) {
-                            const int v = g.out_dst[ei];
-                            float c = g.edge_cost[ei];
-                            if (c < 0.0f || (g.edge_region[ei] && !task.allow_reserved))
+                        __syncthreads();
+                        for (int seg = tid; seg < 16; seg += BLOCK) {
+                            const int j0 = seg * 16;
+                            int32_t sum = 0;
+                            const int j1 = (j0 + 16 < cnt) ? (j0 + 16) : cnt;
+                            for (int j = j0; j < j1; j++) {
+                                sum += ch_off[j + 1];
+                                ch_off[j + 1] = sum;
+                            }
+                            seg_sum[seg] = sum;
+                        }
+                        __syncthreads();
+                        if (tid == 0) {
+                            ch_off[0] = 0;
+                            int32_t acc = 0;
+                            for (int seg = 0; seg < 16; seg++) {
+                                const int32_t s = seg_sum[seg];
+                                seg_sum[seg] = acc;
+                                acc += s;
+                            }
+                        }
+                        __syncthreads();
+                        for (int j = tid; j < cnt; j += BLOCK)
+                            ch_off[j + 1] += seg_sum[j >> 4];
+                        __syncthreads();
+
+                        const int total_edges = ch_off[cnt];
+                        for (int k = tid; k < total_edges; k += BLOCK) {
+                            int lo = 0, hi = cnt;
+                            while (lo + 1 < hi) {
+                                const int mid = (lo + hi) >> 1;
+                                if (ch_off[mid] <= k)
+                                    lo = mid;
+                                else
+                                    hi = mid;
+                            }
+                            const int ei = ch_e0[lo] + (k - ch_off[lo]);
+                            const float gu = ch_gu[lo];
+                            const float branch_extra = ch_branch[lo];
+                            const EdgeRec er = g.edges[ei];
+                            float c = er.cost;
+                            if (c < 0.0f || (!task.allow_reserved && (er.dst_flags & EDGE_REGION_BIT)))
                                 continue;
+                            const int v = (int)(er.dst_flags & EDGE_DST_MASK);
                             c += p.pip_adder;
                             const WireRec wv = g.wires[v];
                             const int vx = wv.x, vy = wv.y;
-                            if (task.stay_in_halo && g.edge_outside_halo[ei] &&
+                            if (task.stay_in_halo && (er.dst_flags & EDGE_OUTSIDE_HALO_BIT) &&
                                 !shell_tile_hit(shell_tiles, task.shell_off, task.shell_cnt, vx, vy))
                                 continue;
                             if (p.use_bb && (vx < task.bb_x0 || vx > task.bb_x1 || vy < task.bb_y0 || vy > task.bb_y1))
                                 continue;
-                            if (wv.flags & WIRE_UNAVAILABLE)
+                            if (wv.occ_flags & WIRE_UNAVAILABLE_BIT)
                                 continue;
                             const int rsv = wv.reserved;
                             if (rsv != -1 && (rsv & ~RESERVED_SOFT) != task.net &&
                                 !(p.ignore_soft && (rsv & RESERVED_SOFT)))
                                 continue;
-                            const float hist_c =
-                                    p.ignore_hist ? 1.0f : 1.0f + arc.crit_weight * (wv.hist - 1.0f);
-                            const float pres = 1.0f + (float)wv.occ * p.curr_cong_weight * arc.crit_weight;
-                            int bdx = vx - task.cx, bdy = vy - task.cy;
-                            bdx = bdx < 0 ? -bdx : bdx;
-                            bdy = bdy < 0 ? -bdy : bdy;
-                            const float bias =
-                                    p.bias_factor * (c / (float)task.fanout) * ((float)(bdx + bdy) / (float)task.hpwl);
-                            const float gv = gu + c * hist_c * pres + bias + branch_extra;
+                            float step_c = c;
+                            if (arc.crit_weight != 0.0f) {
+                                const float hist_c =
+                                        p.ignore_hist ? 1.0f : 1.0f + arc.crit_weight * (wv.hist - 1.0f);
+                                const float pres = 1.0f + (float)(wv.occ_flags & ~WIRE_UNAVAILABLE_BIT) *
+                                                                  p.curr_cong_weight * arc.crit_weight;
+                                step_c = c * hist_c * pres;
+                            }
+                            float bias = 0.0f;
+                            if (p.bias_factor != 0.0f) {
+                                int bdx = vx - task.cx, bdy = vy - task.cy;
+                                bdx = bdx < 0 ? -bdx : bdx;
+                                bdy = bdy < 0 ? -bdy : bdy;
+                                bias = p.bias_factor * (c / (float)task.fanout) *
+                                       ((float)(bdx + bdy) / (float)task.hpwl);
+                            }
+                            const float gv = gu + step_c + bias + branch_extra;
                             if (v == sink) {
                                 atomicMin(&st.best, pack(gv, (uint32_t)ei));
                                 continue;
@@ -531,6 +625,8 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                                 st.fail = FAIL_PILE;
                             }
                         }
+                        if (base + EXPAND_CHUNK < nn)
+                            __syncthreads();
                     }
                 }
                 __syncthreads();
@@ -572,7 +668,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                         if (pack_gbits(nv) < pack_gbits(old)) {
                             int pos = atomicAdd(&st.far_n, 1);
                             if (pos < cap)
-                                far[pos] = e;
+                                far[pos] = pack(gv, (uint32_t)sv); // slot-indexed frontier
                             else
                                 st.fail = FAIL_PILE;
                         }
@@ -650,7 +746,7 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
                         float d = attach_delay;
                         for (int k = pos - 1; k >= st.path_pos; k--) {
                             PathEntry &pe = paths[task.path_off + k];
-                            d += g.edge_cost[pe.edge];
+                            d += g.edges[pe.edge].cost;
                             pe.delay = d;
                         }
                         r.path_len = pos - st.path_pos;
@@ -684,16 +780,16 @@ __global__ void __launch_bounds__(BLOCK) route_kernel(DevGraph g, RouteParams p,
     }
 }
 
-__global__ void update_state_kernel(WireRec *recs, int count, const int32_t *wires, const int32_t *nocc,
-                                    const float *nhist, const int32_t *nres)
+__global__ void update_state_kernel(WireRec *recs, int count, const WireUpdate *upd)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= count)
         return;
-    WireRec &r = recs[wires[i]];
-    r.occ = nocc[i];
-    r.hist = nhist[i];
-    r.reserved = nres[i];
+    const WireUpdate u = upd[i];
+    WireRec &r = recs[u.wire];
+    r.occ_flags = (r.occ_flags & WIRE_UNAVAILABLE_BIT) | (uint32_t(u.occ) & ~WIRE_UNAVAILABLE_BIT);
+    r.hist = u.hist;
+    r.reserved = u.reserved;
 }
 
 #define GPU_CHECK(call)                                                                                                \
@@ -836,11 +932,16 @@ class DeviceBackend : public Backend
             // default router behavior.
             const std::string stable_id = "unattested-ordinal-" + std::to_string(device_);
 #endif
+            if (graph.n_wires > int32_t(EDGE_DST_MASK)) {
+                error = "graph wire count exceeds EdgeRec 30-bit destination limit";
+                return false;
+            }
             name_ = std::string(GPUROUTE_BACKEND_NAME) + ":" + stable_id + ":" + pci_bus_id + ":" + prop.name;
             n_wires_ = graph.n_wires;
             out_off_.upload(graph.out_off, (size_t)graph.n_wires + 1);
-            out_dst_.upload(graph.out_dst, (size_t)graph.n_edges);
-            {
+            if (graph.edge_src != nullptr) {
+                edge_src_.upload(graph.edge_src, (size_t)graph.n_edges);
+            } else {
                 // The path walk needs the source wire of an edge; one load
                 // beats a binary search over the row offsets for every hop.
                 std::vector<int32_t> src((size_t)graph.n_edges);
@@ -849,22 +950,22 @@ class DeviceBackend : public Backend
                         src[e] = w;
                 edge_src_.upload(src.data(), src.size());
             }
-            edge_cost_.upload(graph.edge_cost, (size_t)graph.n_edges);
-            // nullptr is an all-zero region (no reserved pips). hipMemcpy from a
-            // null host pointer would fault, so allocate and clear instead.
-            if (graph.edge_region != nullptr || graph.n_edges == 0) {
-                edge_region_.upload(graph.edge_region, (size_t)graph.n_edges);
+            if (graph.edges != nullptr) {
+                edges_.upload(graph.edges, (size_t)graph.n_edges);
             } else {
-                edge_region_.alloc((size_t)graph.n_edges);
-                GPU_CHECK(hipMemset(edge_region_.ptr, 0, (size_t)graph.n_edges * sizeof(uint8_t)));
-            }
-            // nullptr is an all-zero halo fence. hipMemcpy from a null host
-            // pointer would fault, so allocate and clear instead.
-            if (graph.edge_outside_halo != nullptr || graph.n_edges == 0) {
-                edge_outside_halo_.upload(graph.edge_outside_halo, (size_t)graph.n_edges);
-            } else {
-                edge_outside_halo_.alloc((size_t)graph.n_edges);
-                GPU_CHECK(hipMemset(edge_outside_halo_.ptr, 0, (size_t)graph.n_edges * sizeof(uint8_t)));
+                std::vector<EdgeRec> erecs((size_t)graph.n_edges);
+                const uint8_t *ereg = graph.edge_region;
+                const uint8_t *ehalo = graph.edge_outside_halo;
+                for (int64_t e = 0; e < graph.n_edges; e++) {
+                    uint32_t df = uint32_t(graph.out_dst[e]);
+                    if (ereg != nullptr && ereg[e])
+                        df |= EDGE_REGION_BIT;
+                    if (ehalo != nullptr && ehalo[e])
+                        df |= EDGE_OUTSIDE_HALO_BIT;
+                    erecs[e].dst_flags = df;
+                    erecs[e].cost = graph.edge_cost[e];
+                }
+                edges_.upload(erecs.data(), erecs.size());
             }
             {
                 std::vector<WireRec> recs((size_t)graph.n_wires);
@@ -872,10 +973,9 @@ class DeviceBackend : public Backend
                     WireRec &r = recs[w];
                     r.x = graph.wire_x[w];
                     r.y = graph.wire_y[w];
-                    r.flags = graph.wire_flags[w];
-                    r.pad[0] = r.pad[1] = r.pad[2] = 0;
                     r.reserved = graph.wire_reserved[w];
-                    r.occ = graph.wire_occ[w];
+                    const uint32_t unavail = (graph.wire_flags[w] & WIRE_UNAVAILABLE) ? WIRE_UNAVAILABLE_BIT : 0u;
+                    r.occ_flags = unavail | (uint32_t(graph.wire_occ[w]) & ~WIRE_UNAVAILABLE_BIT);
                     r.hist = graph.wire_hist[w];
                 }
                 wires_.upload(recs.data(), recs.size());
@@ -909,15 +1009,19 @@ class DeviceBackend : public Backend
         if (count == 0)
             return;
         auto t0 = std::chrono::steady_clock::now();
-        upd_wires_.upload(wires, count);
-        upd_occ_.upload(occ, count);
-        upd_hist_.upload(hist, count);
-        upd_res_.upload(reserved, count);
+        upd_host_.resize(count);
+        for (size_t i = 0; i < count; i++) {
+            upd_host_[i].wire = wires[i];
+            upd_host_[i].occ = occ[i];
+            upd_host_[i].reserved = reserved[i];
+            upd_host_[i].hist = hist[i];
+        }
+        upd_.upload(upd_host_.data(), count);
         int blocks = (int)((count + 255) / 256);
-        update_state_kernel<<<blocks, 256>>>(wires_.ptr, (int)count, upd_wires_.ptr, upd_occ_.ptr, upd_hist_.ptr,
-                                             upd_res_.ptr);
+        update_state_kernel<<<blocks, 256>>>(wires_.ptr, (int)count, upd_.ptr);
         GPU_CHECK(hipGetLastError());
-        GPU_CHECK(hipDeviceSynchronize());
+        // Stream 0 ordering guarantees update_state_kernel completes before the
+        // next route_kernel launch reads wires_; no host sync needed here.
         stats_.transfer_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     }
 
@@ -979,11 +1083,8 @@ class DeviceBackend : public Backend
         DevGraph g;
         g.n_wires = n_wires_;
         g.out_off = out_off_.ptr;
-        g.out_dst = out_dst_.ptr;
         g.edge_src = edge_src_.ptr;
-        g.edge_cost = edge_cost_.ptr;
-        g.edge_region = edge_region_.ptr;
-        g.edge_outside_halo = edge_outside_halo_.ptr;
+        g.edges = edges_.ptr;
         g.wires = wires_.ptr;
         switch (params.block_threads) {
         case 512:
@@ -1009,7 +1110,41 @@ class DeviceBackend : public Backend
         stats_.launches++;
 
         results_.download(results.data(), arcs.size());
-        paths_.download(paths.data(), total_paths);
+        size_t max_path_end = 0;
+        for (const auto &task : tasks) {
+            size_t task_end = (size_t)task.path_off;
+            for (int a = 0; a < task.arc_cnt; a++) {
+                const ArcResult &r = results[task.arc_off + a];
+                if (r.path_len > 0)
+                    task_end = std::max(task_end, (size_t)r.path_off + (size_t)r.path_len);
+                else if (r.status == ARC_PATH_FULL)
+                    task_end = std::max(task_end, (size_t)task.path_off + (size_t)task.path_cap);
+            }
+            max_path_end = std::max(max_path_end, std::min(task_end, total_paths));
+        }
+        if (max_path_end > 0) {
+            if (tasks.size() == 1 && tasks[0].path_off == 0) {
+                paths_.download(paths.data(), max_path_end);
+            } else {
+                if (paths_dl_.size() < max_path_end)
+                    paths_dl_.resize(max_path_end);
+                paths_.download(paths_dl_.data(), max_path_end);
+                for (const auto &task : tasks) {
+                    size_t task_end = (size_t)task.path_off;
+                    for (int a = 0; a < task.arc_cnt; a++) {
+                        const ArcResult &r = results[task.arc_off + a];
+                        if (r.path_len > 0)
+                            task_end = std::max(task_end, (size_t)r.path_off + (size_t)r.path_len);
+                        else if (r.status == ARC_PATH_FULL)
+                            task_end = std::max(task_end, (size_t)task.path_off + (size_t)task.path_cap);
+                    }
+                    task_end = std::min(task_end, max_path_end);
+                    if (task_end > (size_t)task.path_off)
+                        std::memcpy(paths.data() + task.path_off, paths_dl_.data() + task.path_off,
+                                    (task_end - (size_t)task.path_off) * sizeof(PathEntry));
+                }
+            }
+        }
         stats_.transfer_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - t2).count();
         for (auto &r : results) {
             stats_.arcs_routed++;
@@ -1027,10 +1162,8 @@ class DeviceBackend : public Backend
     std::string name_;
     std::string device_name_;
     int32_t n_wires_ = 0;
-    DevBuf<int32_t> out_off_, out_dst_, edge_src_;
-    DevBuf<float> edge_cost_;
-    DevBuf<uint8_t> edge_region_;
-    DevBuf<uint8_t> edge_outside_halo_;
+    DevBuf<int32_t> out_off_, edge_src_;
+    DevBuf<EdgeRec> edges_;
     DevBuf<WireRec> wires_;
     Lane small_, large_;
     DevBuf<TaskDesc> tasks_;
@@ -1040,8 +1173,9 @@ class DeviceBackend : public Backend
     DevBuf<int32_t> shell_tiles_;
     DevBuf<ArcResult> results_;
     DevBuf<PathEntry> paths_;
-    DevBuf<int32_t> upd_wires_, upd_occ_, upd_res_;
-    DevBuf<float> upd_hist_;
+    std::vector<PathEntry> paths_dl_;
+    std::vector<WireUpdate> upd_host_;
+    DevBuf<WireUpdate> upd_;
     BackendStats stats_;
     int large_slots_ = 0;
     int large_bits_ = 22;
