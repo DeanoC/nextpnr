@@ -779,6 +779,12 @@ void CommandHandler::copyDedicatedCommandSettings(const Context *from, Context *
 
 void CommandHandler::applySettingOverrides(Context *ctx)
 {
+    // Physical GPU device selection belongs to this invocation (and its
+    // visible-device remap such as HIP_VISIBLE_DEVICES), never to a saved
+    // checkpoint from an earlier run. Clear any imported value before
+    // replaying this invocation's --set, --gpu-device or --gpu-opt options.
+    ctx->settings.erase(ctx->id("gpurouter/device"));
+
     if (vm.count("set")) {
         const auto overrides = parse_command_setting_overrides(vm["set"].as<std::vector<std::string>>());
         for (const auto &override : overrides) {
