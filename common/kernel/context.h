@@ -41,6 +41,13 @@ struct Context : Arch, DeterministicRNG
     // True only when the current timing_result came from architecture final analogue signoff.
     // This is transient provenance and must not be serialized as a design setting.
     bool timing_result_is_final_analogue = false;
+    // Transient provenance from the most recent analogue signoff repair pass.
+    std::string analogue_repair_stop_reason;
+    int analogue_repair_rounds = 0;
+    int analogue_repair_reroutes = 0;
+    int analogue_repair_candidate_passes = 0;
+    int analogue_repair_improve_passes = 0;
+    bool analogue_repair_time_budget_truncated = false;
     // Volatile diagnostic limit; never changes placement or serialized settings.
     int timing_report_paths = 1;
 

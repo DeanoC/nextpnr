@@ -667,6 +667,12 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float limit, bool improv
 bool Arch::analogue_repair()
 {
     Context *ctx = getCtx();
+    ctx->analogue_repair_stop_reason.clear();
+    ctx->analogue_repair_rounds = 0;
+    ctx->analogue_repair_reroutes = 0;
+    ctx->analogue_repair_candidate_passes = 0;
+    ctx->analogue_repair_improve_passes = 0;
+    ctx->analogue_repair_time_budget_truncated = false;
     const int polish_candidates = settings.count(id("gpurouter/analoguePolishCandidates"))
                                           ? ctx->setting<int>("gpurouter/analoguePolishCandidates")
                                           : 0;
@@ -677,9 +683,15 @@ bool Arch::analogue_repair()
                                       : 0;
     if (lut_pin_trials < 0 || lut_pin_trials > 16)
         log_error("analogueLutPinTrials must be between 0 and 16 (0 disables).\n");
-    const double budget = ctx->setting<double>("gpurouter/analogueTimeBudget", 300.0);
+    // Wall-clock budget is a safety backstop far above normal repair run time
+    // so routes stop deterministically at their input-defined round caps rather
+    // than varying with host load (#323).
+    const double budget = ctx->setting<double>("gpurouter/analogueTimeBudget", 3600.0);
     if (!std::isfinite(budget) || budget < 0)
         log_error("analogueTimeBudget must be finite and nonnegative (seconds; 0 disables).\n");
+    const int configured_max_rounds = ctx->setting<int>("gpurouter/analogueMaxRounds", 0);
+    if (configured_max_rounds < 0)
+        log_error("analogueMaxRounds must be nonnegative (0 uses the default round cap).\n");
     const auto started = std::chrono::steady_clock::now();
     // Time spent waiting for a gpu-run phase lease is not repair work
     const double lease_wait_started = gpurouter_lease_wait_seconds();
@@ -719,8 +731,10 @@ bool Arch::analogue_repair()
     const int improve_rounds = ctx->setting<int>("gpurouter/analogueImproveRounds", 4);
     const float improve_band = ctx->setting<float>("gpurouter/analogueImproveBand", 300.0f);
     pip_delay_prior = ctx->setting<float>("gpurouter/analoguePrior", 1.25f);
-    if (rounds <= 0)
+    if (rounds <= 0) {
+        ctx->analogue_repair_stop_reason = "disabled";
         return true;
+    }
 
     const IdString repair_slack_key = id("gpurouter/repairSlack");
     const bool user_repair_slack = settings.count(repair_slack_key);
@@ -733,13 +747,17 @@ bool Arch::analogue_repair()
     auto secs_since = [](std::chrono::steady_clock::time_point t) {
         return std::chrono::duration<double>(std::chrono::steady_clock::now() - t).count();
     };
-    int reroutes = 0, cand_passes = 0;
+    int reroutes = 0, cand_passes = 0, total_cand_passes = 0, completed_rounds = 0, improve_passes_run = 0;
+    std::string stop_reason;
+    bool time_budget_truncated = false;
     // Set once the best routing has been put back: the next timing is its
     // slack under the current calibration, which is the baseline from then on
     bool restored = false;
     // Every round is a timing, a candidate pass or a re-route; this bounds
     // the loop even if a round neither improves nor re-routes
-    const int max_rounds = (rounds + 1) * (cand_rounds + 3);
+    const int default_max_rounds = (rounds + 1) * (cand_rounds + 3);
+    const int max_rounds = configured_max_rounds > 0 ? std::min(configured_max_rounds, default_max_rounds)
+                                                     : default_max_rounds;
     // Analysis of the latest timing
     std::unique_ptr<TimingAnalyser> tmg;
     auto time_routing = [&](std::string &summary) {
@@ -756,12 +774,20 @@ bool Arch::analogue_repair()
         std::string summary;
         current = time_routing(summary);
         current_timed = true;
+        completed_rounds = round + 1;
         log_info("Analogue signoff %s: worst clock slack %.3f ns (%s) in %.2fs\n",
                  round == 0 ? "check" : stringf("repair round %d", round).c_str(), current / 1000.0f,
                  summary.c_str(), secs_since(t0));
-        if (current >= target || reroutes >= rounds)
+        if (current >= target) {
+            stop_reason = "target_met";
             break;
+        }
+        if (reroutes >= rounds) {
+            stop_reason = "reroute_cap";
+            break;
+        }
         if (round >= max_rounds) {
+            stop_reason = "round_cap";
             log_info("    stopping after %d rounds without reaching the target\n", round);
             break;
         }
@@ -786,6 +812,8 @@ bool Arch::analogue_repair()
         }
 
         if (expired()) {
+            stop_reason = "time_budget";
+            time_budget_truncated = true;
             log_info("Analogue repair time budget exhausted (%.3f seconds); keeping the best measured routing.\n", budget);
             break;
         }
@@ -794,6 +822,7 @@ bool Arch::analogue_repair()
         compute_analogue_arcs(true);
         if (candidates && cand_passes < cand_rounds) {
             cand_passes++;
+            total_cand_passes++;
             GpuRouterCfg cfg(ctx);
             cfg.stop_requested = expired;
             // A cancelled pass may already have rebound some candidates.
@@ -802,6 +831,8 @@ bool Arch::analogue_repair()
             try {
                 changed = analogue_candidate_pass(*tmg, target, false, cfg);
             } catch (const GpuRouterCancelled &) {
+                stop_reason = "time_budget_candidate";
+                time_budget_truncated = true;
                 log_info("Analogue repair time budget exhausted during candidate selection; restoring the best routing.\n");
                 result = false;
                 break;
@@ -837,8 +868,10 @@ bool Arch::analogue_repair()
         for (auto &w : worst)
             rip.insert(w.second);
         bitstream_configured = false;
-        if (rip.empty())
+        if (rip.empty()) {
+            stop_reason = "no_rip_nets";
             break;
+        }
         log_info("    re-routing %zu nets with arcs below %.3f ns analogue slack (%zu pips observed in %.2fs)\n",
                  rip.size(), rip_slack / 1000.0f, pip_delay_observed.size(), secs_since(t1));
         // What the ripped nets had, to give back what the re-route makes worse
@@ -895,8 +928,13 @@ bool Arch::analogue_repair()
         if (!user_repair_slack)
             settings.erase(repair_slack_key);
         if (!result) {
-            if (expired())
+            if (expired()) {
+                stop_reason = "time_budget_reroute";
+                time_budget_truncated = true;
                 log_info("Analogue repair time budget exhausted during rerouting; restoring the best routing.\n");
+            } else {
+                stop_reason = "reroute_failed";
+            }
             break;
         }
         if (revert) {
@@ -978,6 +1016,8 @@ bool Arch::analogue_repair()
         // (A design without a timed clock has nothing to improve.)
         for (int pass = 1; pass <= improve_rounds && !kept_timing.setup.empty(); pass++) {
             if (expired()) {
+                stop_reason = "time_budget_improve";
+                time_budget_truncated = true;
                 log_info("Analogue repair time budget exhausted (%.3f seconds); keeping the best measured routing.\n",
                          budget);
                 break;
@@ -990,11 +1030,14 @@ bool Arch::analogue_repair()
             try {
                 changed = analogue_candidate_pass(*tmg, current + improve_band, true, cfg);
             } catch (const GpuRouterCancelled &) {
+                stop_reason = "time_budget_improve";
+                time_budget_truncated = true;
                 log_info("Analogue repair time budget exhausted during candidate selection; restoring the best "
                          "routing.\n");
                 restore_routing(ctx, kept);
                 break;
             }
+            improve_passes_run++;
             bitstream_configured = false;
             signoff_table();
             if (!changed)
@@ -1028,6 +1071,16 @@ bool Arch::analogue_repair()
         restore_routing(ctx, best);
         result = true;
     }
+    ctx->analogue_repair_stop_reason = stop_reason;
+    ctx->analogue_repair_rounds = completed_rounds;
+    ctx->analogue_repair_reroutes = reroutes;
+    ctx->analogue_repair_candidate_passes = total_cand_passes;
+    ctx->analogue_repair_improve_passes = improve_passes_run;
+    ctx->analogue_repair_time_budget_truncated = time_budget_truncated;
+    log_info("Analogue repair stop condition: reason=%s rounds=%d reroutes=%d candidate_passes=%d improve_passes=%d "
+             "time_budget_truncated=%s\n",
+             stop_reason.c_str(), completed_rounds, reroutes, total_cand_passes, improve_passes_run,
+             time_budget_truncated ? "true" : "false");
     // A separate, default-off local experiment starts from exactly the route
     // ordinary repair returns. Keep the signoff table fixed and compare every
     // native endpoint row, not only the worst clock. Incomplete external IO
