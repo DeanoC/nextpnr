@@ -132,6 +132,39 @@ log, report = route("false-self", "set_false_path -from [get_clocks {clocks[0]}]
 assert not hold(log, FAST, FAST), log[-2000:]
 print("PASS: a clock false-path to itself cuts hold on that clock")
 
+# Uncut control for hold cuts: force one hold violation on each checked pair
+# (FAST -> SLOW via Q[3], SLOW -> FAST via Q[2], FAST -> FAST via Q[1]) so that
+# the cut assertions cannot pass vacuously if hold checking stops firing.
+hold_control = (
+    "set_output_delay -clock [get_clocks {clocks[1]}] -min -25 [get_ports {Q[3]}]\n"
+    "set_output_delay -clock [get_clocks {clocks[1]}] -max 1 [get_ports {Q[3]}]\n"
+    "set_output_delay -clock [get_clocks {clocks[0]}] -min -25 [get_ports {Q[2]}]\n"
+    "set_output_delay -clock [get_clocks {clocks[0]}] -max 1 [get_ports {Q[2]}]\n"
+    "set_output_delay -clock [get_clocks {clocks[0]}] -min -25 [get_ports {Q[1]}]\n"
+    "set_output_delay -clock [get_clocks {clocks[0]}] -max 1 [get_ports {Q[1]}]\n"
+)
+log, _ = route("hold-base", hold_control)
+assert hold(log, FAST, SLOW) and hold(log, SLOW, FAST) and hold(log, FAST, FAST), log[-2000:]
+print("PASS: uncut hold control reports violations for both crossings and same-clock")
+
+log, _ = route("hold-groups", hold_control +
+               "set_clock_groups -asynchronous -group [get_clocks {clocks[0]}] -group [get_clocks {clocks[1]}]\n")
+assert not hold(log, FAST, SLOW) and not hold(log, SLOW, FAST), log[-2000:]
+assert hold(log, FAST, FAST), log[-2000:]
+print("PASS: set_clock_groups suppresses both crossing hold violations while keeping same-clock hold")
+
+log, _ = route("hold-false-path", hold_control +
+               "set_false_path -from [get_clocks {clocks[1]}] -to [get_clocks {clocks[0]}]\n")
+assert not hold(log, SLOW, FAST), log[-2000:]
+assert hold(log, FAST, SLOW) and hold(log, FAST, FAST), log[-2000:]
+print("PASS: set_false_path suppresses only its direction's hold violation")
+
+log, _ = route("hold-false-self", hold_control +
+               "set_false_path -from [get_clocks {clocks[0]}] -to [get_clocks {clocks[0]}]\n")
+assert not hold(log, FAST, FAST), log[-2000:]
+assert hold(log, FAST, SLOW) and hold(log, SLOW, FAST), log[-2000:]
+print("PASS: self set_false_path suppresses only same-clock hold violations")
+
 multicycle = ("set_clock_groups -asynchronous -group [get_clocks {clocks[0]}] -group [get_clocks {clocks[1]}]\n"
               "set_multicycle_path -setup 2 -from [get_clocks {clocks[0]}] -to [get_clocks {clocks[0]}]\n"
               "set_multicycle_path -hold 1 -from [get_clocks {clocks[0]}] -to [get_clocks {clocks[0]}]\n")
