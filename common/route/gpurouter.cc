@@ -1685,7 +1685,9 @@ struct GpuRouter
     // false when an attempt that started with frozen repair arcs cannot
     // escape a small plateau; initial routing keeps the normal max_iter
     // budget and congestion growth even when only one conflict remains.
-    bool negotiate()
+    // Broad boost-ceiling aborts (stalled_at_ceiling) are restricted to
+    // rollback-capable timing-repair callers that restore a snapshot on false.
+    bool negotiate(bool rollback_on_plateau = false)
     {
         const int attempt = ++negotiation_attempt;
         if (telemetry)
@@ -1771,6 +1773,7 @@ struct GpuRouter
             route_queue.clear();
             update_congestion();
             flush_state();
+            congestion_plateau.observe(overused_wires);
 
             if (overused_wires < best_overused) {
                 // Zero counts as an improvement too: with --tmg-ripup, a
@@ -1810,15 +1813,22 @@ struct GpuRouter
                     log_info("    congestion has not improved from %d overused wires in %d iterations; "
                              "accelerating present-congestion growth (x%.2f)\n",
                              best_overused, overused_stall, cong_stall_boost);
-                } else if (congestion_plateau.saturated(overused_wires, int(failed_nets.size()))) {
+                } else if (congestion_plateau.saturated(overused_wires, int(failed_nets.size())) ||
+                           (rollback_on_plateau && congestion_plateau.stalled_at_ceiling(overused_wires))) {
                     // Present-congestion cost is already growing as fast as
                     // it is allowed to, and the overused wires are not held
                     // by frozen arcs. Timing repair can still have soft-
                     // reserved every alternate, so the stuck nets keep the
                     // only unreserved path and share it. Route them one at
-                    // a time with those reservations ignored.
-                    if (plateau_escapes >= 1) {
-                        bool result = give_up_plateau("still congested after releasing timing-repair reservations");
+                    // a time with those reservations ignored when the plateau
+                    // is small enough; otherwise give up and let the caller
+                    // restore the pre-repair routing.
+                    constexpr size_t max_escape_nets = 64;
+                    if (plateau_escapes >= 1 || failed_nets.size() > max_escape_nets) {
+                        const char *why = plateau_escapes >= 1
+                                                  ? "still congested after releasing timing-repair reservations"
+                                                  : "stalled at maximum present-congestion boost";
+                        bool result = give_up_plateau(why);
                         if (telemetry)
                             telemetry->emit("phase_end", "negotiation", attempt,
                                             {gpuroute::Telemetry::Field::string("status", "plateau")});
@@ -2144,6 +2154,7 @@ struct GpuRouter
             best_overused = 0;
             overused_stall = 0;
             congestion_plateau.clear_tiny();
+            congestion_plateau.observe(0);
             log_info("    congestion plateau at %d overused wires cleared by ignoring soft reservations "
                      "(unfroze %d timing-repair arcs)\n",
                      before, opened);
@@ -3120,7 +3131,7 @@ struct GpuRouter
                 route_queue.push_back(cn);
             std::sort(route_queue.begin(), route_queue.end());
             route_queue.erase(std::unique(route_queue.begin(), route_queue.end()), route_queue.end());
-            if (!negotiate()) {
+            if (!negotiate(/*rollback_on_plateau=*/true)) {
                 log_info("    timing repair stopped on a congestion plateau; restoring the pre-repair routing\n");
                 restore_snapshot();
                 failed_nets.clear();

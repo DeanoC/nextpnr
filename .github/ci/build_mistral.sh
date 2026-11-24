@@ -37,6 +37,10 @@ function run_tests {
         --yosys "$(command -v yosys)" \
         --nextpnr build/nextpnr-mistral \
         --output build/pad-clock-route
+    python3 mistral/tests/fes_cart_const_outputs.py \
+        --yosys "$(command -v yosys)" \
+        --nextpnr build/nextpnr-mistral \
+        --output build/fes-cart-const-outputs
 }
 
 function run_archcheck {

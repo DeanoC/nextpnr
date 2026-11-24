@@ -311,9 +311,32 @@ DelayQuad Arch::getPipDelayCalibrated(PipId pip, const DelayQuad &table) const
     return DelayQuad(delay_t(table.minDelay() * k), delay_t(table.maxDelay() * k));
 }
 
-void Arch::compute_analogue_arcs(bool observe)
+void Arch::compute_analogue_arcs(bool observe, bool capture_hops)
 {
     NPNR_ASSERT(bitstream_configured);
+    auto apply_calibration = [&]() {
+        // Re-derive the per-type table calibration from every observation.
+        for (auto &cal : pip_type_calibration)
+            cal = TypeCalibration();
+        for (auto &obs : pip_delay_observed) {
+            WireId src = getPipSrcWire(obs.first);
+            if (src.is_nextpnr_created())
+                continue;
+            auto &cal = pip_type_calibration.at(src.node.t());
+            cal.table_ps += getPipDelayTable(obs.first).maxDelay();
+            cal.analogue_ps += obs.second;
+            cal.hops++;
+        }
+        pip_delay_calibrated = true;
+    };
+    if (observe && !capture_hops && analogue_cache_valid && analogue_hops_captured) {
+        for (const auto &entry : pending_pip_observations) {
+            auto &obs = pip_delay_observed[entry.first];
+            obs = std::max(obs, entry.second);
+        }
+        apply_calibration();
+        return;
+    }
     struct Job
     {
         const NetInfo *ni;
@@ -331,20 +354,32 @@ void Arch::compute_analogue_arcs(bool observe)
         for (auto &usr : ni->users)
             jobs.push_back(Job{ni, &usr, DelayQuad(), false, {}});
     }
+    const bool collect_hops = observe || capture_hops;
     // Each arc is an independent simulation over const device data.
     const int nthreads = std::max(1, std::min(int(std::thread::hardware_concurrency()), 32));
     nextpnr_mistral_workers::run(jobs.size(), nthreads, [&](size_t index) {
         auto &job = jobs[index];
-        job.ok = analogue_arc_delay(job.ni, *job.usr, job.delay, observe && !job.ni->is_global ? &job.hops : nullptr,
-                                    &job.lut_input_delay);
+        job.ok = analogue_arc_delay(job.ni, *job.usr, job.delay,
+                                    collect_hops && !job.ni->is_global ? &job.hops : nullptr, &job.lut_input_delay);
     });
     analogue_arc_cache.clear();
     analogue_arc_cache.reserve(jobs.size());
     for (auto &job : jobs)
         analogue_arc_cache.emplace(job.usr, AnalogueArc{job.delay, job.ok, job.lut_input_delay});
     analogue_cache_valid = true;
-    if (!observe)
+    pending_pip_observations.clear();
+    analogue_hops_captured = false;
+    if (!collect_hops)
         return;
+    if (capture_hops && !observe) {
+        for (auto &job : jobs)
+            for (auto &h : job.hops) {
+                auto &obs = pending_pip_observations[h.pip];
+                obs = std::max(obs, std::max(h.rise, h.fall));
+            }
+        analogue_hops_captured = true;
+        return;
+    }
     for (auto &job : jobs)
         for (auto &h : job.hops) {
             // A pip shared by several arcs of the net has one analogue delay
@@ -352,23 +387,13 @@ void Arch::compute_analogue_arcs(bool observe)
             auto &obs = pip_delay_observed[h.pip];
             obs = std::max(obs, std::max(h.rise, h.fall));
         }
-    // Re-derive the per-type table calibration from every observation.
-    for (auto &cal : pip_type_calibration)
-        cal = TypeCalibration();
-    for (auto &obs : pip_delay_observed) {
-        WireId src = getPipSrcWire(obs.first);
-        if (src.is_nextpnr_created())
-            continue;
-        auto &cal = pip_type_calibration.at(src.node.t());
-        cal.table_ps += getPipDelayTable(obs.first).maxDelay();
-        cal.analogue_ps += obs.second;
-        cal.hops++;
-    }
-    pip_delay_calibrated = true;
+    apply_calibration();
 }
 
 void Arch::analogue_relink(const std::vector<PipId> &removed, const std::vector<PipId> &added)
 {
+    analogue_hops_captured = false;
+    pending_pip_observations.clear();
     pool<PipId> was, now;
     for (auto p : removed)
         was.insert(p);
@@ -772,7 +797,7 @@ bool Arch::analogue_repair()
     // Analysis of the latest timing
     std::unique_ptr<TimingAnalyser> tmg;
     auto time_routing = [&](std::string &summary) {
-        configure_bitstream();
+        configure_bitstream(false, true);
         // Same analysis as the post-bitstream signoff report
         tmg = std::make_unique<TimingAnalyser>(ctx);
         tmg->setup_only = false;

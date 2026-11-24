@@ -34,6 +34,74 @@ def fpll_lines(text, sites):
     return keep
 
 
+def cmux_selectors(text):
+    """Extract lane-independent (CMUX_block, INPUT_SEL_value) pairs and check CMUXHG enables.
+
+    Quartus chooses its own global clock lane numbers, so lane indices may
+    differ between tools, but each pinned FPLL site/counter output must select
+    the exact same CMUXHG/CMUXVG block and PLLIN INPUT_SEL code, and every
+    active CMUXHG lane must set TESTSYN_ENOUT_SELECT to PRE_SYNENB.
+    """
+    inputs = {}
+    enables = {}
+    for line in text.splitlines():
+        if not re.match(r"^[si] CMUX[HV]G\.", line):
+            continue
+        m = re.match(r"^s (CMUX[HV]G\.\d+\.\d+):INPUT_SEL\.(\d+) (\S+)$", line)
+        if m:
+            key = (m.group(1), int(m.group(2)))
+            assert key not in inputs, f"duplicate CMUX INPUT_SEL: {line}"
+            inputs[key] = m.group(3)
+            continue
+        m = re.match(r"^s (CMUX[HV]G\.\d+\.\d+):TESTSYN_ENOUT_SELECT\.(\d+) (\S+)$", line)
+        if m:
+            key = (m.group(1), int(m.group(2)))
+            assert key not in enables, f"duplicate CMUX TESTSYN_ENOUT_SELECT: {line}"
+            enables[key] = m.group(3)
+            continue
+        raise AssertionError(f"unexpected CMUX setting line: {line}")
+    expected_enables = {key: "PRE_SYNENB" for key in inputs if key[0].startswith("CMUXHG.")}
+    if enables != expected_enables:
+        raise AssertionError(f"CMUX TESTSYN_ENOUT_SELECT mismatch: got {enables!r}, expected {expected_enables!r}")
+    return sorted((block, sel) for (block, _lane), sel in inputs.items())
+
+
+# FPLL (0, 14) counters C5 and C6 physically reach both CMUXHG (0, 35) and
+# CMUXVG (42, 0). Quartus and nextpnr may pick opposite mux blocks for those
+# two counters, so normalize them when comparing against the Quartus decode
+# while also checking each fixture's exact CMUX selection below.
+DUAL_HOMED_CMUX = {
+    ("CMUXVG.042.000", "10"): ("CMUXHG.000.035", "17"),  # FPLL.000.014 C5
+    ("CMUXVG.042.000", "11"): ("CMUXHG.000.035", "16"),  # FPLL.000.014 C6
+}
+
+EXPECTED_CMUX = {
+    "eight": [
+        ("CMUXHG.089.035", "0c"), ("CMUXHG.089.035", "0d"),
+        ("CMUXHG.089.035", "0e"), ("CMUXHG.089.035", "0f"),
+        ("CMUXVG.042.000", "0c"), ("CMUXVG.042.000", "0d"),
+        ("CMUXVG.042.000", "0e"), ("CMUXVG.042.000", "0f"),
+    ],
+    "mister3": [
+        ("CMUXHG.000.035", "0e"), ("CMUXHG.000.035", "16"),
+        ("CMUXVG.042.000", "0d"), ("CMUXVG.042.000", "0e"),
+        ("CMUXVG.042.000", "0f"),
+    ],
+    "oddn": [
+        ("CMUXHG.000.035", "14"), ("CMUXHG.000.035", "15"),
+        ("CMUXHG.000.035", "16"), ("CMUXHG.000.035", "17"),
+    ],
+    "refs": [
+        ("CMUXHG.000.035", "0a"), ("CMUXHG.000.035", "0d"),
+        ("CMUXHG.000.035", "0e"), ("CMUXHG.000.035", "16"),
+    ],
+}
+
+
+def canonical_cmux(selectors):
+    return sorted(DUAL_HOMED_CMUX.get(entry, entry) for entry in selectors)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("yosys", "nextpnr", "mistral-cv", "output"):
@@ -59,8 +127,12 @@ def main():
             name, x, y, counters = line.split()
             placement[name] = ("FPLL.%03d.%03d" % (int(x), int(y)), counters)
         sites = {site for site, _ in placement.values()}
-        quartus = fpll_lines((out / "quartus.bt").read_text(), sites)
-        assert quartus == fpll_lines((fixture / "pll-settings.txt").read_text(), sites), case
+        quartus_bt = (out / "quartus.bt").read_text()
+        fixture_settings = (fixture / "pll-settings.txt").read_text()
+        quartus = fpll_lines(quartus_bt, sites)
+        assert quartus == fpll_lines(fixture_settings, sites), case
+        quartus_cmux = cmux_selectors(quartus_bt)
+        assert quartus_cmux == cmux_selectors(fixture_settings), case
 
         run([str(args.yosys.resolve()), "-p", f'read_verilog "{fixture / "top.v"}"; '
              'synth_intel_alm -nobram -nolutram -nodsp -top top; '
@@ -82,12 +154,21 @@ def main():
             assert report["fmax"][clock]["achieved"] >= constraint, (case, clock)
         run([str(args.mistral_cv.resolve()), "decomp", "5CSEBA6U23I7", str(out / "top.rbf"), str(out / "top.bt")],
             out / "decomp.log")
-        ours = fpll_lines((out / "top.bt").read_text(), sites)
+        ours_bt = (out / "top.bt").read_text()
+        ours = fpll_lines(ours_bt, sites)
         if ours != quartus:
             raise AssertionError("%s FPLL settings differ\n  quartus only: %s\n  nextpnr only: %s" % (
                 case, sorted(quartus - ours), sorted(ours - quartus)))
-        print("PASS %s: %d PLLs, %d FPLL settings identical to Quartus; RBF sha256 %s" % (
-            case, len(placement), len(ours), hashlib.sha256((out / "top.rbf").read_bytes()).hexdigest()))
+        ours_cmux = cmux_selectors(ours_bt)
+        if canonical_cmux(ours_cmux) != canonical_cmux(quartus_cmux):
+            raise AssertionError("%s CMUX sources differ from Quartus\n  quartus: %s\n  nextpnr: %s" % (
+                case, quartus_cmux, ours_cmux))
+        if ours_cmux != EXPECTED_CMUX[case]:
+            raise AssertionError("%s CMUX selectors differ from expected\n  expected: %s\n  nextpnr: %s" % (
+                case, EXPECTED_CMUX[case], ours_cmux))
+        print("PASS %s: %d PLLs, %d FPLL and %d CMUX settings verified against Quartus; RBF sha256 %s" % (
+            case, len(placement), len(ours), len(ours_cmux),
+            hashlib.sha256((out / "top.rbf").read_bytes()).hexdigest()))
 
 
 if __name__ == "__main__":

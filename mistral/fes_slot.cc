@@ -265,11 +265,8 @@ void Arch::fes_trim_net_orphans(NetInfo *net)
 
 namespace {
 
-NetInfo *rdata_sink_net(Context *ctx, int index)
+void detach_rdata_ff_datain(Context *ctx, CellInfo *ff)
 {
-    CellInfo *ff = find_rdata_ff(ctx, stringf("plug_rdata[%d]", index));
-    if (ff == nullptr)
-        return find_named_net(ctx, stringf("plug_rdata_d[%d]", index));
     // Vacant DATAIN is packed onto $PACKER_GND_NET with every other const-0
     // pin. Unbind only this FF's sink wire, then detach; ripping the shared
     // net would make the cart M10K drive chip-wide GND (SCLR, HPS, ...).
@@ -278,14 +275,22 @@ NetInfo *rdata_sink_net(Context *ctx, int index)
     if (ff->getPort(id_DATAIN) != nullptr)
         ff->disconnectPort(id_DATAIN);
     ctx->fes_trim_net_orphans(old);
+    if (!ff->ports.count(id_DATAIN))
+        ff->addInput(id_DATAIN);
+    ff->pin_data[id_DATAIN].state = PIN_SIG;
+}
+
+NetInfo *rdata_sink_net(Context *ctx, int index)
+{
+    CellInfo *ff = find_rdata_ff(ctx, stringf("plug_rdata[%d]", index));
+    if (ff == nullptr)
+        return find_named_net(ctx, stringf("plug_rdata_d[%d]", index));
+    detach_rdata_ff_datain(ctx, ff);
     IdString name = ctx->id(stringf("fes_rdata[%d]", index));
     int suffix = 0;
     while (ctx->nets.count(name))
         name = ctx->id(stringf("fes_rdata[%d]$%d", index, suffix++));
     NetInfo *sink = ctx->createNet(name);
-    if (!ff->ports.count(id_DATAIN))
-        ff->addInput(id_DATAIN);
-    ff->pin_data[id_DATAIN].state = PIN_SIG;
     ff->connectPort(id_DATAIN, sink);
     return sink;
 }
@@ -1139,14 +1144,23 @@ void Arch::merge_fes_cart(const std::string &filename, const std::string &region
         log_error("FES cart JSON '%s' has no cart module.\n", filename.c_str());
 
     std::map<int, std::pair<std::string, int>> top_bits;
+    std::vector<std::pair<int, char>> const_rdata_outputs;
     const Json &ports = mod["ports"];
     if (ports.is_object()) {
         for (const auto &item : ports.object_items()) {
             const auto &bits = item.second["bits"].array_items();
             for (int i = 0; i < int(bits.size()); i++) {
                 int id;
-                if (fes_json_signal(bits[i], id))
+                char constant = 0;
+                if (fes_json_signal(bits[i], id)) {
                     top_bits[id] = {item.first, i};
+                } else if (item.first == "plug_rdata") {
+                    if (fes_json_const(bits[i], constant))
+                        const_rdata_outputs.emplace_back(i, constant);
+                    else
+                        log_error("FES cart output 'plug_rdata[%d]' has unsupported non-signal bit '%s'.\n", i,
+                                  bits[i].dump().c_str());
+                }
             }
         }
     }
@@ -1195,18 +1209,28 @@ void Arch::merge_fes_cart(const std::string &filename, const std::string &region
                 const auto &in_bits = conns["I"].array_items();
                 const auto &pad = conns["PAD"].array_items();
                 for (int i = 0; i < int(in_bits.size()) && i < int(pad.size()); i++) {
-                    int pad_id, in_id;
-                    if (!fes_json_signal(pad[i], pad_id) || !fes_json_signal(in_bits[i], in_id))
+                    int pad_id = 0;
+                    if (!fes_json_signal(pad[i], pad_id))
                         continue;
                     auto top = top_bits.find(pad_id);
                     if (top == top_bits.end() || top->second.first != "plug_rdata")
                         continue;
-                    NetInfo *sink = rdata_sink_net(ctx, top->second.second);
-                    if (sink != nullptr) {
-                        bit_nets[in_id] = sink;
-                        ++mapped_ob;
+                    int in_id = 0;
+                    char constant = 0;
+                    if (fes_json_signal(in_bits[i], in_id)) {
+                        NetInfo *sink = rdata_sink_net(ctx, top->second.second);
+                        if (sink != nullptr) {
+                            bit_nets[in_id] = sink;
+                            ++mapped_ob;
+                        } else {
+                            ++missed_ib;
+                        }
+                    } else if (fes_json_const(in_bits[i], constant)) {
+                        const_rdata_outputs.emplace_back(top->second.second, constant);
                     } else {
-                        ++missed_ib;
+                        log_error("FES cart output pad '%s' for 'plug_rdata[%d]' has unsupported non-signal input "
+                                  "'%s'.\n",
+                                  item.first.c_str(), top->second.second, in_bits[i].dump().c_str());
                     }
                 }
             }
@@ -1243,6 +1267,55 @@ void Arch::merge_fes_cart(const std::string &filename, const std::string &region
 
     int added = 0;
     std::vector<CellInfo *> merged_cells;
+    NetInfo *const_ob_net[2] = {nullptr, nullptr};
+    auto create_const_ob_driver = [&](const std::string &base_name, int value, NetInfo *net) {
+        IdString drv_name = ctx->id(base_name);
+        int suffix = 0;
+        while (ctx->cells.count(drv_name))
+            drv_name = ctx->id(stringf("%s$%d", base_name.c_str(), suffix++));
+        CellInfo *drv = ctx->createCell(drv_name, id_MISTRAL_CONST);
+        drv->attrs[id_FES_SLOT] = Property(region);
+        drv->params[id_LUT] = value;
+        drv->addOutput(id_Q);
+        drv->connectPort(id_Q, net);
+        assign_default_pinmap(drv);
+        merged_cells.push_back(drv);
+        ++added;
+    };
+    for (const auto &entry : const_rdata_outputs) {
+        const int bit_index = entry.first;
+        const int value = entry.second == '1' ? 1 : 0;
+        CellInfo *ff = find_rdata_ff(ctx, stringf("plug_rdata[%d]", bit_index));
+        if (ff != nullptr) {
+            detach_rdata_ff_datain(ctx, ff);
+            if (const_ob_net[value] == nullptr) {
+                const char *tag = value ? "VCC" : "GND";
+                IdString net_name = ctx->id(stringf("fes_cart$const_ob_%s_NET", tag));
+                int suffix = 0;
+                while (ctx->nets.count(net_name))
+                    net_name = ctx->id(stringf("fes_cart$const_ob_%s_NET$%d", tag, suffix++));
+                const_ob_net[value] = ctx->createNet(net_name);
+                create_const_ob_driver(stringf("fes_cart$const_ob_%s_DRV", tag), value, const_ob_net[value]);
+            }
+            ff->connectPort(id_DATAIN, const_ob_net[value]);
+            ++mapped_ob;
+        } else {
+            NetInfo *sink = find_named_net(ctx, stringf("plug_rdata_d[%d]", bit_index));
+            if (sink == nullptr) {
+                ++missed_ib;
+                continue;
+            }
+            if (sink->name == ctx->id("$PACKER_GND_NET") || sink->name == ctx->id("$PACKER_VCC_NET"))
+                log_error("FES cart constant output 'plug_rdata[%d]' resolves to shared constant net '%s'.\n",
+                          bit_index, sink->name.c_str(ctx));
+            if (sink->driver.cell != nullptr) {
+                CellInfo *old = sink->driver.cell;
+                old->disconnectPort(sink->driver.port);
+            }
+            create_const_ob_driver(stringf("fes_cart$const_ob_%d_DRV", bit_index), value, sink);
+            ++mapped_ob;
+        }
+    }
     if (cells.is_object()) {
         for (const auto &item : cells.object_items()) {
             const Json &src = item.second;
