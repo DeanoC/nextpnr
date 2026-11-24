@@ -73,6 +73,16 @@ endmodule
         assert lines[1] == '  "creator": ' + json.dumps(creator) + ',\n'
         return ''.join(lines[:1] + lines[2:])
 
+    def timing_without_repair_provenance(directory):
+        # Route-preserved replays import already-repaired data trees as
+        # STRENGTH_USER, so analogue_repair can take fewer passes or stop on a
+        # different condition than the fresh baseline while producing identical
+        # physical routing, bitstream bytes, and timing results.
+        document = feedback.load(directory / "timing.json")
+        assert isinstance(document.get("analogue_repair"), dict), directory / "timing.json"
+        document.pop("analogue_repair")
+        return document
+
     # Paths inside the Yosys command are quoted for its own parser.
     run([str(args.yosys.resolve()), "-p", f'read_verilog "{root / "top.v"}"; synth_intel_alm -top top; '
          f'write_json "{root / "synth.json"}"'], "synth")
@@ -143,10 +153,9 @@ endmodule
     witness = feedback.load(preserved_base / "native/routes.json")
     assert preservation["preserved"] and not preservation["changed"] and not preservation["blocked"]
     assert set(preservation["preserved"]) == set(witness["nets"])
-    preservation_hashes = {}
-    for name in ("core.rbf", "timing.json"):
-        assert feedback.digest(preserved_base / name) == feedback.digest(preserved_replay / name)
-        preservation_hashes[name] = feedback.digest(preserved_base / name)
+    assert feedback.digest(preserved_base / "core.rbf") == feedback.digest(preserved_replay / "core.rbf")
+    assert timing_without_repair_provenance(preserved_base) == timing_without_repair_provenance(preserved_replay)
+    preservation_hashes = {"core.rbf": feedback.digest(preserved_base / "core.rbf")}
 
     # A setup miss enters analogue full rerouting. User-strength data trees
     # must remain protected there as well as in candidate rerouting.
@@ -182,8 +191,8 @@ endmodule
         paired = feedback.read_observation(result, 1 if tight else 0)
         assert paired["status"]["proposed_routes_match"] and paired["rows"] == observed["rows"]
         assert paired["placement"]["data_routes"] == request
-        assert all(feedback.digest(result / name) == feedback.digest(parent_dir / name)
-                   for name in ("core.rbf", "timing.json"))
+        assert feedback.digest(result / "core.rbf") == feedback.digest(parent_dir / "core.rbf")
+        assert timing_without_repair_provenance(result) == timing_without_repair_provenance(parent_dir)
         handed_checks[label] = dict(trees=len(request["nets"]), final_trees_match=True,
                                    rows_identical=True, timing_pass=paired["status"]["timing_pass"])
 
@@ -202,8 +211,11 @@ endmodule
         assert observed["placement"]["group_plan"] == group_plan
         assert observed["status"]["group_placement_match"]
         assert parent["rows"] == observed["rows"]
-        assert all(feedback.digest(parent_dir / name) == feedback.digest(replay / name)
-                   for name in ("core.rbf", "timing.json"))
+        assert feedback.digest(parent_dir / "core.rbf") == feedback.digest(replay / "core.rbf")
+        if preserve:
+            assert timing_without_repair_provenance(parent_dir) == timing_without_repair_provenance(replay)
+        else:
+            assert feedback.digest(parent_dir / "timing.json") == feedback.digest(replay / "timing.json")
         check_dir = root / (label + "-check")
         check_command = [str(args.nextpnr.resolve()), "--device", "5CSEBA6U23I7", "--json", str(root/"synth.json"),
             "--qsf", str(root/"pins.qsf"), "--sdc", str(root/("tight.sdc" if tight else "clocks.sdc")),
