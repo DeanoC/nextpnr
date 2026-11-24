@@ -77,6 +77,44 @@ int main()
     require(!policy.saturated(0, 0) && !policy.saturated(9, 2) && !policy.saturated(1, 9),
             "the boost-ceiling shortcut must remain bounded to small nonzero congestion");
 
+    // Issue #324: a 5-wire, 10-net repair plateau misses both tiny (<=4 wires)
+    // and saturated (<=8 wires, <=8 nets). Once at the boost ceiling, three
+    // consecutive stall periods without improving the attempt's minimum overuse
+    // must request a plateau exit.
+    policy.begin(true);
+    policy.observe(5);
+    require(!policy.saturated(5, 10), "5 wires and 10 nets must still miss saturated()");
+    require(!policy.stalled_at_ceiling(5), "first ceiling stall period must not exit immediately");
+    require(!policy.stalled_at_ceiling(6), "second ceiling stall period must not exit immediately");
+    require(policy.stalled_at_ceiling(5), "third ceiling stall period without improvement must exit");
+
+    // A descending repair attempt must keep running at the boost ceiling: each
+    // drop below the attempt's best resets the ceiling stall count.
+    policy.begin(true);
+    policy.observe(40);
+    require(!policy.stalled_at_ceiling(40), "stall 1 at 40 wires");
+    require(!policy.stalled_at_ceiling(42), "stall 2 at 42 wires");
+    policy.observe(35);
+    require(!policy.stalled_at_ceiling(35), "descent to 35 wires must reset ceiling stall count (1/3)");
+    require(!policy.stalled_at_ceiling(36), "stall 2/3 after descent to 35 wires");
+    policy.observe(20);
+    require(!policy.stalled_at_ceiling(20), "descent to 20 wires must reset ceiling stall count (1/3)");
+    require(!policy.stalled_at_ceiling(21), "stall 2/3 after descent to 20 wires");
+    require(policy.stalled_at_ceiling(20), "stall 3/3 at 20 wires must exit");
+
+    // Clearing to zero overuse resets per-attempt tracking for any later cycle.
+    policy.observe(0);
+    policy.observe(12);
+    require(!policy.stalled_at_ceiling(12), "fresh conflict after zero must start a fresh ceiling stall count");
+    require(!policy.stalled_at_ceiling(12), "second stall after zero must still continue");
+    require(policy.stalled_at_ceiling(12), "third stall after zero must exit");
+
+    // Initial routing (no frozen repair arcs) must never exit on stalled_at_ceiling.
+    policy.begin(false);
+    policy.observe(5);
+    for (int i = 0; i < 20; ++i)
+        require(!policy.stalled_at_ceiling(5), "initial routing must retain its full budget at the boost ceiling");
+
     if (failures != 0)
         return 1;
     std::puts("PASS: GPU congestion plateau policy");
