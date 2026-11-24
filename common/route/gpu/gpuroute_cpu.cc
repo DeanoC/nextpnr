@@ -199,21 +199,24 @@ inline bool less_pair(float g1, uint32_t lo1, float g2, uint32_t lo2)
 struct Cand
 {
     float g;
+    float f;
     int32_t wire;
     uint32_t edge;
 };
 
+constexpr uint32_t WIRE_UNAVAILABLE_BIT = 0x80000000u;
+
 // Everything the relaxation of an edge reads about its destination wire, in
-// one 16-byte record so a random wire costs one cache line, not five
+// one 16-byte record so a random wire costs one cache line, not five.
+// Bit 31 of occ_flags stores WIRE_UNAVAILABLE; bits 0..30 store occupancy.
 struct WireRec
 {
     int16_t x, y;
-    uint8_t flags;
-    uint8_t pad[3];
     int32_t reserved;
-    int32_t occ;
+    uint32_t occ_flags;
     float hist;
 };
+static_assert(sizeof(WireRec) == 16, "WireRec must be 16 bytes");
 
 // Per-thread search state
 struct Scratch
@@ -235,42 +238,111 @@ class CpuBackend : public Backend
     }
 
     bool init(const GraphData &graph, int /*small_slots*/, int small_bits, int /*large_slots*/, int large_bits,
-              std::string & /*error*/) override
+              std::string &error) override
     {
+        if (graph.n_wires > int32_t(EDGE_DST_MASK)) {
+            error = "graph wire count exceeds EdgeRec 30-bit destination limit";
+            return false;
+        }
         g_ = graph;
-        // A null region is "no architecture-reserved pips". Materialise zeros
-        // once so the search can load edge_region[ei] on every usable edge.
-        if (g_.edge_region == nullptr && g_.n_edges > 0) {
-            edge_region_none_.assign((size_t)g_.n_edges, 0);
-            g_.edge_region = edge_region_none_.data();
+        if (g_.edge_src != nullptr) {
+            edge_src_owned_.clear();
+            edge_src_ptr_ = g_.edge_src;
         } else {
-            edge_region_none_.clear();
+            // The path walk needs the source wire of an edge; one load beats a
+            // binary search over the row offsets for every hop.
+            edge_src_owned_.resize((size_t)g_.n_edges);
+            for (int32_t w = 0; w < g_.n_wires; w++)
+                for (int32_t e = g_.out_off[w]; e < g_.out_off[w + 1]; e++)
+                    edge_src_owned_[e] = w;
+            edge_src_ptr_ = edge_src_owned_.data();
         }
-        // Same stand-in for the halo fence: a null list is no outside-halo pips.
-        if (g_.edge_outside_halo == nullptr && g_.n_edges > 0) {
-            edge_outside_halo_none_.assign((size_t)g_.n_edges, 0);
-            g_.edge_outside_halo = edge_outside_halo_none_.data();
-        } else {
-            edge_outside_halo_none_.clear();
-        }
-        // The path walk needs the source wire of an edge; one load beats a
-        // binary search over the row offsets for every hop.
-        edge_src_.resize((size_t)g_.n_edges);
-        for (int32_t w = 0; w < g_.n_wires; w++)
-            for (int32_t e = g_.out_off[w]; e < g_.out_off[w + 1]; e++)
-                edge_src_[e] = w;
         small_cap_ = 1 << small_bits;
         large_cap_ = 1 << large_bits;
-        wires_.resize((size_t)graph.n_wires);
-        for (int32_t w = 0; w < graph.n_wires; w++) {
-            WireRec &r = wires_[w];
-            r.x = graph.wire_x[w];
-            r.y = graph.wire_y[w];
-            r.flags = graph.wire_flags[w];
-            r.pad[0] = r.pad[1] = r.pad[2] = 0;
-            r.reserved = graph.wire_reserved[w];
-            r.occ = graph.wire_occ[w];
-            r.hist = graph.wire_hist[w];
+        const size_t n_wires = (size_t)graph.n_wires;
+        const size_t n_edges = (size_t)graph.n_edges;
+        if (wires_cap_ < n_wires) {
+            wires_.reset(new WireRec[n_wires]);
+            wires_cap_ = n_wires;
+        }
+        const bool need_pack_edges = (graph.edges == nullptr);
+        if (!need_pack_edges) {
+            edges_owned_.reset();
+            edges_cap_ = 0;
+            edges_ptr_ = graph.edges;
+        } else {
+            if (edges_cap_ < n_edges) {
+                edges_owned_.reset(new EdgeRec[n_edges]);
+                edges_cap_ = n_edges;
+            }
+            edges_ptr_ = edges_owned_.get();
+        }
+        const uint8_t *ereg = graph.edge_region;
+        const uint8_t *ehalo = graph.edge_outside_halo;
+        auto pack_wires = [&](size_t b, size_t e) {
+            WireRec *wp = wires_.get();
+            for (size_t w = b; w < e; w++) {
+                WireRec &r = wp[w];
+                r.x = graph.wire_x[w];
+                r.y = graph.wire_y[w];
+                r.reserved = graph.wire_reserved[w];
+                const uint32_t unavail = (graph.wire_flags[w] & WIRE_UNAVAILABLE) ? WIRE_UNAVAILABLE_BIT : 0u;
+                r.occ_flags = unavail | (uint32_t(graph.wire_occ[w]) & ~WIRE_UNAVAILABLE_BIT);
+                r.hist = graph.wire_hist[w];
+            }
+        };
+        auto pack_edges = [&](size_t b, size_t e) {
+            EdgeRec *ep = edges_owned_.get();
+            if (ereg == nullptr && ehalo == nullptr) {
+                for (size_t i = b; i < e; i++) {
+                    ep[i].dst_flags = uint32_t(graph.out_dst[i]);
+                    ep[i].cost = graph.edge_cost[i];
+                }
+            } else {
+                for (size_t i = b; i < e; i++) {
+                    uint32_t df = uint32_t(graph.out_dst[i]);
+                    if (ereg != nullptr && ereg[i])
+                        df |= EDGE_REGION_BIT;
+                    if (ehalo != nullptr && ehalo[i])
+                        df |= EDGE_OUTSIDE_HALO_BIT;
+                    ep[i].dst_flags = df;
+                    ep[i].cost = graph.edge_cost[i];
+                }
+            }
+        };
+#ifdef NPNR_DISABLE_THREADS
+        const int nt = 1;
+#else
+        const size_t work = n_wires + (need_pack_edges ? n_edges : 0);
+        const int nt = (work >= 65536 && threads_ > 1) ? threads_ : 1;
+#endif
+        if (nt <= 1) {
+            pack_wires(0, n_wires);
+            if (need_pack_edges)
+                pack_edges(0, n_edges);
+        } else {
+#ifndef NPNR_DISABLE_THREADS
+            std::vector<std::thread> pool;
+            pool.reserve(nt - 1);
+            const size_t wchunk = (n_wires + nt - 1) / nt;
+            const size_t echunk = (n_edges + nt - 1) / nt;
+            for (int t = 1; t < nt; t++) {
+                const size_t wb = std::min(n_wires, size_t(t) * wchunk);
+                const size_t we = std::min(n_wires, wb + wchunk);
+                const size_t eb = std::min(n_edges, size_t(t) * echunk);
+                const size_t ee = std::min(n_edges, eb + echunk);
+                pool.emplace_back([&, wb, we, eb, ee]() {
+                    pack_wires(wb, we);
+                    if (need_pack_edges)
+                        pack_edges(eb, ee);
+                });
+            }
+            pack_wires(0, std::min(n_wires, wchunk));
+            if (need_pack_edges)
+                pack_edges(0, std::min(n_edges, echunk));
+            for (auto &th : pool)
+                th.join();
+#endif
         }
         return true;
     }
@@ -282,14 +354,14 @@ class CpuBackend : public Backend
     {
         for (size_t i = 0; i < count; i++) {
             WireRec &r = wires_[wires[i]];
-            r.occ = occ[i];
+            r.occ_flags = (r.occ_flags & WIRE_UNAVAILABLE_BIT) | (uint32_t(occ[i]) & ~WIRE_UNAVAILABLE_BIT);
             r.hist = hist[i];
             r.reserved = reserved[i];
         }
     }
 
     // Source wire of CSR edge e
-    int edge_src(int e) const { return edge_src_[e]; }
+    int edge_src(int e) const { return edge_src_ptr_[e]; }
 
     void route(const RouteParams &p, const std::vector<TaskDesc> &tasks, const std::vector<ArcDesc> &arcs,
                const std::vector<int32_t> &seeds, const std::vector<float> &seed_delay,
@@ -370,9 +442,12 @@ class CpuBackend : public Backend
             ArcResult &r = results[task.arc_off + a];
             r.path_off = task.path_off + path_pos;
             const int sink = arc.sink;
-            const WireRec *wires = wires_.data();
+            const WireRec *wires = wires_.get();
+            const EdgeRec *edges = edges_ptr_;
             const int sx = wires[sink].x, sy = wires[sink].y;
             auto h_est = [&](int x, int y) {
+                if (p.est_weight == 0.0f)
+                    return 0.0f;
                 int dx = x - sx, dy = y - sy;
                 dx = dx < 0 ? -dx : dx;
                 dy = dy < 0 ? -dy : dy;
@@ -383,8 +458,7 @@ class CpuBackend : public Backend
             table.reset();
             far.clear();
             exact_frontier.clear();
-            auto exact_push = [&](float g, int32_t wire) {
-                const float f = g + h_est(wires[wire].x, wires[wire].y);
+            auto exact_push = [&](float g, float f, int32_t wire) {
                 // The scan reference never chooses a NaN as its minimum.
                 if (std::isnan(f))
                     return;
@@ -426,10 +500,11 @@ class CpuBackend : public Backend
                 e.g = seed_scale * d;
                 e.sdelay = d;
                 e.sload = ld;
+                const float f0 = e.g + h_est(wires[w].x, wires[w].y);
                 if (p.exact)
-                    exact_push(e.g, w);
+                    exact_push(e.g, f0, w);
                 else
-                    far.push_back(Pile{e.g, 0.0f, w});
+                    far.push_back(Pile{e.g, f0, w});
             }
             // An earlier arc already reaches the sink: routed, with no
             // new wires. A searched path would give the sink a second
@@ -474,55 +549,64 @@ class CpuBackend : public Backend
                     // pass 1: compact the frontier, track the f range
                     far2.clear();
                     float minf = INF, maxf = 0.0f;
+                    bool any_nonfinite = false;
                     for (const Pile &e : far) {
+                        if (e.f >= prune)
+                            continue;
                         const int s = table.find(e.wire);
                         if (s < 0 || table.at(s).g != e.g)
                             continue;
-                        const float f = e.g + h_est(wires[e.wire].x, wires[e.wire].y);
-                        if (f >= prune)
-                            continue;
-                        minf = std::min(minf, f);
-                        maxf = std::max(maxf, f);
-                        far2.push_back(Pile{e.g, f, e.wire});
+                        if (!(e.f < INF))
+                            any_nonfinite = true;
+                        minf = std::min(minf, e.f);
+                        maxf = std::max(maxf, e.f);
+                        far2.push_back(e);
                     }
                     if (far2.empty() || minf == INF || (have_best && minf >= best_g))
                         break;
                     const float range = maxf - minf;
                     const float binw = range > 1e-6f ? range / (float)NBINS : 0.0f;
 
-                    // pass 2: histogram and threshold
-                    float thr = INF;
-                    if (binw > 0.0f) {
-                        std::fill(hist.begin(), hist.end(), 0);
-                        for (const Pile &e : far2) {
-                            int b = (int)((e.f - minf) / binw);
-                            b = b < 0 ? 0 : (b >= NBINS ? NBINS - 1 : b);
-                            hist[b]++;
-                        }
-                        int cum = 0;
-                        int want = p.expand_k;
-                        if (p.expand_div > 0 && int(far2.size()) / p.expand_div > want)
-                            want = int(far2.size()) / p.expand_div;
-                        for (int b = 0; b < NBINS; b++) {
-                            cum += hist[b];
-                            if (cum >= want) {
-                                thr = minf + (float)(b + 1) * binw;
-                                break;
+                    if (!any_nonfinite && (binw <= 0.0f || int(far2.size()) < p.expand_k)) {
+                        // Every entry in far2 is finite and threshold stays +INF:
+                        // expand all of far2 directly without histogramming or copying.
+                        near.swap(far2);
+                        far.clear();
+                    } else {
+                        // pass 2: histogram and threshold
+                        float thr = INF;
+                        if (binw > 0.0f) {
+                            std::fill(hist.begin(), hist.end(), 0);
+                            for (const Pile &e : far2) {
+                                int b = (int)((e.f - minf) / binw);
+                                b = b < 0 ? 0 : (b >= NBINS ? NBINS - 1 : b);
+                                hist[b]++;
+                            }
+                            int cum = 0;
+                            int want = p.expand_k;
+                            if (p.expand_div > 0 && int(far2.size()) / p.expand_div > want)
+                                want = int(far2.size()) / p.expand_div;
+                            for (int b = 0; b < NBINS; b++) {
+                                cum += hist[b];
+                                if (cum >= want) {
+                                    thr = minf + (float)(b + 1) * binw;
+                                    break;
+                                }
                             }
                         }
-                    }
 
-                    // pass 3: split into this step's expansion set and the rest
-                    near.clear();
-                    far.clear();
-                    for (const Pile &e : far2) {
-                        // The bin boundary can round back to minf when the range
-                        // is small relative to the costs. Always expand the minima
-                        // so a nonempty frontier cannot repeat without progress.
-                        if (e.f < thr || e.f == minf)
-                            near.push_back(e);
-                        else
-                            far.push_back(e);
+                        // pass 3: split into this step's expansion set and the rest
+                        near.clear();
+                        far.clear();
+                        for (const Pile &e : far2) {
+                            // The bin boundary can round back to minf when the range
+                            // is small relative to the costs. Always expand the minima
+                            // so a nonempty frontier cannot repeat without progress.
+                            if (e.f < thr || e.f == minf)
+                                near.push_back(e);
+                            else
+                                far.push_back(e);
+                        }
                     }
                 }
                 prune = have_best ? best_g : INF;
@@ -539,33 +623,43 @@ class CpuBackend : public Backend
                         if (su >= 0 && table.at(su).lo == NONE_EDGE)
                             branch_extra = p.load_penalty * table.at(su).sload;
                     }
-                    for (int ei = g_.out_off[u]; ei < g_.out_off[u + 1]; ei++) {
-                        const int v = g_.out_dst[ei];
-                        float c = g_.edge_cost[ei];
-                        if (c < 0.0f || (g_.edge_region[ei] && !task.allow_reserved))
+                    const int e0 = g_.out_off[u], e1 = g_.out_off[u + 1];
+                    for (int ei = e0; ei < e1; ei++) {
+                        const EdgeRec er = edges[ei];
+                        float c = er.cost;
+                        if (c < 0.0f || (!task.allow_reserved && (er.dst_flags & EDGE_REGION_BIT)))
                             continue;
+                        const int v = int(er.dst_flags & EDGE_DST_MASK);
                         c += p.pip_adder;
                         const WireRec &wv = wires[v];
                         const int vx = wv.x, vy = wv.y;
-                        if (task.stay_in_halo && g_.edge_outside_halo[ei] &&
+                        if (task.stay_in_halo && (er.dst_flags & EDGE_OUTSIDE_HALO_BIT) &&
                             !shell_tile_hit(shells, task.shell_off, task.shell_cnt, vx, vy))
                             continue;
                         if (p.use_bb && (vx < task.bb_x0 || vx > task.bb_x1 || vy < task.bb_y0 || vy > task.bb_y1))
                             continue;
-                        if (wv.flags & WIRE_UNAVAILABLE)
+                        if (wv.occ_flags & WIRE_UNAVAILABLE_BIT)
                             continue;
                         const int rsv = wv.reserved;
                         if (rsv != -1 && (rsv & ~RESERVED_SOFT) != task.net &&
                             !(p.ignore_soft && (rsv & RESERVED_SOFT)))
                             continue;
-                        const float hist_c = p.ignore_hist ? 1.0f : 1.0f + arc.crit_weight * (wv.hist - 1.0f);
-                        const float pres = 1.0f + (float)wv.occ * p.curr_cong_weight * arc.crit_weight;
-                        int bdx = vx - task.cx, bdy = vy - task.cy;
-                        bdx = bdx < 0 ? -bdx : bdx;
-                        bdy = bdy < 0 ? -bdy : bdy;
-                        const float bias =
-                                p.bias_factor * (c / (float)task.fanout) * ((float)(bdx + bdy) / (float)task.hpwl);
-                        const float gv = gu + c * hist_c * pres + bias + branch_extra;
+                        float step_c = c;
+                        if (arc.crit_weight != 0.0f) {
+                            const float hist_c = p.ignore_hist ? 1.0f : 1.0f + arc.crit_weight * (wv.hist - 1.0f);
+                            const float pres = 1.0f + (float)(wv.occ_flags & ~WIRE_UNAVAILABLE_BIT) *
+                                                              p.curr_cong_weight * arc.crit_weight;
+                            step_c = c * hist_c * pres;
+                        }
+                        float bias = 0.0f;
+                        if (p.bias_factor != 0.0f) {
+                            int bdx = vx - task.cx, bdy = vy - task.cy;
+                            bdx = bdx < 0 ? -bdx : bdx;
+                            bdy = bdy < 0 ? -bdy : bdy;
+                            bias = p.bias_factor * (c / (float)task.fanout) *
+                                   ((float)(bdx + bdy) / (float)task.hpwl);
+                        }
+                        const float gv = gu + step_c + bias + branch_extra;
                         if (v == sink) {
                             if (!have_best || less_pair(gv, (uint32_t)ei, best_g, best_edge)) {
                                 have_best = true;
@@ -583,7 +677,7 @@ class CpuBackend : public Backend
                             if (cur.lo == NONE_EDGE || !less_pair(gv, (uint32_t)ei, cur.g, cur.lo))
                                 continue;
                         }
-                        cand.push_back(Cand{gv, v, (uint32_t)ei});
+                        cand.push_back(Cand{gv, f, v, (uint32_t)ei});
                     }
                 }
 
@@ -602,9 +696,9 @@ class CpuBackend : public Backend
                     // re-queue only when g itself improves
                     if (cd.g < old_g) {
                         if (p.exact)
-                            exact_push(cd.g, cd.wire);
+                            exact_push(cd.g, cd.f, cd.wire);
                         else
-                            far.push_back(Pile{cd.g, 0.0f, cd.wire});
+                            far.push_back(Pile{cd.g, cd.f, cd.wire});
                     }
                 }
                 steps++;
@@ -650,7 +744,7 @@ class CpuBackend : public Backend
             float d = attach_delay;
             for (int k = pos - 1; k >= path_pos; k--) {
                 PathEntry &pe = paths[task.path_off + k];
-                d += g_.edge_cost[pe.edge];
+                d += edges[pe.edge].cost;
                 pe.delay = d;
             }
             r.path_len = pos - path_pos;
@@ -661,10 +755,13 @@ class CpuBackend : public Backend
     GraphData g_;
     int small_cap_ = 1 << 16, large_cap_ = 1 << 22;
     int threads_ = 1;
-    std::vector<uint8_t> edge_region_none_;       // owned stand-in when GraphData::edge_region is null
-    std::vector<uint8_t> edge_outside_halo_none_; // stand-in when edge_outside_halo is null
-    std::vector<int32_t> edge_src_; // n_edges, source wire of each CSR edge
-    std::vector<WireRec> wires_;     // n_wires
+    std::vector<int32_t> edge_src_owned_; // owned fallback when GraphData::edge_src is null
+    const int32_t *edge_src_ptr_ = nullptr;
+    std::unique_ptr<WireRec[]> wires_; // n_wires
+    size_t wires_cap_ = 0;
+    std::unique_ptr<EdgeRec[]> edges_owned_; // owned fallback when GraphData::edges is null
+    size_t edges_cap_ = 0;
+    const EdgeRec *edges_ptr_ = nullptr;
     std::vector<Scratch> scratch_;
     BackendStats stats_;
 };

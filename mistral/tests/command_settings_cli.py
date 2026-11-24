@@ -55,7 +55,7 @@ with tempfile.TemporaryDirectory(prefix="nextpnr-gpu-required-") as temporary:
                 "ports": {},
                 "cells": {},
                 "netnames": {},
-                "settings": {"gpurouter/required": "0"},
+                "settings": {"gpurouter/required": "0", "gpurouter/device": "1"},
             }
         }
     }), encoding="utf-8")
@@ -68,3 +68,21 @@ with tempfile.TemporaryDirectory(prefix="nextpnr-gpu-required-") as temporary:
     required = settings.get("gpurouter/required")
     if not isinstance(required, str) or set(required) - {"0", "1"} or "1" not in required:
         raise SystemExit(f"checkpoint settings overrode --gpu-required: {required!r}")
+    if "gpurouter/device" in settings:
+        raise SystemExit(f"checkpoint reload retained stale gpurouter/device: {settings['gpurouter/device']!r}")
+
+    for label, extra, check in (
+        ("--gpu-device", ("--gpu-device", "0"), lambda v: isinstance(v, str) and set(v) == {"0"}),
+        ("--gpu-opt", ("--gpu-opt", "device=0"), lambda v: v == "0 "),
+        ("--set", ("--set", "gpurouter/device=0"), lambda v: v == "0 "),
+    ):
+        override_out = Path(temporary) / f"written-{label.strip('-')}.json"
+        res = run("--device", "5CEBA2F17A7", "--json", str(checkpoint), *extra, "--no-pack",
+                  "--no-place", "--no-route", "--write", str(override_out))
+        out = res.stdout + res.stderr
+        if res.returncode != 0:
+            raise SystemExit(f"checkpoint import with {label} failed:\n{out}")
+        override_settings = json.loads(override_out.read_text(encoding="utf-8"))["modules"]["top"]["settings"]
+        value = override_settings.get("gpurouter/device")
+        if not check(value):
+            raise SystemExit(f"checkpoint import with {label} lost gpurouter/device override: {value!r}")

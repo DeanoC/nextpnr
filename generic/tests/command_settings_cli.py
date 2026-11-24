@@ -96,3 +96,39 @@ with tempfile.TemporaryDirectory(prefix="nextpnr-json-cli-settings-") as tempora
     require(kept_settings.get("gpurouter/histCongWeight") == "9",
             f"unspecified scaffold setting was dropped: {kept_settings.get('gpurouter/histCongWeight')!r}",
             kept_settings)
+    # The GPU device belongs to the invocation, not to the checkpoint.
+    require("gpurouter/device" not in kept_settings,
+            f"checkpoint reload retained stale gpurouter/device: {kept_settings.get('gpurouter/device')!r}",
+            kept_settings)
+
+    # That clear runs before packing and placement, where a new IdString can
+    # change placement, so it must not intern gpurouter/device in a run that
+    # never names it. jsonwrite numbers disconnected cell bits after the last
+    # interned IdString, so naming the key only in the saved settings of an
+    # otherwise identical design must add exactly one.
+    def disconnected_bit(name, settings):
+        design = temporary / f"{name}.json"
+        rewritten = temporary / f"{name}-written.json"
+        design.write_text(json.dumps({
+            "modules": {
+                "top": {
+                    "attributes": {"top": "1"},
+                    "ports": {},
+                    "cells": {"probe": {"type": "PROBE", "port_directions": {"A": "input"},
+                                        "connections": {"A": ["x", "x"]}}},
+                    "netnames": {},
+                    "settings": settings,
+                }
+            }
+        }), encoding="utf-8")
+        result = run("--json", str(design), "--no-pack", "--no-place", "--no-route", "--write", str(rewritten))
+        if result.returncode != 0:
+            raise SystemExit(f"{name} design import failed:\n{result.stdout}{result.stderr}")
+        return json.loads(rewritten.read_text(encoding="utf-8"))["modules"]["top"]["cells"]["probe"][
+            "connections"]["A"][0]
+
+    fresh = disconnected_bit("fresh", {})
+    saved = disconnected_bit("saved-device", {"gpurouter/device": "1"})
+    if saved != fresh + 1:
+        raise SystemExit("a run that never names gpurouter/device interned it: first disconnected bit "
+                         f"{fresh} without the key, {saved} with it only in the saved settings")

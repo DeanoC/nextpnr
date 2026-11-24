@@ -38,6 +38,21 @@
 
 namespace gpuroute {
 
+// Packed per-edge record: destination wire + fence bits + base cost in one
+// 8-byte record. Bit 31 is reserved-region, bit 30 is outside-halo, bits 0..29
+// are the destination wire index. Intentionally trivially default-constructible
+// so callers can allocate an uninitialized array and populate it in parallel.
+constexpr uint32_t EDGE_REGION_BIT = 0x80000000u;
+constexpr uint32_t EDGE_OUTSIDE_HALO_BIT = 0x40000000u;
+constexpr uint32_t EDGE_DST_MASK = 0x3FFFFFFFu;
+
+struct alignas(8) EdgeRec
+{
+    uint32_t dst_flags;
+    float cost;
+};
+static_assert(sizeof(EdgeRec) == 8, "EdgeRec must be 8 bytes");
+
 // Flattened routing graph in CSR (compressed sparse row) form.
 //
 // Wires are numbered 0..n_wires-1. Edge e (a pip) goes from the wire whose
@@ -50,8 +65,15 @@ struct GraphData
     int32_t n_wires = 0;
     int64_t n_edges = 0;
     const int32_t *out_off = nullptr;   // n_wires + 1
-    const int32_t *out_dst = nullptr;   // n_edges
-    const float *edge_cost = nullptr;   // n_edges
+    const int32_t *out_dst = nullptr;   // n_edges (optional when edges != nullptr)
+    // Optional precomputed source wire per CSR edge (n_edges). nullptr causes
+    // the backend to derive it from out_off during init().
+    const int32_t *edge_src = nullptr;
+    // Optional pre-packed EdgeRec array (n_edges). When non-null, backends
+    // use it directly instead of packing out_dst/edge_cost/edge_region/
+    // edge_outside_halo during init().
+    const EdgeRec *edges = nullptr;
+    const float *edge_cost = nullptr;   // n_edges (used when edges == nullptr)
     // n_edges. 1 if a non-member net must not use the pip. nullptr means no
     // edge is reserved, the same as an all-zero array. Backends honour that
     // default so a caller that does not care about reserved regions (including
