@@ -98,6 +98,12 @@ live RNG state. If `--set` and a dedicated command-line option target the same
 setting, nextpnr reports a conflict; remove one of them. Repeating `--set` for
 the same key is allowed, and the last `--set` value is used.
 
+A reloaded JSON checkpoint does not carry a GPU selection over: its saved
+`gpurouter/device` is dropped on import, because the index belongs to the run
+that chose it and to that run's device numbering (for example
+`HIP_VISIBLE_DEVICES`). To select a device for the new run, pass
+`--gpu-device`, `--gpu-opt device=N` or `--set gpurouter/device=N` again.
+
 Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 
 | Setting | Default | Meaning |
