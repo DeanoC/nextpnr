@@ -55,11 +55,15 @@ constant constexpr ulong EMPTY_VAL = ~0ul;
 constant constexpr uint INF_BITS = 0x7f800000u;
 constant constexpr int NBINS = 128;
 constant constexpr int NPILES = 4;
+constant constexpr int EXPAND_CHUNK = 256;
 // B1 tags a candidate whose g is below its wire's step-start g in the top
 // bit of its parent edge (edge indices are below 2^31)
 constant constexpr uint IMPROVES_G = 0x80000000u;
 
-constant constexpr int WIRE_UNAVAILABLE = 0x01;
+constant constexpr uint WIRE_UNAVAILABLE_BIT = 0x80000000u;
+constant constexpr uint EDGE_REGION_BIT = 0x80000000u;
+constant constexpr uint EDGE_OUTSIDE_HALO_BIT = 0x40000000u;
+constant constexpr uint EDGE_DST_MASK = 0x3FFFFFFFu;
 constant constexpr int RESERVED_SOFT = 0x40000000;
 
 constant constexpr int ARC_OK = 0, ARC_NO_PATH = 1, ARC_OVERFLOW = 2, ARC_PATH_FULL = 3;
@@ -73,15 +77,22 @@ struct RouteParams
 };
 
 // Everything the relaxation of an edge reads about its destination wire, in
-// one record (32 bytes with its alignment)
+// one 16-byte record. Bit 31 of occ_flags stores WIRE_UNAVAILABLE; bits 0..30
+// store occupancy.
 struct alignas(16) WireRec
 {
     short x, y;
-    uchar flags;
-    uchar pad[3];
     int reserved;
-    int occ;
+    uint occ_flags;
     float hist;
+};
+
+// Packed per-edge record: destination wire + region/halo bits + base cost in
+// one 8-byte record.
+struct alignas(8) EdgeRec
+{
+    uint dst_flags;
+    float cost;
 };
 
 struct TaskDesc
@@ -129,12 +140,13 @@ struct BlockState
     atomic_int touched_n;
     atomic_int fail;
     atomic_int inserted;
-    atomic_int expanded;
+    int expanded;
     int steps;
     int path_pos;
     int far_idx;
-    int decision; // 0 continue, 1 stop
-    int reached;  // an earlier arc of the task already routed through the sink
+    int decision;   // 0 continue, 1 stop
+    int reached;    // an earlier arc of the task already routed through the sink
+    int expand_all; // 1 when every compacted frontier entry is expanded directly
     float binw;
     uint thr_bits;
     uint prune_bits;
@@ -224,6 +236,8 @@ static inline int table_insert(device atomic_uint *keys, int mask, int max_probe
 
 static inline float h_est(constant RouteParams &p, int x, int y, int sx, int sy)
 {
+    if (p.est_weight == 0.0f)
+        return 0.0f;
     int dx = x - sx, dy = y - sy;
     dx = dx < 0 ? -dx : dx;
     dy = dy < 0 ? -dy : dy;
@@ -247,23 +261,27 @@ static inline bool shell_tile_hit(const device int *tiles, int off, int cnt, int
 }
 
 [[max_total_threads_per_threadgroup(1024)]] kernel void
-route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst [[buffer(1)]],
-             const device int *edge_src [[buffer(2)]], const device float *edge_cost [[buffer(3)]],
-             const device uchar *edge_region [[buffer(4)]], const device uchar *edge_outside_halo [[buffer(5)]],
-             const device WireRec *wires [[buffer(6)]], constant RouteParams &p [[buffer(7)]],
-             constant LaunchArgs &la [[buffer(8)]], const device TaskDesc *tasks [[buffer(9)]],
-             const device ArcDesc *arcs [[buffer(10)]], const device int *seeds [[buffer(11)]],
-             const device float *seed_delay [[buffer(12)]], const device float *seed_load [[buffer(13)]],
-             const device int *shell_tiles [[buffer(14)]], device atomic_uint *sc_keys [[buffer(15)]],
-             device ulong *sc_vals [[buffer(16)]], device float *sc_sdelay [[buffer(17)]],
-             device float *sc_sload [[buffer(18)]], device ulong *sc_piles [[buffer(19)]],
-             device uint *sc_cand_par [[buffer(20)]], device uint *sc_touched [[buffer(21)]],
-             device ulong *sc_best [[buffer(22)]], device ArcResult *results [[buffer(23)]],
-             device PathEntry *paths [[buffer(24)]], uint tid_u [[thread_index_in_threadgroup]],
-             uint bid [[threadgroup_position_in_grid]], uint nblocks [[threadgroups_per_grid]])
+route_kernel(const device int *out_off [[buffer(0)]], const device int *edge_src [[buffer(1)]],
+             const device EdgeRec *edges [[buffer(2)]], const device WireRec *wires [[buffer(3)]],
+             constant RouteParams &p [[buffer(4)]], constant LaunchArgs &la [[buffer(5)]],
+             const device TaskDesc *tasks [[buffer(6)]], const device ArcDesc *arcs [[buffer(7)]],
+             const device int *seeds [[buffer(8)]], const device float *seed_delay [[buffer(9)]],
+             const device float *seed_load [[buffer(10)]], const device int *shell_tiles [[buffer(11)]],
+             device atomic_uint *sc_keys [[buffer(12)]], device ulong *sc_vals [[buffer(13)]],
+             device float *sc_sdelay [[buffer(14)]], device float *sc_sload [[buffer(15)]],
+             device ulong *sc_piles [[buffer(16)]], device uint *sc_cand_par [[buffer(17)]],
+             device uint *sc_touched [[buffer(18)]], device ulong *sc_best [[buffer(19)]],
+             device ArcResult *results [[buffer(20)]], device PathEntry *paths [[buffer(21)]],
+             uint tid_u [[thread_index_in_threadgroup]], uint bid [[threadgroup_position_in_grid]],
+             uint nblocks [[threadgroups_per_grid]])
 {
     threadgroup BlockState st;
     threadgroup atomic_int hist[NBINS];
+    threadgroup int ch_off[EXPAND_CHUNK + 1];
+    threadgroup int ch_e0[EXPAND_CHUNK];
+    threadgroup float ch_gu[EXPAND_CHUNK];
+    threadgroup float ch_branch[EXPAND_CHUNK];
+    threadgroup int seg_sum[16];
     const int tid = int(tid_u);
     const int cap = la.cap;
     const int mask = cap - 1;
@@ -300,11 +318,12 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                 st_(st.touched_n, 0);
                 st_(st.fail, 0);
                 st_(st.inserted, 0);
-                st_(st.expanded, 0);
+                st.expanded = 0;
                 st.steps = 0;
                 st.far_idx = 0;
                 st.decision = 0;
                 st.reached = 0;
+                st.expand_all = 0;
                 atomic_store_explicit(&st.minf_bits, INF_BITS, RELAXED);
                 atomic_store_explicit(&st.maxf_bits, 0u, RELAXED);
                 st.prune_bits = INF_BITS;
@@ -361,7 +380,7 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                     sload[s] = ldv;
                     int pos = inc(st.far_n);
                     if (pos < cap)
-                        far[pos] = pack(g0, uint(w));
+                        far[pos] = pack(g0, uint(s)); // slot-indexed frontier
                     else
                         st_(st.fail, FAIL_PILE);
                 }
@@ -383,41 +402,65 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                 const int fn = ld(st.far_n);
                 const float prune = u2f(st.prune_bits);
 
-                // pass 1: drop stale and pruned entries, track the f range
+                // pass 1: drop stale and pruned entries, track the f range.
+                // Frontier entries store (g, table_slot) so stale checks read
+                // vals[sv] directly without hash probing.
+                uint local_minf = INF_BITS;
+                uint local_maxf = 0u;
                 for (int i = tid; i < fn; i += BLOCK) {
                     ulong e = far[i];
-                    const uint v = pack_lo(e);
+                    const uint sv = pack_lo(e);
                     const uint gbits = pack_gbits(e);
-                    int sv = table_find(lookup, mask, p.max_probe, v);
-                    if (sv < 0 || pack_gbits(vals[sv]) != gbits)
+                    if (pack_gbits(vals[sv]) != gbits)
                         continue;
+                    const uint v = lookup[sv];
                     const WireRec wv = wires[v];
                     const float f = u2f(gbits) + h_est(p, wv.x, wv.y, sx, sy);
                     if (f >= prune)
                         continue;
-                    atomic_fetch_min_explicit(&st.minf_bits, f2u(f), RELAXED);
-                    atomic_fetch_max_explicit(&st.maxf_bits, f2u(f), RELAXED);
+                    const uint fb = f2u(f);
+                    if (fb < local_minf)
+                        local_minf = fb;
+                    if (fb > local_maxf)
+                        local_maxf = fb;
                     int pos = inc(st.far2_n);
                     if (pos < cap) {
                         far2[pos] = e;
-                        cand_par[pos] = f2u(f); // f for passes 2 and 3; free until phase A
+                        cand_par[pos] = fb; // f for passes 2 and 3; free until phase A
                     } else
                         st_(st.fail, FAIL_PILE);
                 }
+                if (local_minf < INF_BITS)
+                    atomic_fetch_min_explicit(&st.minf_bits, local_minf, RELAXED);
+                if (local_maxf > 0u)
+                    atomic_fetch_max_explicit(&st.maxf_bits, local_maxf, RELAXED);
                 SYNC();
                 if (tid == 0) {
                     const ulong bv = *best;
                     const bool have_best = bv != EMPTY_VAL;
                     const float bestg = have_best ? pack_g(bv) : u2f(INF_BITS);
                     const uint minf_bits = atomic_load_explicit(&st.minf_bits, RELAXED);
+                    const uint maxf_bits = atomic_load_explicit(&st.maxf_bits, RELAXED);
                     const float minf = u2f(minf_bits);
-                    if (ld(st.fail) || ld(st.far2_n) == 0 || minf_bits == INF_BITS || (have_best && minf >= bestg)) {
+                    int fn2 = ld(st.far2_n);
+                    if (ld(st.fail) || fn2 == 0 || minf_bits == INF_BITS || (have_best && minf >= bestg)) {
                         st.decision = 1;
                     } else {
-                        const float range = u2f(atomic_load_explicit(&st.maxf_bits, RELAXED)) - minf;
-                        st.binw = range > 1e-6f ? range / float(NBINS) : 0.0f;
-                        if (ld(st.far2_n) > cap)
+                        if (fn2 > cap) {
+                            fn2 = cap;
                             st_(st.far2_n, cap);
+                        }
+                        const float range = u2f(maxf_bits) - minf;
+                        st.binw = range > 1e-6f ? range / float(NBINS) : 0.0f;
+                        st.expand_all = ((fn2 < p.expand_k || st.binw <= 0.0f) && maxf_bits < INF_BITS) ? 1 : 0;
+                        if (st.expand_all) {
+                            st_(st.near_n, fn2);
+                            st_(st.far_n, 0);
+                            st_(st.far2_n, 0);
+                            atomic_store_explicit(&st.minf_bits, INF_BITS, RELAXED);
+                            atomic_store_explicit(&st.maxf_bits, 0u, RELAXED);
+                            st.prune_bits = have_best ? pack_gbits(bv) : INF_BITS;
+                        }
                     }
                 }
                 for (int i = tid; i < NBINS; i += BLOCK)
@@ -426,129 +469,187 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                 if (st.decision != 0)
                     break;
 
-                // pass 2: histogram of f over the compacted frontier
-                const int fn2 = ld(st.far2_n);
-                const float minf = u2f(atomic_load_explicit(&st.minf_bits, RELAXED));
-                const float binw = st.binw;
-                if (binw > 0.0f) {
-                    for (int i = tid; i < fn2; i += BLOCK) {
-                        const float f = u2f(cand_par[i]);
-                        int b = int((f - minf) / binw);
-                        b = b < 0 ? 0 : (b >= NBINS ? NBINS - 1 : b);
-                        atomic_fetch_add_explicit(&hist[b], 1, RELAXED);
-                    }
-                }
-                SYNC();
-                if (tid == 0) {
-                    float thr = u2f(INF_BITS);
+                if (!st.expand_all) {
+                    // pass 2: histogram of f over the compacted frontier
+                    const int fn2 = ld(st.far2_n);
+                    const float minf = u2f(atomic_load_explicit(&st.minf_bits, RELAXED));
+                    const float binw = st.binw;
                     if (binw > 0.0f) {
-                        int cum = 0;
-                        int want = p.expand_k;
-                        if (p.expand_div > 0 && fn2 / p.expand_div > want)
-                            want = fn2 / p.expand_div;
-                        for (int b = 0; b < NBINS; b++) {
-                            cum += atomic_load_explicit(&hist[b], RELAXED);
-                            if (cum >= want) {
-                                thr = minf + float(b + 1) * binw;
-                                break;
+                        for (int i = tid; i < fn2; i += BLOCK) {
+                            const float f = u2f(cand_par[i]);
+                            int b = int((f - minf) / binw);
+                            b = b < 0 ? 0 : (b >= NBINS ? NBINS - 1 : b);
+                            atomic_fetch_add_explicit(&hist[b], 1, RELAXED);
+                        }
+                    }
+                    SYNC();
+                    if (tid == 0) {
+                        float thr = u2f(INF_BITS);
+                        if (binw > 0.0f) {
+                            int cum = 0;
+                            int want = p.expand_k;
+                            if (p.expand_div > 0 && fn2 / p.expand_div > want)
+                                want = fn2 / p.expand_div;
+                            for (int b = 0; b < NBINS; b++) {
+                                cum += atomic_load_explicit(&hist[b], RELAXED);
+                                if (cum >= want) {
+                                    thr = minf + float(b + 1) * binw;
+                                    break;
+                                }
+                            }
+                        }
+                        st.thr_bits = f2u(thr);
+                        st_(st.near_n, 0);
+                        st_(st.far_n, 0);
+                    }
+                    SYNC();
+
+                    // pass 3: split the frontier into this step's expansion set and the rest
+                    {
+                        const float thr = u2f(st.thr_bits);
+                        for (int i = tid; i < fn2; i += BLOCK) {
+                            ulong e = far2[i];
+                            const float f = u2f(cand_par[i]);
+                            // The bin boundary can round back to minf when the range
+                            // is small relative to the costs. Always expand the minima
+                            // so a nonempty frontier cannot repeat without progress.
+                            if (f < thr || f == minf) {
+                                int pos = inc(st.near_n);
+                                if (pos < cap)
+                                    near[pos] = e;
+                                else
+                                    st_(st.fail, FAIL_PILE);
+                            } else {
+                                int pos = inc(st.far_n);
+                                if (pos < cap)
+                                    far[pos] = e;
+                                else
+                                    st_(st.fail, FAIL_PILE);
                             }
                         }
                     }
-                    st.thr_bits = f2u(thr);
-                    st_(st.near_n, 0);
-                    st_(st.far_n, 0);
-                }
-                SYNC();
-
-                // pass 3: split the frontier into this step's expansion set and the rest
-                {
-                    const float thr = u2f(st.thr_bits);
-                    for (int i = tid; i < fn2; i += BLOCK) {
-                        ulong e = far2[i];
-                        const float f = u2f(cand_par[i]);
-                        // The bin boundary can round back to minf when the range
-                        // is small relative to the costs. Always expand the minima
-                        // so a nonempty frontier cannot repeat without progress.
-                        if (f < thr || f == minf) {
-                            int pos = inc(st.near_n);
-                            if (pos < cap)
-                                near[pos] = e;
-                            else
-                                st_(st.fail, FAIL_PILE);
-                        } else {
-                            int pos = inc(st.far_n);
-                            if (pos < cap)
-                                far[pos] = e;
-                            else
-                                st_(st.fail, FAIL_PILE);
-                        }
+                    SYNC();
+                    if (tid == 0) {
+                        if (ld(st.near_n) > cap)
+                            st_(st.near_n, cap);
+                        if (ld(st.far_n) > cap)
+                            st_(st.far_n, cap);
+                        st_(st.far2_n, 0);
+                        atomic_store_explicit(&st.minf_bits, INF_BITS, RELAXED);
+                        atomic_store_explicit(&st.maxf_bits, 0u, RELAXED);
+                        const ulong bv = *best;
+                        st.prune_bits = (bv != EMPTY_VAL) ? pack_gbits(bv) : INF_BITS;
+                        if (ld(st.fail))
+                            st.decision = 1;
                     }
+                    SYNC();
+                    if (st.decision != 0)
+                        break;
                 }
-                SYNC();
-                if (tid == 0) {
-                    if (ld(st.near_n) > cap)
-                        st_(st.near_n, cap);
-                    if (ld(st.far_n) > cap)
-                        st_(st.far_n, cap);
-                    st_(st.far2_n, 0);
-                    atomic_store_explicit(&st.minf_bits, INF_BITS, RELAXED);
-                    atomic_store_explicit(&st.maxf_bits, 0u, RELAXED);
-                    const ulong bv = *best;
-                    st.prune_bits = (bv != EMPTY_VAL) ? pack_gbits(bv) : INF_BITS;
-                    if (ld(st.fail))
-                        st.decision = 1;
-                }
-                SYNC();
-                if (st.decision != 0)
-                    break;
 
                 // expansion pass, phase A: relax every edge of the expansion
                 // set against the table state at the start of the step and
-                // record candidates; nothing is written to the table yet
+                // record candidates; nothing is written to the table yet.
+                // Work is flattened across outgoing edges in chunks of up to
+                // EXPAND_CHUNK nodes so all BLOCK threads stay active even on
+                // small frontiers and high-degree wires.
                 {
+                    const device ulong *expand_buf = st.expand_all ? far2 : near;
                     const int nn = ld(st.near_n);
                     const float prune2 = u2f(st.prune_bits);
-                    for (int i = tid; i < nn; i += BLOCK) {
-                        ulong e = near[i];
-                        const uint u = pack_lo(e);
-                        const float gu = pack_g(e);
-                        inc(st.expanded);
-                        // branching off a tree wire that already drives other
-                        // branches loads it further; charge for that
-                        float branch_extra = 0.0f;
-                        if (p.load_penalty > 0.0f) {
-                            const int su = table_find(lookup, mask, p.max_probe, u);
-                            if (su >= 0 && pack_lo(vals[su]) == NONE_SLOT)
-                                branch_extra = p.load_penalty * sload[su];
+                    if (tid == 0)
+                        st.expanded += nn;
+                    for (int base = 0; base < nn; base += EXPAND_CHUNK) {
+                        const int cnt = (nn - base < EXPAND_CHUNK) ? (nn - base) : EXPAND_CHUNK;
+                        for (int j = tid; j < cnt; j += BLOCK) {
+                            const ulong e = expand_buf[base + j];
+                            const uint su = pack_lo(e);
+                            const uint u = lookup[su];
+                            const int e0 = out_off[u];
+                            const int e1 = out_off[u + 1];
+                            ch_e0[j] = e0;
+                            ch_off[j + 1] = e1 - e0;
+                            ch_gu[j] = pack_g(e);
+                            float be = 0.0f;
+                            if (p.load_penalty > 0.0f && pack_lo(vals[su]) == NONE_SLOT)
+                                be = p.load_penalty * sload[su];
+                            ch_branch[j] = be;
                         }
-                        const int e0 = out_off[u], e1 = out_off[u + 1];
-                        for (int ei = e0; ei < e1; ei++) {
-                            const int v = out_dst[ei];
-                            float c = edge_cost[ei];
-                            if (c < 0.0f || (edge_region[ei] && !task.allow_reserved))
+                        SYNC();
+                        for (int seg = tid; seg < 16; seg += BLOCK) {
+                            const int j0 = seg * 16;
+                            int sum = 0;
+                            const int j1 = (j0 + 16 < cnt) ? (j0 + 16) : cnt;
+                            for (int j = j0; j < j1; j++) {
+                                sum += ch_off[j + 1];
+                                ch_off[j + 1] = sum;
+                            }
+                            seg_sum[seg] = sum;
+                        }
+                        SYNC();
+                        if (tid == 0) {
+                            ch_off[0] = 0;
+                            int acc = 0;
+                            for (int seg = 0; seg < 16; seg++) {
+                                const int s = seg_sum[seg];
+                                seg_sum[seg] = acc;
+                                acc += s;
+                            }
+                        }
+                        SYNC();
+                        for (int j = tid; j < cnt; j += BLOCK)
+                            ch_off[j + 1] += seg_sum[j >> 4];
+                        SYNC();
+
+                        const int total_edges = ch_off[cnt];
+                        for (int k = tid; k < total_edges; k += BLOCK) {
+                            int lo = 0, hi = cnt;
+                            while (lo + 1 < hi) {
+                                const int mid = (lo + hi) >> 1;
+                                if (ch_off[mid] <= k)
+                                    lo = mid;
+                                else
+                                    hi = mid;
+                            }
+                            const int ei = ch_e0[lo] + (k - ch_off[lo]);
+                            const float gu = ch_gu[lo];
+                            const float branch_extra = ch_branch[lo];
+                            const EdgeRec er = edges[ei];
+                            float c = er.cost;
+                            if (c < 0.0f || (!task.allow_reserved && (er.dst_flags & EDGE_REGION_BIT)))
                                 continue;
+                            const int v = int(er.dst_flags & EDGE_DST_MASK);
                             c += p.pip_adder;
                             const WireRec wv = wires[v];
                             const int vx = wv.x, vy = wv.y;
-                            if (task.stay_in_halo && edge_outside_halo[ei] &&
+                            if (task.stay_in_halo && (er.dst_flags & EDGE_OUTSIDE_HALO_BIT) &&
                                 !shell_tile_hit(shell_tiles, task.shell_off, task.shell_cnt, vx, vy))
                                 continue;
                             if (p.use_bb && (vx < task.bb_x0 || vx > task.bb_x1 || vy < task.bb_y0 || vy > task.bb_y1))
                                 continue;
-                            if (wv.flags & WIRE_UNAVAILABLE)
+                            if (wv.occ_flags & WIRE_UNAVAILABLE_BIT)
                                 continue;
                             const int rsv = wv.reserved;
                             if (rsv != -1 && (rsv & ~RESERVED_SOFT) != task.net &&
                                 !(p.ignore_soft && (rsv & RESERVED_SOFT)))
                                 continue;
-                            const float hist_c = p.ignore_hist ? 1.0f : 1.0f + arc.crit_weight * (wv.hist - 1.0f);
-                            const float pres = 1.0f + float(wv.occ) * p.curr_cong_weight * arc.crit_weight;
-                            int bdx = vx - task.cx, bdy = vy - task.cy;
-                            bdx = bdx < 0 ? -bdx : bdx;
-                            bdy = bdy < 0 ? -bdy : bdy;
-                            const float bias =
-                                    p.bias_factor * (c / float(task.fanout)) * (float(bdx + bdy) / float(task.hpwl));
-                            const float gv = gu + c * hist_c * pres + bias + branch_extra;
+                            float step_c = c;
+                            if (arc.crit_weight != 0.0f) {
+                                const float hist_c =
+                                        p.ignore_hist ? 1.0f : 1.0f + arc.crit_weight * (wv.hist - 1.0f);
+                                const float pres = 1.0f + float(wv.occ_flags & ~WIRE_UNAVAILABLE_BIT) *
+                                                                  p.curr_cong_weight * arc.crit_weight;
+                                step_c = c * hist_c * pres;
+                            }
+                            float bias = 0.0f;
+                            if (p.bias_factor != 0.0f) {
+                                int bdx = vx - task.cx, bdy = vy - task.cy;
+                                bdx = bdx < 0 ? -bdx : bdx;
+                                bdy = bdy < 0 ? -bdy : bdy;
+                                bias = p.bias_factor * (c / float(task.fanout)) *
+                                       (float(bdx + bdy) / float(task.hpwl));
+                            }
+                            const float gv = gu + step_c + bias + branch_extra;
                             if (v == sink) {
                                 atomic_min_explicit((device atomic_ulong *)best, pack(gv, uint(ei)), RELAXED);
                                 continue;
@@ -571,6 +672,8 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                                 st_(st.fail, FAIL_PILE);
                             }
                         }
+                        if (base + EXPAND_CHUNK < nn)
+                            SYNC();
                     }
                 }
                 SYNC();
@@ -587,11 +690,13 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                 // not depend on thread timing
                 const int cn = ld(st.cand_n);
                 for (int i = tid; i < cn; i += BLOCK) {
-                    const uint v = pack_lo(cand[i]);
+                    const ulong e = cand[i];
+                    const uint v = pack_lo(e);
                     bool ins;
                     int sv = table_insert(keys, mask, p.max_probe, v, ins);
                     if (sv < 0) {
                         st_(st.fail, FAIL_PROBE);
+                        cand_par[i] = 0u;
                         continue;
                     }
                     if (ins) {
@@ -600,8 +705,9 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                             st_(st.fail, FAIL_LOAD);
                         touched[inc(st.touched_n)] = uint(sv);
                     }
-                    const ulong nv = pack(pack_g(cand[i]), cand_par[i] & ~IMPROVES_G);
+                    const ulong nv = pack(pack_g(e), cand_par[i] & ~IMPROVES_G);
                     atomic_min_explicit((device atomic_ulong *)&vals[sv], nv, RELAXED);
+                    cand[i] = pack(pack_g(e), uint(sv)); // slot-indexed for B2 and frontier
                 }
                 SYNC();
 
@@ -613,8 +719,8 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                     if (!(par & IMPROVES_G))
                         continue;
                     const ulong e = cand[i];
-                    const int sv = table_find(lookup, mask, p.max_probe, pack_lo(e));
-                    if (sv < 0 || vals[sv] != pack(pack_g(e), par & ~IMPROVES_G))
+                    const uint sv = pack_lo(e);
+                    if (vals[sv] != pack(pack_g(e), par & ~IMPROVES_G))
                         continue;
                     int pos = inc(st.far_n);
                     if (pos < cap)
@@ -641,7 +747,7 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                 const ulong bv = *best;
                 const int fail = ld(st.fail);
                 ArcResult r;
-                r.expanded = ld(st.expanded);
+                r.expanded = st.expanded;
                 r.steps = st.steps;
                 r.reason = fail;
                 r.path_off = task.path_off + st.path_pos;
@@ -695,7 +801,7 @@ route_kernel(const device int *out_off [[buffer(0)]], const device int *out_dst 
                         // upstream base delay of every new wire, attach point first
                         float d = attach_delay;
                         for (int k = pos - 1; k >= st.path_pos; k--) {
-                            d += edge_cost[paths[task.path_off + k].edge];
+                            d += edges[paths[task.path_off + k].edge].cost;
                             paths[task.path_off + k].delay = d;
                         }
                         r.path_len = pos - st.path_pos;

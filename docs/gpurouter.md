@@ -318,10 +318,16 @@ with no legal route fails as unroutable instead of repeating one rejected pip.
 6. **Timing repair.** After negotiation converges, the timing analyser is
    run and every arc whose setup slack is below `repairSlack` (and, while
    nothing fails, within `repairBand` of the worst slack, for up to
-   `repairImproveRounds` rounds) is re-routed *one net at a time* at pure
+   `repairImproveRounds` rounds) is re-routed in worst-slack order at pure
    delay: no history, present-congestion or bias terms, and the existing
    tree costed by its upstream delay so the sink takes the true
-   minimum-delay route from the source. The wires of a repaired arc are then
+   minimum-delay route from the source. Because pure-delay searches ignore
+   occupancy and history, bounded searches whose widened boxes and existing
+   trees are disjoint from earlier tasks are launched speculatively in
+   multi-net batches and committed in exact original order after checking
+   that no intervening reservation touched their tiles, preserving
+   bit-identical results while increasing GPU occupancy. The wires of a
+   repaired arc are then
    reserved for its net and the arc is frozen, so the negotiation loop that
    follows moves the displaced non-critical arcs instead of the repaired
    ones. A repaired arc may only attach to tree wires whose upstream path
@@ -489,8 +495,11 @@ with no legal route fails as unroutable instead of repeating one rejected pip.
 
 ### Device side (`common/route/gpu/gpuroute_kernel.cuh`)
 
-One thread block (256 threads) routes one net; the arcs of a net are routed
-in sequence so later arcs can attach to earlier ones. Per arc:
+One thread block (`blockThreads`, default 1024) routes one net; the arcs of a
+net are routed in sequence so later arcs can attach to earlier ones. Each wire
+record (`WireRec`, 16 bytes) packs coordinates, reservation, occupancy/flags
+and history into one 128-bit load, and each edge record (`EdgeRec`, 8 bytes)
+packs destination wire, fence bits and base cost into one 64-bit load. Per arc:
 
 1. The search starts from an empty private open-addressing hash table
    `wire → (g, parent edge)`. Keys use double hashing; the value is one
@@ -502,16 +511,21 @@ in sequence so later arcs can attach to earlier ones. Per arc:
    a small search does not pay for the 2^16 or 2^22 entries of its lane.
 2. The tree wires are inserted as seeds with `g = crit·upstream delay`
    (scaled by `seedDelayWeight`/`seedDelayFloor`) and pushed onto the
-   frontier pile.
+   frontier pile as `(g, table slot)` pairs so frontier passes read `vals[slot]`
+   directly without hash probing.
 3. Each *step* compacts the frontier (dropping stale and pruned entries and
-   tracking the f-range), histograms `f = g + w·h` into 128 bins, chooses
-   the threshold that selects about `expandK` entries, and expands those in
-   parallel. Expansion is two-phase: all edges are relaxed against the table
-   as it was at the start of the step and recorded as candidates; then the
-   candidates are applied with `atomicMin`. A node is re-queued only when
-   its `g` strictly improves, and a tree wire never changes its driver. The
-   search ends when the sink has been reached and no frontier entry has `f`
-   below the best sink cost, or the frontier is empty.
+   tracking the f-range with per-thread local min/max reductions). When fewer
+   than `expandK` finite entries remain (or all share the same `f`), the
+   compacted frontier is expanded directly without histogramming or copying;
+   otherwise `f = g + w·h` is histogrammed into 128 bins to select about
+   `expandK` entries. Expansion is two-phase: outgoing edges of the expansion
+   set are flattened across chunks of up to 256 nodes via a shared-memory
+   prefix sum so all threads in the block relax edges in parallel even on
+   small frontiers or high-degree wires, recording candidates against the
+   step-start table; then the candidates are applied with `atomicMin`. A node
+   is re-queued only when its `g` strictly improves, and a tree wire never
+   changes its driver. The search ends when the sink has been reached and no
+   frontier entry has `f` below the best sink cost, or the frontier is empty.
 4. Thread 0 walks the parent chain back to the first tree wire and writes
    `(wire, parent, edge, upstream delay)` entries to the task's output region;
    later arcs of the same task use them as additional seeds. The parent of
@@ -553,9 +567,9 @@ and an overflow only moves the arc to the large lane.
 
 Per concurrent net the small lane uses about `2^16 · 60 B` ≈ 3.9 MB and the
 large lane `2^22 · 60 B` ≈ 252 MB (defaults 384 and 4 concurrent nets, about
-2.5 GB in total), plus the graph (about 340 MB for Cyclone V, of which
-108 MB is the per-edge source-wire array). All of it is allocated once per
-run.
+2.5 GB in total), plus the graph (about 380 MB for Cyclone V: 217 MB packed
+`EdgeRec`s, 108 MB `edge_src`, 44 MB packed `WireRec`s, 11 MB `out_off`).
+All of it is allocated once per run.
 
 ## Validation
 

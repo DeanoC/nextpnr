@@ -90,6 +90,7 @@ struct GraphTopology
     std::vector<int16_t> wx, wy;
     std::vector<uint8_t> wlong;
     std::vector<int32_t> out_off, out_dst;
+    std::vector<int32_t> edge_src; // source wire index of each CSR edge
 };
 std::mutex topology_mutex;
 std::shared_ptr<const GraphTopology> topology_cache;
@@ -146,18 +147,26 @@ struct GpuRouter
     // ------------------------------------------------------------------
     // Flattened routing graph
 
-    std::vector<WireId> idx_to_wire;
-    dict<WireId, int32_t> wire_to_idx;
-    std::vector<int32_t> out_off, out_dst;
-    std::vector<float> edge_cost;
-    std::vector<uint8_t> edge_region;
-    std::vector<uint8_t> edge_outside_halo;
-    std::vector<int16_t> wx, wy;
+    std::shared_ptr<const GraphTopology> topo;
+    std::unique_ptr<gpuroute::EdgeRec[]> edge_recs;
+    bool any_disallow_reserved = false;
+    bool any_stay_in_halo = false;
     std::vector<int32_t> reserved;
     std::vector<uint8_t> wflags;
-    std::vector<uint8_t> wlong; // wire spans more than one tile (candidate diversity)
     std::vector<int32_t> occ;
     std::vector<float> hist;
+
+    // Incremental overused-wire tracking (avoids scanning all wires per iteration)
+    std::vector<int32_t> overused_list;
+    std::vector<int32_t> overused_pos; // index in overused_list or -1
+    int64_t total_overuse_tracked = 0;
+
+    // Tile-level tracking of soft reservations and reservation-change epochs
+    int res_grid_w = 1, res_grid_h = 1;
+    std::vector<int32_t> soft_res_tile;
+    std::vector<uint64_t> tile_res_epoch;
+    uint64_t global_res_epoch = 0;
+    int64_t total_soft_reserved = 0;
 
     std::vector<int32_t> dirty_wires;
     std::vector<uint8_t> dirty_mark;
@@ -178,10 +187,110 @@ struct GpuRouter
         }
     }
 
+    size_t tile_idx(int x, int y) const
+    {
+        x = std::max(0, std::min(x, res_grid_w - 1));
+        y = std::max(0, std::min(y, res_grid_h - 1));
+        return size_t(y) * size_t(res_grid_w) + size_t(x);
+    }
+
+    void inc_occ(int32_t w)
+    {
+        const int32_t v = ++occ[w];
+        if (v == 2) {
+            overused_pos[w] = int32_t(overused_list.size());
+            overused_list.push_back(w);
+        }
+        if (v > 1)
+            ++total_overuse_tracked;
+    }
+
+    void dec_occ(int32_t w)
+    {
+        const int32_t v = --occ[w];
+        if (v >= 1)
+            --total_overuse_tracked;
+        if (v == 1) {
+            const int32_t pos = overused_pos[w];
+            NPNR_ASSERT(pos >= 0);
+            const int32_t last = overused_list.back();
+            overused_list[pos] = last;
+            overused_pos[last] = pos;
+            overused_list.pop_back();
+            overused_pos[w] = -1;
+        }
+    }
+
+    void rebuild_occ_tracking()
+    {
+        overused_list.clear();
+        overused_pos.assign(occ.size(), -1);
+        total_overuse_tracked = 0;
+        for (size_t w = 0; w < occ.size(); w++) {
+            if (occ[w] > 1) {
+                overused_pos[w] = int32_t(overused_list.size());
+                overused_list.push_back(int32_t(w));
+                total_overuse_tracked += occ[w] - 1;
+            }
+        }
+    }
+
+    void set_reserved(int32_t w, int32_t new_val)
+    {
+        const int32_t old_val = reserved[w];
+        if (old_val == new_val)
+            return;
+        const size_t ti = tile_idx(topo->wx[w], topo->wy[w]);
+        const bool was_soft = (old_val != -1) && ((old_val & gpuroute::RESERVED_SOFT) != 0);
+        const bool is_soft = (new_val != -1) && ((new_val & gpuroute::RESERVED_SOFT) != 0);
+        if (was_soft) {
+            --soft_res_tile[ti];
+            --total_soft_reserved;
+        }
+        if (is_soft) {
+            ++soft_res_tile[ti];
+            ++total_soft_reserved;
+        }
+        reserved[w] = new_val;
+        tile_res_epoch[ti] = ++global_res_epoch;
+        mark_dirty(w);
+    }
+
+    void rebuild_soft_res_tracking()
+    {
+        std::fill(soft_res_tile.begin(), soft_res_tile.end(), 0);
+        total_soft_reserved = 0;
+        for (size_t w = 0; w < reserved.size(); w++) {
+            if (reserved[w] != -1 && (reserved[w] & gpuroute::RESERVED_SOFT)) {
+                ++soft_res_tile[tile_idx(topo->wx[w], topo->wy[w])];
+                ++total_soft_reserved;
+            }
+        }
+        ++global_res_epoch;
+        std::fill(tile_res_epoch.begin(), tile_res_epoch.end(), global_res_epoch);
+    }
+
+    bool has_soft_reserved_in_bb(int x0, int y0, int x1, int y1) const
+    {
+        if (total_soft_reserved == 0)
+            return false;
+        x0 = std::max(0, std::min(x0, res_grid_w - 1));
+        y0 = std::max(0, std::min(y0, res_grid_h - 1));
+        x1 = std::max(0, std::min(x1, res_grid_w - 1));
+        y1 = std::max(0, std::min(y1, res_grid_h - 1));
+        for (int y = y0; y <= y1; y++) {
+            const int32_t *row = soft_res_tile.data() + size_t(y) * size_t(res_grid_w);
+            for (int x = x0; x <= x1; x++)
+                if (row[x] > 0)
+                    return true;
+        }
+        return false;
+    }
+
     int32_t widx(WireId w) const
     {
-        auto fnd = wire_to_idx.find(w);
-        NPNR_ASSERT(fnd != wire_to_idx.end());
+        auto fnd = topo->wire_to_idx.find(w);
+        NPNR_ASSERT(fnd != topo->wire_to_idx.end());
         return fnd->second;
     }
 
@@ -190,10 +299,11 @@ struct GpuRouter
 
     struct TreeWire
     {
-        int32_t parent = -1; // driving wire, -1 for the source / a pre-bound root
-        PipId pip;           // pip parent -> wire
-        int32_t count = 0;   // arcs of this net using the wire
-        float delay = 0.0f;  // base delay from the source along the tree (ns)
+        int32_t parent = -1;   // driving wire, -1 for the source / a pre-bound root
+        PipId pip;             // pip parent -> wire
+        int32_t count = 0;     // arcs of this net using the wire
+        float delay = 0.0f;    // base delay from the source along the tree (ns)
+        delay_t exact_delay = 0; // exact integer maxDelay from root to this wire
     };
 
     struct ArcData
@@ -213,6 +323,9 @@ struct GpuRouter
         int cx = 0, cy = 0, hpwl = 1;
         int fail_count = 0;
         float max_crit = 0.0f;
+        int32_t allow_reserved = 1;
+        int32_t stay_in_halo = 0;
+        std::vector<int32_t> packed_shell_tiles;
     };
 
     std::vector<NetInfo *> nets_by_udata;
@@ -259,6 +372,8 @@ struct GpuRouter
     {
         nets.resize(ctx->nets.size());
         nets_by_udata.resize(ctx->nets.size());
+        any_disallow_reserved = false;
+        any_stay_in_halo = false;
         size_t i = 0;
         for (auto &net : ctx->nets) {
             NetInfo *ni = net.second.get();
@@ -266,14 +381,30 @@ struct GpuRouter
                 log_error("The GPU router does not support constant-value nets (net '%s').\n", ctx->nameOf(ni));
             ni->udata = int32_t(i);
             nets_by_udata.at(i) = ni;
+            auto &nd = nets.at(i);
+            nd.allow_reserved = ctx->netMayUseReservedRegion(ni) ? 1 : 0;
+            if (!nd.allow_reserved)
+                any_disallow_reserved = true;
+            if (ctx->netConstrainedToHalo(ni)) {
+                any_stay_in_halo = true;
+                nd.stay_in_halo = 1;
+                std::vector<std::pair<int, int>> tiles;
+                ctx->netHaloShellTiles(ni, tiles);
+                std::sort(tiles.begin(), tiles.end());
+                tiles.erase(std::unique(tiles.begin(), tiles.end()), tiles.end());
+                nd.packed_shell_tiles.clear();
+                nd.packed_shell_tiles.reserve(tiles.size());
+                for (auto tile : tiles)
+                    nd.packed_shell_tiles.push_back(gpuroute::pack_shell_tile(tile.first, tile.second));
+            }
             i++;
         }
     }
 
     std::shared_ptr<const GraphTopology> build_topology()
     {
-        auto topo = std::make_shared<GraphTopology>();
-        topo->ctx = ctx;
+        auto t = std::make_shared<GraphTopology>();
+        t->ctx = ctx;
         struct Tmp
         {
             WireId w;
@@ -285,7 +416,7 @@ struct GpuRouter
             BoundingBox b = ctx->getRouteBoundingBox(w, w);
             tmp.push_back(Tmp{w, int16_t((b.x0 + b.x1) / 2), int16_t((b.y0 + b.y1) / 2),
                               uint8_t(b.x0 != b.x1 || b.y0 != b.y1)});
-            topo->enum_order.push_back(w);
+            t->enum_order.push_back(w);
         }
         // Tile-major numbering keeps the wires of a region close in memory;
         // ties are broken by the wire's own hash rather than the order the
@@ -300,26 +431,27 @@ struct GpuRouter
             return a.w.hash() < b.w.hash();
         });
         const size_t n = tmp.size();
-        topo->idx_to_wire.resize(n);
-        topo->wx.resize(n);
-        topo->wy.resize(n);
-        topo->wlong.resize(n);
+        t->idx_to_wire.resize(n);
+        t->wx.resize(n);
+        t->wy.resize(n);
+        t->wlong.resize(n);
         for (size_t i = 0; i < n; i++) {
-            topo->idx_to_wire[i] = tmp[i].w;
-            topo->wx[i] = tmp[i].x;
-            topo->wy[i] = tmp[i].y;
-            topo->wlong[i] = tmp[i].lng;
-            topo->wire_to_idx[tmp[i].w] = int32_t(i);
+            t->idx_to_wire[i] = tmp[i].w;
+            t->wx[i] = tmp[i].x;
+            t->wy[i] = tmp[i].y;
+            t->wlong[i] = tmp[i].lng;
+            t->wire_to_idx[tmp[i].w] = int32_t(i);
         }
         tmp.clear();
         tmp.shrink_to_fit();
 
         // CSR adjacency. Counting and filling are independent per wire and
         // only use const Arch queries, so they run on several threads.
-        auto &out_off = topo->out_off;
-        auto &out_dst = topo->out_dst;
-        const auto &idx_to_wire = topo->idx_to_wire;
-        const auto &wire_to_idx = topo->wire_to_idx;
+        auto &out_off = t->out_off;
+        auto &out_dst = t->out_dst;
+        auto &edge_src = t->edge_src;
+        const auto &idx_to_wire = t->idx_to_wire;
+        const auto &wire_to_idx = t->wire_to_idx;
         out_off.assign(n + 1, 0);
         parallel_chunks(n, [&](size_t b, size_t e) {
             for (size_t i = b; i < e; i++) {
@@ -334,151 +466,216 @@ struct GpuRouter
         for (size_t i = 0; i < n; i++)
             out_off[i + 1] += out_off[i];
         out_dst.resize(out_off[n]);
+        edge_src.resize(out_off[n]);
         parallel_chunks(n, [&](size_t b, size_t e) {
             for (size_t i = b; i < e; i++) {
                 int32_t k = out_off[i];
                 for (auto pip : ctx->getPipsDownhill(idx_to_wire[i])) {
                     auto fnd = wire_to_idx.find(ctx->getPipDstWire(pip));
                     NPNR_ASSERT(fnd != wire_to_idx.end());
-                    out_dst[k++] = fnd->second;
+                    out_dst[k] = fnd->second;
+                    edge_src[k] = int32_t(i);
+                    k++;
                 }
             }
         });
-        store_topology(topo);
-        return topo;
+        store_topology(t);
+        return t;
     }
 
     void setup_graph()
     {
         auto t0 = Clock::now();
-        std::shared_ptr<const GraphTopology> topo = cached_topology(ctx);
+        std::shared_ptr<const GraphTopology> cached = cached_topology(ctx);
         bool reused = false;
-        if (topo) {
-            // Same wires, enumeration order and tile-major sort metadata?
+        if (cached) {
+            // Same wires and enumeration order?
             size_t i = 0;
             bool same = true;
+            const size_t expected = cached->enum_order.size();
+            const WireId *order = cached->enum_order.data();
             for (auto w : ctx->getWires()) {
-                if (i >= topo->enum_order.size() || topo->enum_order[i] != w) {
-                    same = false;
-                    break;
-                }
-                auto idx = topo->wire_to_idx.find(w);
-                if (idx == topo->wire_to_idx.end()) {
-                    same = false;
-                    break;
-                }
-                size_t wire_idx = size_t(idx->second);
-                BoundingBox b = ctx->getRouteBoundingBox(w, w);
-                int16_t x = int16_t((b.x0 + b.x1) / 2), y = int16_t((b.y0 + b.y1) / 2);
-                uint8_t lng = uint8_t(b.x0 != b.x1 || b.y0 != b.y1);
-                if (topo->wx[wire_idx] != x || topo->wy[wire_idx] != y || topo->wlong[wire_idx] != lng) {
+                if (i >= expected || order[i] != w) {
                     same = false;
                     break;
                 }
                 i++;
             }
-            reused = same && i == topo->enum_order.size();
+            reused = same && i == expected;
         }
+        const delay_t eps = ctx->getDelayEpsilon();
+        const bool need_region = any_disallow_reserved;
+        const bool need_halo = any_stay_in_halo;
+        bool attrs_built = false;
+        std::unique_ptr<delay_t[]> wire_delay;
         if (reused) {
-            // Matching counts are insufficient: a recycled Context can have
-            // the same wire IDs and pip counts with different destinations.
-            // Compare each ordered destination against the cached CSR edges.
-            std::vector<uint8_t> same_adjacency(topo->idx_to_wire.size(), 0);
-            parallel_chunks(topo->idx_to_wire.size(), [&](size_t b, size_t e) {
+            const size_t n = cached->idx_to_wire.size();
+            const int64_t m = cached->out_off[n];
+            wire_delay.reset(new delay_t[n]);
+            std::atomic<bool> bbox_ok{true};
+            parallel_chunks(n, [&](size_t b, size_t e) {
                 for (size_t i = b; i < e; i++) {
-                    int32_t edge = topo->out_off[i];
-                    const int32_t edge_end = topo->out_off[i + 1];
-                    bool same = true;
-                    for (auto pip : ctx->getPipsDownhill(topo->idx_to_wire[i])) {
-                        if (edge >= edge_end || size_t(edge) >= topo->out_dst.size()) {
-                            same = false;
-                            break;
-                        }
-                        auto dst = topo->wire_to_idx.find(ctx->getPipDstWire(pip));
-                        if (dst == topo->wire_to_idx.end() || topo->out_dst[size_t(edge)] != dst->second) {
-                            same = false;
-                            break;
-                        }
-                        edge++;
+                    const WireId w = cached->idx_to_wire[i];
+                    BoundingBox bb = ctx->getRouteBoundingBox(w, w);
+                    const int16_t x = int16_t((bb.x0 + bb.x1) / 2), y = int16_t((bb.y0 + bb.y1) / 2);
+                    const uint8_t lng = uint8_t(bb.x0 != bb.x1 || bb.y0 != bb.y1);
+                    if (cached->wx[i] != x || cached->wy[i] != y || cached->wlong[i] != lng) {
+                        bbox_ok.store(false, std::memory_order_relaxed);
+                        return;
                     }
-                    same_adjacency[i] = same && edge == edge_end;
+                    wire_delay[i] = ctx->getWireDelay(w).maxDelay();
                 }
             });
-            reused = std::all_of(same_adjacency.begin(), same_adjacency.end(),
-                                 [](uint8_t same) { return same != 0; });
-        }
-        if (!reused)
-            topo = build_topology();
-        idx_to_wire = topo->idx_to_wire;
-        wire_to_idx = topo->wire_to_idx;
-        wx = topo->wx;
-        wy = topo->wy;
-        wlong = topo->wlong;
-        out_off = topo->out_off;
-        out_dst = topo->out_dst;
-        const size_t n = idx_to_wire.size();
-        const int64_t m = out_off[n];
-
-        // Per-pip attributes: these depend on delays (recalibrated between
-        // analogue rounds), bound state and fences, so every router rebuilds
-        // them. Independent per wire and only const Arch queries, so they run
-        // on several threads.
-        edge_cost.resize(m);
-        edge_region.resize(m);
-        edge_outside_halo.resize(m);
-        const delay_t eps = ctx->getDelayEpsilon();
-        parallel_chunks(n, [&](size_t b, size_t e) {
-            for (size_t i = b; i < e; i++) {
-                int32_t k = out_off[i];
-                for (auto pip : ctx->getPipsDownhill(idx_to_wire[i])) {
-                    WireId dst = idx_to_wire[out_dst[k]];
-                    float c = ctx->getDelayNS(ctx->getPipDelay(pip).maxDelay() + ctx->getWireDelay(dst).maxDelay() + eps);
-                    if (!ctx->checkPipAvail(pip) && ctx->getBoundPipNet(pip) == nullptr)
-                        c = -1.0f; // blocked by an architecture rule
-                    else if (c < 1e-6f)
-                        c = 1e-6f;
-                    edge_cost[k] = c;
-                    edge_region[k] = ctx->pipInReservedRegion(pip) ? 1 : 0;
-                    edge_outside_halo[k] = ctx->pipOutsideNetHalo(pip) ? 1 : 0;
-                    k++;
-                }
+            reused = bbox_ok.load(std::memory_order_relaxed);
+            if (reused) {
+                // Validate every ordered pip destination against the cached CSR
+                // edges using O(1) idx_to_wire comparison while simultaneously
+                // packing EdgeRec (dst_flags + base cost) in one parallel pass.
+                edge_recs.reset(new gpuroute::EdgeRec[size_t(m)]);
+                gpuroute::EdgeRec *erecs = edge_recs.get();
+                const int32_t *out_off = cached->out_off.data();
+                const int32_t *out_dst = cached->out_dst.data();
+                const WireId *idx_to_wire = cached->idx_to_wire.data();
+                const delay_t *wd = wire_delay.get();
+                std::atomic<bool> adj_ok{true};
+                parallel_chunks(n, [&](size_t b, size_t e) {
+                    for (size_t i = b; i < e; i++) {
+                        if (!adj_ok.load(std::memory_order_relaxed))
+                            return;
+                        int32_t edge = out_off[i];
+                        const int32_t edge_end = out_off[i + 1];
+                        for (auto pip : ctx->getPipsDownhill(idx_to_wire[i])) {
+                            const WireId dst = ctx->getPipDstWire(pip);
+                            if (edge >= edge_end || idx_to_wire[size_t(out_dst[size_t(edge)])] != dst) {
+                                adj_ok.store(false, std::memory_order_relaxed);
+                                return;
+                            }
+                            const int32_t dst_idx = out_dst[size_t(edge)];
+                            float c;
+                            if (!ctx->checkPipAvail(pip) && ctx->getBoundPipNet(pip) == nullptr) {
+                                c = -1.0f; // blocked by an architecture rule
+                            } else {
+                                c = ctx->getDelayNS(ctx->getPipDelay(pip).maxDelay() + wd[dst_idx] + eps);
+                                if (c < 1e-6f)
+                                    c = 1e-6f;
+                            }
+                            uint32_t df = uint32_t(dst_idx);
+                            if (need_region && ctx->pipInReservedRegion(pip))
+                                df |= gpuroute::EDGE_REGION_BIT;
+                            if (need_halo && ctx->pipOutsideNetHalo(pip))
+                                df |= gpuroute::EDGE_OUTSIDE_HALO_BIT;
+                            erecs[edge].dst_flags = df;
+                            erecs[edge].cost = c;
+                            edge++;
+                        }
+                        if (edge != edge_end) {
+                            adj_ok.store(false, std::memory_order_relaxed);
+                            return;
+                        }
+                    }
+                });
+                reused = adj_ok.load(std::memory_order_relaxed);
+                attrs_built = reused;
             }
-        });
+        }
+        topo = reused ? std::move(cached) : build_topology();
+        const size_t n = topo->idx_to_wire.size();
+        const int64_t m = topo->out_off[n];
 
-        // Per-wire state, mirroring what is already bound in the Arch
+        if (!attrs_built) {
+            // Per-pip attributes: these depend on delays (recalibrated between
+            // analogue rounds), bound state and fences, so every router rebuilds
+            // them. Independent per wire and only const Arch queries, so they run
+            // on several threads.
+            wire_delay.reset(new delay_t[n]);
+            const WireId *idx_to_wire = topo->idx_to_wire.data();
+            delay_t *wd = wire_delay.get();
+            parallel_chunks(n, [&](size_t b, size_t e) {
+                for (size_t i = b; i < e; i++)
+                    wd[i] = ctx->getWireDelay(idx_to_wire[i]).maxDelay();
+            });
+            edge_recs.reset(new gpuroute::EdgeRec[size_t(m)]);
+            gpuroute::EdgeRec *erecs = edge_recs.get();
+            const int32_t *out_off = topo->out_off.data();
+            const int32_t *out_dst = topo->out_dst.data();
+            parallel_chunks(n, [&](size_t b, size_t e) {
+                for (size_t i = b; i < e; i++) {
+                    int32_t k = out_off[i];
+                    for (auto pip : ctx->getPipsDownhill(idx_to_wire[i])) {
+                        const int32_t dst_idx = out_dst[k];
+                        float c;
+                        if (!ctx->checkPipAvail(pip) && ctx->getBoundPipNet(pip) == nullptr) {
+                            c = -1.0f; // blocked by an architecture rule
+                        } else {
+                            c = ctx->getDelayNS(ctx->getPipDelay(pip).maxDelay() + wd[dst_idx] + eps);
+                            if (c < 1e-6f)
+                                c = 1e-6f;
+                        }
+                        uint32_t df = uint32_t(dst_idx);
+                        if (need_region && ctx->pipInReservedRegion(pip))
+                            df |= gpuroute::EDGE_REGION_BIT;
+                        if (need_halo && ctx->pipOutsideNetHalo(pip))
+                            df |= gpuroute::EDGE_OUTSIDE_HALO_BIT;
+                        erecs[k].dst_flags = df;
+                        erecs[k].cost = c;
+                        k++;
+                    }
+                }
+            });
+        }
+
+        // Per-wire state, mirroring what is already bound in the Arch.
+        // Scan bound nets' wire maps directly instead of calling
+        // getBoundWireNet() on all 2.74M chip wires; sort each net's bound
+        // wires by tile-major index to preserve identical nd.wires order.
         reserved.assign(n, -1);
         wflags.assign(n, 0);
         occ.assign(n, 0);
         hist.assign(n, 1.0f);
         dirty_mark.assign(n, 0);
-        for (size_t i = 0; i < n; i++) {
-            WireId w = idx_to_wire[i];
-            NetInfo *bound = ctx->getBoundWireNet(w);
-            if (bound == nullptr)
+        res_grid_w = ctx->getGridDimX() + 2;
+        res_grid_h = ctx->getGridDimY() + 2;
+        soft_res_tile.assign(size_t(res_grid_w) * size_t(res_grid_h), 0);
+        tile_res_epoch.assign(size_t(res_grid_w) * size_t(res_grid_h), 0);
+        global_res_epoch = 0;
+        total_soft_reserved = 0;
+        std::vector<std::pair<int32_t, WireId>> bound_wires;
+        for (NetInfo *ni : nets_by_udata) {
+            if (ni->wires.empty())
                 continue;
-            auto iter = bound->wires.find(w);
-            if (iter == bound->wires.end())
-                continue;
-            auto &nd = nets.at(bound->udata);
-            TreeWire tw;
-            tw.pip = iter->second.pip;
-            tw.parent = (tw.pip == PipId()) ? -1 : widx(ctx->getPipSrcWire(tw.pip));
-            tw.count = 0;
-            nd.wires[int32_t(i)] = tw;
-            occ[i] = 1;
-            if (iter->second.strength > STRENGTH_PLACER)
-                wflags[i] |= gpuroute::WIRE_UNAVAILABLE;
-            else if (iter->second.strength >= STRENGTH_STRONG || reserve_bound_routing)
-                // Routing bound by placer constraints belongs to its net;
-                // another net must not negotiate for it and then be frozen
-                // there by timing repair, as the bound net never moves.
-                // Candidate generation also reserves the router's own
-                // routing of every other net so a candidate is legal.
-                reserved[i] = bound->udata;
-            // Otherwise this is routing an earlier pass made (the nets an
-            // analogue repair round keeps): it starts routed but is
-            // negotiated like everything else, because reserving it left
-            // the ripped nets with hard conflicts on local lines.
+            bound_wires.clear();
+            bound_wires.reserve(ni->wires.size());
+            for (const auto &entry : ni->wires) {
+                if (ctx->getBoundWireNet(entry.first) != ni)
+                    continue;
+                bound_wires.emplace_back(widx(entry.first), entry.first);
+            }
+            std::sort(bound_wires.begin(), bound_wires.end(),
+                      [](const auto &a, const auto &b) { return a.first < b.first; });
+            auto &nd = nets.at(ni->udata);
+            for (const auto &bw : bound_wires) {
+                const int32_t i = bw.first;
+                const auto &pm = ni->wires.at(bw.second);
+                TreeWire tw;
+                tw.pip = pm.pip;
+                tw.parent = (tw.pip == PipId()) ? -1 : widx(ctx->getPipSrcWire(tw.pip));
+                tw.count = 0;
+                nd.wires[i] = tw;
+                occ[i] = 1;
+                if (pm.strength > STRENGTH_PLACER)
+                    wflags[i] |= gpuroute::WIRE_UNAVAILABLE;
+                else if (pm.strength >= STRENGTH_STRONG || reserve_bound_routing)
+                    // Routing bound by placer constraints belongs to its net;
+                    // another net must not negotiate for it and then be frozen
+                    // there by timing repair, as the bound net never moves.
+                    // Candidate generation also reserves the router's own
+                    // routing of every other net so a candidate is legal.
+                    reserved[i] = ni->udata;
+                // Otherwise this is routing an earlier pass made (the nets an
+                // analogue repair round keeps): it starts routed but is
+                // negotiated like everything else, because reserving it left
+                // the ripped nets with hard conflicts on local lines.
+            }
         }
         log_info("    flattened %zu wires and %lld pips in %.2fs%s\n", n, (long long)m, secs_since(t0),
                  reused ? " (numbering and adjacency reused)" : "");
@@ -529,6 +726,7 @@ struct GpuRouter
                     TreeWire tw;
                     tw.parent = -1;
                     tw.count = 1;
+                    tw.exact_delay = ctx->getWireDelay(src_wire).maxDelay();
                     nd.wires[nd.src] = tw;
                     occ[nd.src]++;
                 }
@@ -542,6 +740,7 @@ struct GpuRouter
             nd.bb.y1 = std::min(nd.bb.y1 + cfg.bb_margin_y, ctx->getGridDimY());
         }
         // Pre-routed arcs (e.g. dedicated global clock routing)
+        rebuild_occ_tracking();
         for (size_t i = 0; i < nets.size(); i++) {
             auto &nd = nets.at(i);
             compute_tree_delays(nd);
@@ -559,7 +758,7 @@ struct GpuRouter
     {
         if (pip == PipId())
             return 0.0f;
-        return ctx->getDelayNS(ctx->getPipDelay(pip).maxDelay() + ctx->getWireDelay(idx_to_wire[wire]).maxDelay() +
+        return ctx->getDelayNS(ctx->getPipDelay(pip).maxDelay() + ctx->getWireDelay(topo->idx_to_wire[wire]).maxDelay() +
                                ctx->getDelayEpsilon());
     }
 
@@ -571,12 +770,29 @@ struct GpuRouter
             tw.parent = parent;
             tw.pip = pip;
             tw.count = 1;
-            if (parent >= 0) {
-                auto pf = nd.wires.find(parent);
-                tw.delay = (pf == nd.wires.end() ? 0.0f : pf->second.delay) + pip_base_cost(pip, wire);
+            const delay_t wd = ctx->getWireDelay(topo->idx_to_wire[wire]).maxDelay();
+            if (pip == PipId()) {
+                tw.exact_delay = wd;
+                if (parent >= 0) {
+                    auto pf = nd.wires.find(parent);
+                    tw.delay = (pf == nd.wires.end() ? 0.0f : pf->second.delay);
+                }
+            } else {
+                const delay_t pd = ctx->getPipDelay(pip).maxDelay();
+                if (parent >= 0) {
+                    auto pf = nd.wires.find(parent);
+                    tw.delay = (pf == nd.wires.end() ? 0.0f : pf->second.delay) +
+                               ctx->getDelayNS(pd + wd + ctx->getDelayEpsilon());
+                    const delay_t parent_ed = (pf == nd.wires.end())
+                                                      ? ctx->getWireDelay(topo->idx_to_wire[parent]).maxDelay()
+                                                      : pf->second.exact_delay;
+                    tw.exact_delay = parent_ed + pd + wd;
+                } else {
+                    tw.exact_delay = pd + wd;
+                }
             }
             nd.wires[wire] = tw;
-            occ[wire]++;
+            inc_occ(wire);
             mark_dirty(wire);
         } else if (fnd->second.parent != parent) {
             // A wire has one driver in the tree. A sink an earlier arc of the
@@ -590,9 +806,9 @@ struct GpuRouter
                 }
             }
             log_error("Internal error: wire %s of net %s is already driven by %s; refusing parent %s.\n",
-                      ctx->nameOfWire(idx_to_wire.at(wire)), net_name,
-                      fnd->second.parent >= 0 ? ctx->nameOfWire(idx_to_wire.at(fnd->second.parent)) : "<root>",
-                      parent >= 0 ? ctx->nameOfWire(idx_to_wire.at(parent)) : "<root>");
+                      ctx->nameOfWire(topo->idx_to_wire.at(wire)), net_name,
+                      fnd->second.parent >= 0 ? ctx->nameOfWire(topo->idx_to_wire.at(fnd->second.parent)) : "<root>",
+                      parent >= 0 ? ctx->nameOfWire(topo->idx_to_wire.at(parent)) : "<root>");
         } else {
             fnd->second.count++;
         }
@@ -602,20 +818,37 @@ struct GpuRouter
     void compute_tree_delays(NetData &nd)
     {
         std::vector<int32_t> chain;
+        pool<int32_t> exact_done;
         for (auto &w : nd.wires) {
             chain.clear();
             int32_t cursor = w.first;
             while (true) {
                 auto fnd = nd.wires.find(cursor);
-                if (fnd == nd.wires.end() || fnd->second.parent == -1 || fnd->second.delay > 0.0f)
+                if (fnd == nd.wires.end())
                     break;
+                if (exact_done.count(cursor))
+                    break;
+                if (fnd->second.parent == -1 || fnd->second.pip == PipId()) {
+                    fnd->second.exact_delay = ctx->getWireDelay(topo->idx_to_wire[cursor]).maxDelay();
+                    exact_done.insert(cursor);
+                    break;
+                }
                 chain.push_back(cursor);
                 cursor = fnd->second.parent;
             }
             for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
                 auto &tw = nd.wires.at(*it);
                 auto pf = nd.wires.find(tw.parent);
-                tw.delay = (pf == nd.wires.end() ? 0.0f : pf->second.delay) + pip_base_cost(tw.pip, *it);
+                const delay_t pd = ctx->getPipDelay(tw.pip).maxDelay();
+                const delay_t wd = ctx->getWireDelay(topo->idx_to_wire[*it]).maxDelay();
+                if (tw.delay <= 0.0f)
+                    tw.delay = (pf == nd.wires.end() ? 0.0f : pf->second.delay) +
+                               ctx->getDelayNS(pd + wd + ctx->getDelayEpsilon());
+                const delay_t parent_ed = (pf == nd.wires.end())
+                                                  ? ctx->getWireDelay(topo->idx_to_wire[tw.parent]).maxDelay()
+                                                  : pf->second.exact_delay;
+                tw.exact_delay = parent_ed + pd + wd;
+                exact_done.insert(*it);
             }
         }
     }
@@ -626,7 +859,7 @@ struct GpuRouter
         NPNR_ASSERT(fnd != nd.wires.end());
         if (--fnd->second.count <= 0) {
             nd.wires.erase(fnd);
-            occ[wire]--;
+            dec_occ(wire);
             mark_dirty(wire);
         }
     }
@@ -682,17 +915,43 @@ struct GpuRouter
         ad.pre_routed = false;
     }
 
-    void restore_net(int net, const NetData &saved)
+    NetData ripup_tree_copy(const NetData &src, const std::vector<std::pair<int, int>> &arcs) const
+    {
+        NetData nd = src;
+        for (const auto &a : arcs) {
+            auto &ad = nd.arcs.at(a.first).at(a.second);
+            if (!ad.routed)
+                continue;
+            int32_t cursor = ad.sink;
+            while (cursor != nd.src) {
+                auto fnd = nd.wires.find(cursor);
+                if (fnd == nd.wires.end())
+                    break;
+                int32_t parent = fnd->second.parent;
+                if (--fnd->second.count <= 0)
+                    nd.wires.erase(fnd);
+                if (parent == -1)
+                    break;
+                cursor = parent;
+            }
+            ad.routed = false;
+            ad.pre_routed = false;
+        }
+        return nd;
+    }
+
+    void restore_net(int net, const NetData &saved, bool flush = true)
     {
         auto &nd = nets.at(net);
         while (!nd.wires.empty())
             unbind_internal(nd, nd.wires.begin()->first);
         nd = saved;
         for (auto &w : nd.wires) {
-            occ[w.first]++;
+            inc_occ(w.first);
             mark_dirty(w.first);
         }
-        flush_state();
+        if (flush)
+            flush_state();
     }
 
     // The pip behind CSR edge `edge`: the (edge - out_off[parent])-th downhill
@@ -700,9 +959,9 @@ struct GpuRouter
     // built from, so parallel pips between one wire pair stay distinct.
     PipId pip_for_edge(int32_t parent, int32_t wire, int32_t edge) const
     {
-        WireId pw = idx_to_wire.at(parent), dw = idx_to_wire.at(wire);
-        if (edge >= out_off.at(parent) && edge < out_off.at(parent + 1)) {
-            int32_t k = edge - out_off.at(parent);
+        WireId pw = topo->idx_to_wire.at(parent), dw = topo->idx_to_wire.at(wire);
+        if (edge >= topo->out_off.at(parent) && edge < topo->out_off.at(parent + 1)) {
+            int32_t k = edge - topo->out_off.at(parent);
             for (auto pip : ctx->getPipsDownhill(pw)) {
                 if (k-- == 0) {
                     NPNR_ASSERT(ctx->getPipDstWire(pip) == dw);
@@ -747,21 +1006,12 @@ struct GpuRouter
 
     delay_t get_route_delay(const NetData &nd, const ArcData &ad) const
     {
-        if (nd.src < 0 || !nd.wires.count(ad.sink))
+        if (nd.src < 0)
             return 0;
-        delay_t delay = 0;
-        int32_t cursor = ad.sink;
-        while (true) {
-            delay += ctx->getWireDelay(idx_to_wire[cursor]).maxDelay();
-            auto fnd = nd.wires.find(cursor);
-            if (fnd == nd.wires.end())
-                break;
-            if (fnd->second.pip == PipId())
-                break;
-            delay += ctx->getPipDelay(fnd->second.pip).maxDelay();
-            cursor = fnd->second.parent;
-        }
-        return delay;
+        auto fnd = nd.wires.find(ad.sink);
+        if (fnd == nd.wires.end())
+            return 0;
+        return fnd->second.exact_delay;
     }
 
     // ------------------------------------------------------------------
@@ -845,7 +1095,7 @@ struct GpuRouter
         for (auto &ad : nd.arcs.at(i.idx())) {
             if (ad.pre_routed)
                 continue;
-            WireId cursor = idx_to_wire[ad.sink];
+            WireId cursor = topo->idx_to_wire[ad.sink];
             bool done = false;
             while (!done) {
                 int32_t c = widx(cursor);
@@ -990,18 +1240,18 @@ struct GpuRouter
 
     void fit_estimate()
     {
-        if (idx_to_wire.size() < 2)
+        if (topo->idx_to_wire.size() < 2)
             return;
         DeterministicRNG rng;
         rng.rngseed(0x5eed1234u);
         double sxx = 0, sxy = 0, syy = 0, sxd = 0, syd = 0, sd = 0, sxy_sum = 0;
         int samples = 0;
         for (int i = 0; i < 4000; i++) {
-            int a = rng.rng(int(idx_to_wire.size())), b = rng.rng(int(idx_to_wire.size()));
-            double dx = std::abs(wx[a] - wx[b]), dy = std::abs(wy[a] - wy[b]);
+            int a = rng.rng(int(topo->idx_to_wire.size())), b = rng.rng(int(topo->idx_to_wire.size()));
+            double dx = std::abs(topo->wx[a] - topo->wx[b]), dy = std::abs(topo->wy[a] - topo->wy[b]);
             if (dx + dy == 0)
                 continue;
-            double d = ctx->getDelayNS(ctx->estimateDelay(idx_to_wire[a], idx_to_wire[b]));
+            double d = ctx->getDelayNS(ctx->estimateDelay(topo->idx_to_wire[a], topo->idx_to_wire[b]));
             sxx += dx * dx;
             sxy += dx * dy;
             syy += dy * dy;
@@ -1129,52 +1379,90 @@ struct GpuRouter
         return p;
     }
 
-    // Route the given tasks in one backend call. Arcs that could not be
-    // routed are returned for a retry.
+    BoundingBox task_search_bb(const NetData &nd) const
+    {
+        int grow = 0;
+        if (repair_mode && repair_widen && !candidate_mode && cfg.repair_bb_expand > 0) {
+            const int device = std::max(ctx->getGridDimX(), ctx->getGridDimY());
+            grow = std::min(cfg.repair_bb_expand, std::max(device, 0));
+        }
+        BoundingBox bb;
+        bb.x0 = std::max(nd.bb.x0 - grow, 0);
+        bb.y0 = std::max(nd.bb.y0 - grow, 0);
+        bb.x1 = std::min(nd.bb.x1 + grow, ctx->getGridDimX());
+        bb.y1 = std::min(nd.bb.y1 + grow, ctx->getGridDimY());
+        return bb;
+    }
+
+    struct RouteBatchOut
+    {
+        std::vector<gpuroute::TaskDesc> tds;
+        std::vector<std::vector<std::pair<int, int>>> arc_map;
+        std::vector<gpuroute::ArcResult> results;
+        std::vector<gpuroute::PathEntry> paths;
+        uint64_t epoch = 0;
+    };
+
+    // Route the given tasks in one backend call without mutating nets[].
+    // When net_overrides is non-null, task ti uses (*net_overrides)[ti] as its
+    // tree instead of nets[t.net] (used by speculative repair batching).
     int last_fail_status = 0, last_fail_reason = 0, last_fail_expanded = 0;
-    std::vector<HostTask> route_tasks(const std::vector<HostTask> &tasks, bool use_bb, bool large_lane)
+    RouteBatchOut route_tasks_launch(const std::vector<HostTask> &tasks, bool use_bb, bool large_lane,
+                                     const std::vector<NetData> *net_overrides = nullptr)
     {
         cfg.check_stop();
-        std::vector<gpuroute::TaskDesc> tds;
+        RouteBatchOut out;
+        out.tds.reserve(tasks.size());
+        out.arc_map.resize(tasks.size());
         std::vector<gpuroute::ArcDesc> ads;
         std::vector<int32_t> seeds;
         std::vector<float> seed_delay, seed_load;
         std::vector<int32_t> shell_tiles;
-        std::vector<std::vector<std::pair<int, int>>> arc_map(tasks.size());
+        const bool need_load = cfg.load_penalty > 0.0f;
         dict<int32_t, int> children;
+        dict<int32_t, bool> clean;
+        pool<int32_t> sinks_seen;
         int path_cursor = 0;
+        const int64_t n_wires_total = int64_t(topo->idx_to_wire.size());
         for (size_t ti = 0; ti < tasks.size(); ti++) {
             const HostTask &t = tasks[ti];
             NetInfo *ni = nets_by_udata.at(t.net);
-            auto &nd = nets.at(t.net);
+            const NetData &nd = net_overrides ? (*net_overrides)[ti] : nets.at(t.net);
             gpuroute::TaskDesc td;
             td.net = t.net;
             td.tree_off = int32_t(seeds.size());
-            children.clear();
-            for (auto &w : nd.wires)
-                if (w.second.parent >= 0)
-                    children[w.second.parent]++;
+            if (need_load) {
+                children.clear();
+                for (auto &w : nd.wires)
+                    if (w.second.parent >= 0)
+                        children[w.second.parent]++;
+            }
             // In repair mode the new arc will be frozen together with its
             // upstream tree, so it may only attach where that upstream path
             // is free of wires reserved for other nets.
-            dict<int32_t, bool> clean;
-            std::function<bool(int32_t)> is_clean = [&](int32_t w) -> bool {
+            if (repair_mode)
+                clean.clear();
+            auto is_clean = [&](auto &self, int32_t w) -> bool {
                 auto fnd = clean.find(w);
                 if (fnd != clean.end())
                     return fnd->second;
                 bool ok = (reserved[w] == -1 || gpuroute::reserved_owner(reserved[w]) == t.net);
                 auto tw = nd.wires.find(w);
                 if (ok && tw != nd.wires.end() && tw->second.parent >= 0 && w != nd.src)
-                    ok = is_clean(tw->second.parent);
+                    ok = self(self, tw->second.parent);
                 clean[w] = ok;
                 return ok;
             };
             int clean_count = 0;
             for (auto &w : nd.wires) {
                 seeds.push_back(w.first);
-                auto ch = children.find(w.first);
-                seed_load.push_back(ch == children.end() ? 0.0f : float(ch->second));
-                if ((repair_mode && !is_clean(w.first)) || (attach_source_only && w.first != nd.src)) {
+                if (need_load) {
+                    auto ch = children.find(w.first);
+                    seed_load.push_back(ch == children.end() ? 0.0f : float(ch->second));
+                } else {
+                    seed_load.push_back(0.0f);
+                }
+                if ((repair_mode && !is_clean(is_clean, w.first)) || (attach_source_only && w.first != nd.src)) {
                     // still part of the tree (keeps its driver) but not an
                     // attach point and not passable in this search
                     seed_delay.push_back(-1.0f);
@@ -1187,23 +1475,28 @@ struct GpuRouter
                 // nothing clean to attach to: allow the source itself
                 seed_delay[td.tree_off + int32_t(std::distance(nd.wires.begin(), nd.wires.find(nd.src)))] = 0.0f;
             }
-            auto tb = task_blocked.find(t.net);
-            if (tb != task_blocked.end())
-                for (int32_t w : tb->second)
-                    if (!nd.wires.count(w)) {
-                        seeds.push_back(w);
-                        seed_load.push_back(0.0f);
-                        seed_delay.push_back(-1.0f);
-                    }
+            if (!task_blocked.empty()) {
+                auto tb = task_blocked.find(t.net);
+                if (tb != task_blocked.end())
+                    for (int32_t w : tb->second)
+                        if (!nd.wires.count(w)) {
+                            seeds.push_back(w);
+                            seed_load.push_back(0.0f);
+                            seed_delay.push_back(-1.0f);
+                        }
+            }
             td.tree_cnt = int32_t(seeds.size()) - td.tree_off;
             td.arc_off = int32_t(ads.size());
-            pool<int32_t> sinks_seen;
+            const bool multi_arc = t.arcs.size() > 1;
+            if (multi_arc)
+                sinks_seen.clear();
             for (auto &a : t.arcs) {
-                auto &ad = nd.arcs.at(a.first).at(a.second);
+                const auto &ad = nd.arcs.at(a.first).at(a.second);
                 // Already connected through another logical arc of this net
-                if (nd.wires.count(ad.sink) || sinks_seen.count(ad.sink))
+                if (nd.wires.count(ad.sink) || (multi_arc && sinks_seen.count(ad.sink)))
                     continue;
-                sinks_seen.insert(ad.sink);
+                if (multi_arc)
+                    sinks_seen.insert(ad.sink);
                 gpuroute::ArcDesc d;
                 d.sink = ad.sink;
                 if (repair_cong)
@@ -1214,7 +1507,7 @@ struct GpuRouter
                     d.crit_weight = arc_crit_weight(ni, store_index<PortRef>(a.first));
                 d.crit = (repair_mode || repair_cong) ? 1.0f : arc_crit(ni, store_index<PortRef>(a.first));
                 ads.push_back(d);
-                arc_map[ti].push_back(a);
+                out.arc_map[ti].push_back(a);
             }
             td.arc_cnt = int32_t(ads.size()) - td.arc_off;
             td.path_off = path_cursor;
@@ -1223,7 +1516,7 @@ struct GpuRouter
             // the region scaled up (bounded by the wire count, which no
             // simple path can exceed).
             int64_t cap = int64_t(96 * td.arc_cnt + 256) * t.path_scale;
-            cap = std::min<int64_t>(cap, int64_t(idx_to_wire.size()) * std::max(1, td.arc_cnt));
+            cap = std::min<int64_t>(cap, n_wires_total * std::max(1, td.arc_cnt));
             td.path_cap = int32_t(cap);
             path_cursor += td.path_cap;
             td.cx = nd.cx;
@@ -1232,42 +1525,28 @@ struct GpuRouter
             td.fanout = std::max<int>(1, int(ni->users.entries()));
             // A route found inside the negotiation box is kept, so a failing
             // arc never gets the unbounded retry. Grow that box while setup
-            // slack is still negative. The stored box is int16 and is clamped
-            // to the device, so cap the growth there too: a huge setting would
-            // overflow the int sum before that clamp and wrap the box.
-            int grow = 0;
-            if (repair_mode && repair_widen && !candidate_mode && cfg.repair_bb_expand > 0) {
-                const int device = std::max(ctx->getGridDimX(), ctx->getGridDimY());
-                grow = std::min(cfg.repair_bb_expand, std::max(device, 0));
-            }
-            td.bb_x0 = int16_t(std::max(nd.bb.x0 - grow, 0));
-            td.bb_y0 = int16_t(std::max(nd.bb.y0 - grow, 0));
-            td.bb_x1 = int16_t(std::min(nd.bb.x1 + grow, ctx->getGridDimX()));
-            td.bb_y1 = int16_t(std::min(nd.bb.y1 + grow, ctx->getGridDimY()));
-            td.allow_reserved = ctx->netMayUseReservedRegion(ni) ? 1 : 0;
-            td.stay_in_halo = 0;
+            // slack is still negative.
+            const BoundingBox sbb = task_search_bb(nd);
+            td.bb_x0 = int16_t(sbb.x0);
+            td.bb_y0 = int16_t(sbb.y0);
+            td.bb_x1 = int16_t(sbb.x1);
+            td.bb_y1 = int16_t(sbb.y1);
+            td.allow_reserved = nd.allow_reserved;
+            td.stay_in_halo = nd.stay_in_halo;
             td.shell_off = 0;
             td.shell_cnt = 0;
-            if (ctx->netConstrainedToHalo(ni)) {
-                td.stay_in_halo = 1;
-                std::vector<std::pair<int, int>> tiles;
-                ctx->netHaloShellTiles(ni, tiles);
-                std::sort(tiles.begin(), tiles.end());
-                tiles.erase(std::unique(tiles.begin(), tiles.end()), tiles.end());
+            if (nd.stay_in_halo && !nd.packed_shell_tiles.empty()) {
                 td.shell_off = int32_t(shell_tiles.size());
-                td.shell_cnt = int32_t(tiles.size());
-                for (auto tile : tiles)
-                    shell_tiles.push_back(gpuroute::pack_shell_tile(tile.first, tile.second));
+                td.shell_cnt = int32_t(nd.packed_shell_tiles.size());
+                shell_tiles.insert(shell_tiles.end(), nd.packed_shell_tiles.begin(), nd.packed_shell_tiles.end());
             }
-            tds.push_back(td);
+            out.tds.push_back(td);
         }
-        std::vector<gpuroute::ArcResult> results;
-        std::vector<gpuroute::PathEntry> paths;
         cfg.check_stop();
         auto t0 = Clock::now();
         gpuroute::Backend *be = backend_for(tasks.size());
-        be->route(make_params(use_bb), tds, ads, seeds, seed_delay, seed_load, shell_tiles, large_lane, results,
-                  paths);
+        be->route(make_params(use_bb), out.tds, ads, seeds, seed_delay, seed_load, shell_tiles, large_lane, out.results,
+                  out.paths);
         cfg.check_stop();
         const double launch_secs_now = secs_since(t0);
         gpu_time += launch_secs_now;
@@ -1283,7 +1562,7 @@ struct GpuRouter
             // from the paths the search before them chose, which differ
             // between the two searches. At most the remaining allowance.
             std::vector<gpuroute::TaskDesc> vtds;
-            for (auto &td : tds) {
+            for (auto &td : out.tds) {
                 // every exact search launched counts, compared or not: a
                 // task whose approximate search failed is retried later
                 if (int64_t(vtds.size()) + verify_launched >= int64_t(cfg.repair_verify_arcs))
@@ -1309,14 +1588,14 @@ struct GpuRouter
                 verify_launched += int64_t(vtds.size());
                 for (auto &td : vtds) {
                     const size_t k = td.arc_off;
-                    if (results[k].status != gpuroute::ARC_OK)
+                    if (out.results[k].status != gpuroute::ARC_OK)
                         continue;
                     if (vres[k].status != gpuroute::ARC_OK) {
                         verify_unref++;
                         continue;
                     }
                     verify_arcs++;
-                    double d = double(results[k].cost) - double(vres[k].cost);
+                    double d = double(out.results[k].cost) - double(vres[k].cost);
                     if (d > 1e-4) {
                         verify_worse++;
                         verify_excess += d;
@@ -1326,50 +1605,63 @@ struct GpuRouter
                 }
             }
         }
+        return out;
+    }
 
+    HostTask apply_task_result(const HostTask &task, const gpuroute::TaskDesc &td,
+                               const std::vector<std::pair<int, int>> &amap,
+                               const std::vector<gpuroute::ArcResult> &results,
+                               const std::vector<gpuroute::PathEntry> &paths, bool use_bb, bool large_lane)
+    {
+        auto &nd = nets.at(td.net);
+        HostTask rt;
+        rt.net = td.net;
+        rt.path_scale = task.path_scale;
+        for (int k = 0; k < td.arc_cnt; k++) {
+            const auto &r = results.at(td.arc_off + k);
+            if (r.status == gpuroute::ARC_PATH_FULL)
+                rt.path_scale = std::min(task.path_scale * 8, 1 << 20);
+            auto &ad = nd.arcs.at(amap[k].first).at(amap[k].second);
+            if (ctx->debug)
+                log("    TRACE %s arc %d.%d status %d cost %.4f expanded %d steps %d len %d attach %d\n",
+                    ctx->nameOf(nets_by_udata.at(td.net)), amap[k].first, amap[k].second, r.status, r.cost, r.expanded,
+                    r.steps, r.path_len, r.path_len > 0 ? paths[r.path_off + r.path_len - 1].parent : -1);
+            if (r.status == gpuroute::ARC_OK) {
+                if (r.path_len == 0) {
+                    // An earlier arc of this task routed through the sink
+                    // and has just been applied. The backend searched
+                    // nothing and offered later arcs no new wires; count
+                    // this arc along that branch back to the source.
+                    NPNR_ASSERT(note_branch_use(nd, ad.sink) == nd.src);
+                    ad.routed = true;
+                    shared_branch_sinks++;
+                } else {
+                    NPNR_ASSERT(paths[r.path_off].wire == ad.sink);
+                    apply_path(nd, ad, paths.data() + r.path_off, r.path_len);
+                }
+            } else {
+                last_fail_status = r.status;
+                last_fail_reason = r.reason;
+                last_fail_expanded = r.expanded;
+                if (ctx->debug)
+                    log_info("    arc %d.%d of net '%s' failed in the %s lane%s: status %d reason %d "
+                             "(expanded %d in %d steps)\n",
+                             amap[k].first, amap[k].second, ctx->nameOf(nets_by_udata.at(td.net)),
+                             large_lane ? "large" : "small", use_bb ? "" : " without bounding box", r.status, r.reason,
+                             r.expanded, r.steps);
+                rt.arcs.push_back(amap[k]);
+            }
+        }
+        return rt;
+    }
+
+    std::vector<HostTask> route_tasks(const std::vector<HostTask> &tasks, bool use_bb, bool large_lane)
+    {
+        RouteBatchOut out = route_tasks_launch(tasks, use_bb, large_lane);
         std::vector<HostTask> retry;
         for (size_t ti = 0; ti < tasks.size(); ti++) {
-            const auto &td = tds[ti];
-            auto &nd = nets.at(td.net);
-            HostTask rt;
-            rt.net = td.net;
-            rt.path_scale = tasks[ti].path_scale;
-            for (int k = 0; k < td.arc_cnt; k++) {
-                const auto &r = results.at(td.arc_off + k);
-                if (r.status == gpuroute::ARC_PATH_FULL)
-                    rt.path_scale = std::min(tasks[ti].path_scale * 8, 1 << 20);
-                auto &ad = nd.arcs.at(arc_map[ti][k].first).at(arc_map[ti][k].second);
-                if (ctx->debug)
-                    log("    TRACE %s arc %d.%d status %d cost %.4f expanded %d steps %d len %d attach %d\n",
-                        ctx->nameOf(nets_by_udata.at(td.net)), arc_map[ti][k].first, arc_map[ti][k].second, r.status,
-                        r.cost, r.expanded, r.steps, r.path_len,
-                        r.path_len > 0 ? paths[r.path_off + r.path_len - 1].parent : -1);
-                if (r.status == gpuroute::ARC_OK) {
-                    if (r.path_len == 0) {
-                        // An earlier arc of this task routed through the sink
-                        // and has just been applied. The backend searched
-                        // nothing and offered later arcs no new wires; count
-                        // this arc along that branch back to the source.
-                        NPNR_ASSERT(note_branch_use(nd, ad.sink) == nd.src);
-                        ad.routed = true;
-                        shared_branch_sinks++;
-                    } else {
-                        NPNR_ASSERT(paths[r.path_off].wire == ad.sink);
-                        apply_path(nd, ad, paths.data() + r.path_off, r.path_len);
-                    }
-                } else {
-                    last_fail_status = r.status;
-                    last_fail_reason = r.reason;
-                    last_fail_expanded = r.expanded;
-                    if (ctx->debug)
-                        log_info("    arc %d.%d of net '%s' failed in the %s lane%s: status %d reason %d "
-                                 "(expanded %d in %d steps)\n",
-                                 arc_map[ti][k].first, arc_map[ti][k].second, ctx->nameOf(nets_by_udata.at(td.net)),
-                                 large_lane ? "large" : "small", use_bb ? "" : " without bounding box", r.status,
-                                 r.reason, r.expanded, r.steps);
-                    rt.arcs.push_back(arc_map[ti][k]);
-                }
-            }
+            HostTask rt = apply_task_result(tasks[ti], out.tds[ti], out.arc_map[ti], out.results, out.paths, use_bb,
+                                            large_lane);
             if (!rt.arcs.empty())
                 retry.push_back(std::move(rt));
         }
@@ -1438,8 +1730,9 @@ struct GpuRouter
             auto &ad = nd.arcs.at(a.first).at(a.second);
             log_error("Failed to route arc %d.%d of net '%s', from %s to %s (status %d, reason %d, %d wires "
                       "expanded).\n",
-                      a.first, a.second, ctx->nameOf(ni), ctx->nameOfWire(idx_to_wire[nd.src]),
-                      ctx->nameOfWire(idx_to_wire[ad.sink]), last_fail_status, last_fail_reason, last_fail_expanded);
+                      a.first, a.second, ctx->nameOf(ni), ctx->nameOfWire(topo->idx_to_wire[nd.src]),
+                      ctx->nameOfWire(topo->idx_to_wire[ad.sink]), last_fail_status, last_fail_reason,
+                      last_fail_expanded);
         }
     }
 
@@ -1502,21 +1795,22 @@ struct GpuRouter
     void recount_overuse()
     {
         total_wire_use = 0;
-        overused_wires = 0;
-        total_overuse = 0;
+        overused_wires = int(overused_list.size());
+        total_overuse = int(total_overuse_tracked);
         failed_nets.clear();
-        for (size_t i = 0; i < nets.size(); i++) {
-            auto &nd = nets.at(i);
-            for (auto &w : nd.wires) {
-                ++total_wire_use;
-                if (occ[w.first] > 1)
-                    failed_nets.insert(int(i));
-            }
+        if (overused_list.empty()) {
+            for (const auto &nd : nets)
+                total_wire_use += int(nd.wires.size());
+            return;
         }
-        for (size_t w = 0; w < occ.size(); w++) {
-            if (occ[w] > 1) {
-                ++overused_wires;
-                total_overuse += occ[w] - 1;
+        for (size_t i = 0; i < nets.size(); i++) {
+            const auto &nd = nets.at(i);
+            total_wire_use += int(nd.wires.size());
+            for (const auto &w : nd.wires) {
+                if (occ[w.first] > 1) {
+                    failed_nets.insert(int(i));
+                    break;
+                }
             }
         }
     }
@@ -1525,11 +1819,9 @@ struct GpuRouter
     {
         recount_overuse();
         if (curr_cong_weight > 0) {
-            for (size_t w = 0; w < occ.size(); w++) {
-                if (occ[w] <= 1)
-                    continue;
+            for (int32_t w : overused_list) {
                 hist[w] = std::min(1e9f, hist[w] + (occ[w] - 1) * hist_cong_weight);
-                mark_dirty(int32_t(w));
+                mark_dirty(w);
             }
         }
         for (int n : failed_nets) {
@@ -1592,7 +1884,7 @@ struct GpuRouter
         int32_t cursor = ad.sink;
         std::vector<PipId> to_bind;
         while (cursor != nd.src) {
-            WireId cw = idx_to_wire[cursor];
+            WireId cw = topo->idx_to_wire[cursor];
             if (!ctx->checkWireAvail(cw)) {
                 NetInfo *bound_net = ctx->getBoundWireNet(cw);
                 if (bound_net != net) {
@@ -2080,16 +2372,16 @@ struct GpuRouter
             for (auto &w : nets.at(n).wires)
                 if (occ[w.first] >= 20 && hot_users[w.first].size() < 8)
                     hot_users[w.first].push_back(n);
+        std::vector<int32_t> sorted_overused = overused_list;
+        std::sort(sorted_overused.begin(), sorted_overused.end());
         std::ofstream rpt(cfg.overuse_report);
         rpt << "iter " << iter << "\n";
-        for (size_t w = 0; w < occ.size(); w++) {
-            if (occ[w] <= 1)
-                continue;
-            rpt << ctx->nameOfWire(idx_to_wire[w]) << " " << occ[w];
-            auto fnd = hot_users.find(int32_t(w));
+        for (int32_t w : sorted_overused) {
+            rpt << ctx->nameOfWire(topo->idx_to_wire[w]) << " " << occ[w];
+            auto fnd = hot_users.find(w);
             if (fnd != hot_users.end())
                 for (int n : fnd->second)
-                    rpt << " " << ctx->nameOf(nets_by_udata.at(n)) << "/" << nets.at(n).wires.at(int32_t(w)).count;
+                    rpt << " " << ctx->nameOf(nets_by_udata.at(n)) << "/" << nets.at(n).wires.at(w).count;
             rpt << "\n";
         }
         rpt.close();
@@ -2099,14 +2391,16 @@ struct GpuRouter
 
     void log_overused_wires()
     {
+        std::vector<int32_t> sorted_overused = overused_list;
+        std::sort(sorted_overused.begin(), sorted_overused.end());
         int shown = 0;
-        for (size_t w = 0; w < occ.size() && shown < 5; w++) {
-            if (occ[w] <= 1)
-                continue;
+        for (int32_t w : sorted_overused) {
+            if (shown >= 5)
+                break;
             std::string users;
             for (int n : failed_nets) {
                 auto &nd = nets.at(n);
-                auto fnd = nd.wires.find(int32_t(w));
+                auto fnd = nd.wires.find(w);
                 if (fnd == nd.wires.end())
                     continue;
                 bool frozen = false;
@@ -2116,8 +2410,8 @@ struct GpuRouter
                 users += stringf(" %s(count=%d%s)", ctx->nameOf(nets_by_udata.at(n)), fnd->second.count,
                                  frozen ? ",frozen" : "");
             }
-            log_info("        stalled: wire %s occ=%d reserved=%d used by%s\n", ctx->nameOfWire(idx_to_wire[w]), occ[w],
-                     reserved[w], users.c_str());
+            log_info("        stalled: wire %s occ=%d reserved=%d used by%s\n", ctx->nameOfWire(topo->idx_to_wire[w]),
+                     occ[w], reserved[w], users.c_str());
             shown++;
         }
     }
@@ -2200,7 +2494,7 @@ struct GpuRouter
                 for (auto &ad : nd.arcs.at(usr.index.idx())) {
                     if (check_arc_routing(nd, ad))
                         continue;
-                    for (auto pip : ctx->getPipsUphill(idx_to_wire.at(ad.sink))) {
+                    for (auto pip : ctx->getPipsUphill(topo->idx_to_wire.at(ad.sink))) {
                         WireId wire = ctx->getPipSrcWire(pip);
                         std::string name = ctx->nameOfWire(wire);
                         if (name.compare(0, 3, "TD.") == 0)
@@ -2257,14 +2551,14 @@ struct GpuRouter
                         int32_t wire = pending[i];
                         if (!seen.insert(wire).second)
                             continue;
-                        std::string name = ctx->nameOfWire(idx_to_wire.at(wire));
+                        std::string name = ctx->nameOfWire(topo->idx_to_wire.at(wire));
                         if (wire == nd.src)
                             outside = true;
                         if (name.compare(0, 3, "TD.") == 0) {
                             outside |= !group.count(wire);
                             continue;
                         }
-                        for (auto pip : ctx->getPipsUphill(idx_to_wire.at(wire)))
+                        for (auto pip : ctx->getPipsUphill(topo->idx_to_wire.at(wire)))
                             pending.push_back(widx(ctx->getPipSrcWire(pip)));
                     }
                     if (!outside) {
@@ -2427,10 +2721,8 @@ struct GpuRouter
         auto &nd = nets.at(net);
         int32_t cursor = ad.sink;
         while (true) {
-            if (reserved[cursor] == -1) {
-                reserved[cursor] = net | gpuroute::RESERVED_SOFT;
-                mark_dirty(cursor);
-            }
+            if (reserved[cursor] == -1)
+                set_reserved(cursor, net | gpuroute::RESERVED_SOFT);
             auto fnd = nd.wires.find(cursor);
             if (fnd == nd.wires.end() || fnd->second.parent == -1 || cursor == nd.src)
                 break;
@@ -2457,10 +2749,8 @@ struct GpuRouter
     {
         auto &nd = nets.at(net);
         for (auto &w : nd.wires)
-            if (reserved[w.first] == (net | gpuroute::RESERVED_SOFT)) {
-                reserved[w.first] = -1;
-                mark_dirty(w.first);
-            }
+            if (reserved[w.first] == (net | gpuroute::RESERVED_SOFT))
+                set_reserved(w.first, -1);
         for (auto &arcs : nd.arcs)
             for (auto &ad : arcs)
                 if (ad.frozen)
@@ -2892,13 +3182,19 @@ struct GpuRouter
         };
         auto restore_snapshot = [&]() {
             nets = best.nets;
-            occ = best.occ;
-            reserved = best.reserved;
-            hist = best.hist;
-            for (size_t w = 0; w < occ.size(); w++)
-                mark_dirty(int32_t(w));
+            for (size_t w = 0; w < occ.size(); w++) {
+                if (occ[w] != best.occ[w] || reserved[w] != best.reserved[w] || hist[w] != best.hist[w]) {
+                    occ[w] = best.occ[w];
+                    reserved[w] = best.reserved[w];
+                    hist[w] = best.hist[w];
+                    mark_dirty(int32_t(w));
+                }
+            }
+            rebuild_occ_tracking();
+            rebuild_soft_res_tracking();
             flush_state();
             std::vector<int> all;
+            all.reserve(nets.size());
             for (size_t i = 0; i < nets.size(); i++)
                 all.push_back(int(i));
             update_route_delays(all);
@@ -3017,8 +3313,66 @@ struct GpuRouter
             std::vector<FailedRepair> failed_records;
             repair_widen = wns < cfg.repair_slack;
             repair_mode = true;
-            for (auto &t : tasks) {
+            // Pure-delay repair ignores occupancy and history; only reserved[]
+            // changes can affect another net's bounded search. Speculatively
+            // batch BB-disjoint tasks into multi-block launches and commit them
+            // in exact original order, validating tile_res_epoch on both the
+            // search box and existing tree wires before consuming each result.
+            const bool allow_spec = !verify_backend && tasks.size() > 1;
+            const size_t max_spec = size_t(std::max(1, std::min(cfg.small_slots, 64)));
+            std::vector<std::shared_ptr<RouteBatchOut>> spec_batch(tasks.size());
+            std::vector<size_t> spec_idx(tasks.size(), 0);
+            std::vector<uint32_t> spec_blocked;
+            uint32_t spec_gen = 0;
+            if (allow_spec)
+                spec_blocked.assign(size_t(res_grid_w) * size_t(res_grid_h), 0);
+            auto bb_epoch_valid = [&](const NetData &nd, const BoundingBox &bb, uint64_t epoch) {
+                const int x0 = std::max(0, std::min(bb.x0, res_grid_w - 1));
+                const int y0 = std::max(0, std::min(bb.y0, res_grid_h - 1));
+                const int x1 = std::max(0, std::min(bb.x1, res_grid_w - 1));
+                const int y1 = std::max(0, std::min(bb.y1, res_grid_h - 1));
+                for (int y = y0; y <= y1; y++) {
+                    const uint64_t *row = tile_res_epoch.data() + size_t(y) * size_t(res_grid_w);
+                    for (int x = x0; x <= x1; x++)
+                        if (row[x] > epoch)
+                            return false;
+                }
+                for (const auto &w : nd.wires)
+                    if (tile_res_epoch[tile_idx(topo->wx[w.first], topo->wy[w.first])] > epoch)
+                        return false;
+                return true;
+            };
+            auto mark_spec_bb = [&](const BoundingBox &bb, uint32_t gen) {
+                const int x0 = std::max(0, std::min(bb.x0, res_grid_w - 1));
+                const int y0 = std::max(0, std::min(bb.y0, res_grid_h - 1));
+                const int x1 = std::max(0, std::min(bb.x1, res_grid_w - 1));
+                const int y1 = std::max(0, std::min(bb.y1, res_grid_h - 1));
+                for (int y = y0; y <= y1; y++) {
+                    uint32_t *row = spec_blocked.data() + size_t(y) * size_t(res_grid_w);
+                    for (int x = x0; x <= x1; x++)
+                        row[x] = gen;
+                }
+            };
+            auto hits_spec_bb = [&](const NetData &nd, const BoundingBox &bb, uint32_t gen) {
+                const int x0 = std::max(0, std::min(bb.x0, res_grid_w - 1));
+                const int y0 = std::max(0, std::min(bb.y0, res_grid_h - 1));
+                const int x1 = std::max(0, std::min(bb.x1, res_grid_w - 1));
+                const int y1 = std::max(0, std::min(bb.y1, res_grid_h - 1));
+                for (int y = y0; y <= y1; y++) {
+                    const uint32_t *row = spec_blocked.data() + size_t(y) * size_t(res_grid_w);
+                    for (int x = x0; x <= x1; x++)
+                        if (row[x] == gen)
+                            return true;
+                }
+                for (const auto &w : nd.wires)
+                    if (spec_blocked[tile_idx(topo->wx[w.first], topo->wy[w.first])] == gen)
+                        return true;
+                return false;
+            };
+            for (size_t ti = 0; ti < tasks.size(); ti++) {
+                auto &t = tasks[ti];
                 auto &nd = nets.at(t.net);
+                const BoundingBox wbb = task_search_bb(nd);
                 // Slack from the round boundary still describes this tree.
                 dict<std::pair<int, int>, delay_t> original_delay;
                 if (repair_widen && cfg.repair_displace) {
@@ -3026,15 +3380,68 @@ struct GpuRouter
                         original_delay[a] = get_route_delay(nd, nd.arcs.at(a.first).at(a.second));
                 }
                 NetData saved = nd;
-                for (auto &a : t.arcs)
-                    ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
-                flush_state();
-                std::vector<HostTask> one{t};
-                std::vector<HostTask> retry = route_tasks(one, true, false);
-                if (!retry.empty())
+                std::vector<HostTask> retry;
+                if (allow_spec) {
+                    if (spec_batch[ti] && !bb_epoch_valid(nd, wbb, spec_batch[ti]->epoch))
+                        spec_batch[ti].reset();
+                    if (!spec_batch[ti]) {
+                        ++spec_gen;
+                        if (spec_gen == 0) {
+                            std::fill(spec_blocked.begin(), spec_blocked.end(), 0);
+                            spec_gen = 1;
+                        }
+                        std::vector<size_t> batch_indices;
+                        batch_indices.push_back(ti);
+                        mark_spec_bb(wbb, spec_gen);
+                        const size_t scan_end = std::min(tasks.size(), ti + 256);
+                        for (size_t j = ti + 1; j < scan_end && batch_indices.size() < max_spec; j++) {
+                            const auto &jnd = nets.at(tasks[j].net);
+                            const BoundingBox jbb = task_search_bb(jnd);
+                            if (!spec_batch[j] && !hits_spec_bb(jnd, jbb, spec_gen))
+                                batch_indices.push_back(j);
+                            mark_spec_bb(jbb, spec_gen);
+                        }
+                        flush_state();
+                        const uint64_t epoch = global_res_epoch;
+                        std::vector<HostTask> btasks;
+                        std::vector<NetData> overrides;
+                        btasks.reserve(batch_indices.size());
+                        overrides.reserve(batch_indices.size());
+                        for (size_t j : batch_indices) {
+                            btasks.push_back(tasks[j]);
+                            overrides.push_back(ripup_tree_copy(nets.at(tasks[j].net), tasks[j].arcs));
+                        }
+                        auto sb = std::make_shared<RouteBatchOut>(
+                                route_tasks_launch(btasks, true, false, &overrides));
+                        sb->epoch = epoch;
+                        for (size_t bi = 0; bi < batch_indices.size(); bi++) {
+                            spec_batch[batch_indices[bi]] = sb;
+                            spec_idx[batch_indices[bi]] = bi;
+                        }
+                    }
+                    for (auto &a : t.arcs)
+                        ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
+                    auto sb = std::move(spec_batch[ti]);
+                    const size_t bi = spec_idx[ti];
+                    HostTask rt = apply_task_result(t, sb->tds[bi], sb->arc_map[bi], sb->results, sb->paths, true,
+                                                    false);
+                    if (!rt.arcs.empty())
+                        retry.push_back(std::move(rt));
+                } else {
+                    for (auto &a : t.arcs)
+                        ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
+                    flush_state();
+                    std::vector<HostTask> one{t};
+                    retry = route_tasks(one, true, false);
+                }
+                const bool needed_unbounded = !retry.empty();
+                if (!retry.empty()) {
+                    flush_state();
                     retry = route_tasks(retry, false, true);
+                }
                 dict<std::pair<int, int>, std::vector<std::tuple<float, int, std::pair<int, int>>>> soft_blockers;
                 if (!retry.empty() && cfg.repair_displace) {
+                    flush_state();
                     ignore_soft = true;
                     std::vector<HostTask> still = route_tasks(retry, false, true);
                     ignore_soft = false;
@@ -3071,7 +3478,7 @@ struct GpuRouter
                 if (any_failed) {
                     // Delay-only search left the net illegal. Put the previous
                     // legal tree back so re-negotiation does not abort.
-                    restore_net(t.net, saved);
+                    restore_net(t.net, saved, !allow_spec);
                     for (auto &a : t.arcs) {
                         failed_repairs++;
                         FailedRepair rec;
@@ -3093,15 +3500,25 @@ struct GpuRouter
                             if (slack < cfg.repair_slack)
                                 negative.push_back(a);
                         }
-                        reserved_saved_ps += take_faster_reserved_route(t.net, negative, original_delay);
+                        // When the bounded search succeeded for the exact same
+                        // arc set and no wire in the widened box has a soft
+                        // reservation, ignoring soft reservations visits the
+                        // identical graph and cannot produce a different route.
+                        const bool may_improve = verify_backend || needed_unbounded ||
+                                                 negative.size() != t.arcs.size() ||
+                                                 has_soft_reserved_in_bb(wbb.x0, wbb.y0, wbb.x1, wbb.y1);
+                        if (!negative.empty() && may_improve)
+                            reserved_saved_ps += take_faster_reserved_route(t.net, negative, original_delay);
                     }
                     for (auto &a : t.arcs) {
                         freeze_arc(t.net, nd.arcs.at(a.first).at(a.second));
                         repaired++;
                     }
-                    flush_state();
+                    if (!allow_spec)
+                        flush_state();
                 }
             }
+            flush_state();
             if (failed_repairs > 0)
                 repaired += repair_peer_groups(failed_records);
             repair_mode = false;
@@ -3218,15 +3635,14 @@ struct GpuRouter
         fit_estimate();
 
         gpuroute::GraphData gd;
-        gd.n_wires = int32_t(idx_to_wire.size());
-        gd.n_edges = int64_t(out_dst.size());
-        gd.out_off = out_off.data();
-        gd.out_dst = out_dst.data();
-        gd.edge_cost = edge_cost.data();
-        gd.edge_region = edge_region.data();
-        gd.edge_outside_halo = edge_outside_halo.data();
-        gd.wire_x = wx.data();
-        gd.wire_y = wy.data();
+        gd.n_wires = int32_t(topo->idx_to_wire.size());
+        gd.n_edges = int64_t(topo->out_dst.size());
+        gd.out_off = topo->out_off.data();
+        gd.out_dst = topo->out_dst.data();
+        gd.edge_src = topo->edge_src.data();
+        gd.edges = edge_recs.get();
+        gd.wire_x = topo->wx.data();
+        gd.wire_y = topo->wy.data();
         gd.wire_reserved = reserved.data();
         gd.wire_flags = wflags.data();
         gd.wire_occ = occ.data();
@@ -3285,9 +3701,9 @@ struct GpuRouter
         NetInfo *ni = nets_by_udata.at(net);
         auto &nd = nets.at(net);
         for (auto &w : nd.wires) {
-            occ[w.first]--;
+            dec_occ(w.first);
             if (reserved[w.first] == net)
-                reserved[w.first] = -1;
+                set_reserved(w.first, -1);
             mark_dirty(w.first);
         }
         nd.wires.clear();
@@ -3302,17 +3718,18 @@ struct GpuRouter
             tw.pip = w.second.pip;
             tw.parent = (tw.pip == PipId()) ? -1 : widx(ctx->getPipSrcWire(tw.pip));
             nd.wires[i] = tw;
-            occ[i]++;
+            inc_occ(i);
             if (reserved[i] == -1)
-                reserved[i] = net;
+                set_reserved(i, net);
             mark_dirty(i);
         }
         if (nd.src >= 0 && !nd.wires.count(nd.src)) {
             TreeWire tw;
             tw.parent = -1;
             tw.count = 1;
+            tw.exact_delay = ctx->getWireDelay(topo->idx_to_wire[nd.src]).maxDelay();
             nd.wires[nd.src] = tw;
-            occ[nd.src]++;
+            inc_occ(nd.src);
             mark_dirty(nd.src);
         }
         compute_tree_delays(nd);
@@ -3369,7 +3786,7 @@ struct GpuRouter
                 ripup_arc(nd, nd.arcs.at(a.first).at(a.second));
             job.base = nd;
             for (auto &w : job.saved.wires)
-                if (!job.base.wires.count(w.first) && wlong[w.first])
+                if (!job.base.wires.count(w.first) && topo->wlong[w.first])
                     job.old_long.push_back(w.first);
             std::sort(job.old_long.begin(), job.old_long.end(), [&](int32_t a, int32_t b) {
                 return job.saved.wires.at(a).delay < job.saved.wires.at(b).delay;
@@ -3415,7 +3832,7 @@ struct GpuRouter
                 }
                 auto &nd = nets.at(job.net);
                 job.avoid_before = job.avoid.size();
-                restore_net(job.net, job.base);
+                restore_net(job.net, job.base, false);
                 nd.bb = job.wide;
                 job.blocked.clear();
                 auto block_wire = [&](int32_t w) {
@@ -3481,7 +3898,7 @@ struct GpuRouter
                 bool any_long = false;
                 for (auto &w : nd.wires) {
                     wires.push_back(w.first);
-                    if (!job.base.wires.count(w.first) && wlong[w.first]) {
+                    if (!job.base.wires.count(w.first) && topo->wlong[w.first]) {
                         job.avoid.insert(w.first);
                         any_long = true;
                     }
@@ -3505,7 +3922,7 @@ struct GpuRouter
                 GpuRouteTree t;
                 t.variant = variant;
                 for (auto &w : nd.wires)
-                    t.wires.emplace_back(idx_to_wire.at(w.first), w.second.pip);
+                    t.wires.emplace_back(topo->idx_to_wire.at(w.first), w.second.pip);
                 for (auto &a : job.arcs)
                     t.route_delay = std::max(t.route_delay, get_route_delay(nd, nd.arcs.at(a.first).at(a.second)));
                 job.out.push_back(std::move(t));
@@ -3529,7 +3946,7 @@ struct GpuRouter
                 auto &nd = nets.at(job.net);
                 if (ni->users.entries() < 2)
                     continue;
-                restore_net(job.net, job.saved);
+                restore_net(job.net, job.saved, false);
                 nd.bb = job.wide;
                 // failing sink first, then the others by slack
                 std::vector<std::pair<float, int>> order;
@@ -3598,7 +4015,7 @@ struct GpuRouter
                 GpuRouteTree t;
                 t.variant = 100 + tree;
                 for (auto &w : nd.wires)
-                    t.wires.emplace_back(idx_to_wire.at(w.first), w.second.pip);
+                    t.wires.emplace_back(topo->idx_to_wire.at(w.first), w.second.pip);
                 for (auto &a : job.arcs)
                     t.route_delay = std::max(t.route_delay, get_route_delay(nd, nd.arcs.at(a.first).at(a.second)));
                 job.out.push_back(std::move(t));
@@ -3610,7 +4027,7 @@ struct GpuRouter
             auto &job = jobs[i];
             if (job.net < 0)
                 continue;
-            restore_net(job.net, job.saved);
+            restore_net(job.net, job.saved, false);
             result[i] = std::move(job.out);
         }
         flush_state();
