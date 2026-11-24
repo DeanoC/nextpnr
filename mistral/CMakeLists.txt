@@ -141,6 +141,11 @@ if (BUILD_TESTS)
                     --yosys ${MISTRAL_CHECKPOINT_YOSYS}
                     --nextpnr $<TARGET_FILE:nextpnr-${family}>
                     --output ${CMAKE_CURRENT_BINARY_DIR}/tests/pad-clock-route)
+        add_test(NAME nextpnr-${family}-fes-cart-const-outputs
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fes_cart_const_outputs.py
+                    --yosys ${MISTRAL_CHECKPOINT_YOSYS}
+                    --nextpnr $<TARGET_FILE:nextpnr-${family}>
+                    --output ${CMAKE_CURRENT_BINARY_DIR}/tests/fes-cart-const-outputs)
     endif()
     add_test(NAME nextpnr-${family}-capture-pipeline-locality-cli
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/capture_pipeline_locality_cli.py
