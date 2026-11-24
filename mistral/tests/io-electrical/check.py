@@ -41,7 +41,7 @@ def synth(design, name):
 
 
 def route(netlist, qsf, name, nextpnr=None, success=True, sdc=True):
-    command = [nextpnr or a.nextpnr, "--device", "5CSEBA6U23I7", "--qsf", qsf, "--json", netlist]
+    command = [nextpnr or a.nextpnr, "--device", "5CSEBA6U23I7", "--qsf", qsf, "--json", netlist, "--seed", "1"]
     if sdc:
         command += ["--sdc", f / "clocks.sdc"]
     if success:
@@ -60,12 +60,15 @@ def settings(name):
     return {pin: sorted(values) for pin, values in found.items()}
 
 
-def compare(name):
+def compare_settings(name, want):
     got = settings(name)
-    want = oracle["designs"][name]["settings"]
     for pin in sorted(set(got) | set(want)):
         assert got.get(pin, []) == want.get(pin, []), (name, pin, got.get(pin), want.get(pin))
     return len(set(got) | set(want))
+
+
+def compare(name):
+    return compare_settings(name, oracle["designs"][name]["settings"])
 
 
 top = synth("top.v", "top")
@@ -116,17 +119,154 @@ reject("open-drain", "set_instance_assignment -name OPEN_DRAIN_OUTPUT ON -to o_p
 reject("wildcard-location", "set_location_assignment PIN_AH22 -to o_*", "not a wildcard")
 print("PASS: 16 invalid electrical requests rejected")
 
+# Always gate the "default output unchanged" contract without needing
+# --reference-nextpnr:
+# 1. A design with no electrical assignments must decode to the exact default
+#    GPIO/DQS16 settings on every pad (3.3-V LVTTL, 16 mA, fast slew, weak
+#    pull-up/bus-hold/clamp off, default delay chains).
+# 2. Adding explicit default electrical assignments must produce byte-identical
+#    RBF output to having no electrical assignments at all.
+PLAIN_DEFAULT_SETTINGS = {
+    "AA15": [
+        "DQS16.060.000:RB_T9_SEL_EREG_CFF_DELAY.1 1f",
+        "GPIO.064.000:DRIVE_STRENGTH.1 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.064.000:IOCSR_STD.1 DIS",
+        "GPIO.064.000:USE_WEAK_PULLUP.1 0",
+    ],
+    "AC24": [
+        "DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.10 1f",
+        "GPIO.089.008:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.089.008:IOCSR_STD.2 DIS",
+        "GPIO.089.008:USE_WEAK_PULLUP.2 0",
+    ],
+    "AD26": [
+        "DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.7 1f",
+        "GPIO.089.006:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.089.006:IOCSR_STD.3 DIS",
+        "GPIO.089.006:USE_WEAK_PULLUP.3 0",
+    ],
+    "AE25": [
+        "DQS16.089.008:RB_T9_SEL_EREG_CFF_DELAY.6 1f",
+        "GPIO.089.006:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.089.006:IOCSR_STD.2 DIS",
+        "GPIO.089.006:USE_WEAK_PULLUP.2 0",
+    ],
+    "AF23": [
+        "DQS16.076.000:RB_T9_SEL_EREG_CFF_DELAY.5 1f",
+        "GPIO.078.000:DRIVE_STRENGTH.1 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.078.000:IOCSR_STD.1 DIS",
+        "GPIO.078.000:USE_WEAK_PULLUP.1 0",
+    ],
+    "AF25": [
+        "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.4 1f",
+        "GPIO.086.000:DRIVE_STRENGTH.0 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.086.000:USE_WEAK_PULLUP.0 0",
+    ],
+    "AF27": [
+        "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.2 1f",
+        "GPIO.088.000:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.088.000:IOCSR_STD.2 DIS",
+        "GPIO.088.000:USE_WEAK_PULLUP.2 0",
+    ],
+    "AF28": [
+        "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.3 1f",
+        "GPIO.088.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.088.000:IOCSR_STD.3 DIS",
+        "GPIO.088.000:USE_WEAK_PULLUP.3 0",
+    ],
+    "AG23": [
+        "DQS16.076.000:RB_T9_SEL_EREG_CFF_DELAY.4 1f",
+        "GPIO.078.000:DRIVE_STRENGTH.0 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.078.000:USE_WEAK_PULLUP.0 0",
+    ],
+    "AG25": [
+        "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.5 1f",
+        "GPIO.086.000:DRIVE_STRENGTH.1 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.086.000:IOCSR_STD.1 DIS",
+        "GPIO.086.000:USE_WEAK_PULLUP.1 0",
+    ],
+    "AG26": [
+        "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.14 1f",
+        "GPIO.082.000:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.082.000:IOCSR_STD.2 DIS",
+        "GPIO.082.000:USE_WEAK_PULLUP.2 0",
+    ],
+    "AG28": [
+        "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.6 1f",
+        "GPIO.086.000:DRIVE_STRENGTH.2 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.086.000:IOCSR_STD.2 DIS",
+        "GPIO.086.000:USE_WEAK_PULLUP.2 0",
+    ],
+    "AH24": [
+        "DQS16.076.000:RB_T9_SEL_EREG_CFF_DELAY.3 1f",
+        "GPIO.080.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.080.000:USE_WEAK_PULLUP.3 0",
+    ],
+    "AH26": [
+        "DQS16.084.000:OEREG_HR_CLK_EN.11 1",
+        "DQS16.084.000:OUTREG_OUTPUT_SEL.11 SEL_SDR",
+        "DQS16.084.000:RBOE_LVL_FR_CLK_EN.11 1",
+        "GPIO.084.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.084.000:IOCSR_STD.3 DIS",
+        "GPIO.084.000:USE_WEAK_PULLUP.3 0",
+    ],
+    "AH27": [
+        "DQS16.084.000:RB_T9_SEL_EREG_CFF_DELAY.7 1f",
+        "GPIO.086.000:DRIVE_STRENGTH.3 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.086.000:IOCSR_STD.3 DIS",
+        "GPIO.086.000:USE_WEAK_PULLUP.3 0",
+    ],
+    "C12": ["GPIO.040.081:USE_WEAK_PULLUP.1 0"],
+    "D11": ["GPIO.032.081:USE_WEAK_PULLUP.1 0"],
+    "D12": [
+        "DQS16.036.081:RB_FIFO_WCLK_EN.0 1",
+        "DQS16.036.081:RB_FIFO_WCLK_INV.0 1",
+        "GPIO.040.081:USE_WEAK_PULLUP.0 0",
+    ],
+    "D8": ["GPIO.038.081:USE_WEAK_PULLUP.3 0"],
+    "E8": ["GPIO.038.081:USE_WEAK_PULLUP.2 0"],
+    "V11": ["GPIO.032.000:USE_WEAK_PULLUP.0 0"],
+    "V12": ["GPIO.040.000:USE_WEAK_PULLUP.0 0"],
+    "W12": ["GPIO.040.000:USE_WEAK_PULLUP.1 0"],
+    "Y15": [
+        "DQS16.060.000:RB_T9_SEL_EREG_CFF_DELAY.0 1f",
+        "GPIO.064.000:DRIVE_STRENGTH.0 V3P3_LVTTL_16MA_LVCMOS_2MA",
+        "GPIO.064.000:IOCSR_STD.0 DIS",
+        "GPIO.064.000:USE_WEAK_PULLUP.0 0",
+    ],
+}
+
+plain_lines = [
+    line
+    for line in base_qsf.splitlines()
+    if line.startswith("set_location_assignment") or "FAST_" in line
+]
+(o / "plain.qsf").write_text("\n".join(plain_lines) + "\n")
+route(top, o / "plain.qsf", "plain")
+plain_pins = compare_settings("plain", PLAIN_DEFAULT_SETTINGS)
+print(f"PASS: {plain_pins} pads without electrical assignments match exact default GPIO/DQS16 settings")
+
+plain_defaults_lines = plain_lines + [
+    'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to *',
+    "set_instance_assignment -name CURRENT_STRENGTH_NEW 16MA -to o_*",
+    "set_instance_assignment -name CURRENT_STRENGTH_NEW 16MA -to b_*",
+    "set_instance_assignment -name CURRENT_STRENGTH_NEW 16MA -to t_oe",
+    "set_instance_assignment -name SLEW_RATE 1 -to o_*",
+    "set_instance_assignment -name SLEW_RATE 1 -to b_*",
+    "set_instance_assignment -name SLEW_RATE 1 -to t_oe",
+    "set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to *",
+    "set_instance_assignment -name ENABLE_BUS_HOLD_CIRCUITRY OFF -to *",
+    "set_instance_assignment -name CLAMPING_DIODE OFF -to *",
+]
+(o / "plain-defaults.qsf").write_text("\n".join(plain_defaults_lines) + "\n")
+route(top, o / "plain-defaults.qsf", "plain-defaults")
+plain_bytes = (o / "plain.rbf").read_bytes()
+defaults_bytes = (o / "plain-defaults.rbf").read_bytes()
+assert plain_bytes == defaults_bytes, "RBF bytes differ between no electrical assignments and explicit defaults"
+print("PASS: no electrical assignments gives byte-identical RBF bytes with explicit default assignments")
+
 if a.reference_nextpnr:
-    # Without electrical assignments the feature must not change any bit.
-    plain = "\n".join(
-        line
-        for line in base_qsf.splitlines()
-        if line.startswith("set_location_assignment") or "FAST_" in line or "IO_STANDARD \"3.3-V LVTTL\"" in line
-    )
-    (o / "plain.qsf").write_text(plain + "\n")
-    route(top, o / "plain.qsf", "plain-new")
     route(top, o / "plain.qsf", "plain-ref", nextpnr=a.reference_nextpnr)
-    new = (o / "plain-new.rbf").read_bytes()
-    ref = (o / "plain-ref.rbf").read_bytes()
-    assert new == ref, "RBF bytes differ without electrical assignments"
+    ref_bytes = (o / "plain-ref.rbf").read_bytes()
+    assert plain_bytes == ref_bytes, "RBF bytes differ without electrical assignments"
     print("PASS: no electrical assignments gives byte-identical RBF bytes with the reference binary")
