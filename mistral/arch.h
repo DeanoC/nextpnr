@@ -626,7 +626,9 @@ struct Arch : BaseArch<ArchRanges>
     };
     std::unordered_map<const PortRef *, AnalogueArc> analogue_arc_cache;
     bool analogue_cache_valid = false;
-    void compute_analogue_arcs(bool observe);
+    dict<PipId, delay_t> pending_pip_observations;
+    bool analogue_hops_captured = false;
+    void compute_analogue_arcs(bool observe, bool capture_hops = false);
     bool analogue_repair();
     // Analogue-scored route selection: several GPU candidate routes per sink
     // with less than `limit` slack, evaluated with the analogue model, best
@@ -640,7 +642,7 @@ struct Arch : BaseArch<ArchRanges>
     // whose routing changed: removed pips are parked on an unused input,
     // added pips linked.
     void analogue_relink(const std::vector<PipId> &removed, const std::vector<PipId> &added);
-    void configure_bitstream(bool observe = false); // bitstream.cc
+    void configure_bitstream(bool observe = false, bool capture_hops = false); // bitstream.cc
 
     // -------------------------------------------------
 
