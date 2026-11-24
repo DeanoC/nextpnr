@@ -119,7 +119,7 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `repairBbExpand` | 8 | tiles added to the net box for pure-delay repair while setup slack is still negative. The in-box route is the one that is kept, so this is what lets a failing arc leave the negotiation box. 0 keeps that box. Values above the device size are capped there, so the int16 box cannot wrap |
 | `repairCongWeight` | 1.0 | present-congestion weight used when re-routing a same-band peer group (0 disables). History cost is ignored in that pass, so an occupied wire costs `(1 + occ * weight)` times delay. |
 | `analogueRounds`, `analogueSlack`, `analogueRipSlack`, `analoguePrior` | 3, 0 ps, 300 ps, 1.25 | Mistral analogue signoff repair (below); `analogueRounds=0` disables it |
-| `analogueMaxRounds` | 0 | optional deterministic cap on total analogue repair rounds (candidate passes plus re-routes); nonnegative integer, `0` disables the cap |
+| `analogueMaxRounds` | 0 | optional deterministic cap on ordinary analogue repair and improvement actions (candidate passes, re-routes, and `analogueImproveRounds` passes; separate opt-in post-route local experiments keep their own trial limits); nonnegative integer, `0` disables the cap |
 | `analogueTimeBudget` | 3600 seconds | Mistral repair cooperative safety time limit, including candidate selection and nested rerouting; finite and nonnegative, `0` disables the limit. Initial routing and final signoff are outside the budget |
 | `analogueCandidates`, `analogueCandidateRounds`, `analogueCandidateArcs` | 4, 2, 200 | analogue-scored candidate selection (below): routes generated per failing sink, passes before each full re-route, failing sinks tried per pass; `analogueCandidates=0` disables it |
 | `analogueCandidateGain`, `analogueCandidateFanout`, `analogueCandidatePrior` | 20 ps, 64, 1.0 | a candidate must raise the net's worst sink slack by this much to be kept; nets with more sinks are left alone; delay prior for unobserved pips while searching candidates |
@@ -402,8 +402,10 @@ with no legal route fails as unroutable instead of repeating one rejected pip.
    retained menu DDR fixture (see its docstring for the commands).
 
    Repair stops deterministically on `analogueRounds`, optional
-   `analogueMaxRounds` (total candidate passes plus re-routes; `0` disables the
-   cap), and `analogueImproveRounds`. A cooperative `analogueTimeBudget`
+   `analogueMaxRounds` (caps ordinary repair candidate passes, re-routes, and
+   `analogueImproveRounds` passes; separate opt-in post-route local experiments
+   keep their own trial limits; `0` disables the cap), and `analogueImproveRounds`.
+   A cooperative `analogueTimeBudget`
    (3600 seconds / one hour by default; `0` disables) remains as a runaway
    safety limit rather than a load-sensitive stopping trigger.
    The initial analogue timing is always obtained before stopping so there

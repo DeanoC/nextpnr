@@ -6,13 +6,15 @@ spend the remaining compiler time in congestion negotiation. External process
 termination prevented restoration and final timing of that saved routing.
 
 Mistral gives analogue repair deterministic round limits (`analogueRounds`,
-optional `analogueMaxRounds` for total candidate passes plus re-routes, and
-`analogueImproveRounds`) plus a cooperative one-hour (3600 s) safety time limit
+optional `analogueMaxRounds` capping ordinary repair candidate passes,
+re-routes, and `analogueImproveRounds` passes while separate opt-in post-route
+local experiments keep their own trial limits, and `analogueImproveRounds`) plus
+a cooperative one-hour (3600 s) safety time limit
 so ordinary runs do not truncate early under host load. Use
 `--gpu-opt analogueTimeBudget=SECONDS` to override the safety time limit (`0`
-disables it) and `--gpu-opt analogueMaxRounds=N` to cap total repair rounds
-deterministically (`0` disables the cap). The stop reason, counts, and
-`time_budget_truncated` flag are logged and emitted under top-level
+disables it) and `--gpu-opt analogueMaxRounds=N` to cap ordinary repair and
+improvement actions deterministically (`0` disables the cap). The stop reason,
+counts, and `time_budget_truncated` flag are logged and emitted under top-level
 `analogue_repair` in `--report` JSON.
 Initial routing is unchanged. The first analogue timing always completes so
 repair has a measured route to retain. Candidate generation, candidate scoring
