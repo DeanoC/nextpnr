@@ -731,8 +731,21 @@ bool Arch::analogue_repair()
     const int improve_rounds = ctx->setting<int>("gpurouter/analogueImproveRounds", 4);
     const float improve_band = ctx->setting<float>("gpurouter/analogueImproveBand", 300.0f);
     pip_delay_prior = ctx->setting<float>("gpurouter/analoguePrior", 1.25f);
+    auto record_stop = [&](const std::string &reason, int rounds_run, int reroutes_run, int cand_passes_run,
+                           int improve_run, bool truncated) {
+        ctx->analogue_repair_stop_reason = reason;
+        ctx->analogue_repair_rounds = rounds_run;
+        ctx->analogue_repair_reroutes = reroutes_run;
+        ctx->analogue_repair_candidate_passes = cand_passes_run;
+        ctx->analogue_repair_improve_passes = improve_run;
+        ctx->analogue_repair_time_budget_truncated = truncated;
+        log_info("Analogue repair stop condition: reason=%s rounds=%d reroutes=%d candidate_passes=%d "
+                 "improve_passes=%d time_budget_truncated=%s\n",
+                 reason.c_str(), rounds_run, reroutes_run, cand_passes_run, improve_run,
+                 truncated ? "true" : "false");
+    };
     if (rounds <= 0) {
-        ctx->analogue_repair_stop_reason = "disabled";
+        record_stop("disabled", 0, 0, 0, 0, false);
         return true;
     }
 
@@ -1071,16 +1084,7 @@ bool Arch::analogue_repair()
         restore_routing(ctx, best);
         result = true;
     }
-    ctx->analogue_repair_stop_reason = stop_reason;
-    ctx->analogue_repair_rounds = completed_rounds;
-    ctx->analogue_repair_reroutes = reroutes;
-    ctx->analogue_repair_candidate_passes = total_cand_passes;
-    ctx->analogue_repair_improve_passes = improve_passes_run;
-    ctx->analogue_repair_time_budget_truncated = time_budget_truncated;
-    log_info("Analogue repair stop condition: reason=%s rounds=%d reroutes=%d candidate_passes=%d improve_passes=%d "
-             "time_budget_truncated=%s\n",
-             stop_reason.c_str(), completed_rounds, reroutes, total_cand_passes, improve_passes_run,
-             time_budget_truncated ? "true" : "false");
+    record_stop(stop_reason, completed_rounds, reroutes, total_cand_passes, improve_passes_run, time_budget_truncated);
     // A separate, default-off local experiment starts from exactly the route
     // ordinary repair returns. Keep the signoff table fixed and compare every
     // native endpoint row, not only the worst clock. Incomplete external IO
