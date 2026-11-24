@@ -768,9 +768,7 @@ bool Arch::analogue_repair()
     bool restored = false;
     // Every round is a timing, a candidate pass or a re-route; this bounds
     // the loop even if a round neither improves nor re-routes
-    const int default_max_rounds = (rounds + 1) * (cand_rounds + 3);
-    const int max_rounds = configured_max_rounds > 0 ? std::min(configured_max_rounds, default_max_rounds)
-                                                     : default_max_rounds;
+    const int max_rounds = (rounds + 1) * (cand_rounds + 3);
     // Analysis of the latest timing
     std::unique_ptr<TimingAnalyser> tmg;
     auto time_routing = [&](std::string &summary) {
@@ -797,6 +795,13 @@ bool Arch::analogue_repair()
         }
         if (reroutes >= rounds) {
             stop_reason = "reroute_cap";
+            break;
+        }
+        if (configured_max_rounds > 0 && (total_cand_passes + reroutes) >= configured_max_rounds) {
+            stop_reason = "round_cap";
+            log_info("    stopping after %d repair actions (%d candidate passes, %d reroutes; analogueMaxRounds=%d) "
+                     "without reaching the target\n",
+                     total_cand_passes + reroutes, total_cand_passes, reroutes, configured_max_rounds);
             break;
         }
         if (round >= max_rounds) {
