@@ -3500,13 +3500,25 @@ struct GpuRouter
                             if (slack < cfg.repair_slack)
                                 negative.push_back(a);
                         }
+                        auto has_soft_reserved_in_tree = [&](const NetData &tree, int net) {
+                            if (total_soft_reserved == 0)
+                                return false;
+                            for (const auto &w : tree.wires) {
+                                const int32_t r = reserved[w.first];
+                                if (r != -1 && (r & gpuroute::RESERVED_SOFT) && gpuroute::reserved_owner(r) != net)
+                                    return true;
+                            }
+                            return false;
+                        };
                         // When the bounded search succeeded for the exact same
-                        // arc set and no wire in the widened box has a soft
-                        // reservation, ignoring soft reservations visits the
-                        // identical graph and cannot produce a different route.
+                        // arc set and neither the widened box nor the existing
+                        // net tree contains a foreign soft reservation,
+                        // ignoring soft reservations visits the identical
+                        // seeds and graph and cannot produce a different route.
                         const bool may_improve = verify_backend || needed_unbounded ||
                                                  negative.size() != t.arcs.size() ||
-                                                 has_soft_reserved_in_bb(wbb.x0, wbb.y0, wbb.x1, wbb.y1);
+                                                 has_soft_reserved_in_bb(wbb.x0, wbb.y0, wbb.x1, wbb.y1) ||
+                                                 has_soft_reserved_in_tree(saved, t.net);
                         if (!negative.empty() && may_improve)
                             reserved_saved_ps += take_faster_reserved_route(t.net, negative, original_delay);
                     }
