@@ -1685,7 +1685,9 @@ struct GpuRouter
     // false when an attempt that started with frozen repair arcs cannot
     // escape a small plateau; initial routing keeps the normal max_iter
     // budget and congestion growth even when only one conflict remains.
-    bool negotiate()
+    // Broad boost-ceiling aborts (stalled_at_ceiling) are restricted to
+    // rollback-capable timing-repair callers that restore a snapshot on false.
+    bool negotiate(bool rollback_on_plateau = false)
     {
         const int attempt = ++negotiation_attempt;
         if (telemetry)
@@ -1812,7 +1814,7 @@ struct GpuRouter
                              "accelerating present-congestion growth (x%.2f)\n",
                              best_overused, overused_stall, cong_stall_boost);
                 } else if (congestion_plateau.saturated(overused_wires, int(failed_nets.size())) ||
-                           congestion_plateau.stalled_at_ceiling(overused_wires)) {
+                           (rollback_on_plateau && congestion_plateau.stalled_at_ceiling(overused_wires))) {
                     // Present-congestion cost is already growing as fast as
                     // it is allowed to, and the overused wires are not held
                     // by frozen arcs. Timing repair can still have soft-
@@ -3129,7 +3131,7 @@ struct GpuRouter
                 route_queue.push_back(cn);
             std::sort(route_queue.begin(), route_queue.end());
             route_queue.erase(std::unique(route_queue.begin(), route_queue.end()), route_queue.end());
-            if (!negotiate()) {
+            if (!negotiate(/*rollback_on_plateau=*/true)) {
                 log_info("    timing repair stopped on a congestion plateau; restoring the pre-repair routing\n");
                 restore_snapshot();
                 failed_nets.clear();
