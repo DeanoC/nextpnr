@@ -1169,12 +1169,14 @@ struct MistralBitgen
 };
 } // namespace
 
-void Arch::configure_bitstream(bool observe)
+void Arch::configure_bitstream(bool observe, bool capture_hops)
 {
     analogue_cache_valid = false;
+    analogue_hops_captured = false;
+    pending_pip_observations.clear();
     MistralBitgen gen(getCtx());
     gen.run();
-    compute_analogue_arcs(observe);
+    compute_analogue_arcs(observe, capture_hops);
 }
 
 void configure_critical_cohort_analogue(Context *ctx, const pool<PipId> &pips)
