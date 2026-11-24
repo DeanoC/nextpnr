@@ -1,7 +1,9 @@
 #include <memory>
+#include <sstream>
 #include "gtest/gtest.h"
 #include "analogue_repair.h"
 #include "gpurouter.h"
+#include "json11.hpp"
 #include "log.h"
 
 USING_NEXTPNR_NAMESPACE
@@ -40,8 +42,36 @@ TEST(AnalogueRepairBudget, RejectsInvalidBudgetEvenWithoutRouting)
         EXPECT_THROW(ctx->analogue_repair(), log_execution_error_exception);
     }
     ctx->settings[ctx->id("gpurouter/analogueTimeBudget")] = std::string("0");
+    ctx->settings[ctx->id("gpurouter/analogueMaxRounds")] = std::string("-1");
+    {
+        // analogueMaxRounds caps repair actions (candidate passes, re-routes
+        // and improvement passes); 0 disables that cap rather than selecting
+        // the internal round bound.
+        struct Errors
+        {
+            std::ostringstream stream;
+            Errors() { log_streams.emplace_back(&stream, LogLevel::ERROR_MSG); }
+            ~Errors() { log_streams.pop_back(); }
+        } errors;
+        EXPECT_THROW(ctx->analogue_repair(), log_execution_error_exception);
+        const std::string message = errors.stream.str();
+        EXPECT_NE(message.find("analogueMaxRounds must be nonnegative"), std::string::npos) << message;
+        EXPECT_NE(message.find("candidate passes, re-routes and improvement passes"), std::string::npos) << message;
+        EXPECT_NE(message.find("0 disables the cap"), std::string::npos) << message;
+    }
+    ctx->settings[ctx->id("gpurouter/analogueMaxRounds")] = std::string("4");
     ctx->settings[ctx->id("gpurouter/analogueRounds")] = std::string("0");
     EXPECT_TRUE(ctx->analogue_repair());
+    EXPECT_EQ(ctx->analogue_repair_stop_reason, "disabled");
+    EXPECT_FALSE(ctx->analogue_repair_time_budget_truncated);
+
+    std::ostringstream report;
+    ctx->writeJsonReport(report);
+    std::string error;
+    auto parsed = json11::Json::parse(report.str(), error);
+    ASSERT_TRUE(error.empty()) << error;
+    EXPECT_EQ(parsed["analogue_repair"]["stop_reason"].string_value(), "disabled");
+    EXPECT_FALSE(parsed["analogue_repair"]["time_budget_truncated"].bool_value());
 }
 
 TEST(AnalogueRepair, RequiredGpuFailureEscapesRecoverableRouteHandling)

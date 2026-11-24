@@ -692,6 +692,12 @@ bool Arch::analogue_candidate_pass(TimingAnalyser &tmg, float limit, bool improv
 bool Arch::analogue_repair()
 {
     Context *ctx = getCtx();
+    ctx->analogue_repair_stop_reason.clear();
+    ctx->analogue_repair_rounds = 0;
+    ctx->analogue_repair_reroutes = 0;
+    ctx->analogue_repair_candidate_passes = 0;
+    ctx->analogue_repair_improve_passes = 0;
+    ctx->analogue_repair_time_budget_truncated = false;
     const int polish_candidates = settings.count(id("gpurouter/analoguePolishCandidates"))
                                           ? ctx->setting<int>("gpurouter/analoguePolishCandidates")
                                           : 0;
@@ -702,9 +708,16 @@ bool Arch::analogue_repair()
                                       : 0;
     if (lut_pin_trials < 0 || lut_pin_trials > 16)
         log_error("analogueLutPinTrials must be between 0 and 16 (0 disables).\n");
-    const double budget = ctx->setting<double>("gpurouter/analogueTimeBudget", 300.0);
+    // Wall-clock budget is a safety backstop far above normal repair run time
+    // so routes stop deterministically at their input-defined round caps rather
+    // than varying with host load (#323).
+    const double budget = ctx->setting<double>("gpurouter/analogueTimeBudget", 3600.0);
     if (!std::isfinite(budget) || budget < 0)
         log_error("analogueTimeBudget must be finite and nonnegative (seconds; 0 disables).\n");
+    const int configured_max_rounds = ctx->setting<int>("gpurouter/analogueMaxRounds", 0);
+    if (configured_max_rounds < 0)
+        log_error("analogueMaxRounds must be nonnegative (caps candidate passes, re-routes and improvement "
+                  "passes; 0 disables the cap).\n");
     const auto started = std::chrono::steady_clock::now();
     // Time spent waiting for a gpu-run phase lease is not repair work
     const double lease_wait_started = gpurouter_lease_wait_seconds();
@@ -744,8 +757,23 @@ bool Arch::analogue_repair()
     const int improve_rounds = ctx->setting<int>("gpurouter/analogueImproveRounds", 4);
     const float improve_band = ctx->setting<float>("gpurouter/analogueImproveBand", 300.0f);
     pip_delay_prior = ctx->setting<float>("gpurouter/analoguePrior", 1.25f);
-    if (rounds <= 0)
+    auto record_stop = [&](const std::string &reason, int rounds_run, int reroutes_run, int cand_passes_run,
+                           int improve_run, bool truncated) {
+        ctx->analogue_repair_stop_reason = reason;
+        ctx->analogue_repair_rounds = rounds_run;
+        ctx->analogue_repair_reroutes = reroutes_run;
+        ctx->analogue_repair_candidate_passes = cand_passes_run;
+        ctx->analogue_repair_improve_passes = improve_run;
+        ctx->analogue_repair_time_budget_truncated = truncated;
+        log_info("Analogue repair stop condition: reason=%s rounds=%d reroutes=%d candidate_passes=%d "
+                 "improve_passes=%d time_budget_truncated=%s\n",
+                 reason.c_str(), rounds_run, reroutes_run, cand_passes_run, improve_run,
+                 truncated ? "true" : "false");
+    };
+    if (rounds <= 0) {
+        record_stop("disabled", 0, 0, 0, 0, false);
         return true;
+    }
 
     const IdString repair_slack_key = id("gpurouter/repairSlack");
     const bool user_repair_slack = settings.count(repair_slack_key);
@@ -758,7 +786,9 @@ bool Arch::analogue_repair()
     auto secs_since = [](std::chrono::steady_clock::time_point t) {
         return std::chrono::duration<double>(std::chrono::steady_clock::now() - t).count();
     };
-    int reroutes = 0, cand_passes = 0;
+    int reroutes = 0, cand_passes = 0, total_cand_passes = 0, completed_rounds = 0, improve_passes_run = 0;
+    std::string stop_reason;
+    bool time_budget_truncated = false;
     // Set once the best routing has been put back: the next timing is its
     // slack under the current calibration, which is the baseline from then on
     bool restored = false;
@@ -776,17 +806,42 @@ bool Arch::analogue_repair()
         tmg->setup(false, false, true);
         return worst_clock_slack(ctx, *tmg, summary);
     };
+    // analogueMaxRounds counts repair actions, not timings: candidate passes
+    // and full re-routes here, then improvement passes below. It applies
+    // alongside max_rounds rather than replacing it. With candidate selection
+    // enabled the first action is a candidate pass, so a cap of 1 never
+    // reaches a re-route.
+    auto hit_action_cap = [&]() {
+        if (configured_max_rounds > 0 && (total_cand_passes + reroutes) >= configured_max_rounds) {
+            stop_reason = "round_cap";
+            log_info("    stopping after %d repair actions (%d candidate passes, %d reroutes; analogueMaxRounds=%d) "
+                     "without reaching the target\n",
+                     total_cand_passes + reroutes, total_cand_passes, reroutes, configured_max_rounds);
+            return true;
+        }
+        return false;
+    };
     for (int round = 0;; round++) {
         auto t0 = std::chrono::steady_clock::now();
         std::string summary;
         current = time_routing(summary);
         current_timed = true;
+        completed_rounds = round + 1;
         log_info("Analogue signoff %s: worst clock slack %.3f ns (%s) in %.2fs\n",
                  round == 0 ? "check" : stringf("repair round %d", round).c_str(), current / 1000.0f,
                  summary.c_str(), secs_since(t0));
-        if (current >= target || reroutes >= rounds)
+        if (current >= target) {
+            stop_reason = "target_met";
+            break;
+        }
+        if (reroutes >= rounds) {
+            stop_reason = "reroute_cap";
+            break;
+        }
+        if (hit_action_cap())
             break;
         if (round >= max_rounds) {
+            stop_reason = "round_cap";
             log_info("    stopping after %d rounds without reaching the target\n", round);
             break;
         }
@@ -811,6 +866,8 @@ bool Arch::analogue_repair()
         }
 
         if (expired()) {
+            stop_reason = "time_budget";
+            time_budget_truncated = true;
             log_info("Analogue repair time budget exhausted (%.3f seconds); keeping the best measured routing.\n", budget);
             break;
         }
@@ -819,6 +876,7 @@ bool Arch::analogue_repair()
         compute_analogue_arcs(true);
         if (candidates && cand_passes < cand_rounds) {
             cand_passes++;
+            total_cand_passes++;
             GpuRouterCfg cfg(ctx);
             cfg.stop_requested = expired;
             // A cancelled pass may already have rebound some candidates.
@@ -827,6 +885,8 @@ bool Arch::analogue_repair()
             try {
                 changed = analogue_candidate_pass(*tmg, target, false, cfg);
             } catch (const GpuRouterCancelled &) {
+                stop_reason = "time_budget_candidate";
+                time_budget_truncated = true;
                 log_info("Analogue repair time budget exhausted during candidate selection; restoring the best routing.\n");
                 result = false;
                 break;
@@ -836,6 +896,8 @@ bool Arch::analogue_repair()
                 current_timed = false;
                 continue; // re-time the new routing before deciding on a full re-route
             }
+            if (hit_action_cap())
+                break;
         }
         std::vector<std::pair<float, IdString>> worst; // slack, net
         for (auto &net : nets) {
@@ -862,8 +924,10 @@ bool Arch::analogue_repair()
         for (auto &w : worst)
             rip.insert(w.second);
         bitstream_configured = false;
-        if (rip.empty())
+        if (rip.empty()) {
+            stop_reason = "no_rip_nets";
             break;
+        }
         log_info("    re-routing %zu nets with arcs below %.3f ns analogue slack (%zu pips observed in %.2fs)\n",
                  rip.size(), rip_slack / 1000.0f, pip_delay_observed.size(), secs_since(t1));
         // What the ripped nets had, to give back what the re-route makes worse
@@ -920,8 +984,13 @@ bool Arch::analogue_repair()
         if (!user_repair_slack)
             settings.erase(repair_slack_key);
         if (!result) {
-            if (expired())
+            if (expired()) {
+                stop_reason = "time_budget_reroute";
+                time_budget_truncated = true;
                 log_info("Analogue repair time budget exhausted during rerouting; restoring the best routing.\n");
+            } else {
+                stop_reason = "reroute_failed";
+            }
             break;
         }
         if (revert) {
@@ -1002,7 +1071,17 @@ bool Arch::analogue_repair()
         };
         // (A design without a timed clock has nothing to improve.)
         for (int pass = 1; pass <= improve_rounds && !kept_timing.setup.empty(); pass++) {
+            if (configured_max_rounds > 0 &&
+                (total_cand_passes + reroutes + improve_passes_run) >= configured_max_rounds) {
+                log_info("    stopping improvement passes after %d repair actions (%d candidate passes, %d reroutes, "
+                         "%d improve passes; analogueMaxRounds=%d)\n",
+                         total_cand_passes + reroutes + improve_passes_run, total_cand_passes, reroutes,
+                         improve_passes_run, configured_max_rounds);
+                break;
+            }
             if (expired()) {
+                stop_reason = "time_budget_improve";
+                time_budget_truncated = true;
                 log_info("Analogue repair time budget exhausted (%.3f seconds); keeping the best measured routing.\n",
                          budget);
                 break;
@@ -1015,11 +1094,14 @@ bool Arch::analogue_repair()
             try {
                 changed = analogue_candidate_pass(*tmg, current + improve_band, true, cfg);
             } catch (const GpuRouterCancelled &) {
+                stop_reason = "time_budget_improve";
+                time_budget_truncated = true;
                 log_info("Analogue repair time budget exhausted during candidate selection; restoring the best "
                          "routing.\n");
                 restore_routing(ctx, kept);
                 break;
             }
+            improve_passes_run++;
             bitstream_configured = false;
             signoff_table();
             if (!changed)
@@ -1053,16 +1135,25 @@ bool Arch::analogue_repair()
         restore_routing(ctx, best);
         result = true;
     }
+    const bool post_route_requested =
+            result && (polish_candidates > 0 || lut_pin_trials > 0 || post_route_lut_moves > 0 ||
+                       post_route_private_lut_pins > 0 || post_route_net_trials > 0 ||
+                       post_route_final_lut_pins > 0 || post_route_sole_lut_pins > 0 ||
+                       post_route_lut_pairs > 0 || post_route_lut_input_nets > 0 ||
+                       post_route_static_ff_lut_pins > 0);
     // A separate, default-off local experiment starts from exactly the route
     // ordinary repair returns. Keep the signoff table fixed and compare every
     // native endpoint row, not only the worst clock. Incomplete external IO
     // remains incomplete in the normal final inventory and is not qualified
     // by this proposal guard.
-    if (result && (polish_candidates > 0 || lut_pin_trials > 0 || post_route_lut_moves > 0 ||
-                   post_route_private_lut_pins > 0 || post_route_net_trials > 0 ||
-                   post_route_final_lut_pins > 0 || post_route_sole_lut_pins > 0 ||
-                   post_route_lut_pairs > 0 || post_route_lut_input_nets > 0 ||
-                   post_route_static_ff_lut_pins > 0) && !expired()) {
+    bool post_route_truncated = false;
+    auto post_route_expired = [&]() {
+        if (!expired())
+            return false;
+        post_route_truncated = true;
+        return true;
+    };
+    if (post_route_requested && !post_route_expired()) {
         const bool calibrated = pip_delay_calibrated;
         const auto observed = pip_delay_observed;
         const auto type_calibration = pip_type_calibration;
@@ -1125,11 +1216,11 @@ bool Arch::analogue_repair()
         if (polish_candidates > 0)
             log_info("Analogue local refinement: up to 4 passes, %d candidates per sink, %zu native endpoint groups.\n",
                      polish_candidates, before_rows.size());
-        for (int pass = 0; pass < 4 && polish_candidates > 0 && !before_rows.empty() && !expired(); ++pass) {
+        for (int pass = 0; pass < 4 && polish_candidates > 0 && !before_rows.empty() && !post_route_expired(); ++pass) {
             SavedRouting kept = save_routing(ctx);
             compute_analogue_arcs(true);
             GpuRouterCfg cfg(ctx);
-            cfg.stop_requested = expired;
+            cfg.stop_requested = post_route_expired;
             bool changed = false;
             try {
                 changed = analogue_candidate_pass(*tmg, current + improve_band, true, cfg,
@@ -1168,7 +1259,7 @@ bool Arch::analogue_repair()
         }
         auto refine_lut_inputs = [&](int pin_trials, bool private_l5, bool sole_l5 = false,
                                      bool whole_input_nets = false, bool static_ff_bypass_l5 = false) {
-            if (pin_trials <= 0 || expired()) return;
+            if (pin_trials <= 0 || post_route_expired()) return;
             // Start from a complete configured parent, including when the
             // preceding routing-only pass restored a rejected candidate.
             signoff_table();
@@ -1263,7 +1354,7 @@ bool Arch::analogue_repair()
             else if (private_l5) log_info("    private L5 inputs only; starting after existing routed refinements.\n");
             int trial = 0;
             for (const auto &choice : choices) {
-                if (trial >= pin_trials || expired() || before_rows.empty()) break;
+                if (trial >= pin_trials || before_rows.empty() || post_route_expired()) break;
                 auto *cell = choice.cell;
                 if (!analogue_lut_pin_swap_allowed(ctx, cell, choice.first, choice.second, sole_policy(cell),
                                                   static_ff_bypass_l5)) continue;
@@ -1336,7 +1427,7 @@ bool Arch::analogue_repair()
                     analogue_cache_valid = false;
                     GpuRouterCfg cfg(ctx);
                     cfg.telemetry_path.clear();
-                    cfg.stop_requested = expired;
+                    cfg.stop_requested = post_route_expired;
                     cfg.legality_timing_gate = false; // Full analogue setup/hold remains the final gate.
                     cfg.max_iter = std::min(cfg.max_iter, 64);
                     cfg.arch_retry_limit = std::min(cfg.arch_retry_limit, 2);
@@ -1449,10 +1540,10 @@ bool Arch::analogue_repair()
             }
         };
         refine_lut_inputs(lut_pin_trials, false);
-        if (post_route_lut_moves > 0 && !expired()) {
+        if (post_route_lut_moves > 0 && !post_route_expired()) {
             GpuRouterCfg cfg(ctx);
             cfg.telemetry_path.clear();
-            cfg.stop_requested = expired;
+            cfg.stop_requested = post_route_expired;
             cfg.legality_timing_gate = false; // The complete final analogue analysis is the gate.
             cfg.max_iter = std::min(cfg.max_iter, 64);
             cfg.arch_retry_limit = std::min(cfg.arch_retry_limit, 2);
@@ -1549,14 +1640,14 @@ bool Arch::analogue_repair()
             // A kept move frees an ALM and changes native LAB input usage.
             // Re-screen its actual parent rather than reuse stale vacancies
             // or slacks. Total work and one move per cell stay bounded.
-            for (int pass = 0; pass < 4 && trial < post_route_lut_moves && attempted < 128 && !expired(); ++pass) {
+            for (int pass = 0; pass < 4 && trial < post_route_lut_moves && attempted < 128 && !post_route_expired(); ++pass) {
                 const auto groups = collect_groups();
                 log_info("Analogue LUT relocation pass %d: %zu eligible cells, at most %d total trials.\n",
                          pass + 1, groups.size(), post_route_lut_moves);
                 bool progress = false;
-                for (size_t option = 0; option < 128 && trial < post_route_lut_moves && attempted < 128 && !expired() && !progress; ++option)
+                for (size_t option = 0; option < 128 && trial < post_route_lut_moves && attempted < 128 && !progress && !post_route_expired(); ++option)
                     for (const auto &group : groups) {
-                        if (progress || trial >= post_route_lut_moves || attempted >= 128 || expired() || before_rows.empty()) break;
+                        if (progress || trial >= post_route_lut_moves || attempted >= 128 || before_rows.empty() || post_route_expired()) break;
                         auto *cell = group.cell;
                         if (moved.count(cell) || option >= group.sites.size() || cell->bel != group.home) continue;
                         const auto target = group.sites[option].bel;
@@ -1719,7 +1810,7 @@ bool Arch::analogue_repair()
         // legacy pin refinement and LUT relocation. Each complete row and
         // every unrelated binding must retain that measured parent.
         refine_lut_inputs(post_route_private_lut_pins, true);
-        if (post_route_net_trials > 0 && !expired()) {
+        if (post_route_net_trials > 0 && !post_route_expired()) {
             signoff_table();
             current = time_routing(summary);
             before_rows = endpoint_rows(*tmg);
@@ -1728,12 +1819,12 @@ bool Arch::analogue_repair()
             std::set<IdString> visited;
             GpuRouterCfg cfg(ctx);
             cfg.telemetry_path.clear();
-            cfg.stop_requested = expired;
+            cfg.stop_requested = post_route_expired;
             int accepted = 0;
             bool exhausted = false, cancelled = false;
             log_info("Analogue individual net refinement: up to %d trials, 16 candidates per net.\n",
                      post_route_net_trials);
-            for (int trial = 1; trial <= post_route_net_trials && !expired() && !before_rows.empty(); ++trial) {
+            for (int trial = 1; trial <= post_route_net_trials && !before_rows.empty() && !post_route_expired(); ++trial) {
                 const auto previous = visited;
                 const auto kept = save_routing(ctx, true);
                 const auto rng = ctx->rngstate;
@@ -1814,7 +1905,7 @@ bool Arch::analogue_repair()
             log_info("Analogue individual net completion: %s.\n", completion);
         }
         if (post_route_final_lut_pins > 0) {
-            if (expired()) {
+            if (post_route_expired()) {
                 log_info("Analogue final LUT input completion: runtime budget exhausted before stage.\n");
             } else {
                 // Re-evaluate the same legal LUT6 swaps against the parent
@@ -1833,7 +1924,7 @@ bool Arch::analogue_repair()
             }
         }
         if (post_route_sole_lut_pins > 0) {
-            if (expired()) {
+            if (post_route_expired()) {
                 log_info("Analogue sole L5 input completion: runtime budget exhausted before stage.\n");
             } else {
                 const auto initial = routed_placement_snapshot(ctx);
@@ -1847,7 +1938,7 @@ bool Arch::analogue_repair()
                          "bounded pass finished");
             }
         }
-        if (post_route_lut_pairs > 0 && !expired()) {
+        if (post_route_lut_pairs > 0 && !post_route_expired()) {
             using J = json11::Json;
             signoff_table();
             current = time_routing(summary);
@@ -1962,20 +2053,20 @@ bool Arch::analogue_repair()
                 return groups;
             };
             GpuRouterCfg cfg(ctx);
-            cfg.telemetry_path.clear(); cfg.stop_requested = expired;
+            cfg.telemetry_path.clear(); cfg.stop_requested = post_route_expired;
             cfg.legality_timing_gate = false; // Complete final analogue rows and clocks remain the acceptance gate.
             cfg.max_iter = std::min(cfg.max_iter, 64); cfg.arch_retry_limit = std::min(cfg.arch_retry_limit, 2);
             cfg.repair_rounds = 0; cfg.repair_improve_rounds = 0; cfg.repair_displace = false;
             int trial = 0, attempted = 0, accepted = 0;
             bool cancelled = false;
             log_info("Analogue LUT pair refinement: up to %d trials after all prior refinements.\n", post_route_lut_pairs);
-            for (int pass = 0; pass < 4 && trial < post_route_lut_pairs && attempted < 128 && !expired(); ++pass) {
+            for (int pass = 0; pass < 4 && trial < post_route_lut_pairs && attempted < 128 && !post_route_expired(); ++pass) {
                 const auto groups = collect_pairs();
                 log_info("Analogue LUT pair pass %d: %zu eligible connected pairs.\n", pass + 1, groups.size());
                 bool progress = false;
-                for (size_t option = 0; option < 64 && !progress && !cancelled && attempted < 128 && trial < post_route_lut_pairs && !expired(); ++option)
+                for (size_t option = 0; option < 64 && !progress && !cancelled && attempted < 128 && trial < post_route_lut_pairs && !post_route_expired(); ++option)
                     for (const auto &group : groups) {
-                        if (progress || attempted >= 128 || trial >= post_route_lut_pairs || expired() || before_rows.empty()) break;
+                        if (progress || attempted >= 128 || trial >= post_route_lut_pairs || before_rows.empty() || post_route_expired()) break;
                         if (option >= group.options.size()) continue;
                         auto *cell = group.cell;
                         const auto &choice = group.options[option];
@@ -2156,7 +2247,7 @@ bool Arch::analogue_repair()
                 cancelled || expired() ? "runtime budget exhausted" : before_rows.empty() ? "native timing rows unavailable" : "bounded pass finished");
         }
         if (post_route_lut_input_nets > 0) {
-            if (expired()) {
+            if (post_route_expired()) {
                 log_info("Analogue whole input net completion: runtime budget exhausted before stage.\n");
             } else {
                 const auto initial = routed_placement_snapshot(ctx);
@@ -2171,7 +2262,7 @@ bool Arch::analogue_repair()
             }
         }
         if (post_route_static_ff_lut_pins > 0) {
-            if (expired()) {
+            if (post_route_expired()) {
                 log_info("Analogue static FF L5 input completion: runtime budget exhausted before stage.\n");
             } else {
                 const auto initial = routed_placement_snapshot(ctx);
@@ -2189,14 +2280,15 @@ bool Arch::analogue_repair()
         bitstream_configured = false;
         analogue_cache_valid = false;
     }
-    if (result && !post_route_lut_branch_plan.empty()) {
-        if (expired()) {
+    const bool lut_branch_requested = result && !post_route_lut_branch_plan.empty();
+    if (lut_branch_requested) {
+        if (post_route_expired()) {
             log_info("Compound LUT/branch proposal: runtime budget exhausted before stage; no proposal evaluated.\n");
         } else {
             std::string error;
             const auto plan = json11::Json::parse(post_route_lut_branch_plan, error);
             NPNR_ASSERT(error.empty());
-            const auto receipt = lut_branch_detail::run(ctx, plan, expired);
+            const auto receipt = lut_branch_detail::run(ctx, plan, post_route_expired);
             post_route_lut_branch_receipt = receipt.dump();
             if (receipt["accepted"].bool_value()) {
                 auto parent = receipt["parent"];
@@ -2224,6 +2316,11 @@ bool Arch::analogue_repair()
             analogue_cache_valid=false;
         }
     }
+    if (post_route_truncated && !time_budget_truncated) {
+        stop_reason = "time_budget_post_route";
+        time_budget_truncated = true;
+    }
+    record_stop(stop_reason, completed_rounds, reroutes, total_cand_passes, improve_passes_run, time_budget_truncated);
     return result;
 }
 

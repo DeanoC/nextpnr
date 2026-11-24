@@ -125,7 +125,8 @@ Tuning settings (see `GpuRouterCfg` in `common/route/gpurouter.h`):
 | `repairBbExpand` | 8 | tiles added to the net box for pure-delay repair while setup slack is still negative. The in-box route is the one that is kept, so this is what lets a failing arc leave the negotiation box. 0 keeps that box. Values above the device size are capped there, so the int16 box cannot wrap |
 | `repairCongWeight` | 1.0 | present-congestion weight used when re-routing a same-band peer group (0 disables). History cost is ignored in that pass, so an occupied wire costs `(1 + occ * weight)` times delay. |
 | `analogueRounds`, `analogueSlack`, `analogueRipSlack`, `analoguePrior` | 3, 0 ps, 300 ps, 1.25 | Mistral analogue signoff repair (below); `analogueRounds=0` disables it |
-| `analogueTimeBudget` | 300 seconds | Mistral repair time budget, including candidate selection and nested rerouting; finite and nonnegative, `0` disables the limit. Initial routing and final signoff are outside the budget |
+| `analogueMaxRounds` | 0 | optional deterministic cap on ordinary analogue repair and improvement actions (candidate passes, re-routes, and `analogueImproveRounds` passes; separate opt-in post-route local experiments keep their own trial limits); nonnegative integer, `0` disables the cap |
+| `analogueTimeBudget` | 3600 seconds | Mistral repair cooperative safety time limit, including candidate selection and nested rerouting; finite and nonnegative, `0` disables the limit. Initial routing and final signoff are outside the budget |
 | `analogueCandidates`, `analogueCandidateRounds`, `analogueCandidateArcs` | 4, 2, 200 | analogue-scored candidate selection (below): routes generated per failing sink, passes before each full re-route, failing sinks tried per pass; `analogueCandidates=0` disables it |
 | `analogueCandidateGain`, `analogueCandidateFanout`, `analogueCandidatePrior` | 20 ps, 64, 1.0 | a candidate must raise the net's worst sink slack by this much to be kept; nets with more sinks are left alone; delay prior for unobserved pips while searching candidates |
 | `analogueRipNets` | 64 | nets ripped per re-route round, worst analogue slack first (0: every net with an arc below `analogueRipSlack`) |
@@ -412,7 +413,13 @@ with no legal route fails as unroutable instead of repeating one rejected pip.
    `mistral/tests/analogue_improve.py` checks the stage end to end on the
    retained menu DDR fixture (see its docstring for the commands).
 
-   Repair has a cooperative `analogueTimeBudget` (five minutes by default).
+   Repair stops deterministically on `analogueRounds`, optional
+   `analogueMaxRounds` (caps ordinary repair candidate passes, re-routes, and
+   `analogueImproveRounds` passes; separate opt-in post-route local experiments
+   keep their own trial limits; `0` disables the cap), and `analogueImproveRounds`.
+   A cooperative `analogueTimeBudget`
+   (3600 seconds / one hour by default; `0` disables) remains as a runaway
+   safety limit rather than a load-sensitive stopping trigger.
    The initial analogue timing is always obtained before stopping so there
    is a measured routing to retain. Candidate generation and nested routing
    check the budget between batches and iterations; an active backend batch,
@@ -421,6 +428,10 @@ with no legal route fails as unroutable instead of repeating one rejected pip.
    repair restores the best measured legal routing and runs the ordinary
    final analogue setup/hold gate. Exhausting the budget does not mean the
    requested margin was achieved and does not make a timing failure pass.
+   The exact stop reason (`target_met`, `round_cap`, `reroute_cap`,
+   `no_rip_nets`, `reroute_failed`, `disabled`, or `time_budget*`), counters,
+   and `time_budget_truncated` flag are logged and emitted under top-level
+   `analogue_repair` in `--report` JSON.
 
    Repair uses the complete setup WNS exported in `timing_summary`, including
    constrained IO and related-clock paths. It does not reconstruct a margin

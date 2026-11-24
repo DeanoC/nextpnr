@@ -321,6 +321,17 @@ void Context::writeJsonReport(std::ostream &out) const
     if (timing_report_paths > 1)
         jsonRoot["timing_report_paths"] = timing_report_paths;
 
+    if (!analogue_repair_stop_reason.empty()) {
+        jsonRoot["analogue_repair"] = Json::object{
+                {"stop_reason", analogue_repair_stop_reason},
+                {"rounds", analogue_repair_rounds},
+                {"reroutes", analogue_repair_reroutes},
+                {"candidate_passes", analogue_repair_candidate_passes},
+                {"improve_passes", analogue_repair_improve_passes},
+                {"time_budget_truncated", analogue_repair_time_budget_truncated},
+        };
+    }
+
     if (detailed_timing_report) {
         jsonRoot["detailed_net_timings"] = json_report_detailed_net_timings(this);
     }
