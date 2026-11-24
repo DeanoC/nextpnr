@@ -780,6 +780,16 @@ bool Arch::analogue_repair()
         tmg->setup(false, false, true);
         return worst_clock_slack(ctx, *tmg, summary);
     };
+    auto hit_action_cap = [&]() {
+        if (configured_max_rounds > 0 && (total_cand_passes + reroutes) >= configured_max_rounds) {
+            stop_reason = "round_cap";
+            log_info("    stopping after %d repair actions (%d candidate passes, %d reroutes; analogueMaxRounds=%d) "
+                     "without reaching the target\n",
+                     total_cand_passes + reroutes, total_cand_passes, reroutes, configured_max_rounds);
+            return true;
+        }
+        return false;
+    };
     for (int round = 0;; round++) {
         auto t0 = std::chrono::steady_clock::now();
         std::string summary;
@@ -797,13 +807,8 @@ bool Arch::analogue_repair()
             stop_reason = "reroute_cap";
             break;
         }
-        if (configured_max_rounds > 0 && (total_cand_passes + reroutes) >= configured_max_rounds) {
-            stop_reason = "round_cap";
-            log_info("    stopping after %d repair actions (%d candidate passes, %d reroutes; analogueMaxRounds=%d) "
-                     "without reaching the target\n",
-                     total_cand_passes + reroutes, total_cand_passes, reroutes, configured_max_rounds);
+        if (hit_action_cap())
             break;
-        }
         if (round >= max_rounds) {
             stop_reason = "round_cap";
             log_info("    stopping after %d rounds without reaching the target\n", round);
@@ -860,6 +865,8 @@ bool Arch::analogue_repair()
                 current_timed = false;
                 continue; // re-time the new routing before deciding on a full re-route
             }
+            if (hit_action_cap())
+                break;
         }
         std::vector<std::pair<float, IdString>> worst; // slack, net
         for (auto &net : nets) {
