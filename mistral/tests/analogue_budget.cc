@@ -43,7 +43,22 @@ TEST(AnalogueRepairBudget, RejectsInvalidBudgetEvenWithoutRouting)
     }
     ctx->settings[ctx->id("gpurouter/analogueTimeBudget")] = std::string("0");
     ctx->settings[ctx->id("gpurouter/analogueMaxRounds")] = std::string("-1");
-    EXPECT_THROW(ctx->analogue_repair(), log_execution_error_exception);
+    {
+        // analogueMaxRounds caps repair actions (candidate passes, re-routes
+        // and improvement passes); 0 disables that cap rather than selecting
+        // the internal round bound.
+        struct Errors
+        {
+            std::ostringstream stream;
+            Errors() { log_streams.emplace_back(&stream, LogLevel::ERROR_MSG); }
+            ~Errors() { log_streams.pop_back(); }
+        } errors;
+        EXPECT_THROW(ctx->analogue_repair(), log_execution_error_exception);
+        const std::string message = errors.stream.str();
+        EXPECT_NE(message.find("analogueMaxRounds must be nonnegative"), std::string::npos) << message;
+        EXPECT_NE(message.find("candidate passes, re-routes and improvement passes"), std::string::npos) << message;
+        EXPECT_NE(message.find("0 disables the cap"), std::string::npos) << message;
+    }
     ctx->settings[ctx->id("gpurouter/analogueMaxRounds")] = std::string("4");
     ctx->settings[ctx->id("gpurouter/analogueRounds")] = std::string("0");
     EXPECT_TRUE(ctx->analogue_repair());

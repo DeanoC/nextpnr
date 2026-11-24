@@ -716,7 +716,8 @@ bool Arch::analogue_repair()
         log_error("analogueTimeBudget must be finite and nonnegative (seconds; 0 disables).\n");
     const int configured_max_rounds = ctx->setting<int>("gpurouter/analogueMaxRounds", 0);
     if (configured_max_rounds < 0)
-        log_error("analogueMaxRounds must be nonnegative (0 uses the default round cap).\n");
+        log_error("analogueMaxRounds must be nonnegative (caps candidate passes, re-routes and improvement "
+                  "passes; 0 disables the cap).\n");
     const auto started = std::chrono::steady_clock::now();
     // Time spent waiting for a gpu-run phase lease is not repair work
     const double lease_wait_started = gpurouter_lease_wait_seconds();
@@ -805,6 +806,11 @@ bool Arch::analogue_repair()
         tmg->setup(false, false, true);
         return worst_clock_slack(ctx, *tmg, summary);
     };
+    // analogueMaxRounds counts repair actions, not timings: candidate passes
+    // and full re-routes here, then improvement passes below. It applies
+    // alongside max_rounds rather than replacing it. With candidate selection
+    // enabled the first action is a candidate pass, so a cap of 1 never
+    // reaches a re-route.
     auto hit_action_cap = [&]() {
         if (configured_max_rounds > 0 && (total_cand_passes + reroutes) >= configured_max_rounds) {
             stop_reason = "round_cap";
