@@ -1096,17 +1096,18 @@ bool Arch::analogue_repair()
         restore_routing(ctx, best);
         result = true;
     }
-    record_stop(stop_reason, completed_rounds, reroutes, total_cand_passes, improve_passes_run, time_budget_truncated);
+    const bool post_route_requested =
+            result && (polish_candidates > 0 || lut_pin_trials > 0 || post_route_lut_moves > 0 ||
+                       post_route_private_lut_pins > 0 || post_route_net_trials > 0 ||
+                       post_route_final_lut_pins > 0 || post_route_sole_lut_pins > 0 ||
+                       post_route_lut_pairs > 0 || post_route_lut_input_nets > 0 ||
+                       post_route_static_ff_lut_pins > 0);
     // A separate, default-off local experiment starts from exactly the route
     // ordinary repair returns. Keep the signoff table fixed and compare every
     // native endpoint row, not only the worst clock. Incomplete external IO
     // remains incomplete in the normal final inventory and is not qualified
     // by this proposal guard.
-    if (result && (polish_candidates > 0 || lut_pin_trials > 0 || post_route_lut_moves > 0 ||
-                   post_route_private_lut_pins > 0 || post_route_net_trials > 0 ||
-                   post_route_final_lut_pins > 0 || post_route_sole_lut_pins > 0 ||
-                   post_route_lut_pairs > 0 || post_route_lut_input_nets > 0 ||
-                   post_route_static_ff_lut_pins > 0) && !expired()) {
+    if (post_route_requested && !expired()) {
         const bool calibrated = pip_delay_calibrated;
         const auto observed = pip_delay_observed;
         const auto type_calibration = pip_type_calibration;
@@ -2233,7 +2234,8 @@ bool Arch::analogue_repair()
         bitstream_configured = false;
         analogue_cache_valid = false;
     }
-    if (result && !post_route_lut_branch_plan.empty()) {
+    const bool lut_branch_requested = result && !post_route_lut_branch_plan.empty();
+    if (lut_branch_requested) {
         if (expired()) {
             log_info("Compound LUT/branch proposal: runtime budget exhausted before stage; no proposal evaluated.\n");
         } else {
@@ -2268,6 +2270,11 @@ bool Arch::analogue_repair()
             analogue_cache_valid=false;
         }
     }
+    if ((post_route_requested || lut_branch_requested) && !time_budget_truncated && expired()) {
+        stop_reason = "time_budget_post_route";
+        time_budget_truncated = true;
+    }
+    record_stop(stop_reason, completed_rounds, reroutes, total_cand_passes, improve_passes_run, time_budget_truncated);
     return result;
 }
 
