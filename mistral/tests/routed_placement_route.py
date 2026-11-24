@@ -73,14 +73,16 @@ endmodule
         assert lines[1] == '  "creator": ' + json.dumps(creator) + ',\n'
         return ''.join(lines[:1] + lines[2:])
 
-    def timing_without_repair_provenance(directory):
+    def timing_without_repair_provenance(directory, require=True):
         # Route-preserved replays import already-repaired data trees as
         # STRENGTH_USER, so analogue_repair can take fewer passes or stop on a
         # different condition than the fresh baseline while producing identical
-        # physical routing, bitstream bytes, and timing results.
+        # physical routing, bitstream bytes, and timing results. An untouched
+        # pre-change --baseline compiler may also omit analogue_repair.
         document = feedback.load(directory / "timing.json")
-        assert isinstance(document.get("analogue_repair"), dict), directory / "timing.json"
-        document.pop("analogue_repair")
+        if require:
+            assert isinstance(document.get("analogue_repair"), dict), directory / "timing.json"
+        document.pop("analogue_repair", None)
         return document
 
     # Paths inside the Yosys command are quoted for its own parser.
@@ -130,10 +132,14 @@ endmodule
     untouched = None
     if args.baseline:
         reference = route(args.baseline, "untouched")
-        for name in ("timing.json", "core.rbf"):
-            assert feedback.digest(reference / name) == identical[name][controls[0].name], name
+        assert feedback.digest(reference / "core.rbf") == identical["core.rbf"][controls[0].name], "core.rbf"
+        assert timing_without_repair_provenance(reference, require=False) == timing_without_repair_provenance(controls[0])
         assert routed_data(reference, args.baseline) == routed_data(controls[0], args.nextpnr)
-        untouched = dict(RBF_and_timing_bytes_exact=True, all_other_routed_JSON_bytes_exact=True,
+        untouched = dict(RBF_bytes_exact=True,
+                         timing_bytes_exact=feedback.digest(reference / "timing.json") ==
+                                            identical["timing.json"][controls[0].name],
+                         timing_without_repair_provenance_exact=True,
+                         all_other_routed_JSON_bytes_exact=True,
                          creator_verified_against_each_actual_compiler=True,
                          routed_JSON_byte_exact=feedback.digest(reference / "routed.json") ==
                                                 feedback.digest(controls[0] / "routed.json"))
