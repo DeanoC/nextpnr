@@ -64,8 +64,8 @@ threads per threadgroup uses the largest size it can. The host code
 set, so uploads are copies and wire state updates are written in place.
 `--gpu-device` and a lease grant index the list of Metal devices; an Apple
 silicon Mac has one. `generic/tests/gpurouter_exact.cc` checks a device
-backend against the host backend bit for bit (a random corpus and a 48-net
-launch on a 64x64 grid) when run under a GPU lease.
+backend against the host backend bit for bit when run under a GPU lease (see
+[Validation](#validation)).
 
 `--router gpu` is available for the `mistral` and `generic` architectures.
 Adding it to another architecture is a one-line dispatch in that
@@ -572,6 +572,21 @@ large lane `2^22 · 60 B` ≈ 252 MB (defaults 384 and 4 concurrent nets, about
 All of it is allocated once per run.
 
 ## Validation
+
+The `GpuApproximateSearch.*OnDevice` tests in
+`generic/tests/gpurouter_exact.cc` check a device backend against the CPU
+reference bit for bit, at block sizes 256, 512 and 1024: a random corpus, a
+48-net launch on a 64x64 grid, and the same launch with a hub wire whose pips
+outnumber a block's threads, wires without pips, reserved-region and
+halo-fenced pips and path regions some arcs overflow, initialised from the
+packed `EdgeRec`/`edge_src` arrays the router passes and routed again after
+two wire state updates. They run only under a `gpu-run` lease
+(`FES_GPU_IDS`) in a build with a device backend, and skip otherwise. CI
+builds `GPU_ROUTER=OFF`, so a change to the device code is checked by hand:
+configure with `-DGPU_ROUTER=HIP`, `CUDA` or `METAL` and `-DBUILD_TESTS=ON`,
+build `nextpnr-generic-test`, and run it with
+`--gtest_filter='GpuApproximateSearch.*'` under a lease, making sure the
+`OnDevice` tests ran rather than skipped.
 
 `mistral/tests/gpurouter/qor.py` routes a fixture with `--router gpu` twice
 and with a reference router (`router2`, or `--reference router1`), writing
